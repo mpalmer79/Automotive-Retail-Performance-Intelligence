@@ -155,21 +155,15 @@ exist, so the file is absent rather than empty. The numbering gap is intentional
 
 ## 3. Running it
 
-### 3.1 One-off, explicit and copy-pasteable
+### 3.1 As a loop
 
-```bash
-cd /path/to/Automotive-Retail-Performance-Intelligence
-export PGDATABASE=arpi_dev            # never a production database
+The sequence is 66 steps, so pasting each one is no longer the readable option.
+It does not need to be: the numeric directory and file prefixes are designed so
+that plain sorted order **is** the correct order. Section 2 above lists every step
+explicitly if you want to see them.
 
-# The sequence is 66 steps. Rather than paste all 66, run them in sorted order --
-# the numeric prefixes are designed so that sorted order IS the correct order.
-# Section 3.2 does exactly that; section 2 above lists every step explicitly.
-```
-
-### 3.2 The same thing as a loop
-
-The numeric directory and file prefixes are designed so that plain sorted order is
-the correct order. `sql/0*/` cannot match `sql/99_local_reset.sql`.
+`sql/0*/` cannot match `sql/99_local_reset.sql`, which is why that file lives at
+the `sql/` root.
 
 ```bash
 cd /path/to/Automotive-Retail-Performance-Intelligence
@@ -187,11 +181,12 @@ psql -v ON_ERROR_STOP=1 -q -f sql/07_security/01_grants.sql
 Run it a second time to confirm idempotency. The output is a series of
 `NOTICE: ... already exists, skipping` lines and **no errors**.
 
-### 3.3 Verifying
+### 3.2 Verifying
 
 ```bash
 psql -d arpi_dev -c '\dn'                         # five schemas
-psql -d arpi_dev -c '\dt warehouse.*'             # dim_date, dim_dealership
+psql -d arpi_dev -c '\dt warehouse.*'             # 8 dimensions + 5 (empty) facts
+psql -d arpi_dev -c '\dv staging.*'               # 3 views per Phase 1 entity
 psql -d arpi_dev -c '\dv reporting.*'             # exactly four views
 psql -d arpi_dev -c 'SELECT count(*) FROM warehouse.dim_date'
 psql -d arpi_dev -c 'SELECT * FROM audit.vw_dq_all ORDER BY check_id'
@@ -424,6 +419,11 @@ sequence in section 2 again.
 
 `tests/integration/` creates a throwaway database, runs this entire sequence into
 it twice, and asserts the schemas, the grains, the CHECK constraints, the foreign
-keys, the merge idempotency, the SCD Type 2 path and the role restrictions —
-including that `arpi_reporter` genuinely cannot read `raw.dealership_load`. The
-tests skip cleanly when no PostgreSQL server is reachable.
+keys, the merge idempotency, the SCD Type 2 path, the five-layer ingestion row-count
+chain and the role restrictions — including that `arpi_reporter` genuinely cannot read
+`raw.dealership_load`. The tests skip cleanly when no PostgreSQL server is reachable.
+
+`tests/integration/test_ingestion_row_count_chain.py` is the one that closes `DOC-23`.
+It drives the real `load_foundation` path over a deliberately defective six-row fixture
+and asserts each layer's count, the chain identity, the four rejection codes, and that
+every persisted payload is the redactor's output.
