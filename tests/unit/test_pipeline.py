@@ -15,6 +15,14 @@ from arpi.ingestion.spec import spec_for
 from arpi.pipeline import GENERATION_ORDER, SKIP_REASON_NOT_REQUESTED, run_foundation
 
 
+#: Data-quality results one full run produces, across every entity.
+#:
+#: Pinned rather than derived: the point of the assertion is that a check cannot quietly
+#: stop being emitted. Ten entity suites plus the two cross-entity generation checks,
+#: with one ``DQ-GEN-001`` schema result per entity.
+EXPECTED_CHECK_COUNT = 80
+
+
 @pytest.fixture
 def slice_config(working_dir: Path, repo_config_dir: Path) -> ArpiConfig:
     """A ``test``-profile config resolved from a config copy inside a scratch cwd."""
@@ -108,9 +116,10 @@ def test_output_dir_override(slice_config: ArpiConfig, working_dir: Path) -> Non
 def test_run_records_the_audit_trail(slice_config: ArpiConfig) -> None:
     result = run_foundation(slice_config, load_database=False)
     rows = result.recorder.to_rows()
-    assert len(rows["pipeline_run_row_count"]) == 2
+    assert len(rows["pipeline_run_row_count"]) == len(GENERATION_ORDER)
     assert {row["layer"] for row in rows["pipeline_run_row_count"]} == {"source"}
-    assert len(rows["validation_result"]) == 13
+    assert {row["entity_name"] for row in rows["pipeline_run_row_count"]} == set(GENERATION_ORDER)
+    assert len(rows["validation_result"]) == EXPECTED_CHECK_COUNT
     assert rows["reconciliation_result"] == []
     assert result.run.status == STATUS_SUCCEEDED
     assert result.run.completed_at is not None
@@ -120,7 +129,7 @@ def test_run_succeeds_and_reports_no_critical_failures(slice_config: ArpiConfig)
     result = run_foundation(slice_config, load_database=False)
     assert result.succeeded is True
     assert not result.report.has_critical_failure
-    assert len(result.report) == 13
+    assert len(result.report) == EXPECTED_CHECK_COUNT
 
 
 def test_database_step_is_skipped_not_failed(slice_config: ArpiConfig) -> None:
@@ -184,9 +193,7 @@ def test_critical_failure_marks_the_run_failed(
             ).failed("forced failure"),
         )
     )
-    monkeypatch.setattr(
-        "arpi.pipeline.validate_foundation_datasets", lambda *args, **kwargs: failing
-    )
+    monkeypatch.setattr("arpi.pipeline.validate_all_datasets", lambda *args, **kwargs: failing)
     result = run_foundation(slice_config, load_database=False)
     assert result.succeeded is False
     assert result.run.status == STATUS_FAILED
