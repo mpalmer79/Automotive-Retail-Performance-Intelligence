@@ -2333,8 +2333,8 @@ events the vendor counts as leads but reports under neither heading.
 
 Two entities in `P1.1` are **pre-warehouse source entities** rather than warehouse tables. They are what a
 real dealer management system would export, and they are what the raw and staging layers ingest.
-`acquisition_event` feeds [§15 `warehouse.fact_vehicle_inventory_snapshot`](#15-warehousefact_vehicle_inventory_snapshot);
-`sale_event` is loaded as [§14 `warehouse.fact_vehicle_sale`](#14-warehousefact_vehicle_sale). Both are
+`acquisition_event` feeds [§15 `warehouse.fact_vehicle_inventory_snapshot`](#15-warehousefactvehicleinventorysnapshot);
+`sale_event` is loaded as [§14 `warehouse.fact_vehicle_sale`](#14-warehousefactvehiclesale). Both are
 implemented by `src/arpi/generation/` and both carry natural identifiers and real dates rather than
 surrogate and date keys — the keys are assigned during the load, not by the generator.
 
@@ -2451,7 +2451,7 @@ vehicle-aging behaviour across models is a prohibited synthetic pattern
 Module: `src/arpi/generation/sale.py`. Seeding namespace: `sale_event`.
 
 **Grain: one row per finalized vehicle transaction.** The columns mirror
-[§14 `warehouse.fact_vehicle_sale`](#14-warehousefact_vehicle_sale) with every surrogate key replaced by
+[§14 `warehouse.fact_vehicle_sale`](#14-warehousefactvehiclesale) with every surrogate key replaced by
 its natural identifier and every date key by a real date.
 
 ### 14B.1 Column contract
