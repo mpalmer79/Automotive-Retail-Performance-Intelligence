@@ -14,10 +14,12 @@ from datetime import date, timedelta
 import pandas as pd
 
 from arpi.constants import (
+    APPROVED_NAME_COLUMNS,
     CHECK_CATEGORY_BUSINESS_RULE,
     CHECK_CATEGORY_PRIVACY,
     CHECK_CATEGORY_STRUCTURAL,
     PROHIBITED_PII_FIELD_NAMES,
+    PROHIBITED_PII_SUBSTRINGS,
 )
 from arpi.validation.results import CheckResult, CheckSeverity, CheckStatus
 
@@ -314,6 +316,37 @@ def check_ratio_within_bounds(
     )
 
 
+def _is_prohibited_pii_column(column: str) -> bool:
+    """Decide whether a column name denotes personal data.
+
+    Three rules apply, in order of increasing subtlety:
+
+    1. The name matches a prohibited field exactly (``ssn``, ``address``).
+    2. The name *contains* an unambiguous prohibited token, so ``customer_email`` and
+       ``home_phone_number`` are caught rather than only their bare forms.
+    3. The name ends in ``name`` and is not an approved descriptive label. Personal names
+       are prohibited but ``day_name`` and ``store_name`` are not, and only an allowlist
+       distinguishes them. Denying by default means a new person-name column fails the
+       check without anyone having to extend a blocklist first.
+
+    This mirrors the substring semantics of the SQL implementation of the same check id,
+    so one rule keeps one meaning in both layers.
+
+    Args:
+        column: The column name to classify.
+
+    Returns:
+        ``True`` when the column name denotes prohibited personal data.
+    """
+    normalised = column.strip().lower()
+    if normalised in PROHIBITED_PII_FIELD_NAMES:
+        return True
+    if any(token in normalised for token in PROHIBITED_PII_SUBSTRINGS):
+        return True
+    is_name_column = normalised == "name" or normalised.endswith("_name")
+    return is_name_column and normalised not in APPROVED_NAME_COLUMNS
+
+
 def check_no_prohibited_pii_columns(
     frame: pd.DataFrame,
     *,
@@ -339,9 +372,7 @@ def check_no_prohibited_pii_columns(
         The check result; ``observed_value`` is the number of offending columns.
     """
     offending = sorted(
-        str(column)
-        for column in frame.columns
-        if str(column).strip().lower() in PROHIBITED_PII_FIELD_NAMES
+        str(column) for column in frame.columns if _is_prohibited_pii_column(str(column))
     )
     base = CheckResult(
         check_id=check_id,

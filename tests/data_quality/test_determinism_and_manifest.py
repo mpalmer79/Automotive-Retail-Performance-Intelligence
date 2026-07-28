@@ -133,9 +133,28 @@ def test_committed_sample_files_are_current() -> None:
     assert manifest["profile"] == "development"
     assert manifest["random_seed"] == config.random_seed
 
+    # Regenerate in memory and compare against the committed bytes. Comparing the
+    # committed CSV only against the committed manifest would merely prove the two
+    # committed artifacts agree with each other: a generator change that made both stale
+    # in step would still pass. The generator itself has to be the reference.
+    expected_frames = {dataset.entity_name: dataset for dataset in _datasets(config)}
+    row_limit = config.generation.sample_row_limit
+
     entries = {entry["entity"]: entry for entry in manifest["generated_entities"]}
+    assert set(entries) == set(expected_frames), (
+        "the committed manifest does not describe the entities the generator produces"
+    )
+
     for entity, entry in entries.items():
         payload = (sample_dir / f"{entity}.csv").read_bytes()
         assert entry["content_digest"] == content_digest(payload), (
-            f"data/sample/{entity}.csv is stale; rerun `arpi generate --profile development`"
+            f"data/sample/{entity}.csv does not match the digest recorded beside it; "
+            f"rerun `arpi generate --profile development`"
+        )
+
+        frame = expected_frames[entity].frame.head(row_limit)
+        regenerated = dataframe_to_csv_bytes(frame)
+        assert payload == regenerated, (
+            f"data/sample/{entity}.csv is stale: the generator now produces different "
+            f"bytes. Rerun `arpi generate --profile development` and commit the result."
         )

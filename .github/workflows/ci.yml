@@ -270,15 +270,29 @@ jobs:
 
       # The SQL tree is numbered so that lexical order is execution order:
       # 00_database -> 01_raw -> 02_staging -> 03_dimensions -> ... -> 08_validation.
+      #
+      # This is the 25-step sequence defined in sql/README.md section 2, and it is
+      # the same sequence tests/integration/conftest.py builds:
+      #   * the glob is `sql/0*/*.sql`, which cannot match `sql/99_local_reset.sql`
+      #     — that script DROPs every ARPI schema and must never run here;
+      #   * `07_security/02_role_verification.sql` is a read-only operator report,
+      #     not a build step, so it is skipped;
+      #   * `07_security/01_grants.sql` runs a second time as step 25, because the
+      #     objects created by 08_validation would otherwise stay owned by the
+      #     bootstrap role instead of arpi_admin.
       - name: Run the ordered SQL initialisation sequence
         if: steps.guard.outputs.run == 'true'
         run: |
           set -euo pipefail
-          find sql -name '*.sql' -type f | LC_ALL=C sort | while read -r script; do
+          find sql/0* -name '*.sql' -type f \
+            ! -path 'sql/07_security/02_role_verification.sql' \
+            | LC_ALL=C sort > /tmp/arpi_sql_sequence.txt
+          echo 'sql/07_security/01_grants.sql' >> /tmp/arpi_sql_sequence.txt
+          while read -r script; do
             echo "::group::$script"
             psql -v ON_ERROR_STOP=1 --quiet --no-psqlrc -f "$script"
             echo "::endgroup::"
-          done
+          done < /tmp/arpi_sql_sequence.txt
 
       # `--no-cov` disables the coverage plugin that pyproject.toml enables by
       # default. The integration subset exercises SQL, not the whole package, so

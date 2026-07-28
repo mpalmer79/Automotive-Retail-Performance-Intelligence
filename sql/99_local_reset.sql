@@ -61,6 +61,19 @@
 -- a guard rail, not a security control: it stops the ordinary accident of running
 -- the wrong -f against the wrong -d. It cannot stop a determined operator, and it
 -- is not a substitute for not having production credentials in your shell.
+--
+-- The guard and the drops MUST share one transaction. PostgreSQL makes DDL
+-- transactional, so an exception raised below aborts the transaction and the
+-- DROP statements that follow are never applied: psql reports each as
+-- "current transaction is aborted" and turns the final COMMIT into a ROLLBACK.
+--
+-- Without this BEGIN the guard is decorative. A bare `RAISE EXCEPTION` in a
+-- standalone DO block only fails that one statement, so psql invoked without
+-- -v ON_ERROR_STOP=1 prints the refusal and then drops every schema anyway.
+-- That was observed against a database named `guardtest_prod`: the refusal was
+-- printed and all five schemas were destroyed regardless.
+BEGIN;
+
 DO $guard$
 DECLARE
     v_database_name text := current_database();
@@ -112,3 +125,7 @@ BEGIN
     END IF;
 END
 $confirm$;
+
+-- Commit the drops. If either DO block above raised, this is a ROLLBACK instead
+-- and the database is left exactly as it was found.
+COMMIT;

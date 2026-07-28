@@ -179,10 +179,14 @@ def run_foundation(
 
     raw_files, sample_files = _write_all(config, datasets, output_dir)
 
-    loaded, skip_reason, load_result = _maybe_load(
-        config, datasets, recorder, load_database=load_database, sql_root=sql_root
-    )
-
+    # The run must reach its terminal status BEFORE the database step, because the
+    # database step is what writes audit.pipeline_run. Finishing afterwards left every
+    # persisted run stuck at status 'running' with a null completed_at, even for runs
+    # that succeeded, which in turn made reporting.vw_pipeline_run_summary report a
+    # null duration for completed work. The terminal status depends only on the
+    # validation report, and whether the load will be attempted is decided separately,
+    # so both are known at this point.
+    skip_reason = _load_skip_reason(config, load_database=load_database)
     run.finish(
         STATUS_FAILED if report.has_critical_failure else STATUS_SUCCEEDED,
         notes=(
@@ -192,6 +196,10 @@ def run_foundation(
         ),
     )
     _LOGGER.info("Finished %s with status %s.", run.pipeline_name, run.status)
+
+    loaded, load_result = _load_if_possible(
+        config, datasets, recorder, skip_reason=skip_reason, sql_root=sql_root
+    )
 
     return FoundationRunResult(
         run=run,
@@ -230,19 +238,22 @@ def _write_all(
     return raw_files, sample_files
 
 
-def _maybe_load(
-    config: ArpiConfig,
-    datasets: tuple[GeneratedDataset, ...],
-    recorder: AuditRecorder,
-    *,
-    load_database: bool | None,
-    sql_root: Path,
-) -> tuple[bool, str | None, LoadResult | None]:
-    """Run the optional database step, returning ``(loaded, skip_reason, result)``."""
+def _load_skip_reason(config: ArpiConfig, *, load_database: bool | None) -> str | None:
+    """Decide whether the database step will run.
+
+    Args:
+        config: The resolved configuration.
+        load_database: An explicit override, or ``None`` to follow ``database.enabled``.
+
+    Returns:
+        ``None`` when the load should proceed, otherwise a human-readable reason the
+        step is being skipped. Skipping is never a failure: the slice is designed to
+        run without PostgreSQL.
+    """
     wanted = config.database.enabled if load_database is None else load_database
     if not wanted:
         _LOGGER.info("Database load skipped: %s", SKIP_REASON_NOT_REQUESTED)
-        return False, SKIP_REASON_NOT_REQUESTED, None
+        return SKIP_REASON_NOT_REQUESTED
 
     if not database_available(config):
         reason = (
@@ -251,7 +262,22 @@ def _maybe_load(
             "the specific cause"
         )
         _LOGGER.warning("Database load skipped: %s", reason)
-        return False, reason, None
+        return reason
+
+    return None
+
+
+def _load_if_possible(
+    config: ArpiConfig,
+    datasets: tuple[GeneratedDataset, ...],
+    recorder: AuditRecorder,
+    *,
+    skip_reason: str | None,
+    sql_root: Path,
+) -> tuple[bool, LoadResult | None]:
+    """Run the database step unless it was already decided to be skipped."""
+    if skip_reason is not None:
+        return False, None
 
     result = load_foundation(config, datasets, recorder, sql_root=sql_root)
     _LOGGER.info(
@@ -260,4 +286,4 @@ def _maybe_load(
             f"{entity}={count}" for entity, count in sorted(result.warehouse_row_counts.items())
         ),
     )
-    return True, None, result
+    return True, result

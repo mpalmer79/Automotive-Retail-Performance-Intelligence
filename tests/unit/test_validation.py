@@ -143,6 +143,57 @@ def test_check_no_prohibited_pii_columns() -> None:
     assert "Email" in (failure.message or "")
 
 
+@pytest.mark.parametrize(
+    "column",
+    [
+        "email",
+        "customer_email",
+        "contact_email_address",
+        "customer_phone",
+        "home_phone_number",
+        "customer_ssn",
+        "buyer_first_name",
+        "salesperson_name",
+        "employee_home_address",
+        "annual_salary",
+        "credit_score",
+        "postal_code",
+        "name",
+    ],
+)
+def test_prohibited_pii_columns_are_caught_with_realistic_prefixes(column: str) -> None:
+    """Qualified personal-data columns must fail, not just their bare forms.
+
+    Exact-name matching used to accept ``customer_email`` and ``buyer_first_name``, which
+    are exactly the shapes the Phase 1 customer and employee entities will introduce.
+    """
+    result = check_no_prohibited_pii_columns(pd.DataFrame({column: ["x"]}), **ARGS)
+    assert result.is_failure, f"{column!r} should be rejected as personal data"
+
+
+@pytest.mark.parametrize(
+    "column",
+    [
+        "day_name",
+        "month_name",
+        "quarter_name",
+        "holiday_name",
+        "store_name",
+        "store_short_name",
+        "check_name",
+        "entity_name",
+        "market_region",
+        "state_code",
+        "dealership_id",
+        "is_selling_day",
+    ],
+)
+def test_legitimate_descriptive_columns_are_not_flagged(column: str) -> None:
+    """Descriptive label columns must pass; only person-name columns are prohibited."""
+    result = check_no_prohibited_pii_columns(pd.DataFrame({column: ["x"]}), **ARGS)
+    assert result.status is CheckStatus.PASSED, f"{column!r} was wrongly flagged"
+
+
 def test_skipped_check() -> None:
     result = skipped_check(**ARGS, reason="no database")
     assert result.status is CheckStatus.SKIPPED

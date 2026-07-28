@@ -324,6 +324,70 @@ PROHIBITED_PII_FIELD_NAMES: Final[frozenset[str]] = frozenset(
     }
 )
 
+# Tokens prohibited *anywhere* inside a column name.
+#
+# Exact-name matching alone is too weak to be a real tripwire: it accepts
+# ``customer_email``, ``buyer_first_name`` and ``home_phone_number`` while rejecting only
+# the bare forms. Every token below is one that no legitimate ARPI column can contain, so
+# substring matching is safe. Deliberately absent are ambiguous words such as ``name``,
+# which appears in wholly innocent columns like ``day_name`` and ``store_name`` and is
+# handled by the suffix rule instead.
+PROHIBITED_PII_SUBSTRINGS: Final[frozenset[str]] = frozenset(
+    {
+        "account_number",
+        "address",
+        "bank_account",
+        "birthdate",
+        "birth_date",
+        "compensation",
+        "credit_card",
+        "credit_score",
+        "date_of_birth",
+        "driver_license",
+        "drivers_license",
+        "e_mail",
+        "email",
+        "license_number",
+        "mailing",
+        "national_id",
+        "passport",
+        "pay_rate",
+        "phone",
+        "postal_code",
+        "routing_number",
+        "salary",
+        "social_security",
+        "ssn",
+        "street",
+        "surname",
+        "tax_id",
+        "wage",
+        "zip_code",
+    }
+)
+
+# Columns ending in ``name`` are treated as personal data unless they appear here.
+#
+# A person's name is prohibited; a descriptive label is not, and only an explicit
+# allowlist can tell the two apart. Denying by default means a future generator that adds
+# ``salesperson_name`` or ``customer_name`` fails the check without anyone having to
+# remember to extend a blocklist first. Adding an entry here is a deliberate act that a
+# reviewer will see in the diff.
+APPROVED_NAME_COLUMNS: Final[frozenset[str]] = frozenset(
+    {
+        "check_name",
+        "day_name",
+        "entity_name",
+        "holiday_name",
+        "month_name",
+        "pipeline_name",
+        "profile_name",
+        "quarter_name",
+        "store_name",
+        "store_short_name",
+    }
+)
+
 # ---------------------------------------------------------------------------------------
 # Data-quality check identifiers (shared verbatim between Python and SQL)
 # ---------------------------------------------------------------------------------------
