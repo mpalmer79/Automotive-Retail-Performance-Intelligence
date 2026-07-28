@@ -117,9 +117,15 @@ All operational data is synthetic.
 
 ## 4. Entity index
 
-> **Status reality check.** Fifteen objects are Implemented. **No fact table exists yet.** Every entity
+> **Status reality check.** Twenty-one objects are Implemented. **No fact table exists yet.** Every entity
 > whose name begins with `fact_` is Planned or Deferred. Consequently no KPI is computed anywhere in this
 > repository today — see [KPI_CATALOG.md](KPI_CATALOG.md).
+
+> **Scope of this index.** It lists every database object ARPI creates, including the six `audit.vw_dq_*`
+> helper views in `sql/08_validation/`. Those views are internal query helpers over the audit schema, not
+> part of the reporting boundary — `arpi_reporter` reads validation outcomes through
+> `reporting.vw_data_quality_summary`. They are listed anyway, because an index that claims to be complete
+> and is not is worse than one that admits its boundary (documentation backlog `DOC-22`).
 
 | Entity | Layer | Grain | Status |
 |---|---|---|---|
@@ -149,6 +155,12 @@ All operational data is synthetic.
 | `reporting.vw_dealership` | Reporting | One row per current dealership version | **Implemented** |
 | `reporting.vw_pipeline_run_summary` | Reporting | One row per pipeline run | **Implemented** |
 | `reporting.vw_data_quality_summary` | Reporting | One row per validation check per pipeline run | **Implemented** |
+| `audit.vw_dq_result_template` | Audit | None — always zero rows; the executable specification of the uniform check-result shape | **Implemented** |
+| `audit.vw_dq_dim_date` | Audit | One row per `DQ-DATE-*` check | **Implemented** |
+| `audit.vw_dq_dim_dealership` | Audit | One row per `DQ-DLR-*` check | **Implemented** |
+| `audit.vw_dq_referential` | Audit | One row per `DQ-REF-*` check | **Implemented** |
+| `audit.vw_dq_audit` | Audit | One row per `DQ-AUD-*` check | **Implemented** |
+| `audit.vw_dq_all` | Audit | One row per SQL data-quality check across all four check views | **Implemented** |
 | `warehouse.dim_finance_product` | Warehouse | One row per finance product definition | Deferred |
 | `warehouse.dim_lender` | Warehouse | One row per synthetic lender | Deferred |
 | `warehouse.dim_sale_type` | Warehouse | One row per sale classification | Deferred |
@@ -160,7 +172,7 @@ All operational data is synthetic.
 | `warehouse.fact_service_visit` | Warehouse | One row per closed repair-order visit | Deferred |
 | `warehouse.fact_sales_target` | Warehouse | One row per dealership, employee or department, KPI, and calendar month | Deferred |
 
-**Counts:** 15 Implemented · 11 Planned · 10 Deferred.
+**Counts:** 21 Implemented · 11 Planned · 10 Deferred.
 
 ---
 
@@ -1120,7 +1132,7 @@ purged, so prior run history is preserved ([ARCHITECTURE.md §17.3](ARCHITECTURE
 | `pipeline_run_id` | `bigint` FK | no | Existing run | Owning run. | Set by the validator. | Non-personal |
 | `check_id` | `text` | no | `DQ-*` identifiers (see 21.2) | Stable check identifier. **Shared between Python and SQL** so the same check has the same ID wherever it runs. | Constant per check. | Non-personal |
 | `check_name` | `text` | no | Free text | Human-readable check name. | Constant per check. | Non-personal |
-| `check_category` | `text` | no | Free text, for example `structural`, `business_rule`, `privacy`, `determinism` | Grouping for the data-quality summary. | Constant per check. | Non-personal |
+| `check_category` | `text` | no | `structural` \| `completeness` \| `uniqueness` \| `referential` \| `business_rule` \| `privacy` \| `reproducibility` (CHECK constrained — see 21.1.1) | Grouping for the data-quality summary. | Constant per check. | Non-personal |
 | `target_object` | `text` | no | Entity or object name | What was checked. | Set by the validator. | Non-personal |
 | `severity` | `text` | no | `critical` \| `warning` \| `info` (CHECK constrained) | **`critical` failures fail the run**; warnings do not. | Constant per check. | Non-personal |
 | `status` | `text` | no | `passed` \| `failed` \| `skipped` (CHECK constrained) | Outcome. `skipped` is recorded explicitly so a silently absent check is distinguishable from a passing one. | Set by the validator. | Non-personal |
@@ -1130,22 +1142,98 @@ purged, so prior run history is preserved ([ARCHITECTURE.md §17.3](ARCHITECTURE
 | `message` | `text` | yes | Free text | Explanatory message. NULL when none. | Set by the validator. | Non-personal |
 | `evaluated_at` | `timestamptz` | no | UTC timestamp | When the check ran. | Wall clock. | Non-personal |
 
-### 21.2 Phase 0 check register
+### 21.1.1 The canonical category vocabulary
 
-| `check_id` | Assertion | Target | Severity |
-|---|---|---|---|
-| `DQ-DATE-001` | `date_key` is unique | `dim_date` | critical |
-| `DQ-DATE-002` | The date range is contiguous — no missing days | `dim_date` | critical |
-| `DQ-DATE-003` | `date_key` equals `full_date` formatted `YYYYMMDD` | `dim_date` | critical |
-| `DQ-DATE-004` | No required field is NULL | `dim_date` | critical |
-| `DQ-DATE-005` | Selling-day ratio is within the configured tolerance | `dim_date` | warning |
-| `DQ-DLR-001` | `dealership_key` is unique | `dim_dealership` | critical |
-| `DQ-DLR-002` | `dealership_id` is unique among current rows | `dim_dealership` | critical |
-| `DQ-DLR-003` | Store count matches `generation.store_count` | `dim_dealership` | critical |
-| `DQ-DLR-004` | No prohibited PII column is present | `dim_dealership` | critical |
-| `DQ-DLR-005` | `franchise_brand` is present for franchise stores | `dim_dealership` | critical |
-| `DQ-GEN-001` | The declared schema matches the output schema | all generated entities | critical |
-| `DQ-GEN-002` | The determinism digest is recorded | all generated entities | **info** |
+**There are exactly seven categories, and there is one authority for them:**
+`CHECK_CATEGORIES` in `src/arpi/constants.py`.
+
+| Category | What it asserts | Example |
+|---|---|---|
+| `structural` | The shape of the data or of the catalogue: declared columns, their order, the presence of the constraints that enforce a grain. | `DQ-GEN-001`, `DQ-REF-004` |
+| `completeness` | Nothing is missing: no NULL in a required column, no gap in a sequence. | `DQ-DATE-002`, `DQ-DATE-004`, `DQ-REF-003` |
+| `uniqueness` | A key identifies one thing. | `DQ-DATE-001`, `DQ-DLR-001`, `DQ-DLR-002` |
+| `referential` | A row resolves to the row it claims to belong to, and a declared grain holds. | `DQ-REF-001`, `DQ-AUD-001` |
+| `business_rule` | A rule from the business domain rather than from the schema. | `DQ-DLR-005`, `DQ-DATE-005` |
+| `privacy` | No prohibited personal-data column exists. See [PRIVACY_AND_ETHICS.md](PRIVACY_AND_ETHICS.md). | `DQ-DLR-004` |
+| `reproducibility` | The output can be regenerated and the claim can be recomputed. | `DQ-GEN-002` |
+
+**`reconciliation` is deliberately not a category.** A reconciliation compares two totals
+and is a different kind of evidence; it lives in `audit.reconciliation_result` (§22).
+
+**How this stays fixed.** The column carries the CHECK constraint
+`ck_validation_result_check_category` over exactly these seven values, so a new spelling is
+rejected on INSERT rather than quietly becoming an eighth vocabulary. `sql/08_validation/`
+emits the same strings, and `src/arpi/validation/registry.py` records one per check. A test
+reads the constraint definition out of `pg_constraint` and asserts it equals the Python set,
+so the two cannot drift apart silently.
+
+Earlier revisions used four incompatible vocabularies — the gap recorded as `DOC-24`. The
+retired spellings and their replacements are:
+
+| Retired spelling | Canonical category | Note |
+|---|---|---|
+| `schema` | `structural` | Except `DQ-DLR-004`, which becomes `privacy`: it is the privacy tripwire, and its Python implementation always said so. |
+| `domain` | `business_rule` | Named only in a `COMMENT ON COLUMN`; nothing emitted it. |
+| `determinism` | `reproducibility` | Documented in this file; nothing emitted it. |
+
+`sql/00_database/03_audit_tables.sql` performs that rewrite idempotently before adding the
+constraint, so an existing database is migrated by re-running the initialisation sequence and
+no historical audit row is deleted. A row carrying an unmapped spelling is **not** guessed at:
+the constraint fails loudly and names it.
+
+### 21.2 Check register
+
+**`src/arpi/validation/registry.py` is the canonical register.** Every `DQ-*` identifier the
+platform can emit is declared there exactly once, whether it is evaluated in pandas, in SQL,
+or in both, together with its category, severity, implementing layer, entity and the reason
+it exists. The tables below are the human-readable rendering of that module; a test asserts
+that every identifier emitted at runtime is registered, so the two cannot diverge.
+
+#### 21.2.1 Family prefixes
+
+A prefix is reserved before any check uses it, so that entities built in parallel cannot
+collide on an ordinal. Identifiers match `^DQ-[A-Z]{3,4}-\d{3}$`.
+
+| Prefix | Entity or area | Status |
+|---|---|---|
+| `DQ-DATE-*` | `dim_date` | **Implemented** |
+| `DQ-DLR-*` | `dim_dealership` | **Implemented** |
+| `DQ-GEN-*` | Cross-entity generation: schema conformance, determinism digest | **Implemented** |
+| `DQ-REF-*` | Cross-object referential and grain integrity (SQL) | **Implemented** |
+| `DQ-AUD-*` | Audit-layer integrity (SQL) | **Implemented** |
+| `DQ-VMD-*` | `dim_vehicle_model` | Planned (Phase 1.1) |
+| `DQ-VEH-*` | `dim_vehicle` | Planned (Phase 1.1) |
+| `DQ-EMP-*` | `dim_employee` | Planned (Phase 1.1) |
+| `DQ-CUS-*` | `dim_customer` | Planned (Phase 1.2) |
+| `DQ-ACQ-*` | `acquisition_event` (inventory acquisition source entity) | Planned (Phase 1.2) |
+| `DQ-SLE-*` | `fact_vehicle_sale` | Planned (Phase 1.2) |
+| `DQ-INV-*` | `fact_vehicle_inventory_snapshot` | Planned (Phase 1.2) |
+| `DQ-LDS-*` | `dim_lead_source` | Planned (Phase 1.4) |
+| `DQ-LED-*` | `fact_lead` | Planned (Phase 1.4) |
+| `DQ-APT-*` | `fact_appointment` | Planned (Phase 1.4) |
+| `DQ-CMP-*` | `dim_marketing_campaign` | Planned (Phase 1.5) |
+| `DQ-MKT-*` | `fact_marketing_spend` | Planned (Phase 1.5) |
+| `DQ-ING-*` | Ingestion and the row-count chain | Planned (Phase 1.2) |
+
+Reserving a prefix is **not** a claim that any check in that family exists. Only the five
+Implemented families have registered checks today; the rest are reserved names.
+
+#### 21.2.2 Registered checks
+
+| `check_id` | Assertion | Category | Target | Severity | Layer |
+|---|---|---|---|---|---|
+| `DQ-DATE-001` | `date_key` is unique | `uniqueness` | `dim_date` | critical | both |
+| `DQ-DATE-002` | The date range is contiguous — no missing days | `completeness` | `dim_date` | critical | both |
+| `DQ-DATE-003` | `date_key` equals `full_date` formatted `YYYYMMDD` | `business_rule` | `dim_date` | critical | both |
+| `DQ-DATE-004` | No required field is NULL | `completeness` | `dim_date` | critical | both |
+| `DQ-DATE-005` | Selling-day ratio is within the configured tolerance | `business_rule` | `dim_date` | warning | both |
+| `DQ-DLR-001` | `dealership_key` is unique | `uniqueness` | `dim_dealership` | critical | both |
+| `DQ-DLR-002` | `dealership_id` is unique among current rows | `uniqueness` | `dim_dealership` | critical | both |
+| `DQ-DLR-003` | Store count matches `generation.store_count` | `business_rule` | `dim_dealership` | critical | both |
+| `DQ-DLR-004` | No prohibited PII column is present | `privacy` | `dim_dealership` | critical | both |
+| `DQ-DLR-005` | `franchise_brand` is present for franchise stores | `business_rule` | `dim_dealership` | critical | both |
+| `DQ-GEN-001` | The declared schema matches the output schema | `structural` | all generated entities | critical | Python |
+| `DQ-GEN-002` | The determinism digest is recorded | `reproducibility` | all generated entities | **info** | Python |
 
 **`DQ-GEN-002` is `info`, not a gate.** It records the SHA-256 digest of each entity's canonical CSV
 rendering so a reviewer can recompute it; it does not compare that digest against a stored expectation,
@@ -1160,37 +1248,66 @@ column list, and the digest of the CSV bytes before they are written — so ther
 observe. They have no counterpart in `sql/08_validation/`. All ten `DQ-DATE-*` and `DQ-DLR-*` checks do
 appear verbatim in both layers.
 
-**Supplementary SQL-side check families.** The SQL validation layer (`sql/08_validation/`) additionally
-implements two families
-that have no Python counterpart, because they assert properties only the database can observe — catalogue
-state and cross-table referential integrity. They are Implemented and are listed here so the register is
-complete rather than merely canonical.
+**SQL-only check families.** The SQL validation layer (`sql/08_validation/`) implements two further
+families that have no Python counterpart, because they assert properties only the database can observe —
+catalogue state and cross-table referential integrity. Until `DOC-21` was closed these appeared in no
+shared register at all; they are now registered in `src/arpi/validation/registry.py` alongside every other
+check, because a register that is incomplete stops being a register.
 
-| `check_id` | Assertion | Target | Severity |
-|---|---|---|---|
-| `DQ-REF-001` | `warehouse.dim_date` grain is unique on `full_date` | `dim_date` | critical |
-| `DQ-REF-002` | `warehouse.dim_dealership` grain is unique on `(dealership_id, effective_date)` | `dim_dealership` | critical |
-| `DQ-REF-003` | `warehouse.dim_date` has no gaps in its date sequence — a window-function check, distinct from `DQ-DATE-002`, which compares a count | `dim_date` | critical |
-| `DQ-REF-004` | The constraints that enforce these grains are actually present in the catalogue | `warehouse` | critical |
-| `DQ-REF-005` | Every store's SCD Type 2 timeline is contiguous and non-overlapping | `dim_dealership` | critical |
-| `DQ-AUD-001` | Every `audit.validation_result` resolves to an `audit.pipeline_run` | `audit` | critical |
-| `DQ-AUD-002` | Every `audit.rejected_record` resolves to an `audit.pipeline_run` | `audit` | critical |
-| `DQ-AUD-003` | Every `audit.pipeline_run_row_count` resolves to an `audit.pipeline_run` | `audit` | critical |
-| `DQ-AUD-004` | Every `audit.reconciliation_result` resolves to an `audit.pipeline_run` | `audit` | critical |
-| `DQ-AUD-005` | No run is internally inconsistent — finished before it started, or otherwise self-contradictory | `audit.pipeline_run` | critical |
+| `check_id` | Assertion | Category | Target | Severity | Layer |
+|---|---|---|---|---|---|
+| `DQ-REF-001` | `warehouse.dim_date` grain is unique on `full_date` | `referential` | `dim_date` | critical | SQL |
+| `DQ-REF-002` | `warehouse.dim_dealership` grain is unique on `(dealership_id, effective_date)` | `referential` | `dim_dealership` | critical | SQL |
+| `DQ-REF-003` | `warehouse.dim_date` has no gaps in its date sequence | `completeness` | `dim_date` | critical | SQL |
+| `DQ-REF-004` | The constraints that enforce these grains are actually present in the catalogue | `structural` | `warehouse`, `audit` | critical | SQL |
+| `DQ-REF-005` | Every store's SCD Type 2 timeline is contiguous and non-overlapping | `referential` | `dim_dealership` | critical | SQL |
+| `DQ-AUD-001` | Every `audit.validation_result` resolves to an `audit.pipeline_run` | `referential` | `audit.validation_result` | critical | SQL |
+| `DQ-AUD-002` | Every `audit.rejected_record` resolves to an `audit.pipeline_run` | `referential` | `audit.rejected_record` | critical | SQL |
+| `DQ-AUD-003` | Every `audit.pipeline_run_row_count` resolves to an `audit.pipeline_run` | `referential` | `audit.pipeline_run_row_count` | critical | SQL |
+| `DQ-AUD-004` | Every `audit.reconciliation_result` resolves to an `audit.pipeline_run` | `referential` | `audit.reconciliation_result` | critical | SQL |
+| `DQ-AUD-005` | No run is internally inconsistent — finished before it started, or otherwise self-contradictory | `business_rule` | `audit.pipeline_run` | warning | SQL |
+
+**`DQ-AUD-005` is `warning`, not `critical`.** This table previously said `critical`, which the SQL view
+never emitted. A run that died without updating its own row is a defect worth reporting, but the data that
+run produced may still be sound, so it does not gate.
+
+**The `DQ-REF-003` / `DQ-DATE-002` overlap is deliberate**, and is now recorded as the `overlaps_with`
+field on both definitions rather than left as folklore. `DQ-DATE-002` compares a row count against the
+span of the reporting window, which detects **that** dates are missing. `DQ-REF-003` uses a window
+function to find **where** they are missing and reports the first gap, so it can be fixed rather than
+merely noticed. Two methods, two identifiers, one stated relationship.
 
 These are exposed through the helper views `audit.vw_dq_dim_date`, `audit.vw_dq_dim_dealership`,
 `audit.vw_dq_referential`, `audit.vw_dq_audit`, and `audit.vw_dq_all`, all shaped by
-`audit.vw_dq_result_template`. Those views are query helpers over the audit schema, not part of the
-reporting boundary — `arpi_reporter` reads validation outcomes through
+`audit.vw_dq_result_template`. All six appear in the entity index (§4). They are query helpers over the
+audit schema, not part of the reporting boundary — `arpi_reporter` reads validation outcomes through
 `reporting.vw_data_quality_summary`.
+
+#### 21.2.3 Adding a check
+
+A module that implements a new family registers its own checks; nobody edits the registry module.
+
+```python
+from arpi.validation.registry import CheckDefinition, CheckLayer, register_checks
+```
+
+`register_check(definition)` refuses a malformed identifier, an unreserved prefix, a non-canonical
+category, an empty name, entity or description, a check that applies to nothing, and — importantly — a
+second registration of an identifier that is already taken. Two entities built in parallel therefore
+cannot silently collide on `DQ-INV-001`; the second one fails at import time. See the module docstring in
+`src/arpi/validation/registry.py`.
 
 ### 21.3 Business rules
 
 - `severity = 'critical'` and `status = 'failed'` must increment `audit.pipeline_run.critical_failure_count`.
 - `status = 'passed'` implies `failed_record_count = 0`.
+- `check_category` must be one of the seven canonical categories (§21.1.1), enforced by
+  `ck_validation_result_check_category`.
 - Every check in the register above must produce a row on every run, including `skipped` rows. A check that
-  produces no row is itself a defect.
+  produces no row is itself a defect, because a silently absent check reads exactly like a passing one.
+  This is no longer left to each suite to remember: `arpi.validation.datasets.ensure_registry_coverage`
+  reconciles a run's report against `CHECK_REGISTRY` and fills any gap with an explicit `skipped` row that
+  says why.
 
 ### 21.4 PII classification / history policy
 
@@ -1569,3 +1686,422 @@ benchmarks. Status: **Deferred**.
 - Promoting an entity from Deferred to Planned requires satisfying Gate 4
   ([ARCHITECTURE.md §28](ARCHITECTURE.md)): a stakeholder question requires it, the fact grain is defined,
   KPI ownership is defined, and testing requirements are defined.
+
+---
+
+## Phase 1 column contract — `warehouse.dim_vehicle_model`
+
+> **This section supersedes the attribute-level entry in §11 for column-level purposes.** §11 remains as
+> written; the exact, binding contract for the implemented source entity is here.
+
+| Field | Value |
+|---|---|
+| **Entity name** | `warehouse.dim_vehicle_model` |
+| **Layer** | Warehouse (dimension) |
+| **Purpose** | The governed model vocabulary every physical vehicle resolves to. Without it, model and trim performance, days supply by model, and franchise-alignment analysis are ungroupable — and model and trim performance is a core analytical requirement (`docs/research.md` §4.7). |
+| **Declared grain** | **One row per model year, make, model and trim combination.** |
+| **Primary key** | `vehicle_model_key` (integer surrogate) |
+| **Natural / source key** | `vehicle_model_id` (`VMD-#####`), unique. **Business natural key:** `(model_year, make, model, trim)`, unique. |
+| **Foreign keys** | None. `dim_vehicle_model` is a leaf dimension. |
+| **Referenced by** | `dim_vehicle`, `fact_vehicle_inventory_snapshot`, `fact_lead`, `fact_appointment` |
+| **Reference data** | `config/reference/vehicle_model_catalogue.yaml` |
+| **Generator** | `src/arpi/generation/vehicle_model.py` |
+| **Source-to-target mapping** | [STM-004](docs/source-to-target/STM-004-dim-vehicle-model.md) |
+| **Implementation status** | **Implemented** — source generation and the pandas data-quality suite. The SQL DDL, raw/staging objects and warehouse merge are **Planned**. |
+
+### Columns
+
+| Column | Type | Null | Allowed values / domain | Description | Synthetic generation source | PII class |
+|---|---|---|---|---|---|---|
+| `vehicle_model_key` | `integer` PK | no | 1..N | Surrogate key. **Deterministic ordinal 1..N by `vehicle_model_id`**, so the same model always receives the same key on regeneration. | Derived: rank in sorted natural-key order. | Non-personal |
+| `vehicle_model_id` | `varchar(16)` | no | `VMD-#####` | Natural / source key. Assigned deterministically over the **sorted natural key**. | Derived. | Synthetic identifier |
+| `model_year` | `smallint` | no | 1990..2030 | Model year. **Natural-key position 1.** | Catalogue. | Non-personal |
+| `make` | `varchar(40)` | no | Free text | Manufacturer name. **Natural-key position 2.** A commercial product name; not personal data. | Catalogue. | Non-personal |
+| `model` | `varchar(60)` | no | Free text | Model line name. **Natural-key position 3.** | Catalogue. | Non-personal |
+| `trim` | `varchar(40)` | no | Free text | Trim name. **Natural-key position 4.** **Never NULL** — a line with no distinguishing trim carries an explicit `Base`, so the grain constraint needs no NULL-distinctness rule. | Catalogue. | Non-personal |
+| `body_style` | `varchar(30)` | no | `Sedan` \| `Coupe` \| `Hatchback` \| `Wagon` \| `SUV` \| `Crossover` \| `Pickup` \| `Van` \| `Convertible` | Body style. | Catalogue (model line). | Non-personal |
+| `vehicle_class` | `varchar(30)` | no | `Compact` \| `Midsize` \| `Fullsize` \| `Luxury` \| `Sports` \| `Truck` \| `SUV` \| `Van` | Analytical size and segment class. | Catalogue (model line). | Non-personal |
+| `fuel_type` | `varchar(20)` | no | `Gasoline` \| `Diesel` \| `Hybrid` \| `Plug-in Hybrid` \| `Electric` | Propulsion type. Held at **trim** level, so a hybrid trim of a petrol line is expressible. | Catalogue (trim). | Non-personal |
+| `drivetrain` | `varchar(10)` | no | `FWD` \| `RWD` \| `AWD` \| `4WD` | Driven wheels. Held at **trim** level, so the AWD share is a property of the catalogue rather than of a rule. | Catalogue (trim). | Non-personal |
+| `transmission` | `varchar(20)` | no | `Automatic` \| `Manual` \| `CVT` | Transmission type. | Catalogue (trim). | Non-personal |
+| `doors` | `smallint` | no | 2..5 | Door count. Model-line value, overridable per trim. | Catalogue. | Non-personal |
+| `seating_capacity` | `smallint` | no | 2..8 | Seat count. Model-line value, overridable per trim (a captain's-chair trim seats 7 where the line seats 8). | Catalogue. | Non-personal |
+| `franchise_alignment` | `varchar(40)` | no | `Chevrolet` \| `Subaru` \| `Independent Used` | Which franchise, if any, may sell this model **new**. **Explicit and never NULL:** `Independent Used` states "carried as used inventory only", which is information; a NULL would be an absence of information. | Catalogue (model line). | Non-personal |
+| `is_current_model_line` | `boolean` | no | `true` / `false` | Whether the line is still sold new as of model year 2026. Gates new-vehicle eligibility in `dim_vehicle`. A `false` line may not carry a model year after 2025. | Catalogue (model line). | Non-personal |
+| `source_system` | `varchar(40)` | no | `arpi_synthetic_generator` | Constant lineage marker, on every row, so no reviewer can mistake this for a manufacturer extract. | Constant. | Non-personal |
+
+**Uniqueness constraints**
+
+- `vehicle_model_id` is unique (`DQ-VMD-001`).
+- `(model_year, make, model, trim)` is unique (`DQ-VMD-002`). **This is the grain constraint.**
+
+### Reference data provenance
+
+The catalogue in `config/reference/vehicle_model_catalogue.yaml` is a **representative synthetic subset**,
+hand-authored for this project. It is **not** sourced from any manufacturer feed, dealer management system,
+NHTSA vPIC extract, or other external source — **no network call is made at any point**, and
+`features.enable_public_vehicle_enrichment` stays `false` and is never read by the generator. It is **not
+complete** and **not current**: it does not enumerate every model line, trim, model year, or specification
+a manufacturer has offered or offers today, and the specifications recorded are plausible rather than
+verified. **Nothing in ARPI may present it as an authoritative product catalogue.**
+
+Make, model and trim strings are factual commercial product names — product identifiers, not personal data
+— and no row relates to any real vehicle, VIN, owner, or transaction.
+
+### Scale and subset selection
+
+| Profile | Rows |
+|---|---:|
+| `test` | 40 |
+| `development` | 120 |
+| `portfolio` | 240 |
+
+The catalogue is deliberately larger than every target. The generator selects a **deterministic subset**,
+stratified by `(franchise_alignment, era)` with a floor of 2 rows per non-empty stratum and the balance
+allocated in proportion to spare capacity. Stratification is what guarantees that even the 40-row `test`
+profile contains new-eligible franchise models, certified-eligible franchise models, and long-tail models.
+**A catalogue smaller than the target is a hard failure** that names both counts. Full derivation:
+[STM-004 §4.2](docs/source-to-target/STM-004-dim-vehicle-model.md).
+
+### Business rules
+
+- `vehicle_model_key` is the deterministic ordinal of `vehicle_model_id`, which is itself assigned over the
+  sorted natural key. Regeneration is therefore key-stable.
+- `vehicle_model_id` is unique (`DQ-VMD-001`); the natural key is unique (`DQ-VMD-002`).
+- Column names, order and count match the 16-column contract (`DQ-VMD-003`).
+- Every enumerated column draws from its declared domain (`DQ-VMD-004`).
+- `franchise_alignment` agrees with `make`: a `Chevrolet` or `Subaru` alignment carries that make, and no
+  `Independent Used` row carries a franchise make (`DQ-VMD-005`).
+- No prohibited PII column may exist (`DQ-VMD-006`) — the check inspects the **schema**, so an empty
+  prohibited column still fails the run.
+- Every row carries `source_system = 'arpi_synthetic_generator'`.
+- **Distributions are asserted as bands, never as exact figures.** AWD share 0.32–0.68 across the
+  dimension; Subaru rows ≥ 0.80 **and strictly below 1.0**; no single drivetrain above 0.70; no single trim
+  above 0.20; no single model year above 0.30 with at least 8 distinct years. The realised drivetrain and
+  body-style shares are logged at INFO on every run.
+
+### PII classification
+
+**No personal data.** `vehicle_model_id` is a `Synthetic identifier`; every other column is `Non-personal`.
+`make`, `model` and `trim` are commercial product names, explicitly allowed by the prohibited-field policy.
+There is no owner, driver, or contact relationship anywhere on this entity.
+
+### History policy
+
+**Slowly Changing Dimension Type 1.** A model's body style, fuel type or drivetrain is a fact about the
+product, not a state that changes over time; correcting a mis-specified trim should correct history rather
+than fork it. There are no `effective_date`, `expiration_date` or `is_current` columns, and nothing is ever
+deleted — `dim_vehicle` rows reference these keys.
+
+---
+
+## Phase 1 column contract — `warehouse.dim_vehicle`
+
+> **This section supersedes the attribute-level entry in §10 for column-level purposes.** §10 remains as
+> written; the exact, binding contract for the implemented source entity is here.
+
+| Field | Value |
+|---|---|
+| **Entity name** | `warehouse.dim_vehicle` |
+| **Layer** | Warehouse (dimension) |
+| **Purpose** | The population of physical units. Every inventory snapshot and every sale references one, which makes "a sale with no inventory or vehicle record" — a prohibited synthetic pattern ([ARCHITECTURE.md §15.4](ARCHITECTURE.md)) — structurally impossible rather than merely unlikely. |
+| **Declared grain** | **One row per unique physical vehicle.** |
+| **Primary key** | `vehicle_key` (integer surrogate) |
+| **Natural / source key** | `vehicle_id` (`VEH-#######`), unique. `synthetic_vin` is a second unique business identifier. |
+| **Foreign keys** | `vehicle_model_key` → `warehouse.dim_vehicle_model.vehicle_model_key` |
+| **Referenced by** | `acquisition_event`, `fact_vehicle_inventory_snapshot`, `fact_vehicle_sale` |
+| **Generator** | `src/arpi/generation/vehicle.py` |
+| **Source-to-target mapping** | [STM-005](docs/source-to-target/STM-005-dim-vehicle.md) |
+| **Implementation status** | **Implemented** — source generation and the pandas data-quality suite. The SQL DDL, raw/staging objects and warehouse merge are **Planned**. |
+
+### Columns
+
+| Column | Type | Null | Allowed values / domain | Description | Synthetic generation source | PII class |
+|---|---|---|---|---|---|---|
+| `vehicle_key` | `integer` PK | no | 1..N | Surrogate key. **Deterministic ordinal 1..N by `vehicle_id`.** | Derived. | Non-personal |
+| `vehicle_id` | `varchar(16)` | no | `VEH-#######` | Natural / source key, assigned by deterministic sequence. | Derived. | Synthetic identifier |
+| `synthetic_vin` | `char(17)` | no | `ARPI` + 13 characters from `ABCDEFGHJKLMNPRSTUVWXYZ0123456789` | Synthetic vehicle identifier. **Deliberately not a valid VIN** — see the VIN policy below. | Drawn from a seeded generator, with deterministic collision redraw. | Synthetic identifier |
+| `vehicle_model_key` | `integer` | no | Existing `dim_vehicle_model` key | Foreign key to the model dimension. | Drawn from the eligible model pool for the unit's store and condition. | Non-personal |
+| `vehicle_model_id` | `varchar(16)` | no | `VMD-#####` | **Lineage column.** Carries the model's natural key alongside the surrogate so a vehicle can be traced to its model without a join. | Derived with `vehicle_model_key`. | Synthetic identifier |
+| `condition_type` | `varchar(12)` | no | `New` \| `Used` \| `Certified` | Sale condition of the unit. | Drawn from the intended store's condition mix. | Non-personal |
+| `exterior_color` | `varchar(30)` | no | Free text from a weighted palette | Exterior paint description. A generic plausible description, **not** a manufacturer colour code. | Weighted, non-uniform draw. | Non-personal |
+| `interior_color` | `varchar(30)` | no | Free text from a weighted palette | Interior trim colour description. | Weighted, non-uniform draw. | Non-personal |
+| `odometer_reading` | `integer` | no | ≥ 0 | Miles showing **when the unit entered inventory**. A sale-time reading is a different measure and lives on the sale. | Derived from condition and model-year age with residual variance. | Non-personal |
+| `odometer_band` | `varchar(20)` | no | `New` \| `Under 10k` \| `10k-30k` \| `30k-60k` \| `60k-100k` \| `Over 100k` | Reporting band. **Derived from `odometer_reading`, never drawn.** Each boundary belongs to the band above it: 9,999 is `Under 10k`, 10,000 is `10k-30k`. A `New` unit always bands `New`. | Derived. | Non-personal |
+| `acquisition_source` | `varchar(40)` | no | `Customer Trade` \| `Auction` \| `Off-street Purchase` \| `Lease Return` \| `Dealer Trade` \| `Manufacturer Allocation` | How the unit entered inventory. | Constant for `New`; weighted draw otherwise. | Non-personal |
+| `source_system` | `varchar(40)` | no | `arpi_synthetic_generator` | Constant lineage marker. | Constant. | Non-personal |
+
+**Uniqueness and referential constraints**
+
+- `vehicle_id` is unique (`DQ-VEH-001`); `synthetic_vin` is unique (`DQ-VEH-002`).
+- `vehicle_model_key` is a foreign key to `dim_vehicle_model`; every `(vehicle_model_key,
+  vehicle_model_id)` pair must resolve to one model row (`DQ-VEH-004`).
+
+### Synthetic VIN policy
+
+`synthetic_vin` is 17 characters: the literal prefix `ARPI` plus 13 characters drawn from
+`ABCDEFGHJKLMNPRSTUVWXYZ0123456789`. The alphabet excludes `I`, `O` and `Q`, matching real VIN character
+rules, while the `ARPI` prefix makes the value **deliberately not a valid VIN**: no real World Manufacturer
+Identifier is `ARP`, and the ninth character is not a valid ISO 3779 check digit.
+
+**No real VIN data is held, read, or derived from.** The generator makes no network call, holds no VIN
+reference table, decodes nothing, and creates no owner relationship. Collisions are redrawn deterministically
+from the same seeded generator, bounded at 64 attempts; the keyspace is 33¹³ ≈ 5.1 × 10¹⁹, so exhaustion
+would indicate a defect rather than scarcity, and the error message says so. See
+[PRIVACY_AND_ETHICS.md](PRIVACY_AND_ETHICS.md).
+
+### Why there is no store column
+
+Which store holds a unit is a property of the **acquisition event**, not of the vehicle: a unit can be
+dealer-traded between stores, and a store column on the dimension would silently rewrite history for every
+fact already attached to it. `dim_vehicle` therefore carries **no `dealership_id` and no `dealership_key`**.
+
+The generator still needs a store to decide condition and model — a used-only store cannot be allocated a
+new unit — so it makes that decision deterministically and publishes it through
+`arpi.generation.vehicle.intended_store_assignments(config)`, which returns `vehicle_id → dealership_id`.
+The acquisition generator consumes that mapping.
+
+### Scale
+
+| Profile | Rows |
+|---|---:|
+| `test` | 60 |
+| `development` | 900 |
+| `portfolio` | 9,000 |
+
+**`portfolio` is never generated in CI or in routine tests.**
+
+### Business rules
+
+- **`condition_type = 'New'` ⇒ `acquisition_source = 'Manufacturer Allocation'`, `odometer_band = 'New'`
+  and `odometer_reading <= 50`** (`DQ-VEH-005`).
+- **`acquisition_source = 'Manufacturer Allocation'` occurs only on `New` units** (`DQ-VEH-005`).
+- **`GSA-003`, the independent used store, never holds a `New` or `Certified` unit and never takes a
+  manufacturer allocation.** It holds no franchise, so it cannot take factory allocation and cannot
+  certify. This is enforced by construction — its condition mix never offers those values — not by a
+  filter applied afterwards.
+- **`Certified` units are used-derived and bounded:** the acquisition source is `Customer Trade`,
+  `Lease Return`, `Auction` or `Dealer Trade`; the model is 1–8 model years old; the reading is 500–80,000
+  miles; and the model's franchise alignment matches the certifying store.
+- **`odometer_band` agrees with `odometer_reading` on every row**, at every boundary (`DQ-VEH-005`).
+- New and certified units are always aligned to the store's own franchise brand. Used inventory follows
+  each store's used-alignment mix, so a Chevrolet store's used lot is Chevrolet-heavy but carries other
+  makes.
+- Column names, order and count match the contract (`DQ-VEH-003`); every `synthetic_vin` is well formed
+  (`DQ-VEH-007`); no prohibited PII column may exist (`DQ-VEH-006`).
+- **Documented non-degeneracy thresholds:** no exterior colour above a 0.30 share (≥ 8 distinct), no
+  interior colour above 0.45 (≥ 5 distinct), no condition above 0.70 (all three present), no acquisition
+  source above 0.50 (all six present), no single model above 0.15, and each store within 0.07 of its
+  declared share. The realised condition and store shares are logged at INFO on every run.
+
+### PII classification
+
+**No personal data, and no owner relationship of any kind.** `vehicle_id`, `synthetic_vin` and
+`vehicle_model_id` are `Synthetic identifiers`; every other column is `Non-personal`. There is no owner,
+driver, registration, licence-plate, title, lienholder, or contact column, and `DQ-VEH-006` inspects the
+**schema** so that adding one fails the run before any value is written.
+
+### History policy
+
+**Slowly Changing Dimension Type 1.** A unit's model, VIN and colours never change. Its odometer does — but
+the reading that matters analytically is the reading *at a point in time*, which belongs on the inventory
+snapshot and on the sale. Versioning the dimension for odometer drift would produce one row per unit per
+mile band for no analytical gain. `dim_vehicle` holds the acquisition-time state, Type 1 corrects it in
+place, and nothing is ever deleted because facts reference these keys.
+---
+
+# Part H — Phase 1.1 implemented column contracts
+
+> Appended by delivery increment. Each section here **supersedes the Planned attribute list** for the same
+> entity in Part B: where Part B and Part H disagree, Part H is binding, because it is generated by code
+> that a test asserts against. Part B is retained so the design history stays readable.
+
+---
+
+## 8A. `warehouse.dim_employee` — implemented contract (`P1.1-03`)
+
+| Field | Value |
+|---|---|
+| **Entity name** | `warehouse.dim_employee` |
+| **Layer** | Warehouse (dimension) |
+| **Declared grain** | **One row per employee role-assignment version (SCD Type 2).** |
+| **Primary key** | `employee_key` |
+| **Natural / source key** | `employee_id` (`EMP-#####`) |
+| **Foreign keys** | `dealership_key` -> `warehouse.dim_dealership` (resolved from `dealership_id` at load) |
+| **History policy** | **SCD Type 2**, expire-and-insert on `attribute_hash` change |
+| **Generator** | `src/arpi/generation/employee.py` |
+| **Source-to-target mapping** | [STM-006](docs/source-to-target/STM-006-dim-employee.md) |
+| **Implementation status** | **Implemented** (generator, contract, data-quality suite). Warehouse DDL and merge **Planned** (`P1.2-01`). |
+| **Row counts** | 15 rows / 12 people (test) · 34 rows / 30 people (development) · 45 people (portfolio, never generated in CI) |
+
+### 8A.1 Column contract (exact names, exact order)
+
+| # | Column | Type | Null | Allowed values / domain | Description | Derivation | **PII class** |
+|---:|---|---|---|---|---|---|---|
+| 1 | `employee_key` | `integer` | no | 1..N | Surrogate key, one per version. | Deterministic ordinal over `(employee_id, effective_date)`. | Non-personal |
+| 2 | `employee_id` | `varchar(16)` | no | `EMP-#####` | Synthetic person identifier, stable across versions. | Sequence in store then staffing-plan order. | **Synthetic identifier** |
+| 3 | `dealership_id` | `varchar(16)` | no | `GSA-00N` | Store held in this version. **Tracked (hash 1).** | Staffing plan. | Non-personal |
+| 4 | `department` | `varchar(30)` | no | `Sales` \| `Finance` \| `BDC` \| `Management` \| `Service` | Operating department. **Tracked (hash 2).** | **Derived from `job_role`.** | Non-personal |
+| 5 | `job_role` | `varchar(40)` | no | `Salesperson` \| `Sales Manager` \| `Desk Manager` \| `Finance Manager` \| `BDC Representative` \| `BDC Manager` \| `General Manager` \| `Service Advisor` | Role held in this version. **Tracked (hash 3).** | Staffing plan. | Non-personal |
+| 6 | `hire_date` | `date` | no | On or after the store's `opened_date` | Date of hire; identical across versions. **Tracked (hash 4).** | Role-dependent tenure draw, clamped to the store's life. | **Minimised personal attribute** (on a fabricated person) |
+| 7 | `termination_date` | `date` | **yes** | On or after `hire_date` | Date of departure. **`NULL` means still employed** — never "unknown". **Tracked (hash 5).** | Role-weighted churn selection. | **Minimised personal attribute** |
+| 8 | `is_active` | `boolean` | no | `true` / `false` | Currently employed. **Tracked (hash 6).** | **Derived**: `termination_date IS NULL`. | Non-personal |
+| 9 | `is_manager` | `boolean` | no | `true` / `false` | Role carries management responsibility. **Tracked (hash 7).** | **Derived from `job_role`.** | Non-personal |
+| 10 | `tenure_band` | `varchar(20)` | no | `Under 1 Year` \| `1-3 Years` \| `3-5 Years` \| `5-10 Years` \| `Over 10 Years` | Banded tenure. Banded rather than exact so a scorecard can be contextualised without implying a precise personnel record. **Not tracked.** | **Derived from `hire_date`** relative to `reporting.end_date`. | **Minimised personal attribute** |
+| 11 | `effective_date` | `date` | no | Valid date | SCD2 version start. | `hire_date`, or the change date. | Non-personal |
+| 12 | `expiration_date` | `date` | no | `9999-12-31` for current | SCD2 version end. | Sentinel, or `next effective_date − 1 day`. | Non-personal |
+| 13 | `is_current` | `boolean` | no | `true` / `false` | Latest-version flag. Exactly one per person. | Derived. | Non-personal |
+| 14 | `attribute_hash` | `char(64)` | no | 64 lowercase hex | SHA-256 of columns 3–9, pipe-joined, UTF-8. Same construction as §7.3. | Derived; see [STM-006 §4.2](docs/source-to-target/STM-006-dim-employee.md). | Non-personal |
+| 15 | `source_system` | `varchar(40)` | no | `arpi_synthetic_generator` | Lineage marker. | Constant. | Non-personal |
+
+### 8A.2 Prohibited fields — never generated, stored, loaded or committed
+
+| Prohibited field | Reason |
+|---|---|
+| **Employee name** (any form) | Directly identifying. [ARCHITECTURE.md §22.4](ARCHITECTURE.md) permits fictional names "if names are used at all"; ARPI's answer is that they are not. A synthetic id plus role and tenure answers every declared KPI, and fabricated names invite confusion with real staff. |
+| **Email address, phone number, street address** | Directly identifying and contact vectors. No ARPI entity stores geography finer than city (stores) or county (customers). |
+| **Salary, compensation, pay rate, wage, bonus** | Sensitive personnel data, on the prohibited list in `docs/research.md` §10.2, and it adds nothing to any planned KPI. |
+| **Commission, pay plan** | As above. Pay-plan structure would also imply a payroll extract, which this is emphatically not. |
+| **Date of birth, exact age** | Quasi-identifier. Not needed by any measure. |
+| **Race, ethnicity, gender, religion, marital status, national origin, disability, veteran status, sexual orientation** | Protected characteristics. [PRIVACY_AND_ETHICS.md](PRIVACY_AND_ETHICS.md) forbids any employee measure, ranking or scorecard from considering one, so the data does not exist to be considered. |
+| **Notes, comments, memos, transcripts, call recordings** | Communication content. No ARPI entity stores any. |
+| **Any latent performance parameter** (`volume_index`, `closing_rate_index`, `gross_retention_index`, `crm_discipline_index`, or any `skill_index` / `performance_index` / `latent_*` variant) | **Not a privacy rule — an honesty rule.** See §8A.3. |
+
+`DQ-EMP-005` enforces all of the above against the **schema**, so an accidentally added column fails the
+run even when it holds no values.
+
+### 8A.3 Latent performance parameters: generation inputs, never management facts
+
+[ARCHITECTURE.md §15.3](ARCHITECTURE.md) requires employees to differ in volume, closing rate and gross
+retention — otherwise the sales fact is implausibly uniform, which is itself a prohibited synthetic
+pattern. Those per-person parameters exist and are exposed to the sale generator by
+`arpi.generation.employee.employee_performance_profiles()`.
+
+**They are not columns of `dim_employee`, are never written to `data/sample/`, and must never reach a
+reporting view.** Two binding reasons:
+
+1. **A scorecard built from a latent "true skill" parameter is circular.** It reports back the number the
+   generator used to fabricate the outcome, while presenting itself as a validated measurement of a
+   person. The apparent precision would be entirely artificial.
+2. **It would defeat the project's fairness rule.** [PRIVACY_AND_ETHICS.md §5](PRIVACY_AND_ETHICS.md)
+   requires every employee metric to be shown alongside contextual metrics — lead volume received,
+   lead-source mix, tenure, inventory availability — because raw output measures routing and opportunity
+   as much as skill. A published "skill index" would supply exactly the uncontextualised ranking that rule
+   exists to prevent, and would do so with a false claim to objectivity.
+
+The parameters draw from a separate seeding namespace (`dim_employee_performance`), so tuning them cannot
+move a single value in `dim_employee`, and reading them cannot change its content digest.
+
+### 8A.4 Business rules
+
+- `hire_date` is on or after the assigned store's `opened_date`.
+- `termination_date`, where present, is on or after `hire_date`, and falls inside the reporting window.
+- `is_active` equals `termination_date IS NULL`, always.
+- `department` and `is_manager` are functions of `job_role`; `tenure_band` is a function of `hire_date`.
+  None of the three is ever drawn independently.
+- A person has **exactly one** row with `is_current = true`, and that row carries `expiration_date =
+  9999-12-31` — **including a terminated person**. Employment status is carried by `is_active`, not by
+  expiring the version, so historical facts always resolve.
+- Version ranges per person are contiguous and non-overlapping: the previous version's `expiration_date`
+  is exactly one day before the next version's `effective_date`.
+- **At least three people have two versions**, at every profile, so the SCD2 expire-and-insert path is
+  exercised by real generated data rather than only by unit tests.
+
+### 8A.5 Data-quality checks
+
+| Check ID | Assertion | Category | Severity |
+|---|---|---|---|
+| `DQ-EMP-001` | `(employee_id, effective_date)` is unique | `uniqueness` | critical |
+| `DQ-EMP-002` | Exactly one current row per employee, carrying the sentinel | `uniqueness` | critical |
+| `DQ-EMP-003` | Version ranges are contiguous and non-overlapping | `business_rule` | critical |
+| `DQ-EMP-004` | The declared 15-column contract matches, in order | `structural` | critical |
+| `DQ-EMP-005` | **No prohibited PII, compensation or latent-parameter column exists** | `privacy` | critical |
+| `DQ-EMP-006` | Hire, termination and version dates are correctly ordered | `business_rule` | critical |
+| `DQ-EMP-007` | Headcount is within the configured bounds for the scale mode | `business_rule` | critical |
+| `DQ-EMP-008` | Every `attribute_hash` recomputes from its own tracked attributes | `reproducibility` | critical |
+| `DQ-EMP-009` | `department`, `job_role` and `tenure_band` are in domain | `business_rule` | critical |
+
+---
+
+## 9A. `warehouse.dim_customer` — implemented contract (`P1.1-06`)
+
+| Field | Value |
+|---|---|
+| **Entity name** | `warehouse.dim_customer` |
+| **Layer** | Warehouse (dimension) |
+| **Declared grain** | **One row per synthetic customer.** |
+| **Primary key** | `customer_key` |
+| **Natural / source key** | `customer_id` (`CUS-########`) |
+| **Foreign keys** | None. A `geography_key` FK is Deferred with `dim_geography`. |
+| **History policy** | **SCD Type 1**, upsert in place |
+| **Generator** | `src/arpi/generation/customer.py` |
+| **Source-to-target mapping** | [STM-007](docs/source-to-target/STM-007-dim-customer.md) |
+| **Implementation status** | **Implemented** (generator, contract, data-quality suite). Warehouse DDL and merge **Planned** (`P1.2-01`). |
+| **Row counts** | 80 (test) · 2,500 (development) · 22,000 (portfolio, never generated in CI) |
+
+### 9A.1 Column contract (exact names, exact order)
+
+**Every column is `NOT NULL`.**
+
+| # | Column | Type | Null | Allowed values / domain | Description | Derivation | **PII class** |
+|---:|---|---|---|---|---|---|---|
+| 1 | `customer_key` | `integer` | no | 1..N | Surrogate key. | Deterministic ordinal over `customer_id`. | Non-personal |
+| 2 | `customer_id` | `varchar(16)` | no | `CUS-########` | Synthetic customer identifier. Encodes nothing about any person and cannot be reversed into one. | Sequence within the customer generator. | **Synthetic identifier** |
+| 3 | `household_id` | `varchar(16)` | no | `HH-########` | Household grouping for repeat-purchase analysis. A one-person household carries its own id rather than NULL, so the grouping is total. | Sequence; members inherit the household's geography. | **Synthetic identifier** |
+| 4 | `age_band` | `varchar(20)` | no | `18-24` \| `25-34` \| `35-44` \| `45-54` \| `55-64` \| `65+` | Banded age. **A full birth date is prohibited** — data minimisation. | Weighted, deliberately non-uniform draw. | **Minimised personal attribute** |
+| 5 | `county` | `varchar(40)` | no | `Hillsborough` \| `Rockingham` \| `Merrimack` \| `Strafford` \| `Middlesex` \| `Essex` | **The finest geography ARPI stores anywhere.** No street address, postal code or coordinate exists at any layer. | Weighted draw, once per household. | **Minimised personal attribute** |
+| 6 | `state_code` | `char(2)` | no | `NH` \| `MA` | State. | **Derived from `county`.** | **Minimised personal attribute** |
+| 7 | `market_area` | `varchar(40)` | no | `Southern New Hampshire` \| `Northern Massachusetts` | Coarse analytical market grouping. | **Derived from `county`.** | Non-personal |
+| 8 | `customer_type` | `varchar(20)` | no | `Retail` \| `Business` | Buying-party classification. A wholesale disposal carries a **NULL** customer key rather than a customer of a special type. | Weighted draw, about 7% business. | Non-personal |
+| 9 | `is_prior_customer` | `boolean` | no | `true` / `false` | Bought before the reporting window opened. Prevents repeat-rate measures from being artificially depressed on day one. | Age-band-dependent draw. | Non-personal |
+| 10 | `is_service_customer` | `boolean` | no | `true` / `false` | Has service history. Supports the **Deferred** service-to-sales domain. | Draw conditioned on `is_prior_customer`. | Non-personal |
+| 11 | `first_interaction_date` | `date` | no | `[reporting.start_date − 180 days, reporting.end_date]` | **Earliest date any fact may reference this customer.** | Uniform inside the permitted window; prior customers strictly before the window opens. | Non-personal |
+| 12 | `source_system` | `varchar(40)` | no | `arpi_synthetic_generator` | Lineage marker. | Constant. | Non-personal |
+
+### 9A.2 Prohibited fields — never generated, stored, loaded or committed
+
+| Prohibited field | Reason |
+|---|---|
+| **Name** (any form) | Directly identifying. A synthetic key serves every analytical purpose. |
+| **Street address, postal code, coordinates** | Directly identifying. County and market area are the finest geography ARPI stores. |
+| **Email address** | Directly identifying and a contact vector. |
+| **Phone number** | Directly identifying and a contact vector. |
+| **Full birth date, exact age** | Quasi-identifier; `age_band` is sufficient for every cohort measure. |
+| **Social Security number** | Never appropriate in any portfolio dataset. |
+| **Driver's-licence number** | Government identifier; never appropriate. |
+| **Bank account, routing number, payment card** | Financial account data; never appropriate. |
+| **Exact credit score, credit application, credit-report field** | `docs/research.md` §10.2. Where a credit dimension is ever required, only a broad synthetic tier is permissible ([ARCHITECTURE.md §22.4](ARCHITECTURE.md)) — and that is **Deferred**. |
+| **Insurance information, deal jackets, household income** | `docs/research.md` §10.2. |
+| **Race, ethnicity, gender, religion, marital status, national origin, disability, veteran status, sexual orientation** | Protected characteristics. No ARPI measure may consider one, so the data does not exist to be considered. |
+| **Notes, comments, memos, transcripts, call recordings, message bodies** | Communication content. No ARPI entity stores any. |
+
+`DQ-CUS-003` enforces all of the above against the **schema**, so an accidentally added column fails the
+run even when it holds no values.
+
+### 9A.3 Business rules
+
+- `state_code` and `market_area` follow from `county`; the triple is derived, never drawn separately, so
+  an inconsistent geography is unrepresentable rather than merely invalid.
+- Every member of a `household_id` shares one `county`, `state_code` and `market_area`. No household
+  exceeds three members.
+- `age_band` is **not** uniformly distributed — a flat distribution is a prohibited synthetic pattern
+  ([ARCHITECTURE.md §15.4](ARCHITECTURE.md)).
+- `first_interaction_date` is on or before the earliest fact date referencing the customer. This is
+  guaranteed by construction: `arpi.generation.customer.select_customer_for_sale()` binary-searches a
+  pool sorted by `first_interaction_date` and cannot return an ineligible customer.
+- Where `is_prior_customer` is true, `first_interaction_date` is strictly before `reporting.start_date`.
+- Every customer referenced by a retail sale exists here; wholesale transactions carry no customer key.
+
+### 9A.4 Data-quality checks
+
+| Check ID | Assertion | Category | Severity |
+|---|---|---|---|
+| `DQ-CUS-001` | `customer_id` is unique | `uniqueness` | critical |
+| `DQ-CUS-002` | The declared 12-column contract matches, in order | `structural` | critical |
+| `DQ-CUS-003` | **No prohibited PII column exists** | `privacy` | critical |
+| `DQ-CUS-004` | Geography is inside the trading area and internally consistent | `business_rule` | critical |
+| `DQ-CUS-005` | `age_band` is in domain | `business_rule` | critical |
+| `DQ-CUS-006` | Households share one geography | `business_rule` | critical |
+| `DQ-CUS-007` | `first_interaction_date` is inside the permitted window | `business_rule` | critical |
+| `DQ-CUS-008` | `customer_type` is in domain | `business_rule` | critical |
+

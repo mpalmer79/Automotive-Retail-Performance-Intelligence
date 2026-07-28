@@ -192,7 +192,7 @@ UNION ALL
 SELECT
     'DQ-REF-004'::text,
     'grain-enforcing constraints and indexes are present'::text,
-    'schema'::text,
+    'structural'::text,
     'warehouse, audit'::text,
     'critical'::text,
     CASE

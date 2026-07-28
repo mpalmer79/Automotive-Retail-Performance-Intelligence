@@ -24,8 +24,9 @@ this directory owns **acceptance criteria and sequencing**.
 
 | Document | Purpose |
 |---|---|
-| [PHASE_1_BACKLOG.md](PHASE_1_BACKLOG.md) | The Phase 1 work backlog, organised into sub-phases 1.1 through 1.5, with acceptance criteria, tests, and dependencies for every item. |
-| [DOCUMENTATION_BACKLOG.md](DOCUMENTATION_BACKLOG.md) | An honest register of documentation gaps identified during Phase 0, with proposed resolutions and priorities. |
+| [PHASE_1_BACKLOG.md](PHASE_1_BACKLOG.md) | The Phase 1 work backlog, organised into delivery increments `P1.1` through `P1.5`, with acceptance criteria, tests, and dependencies for every item. |
+| [DOCUMENTATION_BACKLOG.md](DOCUMENTATION_BACKLOG.md) | An honest register of documentation gaps identified during Phase 0 and after, with proposed resolutions and priorities. |
+| `STAKEHOLDER_QUESTIONS.md` | **Planned, not yet written.** The persona → business question → KPI → reporting view → report page traceability matrix required by Gate 4. Specified by `P1.5-05` in the Phase 1 backlog and registered as `DOC-15`. It is named here without a link because the file does not exist; the link is added when it does. |
 
 ---
 
@@ -37,7 +38,7 @@ this directory owns **acceptance criteria and sequencing**.
 P<major>.<minor>-<NN>
 ```
 
-For example `P1.3-02` is the second item in Phase 1.3. Identifiers are **permanent**: a cancelled item
+For example `P1.3-02` is the second item in delivery increment `P1.3`. Identifiers are **permanent**: a cancelled item
 keeps its ID and is marked `Out of scope`, and numbers are never reused. This matters because commits,
 tests, and pull requests reference them.
 
@@ -85,28 +86,32 @@ Work is gated by [ARCHITECTURE.md §28](../../ARCHITECTURE.md):
 
 Gate 1 readiness is tracked at the top of [PHASE_1_BACKLOG.md](PHASE_1_BACKLOG.md).
 
-### 3.6 Relationship to the architecture's phase numbering
+### 3.6 Lifecycle phases versus delivery increments
 
-[ARCHITECTURE.md §27](../../ARCHITECTURE.md) numbers eight *lifecycle* phases: Product Definition, Data
-Model, Synthetic Data Generator, PostgreSQL Warehouse, Power BI Semantic Model, Dashboard Development,
-Findings and Recommendations, and Portfolio Packaging.
+**[ARCHITECTURE.md §27.1](../../ARCHITECTURE.md) is the authoritative definition of this distinction and
+carries the mapping in both directions.** This section states the rule as it applies to this directory and
+defers to the architecture for the detail; it is deliberately no longer the only place the mapping exists.
 
-The **Phase 0 / Phase 1.x** numbering used in this directory is a *delivery* numbering, not a replacement:
+| Scheme | Written as | What it numbers |
+|---|---|---|
+| **Lifecycle phase** | `Lifecycle Phase 1` … `Lifecycle Phase 8` | The eight stages of the data-product lifecycle in [ARCHITECTURE.md §27](../../ARCHITECTURE.md): Product Definition, Data Model, Synthetic Data Generator, PostgreSQL Warehouse, Power BI Semantic Model, Dashboard Development, Findings and Recommendations, Portfolio Packaging. A *kind* of work. |
+| **Delivery increment** | `Phase 0`, `P1.1` … `P1.5` | A shippable slice of the system, each with its own backlog section, acceptance criteria, and exit evidence. A *unit* of work. This directory owns them. |
+| **Backlog item** | `P1.2-04` | One item inside a delivery increment. |
 
-| Delivery phase | Corresponds to |
-|---|---|
-| **Phase 0** | A vertical slice through architecture Phases 2, 3, and 4 — data model, generator, and warehouse — for two dimensions only. |
-| **Phase 1.1 – 1.5** | Completion of architecture Phases 3 and 4 for the MVP domains. |
-| **After Gate 1** | Architecture Phases 5 and 6 — semantic model and dashboards. |
+**The rule.** Any identifier of the form `P<major>.<minor>` or `P<major>.<minor>-<NN>` is a delivery
+increment or an item inside one, never a lifecycle phase. A bare phase number in `ARCHITECTURE.md` §27 is
+always a lifecycle phase.
 
-Both numbering schemes are in use, and neither is being retired. Where a document says "Phase 1.3" it means
-delivery phase 1.3; where it says "Phase 4" it means the architecture's lifecycle phase. This is a known
-documentation hazard and is registered in [DOCUMENTATION_BACKLOG.md](DOCUMENTATION_BACKLOG.md).
+Both schemes are in use and neither is being retired. The identifiers were **not renumbered** when the
+terminology was settled, because they are permanent by §3.1 above and are referenced by dependency chains,
+the dependency graph, and the architecture itself. The reasoning is recorded in
+[ADR-0003: Delivery Increment Terminology](../architecture-decisions/ADR-0003-delivery-increment-terminology.md),
+and the ambiguity that prompted it is `DOC-05` in [DOCUMENTATION_BACKLOG.md](DOCUMENTATION_BACKLOG.md).
 
 ### 3.7 Build order
 
 [ARCHITECTURE.md §34](../../ARCHITECTURE.md) declares the initial build order **binding unless revised
-through an architecture decision record**. Phase 1.1 through 1.5 follow it: vehicle and employee dimensions
+through an architecture decision record**. Delivery increments `P1.1` through `P1.5` follow it: vehicle and employee dimensions
 (step 6), inventory and sales source data (step 7), inventory and sales facts (step 8), sales and inventory
 KPI validation (step 9), leads and appointments (steps 10 and 11), reporting views (step 12), then the
 semantic model (step 13).

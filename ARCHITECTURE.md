@@ -13,7 +13,7 @@ The project is not a production dealership management system, CRM, desking platf
 ## 2. Architecture Status
 
 - **Status:** Approved for implementation
-- **Architecture version:** 1.1
+- **Architecture version:** 1.2
 - **Last reviewed:** 2026-07-28
 - **Primary owner:** Michael Palmer
 - **Primary audience:** Hiring managers, technical reviewers, dealership operators, BI professionals, and portfolio reviewers
@@ -375,12 +375,22 @@ Prohibited fields:
 
 - Name
 - Street address
-- Email
+- Personal email address
 - Phone number
 - Full birth date
 - Social Security number
 - Driver's-license number
 - Bank information
+- Payment-card information
+- Exact credit score or credit-report field
+- Any protected characteristic — race, ethnicity, gender, religion, marital status, national origin,
+  disability, veteran status, sexual orientation, or age as an exact value
+- Free-form notes, comments, or any other communication content
+
+The first eight are the original Phase 0 list. The last four were added on 2026-07-28 when `dim_customer`
+was promoted to a first-class backlog item (`P1.1-06` and `P1.2-06`), because the prohibited-column check
+that enforces this list is generalised across every entity in `P1.2-01` and the list it enforces must be
+the complete one. Geography stops at county and market area; no finer geographic resolution is permitted.
 
 #### `warehouse.dim_vehicle`
 
@@ -907,6 +917,12 @@ Type 2 rows must contain:
 - Expiration date
 - Current-row flag
 
+The specific Type 1 / Type 2 selection for every dimension in delivery increments `P1.1` through `P1.5`,
+with the justification for each, is recorded in
+[ADR-0006: SCD Type Selection for Phase 1 Dimensions](docs/architecture-decisions/ADR-0006-scd-type-selection-phase-1.md).
+`dim_employee` is Type 2 there; `dim_vehicle_model`, `dim_vehicle`, `dim_customer`, `dim_lead_source`, and
+`dim_marketing_campaign` are Type 1. `dim_dealership` remains Type 2 from the Phase 0 delivery increment.
+
 ---
 
 ## 15. Synthetic Data Architecture
@@ -1397,6 +1413,13 @@ The Excel report must not recreate the entire Power BI dashboard.
 - Date keys resolve to the date dimension.
 - Numeric types contain valid values.
 
+Every check — structural, business-rule, or otherwise — records a `check_category` drawn from one
+constrained vocabulary. That vocabulary is fixed by
+[ADR-0004: Validation Category Taxonomy](docs/architecture-decisions/ADR-0004-validation-category-taxonomy.md)
+and enforced by a database `CHECK` constraint on `audit.validation_result.check_category`. Reconciliations
+are deliberately not a check category: they have their own result structure in
+`audit.reconciliation_result`.
+
 ### 21.2 Required business-rule tests
 
 - Sale date is not before acquisition date.
@@ -1430,12 +1453,20 @@ Every run must produce:
 - Pipeline run ID
 - Start and completion timestamp
 - Source row count
+- Raw row count
 - Staging row count
 - Warehouse row count
 - Rejected row count
 - Warning count
 - Failed test count
 - Reconciliation status
+
+The row-count chain is **five layers** — `source`, `raw`, `staging`, `warehouse`, `rejected` — and each is
+recorded per entity per run in `audit.pipeline_run_row_count`. The `raw` layer was implicit in earlier
+drafts of this list and is named explicitly from architecture version 1.2, because a chain that skips a
+layer cannot prove where a row was lost. Delivery increment item `P1.2-01` is where the chain first becomes
+complete, and `DOC-23` in [`docs/requirements/DOCUMENTATION_BACKLOG.md`](docs/requirements/DOCUMENTATION_BACKLOG.md)
+tracks the gap until it closes.
 
 ---
 
@@ -1563,9 +1594,9 @@ Automotive-Retail-Performance-Intelligence/
 │   ├── index.md                           [now]      Documentation hub
 │   ├── research.md                        [now]      Preserved research evidence base
 │   ├── database-setup.md                  [now]      Optional local PostgreSQL setup
-│   ├── architecture-decisions/            [now]      ADR-0001, ADR-0002
+│   ├── architecture-decisions/            [now]      ADR-0001 through ADR-0006
 │   ├── diagrams/                          [now]      Mermaid diagrams in Markdown
-│   ├── requirements/                      [now]      Phase backlogs
+│   ├── requirements/                      [now]      Delivery-increment backlogs
 │   ├── source-to-target/                  [now]      Source-to-target mappings
 │   ├── findings/                          [empty]    Executive findings memos
 │   ├── screenshots/                       [planned]  Dashboard screenshots
@@ -1575,7 +1606,7 @@ Automotive-Retail-Performance-Intelligence/
 │   ├── 01_raw/                            [now]      Raw landing tables
 │   ├── 02_staging/                        [now]      Staging views
 │   ├── 03_dimensions/                     [now]      dim_date, dim_dealership
-│   ├── 04_facts/                          [empty]    Fact tables arrive in Phase 1
+│   ├── 04_facts/                          [empty]    Fact tables arrive in increment P1.2
 │   ├── 05_reporting/                      [now]      Phase 0 reporting views
 │   ├── 06_indexes/                        [now]      Six indexes today; further tuning follows the facts
 │   ├── 07_security/                       [now]      arpi_admin / arpi_loader / arpi_reporter
@@ -1586,7 +1617,7 @@ Automotive-Retail-Performance-Intelligence/
 │   ├── unit/                              [now]      No database required
 │   ├── data_quality/                      [now]      Runs the generators, no database required
 │   ├── integration/                       [now]      Marked `integration`, requires PostgreSQL
-│   └── fixtures/                          [empty]    Shared test fixtures arrive with the Phase 1 facts
+│   └── fixtures/                          [empty]    Shared fixtures arrive with the P1.2 facts
 ├── notebooks/                             [empty]    No notebooks exist yet
 ├── powerbi/
 │   ├── ARPI_Performance_Intelligence.pbix [planned]  (not yet created)
@@ -1752,9 +1783,17 @@ It must not become a second analytics application.
 
 ---
 
-## 27. Implementation Phases
+## 27. Implementation Lifecycle Phases
 
-### Phase 1: Product Definition
+The eight numbered phases below are **lifecycle phases**: the stages a data product passes through, from
+product definition to portfolio packaging. They describe *what kind of work* is being done, not *when* a
+particular table gets built.
+
+They are **not** the same thing as the `P1.x` identifiers used in `docs/requirements/PHASE_1_BACKLOG.md`,
+which are **delivery increments**. §27.1 defines the distinction and maps one onto the other. Read it
+before quoting a phase number anywhere.
+
+### Lifecycle Phase 1: Product Definition
 
 Deliverables:
 
@@ -1772,7 +1811,7 @@ Exit criteria:
 - Non-goals accepted
 - Core KPIs defined
 
-### Phase 2: Data Model
+### Lifecycle Phase 2: Data Model
 
 Deliverables:
 
@@ -1789,7 +1828,7 @@ Exit criteria:
 - Every relationship is documented
 - Required history handling is defined
 
-### Phase 3: Synthetic Data Generator
+### Lifecycle Phase 3: Synthetic Data Generator
 
 Deliverables:
 
@@ -1805,7 +1844,7 @@ Exit criteria:
 - Required relationships are visible but not deterministic
 - No prohibited PII exists
 
-### Phase 4: PostgreSQL Warehouse
+### Lifecycle Phase 4: PostgreSQL Warehouse
 
 Deliverables:
 
@@ -1824,7 +1863,7 @@ Exit criteria:
 - Grain tests pass
 - Reconciliations pass
 
-### Phase 5: Power BI Semantic Model
+### Lifecycle Phase 5: Power BI Semantic Model
 
 Deliverables:
 
@@ -1841,7 +1880,7 @@ Exit criteria:
 - Filter behavior is correct
 - No unresolved ambiguous relationships exist
 
-### Phase 6: Dashboard Development
+### Lifecycle Phase 6: Dashboard Development
 
 Deliverables:
 
@@ -1861,7 +1900,7 @@ Exit criteria:
 - Required drill-through pages work
 - Visual design is consistent
 
-### Phase 7: Findings and Recommendations
+### Lifecycle Phase 7: Findings and Recommendations
 
 Deliverables:
 
@@ -1877,7 +1916,7 @@ Exit criteria:
 - Every finding has supporting evidence
 - Every recommendation acknowledges limitations
 
-### Phase 8: Portfolio Packaging
+### Lifecycle Phase 8: Portfolio Packaging
 
 Deliverables:
 
@@ -1895,6 +1934,60 @@ Exit criteria:
 - Repository is understandable without verbal explanation
 - Setup and review instructions are complete
 - No secrets or real personal data are present
+
+### 27.1 Lifecycle phases versus delivery increments
+
+ARPI uses two numbering schemes, and they mean different things. Both are current; neither is being
+retired. This subsection is the authoritative definition, and every other document defers to it.
+
+| Scheme | Written as | What it numbers | Where it is defined |
+|---|---|---|---|
+| **Lifecycle phase** | `Lifecycle Phase 1` … `Lifecycle Phase 8`, or `ARCHITECTURE.md §27 Phase N` | The eight stages of the data-product lifecycle, from product definition to portfolio packaging. A *kind* of work. | §27 of this document |
+| **Delivery increment** | `Phase 0`, `P1.1` … `P1.5` | A shippable slice of the system, each with its own backlog, acceptance criteria, and exit evidence. A *unit* of work. | [`docs/requirements/PHASE_1_BACKLOG.md`](docs/requirements/PHASE_1_BACKLOG.md) |
+| **Backlog item** | `P1.2-04` | One item inside a delivery increment. Permanent, never reused, never renumbered. | [`docs/requirements/README.md`](docs/requirements/README.md) §3.1 |
+
+**The rule.** Any identifier of the form `P<major>.<minor>` or `P<major>.<minor>-<NN>` is a **delivery
+increment** or a backlog item within one. It is never a lifecycle phase. Conversely, a bare number in this
+section — "Phase 4", "Phase 7" — is always a **lifecycle phase**, and this document now spells the
+headings as `Lifecycle Phase N` so the distinction survives being quoted out of context.
+
+A delivery increment advances one or more lifecycle phases; it does not complete them. Lifecycle Phase 3
+is not "done" when `P1.1` ships, because later increments still generate entities.
+
+#### Lifecycle phase to delivery increment
+
+| Lifecycle phase | Delivery increment(s) that realise it | Status |
+|---|---|---|
+| 1 — Product Definition | None. Realised by the documentation set itself: this document, `KPI_CATALOG.md`, and `docs/research.md`. | Complete |
+| 2 — Data Model | `Phase 0` for `dim_date` and `dim_dealership`; `P1.1`, `P1.2`, `P1.4`, `P1.5` as each further entity's column contract and source-to-target mapping is written | In progress |
+| 3 — Synthetic Data Generator | `Phase 0` (date, dealership); `P1.1` (vehicle model, vehicle, employee, customer, acquisition, sale); `P1.4` (lead source, lead, appointment); `P1.5` (campaign, marketing spend) | In progress |
+| 4 — PostgreSQL Warehouse | `Phase 0` (schemas, audit, first two dimensions, first reporting views); `P1.2` (ingestion, dimensions, first two facts); `P1.3` (validation, reconciliation, KPI logic, reporting views); `P1.4` (funnel facts); `P1.5` (marketing fact, MVP reporting layer) | In progress |
+| 5 — Power BI Semantic Model | No delivery increment is defined. Blocked by **Gate 1** (§28), whose verdict is recorded by `P1.5-04`. | Not started |
+| 6 — Dashboard Development | No delivery increment is defined. Blocked by Gate 1. | Not started |
+| 7 — Findings and Recommendations | No delivery increment is defined. Blocked by Gate 2. | Not started |
+| 8 — Portfolio Packaging | No delivery increment is defined. Blocked by Gate 2. | Not started |
+
+#### Delivery increment to lifecycle phase
+
+| Delivery increment | Scope | Lifecycle phases advanced |
+|---|---|---|
+| `Phase 0` — foundation slice | Configuration, generation framework, `dim_date`, `dim_dealership`, audit schema, first reporting views, CI | 2, 3, 4 |
+| `P1.1` — source generation | Vehicle model, vehicle, employee, customer, inventory acquisition, sale source entities | 2, 3 |
+| `P1.2` — ingestion, dimensions, first facts | Raw and staging ingestion, vehicle, employee and customer dimensions, `fact_vehicle_sale`, `fact_vehicle_inventory_snapshot` | 2, 4 |
+| `P1.3` — validation and KPI logic | Validation suite, gross reconciliation, inventory-age and days-to-sale logic, first reporting views | 4 |
+| `P1.4` — lead funnel | Lead source dimension, lead and appointment generation, funnel facts, funnel reconciliation | 2, 3, 4 |
+| `P1.5` — marketing and MVP readiness | Campaign dimension, marketing spend fact, source-level profitability, MVP reporting layer, Gate 1 verdict | 2, 3, 4 |
+
+`Phase 0` is the baseline delivery increment. It predates this terminology and keeps its historical name;
+it is a delivery increment, not lifecycle Phase 0, and there is no lifecycle Phase 0.
+
+#### Why the identifiers were not renumbered
+
+The `P1.x-NN` identifiers are referenced by backlog items, dependency chains, the dependency graph, and
+this document. [`docs/requirements/README.md`](docs/requirements/README.md) §3.1 makes them permanent.
+Renumbering them to remove the word "phase" would have broken every existing cross-reference to fix a
+naming problem, so the terminology was disambiguated instead. The reasoning is recorded in
+[ADR-0003: Delivery Increment Terminology](docs/architecture-decisions/ADR-0003-delivery-increment-terminology.md).
 
 ---
 
@@ -2110,11 +2203,24 @@ Each record must include:
 |---|---|---|
 | [ADR-0001](docs/architecture-decisions/ADR-0001-project-identity.md) | Project Identity and Naming Convention | Accepted |
 | [ADR-0002](docs/architecture-decisions/ADR-0002-phase-0-technology-baseline.md) | Phase 0 Technology Baseline | Accepted |
+| [ADR-0003](docs/architecture-decisions/ADR-0003-delivery-increment-terminology.md) | Delivery Increment Terminology | Accepted |
+| [ADR-0004](docs/architecture-decisions/ADR-0004-validation-category-taxonomy.md) | Validation Category Taxonomy | Accepted |
+| [ADR-0005](docs/architecture-decisions/ADR-0005-synthetic-vin-policy.md) | Synthetic VIN Policy | Accepted |
+| [ADR-0006](docs/architecture-decisions/ADR-0006-scd-type-selection-phase-1.md) | SCD Type Selection for Phase 1 Dimensions | Accepted |
 
 **ADR-0001 is the naming decision of record.** It fixes the display name *Automotive Retail Performance
 Intelligence*, the short identifier *ARPI*, the Python package `arpi`, the `ARPI_` configuration prefix,
 and the database roles `arpi_admin`, `arpi_loader`, and `arpi_reporter`. Any future change to the project
 identity requires a superseding ADR.
+
+**ADR-0005 is the synthetic VIN decision of record.** §35.2 lists "Changing the synthetic VIN policy" as
+requiring an ADR, which presupposes a recorded policy to change. ADR-0005 records it: a 17-character,
+`ARPI`-prefixed synthetic identifier that is deliberately not a structurally valid real VIN, derived from
+no real VIN data, and expressing no owner relationship.
+
+**ADR-0003 is the phase-terminology decision of record**, and §27.1 is its normative statement in this
+document. **ADR-0004** fixes the validation-category vocabulary that `audit.validation_result` enforces.
+**ADR-0006** fixes the slowly-changing-dimension type of every Phase 1 dimension.
 
 ### 35.2 Decisions that require an ADR
 

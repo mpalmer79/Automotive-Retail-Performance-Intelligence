@@ -10,6 +10,7 @@ import pytest
 
 from arpi.config import ArpiConfig
 from arpi.constants import (
+    CHECK_CATEGORIES,
     CHECK_DATE_SELLING_DAY_RATIO,
     CHECK_DEALERSHIP_FRANCHISE_BRAND,
     CHECK_GENERATION_DETERMINISM_DIGEST,
@@ -27,11 +28,13 @@ from arpi.validation.checks import (
     skipped_check,
 )
 from arpi.validation.datasets import (
+    ensure_registry_coverage,
     validate_date_dataset,
     validate_dealership_dataset,
     validate_foundation_datasets,
     validate_generation,
 )
+from arpi.validation.registry import expected_check_ids
 from arpi.validation.results import CheckResult, CheckSeverity, CheckStatus, ValidationReport
 
 ARGS: dict[str, Any] = {
@@ -251,7 +254,32 @@ def test_summary_table_renders_a_tally() -> None:
     assert "CHECK ID" in table
     assert "PASSED" in table
     assert "FAILED" in table
-    assert "1 passed, 1 critical failure(s), 0 warning(s), 0 skipped." in table
+    assert "1 passed, 1 critical failure(s), 0 warning(s), 0 info failure(s), 0 skipped." in table
+
+
+def test_the_tally_accounts_for_every_result() -> None:
+    """A result counted in no bucket would read as though the report were clean."""
+    report = ValidationReport(
+        (
+            CheckResult(**ARGS),
+            CheckResult(**ARGS).failed("critical"),
+            CheckResult(**ARGS, severity=CheckSeverity.WARNING).failed("warning"),
+            CheckResult(**ARGS, severity=CheckSeverity.INFO).failed("info"),
+            skipped_check(**ARGS, reason="n/a"),
+        )
+    )
+    buckets = (
+        report.passed,
+        report.critical_failures,
+        report.warnings,
+        report.info_failures,
+        report.skipped,
+    )
+    assert sum(len(bucket) for bucket in buckets) == len(report)
+    assert len(report.failures) == 3
+    assert "1 passed, 1 critical failure(s), 1 warning(s), 1 info failure(s), 1 skipped." in (
+        report.summary_table()
+    )
 
 
 def test_report_audit_rows(date_dataset: GeneratedDataset, test_config: ArpiConfig) -> None:
@@ -418,6 +446,103 @@ def test_selling_day_ratio_outside_the_band_is_a_warning(
     )
     assert ratio.is_failure
     assert ratio.severity is CheckSeverity.WARNING
+
+
+def test_every_emitted_category_is_canonical(
+    date_dataset: GeneratedDataset,
+    dealership_dataset: GeneratedDataset,
+    test_config: ArpiConfig,
+) -> None:
+    """DOC-24: one vocabulary, enforced, rather than four described."""
+    report = validate_foundation_datasets(date_dataset, dealership_dataset, test_config)
+    for result in report.results:
+        assert result.check_category in CHECK_CATEGORIES, (
+            f"{result.check_id} emitted the non-canonical category {result.check_category!r}"
+        )
+
+
+def test_the_categories_actually_used_span_the_taxonomy(
+    date_dataset: GeneratedDataset,
+    dealership_dataset: GeneratedDataset,
+    test_config: ArpiConfig,
+) -> None:
+    """A taxonomy nothing uses is a taxonomy nobody maintains."""
+    report = validate_foundation_datasets(date_dataset, dealership_dataset, test_config)
+    used = {result.check_category for result in report.results}
+    assert used == {
+        "uniqueness",
+        "completeness",
+        "business_rule",
+        "privacy",
+        "structural",
+        "reproducibility",
+    }, "referential is SQL-only in Phase 0; every other category must be exercised"
+
+
+def test_a_critical_failure_reaches_the_report(
+    date_dataset: GeneratedDataset,
+    dealership_dataset: GeneratedDataset,
+    test_config: ArpiConfig,
+) -> None:
+    """No suite may swallow a critical failure on its way to the run's verdict."""
+    frame = date_dataset.frame.copy()
+    frame.loc[frame.index[0], "date_key"] = 19700101
+    broken = GeneratedDataset("dim_date", frame, date_dataset.declared_columns, "dim_date")
+
+    report = validate_foundation_datasets(broken, dealership_dataset, test_config)
+
+    assert report.has_critical_failure
+    assert [result.check_id for result in report.critical_failures] == ["DQ-DATE-003"]
+
+
+def test_a_prohibited_column_is_a_critical_failure_of_the_whole_run(
+    date_dataset: GeneratedDataset,
+    dealership_dataset: GeneratedDataset,
+    test_config: ArpiConfig,
+) -> None:
+    """The privacy tripwire must fail the run, not warn and continue."""
+    frame = dealership_dataset.frame.copy()
+    frame["owner_email"] = "someone@example.com"
+    broken = GeneratedDataset(
+        "dim_dealership",
+        frame,
+        (*dealership_dataset.declared_columns, "owner_email"),
+        "dim_dealership",
+    )
+
+    report = validate_foundation_datasets(date_dataset, broken, test_config)
+
+    failure = next(r for r in report.critical_failures if r.check_id == "DQ-DLR-004")
+    assert failure.check_category == "privacy"
+    assert failure.severity is CheckSeverity.CRITICAL
+    assert report.has_critical_failure
+
+
+def test_ensure_registry_coverage_leaves_a_complete_report_alone(
+    date_dataset: GeneratedDataset,
+    dealership_dataset: GeneratedDataset,
+    test_config: ArpiConfig,
+) -> None:
+    report = validate_foundation_datasets(date_dataset, dealership_dataset, test_config)
+    assert ensure_registry_coverage(report, entities=("dim_date", "dim_dealership")) is report, (
+        "a complete report must be returned unchanged, not rebuilt"
+    )
+
+
+def test_ensure_registry_coverage_fills_a_gap_with_an_honest_skip() -> None:
+    """A check that produces no row reads exactly like a passing one, so fill the gap."""
+    partial = ValidationReport((CheckResult(**{**ARGS, "check_id": "DQ-DATE-001"}),))
+
+    completed = ensure_registry_coverage(partial, entities=("dim_date",))
+    by_id = {result.check_id: result for result in completed.results}
+
+    assert set(by_id) == set(expected_check_ids(entities=("dim_date",))) | {"DQ-DATE-001"}
+    filled = by_id["DQ-DATE-002"]
+    assert filled.status is CheckStatus.SKIPPED
+    assert filled.check_category == "completeness"
+    assert filled.severity is CheckSeverity.CRITICAL
+    assert "not evaluated by this run" in (filled.message or "")
+    assert not completed.has_critical_failure, "a skip is not a failure"
 
 
 @pytest.mark.parametrize("severity", list(CheckSeverity))

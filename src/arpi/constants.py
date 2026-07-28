@@ -7,7 +7,9 @@ dictionary and the committed sample data.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import date
+from types import MappingProxyType
 from typing import Final
 
 # ---------------------------------------------------------------------------------------
@@ -272,18 +274,26 @@ CSV_FILE_SUFFIX: Final = ".csv"
 # ---------------------------------------------------------------------------------------
 # Privacy: column names that must never appear in any generated dataset
 # ---------------------------------------------------------------------------------------
+# This section is the *vocabulary*; the matching rules that consume it live in
+# ``arpi.validation.privacy``, which is the single public entry point for the tripwire.
+# The vocabulary stays here so that ``arpi.constants`` remains the one module a reviewer
+# has to read to see every value shared between generation, validation and SQL.
+#
+# Column names that are prohibited when matched **exactly** (after normalisation).
 PROHIBITED_PII_FIELD_NAMES: Final[frozenset[str]] = frozenset(
     {
         "account_number",
         "address",
         "address_line_1",
         "address_line_2",
+        "age",
         "bank_account",
         "birth_date",
         "birthdate",
         "compensation",
         "credit_card",
         "credit_card_number",
+        "credit_report",
         "credit_score",
         "customer_name",
         "date_of_birth",
@@ -301,17 +311,21 @@ PROHIBITED_PII_FIELD_NAMES: Final[frozenset[str]] = frozenset(
         "last_name",
         "license_number",
         "mailing_address",
+        "marital_status",
         "middle_name",
         "mobile_number",
         "name",
         "national_id",
+        "national_origin",
         "passport_number",
+        "pay_plan",
         "pay_rate",
         "phone",
         "phone_number",
         "postal_code",
         "routing_number",
         "salary",
+        "sexual_orientation",
         "social_security",
         "social_security_number",
         "ssn",
@@ -319,50 +333,147 @@ PROHIBITED_PII_FIELD_NAMES: Final[frozenset[str]] = frozenset(
         "street_address",
         "surname",
         "tax_id",
+        "veteran_status",
         "wage",
         "zip_code",
     }
 )
 
-# Tokens prohibited *anywhere* inside a column name.
+# Tokens prohibited *anywhere* inside a normalised column name.
 #
 # Exact-name matching alone is too weak to be a real tripwire: it accepts
 # ``customer_email``, ``buyer_first_name`` and ``home_phone_number`` while rejecting only
 # the bare forms. Every token below is one that no legitimate ARPI column can contain, so
 # substring matching is safe. Deliberately absent are ambiguous words such as ``name``,
 # which appears in wholly innocent columns like ``day_name`` and ``store_name`` and is
-# handled by the suffix rule instead.
+# handled by the suffix rule instead, and ``age``, which must not drag ``age_band`` down
+# with it and is therefore handled by its own rule.
 PROHIBITED_PII_SUBSTRINGS: Final[frozenset[str]] = frozenset(
     {
+        # Direct identifiers and contact vectors
         "account_number",
         "address",
-        "bank_account",
         "birthdate",
         "birth_date",
-        "compensation",
-        "credit_card",
-        "credit_score",
+        "birth_day",
+        "birth_year",
         "date_of_birth",
-        "driver_license",
-        "drivers_license",
         "e_mail",
         "email",
-        "license_number",
+        "fax_number",
         "mailing",
+        "maiden",
+        "phone",
+        "surname",
+        "street",
+        "telephone",
+        # Government and financial identifiers
+        "bank_account",
+        "card_number",
+        "credit_card",
+        "debit_card",
+        "drivers_license",
+        "driver_license",
+        "licence_number",
+        "license_number",
         "national_id",
         "passport",
-        "pay_rate",
-        "phone",
-        "postal_code",
+        "payment_card",
         "routing_number",
-        "salary",
         "social_security",
         "ssn",
-        "street",
-        "surname",
         "tax_id",
+        # Credit file and credit report
+        "beacon_score",
+        "credit_bureau",
+        "credit_file",
+        "credit_history",
+        "credit_rating",
+        "credit_report",
+        "credit_score",
+        # Compensation
+        "commission",
+        "compensation",
+        "payroll",
+        "pay_grade",
+        "pay_plan",
+        "payplan",
+        "pay_rate",
+        "salary",
         "wage",
+        # Precise geography
+        "geocode",
+        "latitude",
+        "longitude",
+        "lat_lon",
+        "postal_code",
+        "postcode",
         "zip_code",
+        "zipcode",
+        # Protected characteristics
+        "gender_identity",
+        "marital_status",
+        "national_origin",
+        "sexual_orientation",
+        "veteran_status",
+        # Communication content
+        "call_recording",
+        "chat_log",
+        "message_body",
+        "message_content",
+        "voicemail",
+    }
+)
+
+# Tokens prohibited when they appear as a whole ``_``-separated word of a column name.
+#
+# These words are unsafe as substrings because they are fragments of innocent ones --
+# ``race`` inside ``racecourse``, ``sex`` inside ``sexagenary``, ``note`` inside
+# ``footnote`` -- but are unambiguous as complete words. Splitting on ``_`` gives the
+# reach the substring rule cannot have without false positives, so ``customer_notes``
+# and ``call_recording_url`` are caught while ``body_style`` and ``county`` are not.
+PROHIBITED_PII_WORD_TOKENS: Final[frozenset[str]] = frozenset(
+    {
+        # Protected characteristics
+        "ancestry",
+        "citizenship",
+        "disability",
+        "disabled",
+        "ethnic",
+        "ethnicity",
+        "gender",
+        "nationality",
+        "pregnancy",
+        "race",
+        "religion",
+        "religious",
+        "sex",
+        "orientation",
+        "veteran",
+        "marital",
+        # Direct identifiers
+        "dob",
+        "licence",
+        "license",
+        "mobile",
+        "fax",
+        "zip",
+        "postal",
+        # Financial
+        "bonus",
+        "cvv",
+        "iban",
+        # Communication content
+        "comment",
+        "comments",
+        "memo",
+        "note",
+        "notes",
+        "recording",
+        "recordings",
+        "remarks",
+        "transcript",
+        "transcripts",
     }
 )
 
@@ -372,19 +483,49 @@ PROHIBITED_PII_SUBSTRINGS: Final[frozenset[str]] = frozenset(
 # allowlist can tell the two apart. Denying by default means a future generator that adds
 # ``salesperson_name`` or ``customer_name`` fails the check without anyone having to
 # remember to extend a blocklist first. Adding an entry here is a deliberate act that a
-# reviewer will see in the diff.
-APPROVED_NAME_COLUMNS: Final[frozenset[str]] = frozenset(
+# reviewer will see in the diff -- which is why every entry must carry the written
+# justification that appears as its value.
+APPROVED_NAME_COLUMNS: Final[Mapping[str, str]] = MappingProxyType(
     {
-        "check_name",
-        "day_name",
-        "entity_name",
-        "holiday_name",
-        "month_name",
-        "pipeline_name",
-        "profile_name",
-        "quarter_name",
-        "store_name",
-        "store_short_name",
+        "campaign_name": (
+            "Fictional marketing campaign label, e.g. 'Spring Sales Event'. Names a "
+            "campaign, never a person."
+        ),
+        "check_name": "Human-readable name of a data-quality check. Names a rule, never a person.",
+        "day_name": "Calendar vocabulary from DAY_NAMES: Monday..Sunday.",
+        "entity_name": "Warehouse entity such as dim_date. Names a table, never a person.",
+        "holiday_name": "Recognised holiday label such as 'Independence Day'.",
+        "lead_source_name": (
+            "Normalised, generic lead-source label such as 'Dealer Website'. Names a "
+            "channel, never a person."
+        ),
+        "model_name": "Vehicle model label such as 'Equinox'. Names a product, never a person.",
+        "month_name": "Calendar vocabulary from MONTH_NAMES: January..December.",
+        "pipeline_name": "Logical pipeline such as phase0_foundation.",
+        "profile_name": "ARPI configuration profile: development, test or portfolio.",
+        "quarter_name": "Calendar vocabulary: Q1, Q2, Q3, Q4. Names a period, never a person.",
+        "store_name": (
+            "Fictional dealership store name such as 'Granite Chevrolet of Nashua'. "
+            "Names a business, never a person."
+        ),
+        "store_short_name": "Abbreviated fictional store name used on report headings.",
+        "vendor_name": (
+            "Fictional marketing vendor label. Names a business, never a person, and no "
+            "real vendor is referenced."
+        ),
+    }
+)
+
+# ``age`` is a direct quasi-identifier; a *band* is the minimised form ARPI publishes.
+# The rule therefore rejects any column carrying ``age`` as a word unless it is one of
+# these explicitly banded spellings, so ``age_band`` passes and ``customer_age`` does not.
+APPROVED_AGE_COLUMNS: Final[Mapping[str, str]] = MappingProxyType(
+    {
+        "age_band": "Banded cohort (18-24, 25-34, ...) as declared for dim_customer.",
+        "age_bracket": "Synonym of age_band retained for report-facing views.",
+        "age_bucket": "Synonym of age_band retained for report-facing views.",
+        "age_group": "Synonym of age_band retained for report-facing views.",
+        "age_range": "Synonym of age_band retained for report-facing views.",
     }
 )
 
@@ -406,10 +547,50 @@ CHECK_DEALERSHIP_FRANCHISE_BRAND: Final = "DQ-DLR-005"
 CHECK_GENERATION_SCHEMA_MATCHES: Final = "DQ-GEN-001"
 CHECK_GENERATION_DETERMINISM_DIGEST: Final = "DQ-GEN-002"
 
+# ---------------------------------------------------------------------------------------
+# Canonical validation category vocabulary
+# ---------------------------------------------------------------------------------------
+# EXACTLY seven categories exist. This module is the authority: the SQL check views in
+# sql/08_validation emit these strings verbatim, and audit.validation_result.check_category
+# carries a CHECK constraint over exactly this set (sql/00_database/03_audit_tables.sql).
+#
+# ``reconciliation`` is deliberately NOT a category -- reconciliations are a different
+# kind of evidence and live in audit.reconciliation_result.
 CHECK_CATEGORY_STRUCTURAL: Final = "structural"
+CHECK_CATEGORY_COMPLETENESS: Final = "completeness"
+CHECK_CATEGORY_UNIQUENESS: Final = "uniqueness"
+CHECK_CATEGORY_REFERENTIAL: Final = "referential"
 CHECK_CATEGORY_BUSINESS_RULE: Final = "business_rule"
 CHECK_CATEGORY_PRIVACY: Final = "privacy"
 CHECK_CATEGORY_REPRODUCIBILITY: Final = "reproducibility"
+
+#: The only values ``audit.validation_result.check_category`` may take.
+CHECK_CATEGORIES: Final[frozenset[str]] = frozenset(
+    {
+        CHECK_CATEGORY_STRUCTURAL,
+        CHECK_CATEGORY_COMPLETENESS,
+        CHECK_CATEGORY_UNIQUENESS,
+        CHECK_CATEGORY_REFERENTIAL,
+        CHECK_CATEGORY_BUSINESS_RULE,
+        CHECK_CATEGORY_PRIVACY,
+        CHECK_CATEGORY_REPRODUCIBILITY,
+    }
+)
+
+#: Spellings that earlier revisions emitted, and the canonical category each becomes.
+#:
+#: The database migration in ``sql/00_database/03_audit_tables.sql`` rewrites historical
+#: rows using exactly this mapping before the CHECK constraint is added, so an existing
+#: database can be brought up to the constrained vocabulary without losing audit history.
+#: ``DQ-DLR-004`` is the one documented exception: it spelt its category ``schema`` but is
+#: the privacy tripwire, so it becomes ``privacy`` rather than ``structural``.
+RETIRED_CHECK_CATEGORIES: Final[Mapping[str, str]] = MappingProxyType(
+    {
+        "schema": CHECK_CATEGORY_STRUCTURAL,
+        "domain": CHECK_CATEGORY_BUSINESS_RULE,
+        "determinism": CHECK_CATEGORY_REPRODUCIBILITY,
+    }
+)
 
 RECONCILIATION_DIM_DATE_ROW_COUNT: Final = "RECON-DIM-DATE-ROWCOUNT"
 RECONCILIATION_DIM_DEALERSHIP_ROW_COUNT: Final = "RECON-DIM-DEALERSHIP-ROWCOUNT"

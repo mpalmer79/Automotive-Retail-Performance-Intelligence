@@ -420,7 +420,7 @@ def test_validation_result_rejects_invalid_domain_value(
                 pipeline_run_id, check_id, check_name, check_category,
                 target_object, severity, status, evaluated_at
             )
-            VALUES (%s, 'DQ-TEST-000', 'domain probe', 'domain',
+            VALUES (%s, 'DQ-TEST-000', 'domain probe', 'business_rule',
                     'warehouse.dim_date', %s, %s, now())
             """,
             (run_id, values["severity"], values["status"]),

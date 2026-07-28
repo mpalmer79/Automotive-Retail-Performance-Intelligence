@@ -16,6 +16,11 @@
 --
 -- is_latest_run_for_check marks the most recent evaluation of each check_id so a
 -- report can show current data-quality state without a subquery.
+--
+-- check_category is passed through unaggregated. It is safe to group on in a report
+-- because the underlying column now carries a CHECK constraint over the seven canonical
+-- categories, so a "checks by category" breakdown no longer mixes a Python taxonomy with
+-- a SQL one depending on which layer recorded the row.
 
 CREATE OR REPLACE VIEW reporting.vw_data_quality_summary AS
 SELECT
@@ -59,7 +64,10 @@ COMMENT ON COLUMN reporting.vw_data_quality_summary.run_status IS 'Overall statu
 COMMENT ON COLUMN reporting.vw_data_quality_summary.run_started_at IS 'UTC instant the run began. Use this to order results by run.';
 COMMENT ON COLUMN reporting.vw_data_quality_summary.check_id IS 'Stable check identifier such as DQ-DATE-001. Identical in Python and in sql/08_validation.';
 COMMENT ON COLUMN reporting.vw_data_quality_summary.check_name IS 'Human-readable check name.';
-COMMENT ON COLUMN reporting.vw_data_quality_summary.check_category IS 'Check grouping such as uniqueness, completeness, domain, referential or business_rule.';
+COMMENT ON COLUMN reporting.vw_data_quality_summary.check_category IS
+    'One of exactly seven canonical categories: structural, completeness, uniqueness, referential, '
+    'business_rule, privacy, reproducibility. Constrained on audit.validation_result, so a '
+    '"checks by category" breakdown groups one taxonomy rather than several.';
 COMMENT ON COLUMN reporting.vw_data_quality_summary.target_object IS 'Fully qualified object the check was evaluated against.';
 COMMENT ON COLUMN reporting.vw_data_quality_summary.severity IS 'critical | warning | info.';
 COMMENT ON COLUMN reporting.vw_data_quality_summary.check_status IS 'passed | failed | skipped.';

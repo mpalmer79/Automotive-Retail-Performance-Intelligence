@@ -2,12 +2,20 @@
 
 **Project:** Automotive Retail Performance Intelligence (ARPI)
 **Owner:** Michael Palmer
-**Version:** 1.0
+**Version:** 1.1
 **Last reviewed:** 2026-07-28
 **Conventions:** [README.md](README.md) · **Parent documents:** [ARCHITECTURE.md](../../ARCHITECTURE.md) · [DATA_DICTIONARY.md](../../DATA_DICTIONARY.md) · [KPI_CATALOG.md](../../KPI_CATALOG.md) · [DATA_GENERATION.md](../../DATA_GENERATION.md)
 
 > **No item in this backlog carries an hour, day, week, or sprint estimate.** Complexity is recorded as
 > `Small`, `Medium`, or `Large` only. See [README.md §3.3](README.md).
+
+> **Terminology.** `P1.1` through `P1.5` are **delivery increments**, not lifecycle phases. The eight
+> numbered phases in [ARCHITECTURE.md §27](../../ARCHITECTURE.md) are **lifecycle phases** and mean
+> something different. [ARCHITECTURE.md §27.1](../../ARCHITECTURE.md) is the authoritative definition and
+> carries the mapping in both directions;
+> [ADR-0003](../architecture-decisions/ADR-0003-delivery-increment-terminology.md) records why the
+> existing identifiers were disambiguated rather than renumbered. Item identifiers such as `P1.2-04` are
+> permanent and are never reused or renumbered ([README.md §3.1](README.md)).
 
 ---
 
@@ -18,7 +26,7 @@
 | # | Condition | Current status | Evidence |
 |---:|---|---|---|
 | 1 | **Fact grains are approved** | ⚠️ **Declared, not approved** | All five MVP fact grains are declared in [DATA_DICTIONARY.md](../../DATA_DICTIONARY.md) Part C: `fact_vehicle_sale` (one row per finalized vehicle transaction), `fact_vehicle_inventory_snapshot` (one row per vehicle per dealership per daily snapshot date while active in inventory), `fact_lead` (one row per unique CRM lead), `fact_appointment` (one row per scheduled appointment), `fact_marketing_spend` (one row per dealership, campaign, and calendar month). **Approval means a built table whose grain uniqueness is enforced and tested** — none exists. Closed by `P1.2-04`, `P1.2-05`, `P1.4-04`, `P1.5-01`. |
-| 2 | **Dimensions are documented** | ⚠️ **Partially met** | The two Implemented dimensions carry exact, binding column contracts. The six Planned MVP dimensions are documented at **attribute level** with binding grains but indicative types. Full documentation follows implementation in `P1.1-01`, `P1.2-02`, `P1.2-03`, `P1.4-01`, `P1.5-01`. |
+| 2 | **Dimensions are documented** | ⚠️ **Partially met** | The two Implemented dimensions carry exact, binding column contracts. The six Planned MVP dimensions are documented at **attribute level** with binding grains but indicative types. Full documentation follows implementation in `P1.1-01`, `P1.1-06`, `P1.2-02`, `P1.2-03`, `P1.2-06`, `P1.4-01`, `P1.5-01`. |
 | 3 | **KPI formulas are documented** | ✅ **Met** | [KPI_CATALOG.md](../../KPI_CATALOG.md) specifies 29 KPIs, each with numerator, denominator, grain, date basis, filters, exclusions, null behaviour, SQL ownership, DAX ownership, reconciliation rule, and interpretation caution. **All 29 are `Planned`; none is computed.** |
 
 **Gate 1 verdict: CLOSED.** Power BI development may not begin. The binding constraint is condition 1: no
@@ -29,7 +37,7 @@ before the gate can open.
 
 ---
 
-## 2. Phase 1.1 — Source generation for vehicles, employees, inventory, and sales
+## 2. Delivery Increment P1.1 — Source generation for vehicles, employees, customers, inventory, and sales
 
 *Architecture build-order steps 6 and 7 ([ARCHITECTURE.md §34](../../ARCHITECTURE.md)).*
 
@@ -162,12 +170,53 @@ before the gate can open.
 
 ---
 
+### `P1.1-06` — Synthetic customer contract and generator
+
+> **Sequence note.** This item carries a later identifier than `P1.1-05` because identifiers are allocated
+> at creation time and are permanent ([README.md §3.1](README.md)). It is placed here because it **precedes**
+> `P1.1-05` in the dependency order: a retail sale cannot be generated without a customer to attach it to.
+
+| Field | Value |
+|---|---|
+| **Purpose** | Produce the synthetic customer population that retail sales, leads, and appointments all resolve to, under an explicit privacy contract. `warehouse.dim_customer` carries the project's most privacy-sensitive schema, and until now it was delivered as a sub-clause of a fact-table item ([DOCUMENTATION_BACKLOG.md](DOCUMENTATION_BACKLOG.md) `DOC-04`). A dimension whose defining property is what it must *not* contain needs its own acceptance criteria and its own review, because the failure mode is a column nobody noticed. |
+| **Dependencies** | None (uses `dim_dealership` and `dim_date`, both Implemented) |
+| **Estimated complexity** | **Medium** |
+| **Blocks Power BI Gate 1** | **Yes** |
+| **Architecture references** | §11.2 (`warehouse.dim_customer` grain, key attributes, prohibited fields), §14 (Type 1), §15.4 (prohibited synthetic patterns), §22.1 (data classification), §22.4 (privacy design), §23 (ethical analytics requirements), §34 step 6 |
+
+**Acceptance criteria**
+
+- [ ] A `customer` source entity is generated by a `BaseGenerator` subclass with its own seed namespace, so that adding it leaves every existing entity's `content_digest` unchanged.
+- [ ] `customer_id` follows the reserved scheme `CUS-########` and `household_id` follows `HH-########`, both assigned by deterministic sequence and zero-padded.
+- [ ] The declared columns are exactly: `customer_id`, `household_id`, `age_band`, `county`, `state_code`, `market_area`, `customer_type`, `is_prior_customer`, `is_service_customer`, `first_interaction_date`, `source_system`. No other column is emitted.
+- [ ] `age_band` takes one of `18-24`, `25-34`, `35-44`, `45-54`, `55-64`, `65+`. **The underlying exact age is never emitted, and no date of birth of any kind is generated or stored.**
+- [ ] **Geography stops at county and market area.** `county` is one of `Hillsborough`, `Rockingham`, `Merrimack`, `Strafford`, `Middlesex`, `Essex`; `state_code` is `NH` or `MA`; `market_area` is `Southern New Hampshire` or `Northern Massachusetts`. No street address, no postal code, no latitude or longitude, and no other finer geographic resolution exists anywhere in the entity.
+- [ ] **None of the following appears as a column, as part of a column, or in any emitted value:** personal name (given, family, full, or preferred), full birth date, street address, personal email address, phone number, Social Security number, driver's licence number, bank information, payment-card information, exact credit score or any credit-report field, any protected characteristic (race, ethnicity, gender, religion, marital status, national origin, disability, veteran status, sexual orientation, or age as an exact value), and free-form notes, comments, or any other communication content.
+- [ ] Multiple customers may share a `household_id`, so household-level analysis is possible without any household attribute that identifies a person.
+- [ ] `customer_type` is `Retail` or `Business`; `is_prior_customer` and `is_service_customer` are populated for every row.
+- [ ] `first_interaction_date` is on or after the earliest store `opened_date` and within or before the profile's reporting window.
+- [ ] Customer attributes are **non-uniform** — age band, county, and customer type distributions differ from a flat distribution, and the declared distributions are logged at generation time.
+- [ ] Customer volume matches the profile's `generation.entity_scale` target and is generated at `test` and `development` scale only; portfolio scale is never generated in CI.
+- [ ] Every row carries `source_system = 'arpi_synthetic_generator'`.
+- [ ] The generalised prohibited-column check runs against the generated frame **and** against the declared column tuple **and** against the written CSV header, and fails closed — an unrecognised column is a failure, not a warning.
+- [ ] [DATA_DICTIONARY.md §9](../../DATA_DICTIONARY.md) is updated from attribute level to an exact column contract, and `docs/source-to-target/STM-007-dim-customer.md` is written.
+- [ ] [PRIVACY_AND_ETHICS.md](../../PRIVACY_AND_ETHICS.md) records the customer privacy contract, including the geography ceiling and the age-band-only rule.
+
+**Tests required**
+
+- `tests/unit/test_customer_generator.py` — identifier format and uniqueness, household grouping, enumeration conformance, `first_interaction_date` bounds, deterministic reproduction from a fixed seed.
+- `tests/data_quality/test_customer_privacy.py` — **a dedicated privacy test**: asserts the exact declared column set, asserts that every prohibited token above is absent from the schema, and asserts that no value in any column matches an email, phone, or postal-code shaped pattern.
+- `tests/data_quality/test_customer_distributions.py` — non-uniform age-band, county, and customer-type distributions; declared distributions logged.
+- `tests/data_quality/test_seed_isolation.py` — adding this entity does not change any existing entity's `content_digest`.
+
+---
+
 ### `P1.1-05` — Sales source events
 
 | Field | Value |
 |---|---|
 | **Purpose** | Produce the deal events that become `fact_vehicle_sale`: sale date, delivery date, price, gross components, deal type, and participating employees. This is the single most consequential generator in the project — nine of the twenty-nine specified KPIs read directly from it, and every gross measure depends on its arithmetic being right. |
-| **Dependencies** | `P1.1-02`, `P1.1-03`, `P1.1-04` |
+| **Dependencies** | `P1.1-02`, `P1.1-03`, `P1.1-04`, `P1.1-06` |
 | **Estimated complexity** | **Large** |
 | **Blocks Power BI Gate 1** | **Yes** |
 | **Architecture references** | §12.1 (`fact_vehicle_sale` grain, keys, measures, rules), §15.3 (relationships 1, 2, 3, 8, 9, 10, 11), §15.4 (all prohibited patterns), §18.2 (units sold, front-end gross, back-end gross, total gross), §21.2 (sale date not before acquisition; total gross reconciles), §34 step 7 |
@@ -180,6 +229,7 @@ before the gate can open.
 - [ ] **Sale date is never before acquisition date** — zero violations, asserted as a critical check.
 - [ ] `unit_count = 1` for every finalized retail and wholesale sale.
 - [ ] `is_retail` is derived from `sale_type` and is true for retail and lease, false for wholesale and dealer trade.
+- [ ] **Every retail sale resolves to a `customer_id` generated by `P1.1-06`.** Wholesale and dealer-trade transactions may carry none, and that absence is a modelled fact rather than a missing value. No sale invents a customer identifier that the customer entity does not contain.
 - [ ] Wholesale transactions may carry a NULL customer key; retail transactions may not.
 - [ ] **Canceled deals are excluded from the output entirely** — they never appear as finalized sales.
 - [ ] A genuine population of **negative front-end gross deals** exists, since negative-front deals are a required measure (`docs/research.md` §4.2).
@@ -198,38 +248,43 @@ before the gate can open.
 
 ---
 
-## 3. Phase 1.2 — Ingestion, dimensions, and the first two facts
+## 3. Delivery Increment P1.2 — Ingestion, dimensions, and the first two facts
 
 *Architecture build-order steps 6 and 8.*
 
 ---
 
-### `P1.2-01` — Raw and staging ingestion for the Phase 1.1 entities
+### `P1.2-01` — Raw and staging ingestion for the `P1.1` entities
 
 | Field | Value |
 |---|---|
 | **Purpose** | Extend the Phase 0 raw-and-staging pattern to the vehicle, employee, and transactional source files. Establishing this once, generically, is what prevents each new domain from inventing its own ingestion path — which is how lineage documentation rots. |
-| **Dependencies** | `P1.1-01`, `P1.1-02`, `P1.1-03`, `P1.1-04`, `P1.1-05` |
+| **Dependencies** | `P1.1-01`, `P1.1-02`, `P1.1-03`, `P1.1-04`, `P1.1-05`, `P1.1-06` |
 | **Estimated complexity** | **Medium** |
 | **Blocks Power BI Gate 1** | **Yes** |
-| **Architecture references** | §10.1–10.2 (schemas and layer responsibilities), §17.1 (pipeline stages 2–5), §17.3 (idempotency), §17.4 (failure behaviour) |
+| **Architecture references** | §10.1–10.2 (schemas and layer responsibilities), §17.1 (pipeline stages 2–5), §17.3 (idempotency), §17.4 (failure behaviour), §21.4 (five-layer row-count chain) |
 
 **Acceptance criteria**
 
-- [ ] A `raw.*_load` table exists for every Phase 1.1 source entity, with **all business columns as `text`** plus `raw_record_id`, `load_batch_id`, `source_file_name`, `source_row_number`, `ingested_at`.
+- [ ] A `raw.*_load` table exists for every `P1.1` source entity, with **all business columns as `text`** plus `raw_record_id`, `load_batch_id`, `source_file_name`, `source_row_number`, `ingested_at`.
 - [ ] A `staging.stg_*` **view** exists for each, casting to warehouse types and exposing only the most recent `load_batch_id`.
-- [ ] Structurally invalid records are rejected at staging and written to `audit.rejected_record` with a registered `REJ-*` code and the full payload.
+- [ ] Structurally invalid records are rejected at staging and written to `audit.rejected_record` with a registered `REJ-*` code and the payload, **with every prohibited field redacted before the payload is persisted** — a rejection must never become the place a prohibited value is stored.
 - [ ] Deduplication occurs at staging: a natural key appearing twice in one batch results in one surviving row and one rejection.
-- [ ] Row counts are written to `audit.pipeline_run_row_count` at `source`, `raw`, `staging`, `warehouse`, and `rejected` for every entity.
+- [ ] **The row-count chain is complete across all five layers.** `audit.pipeline_run_row_count` receives a row for `source`, `raw`, `staging`, `warehouse`, **and** `rejected` for **every** ingested entity on **every** run, satisfying [ARCHITECTURE.md §21.4](../../ARCHITECTURE.md). A missing layer for any entity fails the run. This is what closes [DOCUMENTATION_BACKLOG.md](DOCUMENTATION_BACKLOG.md) `DOC-23`, where only `source`, `raw`, and `warehouse` were recorded.
+- [ ] **The `staging` count is read from the `staging.stg_*` view itself**, not inferred from the raw count. A staging count that is unconditionally equal to the raw count proves nothing, so the count must come from the object it describes.
+- [ ] **A genuine rejected-record path exists and is exercised by a real run**, not only by a unit-test fixture. At least one deliberately malformed source file is loaded in the integration suite and produces a non-zero `rejected` count, a populated `audit.rejected_record`, and a `raw` count that exceeds the `staging` count by exactly the number of rejections.
+- [ ] The identity `raw = staging + rejected` holds per entity per run, or the difference is explained by a documented, counted exclusion. A row-count reconciliation asserts this and fails the run when it does not hold.
 - [ ] `arpi_reporter` has **no grant** on `raw` or `staging`.
 - [ ] A rerun with identical source files produces no duplicate rows at any layer.
-- [ ] The generic prohibited-column schema check (generalizing `DQ-DLR-004`) runs against **every** raw table, not only the dealership one.
+- [ ] The generic prohibited-column schema check (generalizing `DQ-DLR-004`) runs against **every** raw table, not only the dealership one, and covers the full prohibited-field list in `P1.1-06`.
+- [ ] Every check emitted by this item uses a `check_category` from the constrained vocabulary in [ADR-0004](../architecture-decisions/ADR-0004-validation-category-taxonomy.md).
 
 **Tests required**
 
 - `tests/integration/test_raw_staging_load.py` — load, batch stamping, latest-batch filtering, deduplication, rejection path.
 - `tests/integration/test_ingestion_idempotency.py` — repeated load produces no duplicates and no new warehouse rows.
 - `tests/integration/test_reporter_role_grants.py` — `arpi_reporter` cannot select from `raw` or `staging`.
+- `tests/integration/test_row_count_chain.py` — all five layers recorded per entity per run; `raw = staging + rejected`; a malformed fixture file produces a non-zero `rejected` count and a populated `audit.rejected_record`; the persisted rejection payload contains no prohibited value.
 - `tests/data_quality/test_prohibited_columns_all_entities.py` — the generic PII schema check covers every declared entity.
 
 ---
@@ -290,12 +345,49 @@ before the gate can open.
 
 ---
 
+### `P1.2-06` — Customer dimension load
+
+> **Sequence note.** This item carries a later identifier than `P1.2-04` because identifiers are allocated
+> at creation time and are permanent ([README.md §3.1](README.md)). It is placed here because it **precedes**
+> `P1.2-04` in the dependency order: `fact_vehicle_sale` cannot enforce "a retail sale has a resolvable
+> customer" against a dimension that has not been loaded yet.
+
+| Field | Value |
+|---|---|
+| **Purpose** | Load `warehouse.dim_customer` as a first-class dimension with its privacy contract enforced at the database boundary, not only at the generator boundary. This is the second half of `DOC-04`: `P1.1-06` governs what is generated, this item governs what is allowed to land in the warehouse — and the two checks are deliberately separate, because a schema drift introduced by a load script would otherwise pass a generator-side test. |
+| **Dependencies** | `P1.2-01` |
+| **Estimated complexity** | **Medium** |
+| **Blocks Power BI Gate 1** | **Yes** |
+| **Architecture references** | §10.2 (warehouse layer), §11.1 (surrogate keys, referential integrity), §11.2 (`warehouse.dim_customer` grain, key attributes, prohibited fields), §14 (Type 1 rationale), §17.3 (idempotency), §22.1, §22.4, §23 |
+
+**Acceptance criteria**
+
+- [ ] `warehouse.dim_customer` DDL exists in `sql/03_dimensions/` with the declared grain **one row per synthetic customer**, enforced by a unique constraint on `customer_id`.
+- [ ] `customer_key` is a deterministic ordinal over `customer_id`, stable across regenerations.
+- [ ] The dimension loads by MERGE on `customer_id`. History policy is **Type 1**, with the rationale recorded in [DATA_DICTIONARY.md](../../DATA_DICTIONARY.md) and in [ADR-0006](../architecture-decisions/ADR-0006-scd-type-selection-phase-1.md).
+- [ ] A rerun with unchanged source produces zero new rows and zero updates.
+- [ ] The column set matches the contract in `P1.1-06` exactly. Any column present in the table and absent from the contract fails the run.
+- [ ] **Privacy validation runs before loading**, against the staging view's column list, and **again after loading**, against `information_schema.columns` for `warehouse.dim_customer`. Both must pass; the post-load check is the one that catches a load script that added a column the generator never produced.
+- [ ] The post-load check asserts the absence of every prohibited field named in `P1.1-06` — name, full birth date, street address, personal email, phone, Social Security number, driver's licence, bank information, payment card, exact credit score, protected characteristics, and free-form notes — by schema inspection rather than by sampling values.
+- [ ] No geographic column finer than `county` / `market_area` exists in the warehouse table.
+- [ ] `DQ-CUS-*` checks are registered with stable IDs shared between Python and SQL, and each writes exactly one row to `audit.validation_result` on every run, including `skipped`.
+- [ ] A privacy failure is a **critical** outcome that fails the run. It never degrades to a warning, and the rejection payload never contains the offending value.
+- [ ] [DATA_DICTIONARY.md §9](../../DATA_DICTIONARY.md) reflects the loaded table exactly; `docs/source-to-target/STM-007-dim-customer.md` covers the staging-to-warehouse half of the mapping.
+
+**Tests required**
+
+- `tests/integration/test_dim_customer_load.py` — MERGE semantics, unique `customer_id`, deterministic `customer_key`, idempotent rerun.
+- `tests/data_quality/test_customer_privacy.py` — extended to post-load schema inspection against `information_schema`, in addition to the pre-load generator assertions from `P1.1-06`.
+- `tests/integration/test_dim_customer_privacy_failure.py` — a deliberately prohibited column added to a fixture load fails the run as critical, and the recorded failure payload contains no prohibited value.
+
+---
+
 ### `P1.2-04` — Initial vehicle sale fact
 
 | Field | Value |
 |---|---|
 | **Purpose** | Build the first fact table in ARPI's history. This is the item that converts the project from a documented model into a working analytical warehouse, and it is the primary blocker on Gate 1 condition 1. |
-| **Dependencies** | `P1.2-02`, `P1.2-03` |
+| **Dependencies** | `P1.2-02`, `P1.2-03`, `P1.2-06` |
 | **Estimated complexity** | **Large** |
 | **Blocks Power BI Gate 1** | **Yes** |
 | **Architecture references** | §11.1 (declared grain, surrogate keys, referential integrity), §12.1 (grain, keys, measures, rules), §17.4 (failure behaviour), §21.1–21.2, §34 step 8 |
@@ -303,9 +395,10 @@ before the gate can open.
 **Acceptance criteria**
 
 - [ ] `warehouse.fact_vehicle_sale` DDL exists with the declared grain **one row per finalized vehicle transaction**, enforced by a unique constraint on the natural key `sale_id`.
-- [ ] All declared foreign keys resolve: `sale_date_key`, `delivery_date_key`, `dealership_key`, `vehicle_key`, `customer_key` (nullable for wholesale), `salesperson_key`, `desk_manager_key`, `finance_manager_key`, `lead_source_key` (nullable until Phase 1.4).
-- [ ] `warehouse.dim_customer` exists and is loaded, since retail sales require a resolvable customer key. **This dimension has no dedicated backlog item and is delivered here** — see [DOCUMENTATION_BACKLOG.md](DOCUMENTATION_BACKLOG.md) `DOC-04`.
-- [ ] `dim_customer` contains **none** of the eight prohibited fields listed in [DATA_DICTIONARY.md §9.2](../../DATA_DICTIONARY.md), verified by schema inspection.
+- [ ] All declared foreign keys resolve: `sale_date_key`, `delivery_date_key`, `dealership_key`, `vehicle_key`, `customer_key` (nullable for wholesale), `salesperson_key`, `desk_manager_key`, `finance_manager_key`, `lead_source_key` (nullable until delivery increment `P1.4`).
+- [ ] `warehouse.dim_customer` is already loaded by `P1.2-06`, which is a dependency of this item. **This item no longer delivers the customer dimension**; it consumes it. The former arrangement — a privacy-sensitive dimension delivered as a sub-clause of a fact-table item — is recorded and resolved in [DOCUMENTATION_BACKLOG.md](DOCUMENTATION_BACKLOG.md) `DOC-04`.
+- [ ] **Every retail sale (`is_retail = true`) has a non-null `customer_key` that resolves to `warehouse.dim_customer`**, enforced by a database `CHECK` and a foreign key. Wholesale and dealer-trade rows may carry NULL.
+- [ ] No customer attribute is copied into the fact table. The fact carries `customer_key` and nothing else about the customer, so the privacy contract has exactly one enforcement point.
 - [ ] Monetary columns are `numeric`, never floating point.
 - [ ] `total_gross = front_end_gross + back_end_gross` holds for **every row** within `validation.numeric_absolute_tolerance` (0.01), asserted as `RECON-GROSS-001`.
 - [ ] Grain uniqueness is enforced by the database, and a grain violation fails the run as a critical failure.
@@ -319,7 +412,7 @@ before the gate can open.
 - `tests/integration/test_fact_vehicle_sale_load.py` — grain uniqueness, FK resolution, nullability rules, idempotent rerun.
 - `tests/integration/test_fact_vehicle_sale_grain_violation.py` — a duplicate `sale_id` fails the run as critical.
 - `tests/unit/test_gross_identity.py` — `total_gross` identity to the cent across generated fixtures.
-- `tests/data_quality/test_customer_privacy.py` — `dim_customer` schema contains none of the eight prohibited fields.
+- `tests/integration/test_fact_vehicle_sale_customer_rule.py` — a retail row with a NULL `customer_key` is rejected by the database; a wholesale row with a NULL `customer_key` is accepted. The `dim_customer` privacy tests themselves belong to `P1.1-06` and `P1.2-06`, not here.
 
 ---
 
@@ -356,7 +449,7 @@ before the gate can open.
 
 ---
 
-## 4. Phase 1.3 — Validation, reconciliation, and the first KPI logic
+## 4. Delivery Increment P1.3 — Validation, reconciliation, and the first KPI logic
 
 *Architecture build-order step 9.*
 
@@ -499,11 +592,11 @@ before the gate can open.
 - `tests/integration/test_reporting_views_sales.py` — view results match direct fact-table queries.
 - `tests/integration/test_reporting_views_inventory.py` — as above for inventory, including as-of-date behaviour.
 - `tests/integration/test_reporter_role_grants.py` — extended: `arpi_reporter` can read `reporting` and cannot read `raw`, `staging`, or `warehouse`.
-- `tests/integration/test_kpi_coverage.py` — every Phase 1.3 KPI ID resolves to at least one reporting view.
+- `tests/integration/test_kpi_coverage.py` — every `P1.3` KPI ID resolves to at least one reporting view.
 
 ---
 
-## 5. Phase 1.4 — Lead funnel
+## 5. Delivery Increment P1.4 — Lead funnel
 
 *Architecture build-order steps 10 and 11.*
 
@@ -541,14 +634,15 @@ before the gate can open.
 | Field | Value |
 |---|---|
 | **Purpose** | Produce CRM lead events with realistic funnel outcomes and response behaviour. Eight of the twenty-nine specified KPIs read from this entity, and the response-time distribution it produces is what makes the mean-versus-median governance rule meaningful rather than decorative. |
-| **Dependencies** | `P1.4-01`, `P1.1-03`, `P1.2-04` |
+| **Dependencies** | `P1.4-01`, `P1.1-03`, `P1.1-06`, `P1.2-04` |
 | **Estimated complexity** | **Large** |
 | **Blocks Power BI Gate 1** | **Yes** |
 | **Architecture references** | §12.4 (`fact_lead` grain, keys, measures, rules), §15.3 (relationships 4, 5, 6, 7, 8, 10, 16), §15.4, §21.2 (first response not before lead creation), §22.4 (no communication content), §34 step 10 |
 
 **Acceptance criteria**
 
-- [ ] Lead events carry `lead_id` in the reserved scheme `LEAD-#########`, creation date, store, source, campaign (nullable until Phase 1.5), customer, vehicle or model of interest, and assigned employees.
+- [ ] Lead events carry `lead_id` in the reserved scheme `LEAD-#########`, creation date, store, source, campaign (nullable until delivery increment `P1.5`), customer, vehicle or model of interest, and assigned employees.
+- [ ] **Every populated customer reference on a lead is a `customer_id` from `P1.1-06`.** Leads reuse the same governed customer population as sales; no lead-specific customer record, and no customer attribute of any kind, is created here. An anonymous lead carries a NULL customer reference rather than a synthesised one.
 - [ ] Funnel flags are internally consistent: `is_appointment_shown` implies `is_appointment_set` implies `is_contacted`.
 - [ ] `is_sold = true` **only** where a valid finalized retail sale is linked.
 - [ ] `first_response_seconds` is non-negative where present, and **NULL for a genuine population of never-responded leads** — NULL must be distinguishable from zero.
@@ -603,7 +697,7 @@ before the gate can open.
 | Field | Value |
 |---|---|
 | **Purpose** | Load `warehouse.fact_lead` and `warehouse.fact_appointment`, completing the four MVP facts that Gate 1 condition 1 requires, and making all eight funnel KPIs computable. |
-| **Dependencies** | `P1.4-02`, `P1.4-03`, `P1.2-01` |
+| **Dependencies** | `P1.4-02`, `P1.4-03`, `P1.2-01`, `P1.2-06` |
 | **Estimated complexity** | **Large** |
 | **Blocks Power BI Gate 1** | **Yes** |
 | **Architecture references** | §11.1, §12.4, §12.6, §17.4, §21.1–21.2, §34 step 11 |
@@ -614,6 +708,7 @@ before the gate can open.
 - [ ] `warehouse.fact_appointment` exists with the declared grain **one row per scheduled appointment**, enforced by a unique constraint on `appointment_id`.
 - [ ] All declared foreign keys resolve, including role-playing date keys (`appointment_created_date_key`, `scheduled_date_key`, `show_date_key`) into `dim_date`.
 - [ ] `fact_lead.vehicle_sale_key` and `fact_appointment.vehicle_sale_key` resolve to `fact_vehicle_sale` where populated, and are NULL where not sold.
+- [ ] **`fact_lead.customer_key` and `fact_appointment.customer_key` resolve to the same `warehouse.dim_customer` that `fact_vehicle_sale` uses**, loaded by `P1.2-06`. There is exactly one governed customer dimension in the model; the funnel does not get its own. Both keys are nullable, because an anonymous lead is a real case.
 - [ ] Structural and business-rule validation checks are registered with stable `DQ-*` IDs and write to `audit.validation_result` on every run.
 - [ ] Loading is idempotent for both facts.
 - [ ] [DATA_DICTIONARY.md §16 and §17](../../DATA_DICTIONARY.md) updated; `STM-011` and `STM-012` written.
@@ -656,7 +751,7 @@ before the gate can open.
 
 ---
 
-## 6. Phase 1.5 — Marketing, profitability, and MVP readiness
+## 6. Delivery Increment P1.5 — Marketing, profitability, and MVP readiness
 
 *Architecture build-order step 12, and the run-up to Gate 1.*
 
@@ -782,6 +877,38 @@ before the gate can open.
 
 ---
 
+### `P1.5-05` — Stakeholder-question traceability matrix
+
+| Field | Value |
+|---|---|
+| **Purpose** | Produce the artefact that Gate 4 is checked against. `ARCHITECTURE.md` §28 Gate 4 permits a new data domain only when a stakeholder question requires it, and `KPI_CATALOG.md` §37 requires every KPI to trace to at least one such question — but no document records the mapping, so the gate is currently unfalsifiable. This item makes it checkable. It also converts the personas from names in a research document into a governed table that says what each of them can actually ask of the platform today. Registered as `DOC-15`. |
+| **Dependencies** | `P1.3-05`, `P1.4-05`, `P1.5-02` |
+| **Estimated complexity** | **Small** |
+| **Blocks Power BI Gate 1** | No |
+| **Architecture references** | §19.4 (required report pages), §23 (ethical analytics requirements), §28 Gate 4, §30 (MVP definition), §35 (decisions that require an ADR) |
+
+**Ownership note:** this document is authored outside the architecture workstream. This item records the
+requirement and its acceptance criteria; it does not claim the document exists.
+
+**Acceptance criteria**
+
+- [ ] `docs/requirements/STAKEHOLDER_QUESTIONS.md` exists, is listed in the index at [`docs/requirements/README.md` §2](README.md), and passes `python scripts/check_docs_links.py`.
+- [ ] **Every persona in `docs/research.md` §11.3 appears**, primary and secondary: dealer principal, general manager, general sales manager, used-car manager, internet or BDC director, finance director, marketing manager, regional operations manager, data or BI analyst, sales manager, fixed-operations manager, new-car manager.
+- [ ] **Every persona in the "Who this is for" table in the [root `README.md`](../../README.md) appears**, and the two lists are reconciled — where the README names a persona the research document does not, or vice versa, the difference is stated rather than silently merged.
+- [ ] Each row carries: **persona**, **business question** in the stakeholder's own words, **required entities** (dimensions and facts), **KPI IDs** from [KPI_CATALOG.md](../../KPI_CATALOG.md), **reporting view** that owns the answer, **future report page** from [ARCHITECTURE.md §19.4](../../ARCHITECTURE.md), and **current implementation status**.
+- [ ] `Current implementation status` uses only the project's four status values — `Implemented`, `Planned`, `Deferred`, `Out of scope` — and is accurate on the day it is written. A question whose KPIs are all `Planned` is `Planned`, never `Implemented`.
+- [ ] Every KPI ID cited resolves to a real entry in [KPI_CATALOG.md](../../KPI_CATALOG.md), and every reporting view cited either exists or is explicitly marked as not yet built.
+- [ ] Questions that the MVP **cannot** answer are included and marked, rather than omitted. A traceability matrix that only lists what works is a marketing document.
+- [ ] Every one of the 29 specified KPIs is reachable from at least one question, and any KPI that is not is listed explicitly as unattributed so the gap is visible.
+- [ ] [DOCUMENTATION_BACKLOG.md](DOCUMENTATION_BACKLOG.md) `DOC-15` is closed with the evidence, or left open with a note stating what is still missing.
+
+**Tests required**
+
+- `tests/integration/test_stakeholder_question_traceability.py` — every KPI ID cited in the matrix resolves to a catalogued KPI; every catalogued KPI ID appears in the matrix or in its explicit unattributed list; every persona in `docs/research.md` §11.3 appears at least once.
+- `python scripts/check_docs_links.py` — every link in and to the new document resolves.
+
+---
+
 ## 7. Definition of ready / definition of done
 
 ### 7.1 Definition of ready
@@ -822,31 +949,33 @@ A backlog item is Done only when **all** of the following hold:
 
 ---
 
-## 8. Dependency graph across the five sub-phases
+## 8. Dependency graph across the five delivery increments
 
 ```mermaid
 flowchart TB
-    subgraph P0["Phase 0 — Implemented"]
+    subgraph P0["Delivery Increment Phase 0 — Implemented"]
         D0["dim_date · dim_dealership<br/>raw · staging · audit · reporting"]
     end
 
-    subgraph P11["Phase 1.1 — Source generation"]
+    subgraph P11["Delivery Increment P1.1 — Source generation"]
         A1["P1.1-01<br/>Vehicle model contract"]
         A2["P1.1-02<br/>Vehicle generator"]
         A3["P1.1-03<br/>Employee generator"]
         A4["P1.1-04<br/>Inventory acquisition events"]
+        A6["P1.1-06<br/>Customer contract and generator"]
         A5["P1.1-05<br/>Sales source events"]
     end
 
-    subgraph P12["Phase 1.2 — Ingestion, dimensions, first facts"]
+    subgraph P12["Delivery Increment P1.2 — Ingestion, dimensions, first facts"]
         B1["P1.2-01<br/>Raw and staging ingestion"]
         B2["P1.2-02<br/>Vehicle dimension"]
         B3["P1.2-03<br/>Employee dimension"]
+        B6["P1.2-06<br/>Customer dimension"]
         B4["P1.2-04<br/>fact_vehicle_sale"]
         B5["P1.2-05<br/>fact_vehicle_inventory_snapshot"]
     end
 
-    subgraph P13["Phase 1.3 — Validation and KPI logic"]
+    subgraph P13["Delivery Increment P1.3 — Validation and KPI logic"]
         C1["P1.3-01<br/>Sales and inventory validation"]
         C2["P1.3-02<br/>Gross reconciliation"]
         C3["P1.3-03<br/>Inventory-age logic"]
@@ -854,7 +983,7 @@ flowchart TB
         C5["P1.3-05<br/>First reporting views"]
     end
 
-    subgraph P14["Phase 1.4 — Lead funnel"]
+    subgraph P14["Delivery Increment P1.4 — Lead funnel"]
         E1["P1.4-01<br/>Lead source dimension"]
         E2["P1.4-02<br/>Lead generator"]
         E3["P1.4-03<br/>Appointment generator"]
@@ -862,32 +991,38 @@ flowchart TB
         E5["P1.4-05<br/>Funnel reconciliation"]
     end
 
-    subgraph P15["Phase 1.5 — Marketing and MVP readiness"]
+    subgraph P15["Delivery Increment P1.5 — Marketing and MVP readiness"]
         F1["P1.5-01<br/>Marketing spend"]
         F2["P1.5-02<br/>Source-level profitability"]
         F3["P1.5-03<br/>MVP reporting layer"]
         F4["P1.5-04<br/>Power BI readiness review"]
+        F5["P1.5-05<br/>Stakeholder-question matrix"]
     end
 
     G1{{"Gate 1<br/>Power BI development"}}
 
     D0 --> A1
     D0 --> A3
+    D0 --> A6
     A1 --> A2
     A2 --> A4
     A2 --> A5
     A3 --> A5
     A4 --> A5
+    A6 --> A5
 
     A1 --> B1
     A2 --> B1
     A3 --> B1
     A4 --> B1
     A5 --> B1
+    A6 --> B1
     B1 --> B2
     B1 --> B3
+    B1 --> B6
     B2 --> B4
     B3 --> B4
+    B6 --> B4
     B2 --> B5
     B4 --> B5
 
@@ -907,11 +1042,13 @@ flowchart TB
     B1 --> E1
     E1 --> E2
     A3 --> E2
+    A6 --> E2
     B4 --> E2
     E2 --> E3
     E2 --> E4
     E3 --> E4
     B1 --> E4
+    B6 --> E4
     E4 --> E5
     C1 --> E5
 
@@ -930,26 +1067,44 @@ flowchart TB
     F1 --> F4
     F3 --> F4
     F4 --> G1
+
+    C5 --> F5
+    E5 --> F5
+    F2 --> F5
 ```
+
+**Reading the two out-of-sequence identifiers.** `P1.1-06` and `P1.2-06` carry the highest numbers in their
+increments but sit early in the dependency order. Identifiers are allocated at creation time and are
+permanent ([README.md §3.1](README.md)), so promoting the customer dimension to a first-class item could not
+reuse `P1.1-04` or `P1.2-02`. The graph, not the number, is the build order.
 
 **Critical path:** `P1.1-01` → `P1.1-02` → `P1.1-04` → `P1.1-05` → `P1.2-01` → `P1.2-02` → `P1.2-04` →
 `P1.2-05` → `P1.3-01` → `P1.3-03` → `P1.3-04` → `P1.3-05` → `P1.5-03` → `P1.5-04` → **Gate 1**.
 
 The funnel branch (`P1.4-*`) and the marketing branch (`P1.5-01`, `P1.5-02`) can proceed in parallel with
-Phase 1.3 once their own dependencies are met, but `P1.4-04` and `P1.5-01` are still Gate 1 blockers,
+`P1.3` once their own dependencies are met, but `P1.4-04` and `P1.5-01` are still Gate 1 blockers,
 because Gate 1 requires **all five** MVP fact grains to be approved.
+
+The customer chain — `P1.1-06` → `P1.2-01` → `P1.2-06` → `P1.2-04` — is shorter than the vehicle chain that
+reaches `P1.2-04`, so promoting the customer dimension to first-class items does **not** lengthen the
+critical path. It does add two Gate 1 blockers, because `P1.2-04` cannot enforce its retail-customer rule
+until `P1.2-06` has loaded the dimension.
 
 ---
 
 ## 9. Backlog summary
 
-| Sub-phase | Items | Small | Medium | Large | Gate 1 blockers |
+| Delivery increment | Items | Small | Medium | Large | Gate 1 blockers |
 |---|---:|---:|---:|---:|---:|
-| Phase 1.1 | 5 | 0 | 2 | 3 | 5 |
-| Phase 1.2 | 5 | 0 | 3 | 2 | 5 |
-| Phase 1.3 | 5 | 1 | 4 | 0 | 5 |
-| Phase 1.4 | 5 | 1 | 2 | 2 | 5 |
-| Phase 1.5 | 4 | 1 | 3 | 0 | 3 |
-| **Total** | **24** | **3** | **14** | **7** | **23** |
+| `P1.1` | 6 | 0 | 3 | 3 | 6 |
+| `P1.2` | 6 | 0 | 4 | 2 | 6 |
+| `P1.3` | 5 | 1 | 4 | 0 | 5 |
+| `P1.4` | 5 | 1 | 2 | 2 | 5 |
+| `P1.5` | 5 | 2 | 3 | 0 | 3 |
+| **Total** | **27** | **4** | **16** | **7** | **25** |
+
+Three items were added on 2026-07-28: `P1.1-06` and `P1.2-06` promote the customer dimension to first-class
+delivery (`DOC-04`), and `P1.5-05` adds the stakeholder-question traceability matrix (`DOC-15`). No existing
+identifier was renumbered.
 
 **Nothing in this backlog is Implemented.** Every item is `Planned`.

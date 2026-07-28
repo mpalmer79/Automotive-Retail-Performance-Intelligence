@@ -275,6 +275,41 @@ This is an open gap, registered in
 Phase 1 introduces a transformation step that can measurably drop or reject rows; recording a staging count
 that is unconditionally equal to the raw count would prove nothing.
 
+### 10.2 The privacy tripwire inspects schemas, not values
+
+**The limitation.** `src/arpi/validation/privacy.py` enforces the prohibited-field register
+([PRIVACY_AND_ETHICS.md §3.1](PRIVACY_AND_ETHICS.md)) by examining **column names**. It does not look at a
+single cell.
+
+**What it does catch.** Any declared column, frame column, CSV header field or PostgreSQL column whose
+name denotes personal data — including the qualified forms a real DMS or CRM export actually uses
+(`customer_email`, `buyer_first_name`, `home_phone_number`, `exact_credit_score`), the punctuation variants
+that would otherwise slip past a naive comparison (`Customer-Email`, `customer.email`, `CUSTOMER__EMAIL`),
+protected characteristics, compensation and pay-plan fields, communication content, and any new `*_name`
+column that has not been explicitly allowlisted with a written justification. It fails closed: a match
+raises, or records a `critical` failure that fails the run. It is checked in Python and in SQL, and a test
+asserts that both layers agree.
+
+**What it does not catch:**
+
+- **A prohibited value under an innocent name.** A column called `market_area` containing
+  `someone@example.com` passes. Nothing scans cell contents for email, phone or identifier patterns.
+- **Free text generally.** ARPI declares no free-text column, so there is nothing to scan; if one were ever
+  introduced under an approved name, this control would not examine it.
+- **Personal data encoded in an identifier.** A `customer_id` derived from a real person's details would
+  pass. ARPI's identifiers are generated from a seeded counter, so this is theoretical here — but it is not
+  something the tripwire could detect.
+- **Re-identification by combination.** Refusing each prohibited field individually does not prove that the
+  remaining fields cannot be combined to single out an individual. ARPI's answer is data minimisation —
+  geography stops at county and market area, age is banded, no birth date exists — not a formal
+  disclosure-risk calculation. No k-anonymity or differential-privacy claim is made anywhere.
+
+**Why a schema control is sufficient here, and would not be elsewhere.** Every row ARPI holds is machine
+generated from a declared column contract, with no network access in the generator and both enrichment
+flags off in all three profiles. There is no external source from which a real value could arrive under an
+innocent name. A pipeline ingesting real data would need value-level scanning as well, and this control
+should not be cited as evidence that ARPI performs it.
+
 ---
 
 ## 11. `docs/research.md` is a point-in-time market review

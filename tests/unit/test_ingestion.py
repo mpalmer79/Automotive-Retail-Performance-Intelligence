@@ -167,8 +167,57 @@ def test_rows_for_copy_renders_null_as_empty(dealership_dataset: GeneratedDatase
 
 
 def test_entity_tables_cover_both_dimensions() -> None:
-    assert set(ENTITY_TABLES) == {"dim_date", "dim_dealership"}
+    assert {"dim_date", "dim_dealership"} <= set(ENTITY_TABLES)
     assert ENTITY_TABLES["dim_date"] == ("calendar_date_load", "dim_date")
+    assert ENTITY_TABLES["dim_dealership"] == ("dealership_load", "dim_dealership")
+
+
+def test_entity_tables_is_a_projection_of_the_spec_registry() -> None:
+    from arpi.ingestion.spec import ENTITY_SPECS
+
+    expected = {
+        spec.entity_name: (spec.raw_table, spec.warehouse_table)
+        for spec in ENTITY_SPECS
+        if spec.warehouse_table is not None
+    }
+    assert expected == ENTITY_TABLES
+
+
+def test_every_registered_spec_is_internally_consistent() -> None:
+    from arpi.ingestion.spec import ENTITY_SPECS, spec_for
+
+    assert len({spec.entity_name for spec in ENTITY_SPECS}) == len(ENTITY_SPECS)
+    for spec in ENTITY_SPECS:
+        assert spec_for(spec.entity_name) is spec
+        assert spec.natural_key
+        assert spec.warehouse_match_key == spec.natural_key[0]
+        assert spec.chain_reconciliation_id.startswith("RECON-INGEST-")
+        assert spec.chain_reconciliation_id.endswith("-CHAIN")
+        assert spec.warehouse_reconciliation_id.endswith("-WAREHOUSE")
+        if spec.warehouse_table is None:
+            assert spec.merge_script is None
+
+
+def test_spec_for_names_the_registered_entities_when_it_fails() -> None:
+    from arpi.ingestion.spec import spec_for
+
+    with pytest.raises(DatabaseLoadError, match="dim_date") as excinfo:
+        spec_for("not_an_entity")
+    assert excinfo.value.entity == "not_an_entity"
+
+
+def test_a_spec_must_declare_a_natural_key() -> None:
+    from arpi.ingestion.spec import EntityIngestionSpec
+
+    with pytest.raises(ValueError, match="natural_key"):
+        EntityIngestionSpec(
+            entity_name="broken",
+            raw_table="broken_load",
+            staging_view="stg_broken",
+            warehouse_table=None,
+            natural_key=(),
+            merge_script=None,
+        )
 
 
 def test_load_foundation_rejects_an_unknown_entity(
@@ -348,7 +397,26 @@ def test_load_foundation_copies_merges_counts_and_audits(
     (sql_dir / "10_dim_date_merge.sql").write_text("-- merge date", encoding="utf-8")
     (sql_dir / "20_dim_dealership_merge.sql").write_text("-- merge dealership", encoding="utf-8")
 
-    connection = _RecordingConnection([(59,), (3,), (1,)])
+    # Six scalar queries per entity, in the order _collect_layer_counts issues them:
+    # raw, staging, distinct staging keys, deduplicated, warehouse, warehouse-matched.
+    # The final response is the pipeline_run_id returned by the audit insert.
+    connection = _RecordingConnection(
+        [
+            (59,),
+            (59,),
+            (59,),
+            (59,),
+            (59,),
+            (59,),
+            (3,),
+            (3,),
+            (3,),
+            (3,),
+            (3,),
+            (3,),
+            (1,),
+        ]
+    )
     monkeypatch.setattr(database, "psycopg", _RecordingPsycopg(connection))
 
     recorder = AuditRecorder(run=PipelineRun.start(db_config, pipeline_name="test"))
@@ -358,6 +426,8 @@ def test_load_foundation_copies_merges_counts_and_audits(
 
     assert result.raw_row_counts == {"dim_date": 59, "dim_dealership": 3}
     assert result.warehouse_row_counts == {"dim_date": 59, "dim_dealership": 3}
+    assert all(counts.chain_balances for counts in result.layer_counts.values())
+    assert result.rejected_records == ()
     assert [path.name for path in result.executed_sql] == [
         "10_dim_date_merge.sql",
         "20_dim_dealership_merge.sql",
@@ -372,15 +442,24 @@ def test_load_foundation_copies_merges_counts_and_audits(
     assert audit_statements
     assert all(isinstance(params, tuple) for _, params in audit_statements)
 
+    # DOC-23: all four database-side layers are recorded, not just raw and warehouse.
     layers = {(row.entity_name, row.layer) for row in recorder.row_counts}
     assert layers == {
         ("dim_date", "raw"),
+        ("dim_date", "staging"),
+        ("dim_date", "rejected"),
         ("dim_date", "warehouse"),
         ("dim_dealership", "raw"),
+        ("dim_dealership", "staging"),
+        ("dim_dealership", "rejected"),
         ("dim_dealership", "warehouse"),
     }
     assert [item.reconciliation_id for item in recorder.reconciliation_results] == [
+        "RECON-INGEST-DIM-DATE-CHAIN",
+        "RECON-INGEST-DIM-DATE-WAREHOUSE",
         "RECON-DIM-DATE-ROWCOUNT",
+        "RECON-INGEST-DIM-DEALERSHIP-CHAIN",
+        "RECON-INGEST-DIM-DEALERSHIP-WAREHOUSE",
         "RECON-DIM-DEALERSHIP-ROWCOUNT",
     ]
     assert all(item.status == "passed" for item in recorder.reconciliation_results)
@@ -398,12 +477,112 @@ def test_load_foundation_reports_a_row_count_mismatch(
     sql_dir.mkdir()
     (sql_dir / "10_dim_date_merge.sql").write_text("-- merge", encoding="utf-8")
 
-    connection = _RecordingConnection([(58,), (1,)])
+    # raw, staging, staging keys, deduplicated, warehouse, warehouse-matched, run id.
+    # The warehouse holds one row fewer than the generator produced.
+    connection = _RecordingConnection([(59,), (59,), (59,), (59,), (58,), (58,), (1,)])
     monkeypatch.setattr(database, "psycopg", _RecordingPsycopg(connection))
 
     recorder = AuditRecorder(run=PipelineRun.start(db_config, pipeline_name="test"))
     load_foundation(db_config, [date_dataset], recorder, sql_root=tmp_path)
 
-    reconciliation = recorder.reconciliation_results[0]
-    assert reconciliation.status == "failed"
-    assert reconciliation.difference == pytest.approx(1.0)
+    by_id = {item.reconciliation_id: item for item in recorder.reconciliation_results}
+    # The raw-to-staging chain still balances: nothing was lost before the warehouse.
+    assert by_id["RECON-INGEST-DIM-DATE-CHAIN"].status == "passed"
+    # The staging-to-warehouse comparison is what fails, and it names the missing row.
+    assert by_id["RECON-INGEST-DIM-DATE-WAREHOUSE"].status == "failed"
+    assert by_id["RECON-INGEST-DIM-DATE-WAREHOUSE"].difference == pytest.approx(1.0)
+    assert by_id["RECON-DIM-DATE-ROWCOUNT"].status == "failed"
+    assert by_id["RECON-DIM-DATE-ROWCOUNT"].difference == pytest.approx(1.0)
+
+
+# --------------------------------------------------------------------------------------
+# The rejected-record path: nothing prohibited may ever be persisted
+# --------------------------------------------------------------------------------------
+
+
+def test_redact_payload_masks_a_prohibited_column() -> None:
+    from arpi.constants import REDACTED_PLACEHOLDER
+    from arpi.ingestion.rejection import redact_payload
+
+    redacted = redact_payload(
+        {
+            "customer_id": "CUS-00000001",
+            "customer_email": "someone@example.test",
+            "home_phone_number": "555-0100",
+            "age_band": "35-44",
+            "county": "Hillsborough",
+        }
+    )
+
+    # Keys survive so the shape of the offending row stays diagnosable.
+    assert set(redacted) == {
+        "customer_id",
+        "customer_email",
+        "home_phone_number",
+        "age_band",
+        "county",
+    }
+    assert redacted["customer_email"] == REDACTED_PLACEHOLDER
+    assert redacted["home_phone_number"] == REDACTED_PLACEHOLDER
+    # Values that are legitimately published are not destroyed.
+    assert redacted["customer_id"] == "CUS-00000001"
+    assert redacted["age_band"] == "35-44"
+    assert redacted["county"] == "Hillsborough"
+
+
+def test_the_fallback_redactor_fails_closed() -> None:
+    """Without the privacy module every value is masked, never passed through."""
+    from arpi.constants import REDACTED_PLACEHOLDER
+    from arpi.ingestion.rejection import _fallback_redact_payload
+
+    redacted = _fallback_redact_payload({"county": "Hillsborough", "email": "a@b.test"})
+    assert redacted == {
+        "county": REDACTED_PLACEHOLDER,
+        "email": REDACTED_PLACEHOLDER,
+    }
+
+
+def test_build_rejected_payload_redacts_and_carries_lineage() -> None:
+    import json
+
+    from arpi.constants import REDACTED_PLACEHOLDER
+    from arpi.ingestion.rejection import LINEAGE_PAYLOAD_KEY, build_rejected_payload
+
+    document = build_rejected_payload(
+        {
+            "customer_id": "CUS-00000001",
+            "customer_email": "someone@example.test",
+            # Lineage columns of the raw table are stripped, not redacted: they are
+            # re-emitted under the lineage key in a structured form.
+            "raw_record_id": 17,
+            "ingested_at": "2026-07-28T00:00:00+00:00",
+        },
+        rejection_category="completeness",
+        source_row_number=6,
+        load_batch_id="0f0e0d0c-0b0a-0908-0706-050403020100",
+        source_file_name="dim_customer.csv",
+    )
+    payload = json.loads(document)
+
+    assert payload["customer_id"] == "CUS-00000001"
+    assert payload["customer_email"] == REDACTED_PLACEHOLDER
+    assert "raw_record_id" not in payload
+    assert "ingested_at" not in payload
+    assert payload[LINEAGE_PAYLOAD_KEY] == {
+        "rejection_category": "completeness",
+        "source_row_number": 6,
+        "load_batch_id": "0f0e0d0c-0b0a-0908-0706-050403020100",
+        "source_file_name": "dim_customer.csv",
+    }
+
+
+def test_every_rejection_code_maps_to_a_canonical_category() -> None:
+    from arpi.constants import CHECK_CATEGORIES
+    from arpi.ingestion.rejection import REJECTION_CATEGORIES, category_for
+
+    assert set(REJECTION_CATEGORIES.values()) <= CHECK_CATEGORIES
+    for code in REJECTION_CATEGORIES:
+        assert code.startswith("REJ-")
+        assert category_for(code) in CHECK_CATEGORIES
+    # An unknown code still yields a category the audit table can store.
+    assert category_for("REJ-NOT-REGISTERED") in CHECK_CATEGORIES

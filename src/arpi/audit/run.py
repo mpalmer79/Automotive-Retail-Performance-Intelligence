@@ -233,6 +233,46 @@ class ReconciliationResult:
         }
 
 
+@dataclass(frozen=True, slots=True)
+class RejectedRecord:
+    """Mirrors one row of ``audit.rejected_record``.
+
+    A rejected record is a source row that reached ``raw`` and did not reach the
+    warehouse. It is preserved rather than discarded so the defect can be reproduced.
+
+    ``record_payload`` is a JSON **document string**, already redacted by
+    ``arpi.ingestion.rejection.build_rejected_payload``. It is a string rather than a
+    mapping for two reasons: this module must stay importable without the database
+    extra, and passing an already-serialised document makes it impossible for a later
+    caller to slip an unredacted mapping past the privacy boundary.
+
+    Attributes:
+        source_entity: Entity the rejected row belongs to.
+        source_record_key: Best available natural key; ``None`` when it could not be read.
+        rejection_code: Stable ``REJ-*`` identifier.
+        rejection_reason: Human-readable explanation, prefixed with its canonical
+            validation category because ``audit.rejected_record`` has no category column.
+        record_payload: Redacted JSON document, or ``None`` when there is nothing safe
+            to keep.
+    """
+
+    source_entity: str
+    source_record_key: str | None
+    rejection_code: str
+    rejection_reason: str
+    record_payload: str | None = None
+
+    def as_audit_row(self) -> dict[str, Any]:
+        """Render this record as an ``audit.rejected_record`` row."""
+        return {
+            "source_entity": self.source_entity,
+            "source_record_key": self.source_record_key,
+            "rejection_code": self.rejection_code,
+            "rejection_reason": self.rejection_reason,
+            "record_payload": self.record_payload,
+        }
+
+
 @dataclass(slots=True)
 class AuditRecorder:
     """Collects everything a run should record, in memory.
@@ -242,12 +282,14 @@ class AuditRecorder:
         row_counts: Row counts per entity and layer.
         validation_results: Every evaluated data-quality check.
         reconciliation_results: Every evaluated reconciliation.
+        rejected_records: Every source row that was quarantined rather than loaded.
     """
 
     run: PipelineRun
     row_counts: list[RowCount] = field(default_factory=list)
     validation_results: list[CheckResult] = field(default_factory=list)
     reconciliation_results: list[ReconciliationResult] = field(default_factory=list)
+    rejected_records: list[RejectedRecord] = field(default_factory=list)
 
     def record_row_count(self, entity_name: str, layer: str, row_count: int) -> RowCount:
         """Record a row count for one entity in one layer.
@@ -299,6 +341,20 @@ class AuditRecorder:
         self.reconciliation_results.append(result)
         return result
 
+    def record_rejection(self, record: RejectedRecord) -> RejectedRecord:
+        """Append one rejected source row.
+
+        Args:
+            record: The quarantined row. Its payload must already have been redacted by
+                ``arpi.ingestion.rejection.build_rejected_payload``; this recorder does
+                not inspect it and cannot redact it.
+
+        Returns:
+            The recorded rejection, for convenient chaining.
+        """
+        self.rejected_records.append(record)
+        return record
+
     @property
     def report(self) -> ValidationReport:
         """Every recorded validation result as a single report."""
@@ -309,13 +365,14 @@ class AuditRecorder:
 
         Returns:
             A mapping of unqualified ``audit`` table name to a list of row dictionaries.
-            ``audit.rejected_record`` is always empty in Phase 0: the generators cannot
-            produce a rejected record because they only emit contract-shaped rows.
+            ``rejected_record`` is empty when nothing was rejected, which is the expected
+            state of a healthy run: ARPI generates its own source data, so a rejected row
+            means a generator or mapping defect rather than a data-supplier problem.
         """
         return {
             "pipeline_run": [self.run.as_audit_row()],
             "pipeline_run_row_count": [row.as_audit_row() for row in self.row_counts],
             "validation_result": [row.as_audit_row() for row in self.validation_results],
             "reconciliation_result": [row.as_audit_row() for row in self.reconciliation_results],
-            "rejected_record": [],
+            "rejected_record": [row.as_audit_row() for row in self.rejected_records],
         }

@@ -3,6 +3,15 @@
 Every function returns a :class:`~arpi.validation.results.CheckResult` rather than
 raising, so a full report can be produced in one pass and persisted to
 ``audit.validation_result``.
+
+Each check declares one of the seven canonical categories from
+:data:`arpi.constants.CHECK_CATEGORIES`, and the SQL implementation of the same check id
+declares the same one, so ``reporting.vw_data_quality_summary`` can group by category
+without mixing two taxonomies.
+
+The prohibited-column tripwire moved to :mod:`arpi.validation.privacy`, which is now its
+authority; :func:`check_no_prohibited_pii_columns` is re-exported here so existing
+imports keep working.
 """
 
 from __future__ import annotations
@@ -14,14 +23,25 @@ from datetime import date, timedelta
 import pandas as pd
 
 from arpi.constants import (
-    APPROVED_NAME_COLUMNS,
     CHECK_CATEGORY_BUSINESS_RULE,
-    CHECK_CATEGORY_PRIVACY,
+    CHECK_CATEGORY_COMPLETENESS,
     CHECK_CATEGORY_STRUCTURAL,
-    PROHIBITED_PII_FIELD_NAMES,
-    PROHIBITED_PII_SUBSTRINGS,
+    CHECK_CATEGORY_UNIQUENESS,
 )
+from arpi.validation.privacy import check_no_prohibited_pii_columns, is_prohibited_column
 from arpi.validation.results import CheckResult, CheckSeverity, CheckStatus
+
+__all__ = [
+    "check_column_schema",
+    "check_contiguous_date_range",
+    "check_no_prohibited_pii_columns",
+    "check_non_null_columns",
+    "check_ratio_within_bounds",
+    "check_unique_column",
+    "check_values_in_allowed_set",
+    "is_prohibited_column",
+    "skipped_check",
+]
 
 
 def check_unique_column(
@@ -52,7 +72,7 @@ def check_unique_column(
         check_name=check_name,
         target_object=target_object,
         severity=severity,
-        check_category=CHECK_CATEGORY_STRUCTURAL,
+        check_category=CHECK_CATEGORY_UNIQUENESS,
     )
     if column not in frame.columns:
         return base.failed(f"Column {column!r} is missing from {target_object}.")
@@ -96,7 +116,7 @@ def check_non_null_columns(
         check_name=check_name,
         target_object=target_object,
         severity=severity,
-        check_category=CHECK_CATEGORY_STRUCTURAL,
+        check_category=CHECK_CATEGORY_COMPLETENESS,
     )
     missing_columns = [column for column in columns if column not in frame.columns]
     if missing_columns:
@@ -245,7 +265,7 @@ def check_contiguous_date_range(
         check_name=check_name,
         target_object=target_object,
         severity=severity,
-        check_category=CHECK_CATEGORY_STRUCTURAL,
+        check_category=CHECK_CATEGORY_COMPLETENESS,
         expected_value=float(expected_count),
     )
     if column not in frame.columns:
@@ -313,82 +333,6 @@ def check_ratio_within_bounds(
     return base.failed(
         f"The {description} for {target_object} is {observed:.4f}, outside the configured "
         f"band [{minimum:.4f}, {maximum:.4f}]."
-    )
-
-
-def _is_prohibited_pii_column(column: str) -> bool:
-    """Decide whether a column name denotes personal data.
-
-    Three rules apply, in order of increasing subtlety:
-
-    1. The name matches a prohibited field exactly (``ssn``, ``address``).
-    2. The name *contains* an unambiguous prohibited token, so ``customer_email`` and
-       ``home_phone_number`` are caught rather than only their bare forms.
-    3. The name ends in ``name`` and is not an approved descriptive label. Personal names
-       are prohibited but ``day_name`` and ``store_name`` are not, and only an allowlist
-       distinguishes them. Denying by default means a new person-name column fails the
-       check without anyone having to extend a blocklist first.
-
-    This mirrors the substring semantics of the SQL implementation of the same check id,
-    so one rule keeps one meaning in both layers.
-
-    Args:
-        column: The column name to classify.
-
-    Returns:
-        ``True`` when the column name denotes prohibited personal data.
-    """
-    normalised = column.strip().lower()
-    if normalised in PROHIBITED_PII_FIELD_NAMES:
-        return True
-    if any(token in normalised for token in PROHIBITED_PII_SUBSTRINGS):
-        return True
-    is_name_column = normalised == "name" or normalised.endswith("_name")
-    return is_name_column and normalised not in APPROVED_NAME_COLUMNS
-
-
-def check_no_prohibited_pii_columns(
-    frame: pd.DataFrame,
-    *,
-    check_id: str,
-    check_name: str,
-    target_object: str,
-    severity: CheckSeverity = CheckSeverity.CRITICAL,
-) -> CheckResult:
-    """Assert that no column name matches the prohibited personal-data vocabulary.
-
-    ARPI generates no personal data at all. This check is a structural tripwire: if a
-    future generator introduces a column called ``email`` or ``ssn``, the pipeline fails
-    before anything is written.
-
-    Args:
-        frame: Frame to inspect.
-        check_id: Stable check identifier.
-        check_name: Short human-readable name.
-        target_object: Entity the check applies to.
-        severity: Severity of a failure.
-
-    Returns:
-        The check result; ``observed_value`` is the number of offending columns.
-    """
-    offending = sorted(
-        str(column) for column in frame.columns if _is_prohibited_pii_column(str(column))
-    )
-    base = CheckResult(
-        check_id=check_id,
-        check_name=check_name,
-        target_object=target_object,
-        severity=severity,
-        check_category=CHECK_CATEGORY_PRIVACY,
-        observed_value=float(len(offending)),
-        expected_value=0.0,
-    )
-    if not offending:
-        return base
-    return base.failed(
-        f"{target_object} declares prohibited personal-data column(s): "
-        f"{', '.join(offending)}. ARPI must never generate personal data.",
-        failed_record_count=len(offending),
     )
 
 

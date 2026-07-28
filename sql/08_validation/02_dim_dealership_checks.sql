@@ -16,8 +16,9 @@
 --   DQ-DLR-004  no prohibited personal-data column exists on the dimension
 --   DQ-DLR-005  franchise stores name their brand, independents do not
 --
--- DQ-DLR-004 is a schema check rather than a data check, so it is meaningful even
--- when the dimension is empty and is never skipped. It is the automated form of
+-- DQ-DLR-004 carries the `privacy` category and inspects the catalogue rather than the
+-- data, so it is meaningful even when the dimension is empty and is never skipped. Its
+-- category matches the Python implementation of the same identifier. It is the automated form of
 -- the privacy promise in PRIVACY_AND_ETHICS.md: ARPI stores no street address, no
 -- telephone number, no e-mail address, no personal name and no geography finer
 -- than city. A future migration that adds such a column fails this check
@@ -153,8 +154,8 @@ UNION ALL
 -- DQ-DLR-004 --------------------------------------------------------------
 SELECT
     'DQ-DLR-004'::text,
-    'dim_dealership has no prohibited personal-data columns'::text,
-    'schema'::text,
+    'dim_dealership declares no personal-data columns'::text,
+    'privacy'::text,
     'warehouse.dim_dealership'::text,
     'critical'::text,
     CASE WHEN p.violation_count = 0 THEN 'passed' ELSE 'failed' END::text,

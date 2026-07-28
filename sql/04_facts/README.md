@@ -1,83 +1,76 @@
-# `sql/04_facts/` — no fact tables yet
+# `sql/04_facts/` — five fact tables, and not one fact row
 
-**Status: Planned (Phase 1.2).** This directory is intentionally empty apart from
-`.gitkeep` and this file.
+**Status: DDL Implemented (Phase 1.2). Data Planned.**
 
-ARPI Phase 0 delivers the foundation only: the two conformed dimensions
-(`warehouse.dim_date`, `warehouse.dim_dealership`), the raw and staging layers
-that feed them, the audit layer, the reporting views over what exists, the role
-model, and the tests around all of it. **No fact table has been created, no fact
-row has ever been loaded, and no measure has ever been computed.** Nothing in this
-repository should be read as claiming otherwise.
+Read that heading literally, because the distinction is the whole point of this file.
+The five fact tables below **exist** in the warehouse: they are created, typed,
+constrained, commented and covered by tests. **No fact row has ever been loaded into any
+of them, and no measure has ever been computed from one.** Nothing in this repository
+should be read as claiming otherwise, and
+`tests/integration/test_schema_objects.py::test_fact_tables_are_empty` asserts it on
+every run rather than leaving it to this paragraph.
 
-This file exists so that the empty directory carries a contract rather than
-nothing: it states what will land here, at what grain, and what has to be true
-before it can.
+| File | Table | Declared grain | Type | Rows |
+|---|---|---|---|---:|
+| `00_fact_vehicle_sale.sql` | `warehouse.fact_vehicle_sale` | One row per finalized vehicle transaction | Transaction | 0 |
+| `01_fact_vehicle_inventory_snapshot.sql` | `warehouse.fact_vehicle_inventory_snapshot` | One row per vehicle per store per snapshot date, while in stock | Periodic snapshot | 0 |
+| `02_fact_lead.sql` | `warehouse.fact_lead` | One row per unique CRM lead | Accumulating snapshot | 0 |
+| `03_fact_appointment.sql` | `warehouse.fact_appointment` | One row per scheduled appointment | Accumulating snapshot | 0 |
+| `04_fact_marketing_spend.sql` | `warehouse.fact_marketing_spend` | One row per store per campaign per calendar month | Periodic snapshot | 0 |
 
 ---
 
-## Why the directory is empty rather than pre-populated
+## Why the DDL landed before the data
 
-A fact table is defined by its grain and by the dimensions it conforms to. Both
-require the dimensions to exist and be trusted first. Creating an empty
-`warehouse.fact_vehicle_sale` today would:
+Phase 0's version of this file argued the opposite case — that an empty fact table lets a
+Power BI model bind to something that has never held a row and produce "dashboards full
+of confident zeros". That risk is real and has not gone away. What changed is that the
+grain, the columns, the types and the arithmetic identities are now **fixed** by the
+Phase 1 cross-agent contract, and several agents are building generators against them
+concurrently. Publishing the constrained DDL now means:
 
-- let a Power BI model bind to a table that has never held a row, producing
-  dashboards full of confident zeros;
-- freeze a grain decision before the data-generation rules that determine it have
-  been written;
-- make `sql/05_reporting/` look as though sales reporting exists.
+- every generator author writes against a table that will reject a violation, instead of
+  against a prose description of one;
+- the arithmetic identities (`front_end_gross`, `total_gross`, `inventory_investment`)
+  are enforced by the database from the first row ever inserted, not retrofitted after a
+  loading bug has already produced a plausible-looking wrong number;
+- the dimensional model is reviewable as a whole, foreign keys included.
 
-So the tables arrive in the same change that generates and loads their data, with
-their indexes, their data-quality checks and their reporting views.
+The confident-zeros risk is instead managed where it actually bites: no reporting view
+selects from any of these tables, `sql/05_reporting/00_reporting_scope.sql` still records
+the sales and inventory views as absent, and the emptiness is asserted by a test.
 
-## Prerequisites before anything is added here
+## What has to be true before rows arrive
 
-1. `warehouse.dim_date` and `warehouse.dim_dealership` load cleanly and pass every
-   `DQ-DATE-*` and `DQ-DLR-*` check. (Phase 0 — Implemented.)
-2. The remaining conformed dimensions land in `sql/03_dimensions/`:
-   `dim_vehicle`, `dim_employee` (SCD Type 2), `dim_lead_source`,
-   `dim_finance_product`, `dim_campaign`, `dim_deal_type`.
-3. `DATA_GENERATION.md` defines the generator rules for the corresponding business
-   process, including its controlled data-quality defects.
-4. `docs/source-to-target/` carries a mapping for the entity.
+1. The conformed dimensions load cleanly and pass their `DQ-*` checks. `dim_date` and
+   `dim_dealership` do today; the six Phase 1 dimensions are loaded by
+   `sql/03_dimensions/12_*` through `17_*`.
+2. The generator for the business process exists, is deterministic, and its output passes
+   the privacy tripwire.
+3. `docs/source-to-target/` carries the mapping. `STM-008` and `STM-009` are written;
+   `STM-011`, `STM-012` and `STM-014` are Agent H's.
+4. The load script — `10_fact_vehicle_sale_load.sql` onward, following the same
+   `NN_<name>_load.sql` convention the dimension merges use — lands in the same change as
+   the data, together with its `DQ-*` checks and any index a real query needs.
 
-## Planned fact tables and their declared grains
+## Rules every file here already follows
 
-Grains and columns are governed by `ARCHITECTURE.md` section 12; this table is the
-index, not the specification. Every one of these is **Planned**, not implemented.
-
-| Planned file | Table | Declared grain | Type |
-|---|---|---|---|
-| `00_fact_vehicle_sale.sql` | `warehouse.fact_vehicle_sale` | One row per sold vehicle deal | Transaction |
-| `01_fact_vehicle_inventory_snapshot.sql` | `warehouse.fact_vehicle_inventory_snapshot` | One row per vehicle per store per snapshot date | Periodic snapshot |
-| `02_fact_inventory_price_history.sql` | `warehouse.fact_inventory_price_history` | One row per vehicle per price-change event | Transaction |
-| `03_fact_lead.sql` | `warehouse.fact_lead` | One row per lead | Accumulating snapshot |
-| `04_fact_lead_activity.sql` | `warehouse.fact_lead_activity` | One row per activity on a lead | Transaction |
-| `05_fact_appointment.sql` | `warehouse.fact_appointment` | One row per appointment | Accumulating snapshot |
-| `06_fact_marketing_spend.sql` | `warehouse.fact_marketing_spend` | One row per campaign per store per day | Periodic snapshot |
-| `07_fact_finance_product_sale.sql` | `warehouse.fact_finance_product_sale` | One row per F&I product sold on a deal | Transaction |
-| `08_fact_service_visit.sql` | `warehouse.fact_service_visit` | One row per service repair order | Transaction |
-| `09_fact_sales_target.sql` | `warehouse.fact_sales_target` | One row per store per month per target metric | Periodic snapshot |
-
-Merge scripts follow the same convention as the dimensions: numbers below `10` for
-DDL, numbers from `10` upward for the `*_merge.sql` files that the Python loader
-executes at runtime.
-
-## Rules that will apply to every file added here
-
-- One declared grain per table, stated in `COMMENT ON TABLE`, and a data-quality
-  check that proves the grain is unique.
-- Integer surrogate foreign keys to the conformed dimensions, with real
-  `FOREIGN KEY` constraints — not merely documented relationships.
-- `date_key` resolves to `warehouse.dim_date`; a fact row for a date the calendar
+- One declared grain per table, stated in `COMMENT ON TABLE`, and enforced by a `UNIQUE`
+  constraint wherever the grain is a composite: `uq_fact_vehicle_inventory_snapshot_grain`
+  and `uq_fact_marketing_spend_grain` are grain constraints, not tuning indexes.
+- Integer surrogate foreign keys to the conformed dimensions, with real `FOREIGN KEY`
+  constraints and `ON DELETE RESTRICT` — not merely documented relationships.
+- Every `date_key` resolves to `warehouse.dim_date`. A fact row for a date the calendar
   does not contain is a failed load, not a silent orphan.
-- Measures are `numeric`. Never `float`.
-- Additive, semi-additive and non-additive measures are labelled as such in the
-  column comments, because a semi-additive measure summed across time is the most
-  common way a dashboard lies.
-- No customer personal data, ever. See `PRIVACY_AND_ETHICS.md`.
-- New indexes go in `sql/06_indexes/` only when a query that exists needs them.
-- The matching reporting view and data-quality checks land in the same change; see
-  `sql/05_reporting/00_reporting_scope.sql` for the reporting views that are
-  waiting on these tables.
+- Measures are `numeric(12,2)`. Never `float`.
+- Additive, semi-additive and non-additive measures are labelled as such in the column
+  comments, because a semi-additive measure summed across time is the most common way a
+  dashboard lies. `fact_vehicle_inventory_snapshot` is where this matters most: summing
+  `inventory_investment` across thirty days reports thirty times the money the group
+  actually has on the ground.
+- Derived measures that are stored are also constrained, so they cannot disagree with
+  their inputs.
+- No customer or employee personal data, ever. See `PRIVACY_AND_ETHICS.md`.
+- New indexes go in `sql/06_indexes/` only when a query that exists needs them, and
+  `sql/06_indexes/01_phase1_indexes.sql` records which ones were deliberately *not*
+  created and what already serves that access path.
