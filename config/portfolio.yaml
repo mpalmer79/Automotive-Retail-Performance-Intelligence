@@ -1,0 +1,61 @@
+# =====================================================================================
+# ARPI configuration profile: portfolio
+# =====================================================================================
+# Purpose
+#   The full two-year demonstration dataset (2024-01-01 .. 2025-12-31). This is the
+#   profile intended for a populated PostgreSQL warehouse and for downstream reporting
+#   work. It is the largest profile, so it does not write sample outputs: data/sample/
+#   is owned by the development profile and must stay small enough to review in a diff.
+#
+# Credentials
+#   NEVER put a password (or any other secret) in this file. The loader refuses to read
+#   a `password` key at any nesting depth. Export ARPI_DATABASE__PASSWORD instead, or
+#   fall back to PGPASSWORD. See config/README.md.
+#
+# Overrides
+#   Any key below can be overridden by an environment variable using the ARPI_ prefix
+#   and a __ nested delimiter, e.g. ARPI_DATABASE__HOST=localhost.
+# =====================================================================================
+
+profile: portfolio
+random_seed: 20240101
+
+reporting:
+  start_date: 2024-01-01
+  end_date: 2025-12-31
+
+generation:
+  store_count: 3
+  scale_mode: portfolio          # development | test | portfolio
+  write_sample_outputs: false
+  sample_row_limit: 400
+
+paths:
+  raw_output_dir: data/raw
+  sample_output_dir: data/sample
+  external_data_dir: data/external
+  log_dir: logs
+
+logging:
+  level: INFO                    # DEBUG|INFO|WARNING|ERROR|CRITICAL
+  format: text                   # text | json
+
+database:
+  enabled: false
+  host: null
+  port: 5432
+  name: null
+  user: null
+  sslmode: prefer                # disable|allow|prefer|require|verify-ca|verify-full
+  connect_timeout_seconds: 10
+
+features:
+  enable_public_vehicle_enrichment: false
+  enable_external_market_context: false
+
+validation:
+  numeric_absolute_tolerance: 0.01
+  numeric_relative_tolerance: 0.001
+  max_rejected_record_ratio: 0.0
+  min_selling_day_ratio: 0.80
+  max_selling_day_ratio: 1.00

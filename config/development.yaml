@@ -1,0 +1,63 @@
+# =====================================================================================
+# ARPI configuration profile: development
+# =====================================================================================
+# Purpose
+#   The default day-to-day profile. It covers a six-month reporting window
+#   (2025-07-01 .. 2025-12-31), which is small enough to regenerate in under a second
+#   and large enough to exercise month, quarter and year boundaries plus the full US
+#   holiday set for the second half of the year.
+#
+#   This profile is the one that produces the committed sample data in data/sample/.
+#
+# Credentials
+#   NEVER put a password (or any other secret) in this file. The loader refuses to read
+#   a `password` key at any nesting depth. Export ARPI_DATABASE__PASSWORD instead, or
+#   fall back to PGPASSWORD. See config/README.md.
+#
+# Overrides
+#   Any key below can be overridden by an environment variable using the ARPI_ prefix
+#   and a __ nested delimiter, e.g. ARPI_DATABASE__HOST=localhost.
+# =====================================================================================
+
+profile: development
+random_seed: 20250701
+
+reporting:
+  start_date: 2025-07-01
+  end_date: 2025-12-31
+
+generation:
+  store_count: 3
+  scale_mode: development        # development | test | portfolio
+  write_sample_outputs: true
+  sample_row_limit: 400
+
+paths:
+  raw_output_dir: data/raw
+  sample_output_dir: data/sample
+  external_data_dir: data/external
+  log_dir: logs
+
+logging:
+  level: INFO                    # DEBUG|INFO|WARNING|ERROR|CRITICAL
+  format: text                   # text | json
+
+database:
+  enabled: false
+  host: null
+  port: 5432
+  name: null
+  user: null
+  sslmode: prefer                # disable|allow|prefer|require|verify-ca|verify-full
+  connect_timeout_seconds: 10
+
+features:
+  enable_public_vehicle_enrichment: false
+  enable_external_market_context: false
+
+validation:
+  numeric_absolute_tolerance: 0.01
+  numeric_relative_tolerance: 0.001
+  max_rejected_record_ratio: 0.0
+  min_selling_day_ratio: 0.80
+  max_selling_day_ratio: 1.00

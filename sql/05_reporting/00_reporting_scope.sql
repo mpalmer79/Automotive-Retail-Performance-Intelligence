@@ -1,0 +1,72 @@
+-- =============================================================================
+-- File:            sql/05_reporting/00_reporting_scope.sql
+-- Project:         Automotive Retail Performance Intelligence (ARPI)
+-- Purpose:         Record the deliberate scope of the reporting layer — which views exist, which are deliberately absent, and why.
+-- Execution order: 12 of 25 — first file of the reporting layer.
+-- Idempotency:     Fully idempotent. Documentation only; the single statement is a COMMENT ON SCHEMA.
+-- Ownership:       n/a (comment applied by the bootstrap superuser; schema ownership moves to arpi_admin in sql/07_security/01_grants.sql).
+-- Grain:           n/a (documentation only)
+-- =============================================================================
+--
+-- =============================================================================
+-- WHAT THE REPORTING LAYER CONTAINS TODAY  (status: Implemented)
+-- =============================================================================
+--   reporting.vw_calendar               one row per calendar date
+--   reporting.vw_dealership             one row per CURRENT dealership store version
+--   reporting.vw_pipeline_run_summary   one row per pipeline run, with counts
+--   reporting.vw_data_quality_summary   one row per validation result, with run context
+--
+-- These four are the complete reporting surface of Phase 0, exactly as fixed by
+-- the ARPI cross-agent contract section 11. arpi_reporter (and therefore Power BI
+-- and Excel) can read these and nothing else.
+--
+-- =============================================================================
+-- WHAT IS DELIBERATELY ABSENT  (status: Planned — Phase 1.2 and later)
+-- =============================================================================
+-- The following views are NOT created, and their absence is a decision rather
+-- than an oversight:
+--
+--   reporting.vw_sales_performance      needs warehouse.fact_vehicle_sale
+--   reporting.vw_gross_summary          needs warehouse.fact_vehicle_sale and
+--                                            warehouse.fact_finance_product_sale
+--   reporting.vw_inventory_aging        needs warehouse.fact_vehicle_inventory_snapshot
+--   reporting.vw_lead_funnel            needs warehouse.fact_lead,
+--                                            warehouse.fact_lead_activity and
+--                                            warehouse.fact_appointment
+--   reporting.vw_marketing_efficiency   needs warehouse.fact_marketing_spend
+--   reporting.vw_service_summary        needs warehouse.fact_service_visit
+--   reporting.vw_target_attainment      needs warehouse.fact_sales_target
+--
+-- REASON. None of the underlying fact tables exist yet (see sql/04_facts/README.md).
+-- A view over a non-existent table cannot be created at all, and a view that
+-- returns a correctly-shaped but permanently empty result set would be worse than
+-- nothing: it would let a Power BI model bind to a KPI that has never been
+-- computed, and it would let a reader conclude that ARPI reports on sales
+-- performance today. It does not. ARCHITECTURE.md is explicit that nothing may
+-- claim facts, dashboards or findings exist before they do.
+--
+-- WHEN THE FACTS LAND. Each view above is added in the same change that adds its
+-- fact table, together with its grain comment, its column comments, the grants in
+-- sql/07_security/01_grants.sql and its data-quality checks in sql/08_validation.
+--
+-- =============================================================================
+-- REPORTING LAYER RULES
+-- =============================================================================
+--   1. Every reporting object is a view. No physical reporting tables exist in
+--      Phase 0; if a materialised view is ever needed it must be justified by a
+--      measured performance problem.
+--   2. Views are owned by arpi_admin and read warehouse and audit objects that
+--      arpi_admin also owns, so arpi_reporter needs no privileges on those
+--      schemas. That is the mechanism which keeps Power BI out of the raw layer.
+--   3. Column names are business-facing and stable. Renaming a warehouse column
+--      must not change a reporting column; the view absorbs the change.
+--   4. Column names remain lower_snake_case and unquoted so that psql, Power BI
+--      and Excel all address them the same way; consumer tools apply display
+--      formatting.
+--   5. Every view declares its grain in COMMENT ON VIEW.
+
+COMMENT ON SCHEMA reporting IS
+    'ARPI reporting layer. The only schema Power BI, Excel and arpi_reporter may read. Phase 0 exposes '
+    'exactly four views: vw_calendar, vw_dealership, vw_pipeline_run_summary and vw_data_quality_summary. '
+    'Sales, gross, inventory, lead, marketing, service and target views are deliberately absent because '
+    'the underlying fact tables do not exist yet (Phase 1.2). See sql/05_reporting/00_reporting_scope.sql.';

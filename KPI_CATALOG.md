@@ -1,0 +1,1051 @@
+# KPI Catalog — Automotive Retail Performance Intelligence (ARPI)
+
+**Project:** Automotive Retail Performance Intelligence (ARPI)
+**Owner:** Michael Palmer
+**Version:** 1.0
+**Last reviewed:** 2026-07-28
+**Companion documents:** [ARCHITECTURE.md](ARCHITECTURE.md) · [DATA_DICTIONARY.md](DATA_DICTIONARY.md) · [DATA_GENERATION.md](DATA_GENERATION.md) · [LIMITATIONS.md](LIMITATIONS.md) · [docs/requirements/PHASE_1_BACKLOG.md](docs/requirements/PHASE_1_BACKLOG.md)
+
+---
+
+## 1. Purpose
+
+This is the single governed definition of every metric ARPI will publish. It exists so that a number shown
+on a Power BI card, a number returned by a SQL query, and a number quoted in a findings memo mean exactly
+the same thing, and so that a reader can see the arithmetic rather than trust it.
+
+---
+
+## 2. Governance statement
+
+> **No KPI may exist only as an unexplained dashboard measure.**
+> — [ARCHITECTURE.md §18.3](ARCHITECTURE.md)
+
+Every KPI in ARPI must document all of the following before it may appear in any report, and every entry in
+section 6 onward carries all of them:
+
+business definition · formula · numerator · denominator · grain · time context · inclusion rules ·
+exclusion rules · null behaviour · source tables · DAX or SQL ownership · known limitations
+
+Three further rules are binding for this catalogue:
+
+1. **Every ratio states both sides.** A ratio KPI without an explicit numerator *and* an explicit
+   denominator is not a KPI, it is a rumour. Additive measures state `n/a — additive measure` in the
+   denominator field so the omission is visibly deliberate.
+2. **No invented benchmarks.** This catalogue contains **no industry benchmark values**. ARPI has no access
+   to real dealership performance data, so it cannot state what "good" looks like. Where a numeric
+   threshold appears — the 60-day aged-inventory threshold, the 30-day days-supply trailing window — it is
+   labelled a **project default** with its source cited, and it is a parameter of the calculation, not a
+   performance standard. See [LIMITATIONS.md](LIMITATIONS.md).
+3. **Averages and medians are documented as a pair.** Where a distribution is skewed, the median is the
+   headline figure and the mean is retained for reconciliation and for detecting skew. Neither is published
+   without the other. See section 5.
+
+---
+
+## 3. Implementation status — read this first
+
+> ## ⚠ ZERO KPIs ARE IMPLEMENTED
+>
+> **Not one metric in this catalogue is computed anywhere in this repository today.**
+>
+> The reason is simple and structural: **no fact table exists.** Phase 0 delivered the calendar dimension,
+> the dealership dimension, the raw and staging layer for those two entities, the audit framework, and four
+> reporting views. It delivered **no `warehouse.fact_*` table of any kind** — see
+> [DATA_DICTIONARY.md](DATA_DICTIONARY.md) Part C, where every fact is marked Planned or Deferred.
+>
+> A KPI is a calculation over facts. With no facts, there is no calculation, no SQL that computes one, no
+> DAX measure, no dashboard, and no result. **Every KPI below is `Planned` or `Deferred`.**
+>
+> This document is therefore a *specification*, written in advance so that implementation has an
+> unambiguous target and so that Scope Gate 1 ([ARCHITECTURE.md §28](ARCHITECTURE.md)) can be satisfied
+> before any Power BI work begins. It is not a report of results. **Nothing in this repository has produced
+> a dealership finding, and no figure here has ever been calculated.**
+
+### 3.1 Status legend
+
+| Status | Meaning |
+|---|---|
+| **Implemented** | Computed in SQL and/or DAX in this repository today, and covered by tests. **No KPI holds this status.** |
+| **Planned** | Committed scope with a named phase. Fully specified here; not yet built. |
+| **Deferred** | In the target architecture but outside the current roadmap; unlocked by a later release stage. |
+| **Out of scope** | Deliberately excluded. Adding it requires an architecture decision record. |
+
+### 3.2 KPI identifier scheme
+
+| Prefix | Domain | Range in use |
+|---|---|---|
+| `KPI-SLS-###` | Sales volume | `KPI-SLS-001` … `KPI-SLS-003` |
+| `KPI-GRS-###` | Gross profit | `KPI-GRS-001` … `KPI-GRS-006` |
+| `KPI-INV-###` | Inventory | `KPI-INV-001` … `KPI-INV-009` |
+| `KPI-FUN-###` | Lead funnel | `KPI-FUN-001` … `KPI-FUN-008` |
+| `KPI-MKT-###` | Marketing | `KPI-MKT-001` … `KPI-MKT-003` |
+
+Identifiers are permanent. A retired KPI keeps its ID and is marked `Out of scope`; the number is never
+reused. A KPI whose *definition* changes materially gets a new ID, so that a historical finding citing
+`KPI-INV-006` always refers to the same arithmetic.
+
+### 3.3 "Blocks Power BI Gate 1?"
+
+[ARCHITECTURE.md §28](ARCHITECTURE.md) Gate 1: *no Power BI development begins until fact grains are
+approved, dimensions are documented, and KPI formulas are documented.*
+
+In the index below, **Blocks Power BI Gate 1? = Yes** means: this KPI is required by one of the five MVP
+report pages ([ARCHITECTURE.md §30](ARCHITECTURE.md) — Executive Overview, Sales and Gross, Inventory
+Health, Lead Funnel, Employee Performance), so its formula must be documented and its source fact grain
+approved before Power BI work may start. **No** means the KPI serves a post-MVP page and does not hold the
+gate.
+
+---
+
+## 4. KPI index
+
+| KPI ID | Name | Domain | Unit | Grain | Status | Blocks Power BI Gate 1? |
+|---|---|---|---|---|---|---|
+| `KPI-SLS-001` | Retail units sold | Sales | Count (integer) | Store × day, aggregable to any period | Planned (Phase 1.3) | **Yes** |
+| `KPI-SLS-002` | New units sold | Sales | Count (integer) | Store × day | Planned (Phase 1.3) | **Yes** |
+| `KPI-SLS-003` | Used units sold | Sales | Count (integer) | Store × day | Planned (Phase 1.3) | **Yes** |
+| `KPI-GRS-001` | Front-end gross | Gross | Currency (USD) | Store × day | Planned (Phase 1.3) | **Yes** |
+| `KPI-GRS-002` | Back-end gross | Gross | Currency (USD) | Store × day | Planned (Phase 1.3) | **Yes** |
+| `KPI-GRS-003` | Total gross | Gross | Currency (USD) | Store × day | Planned (Phase 1.3) | **Yes** |
+| `KPI-GRS-004` | Front gross per retail unit | Gross | Currency per unit (USD) | Store × period | Planned (Phase 1.3) | **Yes** |
+| `KPI-GRS-005` | Back gross per retail unit | Gross | Currency per unit (USD) | Store × period | Planned (Phase 1.3) | **Yes** |
+| `KPI-GRS-006` | Total gross per retail unit | Gross | Currency per unit (USD) | Store × period | Planned (Phase 1.3) | **Yes** |
+| `KPI-INV-001` | Active inventory count | Inventory | Count (integer) | Store × snapshot date | Planned (Phase 1.3) | **Yes** |
+| `KPI-INV-002` | Inventory investment | Inventory | Currency (USD) | Store × snapshot date | Planned (Phase 1.3) | **Yes** |
+| `KPI-INV-003` | Average inventory age | Inventory | Days (1 decimal) | Store × snapshot date | Planned (Phase 1.3) | **Yes** |
+| `KPI-INV-004` | Median inventory age | Inventory | Days (integer) | Store × snapshot date | Planned (Phase 1.3) | **Yes** |
+| `KPI-INV-005` | Aged inventory count | Inventory | Count (integer) | Store × snapshot date | Planned (Phase 1.3) | **Yes** |
+| `KPI-INV-006` | Aged inventory percentage | Inventory | Percentage (1 decimal) | Store × snapshot date | Planned (Phase 1.3) | **Yes** |
+| `KPI-INV-007` | Days to sale | Inventory | Days | Sale transaction, aggregable | Planned (Phase 1.3) | **Yes** |
+| `KPI-INV-008` | Inventory turn | Inventory | Turns per year (2 decimals) | Store × period | Planned (Phase 1.3) | **Yes** |
+| `KPI-INV-009` | Dealer days supply | Inventory | Days (integer) | Store × as-of date | Planned (Phase 1.3) | **Yes** |
+| `KPI-FUN-001` | Leads received | Funnel | Count (integer) | Store × day | Planned (Phase 1.4) | **Yes** |
+| `KPI-FUN-002` | Contact rate | Funnel | Percentage (1 decimal) | Store × period | Planned (Phase 1.4) | **Yes** |
+| `KPI-FUN-003` | Appointment-set rate | Funnel | Percentage (1 decimal) | Store × period | Planned (Phase 1.4) | **Yes** |
+| `KPI-FUN-004` | Show rate | Funnel | Percentage (1 decimal) | Store × period | Planned (Phase 1.4) | **Yes** |
+| `KPI-FUN-005` | Show-to-sale conversion | Funnel | Percentage (1 decimal) | Store × period | Planned (Phase 1.4) | **Yes** |
+| `KPI-FUN-006` | Lead-to-sale conversion | Funnel | Percentage (1 decimal) | Store × period | Planned (Phase 1.4) | **Yes** |
+| `KPI-FUN-007` | Average response time | Funnel | Minutes (1 decimal) | Store × period | Planned (Phase 1.4) | **Yes** |
+| `KPI-FUN-008` | Median response time | Funnel | Minutes (integer) | Store × period | Planned (Phase 1.4) | **Yes** |
+| `KPI-MKT-001` | Marketing cost per lead | Marketing | Currency per lead (USD) | Store × campaign × month | Planned (Phase 1.5) | No |
+| `KPI-MKT-002` | Marketing cost per sale | Marketing | Currency per sale (USD) | Store × campaign × month | Planned (Phase 1.5) | No |
+| `KPI-MKT-003` | Gross return on advertising spend | Marketing | Ratio (2 decimals) | Store × campaign × month | Planned (Phase 1.5) | No |
+
+**29 KPIs specified. 0 Implemented. 29 Planned. Deferred KPIs are listed separately in section 11.**
+
+---
+
+## 5. Average and median governance
+
+`docs/research.md` §4.4 (*Metric Governance Note*) requires that turn and days-supply calculations document
+the time period used, the inventory included, the sales included, retail versus wholesale treatment, new
+versus used treatment, whether sold units enter denominator logic, and whether rolling averages are used.
+Every inventory KPI below answers all seven questions explicitly.
+
+`docs/research.md` §4.3 and §4.4 both require **average age and median age**, and **average days to sale and
+median days to sale**. §4.5 likewise requires **average response time and median response time**. That is a
+deliberate pairing, not redundancy, and this catalogue treats it as a governance rule:
+
+| Metric pair | Headline figure | Why both exist |
+|---|---|---|
+| Inventory age (`KPI-INV-003` mean, `KPI-INV-004` median) | **Median** | Inventory age is right-skewed: most units sell within a few weeks while a small tail sits for months. A handful of 200-day units drags the mean upward and makes a fundamentally healthy lot look sick — or, worse, makes management chase an average that no individual unit resembles. The median describes the typical unit. The mean is retained because it is the only figure that reconciles additively (`SUM(days_in_stock) / COUNT(*)`), and because **the gap between mean and median is itself the diagnostic**: a mean far above the median is direct evidence of an aged tail, which is exactly what `KPI-INV-005` and `KPI-INV-006` then quantify. |
+| Response time (`KPI-FUN-007` mean, `KPI-FUN-008` median) | **Median** | Response time is severely right-skewed: most responses happen in minutes, a few happen days later or never. The mean is dominated by the tail and can move dramatically because of one lead. The median describes the experience of the typical customer. The mean is retained to expose the tail and to reconcile to total response seconds. |
+| Days to sale (`KPI-INV-007`) | **Median** | Same skew as inventory age. `KPI-INV-007` publishes both statistics from one definition. |
+
+**Rule.** Wherever a mean and a median of the same quantity are both available, a report page must show the
+median as the headline value and must make the mean available (card, tooltip, or adjacent column). Showing
+only the mean of a skewed distribution is a reporting defect in this project, not a stylistic choice.
+
+---
+
+# Domain: Sales
+
+---
+
+## 6. `KPI-SLS-001` — Retail units sold
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-SLS-001` |
+| **Display name** | Retail units sold |
+| **Business purpose** | The primary volume measure of the business, and the denominator of every per-unit gross measure. Answers "how many cars did we deliver?" |
+| **Business owner persona** | General sales manager (`docs/research.md` §8.2) |
+| **Definition (plain English)** | The count of finalized retail and lease deliveries in the period. Wholesale disposals and dealer trades are not retail units and are never counted here. |
+| **Formula** | `SUM(unit_count) WHERE is_retail = true` |
+| **Numerator (precise)** | `SUM(warehouse.fact_vehicle_sale.unit_count)` over rows where `is_retail = true`, restricted to the selected period and filter context. |
+| **Denominator (precise)** | `n/a — additive measure` |
+| **Grain** | Computed at store × day; fully additive across store, day, employee, vehicle, model, and lead source, so it aggregates to any period without restatement. |
+| **Date basis** | `warehouse.fact_vehicle_sale.sale_date_key` → `warehouse.dim_date`. The sale date, not the delivery date. Delivery-date reporting is available separately via `delivery_date_key` and must be labelled as such. |
+| **Filters** | `is_retail = true`. Store, employee, vehicle, model, and lead-source filters apply from the surrounding context. |
+| **Exclusions** | Canceled deals (never loaded as finalized sales); wholesale transactions; dealer trades. Per [ARCHITECTURE.md §18.2](ARCHITECTURE.md), wholesale may be included only when specifically selected, and then must be labelled a different measure. |
+| **Null / zero-denominator behaviour** | No denominator. An empty filter context returns `0`, never `BLANK()`, because "no cars sold" is a meaningful business answer and must be visible on a trend line. |
+| **Unit and formatting** | Integer count. Thousands separator. No decimals. |
+| **SQL ownership** | `reporting.vw_sales_summary` (Planned, Phase 1.3), aggregating `warehouse.fact_vehicle_sale`. |
+| **Future DAX ownership** | Sales measures group ([ARCHITECTURE.md §19.3](ARCHITECTURE.md)). Also surfaced on Executive measures. |
+| **Reconciliation rule** | `RECON-UNITS-001` — retail units by month in SQL must equal Power BI totals exactly (tolerance 0). |
+| **Interpretation caution** | Volume alone must never be used to rank employees or stores. `docs/research.md` §4.6 is explicit: a high-volume employee may show weak gross retention, poor follow-up, heavy discounting, or simply favourable lead routing. Always pair this measure with `KPI-GRS-006` and funnel context. |
+| **Implementation status** | **Planned (Phase 1.3)** |
+| **Depends on (entities)** | `warehouse.fact_vehicle_sale` (Planned), `warehouse.dim_date` (Implemented), `warehouse.dim_dealership` (Implemented) |
+
+---
+
+## 7. `KPI-SLS-002` — New units sold
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-SLS-002` |
+| **Display name** | New units sold |
+| **Business purpose** | Isolates new-vehicle volume, which behaves differently from used: different supply constraint, different gross structure, different incentive exposure. Required for the new-versus-used comparison in `docs/research.md` §4.8. |
+| **Business owner persona** | New-car manager |
+| **Definition (plain English)** | The count of finalized retail and lease deliveries of new vehicles in the period. |
+| **Formula** | `SUM(unit_count) WHERE is_retail = true AND sale_type = 'New Retail'` |
+| **Numerator (precise)** | `SUM(warehouse.fact_vehicle_sale.unit_count)` over rows where `is_retail = true` and `sale_type = 'New Retail'`. |
+| **Denominator (precise)** | `n/a — additive measure` |
+| **Grain** | Store × day; fully additive. |
+| **Date basis** | `sale_date_key` → `dim_date`. |
+| **Filters** | `is_retail = true`, `sale_type = 'New Retail'`. |
+| **Exclusions** | Used and certified retail; leases of used units; wholesale; dealer trades; canceled deals. **Certified pre-owned units are used units** and are counted in `KPI-SLS-003`, never here. |
+| **Null / zero-denominator behaviour** | No denominator. Returns `0` in an empty context. Structurally `0` for `GSA-003`, which is an independent used store with no franchise — that zero is correct, not missing data. |
+| **Unit and formatting** | Integer count. Thousands separator. |
+| **SQL ownership** | `reporting.vw_sales_summary` (Planned, Phase 1.3). |
+| **Future DAX ownership** | Sales measures group. |
+| **Reconciliation rule** | `RECON-UNITS-001` — `KPI-SLS-002 + KPI-SLS-003` must equal `KPI-SLS-001` for every filter context. If the identity fails, a sale type is unmapped. |
+| **Interpretation caution** | New-vehicle gross is affected by manufacturer incentives, which [ARCHITECTURE.md §18.2](ARCHITECTURE.md) **excludes from the initial model**. New-unit profitability in ARPI is therefore incomplete by design, and comparisons of new against used gross must say so. |
+| **Implementation status** | **Planned (Phase 1.3)** |
+| **Depends on (entities)** | `warehouse.fact_vehicle_sale` (Planned), `warehouse.dim_vehicle` (Planned), `warehouse.dim_date` (Implemented), `warehouse.dim_dealership` (Implemented) |
+
+---
+
+## 8. `KPI-SLS-003` — Used units sold
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-SLS-003` |
+| **Display name** | Used units sold |
+| **Business purpose** | Isolates used-vehicle volume. Used is where acquisition skill, reconditioning discipline, and pricing judgement show up, and where gross variance is widest. |
+| **Business owner persona** | Used-car manager |
+| **Definition (plain English)** | The count of finalized retail and lease deliveries of used vehicles, **including manufacturer-certified pre-owned units**, in the period. |
+| **Formula** | `SUM(unit_count) WHERE is_retail = true AND sale_type IN ('Used Retail', 'Certified Retail')` |
+| **Numerator (precise)** | `SUM(warehouse.fact_vehicle_sale.unit_count)` over rows where `is_retail = true` and `sale_type IN ('Used Retail', 'Certified Retail')`. |
+| **Denominator (precise)** | `n/a — additive measure` |
+| **Grain** | Store × day; fully additive. |
+| **Date basis** | `sale_date_key` → `dim_date`. |
+| **Filters** | `is_retail = true`, `sale_type IN ('Used Retail', 'Certified Retail')`. |
+| **Exclusions** | New retail; wholesale; dealer trades; canceled deals. |
+| **Null / zero-denominator behaviour** | No denominator. Returns `0` in an empty context. |
+| **Unit and formatting** | Integer count. Thousands separator. |
+| **SQL ownership** | `reporting.vw_sales_summary` (Planned, Phase 1.3). |
+| **Future DAX ownership** | Sales measures group. A separate certified-only measure may be added later; it must not silently change this definition. |
+| **Reconciliation rule** | `RECON-UNITS-001` — see `KPI-SLS-002`. |
+| **Interpretation caution** | Certified units are included here by definition. Any report that shows "used" and "certified" as separate categories must make clear whether the used figure is inclusive or exclusive of certified, because both conventions exist in the industry and mixing them silently double-counts or under-counts. |
+| **Implementation status** | **Planned (Phase 1.3)** |
+| **Depends on (entities)** | `warehouse.fact_vehicle_sale` (Planned), `warehouse.dim_vehicle` (Planned), `warehouse.dim_date` (Implemented), `warehouse.dim_dealership` (Implemented) |
+
+---
+
+# Domain: Gross profit
+
+> [ARCHITECTURE.md §18.2](ARCHITECTURE.md) and `docs/research.md` §4.2 both insist that front-end, back-end,
+> and total gross **remain separate**. Combining them too early destroys the diagnosis: a store can hold
+> total gross steady while front gross collapses and F&I compensates, and that is a materially different
+> business situation from a store where both are stable.
+
+---
+
+## 9. `KPI-GRS-001` — Front-end gross
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-GRS-001` |
+| **Display name** | Front-end gross |
+| **Business purpose** | Profit earned on the vehicle itself. The measure most sensitive to pricing, discounting, acquisition cost, and reconditioning discipline. |
+| **Business owner persona** | General sales manager |
+| **Definition (plain English)** | Total vehicle profit on finalized retail deliveries: selling price less what the unit cost to acquire, recondition, and pack. |
+| **Formula** | `SUM(final sale price − acquisition cost − reconditioning cost − pack amount)` — [ARCHITECTURE.md §18.2](ARCHITECTURE.md) |
+| **Numerator (precise)** | `SUM(warehouse.fact_vehicle_sale.front_end_gross)` over rows where `is_retail = true`, where each row's `front_end_gross = sale_price − acquisition_cost − reconditioning_cost − pack_amount`, computed once in SQL at load. |
+| **Denominator (precise)** | `n/a — additive measure` |
+| **Grain** | Store × day; fully additive. |
+| **Date basis** | `sale_date_key` → `dim_date`. |
+| **Filters** | `is_retail = true` for the headline measure. A wholesale variant is a separate, separately named measure. |
+| **Exclusions** | Canceled deals; back-end components (finance reserve, F&I products); **manufacturer incentives and accounting adjustments**, which [ARCHITECTURE.md §18.2](ARCHITECTURE.md) excludes from the initial model unless explicitly generated and documented. |
+| **Null / zero-denominator behaviour** | No denominator. Returns `0` in an empty context. **Negative values are legitimate and must remain visible** — a negative-front deal is a real dealership outcome and is one of the required measures in `docs/research.md` §4.2. [ARCHITECTURE.md §19.6](ARCHITECTURE.md) requires negative values to stay interpretable. |
+| **Unit and formatting** | Currency, USD, no decimals at summary level. Negative values shown with a minus sign and a distinguishing treatment that is **not colour alone** ([ARCHITECTURE.md §19.6](ARCHITECTURE.md)). |
+| **SQL ownership** | Row-level arithmetic in `warehouse.fact_vehicle_sale` (SQL warehouse — [ARCHITECTURE.md §18.1](ARCHITECTURE.md) assigns row-level financial arithmetic to SQL). Aggregation in `reporting.vw_gross_summary` (Planned, Phase 1.3). |
+| **Future DAX ownership** | Gross measures group. |
+| **Reconciliation rule** | `RECON-GROSS-001` — for every row, `front_end_gross + back_end_gross = total_gross` within `validation.numeric_absolute_tolerance` (0.01). `RECON-GROSS-002` — monthly SQL totals equal Power BI totals. |
+| **Interpretation caution** | Because incentives are excluded, new-vehicle front gross in ARPI is systematically understated relative to how a real store would report it. This is a **modelling boundary, not a finding**. Never state or imply that ARPI front gross reflects real-world new-car profitability. |
+| **Implementation status** | **Planned (Phase 1.3)** |
+| **Depends on (entities)** | `warehouse.fact_vehicle_sale` (Planned), `warehouse.dim_date` (Implemented), `warehouse.dim_dealership` (Implemented) |
+
+---
+
+## 10. `KPI-GRS-002` — Back-end gross
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-GRS-002` |
+| **Display name** | Back-end gross |
+| **Business purpose** | Profit earned in the finance office. Shows whether total profitability is being carried by the vehicle or by F&I, which is a central management question. |
+| **Business owner persona** | Finance director |
+| **Definition (plain English)** | The sum of net finance reserve and net F&I product gross on finalized retail deliveries. |
+| **Formula** | `SUM(net finance reserve + net F&I product gross)` for finalized transactions — [ARCHITECTURE.md §18.2](ARCHITECTURE.md) |
+| **Numerator (precise)** | `SUM(warehouse.fact_vehicle_sale.back_end_gross)` over rows where `is_retail = true`. In the MVP this column is generated directly at deal level. Once `warehouse.fact_finance_product_sale` exists (Deferred), it becomes a derived total that must reconcile to product-level detail. |
+| **Denominator (precise)** | `n/a — additive measure` |
+| **Grain** | Store × day; fully additive. |
+| **Date basis** | `sale_date_key` → `dim_date`. **Cancellations and chargebacks occur after the original sale** ([ARCHITECTURE.md §15.3](ARCHITECTURE.md)), so a restated back-end figure for a past month is expected behaviour once the Deferred F&I fact exists. Until then, back-end gross is as-booked. |
+| **Filters** | `is_retail = true`. |
+| **Exclusions** | Canceled deals; front-end components; wholesale and dealer trades (which generate no F&I). |
+| **Null / zero-denominator behaviour** | No denominator. Returns `0` in an empty context. A cash deal with no products legitimately contributes `0`, not NULL. |
+| **Unit and formatting** | Currency, USD, no decimals at summary level. |
+| **SQL ownership** | `warehouse.fact_vehicle_sale` at row level; `reporting.vw_gross_summary` (Planned, Phase 1.3) for aggregation. |
+| **Future DAX ownership** | Gross measures group; also referenced by the F&I measures group when that domain is unlocked. |
+| **Reconciliation rule** | `RECON-GROSS-001`. `RECON-FI-001` (Deferred) — once `fact_finance_product_sale` exists, the sum of net product gross plus finance reserve must equal this measure. |
+| **Interpretation caution** | In the MVP, back-end gross is a **single generated number with no product-level detail behind it**. It cannot answer "which product drove this?", and any narrative about product mix is unsupported until the Deferred F&I fact is built. ARPI models no real lender behaviour, no rate sheets, and no credit decisions — see [PRIVACY_AND_ETHICS.md](PRIVACY_AND_ETHICS.md). |
+| **Implementation status** | **Planned (Phase 1.3)** |
+| **Depends on (entities)** | `warehouse.fact_vehicle_sale` (Planned), `warehouse.fact_finance_product_sale` (Deferred, for full reconciliation), `warehouse.dim_date` (Implemented) |
+
+---
+
+## 11. `KPI-GRS-003` — Total gross
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-GRS-003` |
+| **Display name** | Total gross |
+| **Business purpose** | The headline profitability figure and the single most-quoted number in dealership management reporting. |
+| **Business owner persona** | Dealer principal |
+| **Definition (plain English)** | Front-end gross plus back-end gross on finalized retail deliveries. |
+| **Formula** | `front-end gross + back-end gross` — [ARCHITECTURE.md §18.2](ARCHITECTURE.md) |
+| **Numerator (precise)** | `SUM(warehouse.fact_vehicle_sale.total_gross)` over rows where `is_retail = true`, where each row's `total_gross = front_end_gross + back_end_gross`, stored at load rather than recomputed at query time. |
+| **Denominator (precise)** | `n/a — additive measure` |
+| **Grain** | Store × day; fully additive. |
+| **Date basis** | `sale_date_key` → `dim_date`. |
+| **Filters** | `is_retail = true` for the headline measure. |
+| **Exclusions** | Canceled deals; wholesale and dealer trades unless explicitly selected and labelled. |
+| **Null / zero-denominator behaviour** | No denominator. Returns `0` in an empty context. May be negative; must remain visible. |
+| **Unit and formatting** | Currency, USD, no decimals at summary level. |
+| **SQL ownership** | `warehouse.fact_vehicle_sale` at row level; `reporting.vw_gross_summary` (Planned, Phase 1.3). |
+| **Future DAX ownership** | Executive measures group and Gross measures group. |
+| **Reconciliation rule** | `RECON-GROSS-001` — `total_gross = front_end_gross + back_end_gross` at row level, tolerance 0.01. `RECON-GROSS-002` — monthly SQL totals equal Power BI totals. Also a required business-rule test in [ARCHITECTURE.md §21.2](ARCHITECTURE.md). |
+| **Interpretation caution** | Total gross conceals the trade-off between front and back. A flat total gross trend can hide a collapsing front offset by rising F&I — a materially different and usually less durable business. Always show `KPI-GRS-001` and `KPI-GRS-002` alongside it. |
+| **Implementation status** | **Planned (Phase 1.3)** |
+| **Depends on (entities)** | `warehouse.fact_vehicle_sale` (Planned), `warehouse.dim_date` (Implemented), `warehouse.dim_dealership` (Implemented) |
+
+---
+
+## 12. `KPI-GRS-004` — Front gross per retail unit
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-GRS-004` |
+| **Display name** | Front gross per retail unit |
+| **Business purpose** | Normalizes vehicle profit for volume, so that a small store and a large store can be compared, and so that a change in profit can be attributed to *pricing* rather than to *volume*. |
+| **Business owner persona** | General sales manager |
+| **Definition (plain English)** | Average vehicle profit earned on each retail unit delivered in the period. |
+| **Formula** | `total retail front-end gross / retail units sold` |
+| **Numerator (precise)** | `SUM(warehouse.fact_vehicle_sale.front_end_gross)` over rows where `is_retail = true`, in the filter context. |
+| **Denominator (precise)** | `SUM(warehouse.fact_vehicle_sale.unit_count)` over rows where `is_retail = true`, in the **same** filter context. Per [ARCHITECTURE.md §18.2](ARCHITECTURE.md), **the denominator must exclude wholesale and dealer-trade transactions.** |
+| **Grain** | Store × period. **Non-additive** — it is a ratio and must be recomputed at every level of aggregation, never summed or averaged from lower levels. |
+| **Date basis** | `sale_date_key` → `dim_date`. Numerator and denominator must use the identical date basis and identical filter context; a mismatch is the classic way this measure silently goes wrong. |
+| **Filters** | `is_retail = true` on both sides. |
+| **Exclusions** | Wholesale and dealer trades on both sides; canceled deals; manufacturer incentives (excluded from the numerator by the front-gross definition). |
+| **Null / zero-denominator behaviour** | **When the denominator is `0`, return `BLANK()` / NULL — never `0`.** Zero units sold means the metric is undefined, not that per-unit gross was nothing. Displaying `$0` in a month with no sales would be a false statement. Charts must show a gap, not a zero point. |
+| **Unit and formatting** | Currency per unit, USD, no decimals. Displayed as e.g. `$1,842`. |
+| **SQL ownership** | `reporting.vw_gross_summary` (Planned, Phase 1.3) exposes numerator and denominator **as separate additive columns**. The division is performed in DAX so that it recomputes correctly under any filter. |
+| **Future DAX ownership** | Gross measures group. Implemented with `DIVIDE(numerator, denominator)` so the zero-denominator case returns `BLANK()` by default. |
+| **Reconciliation rule** | `RECON-GROSS-002` — the numerator and the denominator must each reconcile independently to SQL monthly totals. Reconciling the ratio alone is insufficient: two compensating errors can produce a correct ratio. |
+| **Interpretation caution** | A rising per-unit gross with falling volume is not automatically good; it often means the store stopped chasing marginal deals, which can be correct or can be lost market share. Pair with `KPI-SLS-001`. Never compare this figure to an external benchmark — ARPI has none. |
+| **Implementation status** | **Planned (Phase 1.3)** |
+| **Depends on (entities)** | `warehouse.fact_vehicle_sale` (Planned), `warehouse.dim_date` (Implemented), `warehouse.dim_dealership` (Implemented) |
+
+---
+
+## 13. `KPI-GRS-005` — Back gross per retail unit
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-GRS-005` |
+| **Display name** | Back gross per retail unit |
+| **Business purpose** | The standard measure of finance-office productivity. Answers "how much are we earning in F&I on every car we deliver?" |
+| **Business owner persona** | Finance director |
+| **Definition (plain English)** | Average finance and insurance profit earned on each retail unit delivered in the period. |
+| **Formula** | `total retail back-end gross / retail units sold` |
+| **Numerator (precise)** | `SUM(warehouse.fact_vehicle_sale.back_end_gross)` over rows where `is_retail = true`. |
+| **Denominator (precise)** | `SUM(warehouse.fact_vehicle_sale.unit_count)` over rows where `is_retail = true`, same filter context. Wholesale and dealer trades are excluded from the denominator. |
+| **Grain** | Store × period. **Non-additive ratio.** |
+| **Date basis** | `sale_date_key` → `dim_date`. |
+| **Filters** | `is_retail = true` on both sides. |
+| **Exclusions** | Wholesale; dealer trades; canceled deals. |
+| **Null / zero-denominator behaviour** | Zero denominator returns `BLANK()` / NULL. A cash deal with no F&I products contributes `0` to the numerator and `1` to the denominator — it is included, because excluding cash deals would overstate finance-office productivity. |
+| **Unit and formatting** | Currency per unit, USD, no decimals. |
+| **SQL ownership** | `reporting.vw_gross_summary` (Planned, Phase 1.3), numerator and denominator as separate columns. |
+| **Future DAX ownership** | Gross measures group; also exposed by the F&I measures group when unlocked. |
+| **Reconciliation rule** | `RECON-GROSS-002`; and, once the Deferred F&I fact exists, `RECON-FI-001`. |
+| **Interpretation caution** | The **denominator includes cash deals**, which cannot generate finance reserve. A store with an unusual cash mix will show a lower figure for reasons unrelated to finance-office skill. Any comparison across stores must control for deal-type mix. ARPI publishes no target or benchmark for this measure. |
+| **Implementation status** | **Planned (Phase 1.3)** |
+| **Depends on (entities)** | `warehouse.fact_vehicle_sale` (Planned), `warehouse.dim_date` (Implemented), `warehouse.dim_dealership` (Implemented) |
+
+---
+
+## 14. `KPI-GRS-006` — Total gross per retail unit
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-GRS-006` |
+| **Display name** | Total gross per retail unit |
+| **Business purpose** | The single most useful summary of deal quality, and the correct companion to unit volume in any employee or store comparison. |
+| **Business owner persona** | Dealer principal |
+| **Definition (plain English)** | Average total profit — vehicle plus finance office — earned on each retail unit delivered in the period. |
+| **Formula** | `total retail gross / retail units sold` — [ARCHITECTURE.md §18.2](ARCHITECTURE.md) |
+| **Numerator (precise)** | `SUM(warehouse.fact_vehicle_sale.total_gross)` over rows where `is_retail = true`. |
+| **Denominator (precise)** | `SUM(warehouse.fact_vehicle_sale.unit_count)` over rows where `is_retail = true`, same filter context. **The denominator must exclude wholesale and dealer-trade transactions** ([ARCHITECTURE.md §18.2](ARCHITECTURE.md)). |
+| **Grain** | Store × period. **Non-additive ratio.** |
+| **Date basis** | `sale_date_key` → `dim_date`. |
+| **Filters** | `is_retail = true` on both sides. |
+| **Exclusions** | Wholesale; dealer trades; canceled deals. |
+| **Null / zero-denominator behaviour** | Zero denominator returns `BLANK()` / NULL. |
+| **Unit and formatting** | Currency per unit, USD, no decimals. |
+| **SQL ownership** | `reporting.vw_gross_summary` (Planned, Phase 1.3). |
+| **Future DAX ownership** | Executive measures group and Gross measures group. |
+| **Reconciliation rule** | `RECON-GROSS-002`. Identity check: `KPI-GRS-006` must equal `KPI-GRS-004 + KPI-GRS-005` in every filter context, because all three share one denominator. A failure of that identity means the filter contexts have diverged. |
+| **Interpretation caution** | This is the correct counterweight to volume in employee analysis, but it is **still not sufficient on its own**. [ARCHITECTURE.md §23](ARCHITECTURE.md) requires employee scorecards to carry contextual metrics — lead volume received, lead-source mix, store traffic, tenure, new-versus-used mix, inventory availability, manager involvement. Ranking on gross per unit alone penalizes whoever is handed the harder inventory. |
+| **Implementation status** | **Planned (Phase 1.3)** |
+| **Depends on (entities)** | `warehouse.fact_vehicle_sale` (Planned), `warehouse.dim_employee` (Planned, for employee context), `warehouse.dim_date` (Implemented) |
+
+---
+
+# Domain: Inventory
+
+> Every inventory KPI answers the seven questions `docs/research.md` §4.4 requires: time period, inventory
+> included, sales included, retail versus wholesale treatment, new versus used treatment, whether sold units
+> enter denominator logic, and whether rolling averages are used.
+
+---
+
+## 15. `KPI-INV-001` — Active inventory count
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-INV-001` |
+| **Display name** | Active inventory count |
+| **Business purpose** | How many units the group is carrying. The base of every inventory-health measure and the numerator of days supply. |
+| **Business owner persona** | Used-car manager (and new-car manager for the new-vehicle slice) |
+| **Definition (plain English)** | The number of vehicles physically in stock at a store on a given snapshot date. |
+| **Formula** | `SUM(inventory_unit_count)` for the selected snapshot date |
+| **Numerator (precise)** | `SUM(warehouse.fact_vehicle_inventory_snapshot.inventory_unit_count)` for rows whose `snapshot_date_key` equals the single selected as-of date. |
+| **Denominator (precise)** | `n/a — additive measure` |
+| **Grain** | Store × snapshot date. **Semi-additive:** additive across store, vehicle, and model, but **NOT additive across dates.** Summing this measure over a month yields unit-days, not units. Time aggregation must use last-value or average-of-daily-values, and the choice must be stated on the visual. |
+| **Date basis** | `snapshot_date_key` → `dim_date`. A single as-of date, defaulting to the latest snapshot in the model. |
+| **Filters** | Store, vehicle condition (new / used / certified), model, and vehicle source apply from context. |
+| **Exclusions** | Units already sold, wholesaled, or transferred — snapshot generation stops after disposition ([ARCHITECTURE.md §12.2](ARCHITECTURE.md)), so they are absent by construction rather than filtered out. Units not yet acquired. |
+| **Null / zero-denominator behaviour** | No denominator. Returns `0` when no units are in stock. Returns `BLANK()` if the selected date has **no snapshot rows at all**, which signals missing data rather than an empty lot — the two cases must be distinguishable, and the Data Quality page exists partly to make that visible. |
+| **Unit and formatting** | Integer count. Thousands separator. |
+| **SQL ownership** | `reporting.vw_inventory_snapshot` (Planned, Phase 1.3). |
+| **Future DAX ownership** | Inventory measures group. Must be written with explicit semi-additive handling (`LASTNONBLANKVALUE` or equivalent), never a naive `SUM` over a date range. |
+| **Reconciliation rule** | `RECON-INV-001` — inventory count on selected dates must match snapshot records ([ARCHITECTURE.md §21.3](ARCHITECTURE.md)). Grain uniqueness on `(snapshot_date_key, dealership_key, vehicle_key)` is a prerequisite: a duplicate row inflates this measure directly. |
+| **Interpretation caution** | Semi-additivity is the single most common way this measure is misreported. A month-level card showing a summed daily count is wrong by roughly a factor of 30 and looks plausible. Every visual using this measure must state its time-aggregation rule. |
+| **Implementation status** | **Planned (Phase 1.3)** |
+| **Depends on (entities)** | `warehouse.fact_vehicle_inventory_snapshot` (Planned), `warehouse.dim_vehicle` (Planned), `warehouse.dim_date` (Implemented), `warehouse.dim_dealership` (Implemented) |
+
+---
+
+## 16. `KPI-INV-002` — Inventory investment
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-INV-002` |
+| **Display name** | Inventory investment |
+| **Business purpose** | How much capital is tied up in stock. Converts an aging problem from a count into a dollar figure, which is what makes it a management priority. |
+| **Business owner persona** | Dealer principal |
+| **Definition (plain English)** | The total money invested in the vehicles in stock on a given date: acquisition cost plus reconditioning spend. |
+| **Formula** | `SUM(acquisition_cost + reconditioning_cost)` for the selected snapshot date |
+| **Numerator (precise)** | `SUM(warehouse.fact_vehicle_inventory_snapshot.inventory_investment)` for rows whose `snapshot_date_key` equals the selected as-of date, where `inventory_investment = acquisition_cost + reconditioning_cost`. |
+| **Denominator (precise)** | `n/a — additive measure` |
+| **Grain** | Store × snapshot date. **Semi-additive** — same rule as `KPI-INV-001`. |
+| **Date basis** | `snapshot_date_key` → `dim_date`, single as-of date. |
+| **Filters** | Store, vehicle condition, model, age bucket. |
+| **Exclusions** | Disposed units; floor-plan interest, holding cost, and carrying cost — **none of which ARPI models**. |
+| **Null / zero-denominator behaviour** | No denominator. Returns `0` when no units are in stock; `BLANK()` when the date has no snapshot rows. |
+| **Unit and formatting** | Currency, USD, no decimals. Large values may be abbreviated (`$1.2M`) provided the tooltip shows the full figure. |
+| **SQL ownership** | `reporting.vw_inventory_snapshot` (Planned, Phase 1.3). |
+| **Future DAX ownership** | Inventory measures group; Executive measures group for the aged-investment card. |
+| **Reconciliation rule** | `RECON-INV-001`. |
+| **Interpretation caution** | This is **cost invested, not market value and not floor-plan exposure**. ARPI models no floor-plan interest, no holding cost, and no carrying cost, so statements about "what aged inventory is costing us per day" are **not supportable from this data**. The honest statement is "this much capital is committed to units older than N days". |
+| **Implementation status** | **Planned (Phase 1.3)** |
+| **Depends on (entities)** | `warehouse.fact_vehicle_inventory_snapshot` (Planned), `warehouse.dim_date` (Implemented), `warehouse.dim_dealership` (Implemented) |
+
+---
+
+## 17. `KPI-INV-003` — Average inventory age
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-INV-003` |
+| **Display name** | Average inventory age |
+| **Business purpose** | Mean days in stock across the active lot. Retained primarily for reconciliation and, in contrast with the median, as a direct indicator of an aged tail. **Not the headline age figure.** |
+| **Business owner persona** | Used-car manager |
+| **Definition (plain English)** | The arithmetic mean number of days that the vehicles currently in stock have been in stock. |
+| **Formula** | `SUM(days_in_stock) / COUNT(active units)` |
+| **Numerator (precise)** | `SUM(warehouse.fact_vehicle_inventory_snapshot.days_in_stock)` for rows on the selected snapshot date, where `days_in_stock` = calendar days between acquisition date and snapshot date ([ARCHITECTURE.md §18.2](ARCHITECTURE.md), *Inventory age*). |
+| **Denominator (precise)** | `SUM(warehouse.fact_vehicle_inventory_snapshot.inventory_unit_count)` for the **same** snapshot date and filter context — that is, `KPI-INV-001`. |
+| **Grain** | Store × snapshot date. **Non-additive ratio; also semi-additive in its denominator.** Must be recomputed at every aggregation level and at every date. |
+| **Date basis** | `snapshot_date_key` → `dim_date`, single as-of date. |
+| **Filters** | Store, vehicle condition, model, vehicle source. |
+| **Exclusions** | Disposed units. Both sides use the same population — mixing populations across numerator and denominator is the standard failure mode here. |
+| **Null / zero-denominator behaviour** | Zero denominator returns `BLANK()` / NULL. An empty lot has no average age; it does not have an average age of zero. |
+| **Unit and formatting** | Days, one decimal place. |
+| **SQL ownership** | `reporting.vw_inventory_snapshot` (Planned, Phase 1.3) exposes `SUM(days_in_stock)` and the unit count as separate additive columns. |
+| **Future DAX ownership** | Inventory measures group, using `DIVIDE`. |
+| **Reconciliation rule** | `RECON-INV-001`. `days_in_stock` must be non-negative for every row ([ARCHITECTURE.md §21.2](ARCHITECTURE.md)) — a single negative value corrupts this measure invisibly. |
+| **Interpretation caution** | **The mean is the wrong headline for this distribution.** Inventory age is right-skewed; a small number of very old units pulls the mean well above what any typical unit looks like. Use `KPI-INV-004` as the headline and read the mean-minus-median gap as evidence of an aged tail. See section 5. |
+| **Implementation status** | **Planned (Phase 1.3)** |
+| **Depends on (entities)** | `warehouse.fact_vehicle_inventory_snapshot` (Planned), `warehouse.dim_date` (Implemented), `warehouse.dim_dealership` (Implemented) |
+
+---
+
+## 18. `KPI-INV-004` — Median inventory age
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-INV-004` |
+| **Display name** | Median inventory age |
+| **Business purpose** | **The headline inventory-age figure.** Describes the typical unit on the lot without distortion from the aged tail. |
+| **Business owner persona** | Used-car manager |
+| **Definition (plain English)** | The middle value of days-in-stock across the vehicles currently in stock: half the lot is younger, half is older. |
+| **Formula** | `PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY days_in_stock)` over active units on the snapshot date |
+| **Numerator (precise)** | `n/a — this is an order statistic, not a ratio.` The input population is `warehouse.fact_vehicle_inventory_snapshot.days_in_stock` for all rows on the selected snapshot date in the filter context. |
+| **Denominator (precise)** | `n/a — order statistic` |
+| **Grain** | Store × snapshot date. **Not additive and not decomposable** — the median of a group is not derivable from the medians of its subgroups. It must be recomputed from the underlying rows at every aggregation level. |
+| **Date basis** | `snapshot_date_key` → `dim_date`, single as-of date. |
+| **Filters** | Store, vehicle condition, model, vehicle source. |
+| **Exclusions** | Disposed units. |
+| **Null / zero-denominator behaviour** | Returns `BLANK()` / NULL when the population is empty. With an even population size, the linear-interpolated median (`PERCENTILE_CONT`) is used and rounded to the nearest whole day for display; the interpolation method is fixed so that SQL and DAX agree. |
+| **Unit and formatting** | Days, integer. |
+| **SQL ownership** | `reporting.vw_inventory_age_distribution` (Planned, Phase 1.3). **Because the median cannot be recomputed in DAX from a pre-aggregated view, the reporting layer must expose row-level `days_in_stock` (or the pre-computed median at every grain the report needs).** This is a deliberate exception to the "aggregate in the view" pattern and must be handled explicitly in Phase 1.3. |
+| **Future DAX ownership** | Inventory measures group, using `MEDIAN` over the row-level column so that it recomputes under filter context. |
+| **Reconciliation rule** | `RECON-INV-001`. Sanity relationship: for a right-skewed distribution `KPI-INV-004 <= KPI-INV-003` should normally hold; a persistent inversion is a signal to inspect the data, not a finding. |
+| **Interpretation caution** | The median is deliberately insensitive to the aged tail — which is why it is the right *typical-unit* figure and the wrong *risk* figure. Read it together with `KPI-INV-005` and `KPI-INV-006`, which are the measures that quantify the tail. Neither figure may be compared to an industry standard, because ARPI has none. |
+| **Implementation status** | **Planned (Phase 1.3)** |
+| **Depends on (entities)** | `warehouse.fact_vehicle_inventory_snapshot` (Planned), `warehouse.dim_date` (Implemented), `warehouse.dim_dealership` (Implemented) |
+
+---
+
+## 19. `KPI-INV-005` — Aged inventory count
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-INV-005` |
+| **Display name** | Aged inventory count |
+| **Business purpose** | The number of units that have crossed the aging threshold. The actionable list: these are the units requiring a pricing or disposal decision. |
+| **Business owner persona** | Used-car manager |
+| **Definition (plain English)** | The count of vehicles in stock on the selected date whose days-in-stock exceeds the selected age threshold. |
+| **Formula** | `SUM(inventory_unit_count) WHERE days_in_stock > age_threshold` |
+| **Numerator (precise)** | `SUM(warehouse.fact_vehicle_inventory_snapshot.inventory_unit_count)` for rows on the selected snapshot date where `days_in_stock > @age_threshold`. |
+| **Denominator (precise)** | `n/a — additive measure` |
+| **Grain** | Store × snapshot date. Semi-additive across dates, exactly like `KPI-INV-001`. |
+| **Date basis** | `snapshot_date_key` → `dim_date`, single as-of date. |
+| **Filters** | `days_in_stock > @age_threshold`. **`@age_threshold` defaults to 60 days.** This is a **project default sourced from [ARCHITECTURE.md §18.2](ARCHITECTURE.md)** (*Aged inventory percentage — Default threshold: 60 days*). **It is not an industry benchmark and is not presented as one.** It is exposed as a report parameter so that a reviewer can change it and watch the answer move. |
+| **Exclusions** | Disposed units. |
+| **Null / zero-denominator behaviour** | No denominator. Returns `0` when no units exceed the threshold — which is a genuine and good business answer. |
+| **Unit and formatting** | Integer count. |
+| **SQL ownership** | `reporting.vw_inventory_snapshot` (Planned, Phase 1.3), exposing `days_in_stock` and the age bucket so the threshold stays adjustable. |
+| **Future DAX ownership** | Inventory measures group; Executive measures group for the exception summary. |
+| **Reconciliation rule** | `RECON-INV-001`. Consistency: `KPI-INV-005 <= KPI-INV-001` must always hold. |
+| **Interpretation caution** | The threshold is a **convention, not a law**. Different operators use 30, 45, 60, or 90 days, and the right threshold varies by vehicle class and market. Any finding that depends on the threshold must state the threshold in the same sentence. `docs/research.md` §4.3 defines the standard age buckets ARPI uses for distribution reporting: 0–15, 16–30, 31–45, 46–60, 61–90, and over 90 days. |
+| **Implementation status** | **Planned (Phase 1.3)** |
+| **Depends on (entities)** | `warehouse.fact_vehicle_inventory_snapshot` (Planned), `warehouse.dim_date` (Implemented), `warehouse.dim_dealership` (Implemented) |
+
+---
+
+## 20. `KPI-INV-006` — Aged inventory percentage
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-INV-006` |
+| **Display name** | Aged inventory percentage |
+| **Business purpose** | Normalizes aged-unit exposure for lot size, so a 3-store group with very different inventory volumes can be compared on one scale. The standard inventory-health indicator on an executive page. |
+| **Business owner persona** | General manager |
+| **Definition (plain English)** | The share of the active lot that has been in stock longer than the selected age threshold. |
+| **Formula** | `active inventory units above selected age threshold / total active inventory units` — [ARCHITECTURE.md §18.2](ARCHITECTURE.md) |
+| **Numerator (precise)** | `SUM(warehouse.fact_vehicle_inventory_snapshot.inventory_unit_count)` on the selected snapshot date where `days_in_stock > @age_threshold` — that is, `KPI-INV-005`. |
+| **Denominator (precise)** | `SUM(warehouse.fact_vehicle_inventory_snapshot.inventory_unit_count)` on the **same** snapshot date, in the **same** filter context, with **no age filter** — that is, `KPI-INV-001`. |
+| **Grain** | Store × snapshot date. **Non-additive ratio.** Recompute at every level. |
+| **Date basis** | `snapshot_date_key` → `dim_date`, single as-of date, identical on both sides. |
+| **Filters** | Numerator filters `days_in_stock > @age_threshold`; **denominator must not.** All other filters apply identically to both. **`@age_threshold` defaults to 60 days — a project default from [ARCHITECTURE.md §18.2](ARCHITECTURE.md), not an industry benchmark.** |
+| **Exclusions** | Disposed units, on both sides. |
+| **Null / zero-denominator behaviour** | Zero denominator returns `BLANK()` / NULL — an empty lot has no aged percentage. Numerator `0` with a non-zero denominator correctly returns `0.0%`. |
+| **Unit and formatting** | Percentage, one decimal place, e.g. `18.4%`. |
+| **SQL ownership** | `reporting.vw_inventory_snapshot` (Planned, Phase 1.3), numerator and denominator as separate additive columns. |
+| **Future DAX ownership** | Inventory measures group; Executive measures group. `DIVIDE` for safe division. |
+| **Reconciliation rule** | `RECON-INV-001`. Both sides must reconcile independently. |
+| **Interpretation caution** | This ratio can improve for a bad reason: **wholesaling aged units removes them from the numerator**, so the percentage falls while the group takes a loss. Always read it alongside `KPI-INV-002` and wholesale volume. And, again, ARPI has **no benchmark for what a healthy aged percentage is** — this measure supports comparison across stores, models, and time, not comparison against the industry. |
+| **Implementation status** | **Planned (Phase 1.3)** |
+| **Depends on (entities)** | `warehouse.fact_vehicle_inventory_snapshot` (Planned), `warehouse.dim_date` (Implemented), `warehouse.dim_dealership` (Implemented) |
+
+---
+
+## 21. `KPI-INV-007` — Days to sale
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-INV-007` |
+| **Display name** | Days to sale |
+| **Business purpose** | How long it actually took to sell the units that sold. The outcome measure that pairs with inventory age's in-flight measure. |
+| **Business owner persona** | Used-car manager |
+| **Definition (plain English)** | The number of calendar days between acquiring a vehicle and finalizing its sale. Published as **median (headline)** and **mean (companion)**. |
+| **Formula** | Per unit: `finalized sale date − acquisition date` ([ARCHITECTURE.md §18.2](ARCHITECTURE.md)). Aggregate median: `PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY days_in_inventory_at_sale)`. Aggregate mean: `SUM(days_in_inventory_at_sale) / SUM(unit_count)`. |
+| **Numerator (precise)** | For the mean: `SUM(warehouse.fact_vehicle_sale.days_in_inventory_at_sale)` over rows where `is_retail = true`. For the median: `n/a — order statistic` over the same population. |
+| **Denominator (precise)** | For the mean: `SUM(warehouse.fact_vehicle_sale.unit_count)` over rows where `is_retail = true`, same filter context. For the median: `n/a — order statistic`. |
+| **Grain** | One value per sale transaction; aggregable to store × period as a median or mean. Neither aggregate is additive. |
+| **Date basis** | `sale_date_key` → `dim_date`. Units are attributed to the period in which they **sold**, not the period in which they were acquired. A unit acquired in January and sold in April counts entirely in April. |
+| **Filters** | `is_retail = true`. Store, vehicle condition, model, vehicle source apply from context. |
+| **Exclusions** | **Wholesale disposals and dealer trades**, which are not retail sales and whose timing reflects a disposal decision rather than retail demand. Canceled deals. **Unsold units still in stock are excluded by construction** — this is survivorship bias and is called out below. |
+| **Null / zero-denominator behaviour** | Both aggregates return `BLANK()` / NULL when no retail units sold in the context. `days_in_inventory_at_sale` is non-negative by rule; sale date cannot precede acquisition date ([ARCHITECTURE.md §21.2](ARCHITECTURE.md)). |
+| **Unit and formatting** | Days. Median as integer; mean to one decimal. Both labelled explicitly — a chart titled only "days to sale" is not acceptable. |
+| **SQL ownership** | `reporting.vw_sales_summary` (Planned, Phase 1.3) for the mean components; `reporting.vw_days_to_sale_distribution` (Planned, Phase 1.3) for the median. |
+| **Future DAX ownership** | Inventory measures group. |
+| **Reconciliation rule** | `RECON-UNITS-001` — the unit denominator must match `KPI-SLS-001` in the same context. |
+| **Interpretation caution** | **Survivorship bias is the dominant caution.** This measure describes only units that sold. A lot full of 300-day units that never sell can show an excellent days-to-sale figure, because those units never enter the population. Days to sale must always be read with `KPI-INV-004` (age of what is still there) and `KPI-INV-006`. `docs/research.md` §4.4 requires the retail-versus-wholesale and new-versus-used treatment to be documented: this measure is **retail only**, and new and used are reported separately because their distributions differ materially. |
+| **Implementation status** | **Planned (Phase 1.3)** |
+| **Depends on (entities)** | `warehouse.fact_vehicle_sale` (Planned), `warehouse.dim_vehicle` (Planned), `warehouse.dim_date` (Implemented), `warehouse.dim_dealership` (Implemented) |
+
+---
+
+## 22. `KPI-INV-008` — Inventory turn
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-INV-008` |
+| **Display name** | Inventory turn |
+| **Business purpose** | How many times the lot is sold and replaced in a year. The standard efficiency measure for working capital deployed in inventory. |
+| **Business owner persona** | Dealer principal |
+| **Definition (plain English)** | Annualized retail sales volume divided by the average number of retail units held in stock over the same period. |
+| **Formula** | `annualized retail units sold / average active retail inventory` — [ARCHITECTURE.md §18.2](ARCHITECTURE.md) |
+| **Numerator (precise)** | `SUM(warehouse.fact_vehicle_sale.unit_count)` where `is_retail = true` over the selected period, **annualized as** `× (365 / number_of_calendar_days_in_the_selected_period)`. The annualization factor uses **calendar days, not selling days**, and the selected period's day count comes from `dim_date`. |
+| **Denominator (precise)** | `AVG(daily active inventory count)` over the **same** period: `SUM(inventory_unit_count) / COUNT(DISTINCT snapshot_date_key)` from `warehouse.fact_vehicle_inventory_snapshot`, restricted to the same store and vehicle-condition filter context. **A daily average, not a beginning-plus-ending-divided-by-two approximation** — the daily snapshot exists precisely so this can be exact. |
+| **Grain** | Store × period. **Non-additive ratio.** |
+| **Date basis** | Numerator: `sale_date_key`. Denominator: `snapshot_date_key`. **Two different date columns over the same period window** — this is the subtlety that makes the measure easy to get wrong, and both must be driven by the same period selection. |
+| **Filters** | `is_retail = true` on the numerator. New and used are reported separately by default, because their turn rates are not comparable. |
+| **Exclusions** | **Wholesale and dealer trades are excluded from the numerator** — they dispose of inventory but are not retail turn. **Sold units are excluded from the denominator on and after their sale date**, because snapshots stop at disposition; the denominator is the average *active* lot, not average units touched. |
+| **Null / zero-denominator behaviour** | Zero denominator returns `BLANK()` / NULL. A period with no snapshot rows returns `BLANK()`, not `0`. |
+| **Unit and formatting** | Turns per year, two decimals, e.g. `8.42`. The annualization must be stated on the visual. |
+| **SQL ownership** | `reporting.vw_inventory_turn` (Planned, Phase 1.3), exposing annualized units and average daily inventory as separate columns. |
+| **Future DAX ownership** | Inventory measures group. |
+| **Reconciliation rule** | `RECON-UNITS-001` for the numerator; `RECON-INV-001` for the denominator. |
+| **Interpretation caution** | `docs/research.md` §4.4 warns explicitly that **turn and days-supply calculations vary across vendors**, and requires the method to be documented. ARPI's method is stated in full above: calendar-day annualization, retail-only numerator, daily-average active denominator, new and used separated, sold units excluded from the denominator after disposition, no rolling average. **An ARPI turn figure is not comparable to a turn figure from any other system unless that system uses the same seven choices.** Turn is also unstable over short periods — annualizing a 7-day window produces a number, but not an informative one. Minimum recommended window: one calendar month. |
+| **Implementation status** | **Planned (Phase 1.3)** |
+| **Depends on (entities)** | `warehouse.fact_vehicle_sale` (Planned), `warehouse.fact_vehicle_inventory_snapshot` (Planned), `warehouse.dim_date` (Implemented), `warehouse.dim_dealership` (Implemented) |
+
+---
+
+## 23. `KPI-INV-009` — Dealer days supply
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-INV-009` |
+| **Display name** | Dealer days supply |
+| **Business purpose** | How long the current lot would last at the recent selling pace. The operational counterpart to turn, and the measure most directly used to decide whether to buy more inventory. |
+| **Business owner persona** | Used-car manager |
+| **Definition (plain English)** | The number of days the current inventory would cover, given average daily retail sales over the recent trailing window. |
+| **Formula** | `current active inventory / average daily retail sales over the selected trailing period` — [ARCHITECTURE.md §18.2](ARCHITECTURE.md) |
+| **Numerator (precise)** | `SUM(warehouse.fact_vehicle_inventory_snapshot.inventory_unit_count)` on the **single as-of date** (the latest snapshot date in context) — that is, `KPI-INV-001`. |
+| **Denominator (precise)** | `SUM(warehouse.fact_vehicle_sale.unit_count)` where `is_retail = true` over the trailing `@trailing_days` **calendar** days ending on the as-of date, divided by `@trailing_days`. |
+| **Grain** | Store × as-of date. **Non-additive ratio.** |
+| **Date basis** | Numerator: `snapshot_date_key` = as-of date. Denominator: `sale_date_key` in `[as_of_date − @trailing_days + 1, as_of_date]`. |
+| **Filters** | **`@trailing_days` defaults to 30.** This is a **project default sourced from [ARCHITECTURE.md §18.2](ARCHITECTURE.md)** (*Dealer days supply — Default trailing period: 30 days*), **not an industry benchmark.** It is exposed as a report parameter. New and used are reported separately. |
+| **Exclusions** | Wholesale and dealer trades from the denominator; disposed units from the numerator. **Calendar days are used for the trailing window, not selling days** — the alternative is defensible but produces different numbers, so the choice is fixed here and stated on the visual. |
+| **Null / zero-denominator behaviour** | **Zero sales in the trailing window returns `BLANK()` / NULL, never infinity and never a large sentinel number.** Days supply is genuinely undefined when the selling pace is zero, and rendering `∞` or `9999` on an executive card would be worse than rendering nothing. The visual must show "insufficient sales history" rather than a value. |
+| **Unit and formatting** | Days, integer. The trailing window must be stated on the visual (e.g. "days supply, 30-day pace"). |
+| **SQL ownership** | `reporting.vw_days_supply` (Planned, Phase 1.3). |
+| **Future DAX ownership** | Inventory measures group. |
+| **Reconciliation rule** | `RECON-INV-001` for the numerator; `RECON-UNITS-001` for the denominator. |
+| **Interpretation caution** | Days supply is **extremely sensitive to the trailing window** and to seasonality: a 30-day window ending in a slow month makes a normal lot look overstocked. `docs/research.md` §4.4's governance requirements apply in full — ARPI's stated choices are 30 calendar days, retail-only sales, active inventory at a single as-of date, new and used separated, no rolling average, sold units excluded from the numerator. **ARPI publishes no target days supply**, because it has no benchmark data. |
+| **Implementation status** | **Planned (Phase 1.3)** |
+| **Depends on (entities)** | `warehouse.fact_vehicle_inventory_snapshot` (Planned), `warehouse.fact_vehicle_sale` (Planned), `warehouse.dim_date` (Implemented), `warehouse.dim_dealership` (Implemented) |
+
+---
+
+# Domain: Lead funnel
+
+> Funnel rates form a chain. Each rate's denominator is the previous stage's numerator, so the stages
+> multiply cleanly: `contact rate × appointment-set rate × show rate × show-to-sale conversion` should
+> approximate `lead-to-sale conversion`. Where it does not, leads have entered or left the funnel by a path
+> the model does not capture — which is itself worth knowing.
+
+---
+
+## 24. `KPI-FUN-001` — Leads received
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-FUN-001` |
+| **Display name** | Leads received |
+| **Business purpose** | Top-of-funnel volume. The denominator of contact rate and lead-to-sale conversion, and the basis of marketing cost per lead. |
+| **Business owner persona** | Internet or BDC director |
+| **Definition (plain English)** | The count of valid, non-duplicate CRM leads created in the period. |
+| **Formula** | `SUM(lead_count) WHERE is_duplicate = false` |
+| **Numerator (precise)** | `SUM(warehouse.fact_lead.lead_count)` over rows where `is_duplicate = false`. |
+| **Denominator (precise)** | `n/a — additive measure` |
+| **Grain** | Store × day; fully additive. |
+| **Date basis** | `lead_created_date_key` → `dim_date`. Leads count in the period they were **created**, regardless of when or whether they later converted. |
+| **Filters** | `is_duplicate = false`. Lead source, campaign, store, assigned employee apply from context. |
+| **Exclusions** | **Duplicate leads** (`is_duplicate = true`). This is the single most important exclusion in the funnel: duplicates inflate volume and depress every conversion rate simultaneously, making a source look both busy and bad. A separate duplicate-lead-rate measure is available and must be used to report duplicates, rather than folding them into volume. |
+| **Null / zero-denominator behaviour** | No denominator. Returns `0` in an empty context. |
+| **Unit and formatting** | Integer count. Thousands separator. |
+| **SQL ownership** | `reporting.vw_lead_funnel` (Planned, Phase 1.4). |
+| **Future DAX ownership** | Lead-funnel measures group. |
+| **Reconciliation rule** | `RECON-LEAD-001` — lead totals by source must match source-level staging counts after documented exclusions ([ARCHITECTURE.md §21.3](ARCHITECTURE.md)). The reconciliation must show the excluded duplicate count explicitly so the difference is explained, not merely tolerated. |
+| **Interpretation caution** | Vendor-reported lead counts (`fact_marketing_spend.vendor_reported_leads`) **will not match this measure**, and are not expected to: vendors count differently and typically count duplicates. That discrepancy is an analytical finding to report, not a data-quality defect to hide. |
+| **Implementation status** | **Planned (Phase 1.4)** |
+| **Depends on (entities)** | `warehouse.fact_lead` (Planned), `warehouse.dim_lead_source` (Planned), `warehouse.dim_date` (Implemented), `warehouse.dim_dealership` (Implemented) |
+
+---
+
+## 25. `KPI-FUN-002` — Contact rate
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-FUN-002` |
+| **Display name** | Contact rate |
+| **Business purpose** | The first funnel stage, and the one most directly under BDC control. A weak contact rate makes every downstream rate irrelevant. |
+| **Business owner persona** | Internet or BDC director |
+| **Definition (plain English)** | The share of valid leads with which the store established two-way contact. |
+| **Formula** | `unique contacted leads / valid nonduplicate leads` — [ARCHITECTURE.md §18.2](ARCHITECTURE.md) |
+| **Numerator (precise)** | `COUNT(DISTINCT warehouse.fact_lead.lead_key)` where `is_contacted = true` and `is_duplicate = false`. |
+| **Denominator (precise)** | `COUNT(DISTINCT warehouse.fact_lead.lead_key)` where `is_duplicate = false` — that is, `KPI-FUN-001`, in the same filter context. |
+| **Grain** | Store × period. **Non-additive ratio.** |
+| **Date basis** | `lead_created_date_key` → `dim_date` on both sides. **Both sides are anchored to lead creation, not to contact date** — otherwise leads created near the end of a period would be counted in the denominator before they have had a fair chance to be contacted. |
+| **Filters** | `is_duplicate = false` on both sides. |
+| **Exclusions** | Duplicate leads, on both sides. |
+| **Null / zero-denominator behaviour** | Zero denominator returns `BLANK()` / NULL. Zero contacted with a non-zero denominator correctly returns `0.0%`. |
+| **Unit and formatting** | Percentage, one decimal place. |
+| **SQL ownership** | `reporting.vw_lead_funnel` (Planned, Phase 1.4), numerator and denominator as separate additive columns. |
+| **Future DAX ownership** | Lead-funnel measures group. |
+| **Reconciliation rule** | `RECON-LEAD-001`. Consistency: numerator `<=` denominator always. |
+| **Interpretation caution** | **Right-censoring.** Leads created in the last few days of a period may not yet have been contacted, which depresses the rate for the current period. A period-to-date comparison against a complete prior period is misleading unless the same maturity window is applied to both. `docs/research.md` §4.5 also notes that sources differ in lead quality, so contact rate is not comparable across sources without controlling for source. |
+| **Implementation status** | **Planned (Phase 1.4)** |
+| **Depends on (entities)** | `warehouse.fact_lead` (Planned), `warehouse.dim_lead_source` (Planned), `warehouse.dim_date` (Implemented) |
+
+---
+
+## 26. `KPI-FUN-003` — Appointment-set rate
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-FUN-003` |
+| **Display name** | Appointment-set rate |
+| **Business purpose** | Measures whether contact is being converted into a scheduled visit — the step that most strongly predicts a sale. |
+| **Business owner persona** | Internet or BDC director |
+| **Definition (plain English)** | Of the leads the store actually reached, the share for which an appointment was booked. |
+| **Formula** | `unique leads with an appointment set / unique contacted leads` — [ARCHITECTURE.md §18.2](ARCHITECTURE.md) |
+| **Numerator (precise)** | `COUNT(DISTINCT warehouse.fact_lead.lead_key)` where `is_appointment_set = true` and `is_duplicate = false`. |
+| **Denominator (precise)** | `COUNT(DISTINCT warehouse.fact_lead.lead_key)` where `is_contacted = true` and `is_duplicate = false` — the numerator of `KPI-FUN-002`, in the same filter context. **The denominator is contacted leads, not all leads.** |
+| **Grain** | Store × period. **Non-additive ratio.** |
+| **Date basis** | `lead_created_date_key` → `dim_date` on both sides. |
+| **Filters** | `is_duplicate = false` on both sides; `is_contacted = true` on the denominator. |
+| **Exclusions** | Duplicates; **uncontacted leads are excluded from the denominator by design**, because an appointment cannot be set with someone who was never reached. A store with a very poor contact rate can therefore show a healthy appointment-set rate — that is correct behaviour and is exactly why the two rates are reported side by side. |
+| **Null / zero-denominator behaviour** | Zero contacted leads returns `BLANK()` / NULL. |
+| **Unit and formatting** | Percentage, one decimal place. |
+| **SQL ownership** | `reporting.vw_lead_funnel` (Planned, Phase 1.4). |
+| **Future DAX ownership** | Lead-funnel measures group. |
+| **Reconciliation rule** | `RECON-LEAD-001`. Consistency: `is_appointment_set = true` implies `is_contacted = true`, so the numerator can never exceed the denominator. |
+| **Interpretation caution** | Because the denominator is conditional on contact, this rate **cannot be read without `KPI-FUN-002` next to it**. Reporting it alone allows a store that reaches 20% of its leads to look better than a store that reaches 70%. |
+| **Implementation status** | **Planned (Phase 1.4)** |
+| **Depends on (entities)** | `warehouse.fact_lead` (Planned), `warehouse.dim_date` (Implemented) |
+
+---
+
+## 27. `KPI-FUN-004` — Show rate
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-FUN-004` |
+| **Display name** | Show rate |
+| **Business purpose** | Whether booked appointments actually turn into people in the showroom. Distinguishes appointment-setting activity from appointment-setting quality. |
+| **Business owner persona** | Internet or BDC director |
+| **Definition (plain English)** | The share of appointments eligible to show at which the customer actually arrived. |
+| **Formula** | `appointments that showed / scheduled appointments eligible to show` — [ARCHITECTURE.md §18.2](ARCHITECTURE.md) |
+| **Numerator (precise)** | `SUM(warehouse.fact_appointment.appointment_count)` where `is_shown = true`. |
+| **Denominator (precise)** | `SUM(warehouse.fact_appointment.appointment_count)` where `is_canceled_before_scheduled = false` **and** the scheduled date is on or before the period end (the appointment has had its chance to occur). |
+| **Grain** | Store × period. **Non-additive ratio.** Note the grain shift: this measure is computed over **appointments**, not leads — one lead can produce several appointments. |
+| **Date basis** | `scheduled_date_key` → `dim_date` on both sides. **Not the created date** — an appointment scheduled for next month is not eligible to show this month and must not sit in this month's denominator. |
+| **Filters** | `is_canceled_before_scheduled = false` on the denominator. |
+| **Exclusions** | **Appointments canceled before the scheduled date are excluded from the denominator.** [ARCHITECTURE.md §18.2](ARCHITECTURE.md) permits this "if documented" — this is that documentation, and the rationale is that an appointment the customer cancelled in advance never had the opportunity to show, so counting it as a no-show conflates two different failures. **A separate cancellation-rate measure is required alongside this one so the excluded population stays visible.** Appointments scheduled after the period end are also excluded from the denominator. |
+| **Null / zero-denominator behaviour** | Zero eligible appointments returns `BLANK()` / NULL. |
+| **Unit and formatting** | Percentage, one decimal place. |
+| **SQL ownership** | `reporting.vw_appointment_funnel` (Planned, Phase 1.4). |
+| **Future DAX ownership** | Lead-funnel measures group. |
+| **Reconciliation rule** | `RECON-LEAD-001`. Consistency: show date cannot precede appointment creation ([ARCHITECTURE.md §21.2](ARCHITECTURE.md)); `is_shown = true` implies `is_canceled_before_scheduled = false`. |
+| **Interpretation caution** | **The cancellation exclusion is the manipulable part of this measure.** A store that aggressively marks no-shows as advance cancellations will report a flattering show rate. The cancellation rate must therefore be published on the same visual. This is a modelled behaviour in ARPI's synthetic data and a real risk in production CRM data. |
+| **Implementation status** | **Planned (Phase 1.4)** |
+| **Depends on (entities)** | `warehouse.fact_appointment` (Planned), `warehouse.fact_lead` (Planned), `warehouse.dim_date` (Implemented) |
+
+---
+
+## 28. `KPI-FUN-005` — Show-to-sale conversion
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-FUN-005` |
+| **Display name** | Show-to-sale conversion |
+| **Business purpose** | The closing rate on customers who physically arrived. Isolates showroom and salesperson performance from BDC and marketing performance. |
+| **Business owner persona** | General sales manager |
+| **Definition (plain English)** | Of the appointments where the customer showed up, the share that resulted in a finalized retail sale. |
+| **Formula** | `shown appointments linked to a finalized retail sale / shown appointments` — [ARCHITECTURE.md §18.2](ARCHITECTURE.md) |
+| **Numerator (precise)** | `SUM(warehouse.fact_appointment.appointment_count)` where `is_shown = true` **and** `is_sold = true` **and** `vehicle_sale_key` resolves to a finalized retail sale. |
+| **Denominator (precise)** | `SUM(warehouse.fact_appointment.appointment_count)` where `is_shown = true`, in the same filter context. |
+| **Grain** | Store × period. **Non-additive ratio**, computed over appointments. |
+| **Date basis** | `show_date_key` → `dim_date` on both sides. Attribution is to the date of the visit, not the date of the sale, so that the visit and its outcome sit in the same period. |
+| **Filters** | `is_shown = true` on both sides. |
+| **Exclusions** | Appointments that did not show; appointments linked to wholesale disposals (not retail sales); canceled deals. |
+| **Null / zero-denominator behaviour** | Zero shown appointments returns `BLANK()` / NULL. |
+| **Unit and formatting** | Percentage, one decimal place. |
+| **SQL ownership** | `reporting.vw_appointment_funnel` (Planned, Phase 1.4). |
+| **Future DAX ownership** | Lead-funnel measures group; Executive measures group. |
+| **Reconciliation rule** | `RECON-LEAD-001`. Business rule: **sold appointments must link to a finalized vehicle sale** ([ARCHITECTURE.md §21.2](ARCHITECTURE.md)) — an `is_sold = true` row with an unresolvable `vehicle_sale_key` is a critical failure, not a rounding issue. |
+| **Interpretation caution** | **Lag.** A customer who visits on the last day of a month and buys three days later is a sale in the next period but a show in this one. Under this measure's date basis the sale is still attributed to the visit date, so late-period conversion will appear to improve as the data matures. Period-to-date figures must be labelled as incomplete. Also note that walk-in traffic without an appointment is **not** in this measure at all. |
+| **Implementation status** | **Planned (Phase 1.4)** |
+| **Depends on (entities)** | `warehouse.fact_appointment` (Planned), `warehouse.fact_vehicle_sale` (Planned), `warehouse.dim_date` (Implemented) |
+
+---
+
+## 29. `KPI-FUN-006` — Lead-to-sale conversion
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-FUN-006` |
+| **Display name** | Lead-to-sale conversion |
+| **Business purpose** | The end-to-end funnel result. The measure that determines whether a lead source is worth paying for. |
+| **Business owner persona** | Internet or BDC director; marketing manager |
+| **Definition (plain English)** | The share of valid leads that ultimately resulted in a finalized retail sale. |
+| **Formula** | `unique leads linked to a finalized retail sale / valid nonduplicate leads` — [ARCHITECTURE.md §18.2](ARCHITECTURE.md) |
+| **Numerator (precise)** | `COUNT(DISTINCT warehouse.fact_lead.lead_key)` where `is_sold = true`, `is_duplicate = false`, and `vehicle_sale_key` resolves to a finalized retail sale. |
+| **Denominator (precise)** | `COUNT(DISTINCT warehouse.fact_lead.lead_key)` where `is_duplicate = false` — that is, `KPI-FUN-001`, in the same filter context. |
+| **Grain** | Store × period. **Non-additive ratio.** |
+| **Date basis** | `lead_created_date_key` → `dim_date` **on both sides**. A lead created in March that sells in May counts in **March** — the lead's cohort, not the sale's period. This is a deliberate choice: it is the only basis on which a source's conversion is meaningful, and it is the reason recent periods appear to convert poorly. |
+| **Filters** | `is_duplicate = false` on both sides. Lead source, campaign, store, employee from context. |
+| **Exclusions** | Duplicate leads; leads linked only to wholesale transactions; canceled deals. |
+| **Null / zero-denominator behaviour** | Zero valid leads returns `BLANK()` / NULL. |
+| **Unit and formatting** | Percentage, one decimal place. |
+| **SQL ownership** | `reporting.vw_lead_funnel` (Planned, Phase 1.4). |
+| **Future DAX ownership** | Lead-funnel measures group; Executive measures group; Marketing measures group. |
+| **Reconciliation rule** | `RECON-LEAD-001`. Chain check: `KPI-FUN-002 × KPI-FUN-003 × KPI-FUN-004 × KPI-FUN-005` should approximate this measure. A large gap means leads are converting by a path the funnel does not model (walk-ins later matched to a lead, for example), and must be explained rather than ignored. |
+| **Implementation status** | **Planned (Phase 1.4)** |
+| **Depends on (entities)** | `warehouse.fact_lead` (Planned), `warehouse.fact_vehicle_sale` (Planned), `warehouse.dim_lead_source` (Planned), `warehouse.dim_date` (Implemented) |
+| **Interpretation caution** | **Cohort maturity dominates this measure.** Because leads are attributed to their creation date, the most recent months will always look worst — those leads have not finished converting. Comparing an immature month to a mature one is the single most common misreading of this metric, and any trend visual must either restrict to matured cohorts or label the immature tail. Attribution is also **single-source, first-touch** in ARPI: a customer who arrived through three channels is credited to one. Multi-touch attribution is **out of scope**. |
+
+---
+
+## 30. `KPI-FUN-007` — Average response time
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-FUN-007` |
+| **Display name** | Average response time |
+| **Business purpose** | Mean time to first response. Retained as the companion to the median and for total-response-seconds reconciliation. **Not the headline responsiveness figure.** |
+| **Business owner persona** | Internet or BDC director |
+| **Definition (plain English)** | The arithmetic mean number of minutes between a lead arriving and the store's first outbound response. |
+| **Formula** | `SUM(first_response_seconds) / COUNT(leads with a response) / 60` |
+| **Numerator (precise)** | `SUM(warehouse.fact_lead.first_response_seconds)` over rows where `first_response_seconds IS NOT NULL` and `is_duplicate = false`, divided by 60 for display in minutes. |
+| **Denominator (precise)** | `COUNT(warehouse.fact_lead.lead_key)` where `first_response_seconds IS NOT NULL` and `is_duplicate = false`, in the same filter context. **Leads that were never responded to are excluded from the denominator** — see the caution. |
+| **Grain** | Store × period. **Non-additive ratio.** |
+| **Date basis** | `lead_created_date_key` → `dim_date`. |
+| **Filters** | `is_duplicate = false`; `first_response_seconds IS NOT NULL`. |
+| **Exclusions** | Duplicates; **leads never responded to**, which have `first_response_seconds IS NULL`. NULL here means "no response ever", which is analytically different from a zero or a very large response time. |
+| **Null / zero-denominator behaviour** | Zero responded leads returns `BLANK()` / NULL. Note that `first_response_seconds = 0` (an instant auto-response) is a valid value and is included; only NULL is excluded. |
+| **Unit and formatting** | Minutes, one decimal place. Values over 24 hours should be shown in hours with the unit stated. |
+| **SQL ownership** | `reporting.vw_lead_response` (Planned, Phase 1.4). |
+| **Future DAX ownership** | Lead-funnel measures group. |
+| **Reconciliation rule** | `RECON-LEAD-001`. Business rule: **first response cannot occur before lead creation** ([ARCHITECTURE.md §21.2](ARCHITECTURE.md)) — `first_response_seconds` is non-negative. |
+| **Interpretation caution** | **Two compounding distortions.** First, the distribution is severely right-skewed: one lead answered after four days can move the mean for an entire store-month. Second, **excluding never-responded leads means the worst outcomes are invisible in this measure** — a store that ignores half its leads can report an excellent average response time. Both `KPI-FUN-008` and a separate "leads without follow-up" count (`docs/research.md` §4.5) must be shown alongside. Use the median as the headline. See section 5. |
+| **Implementation status** | **Planned (Phase 1.4)** |
+| **Depends on (entities)** | `warehouse.fact_lead` (Planned), `warehouse.dim_date` (Implemented), `warehouse.dim_dealership` (Implemented) |
+
+---
+
+## 31. `KPI-FUN-008` — Median response time
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-FUN-008` |
+| **Display name** | Median response time |
+| **Business purpose** | **The headline responsiveness figure.** Describes what the typical customer actually experiences, undistorted by the tail. |
+| **Business owner persona** | Internet or BDC director |
+| **Definition (plain English)** | The middle value of first-response times: half of responded leads were answered faster, half slower. |
+| **Formula** | `PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY first_response_seconds) / 60` |
+| **Numerator (precise)** | `n/a — order statistic.` The input population is `warehouse.fact_lead.first_response_seconds` for rows where the value is not NULL and `is_duplicate = false`. |
+| **Denominator (precise)** | `n/a — order statistic` |
+| **Grain** | Store × period. **Not additive and not decomposable** — must be recomputed from row-level values at every aggregation level. |
+| **Date basis** | `lead_created_date_key` → `dim_date`. |
+| **Filters** | `is_duplicate = false`; `first_response_seconds IS NOT NULL`. |
+| **Exclusions** | Duplicates; leads never responded to. |
+| **Null / zero-denominator behaviour** | Returns `BLANK()` / NULL when the population is empty. Even-sized populations use linear-interpolated `PERCENTILE_CONT`, fixed so SQL and DAX agree. |
+| **Unit and formatting** | Minutes, integer. |
+| **SQL ownership** | `reporting.vw_lead_response` (Planned, Phase 1.4). As with `KPI-INV-004`, the median cannot be recomputed from a pre-aggregated view, so **row-level `first_response_seconds` must be exposed to the semantic model.** |
+| **Future DAX ownership** | Lead-funnel measures group, using `MEDIAN`. |
+| **Reconciliation rule** | `RECON-LEAD-001`. Sanity relationship: `KPI-FUN-008 <= KPI-FUN-007` should normally hold for this right-skewed distribution. |
+| **Interpretation caution** | The median shares the never-responded exclusion with `KPI-FUN-007` and is therefore **equally blind to ignored leads**. It must be published with the count of leads without follow-up. `docs/research.md` §4.5 lists response-time band as a recommended dimension: a **banded distribution** (under 5 minutes, 5–15, 15–60, over 60) is more actionable than either single statistic and should be the primary visual, with the median as the summary card. ARPI states **no target response time** — it has no benchmark data. |
+| **Implementation status** | **Planned (Phase 1.4)** |
+| **Depends on (entities)** | `warehouse.fact_lead` (Planned), `warehouse.dim_date` (Implemented), `warehouse.dim_dealership` (Implemented) |
+
+---
+
+# Domain: Marketing
+
+---
+
+## 32. `KPI-MKT-001` — Marketing cost per lead
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-MKT-001` |
+| **Display name** | Marketing cost per lead |
+| **Business purpose** | What the store pays to generate one opportunity. The first-order efficiency measure for a paid channel. |
+| **Business owner persona** | Marketing manager |
+| **Definition (plain English)** | Marketing spend divided by the number of valid leads attributed to that source or campaign in the same month. |
+| **Formula** | `marketing spend / valid leads attributed to the source or campaign` — [ARCHITECTURE.md §18.2](ARCHITECTURE.md) |
+| **Numerator (precise)** | `SUM(warehouse.fact_marketing_spend.spend_amount)` for the selected store, campaign, and month. |
+| **Denominator (precise)** | `COUNT(DISTINCT warehouse.fact_lead.lead_key)` where `is_duplicate = false` and the lead is attributed to the same `campaign_key` (or `lead_source_key`), with `lead_created_date_key` falling in the **same calendar month** as the spend row. |
+| **Grain** | Store × campaign × **month**. **Non-additive ratio.** |
+| **Date basis** | Spend: `month_date_key` → `dim_date` (first day of month). Leads: `lead_created_date_key` → `dim_date`, aggregated to the same month. |
+| **Filters** | `is_duplicate = false` on the denominator. Paid sources only (`dim_lead_source.is_paid = true`). |
+| **Exclusions** | Duplicate leads; **organic and internal sources**, for which the measure is undefined rather than zero — a walk-in has no marketing cost per lead. |
+| **Null / zero-denominator behaviour** | **Zero leads with non-zero spend returns `BLANK()` / NULL, not infinity.** A channel that spent money and produced nothing is a real and important finding, but the correct way to report it is spend with zero leads, not an infinite cost per lead. The visual must surface that case explicitly. Zero spend with leads present returns `0`, which is correct for an organic tail on a paid campaign. |
+| **Unit and formatting** | Currency per lead, USD, two decimals. |
+| **SQL ownership** | `reporting.vw_marketing_performance` (Planned, Phase 1.5), exposing spend and attributed lead count as separate additive columns. |
+| **Future DAX ownership** | Marketing measures group. |
+| **Reconciliation rule** | `RECON-LEAD-001` for the denominator. Spend must be non-negative ([ARCHITECTURE.md §21.2](ARCHITECTURE.md)). |
+| **Interpretation caution** | **Grain mismatch is the central caution.** Spend is monthly; leads are daily. **This measure must never be computed at day grain** — dividing a monthly spend figure by one day's leads produces a number that is meaningless and looks fine. Month is the finest valid grain. In addition, attribution is single-source and first-touch, campaigns can generate leads outside their target segment ([ARCHITECTURE.md §15.3](ARCHITECTURE.md)), and cost per lead says nothing about lead quality — see `KPI-MKT-002` and `KPI-MKT-003`. |
+| **Implementation status** | **Planned (Phase 1.5)** |
+| **Depends on (entities)** | `warehouse.fact_marketing_spend` (Planned), `warehouse.fact_lead` (Planned), `warehouse.dim_marketing_campaign` (Planned), `warehouse.dim_lead_source` (Planned), `warehouse.dim_date` (Implemented) |
+
+---
+
+## 33. `KPI-MKT-002` — Marketing cost per sale
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-MKT-002` |
+| **Display name** | Marketing cost per sale |
+| **Business purpose** | What the store pays to generate one delivered car. Corrects for lead quality, which cost per lead ignores entirely. |
+| **Business owner persona** | Marketing manager |
+| **Definition (plain English)** | Marketing spend divided by the number of finalized retail sales attributed to that source or campaign. |
+| **Formula** | `marketing spend / finalized retail sales attributed to the source or campaign` — [ARCHITECTURE.md §18.2](ARCHITECTURE.md) |
+| **Numerator (precise)** | `SUM(warehouse.fact_marketing_spend.spend_amount)` for the selected store, campaign, and month. |
+| **Denominator (precise)** | `SUM(warehouse.fact_vehicle_sale.unit_count)` where `is_retail = true` and the sale's originating lead is attributed to the same `campaign_key` (or `lead_source_key`), with the **originating lead's creation month** equal to the spend month. |
+| **Grain** | Store × campaign × **month**. **Non-additive ratio.** |
+| **Date basis** | Spend: `month_date_key`. Sales: attributed via the originating lead's `lead_created_date_key`, **not the sale date.** Anchoring to the lead's creation month is what keeps spend and outcome in the same cohort; anchoring to the sale date would credit this month's spend with last quarter's leads. |
+| **Filters** | `is_retail = true` on the denominator; paid sources only. |
+| **Exclusions** | Wholesale and dealer trades; canceled deals; organic and internal sources. |
+| **Null / zero-denominator behaviour** | **Zero attributed sales with non-zero spend returns `BLANK()` / NULL, not infinity.** Report it as "spend with no attributed sales", which is the actionable statement. |
+| **Unit and formatting** | Currency per sale, USD, no decimals. |
+| **SQL ownership** | `reporting.vw_marketing_performance` (Planned, Phase 1.5). |
+| **Future DAX ownership** | Marketing measures group. |
+| **Reconciliation rule** | `RECON-UNITS-001` for the denominator; `RECON-LEAD-001` for the attribution chain. |
+| **Interpretation caution** | **Cohort immaturity is severe here.** Leads created this month have not finished converting, so the current month's cost per sale will always look terrible and will improve for weeks afterwards. Trend visuals must restrict to matured cohorts or label the tail. Attribution remains **single-source, first-touch**; multi-touch attribution is out of scope. The same monthly grain floor as `KPI-MKT-001` applies. |
+| **Implementation status** | **Planned (Phase 1.5)** |
+| **Depends on (entities)** | `warehouse.fact_marketing_spend` (Planned), `warehouse.fact_lead` (Planned), `warehouse.fact_vehicle_sale` (Planned), `warehouse.dim_marketing_campaign` (Planned), `warehouse.dim_date` (Implemented) |
+
+---
+
+## 34. `KPI-MKT-003` — Gross return on advertising spend
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-MKT-003` |
+| **Display name** | Gross return on advertising spend |
+| **Business purpose** | Whether a channel makes money after the cost of the cars it sells. The only marketing return measure ARPI treats as primary. |
+| **Business owner persona** | Marketing manager; dealer principal |
+| **Definition (plain English)** | Total gross profit attributed to a source or campaign, divided by the marketing spend on it. A value of 1.0 means the channel returned exactly its cost in gross profit. |
+| **Formula** | `attributed total gross / marketing spend` — [ARCHITECTURE.md §18.2](ARCHITECTURE.md) |
+| **Numerator (precise)** | `SUM(warehouse.fact_vehicle_sale.total_gross)` where `is_retail = true` and the sale's originating lead is attributed to the campaign or source, with the originating lead's creation month equal to the spend month. |
+| **Denominator (precise)** | `SUM(warehouse.fact_marketing_spend.spend_amount)` for the same store, campaign, and month. |
+| **Grain** | Store × campaign × **month**. **Non-additive ratio.** |
+| **Date basis** | Both sides anchored to the spend month; sales attributed via the originating lead's creation month. |
+| **Filters** | `is_retail = true` on the numerator; paid sources only. |
+| **Exclusions** | Wholesale and dealer trades; canceled deals; organic and internal sources. |
+| **Null / zero-denominator behaviour** | **Zero spend returns `BLANK()` / NULL, never infinity.** Gross with zero spend is not an infinite return; it is an organic result and belongs in a different measure. |
+| **Unit and formatting** | Ratio, two decimals, e.g. `3.42`. May be shown as a multiple (`3.4×`). **Not formatted as a percentage**, to avoid confusion with margin. |
+| **SQL ownership** | `reporting.vw_marketing_performance` (Planned, Phase 1.5). |
+| **Future DAX ownership** | Marketing measures group; Executive measures group. |
+| **Reconciliation rule** | `RECON-GROSS-002` for the numerator. |
+| **Interpretation caution** | [ARCHITECTURE.md §18.2](ARCHITECTURE.md) is explicit: **revenue return must not be presented as the primary profitability measure**, and `docs/research.md` §4.10 explains why — dealership revenue includes the cost of the vehicle, so revenue-based ROAS is inflated by roughly an order of magnitude and is close to meaningless. ARPI therefore publishes **gross**-based return as primary. Beyond that: this measure does not net out any cost other than vehicle cost — no personnel, facility, or floor-plan cost is modelled — so it is a **contribution measure, not a profit measure**. It is also subject to the same first-touch attribution limit and cohort immaturity as `KPI-MKT-002`, and no target value is published because ARPI has no benchmark. |
+| **Implementation status** | **Planned (Phase 1.5)** |
+| **Depends on (entities)** | `warehouse.fact_marketing_spend` (Planned), `warehouse.fact_vehicle_sale` (Planned), `warehouse.fact_lead` (Planned), `warehouse.dim_marketing_campaign` (Planned), `warehouse.dim_date` (Implemented) |
+
+---
+
+## 35. Deferred KPIs
+
+These metrics are part of the target architecture but sit outside the current roadmap. They are listed with
+grain and unlock phase only; full specifications will be written when the underlying facts are approved
+under Gate 4 ([ARCHITECTURE.md §28](ARCHITECTURE.md)).
+
+| Candidate KPI | Grain | Depends on | Unlock stage | Status |
+|---|---|---|---|---|
+| F&I product penetration — `eligible retail transactions containing the product / eligible retail transactions` | Store × product × period | `warehouse.fact_finance_product_sale`, `warehouse.dim_finance_product` | Strong portfolio release — F&I product analysis ([ARCHITECTURE.md §31](ARCHITECTURE.md)) | **Deferred** |
+| Products per retail unit — `total eligible products sold / eligible retail units` | Store × period | `warehouse.fact_finance_product_sale` | Strong portfolio release — F&I product analysis | **Deferred** |
+| Repeat-customer rate — `customers with a prior completed purchase / customers with a completed purchase in the period` | Store × period | `warehouse.dim_customer`, `warehouse.fact_vehicle_sale` with full history | Strong portfolio release — customer retention | **Deferred** |
+| Service-to-sales conversion — `replacement-opportunity service customers linked to a finalized retail sale / qualified replacement-opportunity service customers` | Store × period | `warehouse.fact_service_visit` | Strong portfolio release — service-to-sales opportunities | **Deferred** |
+| Target attainment — `actual KPI value / target value` | Store × employee or department × KPI × month | `warehouse.fact_sales_target` | Strong portfolio release — target attainment | **Deferred** |
+
+Two standing constraints apply when these are eventually specified:
+
+- **Service-to-sales opportunity logic must be presented as decision support, not as a guarantee of
+  customer purchase intent** (`docs/research.md` §4.13).
+- **Target values will be fictional operating goals for a fictional group**, never industry benchmarks
+  ([LIMITATIONS.md](LIMITATIONS.md)).
+
+---
+
+## 36. Reconciliation register
+
+Reconciliation is how ARPI proves its numbers rather than asserting them. Six of the entries below are the
+required reconciliations from [ARCHITECTURE.md §21.3](ARCHITECTURE.md). The two `RECON-DIM-*-ROWCOUNT`
+entries are **a Phase 0 addition beyond §21.3** — §21.3 does not list a row-count reconciliation; Phase 0
+adds one per foundation dimension so the implemented slice has something it can actually prove. Results are
+recorded in `audit.reconciliation_result` ([DATA_DICTIONARY.md §22](DATA_DICTIONARY.md)).
+
+| Reconciliation ID | Description | Left source | Right source | Tolerance | Status |
+|---|---|---|---|---|---|
+| `RECON-DIM-DATE-ROWCOUNT` | Generated `dim_date` row count equals the `warehouse.dim_date` row count after the merge | `generator:dim_date` (rows produced by the generator) | `warehouse.dim_date` (`count(*)`) | 0 (exact) | **Implemented** |
+| `RECON-DIM-DEALERSHIP-ROWCOUNT` | Generated `dim_dealership` row count equals the `warehouse.dim_dealership` row count after the merge | `generator:dim_dealership` (rows produced by the generator) | `warehouse.dim_dealership` (`count(*)`) | 0 (exact) | **Implemented** |
+| `RECON-UNITS-001` | Retail units by month in SQL equal Power BI totals | `reporting.vw_sales_summary` | Power BI `Retail Units Sold` measure | 0 (exact) | Planned (Phase 1.3 for the SQL side; the Power BI side follows Gate 1) |
+| `RECON-GROSS-001` | Total gross reconciles to front-end plus back-end gross at row level | `warehouse.fact_vehicle_sale.total_gross` | `front_end_gross + back_end_gross` | `validation.numeric_absolute_tolerance` = 0.01 | Planned (Phase 1.3) |
+| `RECON-GROSS-002` | Total gross by month in SQL equals Power BI totals | `reporting.vw_gross_summary` | Power BI `Total Gross` measure | 0.01 absolute / 0.001 relative | Planned (Phase 1.3 SQL side; Power BI side after Gate 1) |
+| `RECON-INV-001` | Inventory count on selected dates matches snapshot records | `reporting.vw_inventory_snapshot` | `warehouse.fact_vehicle_inventory_snapshot` raw counts | 0 (exact) | Planned (Phase 1.3) |
+| `RECON-LEAD-001` | Lead totals by source match source-level staging counts after documented exclusions | `reporting.vw_lead_funnel` | `staging` lead counts less documented exclusions | 0 (exact) | Planned (Phase 1.4) |
+| `RECON-FI-001` | F&I product totals reconcile to transaction-level back-end gross | `warehouse.fact_finance_product_sale` net product gross | `warehouse.fact_vehicle_sale.back_end_gross` | 0.01 absolute | **Deferred** — see note below |
+| `RECON-EXCEL-001` | Excel summary totals match approved SQL reporting views | `excel/ARPI_Operating_Report.xlsx` (not yet created) | `reporting.*` views | 0.01 absolute | Planned (post-MVP) |
+
+**Two reconciliations are exercised today: `RECON-DIM-DATE-ROWCOUNT` and `RECON-DIM-DEALERSHIP-ROWCOUNT`**
+(defined in `src/arpi/constants.py`, evaluated in `src/arpi/ingestion/loader.py`). Both run only when the
+optional database load runs, because the right-hand side is a live `count(*)` against the warehouse table.
+Everything else awaits the facts it depends on.
+
+> **Scope limit of the implemented row-count reconciliations.** Each one compares exactly two numbers: the
+> generated row count and the warehouse row count. It does **not** span the raw or staging layers, and it
+> does not account for rejected records. The loader records row counts for the `source`, `raw` and
+> `warehouse` layers only — **`staging` and `rejected` row counts are not yet recorded at all**, so
+> [ARCHITECTURE.md §21.4](ARCHITECTURE.md) is not yet satisfied. See
+> [LIMITATIONS.md](LIMITATIONS.md) for the registered gap.
+
+> **Note on `RECON-FI-001`.** [ARCHITECTURE.md §21.3](ARCHITECTURE.md) lists this as a required
+> reconciliation, but its dependency `warehouse.fact_finance_product_sale` is **Deferred**
+> ([DATA_DICTIONARY.md §27.8](DATA_DICTIONARY.md)). A reconciliation cannot be Planned when the table it
+> reconciles is not, so it is recorded as Deferred here and will be promoted to Planned at the same time as
+> the F&I domain. This is a status-consistency decision, not a change to the architecture's requirement.
+
+---
+
+## 37. Change control
+
+- Adding a KPI requires a new permanent ID and every field in the template above.
+- Changing a KPI's **numerator, denominator, exclusions, or date basis** materially changes what the number
+  means; issue a **new ID** rather than editing in place, so historical findings remain traceable.
+- Retiring a KPI: set status to `Out of scope`, keep the entry, never reuse the ID.
+- Every KPI must trace to at least one primary question in `docs/research.md` §4. A KPI with no business
+  question behind it fails Gate 4 ([ARCHITECTURE.md §28](ARCHITECTURE.md)).
+- **No benchmark, target, or "good" value may be added to this catalogue** unless ARPI acquires a
+  documented, licensed, citable source for it — and then it must be cited inline.

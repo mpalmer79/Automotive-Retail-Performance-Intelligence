@@ -1,8 +1,8 @@
-# DealerPulse BI Architecture
+# Automotive Retail Performance Intelligence — Architecture
 
 ## 1. Document Purpose
 
-This document defines the technical architecture for **DealerPulse BI**, a professional automotive dealership analytics portfolio project designed to demonstrate business intelligence, data analysis, data modeling, SQL, Python, Power BI, data quality, and executive communication skills.
+This document defines the technical architecture for **Automotive Retail Performance Intelligence (ARPI)**, a professional automotive dealership analytics portfolio project designed to demonstrate business intelligence, data analysis, data modeling, SQL, Python, Power BI, data quality, and executive communication skills.
 
 This architecture is intentionally opinionated. Its purpose is to prevent uncontrolled scope growth and keep the project focused on the hiring evidence required for Data Analyst, Business Intelligence Analyst, Automotive Data Analyst, Sales Operations Analyst, Product Analyst, Revenue Operations Analyst, and Reporting Analyst roles.
 
@@ -13,7 +13,8 @@ The project is not a production dealership management system, CRM, desking platf
 ## 2. Architecture Status
 
 - **Status:** Approved for implementation
-- **Architecture version:** 1.0
+- **Architecture version:** 1.1
+- **Last reviewed:** 2026-07-28
 - **Primary owner:** Michael Palmer
 - **Primary audience:** Hiring managers, technical reviewers, dealership operators, BI professionals, and portfolio reviewers
 - **Primary repository:** Public GitHub repository
@@ -24,9 +25,25 @@ The project is not a production dealership management system, CRM, desking platf
 
 ---
 
+## 2.1 Naming History
+
+Earlier drafts of this document carried a different working title — the brand-style name proposed during
+the research phase and recorded in `docs/research.md` §11.1. That title was retired before implementation
+began, and the product identity became **Automotive Retail Performance Intelligence**, short identifier
+**ARPI**, with the Python package `arpi`, the configuration prefix `ARPI_`, and the database roles
+`arpi_admin`, `arpi_loader`, and `arpi_reporter`. The retired name, the alternatives that were weighed,
+the rationale, and the full migration impact are all recorded in
+[ADR-0001: Project Identity and Naming Convention](docs/architecture-decisions/ADR-0001-project-identity.md).
+
+The retired title is spelled out in exactly two places in this repository — that ADR and the preserved
+research document — and nowhere else. `scripts/check_naming.py` enforces that boundary in continuous
+integration, which is why this section describes the former name rather than repeating it.
+
+---
+
 ## 3. Project Summary
 
-DealerPulse BI is a dealership performance intelligence platform for a fictional three-store automotive group operating in Southern New England.
+Automotive Retail Performance Intelligence (ARPI) is a dealership performance intelligence platform for a fictional three-store automotive group operating in Southern New Hampshire.
 
 The platform integrates synthetic data representing:
 
@@ -61,7 +78,7 @@ Dealership data is commonly fragmented across DMS, CRM, inventory, marketing, F&
 - Whether F&I performance is sustainable
 - Which service customers may represent valid vehicle-replacement opportunities
 
-DealerPulse BI creates one governed analytical model with consistent KPI definitions and traceable business logic.
+Automotive Retail Performance Intelligence creates one governed analytical model with consistent KPI definitions and traceable business logic.
 
 ---
 
@@ -145,7 +162,8 @@ A public case-study page may be added after the analytical system is complete, b
 
 - Southern New Hampshire
 - Northern Massachusetts influence
-- Southern New England seasonal patterns
+- Northern New England seasonal patterns, as they present in southern New Hampshire — a four-season
+  climate with a hard winter, a mud season, and a compressed spring selling surge
 
 ### 8.4 Reporting period
 
@@ -911,7 +929,7 @@ The generator must:
 
 | Profile | Purpose | Approximate size |
 |---|---|---:|
-| `dev` | Fast local iteration | 5 percent of final volume |
+| `development` | Fast local iteration | 5 percent of final volume |
 | `test` | Automated validation | Small, controlled scenarios |
 | `portfolio` | Final public demonstration | Full target volume |
 
@@ -1446,17 +1464,17 @@ No real customer or employee data is permitted.
 
 ### 22.3 Database roles
 
-#### `dealerpulse_admin`
+#### `arpi_admin`
 
 - Owns database objects.
 - Used only for schema administration.
 
-#### `dealerpulse_loader`
+#### `arpi_loader`
 
 - Inserts and updates raw, staging, warehouse, and audit tables.
 - Cannot administer database-level security.
 
-#### `dealerpulse_reporter`
+#### `arpi_reporter`
 
 - Read-only access to approved reporting views.
 - Used by Power BI and Excel.
@@ -1500,73 +1518,96 @@ Examples of required context:
 
 ## 24. Repository Structure
 
+The tree below is the Phase 0 repository. Every entry carries an explicit status marker so that the
+document never implies a deliverable exists before it does.
+
+**Legend**
+
+| Marker | Meaning |
+|---|---|
+| `[now]` | Exists in the repository today as part of the Phase 0 foundation |
+| `[empty]` | Directory is present and tracked, but intentionally contains no content yet |
+| `[planned]` | Not yet created; scheduled for a later phase |
+
 ```text
-DealerPulse-BI/
-├── README.md
-├── ARCHITECTURE.md
-├── DATA_DICTIONARY.md
-├── KPI_CATALOG.md
-├── DATA_GENERATION.md
-├── PRIVACY_AND_ETHICS.md
-├── LIMITATIONS.md
-├── LICENSE
-├── .env.example
-├── pyproject.toml
-├── requirements.txt
+Automotive-Retail-Performance-Intelligence/
+├── README.md                              [now]      Entry point and project overview
+├── ARCHITECTURE.md                        [now]      This document
+├── DATA_DICTIONARY.md                     [now]      Column-level contracts for Phase 0 objects
+├── KPI_CATALOG.md                         [now]      Governed KPI definitions
+├── DATA_GENERATION.md                     [now]      Synthetic-generation methodology
+├── PRIVACY_AND_ETHICS.md                  [now]      Privacy and ethical analytics position
+├── LIMITATIONS.md                         [now]      Honest statement of what the data cannot show
+├── CONTRIBUTING.md                        [now]      Development workflow and quality gates
+├── SECURITY.md                            [now]      Vulnerability reporting and secret handling
+├── LICENSE                                [now]      MIT
+├── pyproject.toml                         [now]      Single Python configuration file
+├── .env.example                           [now]      Example environment variables (no secrets)
+├── .editorconfig                          [now]      Cross-editor formatting baseline
+├── .gitattributes                         [now]      Line-ending and diff behaviour
+├── .gitignore                             [now]
+├── .pre-commit-config.yaml                [now]      Local pre-commit hooks
+├── .github/
+│   └── workflows/                         [now]      Continuous integration definitions
+├── scripts/                               [now]      Repository governance checks
+│                                                     (naming, documentation-link and secret checks)
 ├── config/
-│   ├── development.yaml
-│   ├── test.yaml
-│   └── portfolio.yaml
+│   ├── development.yaml                   [now]
+│   ├── test.yaml                          [now]
+│   └── portfolio.yaml                     [now]
 ├── data/
-│   ├── raw/
-│   │   └── .gitkeep
-│   ├── sample/
-│   └── external/
+│   ├── raw/                               [now]      Generated output, gitignored
+│   ├── sample/                            [now]      Small committed synthetic extract
+│   └── external/                          [empty]    Approved public reference data
 ├── docs/
-│   ├── diagrams/
-│   ├── screenshots/
-│   ├── findings/
-│   ├── requirements/
-│   └── walkthrough/
+│   ├── index.md                           [now]      Documentation hub
+│   ├── research.md                        [now]      Preserved research evidence base
+│   ├── database-setup.md                  [now]      Optional local PostgreSQL setup
+│   ├── architecture-decisions/            [now]      ADR-0001, ADR-0002
+│   ├── diagrams/                          [now]      Mermaid diagrams in Markdown
+│   ├── requirements/                      [now]      Phase backlogs
+│   ├── source-to-target/                  [now]      Source-to-target mappings
+│   ├── findings/                          [empty]    Executive findings memos
+│   ├── screenshots/                       [planned]  Dashboard screenshots
+│   └── walkthrough/                       [planned]  Walkthrough video assets
 ├── sql/
-│   ├── 00_database/
-│   ├── 01_raw/
-│   ├── 02_staging/
-│   ├── 03_dimensions/
-│   ├── 04_facts/
-│   ├── 05_reporting/
-│   ├── 06_indexes/
-│   ├── 07_security/
-│   └── 08_validation/
+│   ├── 00_database/                       [now]      Database, schemas, extensions
+│   ├── 01_raw/                            [now]      Raw landing tables
+│   ├── 02_staging/                        [now]      Staging views
+│   ├── 03_dimensions/                     [now]      dim_date, dim_dealership
+│   ├── 04_facts/                          [empty]    Fact tables arrive in Phase 1
+│   ├── 05_reporting/                      [now]      Phase 0 reporting views
+│   ├── 06_indexes/                        [now]      Six indexes today; further tuning follows the facts
+│   ├── 07_security/                       [now]      arpi_admin / arpi_loader / arpi_reporter
+│   └── 08_validation/                     [now]      Audit objects and SQL data-quality checks
 ├── src/
-│   └── dealerpulse/
-│       ├── __init__.py
-│       ├── config.py
-│       ├── generation/
-│       ├── ingestion/
-│       ├── transformation/
-│       ├── validation/
-│       ├── audit/
-│       └── utilities/
+│   └── arpi/                              [now]      Python package (src layout)
 ├── tests/
-│   ├── unit/
-│   ├── integration/
-│   ├── data_quality/
-│   └── fixtures/
-├── notebooks/
-│   ├── 01_distribution_validation.ipynb
-│   └── 02_executive_analysis.ipynb
+│   ├── unit/                              [now]      No database required
+│   ├── data_quality/                      [now]      Runs the generators, no database required
+│   ├── integration/                       [now]      Marked `integration`, requires PostgreSQL
+│   └── fixtures/                          [empty]    Shared test fixtures arrive with the Phase 1 facts
+├── notebooks/                             [empty]    No notebooks exist yet
 ├── powerbi/
-│   ├── DealerPulseBI.pbix
-│   ├── model_documentation/
-│   └── measures/
+│   ├── ARPI_Performance_Intelligence.pbix [planned]  (not yet created)
+│   ├── model_documentation/               [empty]    (not yet created)
+│   └── measures/                          [empty]    (not yet created)
 ├── excel/
-│   └── DealerPulse_Operating_Report.xlsx
+│   └── ARPI_Operating_Report.xlsx         [planned]  (not yet created)
 └── portfolio/
-    ├── case-study-copy.md
-    ├── resume-bullets.md
-    └── linkedin-launch.md
+    ├── case-study-copy.md                 [planned]  (not yet created)
+    ├── resume-bullets.md                  [planned]  (not yet created)
+    └── linkedin-launch.md                 [planned]  (not yet created)
 ```
+
+The `src/arpi/` package holds the Phase 0 runtime: typed profile configuration, logging setup, the
+seeded date and dealership generators, the validation framework, the CSV and manifest writer, the
+optional PostgreSQL loader, audit recording, and the `arpi` command-line interface. The authoritative
+module layout is the package itself; `docs/index.md` and `CONTRIBUTING.md` describe how the pieces fit
+together.
+
+Dependency management uses `pyproject.toml` only. There is no `requirements.txt`, no `setup.cfg`, and no
+separate lint, type-check, or test configuration file.
 
 ### 24.1 Repository rules
 
@@ -1665,6 +1706,11 @@ Fallback:
 
 - Local PostgreSQL for development
 - Published SQL scripts and sample data for review
+
+**Phase 0 position:** development and continuous integration run against a locally installed PostgreSQL
+instance. Managed hosting on Supabase is deferred until there is a Power BI model that needs a shared
+endpoint. See ADR-0002 and `docs/database-setup.md`. Nothing in the Phase 0 workflow — generation,
+validation, or the test suite — requires a hosted database or any database credentials.
 
 ### 26.2 Power BI deployment
 
@@ -1996,7 +2042,7 @@ These features are optional and may be rejected if they dilute the project’s a
 
 ## 33. Definition of Done
 
-DealerPulse BI is complete when:
+Automotive Retail Performance Intelligence is complete when:
 
 1. The synthetic dataset is reproducible.
 2. Public-data sources and licenses are documented.
@@ -2046,7 +2092,7 @@ Material changes must be documented in `docs/architecture-decisions/`.
 Required format:
 
 ```text
-ADR-0001-title.md
+ADR-NNNN-kebab-title.md
 ```
 
 Each record must include:
@@ -2057,6 +2103,20 @@ Each record must include:
 - Alternatives considered
 - Consequences
 - Date
+
+### 35.1 Accepted records
+
+| ADR | Title | Status |
+|---|---|---|
+| [ADR-0001](docs/architecture-decisions/ADR-0001-project-identity.md) | Project Identity and Naming Convention | Accepted |
+| [ADR-0002](docs/architecture-decisions/ADR-0002-phase-0-technology-baseline.md) | Phase 0 Technology Baseline | Accepted |
+
+**ADR-0001 is the naming decision of record.** It fixes the display name *Automotive Retail Performance
+Intelligence*, the short identifier *ARPI*, the Python package `arpi`, the `ARPI_` configuration prefix,
+and the database roles `arpi_admin`, `arpi_loader`, and `arpi_reporter`. Any future change to the project
+identity requires a superseding ADR.
+
+### 35.2 Decisions that require an ADR
 
 The following decisions require an ADR:
 
@@ -2075,7 +2135,7 @@ The following decisions require an ADR:
 
 ## 36. Final Architecture Position
 
-DealerPulse BI is a business intelligence and analytics project first.
+Automotive Retail Performance Intelligence is a business intelligence and analytics project first.
 
 Its credibility will come from:
 

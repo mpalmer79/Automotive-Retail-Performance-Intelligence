@@ -1,0 +1,471 @@
+# Privacy and Ethics — Automotive Retail Performance Intelligence (ARPI)
+
+**Project:** Automotive Retail Performance Intelligence (ARPI)
+**Owner:** Michael Palmer
+**Version:** 1.0
+**Last reviewed:** 2026-07-28
+**Companion documents:** [ARCHITECTURE.md](ARCHITECTURE.md) · [DATA_DICTIONARY.md](DATA_DICTIONARY.md) · [DATA_GENERATION.md](DATA_GENERATION.md) · [LIMITATIONS.md](LIMITATIONS.md) · `SECURITY.md`
+
+---
+
+## 1. Position statement
+
+ARPI analyses a **fictional** three-store dealership group using **entirely synthetic** operational data.
+It contains no real customer, no real employee, no real vehicle, no real transaction, and no real
+dealership.
+
+That is not a limitation the project apologises for. It is a design choice with a specific rationale:
+dealership operational data is among the more sensitive categories of consumer data in the United States,
+and a portfolio project has no business handling it. Working synthetically lets ARPI demonstrate the full
+analytical stack — dimensional modelling, data quality, KPI governance, executive reporting — while
+carrying **zero privacy risk to any real person**.
+
+This document records what ARPI will not do, why, and how each commitment is actually enforced. Section 12
+maps every policy to a concrete control and states honestly whether that control exists today.
+
+---
+
+## 2. Synthetic-only operational data policy
+
+**Every operational record in ARPI is synthetic.** [ARCHITECTURE.md §22.1](ARCHITECTURE.md) classifies all
+project data as one of exactly three things:
+
+| Classification | Example |
+|---|---|
+| Synthetic public portfolio data | Every dimension and fact in the warehouse |
+| Approved public reference data | NHTSA vPIC vehicle attributes (feature-flagged **off** today) |
+| Non-sensitive documentation | This repository's Markdown files |
+
+> **No real customer or employee data is permitted.** — [ARCHITECTURE.md §22.1](ARCHITECTURE.md)
+
+Supporting commitments:
+
+- **No real dealership data.** [ARCHITECTURE.md §6](ARCHITECTURE.md) lists real dealership data, real
+  customer data, live lender integration, credit application processing, and payment calculations as
+  explicit **non-goals**.
+- **No real dealership exports without written authorization** — `docs/research.md` §10.2. ARPI has none
+  and seeks none.
+- **Every warehouse row carries `source_system = 'arpi_synthetic_generator'`**, so no query result,
+  screenshot, or export can be mistaken for a real DMS extract.
+- **Every committed sample dataset carries a synthetic-data notice** — `data/sample/README.md` is mandatory,
+  and `generation_manifest.json` carries a `synthetic_data_notice` field.
+
+Introducing real or restricted data would require an architecture decision record
+([ARCHITECTURE.md §35](ARCHITECTURE.md)). There is no intention to write one.
+
+---
+
+## 3. Prohibited-field register
+
+None of the following may be generated, stored, loaded, committed, logged, screenshotted, or published — in
+any entity, any layer, any profile, or any environment.
+
+| Field | Why prohibited | Enforcement |
+|---|---|---|
+| **Names** (customer or employee) | Directly identifying. A synthetic key serves every analytical purpose ARPI has. [ARCHITECTURE.md §11.2](ARCHITECTURE.md) prohibits customer names; ARPI extends this to employee names — §22.4 permits fictional names "if names are used at all", and ARPI's answer is that they are not, because fabricated names invite confusion with real staff and add nothing to any KPI. | No generator code path produces a name field. `DQ-DLR-004` schema check (Implemented for the Phase 0 dealership slice; extends to each new entity as it is built). Documented as `Prohibited` in [DATA_DICTIONARY.md §9.2](DATA_DICTIONARY.md) and §8.1. |
+| **Street addresses** | Directly identifying, and combinable with other attributes to re-identify. `docs/research.md` §10.4 prescribes county or market area instead. | Geography stops at `city` for stores and `county` / `market_area` for customers. No address field exists in any declared schema. `DQ-DLR-004`. `DQ-GEN-001` schema-conformance check. |
+| **Email addresses** | Directly identifying and a contact vector. Listed in [ARCHITECTURE.md §11.2](ARCHITECTURE.md) and `docs/research.md` §10.2. | No email field in any declared schema. `DQ-DLR-004`. |
+| **Phone numbers** | Directly identifying and a contact vector. [ARCHITECTURE.md §11.2](ARCHITECTURE.md); `docs/research.md` §10.2. | No phone field in any declared schema. `DQ-DLR-004`. The three fictional stores deliberately have no phone numbers ([DATA_DICTIONARY.md §7.2](DATA_DICTIONARY.md)). |
+| **Full birth dates** | A quasi-identifier: date of birth plus ZIP plus sex re-identifies a large share of a population. `age_band` answers every cohort question ARPI asks. | Only `age_band` is declared. Data minimization per `docs/research.md` §10.4. `DQ-GEN-001`. |
+| **Social Security numbers** | Never appropriate in a portfolio dataset under any circumstance. `docs/research.md` §4.9 explicitly excludes SSNs from the F&I model. | No such field in any declared schema. Secret-scanning in CI (Planned). |
+| **Driver's-license numbers** | Government identifier. `docs/research.md` §10.2. | No such field in any declared schema. |
+| **Bank and card data** — account numbers, routing numbers, card numbers | Financial account data. `docs/research.md` §4.9 excludes bank-account details from the F&I model. | No such field in any declared schema. ARPI models `finance_amount` and `cash_down_payment` as amounts only — **no account, no instrument, no APR, no term, no payment**. |
+| **Real VINs** | A VIN connected to a real owner, address, phone number, service record, or financing record can contribute to identifying a person (`docs/research.md` §10.3). | Only `synthetic_vin` is declared — fabricated, never decoded from a real vehicle. [ARCHITECTURE.md §16.2](ARCHITECTURE.md). Changing this requires an ADR. See section 4. |
+| **Credit scores** and credit-application details | Sensitive financial data; `docs/research.md` §4.9 and §10.2 exclude real credit files, full credit applications, and personally identifiable financial data. | No credit field is declared in any Planned entity. [ARCHITECTURE.md §22.4](ARCHITECTURE.md) permits only a **broad synthetic tier** if a future F&I domain requires one — and that domain is **Deferred**, so no such field exists. |
+| **Real employee compensation** | Listed in `docs/research.md` §10.2. Compensation is sensitive personnel data and adds nothing to any planned KPI. | No compensation, pay-plan, or commission field is declared in `dim_employee` ([DATA_DICTIONARY.md §8.1](DATA_DICTIONARY.md)). |
+| **Insurance information**, actual deal jackets, real lender decision data | `docs/research.md` §10.2. | No such entity or field exists in the architecture. |
+| **Communication content** — message bodies, call recordings, transcripts, CRM notes | [ARCHITECTURE.md §22.4](ARCHITECTURE.md): *no communication content is stored*. `docs/research.md` §10.4: store response-time seconds rather than communication contents. | `fact_lead` declares `first_response_seconds` only. `fact_lead_activity` (Deferred) declares duration and delay seconds only. No text field for content exists in any declared schema. |
+| **Protected characteristics** — race, ethnicity, religion, national origin, sex, gender identity, sexual orientation, disability, marital status, familial status | See section 6. Never generated, and never used for pricing, lending, or evaluation. | No such field is declared anywhere. See section 6 for the analytical prohibition, which is broader than the storage prohibition. |
+| **Authentication secrets and database passwords** | `docs/research.md` §10.2. Secrets must never appear in notebooks, screenshots, or documentation ([ARCHITECTURE.md §22.2](ARCHITECTURE.md)). | Environment variables only; `.env` gitignored; `.env.example` committed with placeholder values; config redaction. See section 9. |
+
+**This register only grows.** Adding an exception is not a permitted change
+([DATA_GENERATION.md §16](DATA_GENERATION.md)).
+
+---
+
+## 4. VIN policy
+
+A VIN is a vehicle identifier rather than an inherently personal one — but `docs/research.md` §10.3 is
+precise about why that distinction is not protective: *a VIN connected to a real owner, address, phone
+number, service record, or financing record can contribute to identifying a person.* ARPI's vehicle
+records sit alongside synthetic customers, sales, and service opportunities. Introducing a real VIN into
+that structure would create exactly the linkage the prohibition exists to prevent.
+
+**ARPI's policy:**
+
+1. **Every VIN-like identifier in ARPI is synthetic.** `dim_vehicle.synthetic_vin` is a 17-character,
+   structurally VIN-like, fabricated string generated deterministically. It is not decoded from, derived
+   from, or matched against any real vehicle.
+2. **A real VIN is never linked to a synthetic customer.** [ARCHITECTURE.md §16.2](ARCHITECTURE.md) states
+   this directly, and it is the reason NHTSA vPIC enrichment (section 8) may populate vehicle *attributes*
+   but may never populate an *identifier*.
+3. **Any VIN-like identifier published in the repository must be synthetic or masked**
+   ([ARCHITECTURE.md §16.2](ARCHITECTURE.md)) — including in screenshots, sample CSVs, query results, and
+   the case study.
+4. **No real dealership inventory export is published without authorization** (`docs/research.md` §10.3).
+   ARPI publishes none.
+5. **Changing the synthetic VIN policy requires an architecture decision record.**
+   [ARCHITECTURE.md §35](ARCHITECTURE.md) lists *"Changing the synthetic VIN policy"* among the decisions
+   that require a formal ADR. It cannot be changed by a commit, a config flag, or a convenience decision
+   during implementation.
+
+The permitted pattern, if VIN decoding is ever genuinely needed: **decode during generation, store only a
+masked synthetic identifier in published data** (`docs/research.md` §10.3).
+
+---
+
+## 5. Employee analytics and fairness
+
+Employee performance reporting is the part of dealership analytics with the greatest capacity to be unfair,
+because it is the part where a number attaches to a person and influences their income and employment.
+
+### 5.1 The binding prohibition
+
+[ARCHITECTURE.md §23](ARCHITECTURE.md): the project must not **rank employees without context** such as
+lead quality, store assignment, tenure, and inventory mix. And:
+
+> **Employee scorecards must include contextual metrics rather than only raw rankings.**
+
+### 5.2 Required contextual metrics
+
+Every employee scorecard, table, or ranking visual in ARPI must carry these alongside any performance
+figure ([ARCHITECTURE.md §23](ARCHITECTURE.md)):
+
+| Required context | Why it changes the interpretation |
+|---|---|
+| **Lead volume received** | An employee handed twice the leads should sell more units. Volume without lead volume is a measure of routing, not of skill. |
+| **Lead-source mix** | Sources differ materially in conversion and gross ([ARCHITECTURE.md §15.3](ARCHITECTURE.md)). An employee fed high-intent internal leads is not outperforming one fed third-party marketplace leads. |
+| **Store traffic** | Store-level traffic differs by design in ARPI. Cross-store comparison without it is comparing markets, not people. |
+| **Tenure** | A first-year salesperson and a ten-year veteran are not comparable on absolute output. `dim_employee.tenure_band` exists for this. |
+| **New versus used mix** | Gross structure differs sharply between departments. A used-heavy mix produces different per-unit gross for reasons unrelated to skill. |
+| **Inventory availability** | An employee cannot sell what the store does not stock. |
+| **Manager involvement** | Desk-manager and finance-manager participation materially affects deal outcomes; the closer is not the only contributor. |
+
+### 5.3 Reinforcement from research
+
+`docs/research.md` §4.6 states the constraint as a design rule: **the dashboard must not use unit volume as
+the only employee ranking metric.** A high-volume employee may simultaneously show weak gross retention,
+low CRM compliance, poor follow-up, high discounting, weak F&I penetration, high cancellation rates,
+favourable lead routing, better inventory access, and more experienced management support.
+
+> *"Employee analysis should provide context rather than create simplistic rankings."*
+> — `docs/research.md` §4.6
+
+`docs/research.md` §10.5 adds shift assignment and product mix to the list of factors that make an
+uncontextualised scorecard misleading.
+
+### 5.4 Practical implications for the Employee Performance page
+
+- A single-metric leaderboard is a **design defect** in this project, not a stylistic preference.
+- Any ranking visual must show at least lead volume received, lead-source mix, and tenure band on the same
+  view.
+- `KPI-GRS-006` (total gross per retail unit) is the correct counterweight to unit volume — **and is still
+  not sufficient alone**, because it penalizes whoever is handed the harder inventory
+  ([KPI_CATALOG.md §14](KPI_CATALOG.md)).
+- Because ARPI's employees are synthetic, no real person can be harmed by a ranking here. The controls
+  exist because the *method* is the portfolio evidence: a reviewer should see that the author knows how to
+  build a scorecard that would be fair if the people were real.
+
+---
+
+## 6. Protected characteristics
+
+**ARPI generates no protected characteristics, and would not use them if it had them.**
+
+Not generated, in any entity: race, ethnicity, religion, national origin, sex, gender identity, sexual
+orientation, disability, marital status, familial status, or any proxy deliberately constructed to stand in
+for one.
+
+Not used, under any circumstance ([ARCHITECTURE.md §23](ARCHITECTURE.md)):
+
+| Prohibited use | Statement |
+|---|---|
+| **Pricing** | No pricing, discount, or markdown logic in ARPI may consider or approximate a protected characteristic. |
+| **Lending** | ARPI models no credit decisions at all (section 7). Even in the Deferred F&I domain, no protected characteristic may enter product eligibility, lender assignment, or tier logic. |
+| **Employee evaluation** | No employee measure, ranking, or scorecard may consider a protected characteristic. |
+
+[ARCHITECTURE.md §23](ARCHITECTURE.md) also prohibits **recommending discriminatory F&I practices**. Any
+F&I analysis ARPI ever produces must be framed around product value and eligibility, never around who can
+be persuaded to accept what.
+
+**On proxies.** The prohibition covers proxy variables as well as direct ones. County and market area are
+retained because they are genuinely necessary for market analysis and are the *coarsest* geography that
+supports it — but they must never be used as a stand-in for demography in pricing, lending, or evaluation
+logic. If a future analysis produces a geographic pricing recommendation, it must be reviewed against this
+section before publication.
+
+---
+
+## 7. F&I and lending limitations
+
+Dealership finance and insurance is the most regulated corner of the business and the one where a portfolio
+project can most easily overstep. ARPI's boundaries:
+
+| Boundary | Statement |
+|---|---|
+| **No real lender data** | Every lender in ARPI is fictional. No real lender name, rate sheet, buy rate, program, stipulation, or decision record appears. `docs/research.md` §10.2 lists *real lender decision data* as prohibited. `dim_lender` is Deferred; when built, it will contain invented institutions only. |
+| **No credit decisions** | ARPI does not model, simulate, or reproduce credit decisioning. [ARCHITECTURE.md §6](ARCHITECTURE.md) lists **credit application processing** as an explicit non-goal. `docs/research.md` §4.9 excludes real credit files and full credit applications. |
+| **No payment or APR advice** | ARPI does not model APR, term, payment, buy rate, sell rate, or reserve mechanics at a level that could be read as guidance. [ARCHITECTURE.md §6](ARCHITECTURE.md) lists **payment calculations** as a non-goal. `fact_vehicle_sale` carries `finance_amount` and `cash_down_payment` as amounts only. |
+| **No desking or menu simulation** | [ARCHITECTURE.md §9](ARCHITECTURE.md): the project is not a desking platform. |
+| **Back-end gross is a modelled outcome, not a recommendation** | `KPI-GRS-002` and `KPI-GRS-005` describe what a fictional finance office produced. They are not targets, and ARPI publishes no benchmark for either ([KPI_CATALOG.md](KPI_CATALOG.md)). |
+
+### 7.1 The FTC Safeguards Rule — context, not a compliance claim
+
+`docs/research.md` §10.1 records that **most automobile dealers that finance or lease vehicles are treated
+as financial institutions under the FTC Safeguards Rule**, and draws the conclusion that matters here:
+
+> *"This creates a strong reason not to use actual dealership CRM, DMS, credit, or finance records. The
+> portfolio should treat dealership consumer data as sensitive even when the project itself uses only
+> synthetic data."*
+
+**How ARPI uses this fact:** as a **reason for caution** in choosing to work synthetically, and as an
+explanation of *why* the prohibitions in section 3 are drawn where they are.
+
+**How ARPI does not use this fact:**
+
+- ARPI makes **no claim to be compliant** with the Safeguards Rule, or with any other regulation.
+- ARPI is **not a financial institution** and is not subject to the rule; a synthetic portfolio project has
+  no covered information.
+- ARPI does **not** present its controls as a compliance framework, an audit, or a model of what a
+  compliant dealership program looks like.
+- Nothing in this repository is legal advice, and nothing here should be relied on for a compliance
+  assessment.
+
+The honest statement is: *the existence of the Safeguards Rule is one of several reasons this project uses
+synthetic data.* Nothing stronger.
+
+---
+
+## 8. Public data and licensing boundaries
+
+| Rule | Source |
+|---|---|
+| Raw public data is stored **separately** from synthetic dealership data — `data/external/` | [ARCHITECTURE.md §16.2](ARCHITECTURE.md) |
+| **Source and license information must be documented** before use | [ARCHITECTURE.md §16.2](ARCHITECTURE.md) |
+| **Redistribution rights must be verified before committing raw data** | [ARCHITECTURE.md §16.2](ARCHITECTURE.md) |
+| A missing or ambiguous license is a **blocker for redistribution** | `docs/research.md` §5.6 |
+| Kaggle hosting **does not** establish reuse rights | `docs/research.md` §5.6 |
+| NHTSA vPIC may enrich vehicle **attributes** only, never supply the transaction dataset | `docs/research.md` §5.3; [ARCHITECTURE.md §16.1](ARCHITECTURE.md) |
+| External market context stays **analytically separate** from dealership transactions — different grain, different provenance | [ARCHITECTURE.md §16.3](ARCHITECTURE.md) |
+
+Both enrichment feature flags — `features.enable_public_vehicle_enrichment` and
+`features.enable_external_market_context` — are **`false`** in every profile today. **ARPI performs no
+network access during generation.**
+
+---
+
+## 9. Secret handling
+
+| Control | Rule |
+|---|---|
+| **Environment variables only** | Database credentials are read from the environment, never from a file in the repository ([ARCHITECTURE.md §22.2](ARCHITECTURE.md)). |
+| **`ARPI_DATABASE__PASSWORD` never appears in YAML** | `database.password` is absent from `config/development.yaml`, `config/test.yaml`, and `config/portfolio.yaml`. The value is read only from `ARPI_DATABASE__PASSWORD`, with `PGPASSWORD` as a fallback. |
+| **`.env` is gitignored** | A local `.env` file may hold the password on a developer machine; it is never committed. |
+| **`.env.example` is committed** | Placeholder values only, so a new contributor knows which variables exist without ever seeing a real one ([ARCHITECTURE.md §22.2](ARCHITECTURE.md)). |
+| **Log redaction** | Configuration `__repr__`, `__str__`, and every log emission redact the password as `***REDACTED***`. A secret that reaches a log file has left the environment. |
+| **No secrets in notebooks, screenshots, or documentation** | [ARCHITECTURE.md §22.2](ARCHITECTURE.md). Applies to the case study and walkthrough video as well as the repository. |
+| **TLS for remote database connections** | [ARCHITECTURE.md §22.2](ARCHITECTURE.md). The `database.sslmode` setting is configurable; remote connections must not use `disable`. |
+| **Least-privilege database roles** | `arpi_admin` owns objects and administers schema only; `arpi_loader` writes raw, staging, warehouse, and audit but cannot administer security; `arpi_reporter` is read-only on approved reporting views and is the role Power BI and Excel use ([ARCHITECTURE.md §22.3](ARCHITECTURE.md)). **Database schemas must prevent Power BI from accessing raw tables** (§22.2). |
+| **Vulnerability reporting** | See `SECURITY.md` in the repository root for the security policy and disclosure process. |
+
+Repository hygiene is also a privacy control: [ARCHITECTURE.md §27](ARCHITECTURE.md) Phase 8 exit criteria
+require that **no secrets or real personal data are present**, and §33 Definition of Done item 12 requires
+that the public repository contain **no secrets or real PII**.
+
+---
+
+## 10. Data minimization
+
+ARPI stores only what an analysis actually needs. `docs/research.md` §10.4 gives the pattern, and ARPI
+follows it exactly:
+
+| Question ARPI needs to answer | What it stores | What it does **not** store |
+|---|---|---|
+| Which age cohorts buy which vehicles? | `age_band` | Full birth date |
+| Which markets do customers come from? | `county`, `market_area` | Street address |
+| Which customer is this? | `customer_id` | Name |
+| How fast did we respond? | `first_response_seconds` | Message content, recordings, transcripts |
+| Does the household repeat-purchase? | `household_key` — **only** because repeat-purchase analysis requires it | Household composition, relationships, dependants |
+| What could this customer qualify for? | Nothing today. A broad synthetic tier only if the Deferred F&I domain is built. | Credit score, credit file, application |
+| Which product was eligible? | An eligibility flag | Full lender stipulations |
+| Where is this store? | `city`, `state_code`, `market_region` | Street address, phone, email |
+| Who sold it? | `employee_id`, `job_role`, `tenure_band` | Name, compensation, pay plan, contact details |
+
+The general rule: **if a coarser representation answers the question, the coarser representation is what
+gets stored.** Every one of these choices is a schema decision, not a runtime filter, so the finer data is
+never present to be leaked.
+
+---
+
+## 11. Ethical analytics commitments
+
+### 11.1 Correlation is not causation
+
+[ARCHITECTURE.md §23](ARCHITECTURE.md) prohibits claiming causal relationships based only on correlation.
+
+This bites hardest in exactly the places ARPI is most interesting. Some worked examples:
+
+| Observation the data will support | Causal claim ARPI must **not** make |
+|---|---|
+| Leads answered faster show higher contact rates | "Responding faster causes more sales." The generator encodes response time as an *influence* on contact probability ([ARCHITECTURE.md §15.3](ARCHITECTURE.md)), and in the real world high-intent customers are also easier to reach — the direction is not identified. |
+| Aged units carry lower front gross | "Aging causes gross loss." Units that age may have been mispriced or poorly selected at acquisition; the causality could run the other way (`docs/research.md` §4.3 asks whether aged vehicles were *priced incorrectly from day one*). |
+| One salesperson shows higher gross per unit | "That person is better." Lead routing, inventory access, mix, and manager involvement all contribute — section 5. |
+| A source shows strong lead-to-sale conversion | "Spending more there will produce proportionally more sales." Channel returns are rarely linear and attribution in ARPI is first-touch only. |
+
+**And an additional constraint that is specific to synthetic data:** any relationship visible in ARPI's
+output is there because the generator was told to put it there. A correlation in ARPI is evidence that the
+generator works, not evidence about the automotive retail industry. Findings must be framed as *"in this
+synthetic dataset…"*, never as *"in dealerships…"*.
+
+### 11.2 Never present synthetic results as real performance
+
+[ARCHITECTURE.md §23](ARCHITECTURE.md) prohibits presenting synthetic results as real dealership
+performance. `docs/research.md` §5.2 item 5: **avoid representing synthetic results as real dealership
+benchmarks.**
+
+Concretely:
+
+- No figure produced by ARPI is a dealership benchmark, an industry average, or a target.
+- No ARPI figure may be compared to a real dealership's figure as though the comparison were meaningful.
+- The Granite State Auto Group is fictional and is **never renamed** to anything resembling a real group.
+- Resume, LinkedIn, and case-study materials must describe the work accurately
+  ([ARCHITECTURE.md §33](ARCHITECTURE.md) item 14) — as an analytics project on synthetic data.
+
+### 11.3 Never conceal generation assumptions
+
+[ARCHITECTURE.md §23](ARCHITECTURE.md) prohibits concealing data-generation assumptions.
+[DATA_GENERATION.md](DATA_GENERATION.md) is the disclosure: seeds, profiles, date ranges, distributions,
+required relationships, prohibited patterns, and reproducibility guarantees are all published, and the
+generated distributions are logged at generation time ([ARCHITECTURE.md §15.1](ARCHITECTURE.md) rule 7).
+
+A reviewer can regenerate the dataset and verify the digests themselves
+([DATA_GENERATION.md §10.4](DATA_GENERATION.md)).
+
+### 11.4 Service-to-sales is decision support, not prediction
+
+`docs/research.md` §4.13: service-to-sales opportunity logic must be presented as **decision support, not
+as a guarantee of customer purchase intent.** The domain is Deferred; the constraint is recorded now so it
+is not forgotten when the domain is built.
+
+---
+
+## 12. Public portfolio exposure
+
+### 12.1 What a reader sees
+
+- This repository: documentation, SQL, Python, configuration, tests, and CI.
+- `data/sample/` — a capped sample of synthetic CSV output plus its manifest and synthetic-data notice.
+- Eventually: Power BI screenshots, a model diagram, a DAX measure catalogue, a walkthrough video, an
+  Excel operating report, and an executive findings memo — **all built on synthetic data, all labelled as
+  such**.
+- A static case study, if built ([ARCHITECTURE.md §26.3](ARCHITECTURE.md)), containing the business
+  problem, architecture diagram, selected screenshots, key findings, technology stack, **data limitations**,
+  and links.
+
+### 12.2 What is never published
+
+| Never published | Reason |
+|---|---|
+| Any real customer, employee, or dealership record | Section 2 |
+| Any real VIN | Section 4 |
+| Any credential, connection string, or secret | Section 9 |
+| Any full generated portfolio dataset | `data/raw/` is gitignored; regeneration is by seed ([DATA_GENERATION.md §11.2](DATA_GENERATION.md)) |
+| Any claim that a result is a real dealership benchmark | Section 11.2 |
+| Any screenshot containing a secret or a real identifier | [ARCHITECTURE.md §22.2](ARCHITECTURE.md) |
+
+[ARCHITECTURE.md §22.2](ARCHITECTURE.md) additionally requires that **public case-study pages expose only
+aggregates and screenshots** — not live data access, and not a queryable interface.
+
+### 12.3 What conclusions a reader may legitimately draw
+
+They may conclude things about **the author's method**: dimensional modelling, KPI governance, data-quality
+engineering, SQL, Python, reproducibility discipline, and executive communication.
+
+They may **not** conclude anything about **the automotive retail industry**. Every number in ARPI describes
+a fictional business built from a random seed. See [LIMITATIONS.md](LIMITATIONS.md).
+
+---
+
+## 13. Enforcement in code
+
+The controls below are stated honestly. Several are Planned, and saying so is the point: a privacy policy
+whose enforcement status is overstated is worse than one with acknowledged gaps.
+
+| # | Policy | Concrete control | Status |
+|---:|---|---|---|
+| 1 | No prohibited PII column in the dealership dimension | `DQ-DLR-004` — schema inspection, `critical` severity, fails the run | **Implemented** (Phase 0 slice) |
+| 2 | Generated output matches its declared schema, so a column cannot appear unannounced | `DQ-GEN-001` — schema conformance, `critical` | **Implemented** |
+| 3 | Output is reproducible and therefore auditable | `DQ-GEN-002` — determinism digest recorded, severity **`info`**: it publishes the digest for a reviewer to recompute, it does **not** gate the run. The enforcing controls are the seeded generators, the timestamp-free `generation_manifest.json` with its `content_digest` per entity, and the determinism tests | **Implemented** (as evidence, not as a gate) |
+| 4 | Every validation outcome is recorded and publishable | `audit.validation_result` + `reporting.vw_data_quality_summary` | **Implemented** |
+| 5 | Rejected records are quarantined, not silently dropped | `audit.rejected_record`; `validation.max_rejected_record_ratio = 0.0` | **Implemented** |
+| 6 | Every run is traceable to a seed and profile | `audit.pipeline_run.random_seed`, `profile_name`, `arpi_version` | **Implemented** |
+| 7 | No real data can enter through generation | No network access in the generator; both enrichment feature flags `false` in all three profiles | **Implemented** |
+| 8 | Synthetic provenance is visible on every row | `source_system = 'arpi_synthetic_generator'` in `dim_dealership` | **Implemented** |
+| 9 | Store data contains no contact details or street address | Reference data declares `city` / `state_code` / `market_region` only ([DATA_DICTIONARY.md §7.2](DATA_DICTIONARY.md)) | **Implemented** |
+| 10 | Database password never in YAML | `database.password` key absent from all three config files; read only from `ARPI_DATABASE__PASSWORD` / `PGPASSWORD` | **Implemented** (configuration workstream) |
+| 11 | Password never logged | Config `__repr__` / `__str__` / logging redact as `***REDACTED***` | **Implemented** (configuration workstream) |
+| 12 | `.env` never committed; `.env.example` committed with placeholders | `.gitignore` ignores `.env` and `.env.*`, with an explicit `!.env.example` negation so the template stays tracked; `.pgpass`, `secrets.yaml`, and `secrets.yml` are also ignored | **Implemented** (repository-tooling workstream) |
+| 13 | `data/raw/` and `data/external/` never committed; `data/sample/` deliberately is | `.gitignore` rules `data/raw/**` and `data/external/**` with `.gitkeep` negations; `data/sample/` is explicitly excluded from the ignore file by design | **Implemented** (repository-tooling workstream) |
+| 14 | Power BI cannot read raw tables | Role grants: `arpi_reporter` has `SELECT` on `reporting` only | **Implemented** (database workstream) |
+| 15 | Least-privilege separation between admin, loader, and reporter | `arpi_admin` / `arpi_loader` / `arpi_reporter` roles and grants | **Implemented** (database workstream) |
+| 16 | Sample data is labelled synthetic | Mandatory `data/sample/README.md`; `synthetic_data_notice` in the manifest | **Implemented** |
+| 17 | Documentation links stay valid, so policy references cannot silently rot | `python scripts/check_docs_links.py` in CI | **Implemented** (tooling workstream) |
+| 18 | Naming conventions enforced, so a prohibited-looking column name is caught | `python scripts/check_naming.py` in CI | **Implemented** (tooling workstream) |
+| 19 | `DQ-*` PII schema checks extended to **every** new entity as it is built | New per-entity checks in `src/arpi/validation/` and `sql/08_validation/` | **Planned** (Phase 1.1 onward) |
+| 20 | Employee dimension carries no name or compensation field | Schema declaration + a per-entity prohibited-column check | **Planned** (Phase 1.1) |
+| 21 | Customer dimension carries no prohibited field | Schema declaration + a per-entity prohibited-column check | **Planned** (Phase 1.2) |
+| 22 | No real VIN can enter the vehicle dimension | Synthetic VIN generator + a format/provenance validation check | **Planned** (Phase 1.1) |
+| 23 | Employee scorecards always carry the required contextual metrics | Reporting-view design + a Power BI model review checkpoint | **Planned** (Phase 1.5 Power BI readiness review) |
+| 24 | Automated secret scanning in CI | `python scripts/check_secrets.py` runs in the CI workflow and inspects the git index for high-signal credential patterns. **The script describes itself as a safety net, not a replacement for a dedicated scanner** — that caveat is repeated here rather than glossed over. | **Implemented** (tooling workstream) |
+| 25 | No protected characteristic can be introduced | Documentation prohibition only; **no automated control exists** | **Planned** — see the gap note below |
+| 26 | Enrichment stays within approved boundaries when the flags are turned on | License documentation requirement + a `data/external/` provenance record | **Planned** |
+
+> **Honest gap note.** Controls 25 and 26 are currently **documentation-only**. Nothing in code would stop
+> a contributor adding a protected-characteristic column to a new entity except review and the naming
+> check. The Phase 1.1 work item that generalizes `DQ-DLR-004` into a reusable per-entity
+> prohibited-column check (control 19) is the mitigation, and it is recorded in
+> [docs/requirements/PHASE_1_BACKLOG.md](docs/requirements/PHASE_1_BACKLOG.md) and
+> [docs/requirements/DOCUMENTATION_BACKLOG.md](docs/requirements/DOCUMENTATION_BACKLOG.md).
+
+---
+
+## 14. Limits of conclusions drawn from synthetic data
+
+This section exists because it is the most likely thing for a reader to get wrong.
+
+1. **ARPI's numbers describe a random draw, not an industry.** Change the seed and every figure changes.
+   A finding that does not survive a seed change is an artefact.
+2. **Relationships are in the data because they were put there.** [ARCHITECTURE.md §15.3](ARCHITECTURE.md)
+   lists sixteen relationships the generator must encode. Discovering one of them in the dashboard
+   validates the generator, not the industry.
+3. **The absence of a relationship means nothing.** ARPI did not model floor-plan cost, personnel expense,
+   manufacturer incentives, or facility overhead. Their absence is a scope decision, not evidence.
+4. **No benchmark comparison is possible anywhere in this project.** ARPI has no real dealership
+   performance data, so it cannot say whether any figure is good. The 60-day aged-inventory threshold and
+   the 30-day days-supply window are **project defaults from [ARCHITECTURE.md §18.2](ARCHITECTURE.md)**,
+   not standards.
+5. **Distributions are plausible, not validated.** Nothing in ARPI has been checked against a real
+   dealership distribution, because no such data is available to the project. `docs/research.md` §5.4
+   suggests NADA aggregates for *contextual plausibility checks and industry framing* only — and even that
+   is aggregate data at a different grain.
+6. **Data-quality results prove the pipeline, not the world.** A clean validation run means the generator
+   and loader agree. It says nothing about whether the modelled business is realistic.
+7. **`docs/research.md` is a point-in-time market review**, not a live source. See
+   [LIMITATIONS.md](LIMITATIONS.md).
+
+The one thing ARPI's output *does* legitimately demonstrate is **method**: that the author can define a
+grain, govern a KPI, build a reproducible pipeline, validate it, reconcile it, and explain its limits.
+That is what a reviewer should take from it.
+
+---
+
+## 15. Change control
+
+- Adding a field to the prohibited register: allowed at any time.
+- **Removing** a field from the prohibited register: **not permitted.**
+- Changing the synthetic VIN policy: **requires an ADR** ([ARCHITECTURE.md §35](ARCHITECTURE.md)).
+- Using real or restricted data: **requires an ADR** ([ARCHITECTURE.md §35](ARCHITECTURE.md)).
+- Enabling `enable_public_vehicle_enrichment` or `enable_external_market_context`: requires the license and
+  provenance documentation in section 8 to be completed first.
+- Any change to this document must keep section 13's status column honest. Marking a Planned control as
+  Implemented without the control existing is the single worst failure mode available to this document.

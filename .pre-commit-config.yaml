@@ -1,0 +1,115 @@
+# =============================================================================
+# Automotive Retail Performance Intelligence (ARPI) — pre-commit configuration
+# =============================================================================
+# Why this file exists
+# --------------------
+# It mirrors the CI `quality` and `repository-checks` jobs. Running the same
+# checks locally turns a five-minute round trip through GitHub Actions into a
+# two-second failure at commit time, which matters most for the cheap mistakes:
+# trailing whitespace, an unformatted file, a stray `.env`, a private key.
+#
+# Pre-commit is OPTIONAL for contributors. CI IS AUTHORITATIVE. If the two ever
+# disagree, CI is right and this file is the thing to fix. Nothing in the
+# project depends on a contributor having pre-commit installed.
+#
+# Install:
+#   pip install pre-commit
+#   pre-commit install
+#   pre-commit run --all-files      # first run, to see the current state
+#
+# Note on scope: `mypy` here is deliberately narrowed to `src/`. The CI job runs
+# `mypy src tests`, which is slower than is comfortable in a commit hook.
+# =============================================================================
+
+default_language_version:
+  python: python3.11
+
+# Do not fail the whole run at the first failing hook; showing every problem at
+# once is faster to fix.
+fail_fast: false
+
+exclude: |
+  (?x)^(
+    \.venv/.*
+    | data/raw/.*
+    | data/external/.*
+    | htmlcov/.*
+  )$
+
+repos:
+  # ---------------------------------------------------------------------------
+  # Generic file hygiene
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+        # Markdown uses two trailing spaces as a hard line break.
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-json
+      - id: check-added-large-files
+        # 512 KiB. The committed sample data is deliberately small; anything
+        # larger is almost certainly a generated dataset that belongs in
+        # data/raw/ (gitignored) rather than in the repository.
+        args: [--maxkb=512]
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: detect-private-key
+      - id: mixed-line-ending
+        args: [--fix=lf]
+
+  # ---------------------------------------------------------------------------
+  # Lint and format — ruff is the only linter and the only formatter.
+  # Configuration lives in pyproject.toml; nothing is configured here.
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.0
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+      - id: ruff-format
+
+  # ---------------------------------------------------------------------------
+  # Types — scoped to src/ for speed. CI checks src and tests.
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v2.3.0
+    hooks:
+      - id: mypy
+        files: ^src/
+        args: [--config-file=pyproject.toml]
+        additional_dependencies:
+          - pydantic>=2.7
+          - pydantic-settings>=2.2
+          - types-PyYAML
+          - pandas-stubs
+
+  # ---------------------------------------------------------------------------
+  # Repository controls — the same scripts CI runs, invoked from the working
+  # tree so they always match the version being committed.
+  # ---------------------------------------------------------------------------
+  - repo: local
+    hooks:
+      - id: arpi-check-naming
+        name: ARPI naming check (retired identifiers)
+        entry: python scripts/check_naming.py --quiet
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: arpi-check-secrets
+        name: ARPI secret safety net
+        entry: python scripts/check_secrets.py --quiet
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: arpi-check-docs-links
+        name: ARPI documentation link check
+        entry: python scripts/check_docs_links.py --quiet
+        language: system
+        pass_filenames: false
+        files: \.md$
