@@ -24,6 +24,7 @@ SATURDAY: Final = 5
 SUNDAY: Final = 6
 
 DAYS_PER_WEEK: Final = 7
+MONTHS_PER_YEAR: Final = 12
 _MIN_DATE_KEY: Final = 10_000_101
 _MAX_DATE_KEY: Final = 99_991_231
 
@@ -59,9 +60,7 @@ def easter_sunday(year: int) -> date:
         ValidationError: If ``year`` is not a positive Gregorian year.
     """
     if year < 1:
-        raise ValidationError(
-            f"year must be a positive Gregorian year, got {year}.", field="year"
-        )
+        raise ValidationError(f"year must be a positive Gregorian year, got {year}.", field="year")
     a = year % 19
     b, c = divmod(year, 100)
     d, e = divmod(b, 4)
@@ -218,8 +217,7 @@ def date_from_key(key: int) -> date:
     """
     if not _MIN_DATE_KEY <= key <= _MAX_DATE_KEY:
         raise ValidationError(
-            f"date_key {key} is outside the supported range "
-            f"[{_MIN_DATE_KEY}, {_MAX_DATE_KEY}].",
+            f"date_key {key} is outside the supported range [{_MIN_DATE_KEY}, {_MAX_DATE_KEY}].",
             field="date_key",
         )
     year, remainder = divmod(key, 10_000)
@@ -276,7 +274,7 @@ def add_years(value: date, years: int) -> date:
 
 def _validate_month(month: int) -> None:
     """Raise if ``month`` is not a valid month number."""
-    if not 1 <= month <= 12:
+    if not 1 <= month <= MONTHS_PER_YEAR:
         raise ValidationError(f"month must be between 1 and 12, got {month}.", field="month")
 
 

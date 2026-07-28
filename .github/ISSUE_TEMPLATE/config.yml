@@ -1,0 +1,11 @@
+# Issue template chooser.
+# Blank issues stay enabled: a question that fits no template is still worth
+# asking, and a portfolio repository should not make that awkward.
+blank_issues_enabled: true
+
+contact_links:
+  - name: Report a security vulnerability (private)
+    url: https://github.com/mpalmer79/Automotive-Retail-Performance-Intelligence/security/advisories/new
+    about: >-
+      Do not open a public issue for anything security-sensitive. Use GitHub
+      private vulnerability reporting instead. See SECURITY.md.

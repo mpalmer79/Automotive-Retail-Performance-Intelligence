@@ -28,9 +28,7 @@ HANDLER_MARKER: Final = "_arpi_managed_handler"
 _TEXT_FORMAT: Final = "%(asctime)s %(levelname)-8s %(name)s %(message)s"
 _TIME_FORMAT: Final = "%Y-%m-%dT%H:%M:%S%z"
 
-_URI_CREDENTIAL_PATTERN: Final = re.compile(
-    r"(?i)\b(postgres(?:ql)?://[^:/@\s]+:)([^@\s]+)(@)"
-)
+_URI_CREDENTIAL_PATTERN: Final = re.compile(r"(?i)\b(postgres(?:ql)?://[^:/@\s]+:)([^@\s]+)(@)")
 _KEY_VALUE_PATTERN: Final = re.compile(
     r"(?i)\b([A-Z0-9_]*password[A-Z0-9_]*)(\s*[=:]\s*)([^\s,;'\"]+)"
 )

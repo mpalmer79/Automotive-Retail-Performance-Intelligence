@@ -157,9 +157,7 @@ def check_column_schema(
     missing = [column for column in expected if column not in actual]
     unexpected = [column for column in actual if column not in expected]
     if missing or unexpected:
-        detail = (
-            f"missing={sorted(missing) or 'none'}, unexpected={sorted(unexpected) or 'none'}"
-        )
+        detail = f"missing={sorted(missing) or 'none'}, unexpected={sorted(unexpected) or 'none'}"
     else:
         detail = f"same columns in the wrong order: expected {expected}, got {actual}"
     return base.failed(f"Column contract violated for {target_object}: {detail}.")

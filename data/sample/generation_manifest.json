@@ -1,0 +1,26 @@
+{
+  "project": "Automotive Retail Performance Intelligence",
+  "short_name": "ARPI",
+  "arpi_version": "0.1.0",
+  "profile": "development",
+  "random_seed": 20250701,
+  "reporting_start_date": "2025-07-01",
+  "reporting_end_date": "2025-12-31",
+  "generated_entities": [
+    {
+      "entity": "dim_date",
+      "row_count": 184,
+      "column_count": 26,
+      "content_digest": "a63f2a47a31ff142b4209617f6bedb33278d567c192d3a5ecba4d29e320d3f2d"
+    },
+    {
+      "entity": "dim_dealership",
+      "row_count": 3,
+      "column_count": 16,
+      "content_digest": "83b653797c8658d7986fcc33336384a03480f6ce353dc4c15650bbd23e2568ce"
+    }
+  ],
+  "synthetic_data_notice": "SYNTHETIC DATA -- 100% machine generated. Granite State Auto Group and every store, employee role and transaction referenced by this project are fictional. No real customer, employee, dealership or vendor data is present, and no record here describes a real person or a real business.",
+  "generator_module": "arpi.generation",
+  "timestamp_policy": "omitted for deterministic output"
+}

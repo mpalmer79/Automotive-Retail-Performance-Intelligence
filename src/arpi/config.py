@@ -26,7 +26,6 @@ from pydantic import ValidationError as PydanticValidationError
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict
 
 from arpi.constants import (
-    ALLOWED_LOG_FORMATS,
     ALLOWED_LOG_LEVELS,
     ALLOWED_SSL_MODES,
     DEFAULT_CONFIG_DIR_NAME,
@@ -164,8 +163,7 @@ class DatabaseConfig(_StrictModel):
         text = value.strip().lower()
         if text not in ALLOWED_SSL_MODES:
             raise ConfigurationError(
-                f"database.sslmode must be one of {', '.join(ALLOWED_SSL_MODES)}, "
-                f"got {value!r}.",
+                f"database.sslmode must be one of {', '.join(ALLOWED_SSL_MODES)}, got {value!r}.",
                 keys=["database.sslmode"],
             )
         return text
@@ -176,9 +174,7 @@ class DatabaseConfig(_StrictModel):
         if not self.enabled:
             return self
         missing = [
-            f"database.{field}"
-            for field in ("host", "name", "user")
-            if not getattr(self, field)
+            f"database.{field}" for field in ("host", "name", "user") if not getattr(self, field)
         ]
         if missing:
             raise ConfigurationError(
@@ -256,10 +252,10 @@ class ArpiConfig(BaseSettings):
     @classmethod
     def settings_customise_sources(
         cls,
-        settings_cls: type[BaseSettings],
+        settings_cls: type[BaseSettings],  # noqa: ARG003
         init_settings: PydanticBaseSettingsSource,
         env_settings: PydanticBaseSettingsSource,
-        dotenv_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,  # noqa: ARG003
         file_secret_settings: PydanticBaseSettingsSource,
     ) -> tuple[PydanticBaseSettingsSource, ...]:
         """Order sources so environment variables win over YAML, which wins over defaults.
@@ -310,9 +306,7 @@ class ArpiConfig(BaseSettings):
         payload: dict[str, Any] = self.model_dump(mode="json")
         database = payload.get("database")
         if isinstance(database, dict):
-            database["password"] = (
-                REDACTED_PLACEHOLDER if self.database.is_password_set() else None
-            )
+            database["password"] = REDACTED_PLACEHOLDER if self.database.is_password_set() else None
         return payload
 
     def __repr__(self) -> str:

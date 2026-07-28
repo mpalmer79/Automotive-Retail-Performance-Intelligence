@@ -32,6 +32,9 @@ if TYPE_CHECKING:  # pragma: no cover - import cycle guard for type checking onl
 CALENDAR_NAMESPACE = "dim_date"
 
 _QUARTER_END_MONTHS = frozenset({3, 6, 9, 12})
+_DECEMBER = 12
+_NEW_YEARS_EVE_DAY = 31
+_FIRST_WEEKEND_WEEKDAY = 5
 
 
 class CalendarDateGenerator(BaseGenerator):
@@ -107,10 +110,10 @@ def _build_row(day: date, holiday: Holiday | None) -> dict[str, Any]:
         "fiscal_month": day.month,
         "fiscal_quarter": quarter,
         "fiscal_year": day.year,
-        "is_weekend": day.weekday() >= 5,
+        "is_weekend": day.weekday() >= _FIRST_WEEKEND_WEEKDAY,
         "is_month_end": is_month_end,
         "is_quarter_end": is_month_end and day.month in _QUARTER_END_MONTHS,
-        "is_year_end": day.month == 12 and day.day == 31,
+        "is_year_end": day.month == _DECEMBER and day.day == _NEW_YEARS_EVE_DAY,
         "is_holiday": holiday is not None,
         "holiday_name": holiday.name if holiday is not None else None,
         "is_closure_holiday": is_closure_holiday,

@@ -97,9 +97,7 @@ def validate_date_dataset(dataset: GeneratedDataset, config: ArpiConfig) -> Vali
     )
 
 
-def validate_dealership_dataset(
-    dataset: GeneratedDataset, config: ArpiConfig
-) -> ValidationReport:
+def validate_dealership_dataset(dataset: GeneratedDataset, config: ArpiConfig) -> ValidationReport:
     """Run ``DQ-DLR-001`` through ``DQ-DLR-005`` against the dealership dimension.
 
     Args:
@@ -288,9 +286,7 @@ def _check_franchise_brand(frame: pd.DataFrame) -> CheckResult:
         expected_value=0.0,
     )
     if not {"store_type", "franchise_brand"}.issubset(frame.columns):
-        return base.failed(
-            f"{ENTITY_DIM_DEALERSHIP} is missing store_type and/or franchise_brand."
-        )
+        return base.failed(f"{ENTITY_DIM_DEALERSHIP} is missing store_type and/or franchise_brand.")
 
     store_type_result = check_values_in_allowed_set(
         frame,

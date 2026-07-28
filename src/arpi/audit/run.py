@@ -316,8 +316,6 @@ class AuditRecorder:
             "pipeline_run": [self.run.as_audit_row()],
             "pipeline_run_row_count": [row.as_audit_row() for row in self.row_counts],
             "validation_result": [row.as_audit_row() for row in self.validation_results],
-            "reconciliation_result": [
-                row.as_audit_row() for row in self.reconciliation_results
-            ],
+            "reconciliation_result": [row.as_audit_row() for row in self.reconciliation_results],
             "rejected_record": [],
         }

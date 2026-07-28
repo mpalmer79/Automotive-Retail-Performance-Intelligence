@@ -1,8 +1,8 @@
 """Deterministic CSV and manifest writer.
 
 CSV rows are rendered with the standard library ``csv`` module rather than
-``DataFrame.to_csv`` so the dialect is pinned exactly: UTF-8, ``\\n`` line endings, a
-header row, ISO-8601 dates, lowercase ``true``/``false`` booleans and an empty field for
+``DataFrame.to_csv`` so the dialect is pinned exactly: UTF-8, LF (0x0A) line endings,
+a header row, ISO-8601 dates, lowercase ``true``/``false`` booleans and an empty field for
 NULL. The same rendering rules produce the SCD ``attribute_hash``, so hashes recomputed
 from a committed CSV agree with the generator.
 
@@ -109,7 +109,7 @@ def dataframe_to_csv_bytes(frame: pd.DataFrame, *, row_limit: int | None = None)
         row_limit: Optional cap on the number of data rows.
 
     Returns:
-        UTF-8 encoded CSV bytes, ``\\n`` terminated, with a header row.
+        UTF-8 encoded CSV bytes, LF (0x0A) terminated, with a header row.
     """
     limited = frame if row_limit is None else frame.head(row_limit)
     buffer = io.StringIO(newline="")
@@ -146,9 +146,7 @@ def write_dataset(
     payload = dataframe_to_csv_bytes(dataset.frame, row_limit=row_limit)
     path = output_dir / f"{dataset.entity_name}{CSV_FILE_SUFFIX}"
     path.write_bytes(payload)
-    written_rows = (
-        dataset.row_count if row_limit is None else min(dataset.row_count, row_limit)
-    )
+    written_rows = dataset.row_count if row_limit is None else min(dataset.row_count, row_limit)
     return WrittenEntity(
         entity=dataset.entity_name,
         path=path,
