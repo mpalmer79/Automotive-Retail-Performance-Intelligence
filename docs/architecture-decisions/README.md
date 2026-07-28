@@ -1,0 +1,76 @@
+# Architecture Decision Records
+
+This directory holds the architecture decision records (ADRs) for **Automotive Retail Performance
+Intelligence (ARPI)**.
+
+An ADR captures one decision that was hard to make and would be expensive to reverse: the context that
+forced the choice, the option taken, the options rejected and why, and what the project now has to live
+with. It is written once, at the moment the decision is made, and then left alone. ADRs are not
+documentation of how the system works — `ARCHITECTURE.md` and the guides in `docs/` do that — they are the
+record of *why* it works that way.
+
+An ADR is never edited to reflect a later change of mind. When a decision is replaced, a new ADR is
+written that supersedes it, and the old record's status changes to `Superseded by ADR-NNNN`. The history
+stays readable.
+
+## When an ADR is required
+
+`ARCHITECTURE.md` §35.2 lists the decisions that require a record. In summary, write an ADR when the
+change would alter the project's identity, its data model's shape, its technology baseline, or its
+security and privacy posture — for example replacing PostgreSQL, changing the Power BI connection mode,
+adding a fact table or changing a fact grain, adding a second user interface, adding machine learning or
+an API layer, using real or restricted data, changing the synthetic VIN policy, or changing the deployment
+model.
+
+Routine implementation work does not need an ADR. If a reasonable reviewer would ask "why is it like
+this?" and the answer takes more than a code comment, it needs one.
+
+## File naming
+
+```text
+ADR-NNNN-kebab-title.md
+```
+
+- `NNNN` is a zero-padded four-digit sequence number, assigned in order and never reused, even if a record
+  is later superseded or rejected.
+- The title is lowercase kebab-case, short, and describes the subject rather than the outcome — for
+  example `project-identity`, not `we-chose-arpi`.
+- One decision per file.
+
+## Required sections
+
+Every ADR contains at least the following, in this order:
+
+| Section | Content |
+|---|---|
+| `# ADR-NNNN: Title` | Sentence-case title matching the filename |
+| **Status** | `Proposed`, `Accepted`, `Rejected`, `Deprecated`, or `Superseded by ADR-NNNN` |
+| **Date** | ISO-8601 date the status was last set |
+| **Deciders** | Who made the call |
+| **Context** | The forces in play — what made this a decision rather than a default |
+| **Decision** | What was chosen, stated plainly and unambiguously |
+| **Alternatives considered** | Each option that was genuinely weighed, and the specific reason it lost |
+| **Consequences** | Both positive and negative, honestly. An ADR with no negative consequences has not been thought through |
+
+Records may add sections when the subject warrants it. ADR-0001, for example, adds **Naming conventions**,
+**Migration impact**, an **Explicit retirement statement**, and **Enforcement**, because a naming decision
+is only real if it is mechanically enforced.
+
+## Current ADRs
+
+| ADR | Title | Status | Date | Summary |
+|---|---|---|---|---|
+| [ADR-0001](ADR-0001-project-identity.md) | Project Identity and Naming Convention | Accepted | 2026-07-28 | Fixes the display name *Automotive Retail Performance Intelligence*, the short identifier *ARPI*, the `arpi` package, the `ARPI_` configuration prefix, and the `arpi_admin` / `arpi_loader` / `arpi_reporter` database roles. Retires the earlier working title and defines how that retirement is enforced. |
+| [ADR-0002](ADR-0002-phase-0-technology-baseline.md) | Phase 0 Technology Baseline | Accepted | 2026-07-28 | Records the non-obvious Phase 0 engineering choices: Python 3.11+, `src/` layout, Ruff as the single lint and format tool, mypy, pytest with an `integration` marker, pydantic-settings, stdlib `argparse`, local PostgreSQL with Supabase deferred, a calendar-aligned fiscal year, and the deterministic holiday rule. |
+
+## Enforcement
+
+`scripts/check_naming.py` enforces ADR-0001 in continuous integration by failing the build when a retired
+identifier appears outside the two locations that record permits.
+`scripts/check_docs_links.py` verifies that the relative links in and to these records resolve.
+
+## Related documents
+
+- [`../../ARCHITECTURE.md`](../../ARCHITECTURE.md) — the architecture these decisions constrain
+- [`../index.md`](../index.md) — documentation hub
+- [`../research.md`](../research.md) — the preserved research evidence base that ADR-0001 cites

@@ -1,0 +1,91 @@
+# Git attributes for Automotive Retail Performance Intelligence (ARPI)
+#
+# Purpose:
+#   1. Normalise line endings to LF in the repository regardless of contributor OS.
+#   2. Declare which files are binary so git never tries to diff or merge them.
+#   3. Give GitHub's Linguist enough information to report the language mix
+#      honestly — this is a SQL + Python + documentation project, and generated
+#      sample data should not be counted as authored code.
+
+# -----------------------------------------------------------------------------
+# Default: detect text, store and check out with LF.
+# -----------------------------------------------------------------------------
+* text=auto eol=lf
+
+# -----------------------------------------------------------------------------
+# Explicit text types (removes any ambiguity for the heuristic above)
+# -----------------------------------------------------------------------------
+*.py    text
+*.pyi   text
+*.sql   text
+*.md    text
+*.yaml  text
+*.yml   text
+*.toml  text
+*.json  text
+*.csv   text
+*.dax   text
+*.cfg   text
+*.txt   text
+*.ini   text
+*.env   text
+*.sh    text eol=lf
+
+# Windows-only helpers must keep CRLF or they will not run.
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+*.ps1   text eol=crlf
+
+# -----------------------------------------------------------------------------
+# Binary types — never diff, never merge, never line-ending-convert
+# -----------------------------------------------------------------------------
+*.pbix  binary
+*.pbit  binary
+*.pbiviz binary
+*.xlsx  binary
+*.xlsm  binary
+*.xlsb  binary
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.pdf   binary
+*.zip   binary
+*.gz    binary
+*.dump  binary
+*.backup binary
+
+# -----------------------------------------------------------------------------
+# GitHub Linguist — language reporting
+# -----------------------------------------------------------------------------
+# Documentation should not be counted as code in the language bar, but should
+# still be searchable and reviewable.
+docs/*                  linguist-documentation
+docs/**/*               linguist-documentation
+*.md                    linguist-documentation
+
+# SQL is first-class authored source in this project. Linguist under-reports it
+# when files live outside recognised paths, so mark it detectable explicitly.
+sql/*                   linguist-detectable=true linguist-language=SQL
+sql/**/*.sql            linguist-detectable=true linguist-language=SQL
+
+# DAX has no Linguist entry; treat it as text and keep it out of the language
+# statistics rather than having it mis-detected.
+*.dax                   linguist-language=DAX linguist-detectable=false
+
+# Power BI project source folders are machine-written JSON/TMDL. They are
+# tracked on purpose (they make the model reviewable) but they are generated.
+*.Report/**             linguist-generated=true
+*.SemanticModel/**      linguist-generated=true
+
+# Committed sample data is produced by the synthetic generator. Marking it
+# generated collapses it in pull-request diffs and keeps it out of the language
+# statistics, so the CSVs do not drown out authored code.
+data/sample/*.csv       linguist-generated=true
+data/sample/*.json      linguist-generated=true
+
+# -----------------------------------------------------------------------------
+# Diff hints
+# -----------------------------------------------------------------------------
+*.py    diff=python
+*.md    diff=markdown

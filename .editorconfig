@@ -1,0 +1,80 @@
+# EditorConfig for Automotive Retail Performance Intelligence (ARPI)
+# https://editorconfig.org
+#
+# These settings keep whitespace and line endings identical across editors so
+# that diffs show real changes only. They intentionally mirror the ruff and
+# ruff-format settings in pyproject.toml (Agent C owns that file); if the two
+# ever disagree, pyproject.toml wins for Python and this file is corrected.
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+# Python — 4 spaces, 100-column limit to match ruff's line-length.
+[*.py]
+indent_style = space
+indent_size = 4
+max_line_length = 100
+
+# Python type stubs.
+[*.pyi]
+indent_style = space
+indent_size = 4
+max_line_length = 100
+
+# Structured configuration formats — 2 spaces is the community norm and keeps
+# deeply nested YAML readable.
+[*.{yaml,yml}]
+indent_style = space
+indent_size = 2
+
+[*.{json,jsonc}]
+indent_style = space
+indent_size = 2
+
+[*.toml]
+indent_style = space
+indent_size = 2
+
+# Markdown — 2-space indent, and trailing whitespace is preserved because two
+# trailing spaces are a meaningful hard line break in Markdown.
+[*.md]
+indent_style = space
+indent_size = 2
+trim_trailing_whitespace = false
+
+# SQL — 4 spaces, matching the formatting conventions used across sql/**.
+[*.sql]
+indent_style = space
+indent_size = 4
+
+# DAX measure files.
+[*.dax]
+indent_style = space
+indent_size = 4
+
+# Makefiles require literal tabs.
+[Makefile]
+indent_style = tab
+
+[makefile]
+indent_style = tab
+
+[*.mk]
+indent_style = tab
+
+# Shell scripts.
+[*.{sh,bash}]
+indent_style = space
+indent_size = 2
+
+# CSV sample data is generated; do not let an editor reformat it.
+[*.csv]
+trim_trailing_whitespace = false
+insert_final_newline = true

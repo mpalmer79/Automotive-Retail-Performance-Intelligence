@@ -1,0 +1,1499 @@
+# Data Dictionary — Automotive Retail Performance Intelligence (ARPI)
+
+**Project:** Automotive Retail Performance Intelligence (ARPI)
+**Owner:** Michael Palmer
+**Version:** 1.0
+**Last reviewed:** 2026-07-28
+**Companion documents:** [ARCHITECTURE.md](ARCHITECTURE.md) · [KPI_CATALOG.md](KPI_CATALOG.md) · [DATA_GENERATION.md](DATA_GENERATION.md) · [PRIVACY_AND_ETHICS.md](PRIVACY_AND_ETHICS.md) · [LIMITATIONS.md](LIMITATIONS.md) · [docs/source-to-target/](docs/source-to-target/README.md)
+
+---
+
+## 1. Purpose
+
+This document is the authoritative catalogue of every data entity in ARPI: what it means, what grain it
+is stored at, which columns it carries, where each column's value comes from, and whether it exists yet.
+
+It exists to satisfy three obligations:
+
+1. **Modelling discipline.** [ARCHITECTURE.md §11.1](ARCHITECTURE.md) requires that every fact table have a
+   declared grain and that every dimension state its history policy. This document is where those
+   declarations live.
+2. **Honesty about status.** ARPI is a portfolio project under construction. Every entity below carries an
+   implementation status, and the statuses are accurate as of the review date. Nothing here should be read
+   as a claim that an unbuilt table exists.
+3. **Privacy accountability.** Every column carries a PII classification. Columns that are *prohibited*
+   are documented as prohibited so that a reviewer can confirm the absence is deliberate, not accidental.
+   See [PRIVACY_AND_ETHICS.md](PRIVACY_AND_ETHICS.md).
+
+---
+
+## 2. How to read this document
+
+- **Section 4** is the summary index: every entity, its layer, its grain, and its status. Start there.
+- **Sections 6 onward** give one detailed subsection per entity.
+- Column tables use these headings:
+
+  | Heading | Meaning |
+  |---|---|
+  | `Column` | Physical column name, exactly as it appears (or will appear) in PostgreSQL. |
+  | `Type` | PostgreSQL type for implemented objects. For planned objects the type is indicative, not binding. |
+  | `Null` | `no` = `NOT NULL`; `yes` = nullable, with the meaning of NULL stated in the description. |
+  | `Allowed values / domain` | Enumerations, ranges, formats, and check constraints. |
+  | `Description` | What the column means in dealership business terms. |
+  | `Synthetic generation source` | How the generator produces the value. `Derived` means computed from another column with no randomness. |
+  | `PII class` | See the PII taxonomy in section 3.3. |
+
+- **Implemented** entities have exact, binding column contracts. **Planned** entities are documented at
+  attribute level: names and types may change during implementation, but **the declared grain is binding**
+  and changing it requires an architecture decision record ([ARCHITECTURE.md §35](ARCHITECTURE.md)).
+
+---
+
+## 3. Legends and conventions
+
+### 3.1 Implementation status legend
+
+Exactly four status values are used across ARPI documentation. No other value is permitted.
+
+| Status | Meaning |
+|---|---|
+| **Implemented** | The object exists in code and/or SQL in this repository today and is exercised by tests. |
+| **Planned** | Committed scope with a named phase. Designed and documented, not yet built. |
+| **Deferred** | In the long-term architecture but explicitly out of the current roadmap. Unlocked only by a later release stage. |
+| **Out of scope** | Deliberately excluded. Adding it would require an architecture decision record. |
+
+### 3.2 Naming conventions
+
+These conventions are binding for every schema, table, view, and column in ARPI.
+
+| Rule | Convention | Example |
+|---|---|---|
+| Case | `snake_case` throughout. No camelCase, no spaces, no quoted mixed-case identifiers. | `front_end_gross` |
+| Dimension tables | `dim_` prefix, singular noun | `warehouse.dim_dealership` |
+| Fact tables | `fact_` prefix, singular noun describing the event or snapshot | `warehouse.fact_vehicle_sale` |
+| Raw landing tables | `<entity>_load` suffix in schema `raw` | `raw.dealership_load` |
+| Staging objects | `stg_` prefix in schema `staging` | `staging.stg_dealership` |
+| Reporting objects | `vw_` prefix in schema `reporting` | `reporting.vw_dealership` |
+| Surrogate keys | `_key` suffix, integer, warehouse-generated | `dealership_key` |
+| Natural / source keys | `_id` suffix, carries the source-system identifier | `dealership_id` |
+| Booleans | `is_` prefix (or `has_` where it reads better), never `flag` alone | `is_selling_day` |
+| Dates (no time) | `_date` suffix, PostgreSQL `date` | `opened_date` |
+| Timestamps | `_at` suffix, PostgreSQL `timestamptz` (UTC) | `ingested_at` |
+| Date foreign keys | `_date_key` suffix, integer `YYYYMMDD` | `sale_date_key` |
+| Counts | `_count` suffix | `failed_record_count` |
+| Monetary amounts | `_amount`, `_price`, `_cost`, or `_gross` suffix; `numeric`, never `float` | `acquisition_cost` |
+
+Additional rules:
+
+- Surrogate `_key` columns are **never** exposed to report users; the reporting layer hides them
+  ([ARCHITECTURE.md §19.2](ARCHITECTURE.md)).
+- Source `_id` columns are always retained for lineage ([ARCHITECTURE.md §11.1 rule 5](ARCHITECTURE.md)).
+- Money is stored as `numeric`, never floating point, so that gross reconciliation is exact.
+
+### 3.3 PII classification taxonomy
+
+| Class | Meaning |
+|---|---|
+| `Non-personal` | Business, calendar, vehicle, or operational attribute with no link to a person. |
+| `Synthetic identifier` | A fabricated key (for example `GSA-001`, `CUS-00000123`) that identifies a synthetic record, not a person. |
+| `Minimized personal attribute` | An attribute that *would* be personal at full precision but is generated only in banded or aggregated form (age band, county). Applies to synthetic people only. |
+| `Prohibited` | Must never be generated, stored, loaded, or committed. Enforced by validation check `DQ-DLR-004` for the Phase 0 slice and by the register in [PRIVACY_AND_ETHICS.md](PRIVACY_AND_ETHICS.md). |
+
+**No column anywhere in ARPI is classified as real personal data, because ARPI contains no real people.**
+All operational data is synthetic.
+
+### 3.4 Layers
+
+| Layer | Schema | Role |
+|---|---|---|
+| Source | filesystem (`data/raw/`, `data/sample/`) | Generator output, CSV. |
+| Raw | `raw` | Untyped landing tables, all business columns `text`. |
+| Staging | `staging` | Typed, deduplicated views over raw. |
+| Warehouse | `warehouse` | Conformed dimensions and facts. |
+| Reporting | `reporting` | Stable, business-friendly views for Power BI and Excel. |
+| Audit | `audit` | Pipeline runs, validation, reconciliation, rejected records. |
+
+---
+
+## 4. Entity index
+
+> **Status reality check.** Fifteen objects are Implemented. **No fact table exists yet.** Every entity
+> whose name begins with `fact_` is Planned or Deferred. Consequently no KPI is computed anywhere in this
+> repository today — see [KPI_CATALOG.md](KPI_CATALOG.md).
+
+| Entity | Layer | Grain | Status |
+|---|---|---|---|
+| `warehouse.dim_date` | Warehouse | One row per calendar date | **Implemented** |
+| `warehouse.dim_dealership` | Warehouse | One row per dealership store version (SCD2) | **Implemented** |
+| `warehouse.dim_employee` | Warehouse | One row per employee role-assignment version (SCD2) | Planned (Phase 1.1) |
+| `warehouse.dim_customer` | Warehouse | One row per synthetic customer | Planned (Phase 1.2) |
+| `warehouse.dim_vehicle` | Warehouse | One row per unique physical vehicle | Planned (Phase 1.1) |
+| `warehouse.dim_vehicle_model` | Warehouse | One row per model-year / make / model / trim combination | Planned (Phase 1.1) |
+| `warehouse.dim_lead_source` | Warehouse | One row per normalized lead source | Planned (Phase 1.4) |
+| `warehouse.dim_marketing_campaign` | Warehouse | One row per campaign | Planned (Phase 1.5) |
+| `warehouse.fact_vehicle_sale` | Warehouse | One row per finalized vehicle transaction | Planned (Phase 1.2) |
+| `warehouse.fact_vehicle_inventory_snapshot` | Warehouse | One row per vehicle per dealership per daily snapshot date while active in inventory | Planned (Phase 1.2) |
+| `warehouse.fact_lead` | Warehouse | One row per unique CRM lead | Planned (Phase 1.4) |
+| `warehouse.fact_appointment` | Warehouse | One row per scheduled appointment | Planned (Phase 1.4) |
+| `warehouse.fact_marketing_spend` | Warehouse | One row per dealership, campaign, and calendar month | Planned (Phase 1.5) |
+| `audit.pipeline_run` | Audit | One row per pipeline execution | **Implemented** |
+| `audit.pipeline_run_row_count` | Audit | One row per run, entity, and layer | **Implemented** |
+| `audit.validation_result` | Audit | One row per validation check evaluation per run | **Implemented** |
+| `audit.reconciliation_result` | Audit | One row per reconciliation evaluation per run | **Implemented** |
+| `audit.rejected_record` | Audit | One row per rejected source record per run | **Implemented** |
+| `raw.calendar_date_load` | Raw | One row per source CSV row per load batch | **Implemented** |
+| `raw.dealership_load` | Raw | One row per source CSV row per load batch | **Implemented** |
+| `staging.stg_calendar_date` | Staging | One typed row per calendar date in the most recent load batch | **Implemented** |
+| `staging.stg_dealership` | Staging | One typed row per dealership in the most recent load batch | **Implemented** |
+| `reporting.vw_calendar` | Reporting | One row per calendar date | **Implemented** |
+| `reporting.vw_dealership` | Reporting | One row per current dealership version | **Implemented** |
+| `reporting.vw_pipeline_run_summary` | Reporting | One row per pipeline run | **Implemented** |
+| `reporting.vw_data_quality_summary` | Reporting | One row per validation check per pipeline run | **Implemented** |
+| `warehouse.dim_finance_product` | Warehouse | One row per finance product definition | Deferred |
+| `warehouse.dim_lender` | Warehouse | One row per synthetic lender | Deferred |
+| `warehouse.dim_sale_type` | Warehouse | One row per sale classification | Deferred |
+| `warehouse.dim_inventory_source` | Warehouse | One row per acquisition source | Deferred |
+| `warehouse.dim_geography` | Warehouse | One row per approved geographic market grouping | Deferred |
+| `warehouse.fact_lead_activity` | Warehouse | One row per CRM activity event | Deferred |
+| `warehouse.fact_inventory_price_history` | Warehouse | One row per vehicle price-change event | Deferred |
+| `warehouse.fact_finance_product_sale` | Warehouse | One row per finance product sold on a finalized transaction | Deferred |
+| `warehouse.fact_service_visit` | Warehouse | One row per closed repair-order visit | Deferred |
+| `warehouse.fact_sales_target` | Warehouse | One row per dealership, employee or department, KPI, and calendar month | Deferred |
+
+**Counts:** 15 Implemented · 11 Planned · 10 Deferred.
+
+---
+
+## 5. Cross-cutting rules
+
+1. **Grain is a contract.** Once a fact grain is published here it may not change without an ADR
+   ([ARCHITECTURE.md §35](ARCHITECTURE.md)).
+2. **Facts never mix grains.** A measure that is additive at a different grain belongs in a different fact.
+3. **Surrogate keys are deterministic.** Where a surrogate key is assigned in Phase 0 it is a stable ordinal
+   over a deterministic sort, so that regenerating the dataset with the same seed reproduces the same keys.
+4. **Referential integrity is enforced in the database**, not only in Python.
+5. **Customer PII is not generated** ([ARCHITECTURE.md §11.1 rule 8](ARCHITECTURE.md)).
+6. **`source_system`** is `arpi_synthetic_generator` on every warehouse row that carries lineage, so that a
+   reviewer can never mistake ARPI data for real dealership data.
+
+---
+
+# Part A — Implemented entities
+
+---
+
+## 6. `warehouse.dim_date`
+
+| Field | Value |
+|---|---|
+| **Entity name** | `warehouse.dim_date` |
+| **Layer** | Warehouse (dimension) |
+| **Purpose** | Conformed calendar dimension. Provides every date attribute used for period filtering, time intelligence, seasonality analysis, and selling-day normalization across every fact table. Marked as the Power BI date table when the semantic model is built. |
+| **Declared grain** | **One row per calendar date.** Exactly one row exists for every date between `reporting.start_date` and `reporting.end_date` inclusive, with no gaps and no duplicates. |
+| **Primary key** | `date_key` (integer, `YYYYMMDD`) |
+| **Natural / source key** | `full_date` (unique). The dimension has no external source system; it is fully derived from configuration. |
+| **Foreign keys** | None. `dim_date` is a leaf dimension referenced by facts, never referencing others. |
+| **Implementation status** | **Implemented** |
+
+### 6.1 Columns
+
+| Column | Type | Null | Allowed values / domain | Description | Synthetic generation source | PII class |
+|---|---|---|---|---|---|---|
+| `date_key` | `integer` PK | no | `YYYYMMDD`, e.g. `20250704` | Integer surrogate key. Sorts chronologically, so it doubles as a period sort key. | Derived: `full_date` formatted `%Y%m%d`, cast to integer. | Non-personal |
+| `full_date` | `date` UNIQUE | no | Any date in the configured reporting range | The calendar date itself. The only column a human should read as "the date". | Enumerated day by day from `reporting.start_date` to `reporting.end_date`. | Non-personal |
+| `day_of_month` | `smallint` | no | 1–31 | Day number within the month. | Derived. | Non-personal |
+| `day_name` | `varchar(9)` | no | `Monday`, `Tuesday`, `Wednesday`, `Thursday`, `Friday`, `Saturday`, `Sunday` | English day name. Fixed English lookup, deliberately locale-independent so output is byte-identical on any machine. | Derived from a hard-coded English list, not from the OS locale. | Non-personal |
+| `day_of_week` | `smallint` | no | 1–7, ISO: 1 = Monday … 7 = Sunday | ISO day-of-week number. Used for weekend logic and day-of-week traffic analysis. | Derived (`isoweekday`). | Non-personal |
+| `day_of_year` | `smallint` | no | 1–366 | Ordinal day within the calendar year. | Derived. | Non-personal |
+| `week_of_year` | `smallint` | no | 1–53 | **ISO** week number. Pairs with `iso_year`, not with `calendar_year`. | Derived (`isocalendar()[1]`). | Non-personal |
+| `iso_year` | `smallint` | no | Four-digit year | ISO week-numbering year. Differs from `calendar_year` for a few days at each year boundary; always use this column with `week_of_year`. | Derived (`isocalendar()[0]`). | Non-personal |
+| `month_number` | `smallint` | no | 1–12 | Calendar month number. | Derived. | Non-personal |
+| `month_name` | `varchar(9)` | no | `January` … `December` | English month name. Fixed English lookup, locale-independent. | Derived from a hard-coded English list. | Non-personal |
+| `month_start_date` | `date` | no | First calendar day of the month | First day of the month containing `full_date`. Simplifies month-to-date logic in SQL. | Derived. | Non-personal |
+| `month_end_date` | `date` | no | Last calendar day of the month | Last day of the month containing `full_date`. Correct for leap Februaries. | Derived. | Non-personal |
+| `quarter_number` | `smallint` | no | 1–4 | Calendar quarter number. | Derived from `month_number`. | Non-personal |
+| `quarter_name` | `varchar(2)` | no | `Q1`, `Q2`, `Q3`, `Q4` | Display label for the quarter. | Derived from `quarter_number`. | Non-personal |
+| `calendar_year` | `smallint` | no | Four-digit year | Calendar year of `full_date`. | Derived. | Non-personal |
+| `fiscal_month` | `smallint` | no | 1–12 | Fiscal month. **Equals `month_number`** — ARPI's fictional fiscal year is aligned to the calendar year. Retained as a distinct column so a future fiscal offset does not require schema change. | Derived: equal to `month_number`. | Non-personal |
+| `fiscal_quarter` | `smallint` | no | 1–4 | Fiscal quarter. **Equals `quarter_number`.** | Derived: equal to `quarter_number`. | Non-personal |
+| `fiscal_year` | `smallint` | no | Four-digit year | Fiscal year. **Equals `calendar_year`.** | Derived: equal to `calendar_year`. | Non-personal |
+| `is_weekend` | `boolean` | no | `true` / `false` | True when `full_date` is a Saturday or a Sunday. **A weekend is a selling day** — see 6.2. | Derived: `day_of_week IN (6, 7)`. | Non-personal |
+| `is_month_end` | `boolean` | no | `true` / `false` | True when `full_date = month_end_date`. Dealership reporting is heavily month-end driven. | Derived. | Non-personal |
+| `is_quarter_end` | `boolean` | no | `true` / `false` | True when `full_date` is the last day of a calendar quarter. | Derived. | Non-personal |
+| `is_year_end` | `boolean` | no | `true` / `false` | True when `full_date` is 31 December. | Derived. | Non-personal |
+| `is_holiday` | `boolean` | no | `true` / `false` | True when `full_date` matches any rule in the observed-holiday table in 6.2. | Derived from the holiday rule set. | Non-personal |
+| `holiday_name` | `varchar(64)` | yes | One of the twelve holiday names in 6.2 | Name of the observed holiday. **NULL when `is_holiday` is false** — NULL means "not a holiday", nothing else. | Derived from the holiday rule set. | Non-personal |
+| `is_closure_holiday` | `boolean` | no | `true` / `false` | True when the showroom is closed for the day. A subset of `is_holiday`: some recognized holidays are trading days. | Derived from the `Closure?` column in 6.2. | Non-personal |
+| `is_selling_day` | `boolean` | no | `true` / `false` | True when the showroom is open and retail delivery is possible. Defined as `NOT is_closure_holiday`. Used as the denominator for per-selling-day pace measures. | Derived: `NOT is_closure_holiday`. | Non-personal |
+
+### 6.2 `is_selling_day` and holiday semantics
+
+Holidays are computed deterministically per calendar year from arithmetic rules only. **No external
+holiday library is used**, because a third-party holiday package could change its rule set between
+versions and silently break byte-level reproducibility of the generated dataset.
+
+| Holiday | Rule | Closure? |
+|---|---|---|
+| New Year's Day | January 1 | **yes** |
+| Martin Luther King Jr. Day | 3rd Monday in January | no |
+| Presidents Day | 3rd Monday in February | no |
+| Easter Sunday | Anonymous Gregorian computus | **yes** |
+| Memorial Day | last Monday in May | no |
+| Juneteenth National Independence Day | June 19 | no |
+| Independence Day | July 4 | **yes** |
+| Labor Day | 1st Monday in September | no |
+| Columbus Day | 2nd Monday in October | no |
+| Veterans Day | November 11 | no |
+| Thanksgiving Day | 4th Thursday in November | **yes** |
+| Christmas Day | December 25 | **yes** |
+
+Semantics:
+
+- **`is_selling_day = NOT is_closure_holiday`.** It is *not* `NOT is_weekend`.
+- **Weekends are selling days.** New Hampshire permits Sunday vehicle sales, so a Sunday in this model is
+  an ordinary trading day. This is a deliberate modelling choice for the fictional Southern New Hampshire
+  market and is repeated in [DATA_GENERATION.md](DATA_GENERATION.md). Analysts reusing this dimension for a
+  state with Sunday blue laws must change the rule, not merely reinterpret the column.
+- **Recognized ≠ closed.** Martin Luther King Jr. Day, Presidents Day, Memorial Day, Juneteenth, Labor Day,
+  Columbus Day, and Veterans Day are flagged `is_holiday = true` but remain selling days. Several of these
+  are among the highest-traffic retail automotive days of the year, which is precisely why the two flags
+  are modelled separately.
+- **No observance shifting.** A fixed-date holiday falling on a weekend is *not* moved to an adjacent
+  weekday. The showroom-closure flag applies on the actual calendar date only.
+- **Collision rule.** If two holidays fall on the same date, `holiday_name` takes the **first match in the
+  table order above**, and `is_closure_holiday` is the **logical OR** of all matches. This makes the
+  outcome order-independent for the closure flag and deterministic for the name.
+- **Validation.** `DQ-DATE-005` asserts that the ratio of selling days to total days sits between
+  `validation.min_selling_day_ratio` (0.80) and `validation.max_selling_day_ratio` (1.00). This is a
+  sanity bound on the holiday logic, not a business benchmark.
+
+### 6.3 Business rules
+
+- `date_key` must equal `full_date` formatted as `YYYYMMDD` for every row (`DQ-DATE-003`).
+- The date range must be contiguous: no missing days between minimum and maximum `full_date`
+  (`DQ-DATE-002`).
+- `date_key` must be unique (`DQ-DATE-001`).
+- No required field may be NULL; `holiday_name` is the only nullable column (`DQ-DATE-004`).
+- `is_holiday = false` implies `holiday_name IS NULL`.
+- `is_closure_holiday = true` implies `is_holiday = true`.
+- Row count equals the inclusive day count of the configured reporting window.
+
+### 6.4 PII classification
+
+Every column is `Non-personal`. A calendar dimension cannot contain personal data.
+
+### 6.5 History policy
+
+**Not applicable — the calendar is immutable.** Conventionally described as SCD Type 0: rows are inserted
+once and never updated. Extending the reporting window appends rows; it never rewrites them.
+
+---
+
+## 7. `warehouse.dim_dealership`
+
+| Field | Value |
+|---|---|
+| **Entity name** | `warehouse.dim_dealership` |
+| **Layer** | Warehouse (dimension) |
+| **Purpose** | Conformed store dimension for the fictional **Granite State Auto Group**. Every fact in the model is sliceable by store, and this dimension carries the store attributes (type, franchise brand, market) that drive nearly all comparative analysis. |
+| **Declared grain** | **One row per dealership store version (Slowly Changing Dimension Type 2).** In Phase 0 exactly one current version exists per store, so the table holds three rows. |
+| **Primary key** | `dealership_key` (integer surrogate) |
+| **Natural / source key** | `dealership_id` (for example `GSA-001`). Unique among current rows. |
+| **Foreign keys** | None. `dim_dealership` is a leaf dimension. |
+| **Implementation status** | **Implemented** |
+
+### 7.1 Columns
+
+| Column | Type | Null | Allowed values / domain | Description | Synthetic generation source | PII class |
+|---|---|---|---|---|---|---|
+| `dealership_key` | `integer` PK | no | 1..N | Surrogate key. Assigned as a **deterministic ordinal 1..N by `dealership_id`**, so the same store always receives the same key on regeneration. | Derived: rank of `dealership_id` in ascending sort order. | Non-personal |
+| `dealership_id` | `varchar(16)` | no | `GSA-###` | Natural / source key. The synthetic store identifier used by the fictional group. | Fixed reference data (see 7.2). | Synthetic identifier |
+| `store_name` | `varchar(120)` | no | Free text | Full legal-style store name as it would appear on a report header. | Fixed reference data. | Non-personal |
+| `store_short_name` | `varchar(40)` | no | Free text | Abbreviated store name for chart axes, slicers, and narrow tables. | Fixed reference data. | Non-personal |
+| `store_type` | `varchar(40)` | no | `Franchise New and Used` \| `Independent Used` | Business model of the store. Drives whether new-vehicle measures are meaningful for the store. | Fixed reference data. | Non-personal |
+| `franchise_brand` | `varchar(40)` | yes | `Chevrolet` \| `Subaru` \| NULL | Franchise brand. **NULL means the store holds no franchise** (independent used operation) — it does not mean "unknown". | Fixed reference data. | Non-personal |
+| `city` | `varchar(60)` | no | Free text | Municipality. City-level only; **no street address is generated** ([PRIVACY_AND_ETHICS.md](PRIVACY_AND_ETHICS.md)). | Fixed reference data. | Non-personal |
+| `state_code` | `char(2)` | no | `NH` | Two-letter state code. All three fictional stores are in New Hampshire. | Fixed reference data. | Non-personal |
+| `market_region` | `varchar(60)` | no | `Southern New Hampshire` | Analytical market grouping. The seed of the Deferred `dim_geography`. | Fixed reference data. | Non-personal |
+| `opened_date` | `date` | no | Valid date | Date the fictional store opened. Bounds the plausible range of any historical fact for that store. | Fixed reference data. | Non-personal |
+| `is_active` | `boolean` | no | `true` / `false` | Whether the store is currently trading. All three fictional stores are active. | Fixed reference data. | Non-personal |
+| `effective_date` | `date` | no | Valid date | SCD2 version start date, inclusive. **Equals `opened_date` in Phase 0** because no attribute change has occurred yet. | Derived: `opened_date` for the initial version. | Non-personal |
+| `expiration_date` | `date` | no | Valid date; `9999-12-31` for current rows | SCD2 version end date, inclusive. The high-date sentinel `9999-12-31` is used rather than NULL so that `BETWEEN` range joins work without NULL handling. | Derived. | Non-personal |
+| `is_current` | `boolean` | no | `true` / `false` | True for the version in force today. Redundant with `expiration_date` by design: it makes the common "current stores only" filter a single index-friendly predicate. | Derived. | Non-personal |
+| `attribute_hash` | `char(64)` | no | 64 lowercase hex characters | SHA-256 change-detection digest over the Type 2 tracked attributes. See 7.3. | Derived. | Non-personal |
+| `source_system` | `varchar(40)` | no | `arpi_synthetic_generator` | Constant lineage marker. Present on every row so that no reviewer can mistake this data for a real DMS extract. | Constant. | Non-personal |
+
+**Uniqueness constraints**
+
+- `(dealership_id, effective_date)` is unique — a store cannot have two versions starting on the same day.
+- A **partial unique index** on `dealership_id WHERE is_current` — a store may have at most one current
+  version at any time.
+
+### 7.2 Reference data (authoritative)
+
+These three stores are fixed reference data. The generator fails if `generation.store_count` does not equal
+the number of defined stores.
+
+| `dealership_key` | `dealership_id` | `store_name` | `store_short_name` | `store_type` | `franchise_brand` | `city` | `state_code` | `market_region` | `opened_date` |
+|---:|---|---|---|---|---|---|---|---|---|
+| 1 | `GSA-001` | Granite Chevrolet of Nashua | Granite Chevrolet | Franchise New and Used | Chevrolet | Nashua | NH | Southern New Hampshire | 2009-04-06 |
+| 2 | `GSA-002` | Granite Subaru of Manchester | Granite Subaru | Franchise New and Used | Subaru | Manchester | NH | Southern New Hampshire | 2013-08-19 |
+| 3 | `GSA-003` | Granite Used Auto Center of Merrimack | Granite Used Auto | Independent Used | *(null)* | Merrimack | NH | Southern New Hampshire | 2017-03-13 |
+
+All three rows have `is_active = true`. **No street addresses, phone numbers, or email addresses exist for
+these stores** — they are omitted deliberately, not merely unpopulated.
+
+### 7.3 `attribute_hash` semantics (SCD2 change detection)
+
+`attribute_hash` is the mechanism that decides whether an incoming source row represents a *new version* of
+a store or an unchanged one. It is defined precisely so that the same input always produces the same hash
+on any platform:
+
+1. **Tracked attributes** are columns 3 through 11 of the column table above, in that exact order:
+   `store_name`, `store_short_name`, `store_type`, `franchise_brand`, `city`, `state_code`,
+   `market_region`, `opened_date`, `is_active`.
+2. The attribute values are rendered as text and **joined with the pipe character `|`**.
+3. The joined string is encoded as **UTF-8**.
+4. `attribute_hash` is the **SHA-256** digest of those bytes, as 64 lowercase hexadecimal characters.
+
+Columns deliberately **excluded** from the hash: `dealership_key` (surrogate, not a business attribute),
+`dealership_id` (identity, not a tracked attribute), `effective_date`, `expiration_date`, `is_current`
+(SCD bookkeeping — including them would make every row hash differently and defeat the purpose), and
+`source_system` (constant).
+
+**Load behaviour**
+
+| Condition | Action |
+|---|---|
+| No current row exists for `dealership_id` | Insert a new row with `is_current = true`, `effective_date` = the store's `opened_date` (initial load) or the change date (later), `expiration_date = 9999-12-31`. |
+| Current row exists and incoming `attribute_hash` **matches** | No change. Do not insert, do not update. This is what makes the load idempotent. |
+| Current row exists and incoming `attribute_hash` **differs** | Expire the current row (set `expiration_date` to the day before the change, `is_current = false`) and insert a new current version. |
+
+Because the hash is over business attributes only, rerunning the pipeline against unchanged source data
+produces zero new rows — the idempotency guarantee in [ARCHITECTURE.md §17.3](ARCHITECTURE.md).
+
+### 7.4 Business rules
+
+- `dealership_key` is unique (`DQ-DLR-001`).
+- `dealership_id` is unique among rows where `is_current = true` (`DQ-DLR-002`).
+- The number of distinct current stores equals `generation.store_count` (`DQ-DLR-003`).
+- No prohibited PII column may exist on the table (`DQ-DLR-004`) — this check inspects the *schema*, not
+  just the data, so an accidentally added `email` column fails the run.
+- `franchise_brand` must be non-NULL where `store_type = 'Franchise New and Used'` and NULL where
+  `store_type = 'Independent Used'` (`DQ-DLR-005`).
+- `effective_date <= expiration_date` for every row.
+- Version ranges for a given `dealership_id` do not overlap.
+- `is_current = true` if and only if `expiration_date = '9999-12-31'`.
+
+### 7.5 PII classification
+
+No personal data. `dealership_id` is a `Synthetic identifier`; every other column is `Non-personal`.
+Store geography stops at city level. Contact details of any kind are prohibited.
+
+### 7.6 History policy
+
+**Slowly Changing Dimension Type 2**, per [ARCHITECTURE.md §14](ARCHITECTURE.md). Type 2 is required
+because a store's franchise brand or type could change and historical facts must remain attached to the
+attribute values in force at the time of the transaction. Type 2 rows carry `effective_date`,
+`expiration_date`, and `is_current`, as §14 mandates.
+
+---
+
+# Part B — Planned dimensions
+
+> Everything in Part B is **Planned**: designed and documented, not built. Column lists are attribute-level.
+> Physical types are indicative. **Grains are binding.**
+
+---
+
+## 8. `warehouse.dim_employee`
+
+| Field | Value |
+|---|---|
+| **Entity name** | `warehouse.dim_employee` |
+| **Layer** | Warehouse (dimension) |
+| **Purpose** | Describes the synthetic sales, BDC, desk-management, and finance staff whose activity is attributed in the sales and funnel facts. Supplies the *contextual* attributes (tenure, department, store) that [ARCHITECTURE.md §23](ARCHITECTURE.md) requires before any employee performance figure may be shown. |
+| **Declared grain** | **One row per employee role-assignment version (SCD Type 2).** A single person who moves store or changes role produces multiple rows. |
+| **Primary key** | `employee_key` |
+| **Natural / source key** | `employee_id` (`EMP-#####`) |
+| **Foreign keys** | `dealership_key` → `warehouse.dim_dealership` |
+| **Implementation status** | **Planned (Phase 1.1)** |
+
+### 8.1 Attributes
+
+| Column | Type | Null | Allowed values / domain | Description | Synthetic generation source | PII class |
+|---|---|---|---|---|---|---|
+| `employee_key` | integer | no | 1..N | Surrogate key, one per role-assignment version. | Deterministic ordinal. | Non-personal |
+| `employee_id` | text | no | `EMP-#####` | Synthetic employee identifier. Stable across versions of the same person. | Sequence within the employee generator. | Synthetic identifier |
+| `dealership_key` | integer | no | FK | Store the employee is assigned to in this version. | Assigned by generator. | Non-personal |
+| `department` | text | no | `New Sales`, `Used Sales`, `BDC`, `Finance`, `Sales Management` | Operating department. | Controlled distribution. | Non-personal |
+| `job_role` | text | no | `Salesperson`, `BDC Representative`, `Sales Manager`, `Desk Manager`, `Finance Manager`, `General Manager` | Role held in this version. | Controlled distribution. | Non-personal |
+| `hire_date` | date | no | Valid date on or after the store `opened_date` | Date of hire. | Generated. | Non-personal |
+| `termination_date` | date | yes | Valid date ≥ `hire_date` | Termination date. NULL means still employed. | Generated. | Non-personal |
+| `tenure_band` | text | no | `Under 1 year`, `1 to 3 years`, `3 to 5 years`, `Over 5 years` | Banded tenure. Banded rather than exact so that scorecards are contextualized without implying a precise personnel record. | Derived from `hire_date`. | Non-personal |
+| `is_manager` | boolean | no | `true` / `false` | Whether the role carries management responsibility. | Derived from `job_role`. | Non-personal |
+| `is_active` | boolean | no | `true` / `false` | Whether the employee is currently employed. | Derived. | Non-personal |
+| `effective_date` | date | no | Valid date | SCD2 version start. | Derived. | Non-personal |
+| `expiration_date` | date | no | `9999-12-31` for current | SCD2 version end. | Derived. | Non-personal |
+| `is_current` | boolean | no | `true` / `false` | Current-version flag. | Derived. | Non-personal |
+| `attribute_hash` | char(64) | no | hex | SHA-256 over tracked attributes; same construction as 7.3. | Derived. | Non-personal |
+| `source_system` | text | no | `arpi_synthetic_generator` | Lineage marker. | Constant. | Non-personal |
+| *Employee name* | — | — | — | **Prohibited by default.** [ARCHITECTURE.md §22.4](ARCHITECTURE.md) permits fictional names "if names are used at all". ARPI's decision is **not** to generate names: a synthetic identifier plus role and tenure is sufficient for every planned KPI, and fictional names invite confusion with real staff. | Not generated. | Prohibited |
+| *Compensation, pay plan, commission* | — | — | — | **Prohibited.** Real employee compensation is on the prohibited-data list in `docs/research.md` §10.2, and synthetic compensation adds no analytical value to any planned KPI. | Not generated. | Prohibited |
+
+### 8.2 Business rules (planned)
+
+- `termination_date`, when present, is on or after `hire_date`.
+- `hire_date` is on or after the assigned store's `opened_date`.
+- A person (`employee_id`) has at most one current version.
+- Employee counts per store are consistent with the scale settings in [DATA_GENERATION.md](DATA_GENERATION.md).
+
+### 8.3 PII classification
+
+`employee_id` is a `Synthetic identifier`. `tenure_band` is a `Minimized personal attribute` on a synthetic
+person. Names, contact details, birth dates, and compensation are **Prohibited**.
+
+### 8.4 History policy
+
+**SCD Type 2** — required by [ARCHITECTURE.md §14](ARCHITECTURE.md) because employees may change stores or
+roles and historical performance must stay attached to the correct assignment.
+
+---
+
+## 9. `warehouse.dim_customer`
+
+| Field | Value |
+|---|---|
+| **Entity name** | `warehouse.dim_customer` |
+| **Layer** | Warehouse (dimension) |
+| **Purpose** | Represents the synthetic buying party on a sale, lead, or appointment. Deliberately thin: it exists to support repeat-purchase and cohort analysis, not to profile individuals. |
+| **Declared grain** | **One row per synthetic customer.** |
+| **Primary key** | `customer_key` |
+| **Natural / source key** | `customer_id` (`CUS-########`) |
+| **Foreign keys** | None in the MVP. A `geography_key` FK is Deferred with `dim_geography`. |
+| **Implementation status** | **Planned (Phase 1.2)** |
+
+### 9.1 Attributes
+
+| Column | Type | Null | Allowed values / domain | Description | Synthetic generation source | PII class |
+|---|---|---|---|---|---|---|
+| `customer_key` | integer | no | 1..N | Surrogate key. | Deterministic ordinal. | Non-personal |
+| `customer_id` | text | no | `CUS-########` | Synthetic customer identifier. | Sequence within the customer generator. | Synthetic identifier |
+| `household_key` | integer | yes | 1..N | Groups synthetic customers into a household. Present only to support household repeat-purchase analysis; NULL means single-person household. | Generated. | Synthetic identifier |
+| `age_band` | text | no | `18-24`, `25-34`, `35-44`, `45-54`, `55-64`, `65+` | Banded age. **Full birth date is prohibited** — data minimization, `docs/research.md` §10.4. | Controlled distribution. | Minimized personal attribute |
+| `county` | text | no | New Hampshire / Northern Massachusetts county names | Coarsest useful geography. **Street address is prohibited.** | Controlled distribution. | Minimized personal attribute |
+| `state_code` | char(2) | no | `NH`, `MA` | State. | Derived from `county`. | Minimized personal attribute |
+| `market_area` | text | no | Named market groupings | Analytical market grouping. | Derived from `county`. | Non-personal |
+| `customer_type` | text | no | `Retail`, `Business`, `Wholesale Buyer` | Buying-party classification. Wholesale disposals may have no customer at all. | Controlled distribution. | Non-personal |
+| `is_prior_customer` | boolean | no | `true` / `false` | Whether the synthetic customer had a purchase before the reporting window opened. Prevents repeat-rate measures from being artificially depressed at the start of the window. | Generated. | Non-personal |
+| `is_service_customer` | boolean | no | `true` / `false` | Whether the synthetic customer has service history. Supports the Deferred service-to-sales domain. | Generated. | Non-personal |
+| `first_interaction_date` | date | no | Valid date | Earliest date the synthetic customer appears in any fact. | Derived. | Non-personal |
+| `source_system` | text | no | `arpi_synthetic_generator` | Lineage marker. | Constant. | Non-personal |
+
+### 9.2 Prohibited fields
+
+The following are named as **Prohibited** in [ARCHITECTURE.md §11.2](ARCHITECTURE.md). They must never be
+generated, stored, loaded, or committed, in this dimension or anywhere else:
+
+| Prohibited field | Reason |
+|---|---|
+| **Name** | Directly identifying. A synthetic key serves every analytical purpose. |
+| **Street address** | Directly identifying. County / market area is the finest geography ARPI stores. |
+| **Email** | Directly identifying and a contact vector. |
+| **Phone number** | Directly identifying and a contact vector. |
+| **Full birth date** | Quasi-identifier; `age_band` is sufficient for cohort analysis. |
+| **Social Security number** | Never appropriate in any portfolio dataset. |
+| **Driver's-license number** | Government identifier; never appropriate. |
+| **Bank information** | Financial account data; never appropriate. |
+
+`docs/research.md` §10.2 additionally prohibits credit scores tied to identifiable people, credit-application
+details, insurance information, and actual deal jackets. ARPI treats those as prohibited here too. Where a
+credit dimension is ever required, only a broad synthetic tier is permissible
+([ARCHITECTURE.md §22.4](ARCHITECTURE.md)) — and that is Deferred, not Planned.
+
+### 9.3 Business rules (planned)
+
+- `first_interaction_date` is on or before the earliest fact date referencing the customer.
+- Every customer referenced by a retail sale exists in this dimension; wholesale transactions may carry no
+  customer key ([ARCHITECTURE.md §12.1](ARCHITECTURE.md)).
+- `age_band` distribution must not be uniform (prohibited synthetic pattern,
+  [ARCHITECTURE.md §15.4](ARCHITECTURE.md)).
+
+### 9.4 PII classification
+
+`Minimized personal attribute` for `age_band`, `county`, `state_code`; `Synthetic identifier` for
+`customer_id` and `household_key`; `Non-personal` elsewhere. **All persons are fabricated.**
+
+### 9.5 History policy
+
+**SCD Type 1.** Customer attributes are overwritten in place; ARPI does not need to report on the value an
+age band held historically. If trade-cycle analysis later requires history, that is an ADR.
+
+---
+
+## 10. `warehouse.dim_vehicle`
+
+| Field | Value |
+|---|---|
+| **Entity name** | `warehouse.dim_vehicle` |
+| **Layer** | Warehouse (dimension) |
+| **Purpose** | Describes an individual physical unit of inventory. Distinguished from `dim_vehicle_model`, which describes the configuration rather than the unit. Required by every inventory and sale measure. |
+| **Declared grain** | **One row per unique physical vehicle.** |
+| **Primary key** | `vehicle_key` |
+| **Natural / source key** | `vehicle_id` (`VEH-#######`) and the synthetic VIN-like identifier |
+| **Foreign keys** | `vehicle_model_key` → `warehouse.dim_vehicle_model` |
+| **Implementation status** | **Planned (Phase 1.1)** |
+
+### 10.1 Attributes
+
+| Column | Type | Null | Allowed values / domain | Description | Synthetic generation source | PII class |
+|---|---|---|---|---|---|---|
+| `vehicle_key` | integer | no | 1..N | Surrogate key. | Deterministic ordinal. | Non-personal |
+| `vehicle_id` | text | no | `VEH-#######` | Synthetic vehicle identifier. | Sequence within the vehicle generator. | Synthetic identifier |
+| `synthetic_vin` | text | no | 17 characters, structurally VIN-like, **never a real VIN** | Masked, fabricated VIN-like identifier. Exists to demonstrate VIN-keyed modelling without publishing a real VIN. See [PRIVACY_AND_ETHICS.md](PRIVACY_AND_ETHICS.md). | Generated deterministically; not decoded from any real VIN. | Synthetic identifier |
+| `vehicle_model_key` | integer | no | FK | Link to the model / trim configuration. | Assigned by generator. | Non-personal |
+| `model_year` | smallint | no | Plausible model years | Model year of the unit. | Inherited from the model. | Non-personal |
+| `make` | text | no | Make names | Manufacturer. | Inherited from the model. | Non-personal |
+| `model` | text | no | Model names | Model. | Inherited from the model. | Non-personal |
+| `trim` | text | yes | Trim names | Trim level. NULL means the source did not specify a trim. | Inherited from the model. | Non-personal |
+| `body_style` | text | no | `Sedan`, `SUV`, `Truck`, `Hatchback`, `Wagon`, `Van`, `Coupe` | Body style. | Inherited from the model. | Non-personal |
+| `fuel_type` | text | no | `Gasoline`, `Hybrid`, `Plug-in Hybrid`, `Electric`, `Diesel` | Fuel type. | Inherited from the model. | Non-personal |
+| `drivetrain` | text | no | `FWD`, `RWD`, `AWD`, `4WD` | Drivetrain. AWD share is elevated for the New England market. | Inherited from the model. | Non-personal |
+| `transmission` | text | no | `Automatic`, `Manual`, `CVT` | Transmission. | Controlled distribution. | Non-personal |
+| `exterior_color` | text | no | Colour names | Exterior colour. Supports colour-concentration aging analysis (`docs/research.md` §4.7). | Controlled distribution. | Non-personal |
+| `interior_color` | text | no | Colour names | Interior colour. | Controlled distribution. | Non-personal |
+| `odometer_band` | text | no | `New`, `Under 10k`, `10k-30k`, `30k-60k`, `60k-100k`, `Over 100k` | Banded odometer reading at acquisition. Banded to keep the dimension stable while exact mileage stays in the facts. | Derived. | Non-personal |
+| `vehicle_condition` | text | no | `New`, `Used`, `Certified` | New / used / certified status. Drives new-versus-used reporting. | Controlled distribution. | Non-personal |
+| `vehicle_source` | text | no | `Customer Trade`, `Auction`, `Off-street Purchase`, `Lease Return`, `Dealer Trade`, `Manufacturer Allocation`, `Service-lane Acquisition` | Acquisition source. Denormalized here in the MVP; `dim_inventory_source` is Deferred. | Controlled distribution. | Non-personal |
+| `source_system` | text | no | `arpi_synthetic_generator` | Lineage marker. | Constant. | Non-personal |
+
+### 10.2 Business rules (planned)
+
+- `synthetic_vin` is unique across the dimension.
+- `vehicle_condition = 'New'` implies `odometer_band = 'New'` and `vehicle_source` in
+  `{Manufacturer Allocation, Dealer Trade}`.
+- Certified units are Used units with a certification flag applied by the franchise; independent used
+  stores cannot produce manufacturer-certified units.
+- Vehicle aging behaviour must differ across models — identical aging behaviour across models is a
+  prohibited synthetic pattern ([ARCHITECTURE.md §15.4](ARCHITECTURE.md)).
+
+### 10.3 PII classification
+
+`Non-personal` throughout, with `vehicle_id` and `synthetic_vin` classed as `Synthetic identifier`.
+**No VIN in ARPI is real, and no VIN is ever linked to owner history.**
+
+### 10.4 History policy
+
+**SCD Type 1.** A physical vehicle's descriptive attributes do not change meaningfully during a dealership
+holding period. Price and age change over time and live in the snapshot fact, per
+[ARCHITECTURE.md §11.1 rule 6](ARCHITECTURE.md).
+
+---
+
+## 11. `warehouse.dim_vehicle_model`
+
+| Field | Value |
+|---|---|
+| **Entity name** | `warehouse.dim_vehicle_model` |
+| **Layer** | Warehouse (dimension) |
+| **Purpose** | Configuration-level dimension. Allows model, trim, and class analysis independent of how many physical units exist, which is what makes days-supply and model-mix reporting coherent. |
+| **Declared grain** | **One row per model-year, make, model, trim combination.** |
+| **Primary key** | `vehicle_model_key` |
+| **Natural / source key** | The natural composite `(model_year, make, model, trim)` |
+| **Foreign keys** | None |
+| **Implementation status** | **Planned (Phase 1.1)** |
+
+### 11.1 Attributes
+
+| Column | Type | Null | Allowed values / domain | Description | Synthetic generation source | PII class |
+|---|---|---|---|---|---|---|
+| `vehicle_model_key` | integer | no | 1..N | Surrogate key. | Deterministic ordinal over the natural composite. | Non-personal |
+| `model_year` | smallint | no | Plausible model years | Model year. | Reference catalogue. | Non-personal |
+| `make` | text | no | Make names | Manufacturer. | Reference catalogue. | Non-personal |
+| `model` | text | no | Model names | Model. | Reference catalogue. | Non-personal |
+| `trim` | text | yes | Trim names | Trim. NULL where the catalogue does not distinguish trims. Part of the natural key, so NULL is treated as a distinct value. | Reference catalogue. | Non-personal |
+| `body_style` | text | no | See `dim_vehicle` | Body style. | Reference catalogue. | Non-personal |
+| `vehicle_class` | text | no | `Compact`, `Midsize`, `Full-size`, `Compact SUV`, `Midsize SUV`, `Full-size SUV`, `Light Truck` | Analytical size / class grouping. | Reference catalogue. | Non-personal |
+| `fuel_type` | text | no | See `dim_vehicle` | Fuel type. | Reference catalogue, optionally enriched from NHTSA vPIC. | Non-personal |
+| `drivetrain` | text | no | See `dim_vehicle` | Drivetrain. | Reference catalogue, optionally enriched from NHTSA vPIC. | Non-personal |
+| `franchise_alignment` | text | yes | `Chevrolet`, `Subaru`, NULL | Which franchise store can sell this model as new. NULL means the model appears only as used inventory. | Derived from `make`. | Non-personal |
+| `source_system` | text | no | `arpi_synthetic_generator` | Lineage marker. | Constant. | Non-personal |
+
+### 11.2 Business rules (planned)
+
+- The natural composite `(model_year, make, model, trim)` is unique, with NULL `trim` treated as a distinct
+  value.
+- Every `dim_vehicle` row resolves to exactly one model row.
+- Where NHTSA vPIC enrichment is enabled (`features.enable_public_vehicle_enrichment`, currently OFF), it
+  may populate `body_style`, `fuel_type`, and `drivetrain` only. It may never populate a real VIN
+  ([ARCHITECTURE.md §16.2](ARCHITECTURE.md)).
+
+### 11.3 PII classification
+
+`Non-personal` throughout.
+
+### 11.4 History policy
+
+**SCD Type 1.** Model catalogue corrections (standardized labels, corrected spellings) are exactly the
+Type 1 examples given in [ARCHITECTURE.md §14](ARCHITECTURE.md).
+
+---
+
+## 12. `warehouse.dim_lead_source`
+
+| Field | Value |
+|---|---|
+| **Entity name** | `warehouse.dim_lead_source` |
+| **Layer** | Warehouse (dimension) |
+| **Purpose** | Normalizes CRM lead origin into a governed set of sources so that funnel and marketing measures are comparable across stores. Raw CRM source strings are notoriously inconsistent; this dimension is where that is fixed once. |
+| **Declared grain** | **One row per normalized lead source.** |
+| **Primary key** | `lead_source_key` |
+| **Natural / source key** | `lead_source_id` |
+| **Foreign keys** | None |
+| **Implementation status** | **Planned (Phase 1.4)** |
+
+### 12.1 Attributes
+
+| Column | Type | Null | Allowed values / domain | Description | Synthetic generation source | PII class |
+|---|---|---|---|---|---|---|
+| `lead_source_key` | integer | no | 1..N | Surrogate key. | Deterministic ordinal. | Non-personal |
+| `lead_source_id` | text | no | Slug | Natural key for the normalized source. | Reference data. | Non-personal |
+| `source_name` | text | no | Free text | Display name, for example `Dealer Website`, `Third-Party Marketplace`, `Walk-in`, `Phone Up`, `Service Lane`. | Reference data. | Non-personal |
+| `source_category` | text | no | `Owned Digital`, `Third Party`, `Paid Search`, `Paid Social`, `Traditional Media`, `Walk-in`, `Referral`, `Internal` | Analytical grouping used on the marketing page. | Reference data. | Non-personal |
+| `is_paid` | boolean | no | `true` / `false` | Whether the source carries marketing cost. Determines whether cost-per-lead is even defined for the source. | Reference data. | Non-personal |
+| `is_digital` | boolean | no | `true` / `false` | Digital versus traditional channel. | Reference data. | Non-personal |
+| `is_third_party` | boolean | no | `true` / `false` | Whether the lead is supplied by an external marketplace. | Reference data. | Non-personal |
+| `is_internal` | boolean | no | `true` / `false` | Whether the source is generated inside the store (walk-in, service lane, repeat customer). | Reference data. | Non-personal |
+| `source_system` | text | no | `arpi_synthetic_generator` | Lineage marker. | Constant. | Non-personal |
+
+### 12.2 Business rules (planned)
+
+- Sources differ in cost, volume, conversion, and gross — a required business relationship
+  ([ARCHITECTURE.md §15.3](ARCHITECTURE.md)).
+- `is_internal = true` implies `is_paid = false`.
+- Cost-per-lead and cost-per-sale are undefined (NULL, not zero) for sources where `is_paid = false`.
+
+### 12.3 PII classification
+
+`Non-personal` throughout.
+
+### 12.4 History policy
+
+**SCD Type 1.** Reclassification of a source is a correction, not a historical fact worth preserving.
+
+---
+
+## 13. `warehouse.dim_marketing_campaign`
+
+| Field | Value |
+|---|---|
+| **Entity name** | `warehouse.dim_marketing_campaign` |
+| **Layer** | Warehouse (dimension) |
+| **Purpose** | Describes marketing campaigns so that spend, leads, and resulting gross can be attributed to a named initiative rather than only to a channel. |
+| **Declared grain** | **One row per campaign.** |
+| **Primary key** | `campaign_key` |
+| **Natural / source key** | `campaign_id` |
+| **Foreign keys** | `lead_source_key` → `warehouse.dim_lead_source` (primary channel) |
+| **Implementation status** | **Planned (Phase 1.5)** |
+
+### 13.1 Attributes
+
+| Column | Type | Null | Allowed values / domain | Description | Synthetic generation source | PII class |
+|---|---|---|---|---|---|---|
+| `campaign_key` | integer | no | 1..N | Surrogate key. | Deterministic ordinal. | Non-personal |
+| `campaign_id` | text | no | Slug | Natural key. | Generated. | Non-personal |
+| `campaign_name` | text | no | Free text | Display name. | Generated. | Non-personal |
+| `channel` | text | no | `Paid Search`, `Paid Social`, `Display`, `Third-Party Listings`, `Direct Mail`, `Radio`, `Television`, `Email` | Delivery channel. | Controlled distribution. | Non-personal |
+| `vendor` | text | yes | Fictional vendor names | Media vendor. NULL where the campaign is run in-house. **All vendor names are fictional.** | Generated. | Non-personal |
+| `start_date` | date | no | Valid date | Campaign start. | Generated. | Non-personal |
+| `end_date` | date | yes | Valid date ≥ `start_date` | Campaign end. NULL means still running. | Generated. | Non-personal |
+| `target_department` | text | no | `New Sales`, `Used Sales`, `Both` | Intended department. | Generated. | Non-personal |
+| `target_vehicle_category` | text | yes | Vehicle class values | Intended vehicle category. NULL means untargeted. | Generated. | Non-personal |
+| `source_system` | text | no | `arpi_synthetic_generator` | Lineage marker. | Constant. | Non-personal |
+
+### 13.2 Business rules (planned)
+
+- `end_date`, when present, is on or after `start_date`.
+- **Campaigns may create leads outside their primary target segment** — an explicitly required business
+  relationship ([ARCHITECTURE.md §15.3](ARCHITECTURE.md)). Attribution logic must not assume perfect
+  targeting.
+- Marketing spend is non-negative ([ARCHITECTURE.md §21.2](ARCHITECTURE.md)).
+
+### 13.3 PII classification
+
+`Non-personal` throughout.
+
+### 13.4 History policy
+
+**SCD Type 1 initially.** [ARCHITECTURE.md §14](ARCHITECTURE.md) lists campaign classification as a
+*potential* Type 2 dimension; promoting it requires an ADR.
+
+---
+
+# Part C — Planned facts
+
+> **No fact table exists in this repository today.** Everything in Part C is Planned. Grains below are
+> binding and are taken directly from [ARCHITECTURE.md §12](ARCHITECTURE.md).
+
+---
+
+## 14. `warehouse.fact_vehicle_sale`
+
+| Field | Value |
+|---|---|
+| **Entity name** | `warehouse.fact_vehicle_sale` |
+| **Layer** | Warehouse (transaction fact) |
+| **Purpose** | The central profit fact. One row per completed deal, carrying the gross components that drive nearly every executive measure in the project. |
+| **Declared grain** | **One row per finalized vehicle transaction.** A transaction includes retail sales, leases, wholesale sales, and dealer trades. **Canceled transactions must not remain as finalized sales.** |
+| **Primary key** | `vehicle_sale_key` |
+| **Natural / source key** | `sale_id` |
+| **Foreign keys** | `sale_date_key`, `delivery_date_key` → `dim_date`; `dealership_key`; `vehicle_key`; `customer_key` (nullable for wholesale); `salesperson_key`, `desk_manager_key`, `finance_manager_key` → `dim_employee`; `lead_source_key`; `sale_type_key` → `dim_sale_type` *(Deferred — denormalized to a `sale_type` text column in the MVP)*; `lender_key` → `dim_lender` *(Deferred)* |
+| **Implementation status** | **Planned (Phase 1.2)** |
+
+### 14.1 Measures and degenerate attributes
+
+| Column | Type | Null | Allowed values / domain | Description | Synthetic generation source | PII class |
+|---|---|---|---|---|---|---|
+| `unit_count` | integer | no | `1` for finalized retail and wholesale sales | Additive unit counter. Kept explicit rather than using `COUNT(*)` so that unit measures survive any future grain change. | Constant 1. | Non-personal |
+| `sale_price` | numeric(12,2) | no | ≥ 0 | Final selling price of the vehicle. | Generated. | Non-personal |
+| `msrp` | numeric(12,2) | yes | ≥ 0 | Manufacturer's suggested retail price. NULL for used units without an MSRP. | Generated. | Non-personal |
+| `original_asking_price` | numeric(12,2) | no | ≥ 0 | First advertised price. | Generated. | Non-personal |
+| `final_asking_price` | numeric(12,2) | no | ≥ 0 | Advertised price at sale. | Generated. | Non-personal |
+| `acquisition_cost` | numeric(12,2) | no | ≥ 0 | Cost to acquire the unit. | Generated. | Non-personal |
+| `reconditioning_cost` | numeric(12,2) | no | ≥ 0 | Reconditioning spend. | Generated. | Non-personal |
+| `pack_amount` | numeric(12,2) | no | ≥ 0 | Internal pack applied before front-end gross. | Generated. | Non-personal |
+| `front_end_gross` | numeric(12,2) | no | May be negative | `sale_price − acquisition_cost − reconditioning_cost − pack_amount`. Negative values are legitimate and must remain visible ([ARCHITECTURE.md §19.6](ARCHITECTURE.md)). | Derived. | Non-personal |
+| `back_end_gross` | numeric(12,2) | no | May be negative | Net finance reserve plus net F&I product gross. In the MVP this is generated directly; once `fact_finance_product_sale` exists it must reconcile to the product detail. | Generated. | Non-personal |
+| `total_gross` | numeric(12,2) | no | May be negative | `front_end_gross + back_end_gross`. Stored, not recomputed at query time, and reconciled by `RECON-GROSS-001`. | Derived. | Non-personal |
+| `discount_from_msrp` | numeric(12,2) | yes | — | `msrp − sale_price`. NULL where `msrp` is NULL. | Derived. | Non-personal |
+| `discount_from_original_asking` | numeric(12,2) | no | — | `original_asking_price − sale_price`. | Derived. | Non-personal |
+| `days_in_inventory_at_sale` | integer | no | ≥ 0 | Calendar days between acquisition and sale. The days-to-sale measure source. | Derived. | Non-personal |
+| `finance_amount` | numeric(12,2) | yes | ≥ 0 | Amount financed. NULL for cash deals. **No APR, term, or payment is modelled** — see [PRIVACY_AND_ETHICS.md](PRIVACY_AND_ETHICS.md). | Generated. | Non-personal |
+| `cash_down_payment` | numeric(12,2) | yes | ≥ 0 | Cash down. NULL where not applicable. | Generated. | Non-personal |
+| `trade_allowance` | numeric(12,2) | yes | ≥ 0 | Allowance credited for a trade. NULL where there is no trade. | Generated. | Non-personal |
+| `trade_actual_cash_value` | numeric(12,2) | yes | ≥ 0 | Appraised value of the trade. NULL where there is no trade. | Generated. | Non-personal |
+| `sale_type` | text | no | `New Retail`, `Used Retail`, `Certified Retail`, `Lease`, `Wholesale`, `Dealer Trade` | Transaction classification. Denormalized text in the MVP; becomes an FK when `dim_sale_type` is built. | Generated. | Non-personal |
+| `is_retail` | boolean | no | `true` / `false` | True for retail and lease deliveries; false for wholesale and dealer trades. **This is the single flag that defines every "retail unit" denominator in [KPI_CATALOG.md](KPI_CATALOG.md).** | Derived from `sale_type`. | Non-personal |
+
+### 14.2 Business rules (planned)
+
+- `unit_count = 1` for finalized retail and wholesale sales.
+- `total_gross = front_end_gross + back_end_gross` — enforced by validation, not assumed.
+- Sale date cannot precede acquisition date.
+- Wholesale transactions may have no customer key.
+- Canceled deals are excluded before load; they never appear as finalized sales.
+- Every finalized sale references a valid vehicle ([ARCHITECTURE.md §21.2](ARCHITECTURE.md)).
+- Sales cannot exist without inventory or vehicle records
+  ([ARCHITECTURE.md §15.4](ARCHITECTURE.md)).
+
+### 14.3 PII classification
+
+`Non-personal`. `customer_key` and employee keys are synthetic surrogates.
+
+### 14.4 History policy
+
+**Insert-only transaction fact.** Historical rows are immutable. Corrections are made by reload of the
+affected period, not by in-place update.
+
+---
+
+## 15. `warehouse.fact_vehicle_inventory_snapshot`
+
+| Field | Value |
+|---|---|
+| **Entity name** | `warehouse.fact_vehicle_inventory_snapshot` |
+| **Layer** | Warehouse (periodic snapshot fact) |
+| **Purpose** | Daily photograph of every unit in stock. This is what makes inventory age, aged-inventory percentage, days supply, and inventory investment answerable *as of any date* rather than only as of today. |
+| **Declared grain** | **One row per vehicle per dealership per daily snapshot date while the vehicle is active in inventory.** |
+| **Primary key** | Composite `(snapshot_date_key, dealership_key, vehicle_key)` |
+| **Natural / source key** | Composite of snapshot date and `vehicle_id` |
+| **Foreign keys** | `snapshot_date_key` → `dim_date`; `dealership_key`; `vehicle_key`; `vehicle_model_key`; `inventory_source_key` → `dim_inventory_source` *(Deferred — denormalized in the MVP)* |
+| **Implementation status** | **Planned (Phase 1.2)** |
+
+### 15.1 Measures
+
+| Column | Type | Null | Allowed values / domain | Description | Synthetic generation source | PII class |
+|---|---|---|---|---|---|---|
+| `inventory_unit_count` | integer | no | `1` | Additive unit counter for the snapshot date. | Constant 1. | Non-personal |
+| `current_asking_price` | numeric(12,2) | no | ≥ 0 | Advertised price on the snapshot date. | Generated. | Non-personal |
+| `original_asking_price` | numeric(12,2) | no | ≥ 0 | First advertised price. | Generated. | Non-personal |
+| `msrp` | numeric(12,2) | yes | ≥ 0 | MSRP. NULL for used units without one. | Generated. | Non-personal |
+| `acquisition_cost` | numeric(12,2) | no | ≥ 0 | Cost to acquire. | Generated. | Non-personal |
+| `reconditioning_cost` | numeric(12,2) | no | ≥ 0 | Reconditioning spend to date. | Generated. | Non-personal |
+| `inventory_investment` | numeric(12,2) | no | ≥ 0 | `acquisition_cost + reconditioning_cost`. Capital tied up in the unit on the snapshot date. | Derived. | Non-personal |
+| `days_in_stock` | integer | no | ≥ 0 | Calendar days between acquisition date and snapshot date. **Non-negative by rule** ([ARCHITECTURE.md §21.2](ARCHITECTURE.md)). | Derived. | Non-personal |
+| `market_price_estimate` | numeric(12,2) | yes | ≥ 0 | Synthetic market price reference. **Not a real market valuation** and must never be presented as one. | Generated. | Non-personal |
+| `price_to_market_ratio` | numeric(8,4) | yes | > 0 | `current_asking_price / market_price_estimate`. NULL where the estimate is NULL. | Derived. | Non-personal |
+| `markdown_count_to_date` | integer | no | ≥ 0 | Number of price reductions so far. | Derived. | Non-personal |
+| `lead_count_to_date` | integer | no | ≥ 0 | Leads received on this unit so far. | Derived. | Non-personal |
+| `appointment_count_to_date` | integer | no | ≥ 0 | Appointments booked on this unit so far. | Derived. | Non-personal |
+
+### 15.2 Business rules (planned)
+
+- **Exactly one record per vehicle, store, and date** — grain uniqueness is a critical failure if violated
+  ([ARCHITECTURE.md §17.4](ARCHITECTURE.md), §21.2).
+- Snapshot generation stops after sale, wholesale disposal, or transfer.
+- Historical snapshots are immutable.
+- `days_in_stock` is non-negative and increases by exactly 1 per day for a continuously held unit.
+- Older inventory is more likely to receive markdowns, and generally shows lower expected front-end gross —
+  required relationships ([ARCHITECTURE.md §15.3](ARCHITECTURE.md)).
+
+### 15.3 PII classification
+
+`Non-personal` throughout.
+
+### 15.4 History policy
+
+**Periodic snapshot, insert-only and immutable.** This is the largest planned table: at portfolio scale
+[ARCHITECTURE.md §8.5](ARCHITECTURE.md) anticipates 500,000 to 1,500,000 rows.
+
+---
+
+## 16. `warehouse.fact_lead`
+
+| Field | Value |
+|---|---|
+| **Entity name** | `warehouse.fact_lead` |
+| **Layer** | Warehouse (accumulating snapshot fact) |
+| **Purpose** | One row per CRM opportunity, carrying the funnel milestone flags. This is the table the entire Lead Funnel page rests on. |
+| **Declared grain** | **One row per unique CRM lead.** |
+| **Primary key** | `lead_key` |
+| **Natural / source key** | `lead_id` (`LEAD-#########`) |
+| **Foreign keys** | `lead_created_date_key` → `dim_date`; `dealership_key`; `customer_key`; `vehicle_key` or `vehicle_model_key`; `lead_source_key`; `campaign_key`; `assigned_salesperson_key`, `assigned_bdc_employee_key` → `dim_employee` |
+| **Implementation status** | **Planned (Phase 1.4)** |
+
+### 16.1 Measures and flags
+
+| Column | Type | Null | Allowed values / domain | Description | Synthetic generation source | PII class |
+|---|---|---|---|---|---|---|
+| `lead_count` | integer | no | `1` | Additive lead counter. | Constant 1. | Non-personal |
+| `first_response_seconds` | integer | yes | ≥ 0 | Seconds between lead creation and first outbound response. **NULL means never responded to** — analytically different from zero, and the distinction matters for the "leads without follow-up" measure. | Generated. | Non-personal |
+| `is_contacted` | boolean | no | `true` / `false` | Two-way contact established. | Generated. | Non-personal |
+| `is_appointment_set` | boolean | no | `true` / `false` | An appointment was booked. | Generated. | Non-personal |
+| `is_appointment_shown` | boolean | no | `true` / `false` | The customer showed. | Generated. | Non-personal |
+| `is_sold` | boolean | no | `true` / `false` | Linked to a finalized retail sale. **May only be true when a valid transaction is linked.** | Derived. | Non-personal |
+| `is_lost` | boolean | no | `true` / `false` | Closed without sale. | Generated. | Non-personal |
+| `is_duplicate` | boolean | no | `true` / `false` | Duplicate of an earlier lead. **Duplicates are excluded from every funnel denominator.** | Generated. | Non-personal |
+| `original_lead_id` | text | yes | `LEAD-#########` | The lead this row duplicates. NULL when not a duplicate. | Generated. | Synthetic identifier |
+| `days_to_sale` | integer | yes | ≥ 0 | Days from lead creation to finalized sale. NULL when not sold. | Derived. | Non-personal |
+| `vehicle_sale_key` | integer | yes | FK | Link to the resulting sale. NULL when not sold. | Derived. | Non-personal |
+
+**No communication content is stored** — no message bodies, call recordings, transcripts, or notes.
+Only response-time seconds ([ARCHITECTURE.md §22.4](ARCHITECTURE.md), `docs/research.md` §10.4).
+
+### 16.2 Business rules (planned)
+
+- First response cannot occur before lead creation.
+- `is_sold = true` requires a resolvable `vehicle_sale_key`.
+- `is_appointment_shown = true` implies `is_appointment_set = true`.
+- `is_appointment_set = true` implies `is_contacted = true`.
+- Response time influences contact probability; contact probability influences appointment probability;
+  shown appointments convert at a higher rate than non-showroom leads
+  ([ARCHITECTURE.md §15.3](ARCHITECTURE.md)). These must be **influences, not deterministic rules** —
+  perfect correlations are a prohibited synthetic pattern (§15.4).
+
+### 16.3 PII classification
+
+`Non-personal`, with `lead_id` and `original_lead_id` as `Synthetic identifier`.
+
+### 16.4 History policy
+
+**Accumulating snapshot.** Milestone flags on an open lead are updated in place as the lead progresses;
+once the lead is closed the row is final.
+
+---
+
+## 17. `warehouse.fact_appointment`
+
+| Field | Value |
+|---|---|
+| **Entity name** | `warehouse.fact_appointment` |
+| **Layer** | Warehouse (transaction fact) |
+| **Purpose** | Isolates showroom appointment outcomes, which sit at a different grain from leads: one lead can generate several appointments. Show rate and show-to-sale conversion are computed here. |
+| **Declared grain** | **One row per scheduled appointment.** |
+| **Primary key** | `appointment_key` |
+| **Natural / source key** | `appointment_id` |
+| **Foreign keys** | `appointment_created_date_key`, `scheduled_date_key`, `show_date_key` → `dim_date`; `dealership_key`; `lead_key`; `customer_key`; `salesperson_key`, `bdc_employee_key` → `dim_employee`; `vehicle_key` or `vehicle_model_key` |
+| **Implementation status** | **Planned (Phase 1.4)** |
+
+### 17.1 Measures and flags
+
+| Column | Type | Null | Allowed values / domain | Description | Synthetic generation source | PII class |
+|---|---|---|---|---|---|---|
+| `appointment_count` | integer | no | `1` | Additive appointment counter. | Constant 1. | Non-personal |
+| `is_confirmed` | boolean | no | `true` / `false` | Appointment confirmed before the scheduled time. | Generated. | Non-personal |
+| `is_shown` | boolean | no | `true` / `false` | Customer attended. | Generated. | Non-personal |
+| `is_test_drive` | boolean | no | `true` / `false` | A test drive occurred. | Generated. | Non-personal |
+| `is_write_up` | boolean | no | `true` / `false` | A deal was written up. | Generated. | Non-personal |
+| `is_sold` | boolean | no | `true` / `false` | Linked to a finalized sale. | Derived. | Non-personal |
+| `is_canceled_before_scheduled` | boolean | no | `true` / `false` | Canceled before the scheduled date. **Determines eligibility for the show-rate denominator** — see [KPI_CATALOG.md](KPI_CATALOG.md) `KPI-FUN-004`. | Generated. | Non-personal |
+| `minutes_early_or_late` | integer | yes | Negative = early, positive = late | Punctuality relative to the scheduled time. NULL when the customer did not show. | Generated. | Non-personal |
+| `vehicle_sale_key` | integer | yes | FK | Resulting sale. NULL when not sold. | Derived. | Non-personal |
+
+### 17.2 Business rules (planned)
+
+- Show date cannot precede appointment creation.
+- Sold appointments must link to a finalized vehicle sale.
+- `is_shown = true` implies `show_date_key` is populated and `is_canceled_before_scheduled = false`.
+- `is_write_up = true` implies `is_shown = true`.
+- Impossible appointment sequences are a prohibited synthetic pattern
+  ([ARCHITECTURE.md §15.4](ARCHITECTURE.md)).
+
+### 17.3 PII classification
+
+`Non-personal` throughout.
+
+### 17.4 History policy
+
+**Insert-only transaction fact**, with outcome flags finalized once the scheduled date has passed.
+
+---
+
+## 18. `warehouse.fact_marketing_spend`
+
+| Field | Value |
+|---|---|
+| **Entity name** | `warehouse.fact_marketing_spend` |
+| **Layer** | Warehouse (periodic fact) |
+| **Purpose** | Monthly marketing investment by store and campaign. The denominator for cost-per-lead and cost-per-sale, and the divisor for gross return on advertising spend. |
+| **Declared grain** | **One row per dealership, campaign, and calendar month.** |
+| **Primary key** | Composite `(month_date_key, dealership_key, campaign_key)` |
+| **Natural / source key** | Composite of month, `dealership_id`, and `campaign_id` |
+| **Foreign keys** | `month_date_key` → `dim_date`; `dealership_key`; `campaign_key`; `lead_source_key` |
+| **Implementation status** | **Planned (Phase 1.5)** |
+
+### 18.1 Measures
+
+| Column | Type | Null | Allowed values / domain | Description | Synthetic generation source | PII class |
+|---|---|---|---|---|---|---|
+| `spend_amount` | numeric(12,2) | no | ≥ 0 | Marketing spend for the month. **Non-negative by rule** ([ARCHITECTURE.md §21.2](ARCHITECTURE.md)). | Generated. | Non-personal |
+| `impressions` | bigint | yes | ≥ 0 | Impressions delivered. NULL where the channel does not report impressions. | Generated. | Non-personal |
+| `clicks` | bigint | yes | ≥ 0 | Clicks. NULL where not applicable. | Generated. | Non-personal |
+| `calls` | integer | yes | ≥ 0 | Inbound calls attributed by the vendor. NULL where not applicable. | Generated. | Non-personal |
+| `form_submissions` | integer | yes | ≥ 0 | Form submissions attributed by the vendor. NULL where not applicable. | Generated. | Non-personal |
+| `vendor_reported_leads` | integer | yes | ≥ 0 | Leads the vendor claims. **Deliberately allowed to differ from the CRM lead count** — that discrepancy is itself an analytical finding, and reconciling the two is a documented objective, not a defect. | Generated. | Non-personal |
+
+### 18.2 Business rules (planned)
+
+- `month_date_key` always points at the **first day of the month** so that monthly rows join cleanly to
+  `dim_date`.
+- `spend_amount` is non-negative.
+- Grain uniqueness on `(month_date_key, dealership_key, campaign_key)`.
+- Marketing spend is monthly; lead and sale facts are daily. **Cost-per-lead must therefore be computed at
+  month grain or coarser**, never at day grain. This is recorded as an interpretation caution in
+  [KPI_CATALOG.md](KPI_CATALOG.md).
+
+### 18.3 PII classification
+
+`Non-personal` throughout.
+
+### 18.4 History policy
+
+**Insert-only periodic fact.** A restated month is handled by deleting and reloading that month.
+
+---
+
+# Part D — Implemented audit objects
+
+> Column contracts in this part are exact and binding.
+
+---
+
+## 19. `audit.pipeline_run`
+
+| Field | Value |
+|---|---|
+| **Entity name** | `audit.pipeline_run` |
+| **Layer** | Audit |
+| **Purpose** | The parent record for every pipeline execution. Every validation result, row count, reconciliation, and rejected record hangs off this table, so that any figure in the warehouse can be traced back to the run that produced it. |
+| **Declared grain** | **One row per pipeline execution.** |
+| **Primary key** | `pipeline_run_id` (`bigserial`) |
+| **Natural / source key** | `run_uuid` (unique) |
+| **Foreign keys** | None (parent) |
+| **Implementation status** | **Implemented** |
+
+### 19.1 Columns
+
+| Column | Type | Null | Allowed values / domain | Description | Synthetic generation source | PII class |
+|---|---|---|---|---|---|---|
+| `pipeline_run_id` | `bigserial` PK | no | ≥ 1 | Database-assigned run identifier. | Database sequence. | Non-personal |
+| `run_uuid` | `uuid` UNIQUE | no | UUID | Application-assigned run identifier. Lets the Python side reference a run before the database row is visible, and makes runs correlatable across logs. | Generated at run start. | Non-personal |
+| `pipeline_name` | `text` | no | Free text | Which pipeline ran. | Supplied by the caller. | Non-personal |
+| `profile_name` | `text` | no | `development` \| `test` \| `portfolio` | Configuration profile in force. | From configuration. | Non-personal |
+| `run_mode` | `text` | no | Free text | Execution mode, for example a full rebuild or a validation-only run ([ARCHITECTURE.md §17.2](ARCHITECTURE.md)). | Supplied by the caller. | Non-personal |
+| `random_seed` | `bigint` | no | Integer | The seed in force. **Recorded so that any run is exactly reproducible from its audit row.** | From configuration. | Non-personal |
+| `arpi_version` | `text` | no | Semantic version | Package version that produced the run. | From the package metadata. | Non-personal |
+| `started_at` | `timestamptz` | no | UTC timestamp | Run start. | Wall clock. | Non-personal |
+| `completed_at` | `timestamptz` | yes | UTC timestamp | Run completion. **NULL means the run is still in flight or terminated abnormally.** | Wall clock. | Non-personal |
+| `status` | `text` | no | `running` \| `succeeded` \| `failed` \| `aborted` (CHECK constrained) | Terminal or in-flight state. | Set by the pipeline. | Non-personal |
+| `critical_failure_count` | `integer` | no | ≥ 0, default `0` | Number of critical validation failures. **Non-zero means the run must not be trusted.** | Counted. | Non-personal |
+| `warning_count` | `integer` | no | ≥ 0, default `0` | Number of warnings. | Counted. | Non-personal |
+| `notes` | `text` | yes | Free text | Operator notes. NULL when none. | Supplied by the caller. | Non-personal |
+
+> **Note on timestamps.** `started_at` and `completed_at` are wall-clock values and are therefore the one
+> place ARPI deliberately admits non-determinism. They are *audit* metadata, never inputs to a KPI, and they
+> are excluded from `generation_manifest.json` precisely so that generated data stays byte-reproducible.
+> See [DATA_GENERATION.md](DATA_GENERATION.md).
+
+### 19.2 Business rules
+
+- `completed_at >= started_at` when both are present.
+- `status = 'running'` implies `completed_at IS NULL`.
+- `run_uuid` is unique.
+- A run with `critical_failure_count > 0` must not end with `status = 'succeeded'`.
+
+### 19.3 PII classification / history policy
+
+`Non-personal` throughout. **Insert-then-update-once**; audit records preserve prior run history and are
+never purged by a rerun ([ARCHITECTURE.md §17.3](ARCHITECTURE.md)).
+
+---
+
+## 20. `audit.pipeline_run_row_count`
+
+| Field | Value |
+|---|---|
+| **Entity name** | `audit.pipeline_run_row_count` |
+| **Layer** | Audit |
+| **Purpose** | Row counts at every layer for every entity in a run. This is the evidence for the row-count reconciliation: source → raw → staging → warehouse, plus rejects. |
+| **Declared grain** | **One row per pipeline run, entity, and layer.** |
+| **Primary key** | Composite `(pipeline_run_id, entity_name, layer)` |
+| **Natural / source key** | Same composite |
+| **Foreign keys** | `pipeline_run_id` → `audit.pipeline_run` |
+| **Implementation status** | **Implemented** |
+
+### 20.1 Columns
+
+| Column | Type | Null | Allowed values / domain | Description | Synthetic generation source | PII class |
+|---|---|---|---|---|---|---|
+| `pipeline_run_id` | `bigint` FK | no | Existing run | Owning run. | Set by the loader. | Non-personal |
+| `entity_name` | `text` | no | Entity name, for example `dim_date` | Entity being counted. | Set by the loader. | Non-personal |
+| `layer` | `text` | no | `source` \| `raw` \| `staging` \| `warehouse` \| `rejected` (CHECK constrained) | Layer at which the count was taken. | Set by the loader. | Non-personal |
+| `row_count` | `bigint` | no | ≥ 0 | Rows observed. | Counted. | Non-personal |
+| `recorded_at` | `timestamptz` | no | UTC timestamp | When the count was taken. | Wall clock. | Non-personal |
+
+### 20.2 Business rules
+
+- `row_count` is non-negative.
+- For a clean run: `source = raw = staging = warehouse` and `rejected = 0`, because
+  `validation.max_rejected_record_ratio` is `0.0` for the Phase 0 slice.
+- This table is the substrate for reconciliation `RECON-ROWCOUNT-001` (see [KPI_CATALOG.md](KPI_CATALOG.md)).
+
+### 20.3 PII classification / history policy
+
+`Non-personal`. Insert-only.
+
+---
+
+## 21. `audit.validation_result`
+
+| Field | Value |
+|---|---|
+| **Entity name** | `audit.validation_result` |
+| **Layer** | Audit |
+| **Purpose** | One row per data-quality check evaluation. Turns "the data is good" into an auditable, per-check, per-run record. Feeds `reporting.vw_data_quality_summary` and, later, the Power BI Data Quality page. |
+| **Declared grain** | **One row per validation check evaluation per pipeline run.** |
+| **Primary key** | `validation_result_id` (`bigserial`) |
+| **Natural / source key** | `(pipeline_run_id, check_id, target_object)` |
+| **Foreign keys** | `pipeline_run_id` → `audit.pipeline_run` |
+| **Implementation status** | **Implemented** |
+
+### 21.1 Columns
+
+| Column | Type | Null | Allowed values / domain | Description | Synthetic generation source | PII class |
+|---|---|---|---|---|---|---|
+| `validation_result_id` | `bigserial` PK | no | ≥ 1 | Surrogate key. | Database sequence. | Non-personal |
+| `pipeline_run_id` | `bigint` FK | no | Existing run | Owning run. | Set by the validator. | Non-personal |
+| `check_id` | `text` | no | `DQ-*` identifiers (see 21.2) | Stable check identifier. **Shared between Python and SQL** so the same check has the same ID wherever it runs. | Constant per check. | Non-personal |
+| `check_name` | `text` | no | Free text | Human-readable check name. | Constant per check. | Non-personal |
+| `check_category` | `text` | no | Free text, for example `structural`, `business_rule`, `privacy`, `determinism` | Grouping for the data-quality summary. | Constant per check. | Non-personal |
+| `target_object` | `text` | no | Entity or object name | What was checked. | Set by the validator. | Non-personal |
+| `severity` | `text` | no | `critical` \| `warning` \| `info` (CHECK constrained) | **`critical` failures fail the run**; warnings do not. | Constant per check. | Non-personal |
+| `status` | `text` | no | `passed` \| `failed` \| `skipped` (CHECK constrained) | Outcome. `skipped` is recorded explicitly so a silently absent check is distinguishable from a passing one. | Set by the validator. | Non-personal |
+| `observed_value` | `numeric` | yes | — | What was measured. NULL for checks that are not numeric. | Measured. | Non-personal |
+| `expected_value` | `numeric` | yes | — | What was expected. NULL for checks that are not numeric. | Constant or configured. | Non-personal |
+| `failed_record_count` | `bigint` | no | ≥ 0, default `0` | How many records failed. | Counted. | Non-personal |
+| `message` | `text` | yes | Free text | Explanatory message. NULL when none. | Set by the validator. | Non-personal |
+| `evaluated_at` | `timestamptz` | no | UTC timestamp | When the check ran. | Wall clock. | Non-personal |
+
+### 21.2 Phase 0 check register
+
+| `check_id` | Assertion | Target | Severity |
+|---|---|---|---|
+| `DQ-DATE-001` | `date_key` is unique | `dim_date` | critical |
+| `DQ-DATE-002` | The date range is contiguous — no missing days | `dim_date` | critical |
+| `DQ-DATE-003` | `date_key` equals `full_date` formatted `YYYYMMDD` | `dim_date` | critical |
+| `DQ-DATE-004` | No required field is NULL | `dim_date` | critical |
+| `DQ-DATE-005` | Selling-day ratio is within the configured tolerance | `dim_date` | warning |
+| `DQ-DLR-001` | `dealership_key` is unique | `dim_dealership` | critical |
+| `DQ-DLR-002` | `dealership_id` is unique among current rows | `dim_dealership` | critical |
+| `DQ-DLR-003` | Store count matches `generation.store_count` | `dim_dealership` | critical |
+| `DQ-DLR-004` | No prohibited PII column is present | `dim_dealership` | critical |
+| `DQ-DLR-005` | `franchise_brand` is present for franchise stores | `dim_dealership` | critical |
+| `DQ-GEN-001` | The declared schema matches the output schema | all generated entities | critical |
+| `DQ-GEN-002` | The determinism digest is recorded | all generated entities | critical |
+
+### 21.3 Business rules
+
+- `severity = 'critical'` and `status = 'failed'` must increment `audit.pipeline_run.critical_failure_count`.
+- `status = 'passed'` implies `failed_record_count = 0`.
+- Every check in the register above must produce a row on every run, including `skipped` rows. A check that
+  produces no row is itself a defect.
+
+### 21.4 PII classification / history policy
+
+`Non-personal`. Insert-only.
+
+---
+
+## 22. `audit.reconciliation_result`
+
+| Field | Value |
+|---|---|
+| **Entity name** | `audit.reconciliation_result` |
+| **Layer** | Audit |
+| **Purpose** | Records two-sided total comparisons — the evidence that numbers agree across layers and, later, across SQL and Power BI. |
+| **Declared grain** | **One row per reconciliation evaluation per pipeline run.** |
+| **Primary key** | `reconciliation_result_id` (`bigserial`) |
+| **Natural / source key** | `(pipeline_run_id, reconciliation_id)` |
+| **Foreign keys** | `pipeline_run_id` → `audit.pipeline_run` |
+| **Implementation status** | **Implemented** |
+
+### 22.1 Columns
+
+| Column | Type | Null | Allowed values / domain | Description | Synthetic generation source | PII class |
+|---|---|---|---|---|---|---|
+| `reconciliation_result_id` | `bigserial` PK | no | ≥ 1 | Surrogate key. | Database sequence. | Non-personal |
+| `pipeline_run_id` | `bigint` FK | no | Existing run | Owning run. | Set by the loader. | Non-personal |
+| `reconciliation_id` | `text` | no | `RECON-*` identifiers | Stable reconciliation identifier. | Constant per reconciliation. | Non-personal |
+| `description` | `text` | no | Free text | What is being compared, in business terms. | Constant per reconciliation. | Non-personal |
+| `left_source` | `text` | no | Object or query name | Left-hand side identity. | Set by the loader. | Non-personal |
+| `left_value` | `numeric` | no | — | Left-hand total. | Measured. | Non-personal |
+| `right_source` | `text` | no | Object or query name | Right-hand side identity. | Set by the loader. | Non-personal |
+| `right_value` | `numeric` | no | — | Right-hand total. | Measured. | Non-personal |
+| `difference` | `numeric` **GENERATED ALWAYS AS (`left_value − right_value`) STORED** | no | — | Signed difference. Database-generated so it can never drift from its inputs. | Generated column. | Non-personal |
+| `tolerance` | `numeric` | no | ≥ 0, default `0` | Permitted absolute difference. Zero for count reconciliations. | Configured. | Non-personal |
+| `status` | `text` | no | `passed` \| `failed` (CHECK constrained) | Outcome. There is no `warning` here: totals either reconcile within tolerance or they do not. | Set by the loader. | Non-personal |
+| `evaluated_at` | `timestamptz` | no | UTC timestamp | When the reconciliation ran. | Wall clock. | Non-personal |
+
+### 22.2 Business rules
+
+- `status = 'passed'` if and only if `abs(difference) <= tolerance`.
+- Monetary reconciliations use `validation.numeric_absolute_tolerance` (0.01) and
+  `validation.numeric_relative_tolerance` (0.001).
+- Count reconciliations use `tolerance = 0`.
+
+### 22.3 PII classification / history policy
+
+`Non-personal`. Insert-only.
+
+---
+
+## 23. `audit.rejected_record`
+
+| Field | Value |
+|---|---|
+| **Entity name** | `audit.rejected_record` |
+| **Layer** | Audit |
+| **Purpose** | Quarantine for source records that failed structural validation. Nothing is silently discarded: a rejected record is preserved with its payload and a reason, so the rejection can be reviewed and the generator or mapping fixed. |
+| **Declared grain** | **One row per rejected source record per pipeline run.** |
+| **Primary key** | `rejected_record_id` (`bigserial`) |
+| **Natural / source key** | `(pipeline_run_id, source_entity, source_record_key)` — `source_record_key` may be NULL when the record is too malformed to identify |
+| **Foreign keys** | `pipeline_run_id` → `audit.pipeline_run` |
+| **Implementation status** | **Implemented** |
+
+### 23.1 Columns
+
+| Column | Type | Null | Allowed values / domain | Description | Synthetic generation source | PII class |
+|---|---|---|---|---|---|---|
+| `rejected_record_id` | `bigserial` PK | no | ≥ 1 | Surrogate key. | Database sequence. | Non-personal |
+| `pipeline_run_id` | `bigint` FK | no | Existing run | Owning run. | Set by the loader. | Non-personal |
+| `source_entity` | `text` | no | Entity name | Which source entity the record came from. | Set by the loader. | Non-personal |
+| `source_record_key` | `text` | yes | Natural key or row number | Identity of the rejected record. **NULL when the record is too malformed to identify** — the payload still preserves it. | Set by the loader. | Non-personal |
+| `rejection_code` | `text` | no | `REJ-*` codes (see [docs/source-to-target/](docs/source-to-target/README.md)) | Machine-readable reason. | Set by the loader. | Non-personal |
+| `rejection_reason` | `text` | no | Free text | Human-readable reason. | Set by the loader. | Non-personal |
+| `record_payload` | `jsonb` | yes | JSON object | The offending record as received. NULL where the payload cannot be serialized. **Because all source data is synthetic, storing the payload carries no privacy risk** — this would be a very different decision with real data. | Captured verbatim. | Non-personal |
+| `rejected_at` | `timestamptz` | no | UTC timestamp | When the rejection occurred. | Wall clock. | Non-personal |
+
+### 23.2 Business rules
+
+- The rejected-record ratio must not exceed `validation.max_rejected_record_ratio` (0.0 for the Phase 0
+  slice). **Any rejection at all fails a Phase 0 run**, because the Phase 0 source data is generated by
+  ARPI itself and there is no legitimate reason for it to be malformed.
+- Every rejection carries both a code and a reason.
+
+### 23.3 PII classification / history policy
+
+`Non-personal`. Insert-only, retained across runs.
+
+---
+
+# Part E — Implemented raw and staging objects
+
+---
+
+## 24. Raw layer (Phase 0 slice)
+
+**Design principle.** Raw tables preserve source records without business transformation
+([ARCHITECTURE.md §10.2](ARCHITECTURE.md)). **Every business column is `text`**, deliberately: a type
+failure should surface as a validated, rejected record with a readable reason, not as a load crash with no
+diagnostic. Raw tables never serve Power BI.
+
+### 24.1 `raw.calendar_date_load`
+
+| Field | Value |
+|---|---|
+| **Layer** | Raw |
+| **Purpose** | Landing table for `dim_date.csv`. |
+| **Declared grain** | **One row per source CSV row per load batch.** Reloading the same file appends a new batch; it does not replace the old one. |
+| **Primary key** | `raw_record_id` |
+| **Natural / source key** | `(load_batch_id, source_row_number)` |
+| **Implementation status** | **Implemented** |
+
+| Column | Type | Null | Allowed values / domain | Description | Synthetic generation source | PII class |
+|---|---|---|---|---|---|---|
+| `raw_record_id` | `bigserial` PK | no | ≥ 1 | Surrogate key. | Database sequence. | Non-personal |
+| `load_batch_id` | `uuid` | no | UUID | Identifies the load batch. Load batches must have unique identifiers ([ARCHITECTURE.md §17.3](ARCHITECTURE.md)). | Generated per load. | Non-personal |
+| `source_file_name` | `text` | no | File name | Which file the row came from. | Captured at load. | Non-personal |
+| `source_row_number` | `integer` | no | ≥ 1 | 1-based row number within the file, excluding the header. | Captured at load. | Non-personal |
+| `ingested_at` | `timestamptz` | no | UTC timestamp, default `now()` | When the row landed. | Database default. | Non-personal |
+| *all 26 business columns from `warehouse.dim_date`* | `text` | yes | Uncast source text | Same names and order as section 6.1, all as `text`, all nullable at this layer. | From the CSV. | Non-personal |
+
+### 24.2 `raw.dealership_load`
+
+| Field | Value |
+|---|---|
+| **Layer** | Raw |
+| **Purpose** | Landing table for `dim_dealership.csv`. |
+| **Declared grain** | **One row per source CSV row per load batch.** |
+| **Primary key** | `raw_record_id` |
+| **Natural / source key** | `(load_batch_id, source_row_number)` |
+| **Implementation status** | **Implemented** |
+
+Structure is identical to 24.1, except that the business columns are the 16 columns of
+`warehouse.dim_dealership` from section 7.1, in that order, all as `text`.
+
+**Privacy note.** `DQ-DLR-004` inspects this table's *schema* as well as the warehouse table's. A
+prohibited column cannot enter the warehouse through the raw layer unnoticed.
+
+### 24.3 Raw-layer business rules
+
+- Business columns are never constrained at the raw layer beyond being `text`.
+- Raw tables are truncate-and-reload per batch in the Phase 0 slice; see
+  [docs/source-to-target/](docs/source-to-target/README.md).
+- No grant is issued to `arpi_reporter` on schema `raw`
+  ([ARCHITECTURE.md §22.2](ARCHITECTURE.md)).
+
+---
+
+## 25. Staging layer (Phase 0 slice)
+
+**Design principle.** Both staging objects are **views** (`CREATE OR REPLACE VIEW`), not tables. They cast
+raw text to warehouse types and expose **only the most recent `load_batch_id`**. Making them views means
+staging can never drift out of sync with raw, and there is no second copy of the data to keep consistent.
+
+### 25.1 `staging.stg_calendar_date`
+
+| Field | Value |
+|---|---|
+| **Layer** | Staging (view) |
+| **Purpose** | Typed, current-batch projection of `raw.calendar_date_load`. |
+| **Declared grain** | **One typed row per calendar date in the most recent load batch.** |
+| **Primary key** | `date_key` (logical; a view carries no constraint) |
+| **Natural / source key** | `full_date` |
+| **Implementation status** | **Implemented** |
+
+Columns: the 26 columns of section 6.1, cast to the exact warehouse types listed there, plus the lineage
+columns `load_batch_id`, `source_file_name`, `source_row_number`, and `ingested_at`.
+
+### 25.2 `staging.stg_dealership`
+
+| Field | Value |
+|---|---|
+| **Layer** | Staging (view) |
+| **Purpose** | Typed, current-batch projection of `raw.dealership_load`. |
+| **Declared grain** | **One typed row per dealership in the most recent load batch.** |
+| **Primary key** | `dealership_id` (logical) |
+| **Natural / source key** | `dealership_id` |
+| **Implementation status** | **Implemented** |
+
+Columns: the 16 columns of section 7.1, cast to the exact warehouse types listed there, plus the same four
+lineage columns.
+
+### 25.3 Staging-layer business rules
+
+- The "most recent batch" is the batch with the greatest `ingested_at`; ties are broken by
+  `load_batch_id` so the result is deterministic.
+- Structurally invalid records are rejected here, not in the warehouse
+  ([ARCHITECTURE.md §10.2](ARCHITECTURE.md)).
+- Staging deduplicates: if a natural key appears twice within a batch, one row survives and the other is
+  written to `audit.rejected_record`.
+
+---
+
+# Part F — Implemented reporting views
+
+---
+
+## 26. Reporting layer (Phase 0 slice)
+
+**Design principle.** The reporting layer is the only surface `arpi_reporter` — and therefore Power BI and
+Excel — may read ([ARCHITECTURE.md §22.2](ARCHITECTURE.md)). Surrogate keys are retained for joins but are
+marked as hidden in the future semantic model.
+
+> **Only four reporting views exist.** There is no sales view, no inventory view, and no funnel view,
+> because the underlying facts do not exist.
+
+### 26.1 `reporting.vw_calendar`
+
+| Field | Value |
+|---|---|
+| **Layer** | Reporting (view) |
+| **Purpose** | Business-friendly calendar attributes for the future Power BI date table. |
+| **Declared grain** | **One row per calendar date.** |
+| **Source** | `warehouse.dim_date` |
+| **Implementation status** | **Implemented** |
+
+Exposes the date attributes of section 6.1 with business-friendly presentation. Consumers should read
+`is_selling_day` from this view rather than recomputing weekend or holiday logic in DAX.
+
+### 26.2 `reporting.vw_dealership`
+
+| Field | Value |
+|---|---|
+| **Layer** | Reporting (view) |
+| **Purpose** | Current store list for slicers and store comparison. |
+| **Declared grain** | **One row per current dealership version** (`is_current = true`). |
+| **Source** | `warehouse.dim_dealership` |
+| **Implementation status** | **Implemented** |
+
+Filters to current rows only. **SCD2 bookkeeping columns (`effective_date`, `expiration_date`,
+`is_current`, `attribute_hash`) are not exposed** — a report user filtering on a hash column would be a
+modelling failure. Historical versions remain available in the warehouse for anyone who needs them.
+
+### 26.3 `reporting.vw_pipeline_run_summary`
+
+| Field | Value |
+|---|---|
+| **Layer** | Reporting (view) |
+| **Purpose** | One-line answer to "when did this data last load, and did it work?" — the backbone of the future Data Quality page. |
+| **Declared grain** | **One row per pipeline run.** |
+| **Source** | `audit.pipeline_run` joined to `audit.pipeline_run_row_count` |
+| **Implementation status** | **Implemented** |
+
+Exposes run identity, profile, seed, status, timings, critical-failure and warning counts, and per-layer
+row-count totals.
+
+### 26.4 `reporting.vw_data_quality_summary`
+
+| Field | Value |
+|---|---|
+| **Layer** | Reporting (view) |
+| **Purpose** | Validation outcomes per run, so that data quality is a published result rather than an assertion. |
+| **Declared grain** | **One row per validation check per pipeline run.** |
+| **Source** | `audit.validation_result` joined to `audit.pipeline_run` |
+| **Implementation status** | **Implemented** |
+
+Exposes `check_id`, `check_name`, `check_category`, `target_object`, `severity`, `status`,
+`observed_value`, `expected_value`, `failed_record_count`, and run context.
+
+---
+
+# Part G — Deferred domains
+
+> Everything below is **Deferred**: present in the target architecture, absent from the current roadmap.
+> Each is unlocked only by the release stage named. Grains are stated now so that a future implementation
+> starts from a decision rather than a debate. Adding any of these facts requires an ADR
+> ([ARCHITECTURE.md §35](ARCHITECTURE.md)).
+
+### 27.1 `warehouse.dim_finance_product`
+
+**Grain: one row per finance product definition.** Describes the F&I products the group can sell — service
+contract, GAP, maintenance plan, tire and wheel, appearance protection — with product category, eligible
+deal types, a cancellation-sensitivity flag, and an active flag. **Unlocked by the strong portfolio release
+(F&I product analysis, [ARCHITECTURE.md §31](ARCHITECTURE.md)).** Status: **Deferred**.
+
+### 27.2 `warehouse.dim_lender`
+
+**Grain: one row per synthetic lender.** Fictional lending institutions with a lender type and a broad
+prime / near-prime / subprime category. Every lender is invented; **no real lender name, rate sheet, or
+decision record may ever appear**. **Unlocked by the strong portfolio release (F&I product analysis).**
+Status: **Deferred**.
+
+### 27.3 `warehouse.dim_sale_type`
+
+**Grain: one row per sale classification.** Normalizes New Retail, Used Retail, Certified Retail, Lease,
+Cash, Finance, Wholesale, and Dealer Trade into a governed dimension. Deferred rather than Planned because
+the MVP carries `sale_type` as a denormalized text column on `fact_vehicle_sale`, which is sufficient for
+the five MVP report pages. **Unlocked when F&I or lender analysis makes the deal-structure axis
+load-bearing.** Status: **Deferred**.
+
+### 27.4 `warehouse.dim_inventory_source`
+
+**Grain: one row per acquisition source.** Customer Trade, Auction, Off-street Purchase, Lease Return,
+Dealer Trade, Manufacturer Allocation, Service-lane Acquisition. Deferred for the same reason as
+`dim_sale_type`: the MVP denormalizes `vehicle_source` onto `dim_vehicle`. **Unlocked by acquisition-source
+profitability analysis in the strong release.** Status: **Deferred**.
+
+### 27.5 `warehouse.dim_geography`
+
+**Grain: one row per approved geographic market grouping.** County, state, market area, distance band, and
+an urban / suburban / rural classification. Deferred because the MVP's three stores all sit in one market
+region, so the dimension would have almost no analytical variance. **Unlocked when customer-retention
+analysis in the strong release needs distance-band segmentation.** Geography stops at county or market area
+in every case ([ARCHITECTURE.md §22.4](ARCHITECTURE.md)). Status: **Deferred**.
+
+### 27.6 `warehouse.fact_lead_activity`
+
+**Grain: one row per CRM activity event** — phone call, email, text, voicemail, appointment confirmation,
+showroom visit, manager review, or lost-lead action. Carries activity count, duration seconds,
+response-delay seconds, and a completed flag. **No message content is ever stored.** This is the highest-row-count
+Deferred table (150,000 to 400,000 rows at portfolio scale) and it is deferred because follow-up-compliance
+analysis is not part of the MVP. **Unlocked by the strong portfolio release.** Status: **Deferred**.
+
+### 27.7 `warehouse.fact_inventory_price_history`
+
+**Grain: one row per vehicle price-change event.** Previous price, new price, change amount, change
+percentage, days since prior change, and days in stock at the change, with the approving manager. The daily
+inventory snapshot already carries `markdown_count_to_date`, which covers the MVP's markdown questions;
+this fact adds event-level timing analysis. **Unlocked by price-history analysis in the strong release
+([ARCHITECTURE.md §31](ARCHITECTURE.md)).** Status: **Deferred**.
+
+### 27.8 `warehouse.fact_finance_product_sale`
+
+**Grain: one row per finance product sold on a finalized vehicle transaction.** Product sale count, price,
+cost, gross, canceled amount, chargeback amount, and net product gross, with eligible / canceled /
+charged-back flags. Net product gross equals product gross minus cancellation and chargeback amounts.
+Once this fact exists, `fact_vehicle_sale.back_end_gross` must reconcile to it — reconciliation
+`RECON-FI-001` in [KPI_CATALOG.md](KPI_CATALOG.md). **Unlocked by the strong portfolio release.**
+Status: **Deferred**.
+
+### 27.9 `warehouse.fact_service_visit`
+
+**Grain: one row per closed repair-order visit.** Customer-pay, warranty, and internal labour and parts;
+repair estimate; declined-work amount; vehicle mileage; visit count; and flags for high repair estimate,
+declined work, replacement opportunity, and sales conversion. Service-to-sales opportunity logic must be
+presented as **decision support, not as a prediction of purchase intent** (`docs/research.md` §4.13).
+**Unlocked by service-to-sales opportunities in the strong release.** Status: **Deferred**.
+
+### 27.10 `warehouse.fact_sales_target`
+
+**Grain: one row per dealership, employee or department, KPI, and calendar month.** Target value and
+stretch target value. Exists so that goals are data, not hardcoded DAX constants
+([ARCHITECTURE.md §12.10](ARCHITECTURE.md)). **Unlocked by target attainment in the strong release.**
+Note that any target values will be *fictional operating goals for a fictional group*, never industry
+benchmarks. Status: **Deferred**.
+
+---
+
+## 28. Change control
+
+- The **grain** of any entity in this document may only change through an ADR in
+  `docs/architecture-decisions/` ([ARCHITECTURE.md §35](ARCHITECTURE.md)).
+- Column contracts for **Implemented** objects are binding. A change requires updating this document, the
+  relevant source-to-target mapping in [docs/source-to-target/](docs/source-to-target/README.md), the SQL
+  DDL, and the generator, in the same change.
+- Column lists for **Planned** objects are indicative and are expected to be refined during implementation.
+- Promoting an entity from Deferred to Planned requires satisfying Gate 4
+  ([ARCHITECTURE.md §28](ARCHITECTURE.md)): a stakeholder question requires it, the fact grain is defined,
+  KPI ownership is defined, and testing requirements are defined.
