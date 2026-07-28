@@ -680,10 +680,13 @@ def _build_record(
             vehicle_model_id=vehicle.vehicle_model_id,
         )
     definition = model.definition
-    reconditioning = _draw_reconditioning(rng, vehicle, definition.model_year, acquisition_date)
-    msrp, acquisition_cost, asking = _draw_prices(
-        rng, vehicle, definition, acquisition_date, reconditioning
+    # Cost is drawn first because reconditioning is capped against it: nobody spends four
+    # thousand dollars reconditioning a two-thousand-dollar auction unit.
+    msrp, acquisition_cost = _draw_cost(rng, vehicle, definition, acquisition_date)
+    reconditioning = _draw_reconditioning(
+        rng, vehicle, definition.model_year, acquisition_date, acquisition_cost
     )
+    asking = _draw_asking_price(rng, vehicle, msrp, acquisition_cost, reconditioning)
     return AcquisitionRecord(
         acquisition_id=acquisition_id_for(ordinal),
         vehicle_id=vehicle.vehicle_id,
@@ -728,14 +731,48 @@ def _retained_value_share(age_years: int, odometer_reading: int) -> Decimal:
     return max(calendar - mileage_loss, MINIMUM_RETAINED_VALUE_SHARE)
 
 
+def _draw_cost(
+    rng: random.Random,
+    vehicle: VehicleRecord,
+    definition: VehicleModelDefinition,
+    acquisition_date: date,
+) -> tuple[Decimal | None, Decimal]:
+    """Draw ``(msrp, acquisition_cost)`` for one unit.
+
+    ``msrp`` is populated for a new unit only: it is the manufacturer's suggested retail
+    price of a car nobody has owned, and ARPI does not model the original window sticker
+    of a pre-owned one. Every share below is drawn rather than fixed, so cost is related
+    to class, model year and condition without being determined by them.
+    """
+    sticker = _base_msrp(definition.vehicle_class, definition.model_year)
+    if vehicle.condition_type == CONDITION_NEW:
+        msrp = money(sticker * _decimal_triangular(rng, 0.97, 1.06, 1.0))
+        return msrp, money(msrp * _decimal_triangular(rng, *NEW_INVOICE_SHARE))
+
+    age_years = _vehicle_age_years(definition.model_year, acquisition_date)
+    market_value = (
+        sticker
+        * _retained_value_share(age_years, vehicle.odometer_reading)
+        * _decimal_triangular(rng, 0.93, 1.09, 1.0)
+    )
+    share = SOURCE_COST_SHARE.get(vehicle.acquisition_source, DEFAULT_SOURCE_COST_SHARE)
+    return None, money(market_value * _decimal_triangular(rng, *share))
+
+
 def _draw_reconditioning(
-    rng: random.Random, vehicle: VehicleRecord, model_year: int, acquisition_date: date
+    rng: random.Random,
+    vehicle: VehicleRecord,
+    model_year: int,
+    acquisition_date: date,
+    acquisition_cost: Decimal,
 ) -> Decimal:
     """Draw the reconditioning spend booked against one unit.
 
-    A new unit is only ever prepped, so its spend is near zero. A used unit is
-    reconditioned in proportion to how hard its life has been, which is why the used
-    population sits an order of magnitude above the new one.
+    A new unit is only ever prepped -- washed, fuelled, plated and inspected -- so its
+    spend is near zero. A used unit is reconditioned in proportion to how hard its life
+    has been, which is why the used population sits materially above the new one. The
+    spend is then capped against the unit's own cost, because no store spends more
+    fixing a car than the car is worth.
     """
     if vehicle.condition_type == CONDITION_NEW:
         return money(Decimal(rng.randint(*NEW_RECONDITIONING_RANGE)))
@@ -752,35 +789,28 @@ def _draw_reconditioning(
         + RECONDITIONING_AGE_UPLIFT * age_years
         + RECONDITIONING_MILEAGE_UPLIFT * (vehicle.odometer_reading / 10_000)
     )
-    return money(Decimal(str(round(base * uplift, 2))))
+    drawn = money(Decimal(str(round(base * uplift, 2))))
+    cap = money(acquisition_cost * RECONDITIONING_CAP_SHARE + RECONDITIONING_CAP_FLOOR)
+    return min(drawn, cap)
 
 
-def _draw_prices(
+def _draw_asking_price(
     rng: random.Random,
     vehicle: VehicleRecord,
-    definition: VehicleModelDefinition,
-    acquisition_date: date,
+    msrp: Decimal | None,
+    acquisition_cost: Decimal,
     reconditioning: Decimal,
-) -> tuple[Decimal | None, Decimal, Decimal]:
-    """Draw ``(msrp, acquisition_cost, original_asking_price)`` for one unit."""
-    sticker = _base_msrp(definition.vehicle_class, definition.model_year)
-    if vehicle.condition_type == CONDITION_NEW:
-        msrp = money(sticker * _decimal_triangular(rng, 0.97, 1.06, 1.0))
-        cost = money(msrp * _decimal_triangular(rng, *NEW_INVOICE_SHARE))
-        asking = money(msrp * _decimal_triangular(rng, *NEW_ASKING_SHARE))
-        return msrp, cost, asking
+) -> Decimal:
+    """Draw the first advertised price for one unit.
 
-    age_years = _vehicle_age_years(definition.model_year, acquisition_date)
-    market_value = (
-        sticker
-        * _retained_value_share(age_years, vehicle.odometer_reading)
-        * _decimal_triangular(rng, 0.93, 1.09, 1.0)
-    )
-    share = SOURCE_COST_SHARE.get(vehicle.acquisition_source, DEFAULT_SOURCE_COST_SHARE)
-    cost = money(market_value * _decimal_triangular(rng, *share))
+    A new unit is priced off its sticker; a used unit is priced off what the store has in
+    it, at a mark-up that is drawn rather than fixed -- uniform pricing is a prohibited
+    synthetic pattern ([ARCHITECTURE.md §15.4]).
+    """
+    if msrp is not None:
+        return money(msrp * _decimal_triangular(rng, *NEW_ASKING_SHARE))
     markup = CERTIFIED_MARKUP if vehicle.condition_type == CONDITION_CERTIFIED else USED_MARKUP
-    asking = money((cost + reconditioning) * _decimal_triangular(rng, *markup))
-    return None, cost, asking
+    return money((acquisition_cost + reconditioning) * _decimal_triangular(rng, *markup))
 
 
 def _decimal_triangular(rng: random.Random, low: float, high: float, mode: float) -> Decimal:
