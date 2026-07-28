@@ -38,7 +38,7 @@ this directory owns **acceptance criteria and sequencing**.
 P<major>.<minor>-<NN>
 ```
 
-For example `P1.3-02` is the second item in Phase 1.3. Identifiers are **permanent**: a cancelled item
+For example `P1.3-02` is the second item in delivery increment `P1.3`. Identifiers are **permanent**: a cancelled item
 keeps its ID and is marked `Out of scope`, and numbers are never reused. This matters because commits,
 tests, and pull requests reference them.
 

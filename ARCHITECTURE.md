@@ -1606,7 +1606,7 @@ Automotive-Retail-Performance-Intelligence/
 │   ├── 01_raw/                            [now]      Raw landing tables
 │   ├── 02_staging/                        [now]      Staging views
 │   ├── 03_dimensions/                     [now]      dim_date, dim_dealership
-│   ├── 04_facts/                          [empty]    Fact tables arrive in Phase 1
+│   ├── 04_facts/                          [empty]    Fact tables arrive in increment P1.2
 │   ├── 05_reporting/                      [now]      Phase 0 reporting views
 │   ├── 06_indexes/                        [now]      Six indexes today; further tuning follows the facts
 │   ├── 07_security/                       [now]      arpi_admin / arpi_loader / arpi_reporter
@@ -1617,7 +1617,7 @@ Automotive-Retail-Performance-Intelligence/
 │   ├── unit/                              [now]      No database required
 │   ├── data_quality/                      [now]      Runs the generators, no database required
 │   ├── integration/                       [now]      Marked `integration`, requires PostgreSQL
-│   └── fixtures/                          [empty]    Shared test fixtures arrive with the Phase 1 facts
+│   └── fixtures/                          [empty]    Shared fixtures arrive with the P1.2 facts
 ├── notebooks/                             [empty]    No notebooks exist yet
 ├── powerbi/
 │   ├── ARPI_Performance_Intelligence.pbix [planned]  (not yet created)

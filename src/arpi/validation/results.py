@@ -115,22 +115,38 @@ class ValidationReport:
         return len(self.results)
 
     @property
+    def failures(self) -> tuple[CheckResult, ...]:
+        """Every failed check, at any severity.
+
+        The severity-specific properties below partition this tuple. They exist for
+        convenience; this one exists so that a failure at a severity nobody anticipated
+        cannot vanish between them.
+        """
+        return tuple(result for result in self.results if result.is_failure)
+
+    @property
     def critical_failures(self) -> tuple[CheckResult, ...]:
-        """Failed checks whose severity is ``critical``."""
+        """Failed checks whose severity is ``critical``. These fail the run."""
         return tuple(
-            result
-            for result in self.results
-            if result.is_failure and result.severity is CheckSeverity.CRITICAL
+            result for result in self.failures if result.severity is CheckSeverity.CRITICAL
         )
 
     @property
     def warnings(self) -> tuple[CheckResult, ...]:
-        """Failed checks whose severity is ``warning``."""
+        """Failed checks whose severity is ``warning``. Reported, never gating."""
         return tuple(
-            result
-            for result in self.results
-            if result.is_failure and result.severity is CheckSeverity.WARNING
+            result for result in self.failures if result.severity is CheckSeverity.WARNING
         )
+
+    @property
+    def info_failures(self) -> tuple[CheckResult, ...]:
+        """Failed checks whose severity is ``info``.
+
+        Nothing emits one today, and an ``info`` failure never gates a run. The property
+        exists because the tally in :meth:`summary_table` must account for every result:
+        a failure counted in no bucket would read as though the report were clean.
+        """
+        return tuple(result for result in self.failures if result.severity is CheckSeverity.INFO)
 
     @property
     def passed(self) -> tuple[CheckResult, ...]:
@@ -181,9 +197,13 @@ class ValidationReport:
 
         lines = [render(headers), render(tuple("-" * width for width in widths))]
         lines.extend(render(row) for row in rows)
+        # Every bucket is printed, including the one that is normally zero, so that the
+        # counts always add up to the number of rows above them. A tally that silently
+        # omits a category is how a failure gets mistaken for a clean report.
         lines.append(
             f"{len(self.passed)} passed, {len(self.critical_failures)} critical failure(s), "
-            f"{len(self.warnings)} warning(s), {len(self.skipped)} skipped."
+            f"{len(self.warnings)} warning(s), {len(self.info_failures)} info failure(s), "
+            f"{len(self.skipped)} skipped."
         )
         return "\n".join(lines)
 

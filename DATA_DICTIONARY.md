@@ -117,9 +117,15 @@ All operational data is synthetic.
 
 ## 4. Entity index
 
-> **Status reality check.** Fifteen objects are Implemented. **No fact table exists yet.** Every entity
+> **Status reality check.** Twenty-one objects are Implemented. **No fact table exists yet.** Every entity
 > whose name begins with `fact_` is Planned or Deferred. Consequently no KPI is computed anywhere in this
 > repository today — see [KPI_CATALOG.md](KPI_CATALOG.md).
+
+> **Scope of this index.** It lists every database object ARPI creates, including the six `audit.vw_dq_*`
+> helper views in `sql/08_validation/`. Those views are internal query helpers over the audit schema, not
+> part of the reporting boundary — `arpi_reporter` reads validation outcomes through
+> `reporting.vw_data_quality_summary`. They are listed anyway, because an index that claims to be complete
+> and is not is worse than one that admits its boundary (documentation backlog `DOC-22`).
 
 | Entity | Layer | Grain | Status |
 |---|---|---|---|
@@ -149,6 +155,12 @@ All operational data is synthetic.
 | `reporting.vw_dealership` | Reporting | One row per current dealership version | **Implemented** |
 | `reporting.vw_pipeline_run_summary` | Reporting | One row per pipeline run | **Implemented** |
 | `reporting.vw_data_quality_summary` | Reporting | One row per validation check per pipeline run | **Implemented** |
+| `audit.vw_dq_result_template` | Audit | None — always zero rows; the executable specification of the uniform check-result shape | **Implemented** |
+| `audit.vw_dq_dim_date` | Audit | One row per `DQ-DATE-*` check | **Implemented** |
+| `audit.vw_dq_dim_dealership` | Audit | One row per `DQ-DLR-*` check | **Implemented** |
+| `audit.vw_dq_referential` | Audit | One row per `DQ-REF-*` check | **Implemented** |
+| `audit.vw_dq_audit` | Audit | One row per `DQ-AUD-*` check | **Implemented** |
+| `audit.vw_dq_all` | Audit | One row per SQL data-quality check across all four check views | **Implemented** |
 | `warehouse.dim_finance_product` | Warehouse | One row per finance product definition | Deferred |
 | `warehouse.dim_lender` | Warehouse | One row per synthetic lender | Deferred |
 | `warehouse.dim_sale_type` | Warehouse | One row per sale classification | Deferred |
@@ -160,7 +172,7 @@ All operational data is synthetic.
 | `warehouse.fact_service_visit` | Warehouse | One row per closed repair-order visit | Deferred |
 | `warehouse.fact_sales_target` | Warehouse | One row per dealership, employee or department, KPI, and calendar month | Deferred |
 
-**Counts:** 15 Implemented · 11 Planned · 10 Deferred.
+**Counts:** 21 Implemented · 11 Planned · 10 Deferred.
 
 ---
 
@@ -1120,7 +1132,7 @@ purged, so prior run history is preserved ([ARCHITECTURE.md §17.3](ARCHITECTURE
 | `pipeline_run_id` | `bigint` FK | no | Existing run | Owning run. | Set by the validator. | Non-personal |
 | `check_id` | `text` | no | `DQ-*` identifiers (see 21.2) | Stable check identifier. **Shared between Python and SQL** so the same check has the same ID wherever it runs. | Constant per check. | Non-personal |
 | `check_name` | `text` | no | Free text | Human-readable check name. | Constant per check. | Non-personal |
-| `check_category` | `text` | no | Free text, for example `structural`, `business_rule`, `privacy`, `determinism` | Grouping for the data-quality summary. | Constant per check. | Non-personal |
+| `check_category` | `text` | no | `structural` \| `completeness` \| `uniqueness` \| `referential` \| `business_rule` \| `privacy` \| `reproducibility` (CHECK constrained — see 21.1.1) | Grouping for the data-quality summary. | Constant per check. | Non-personal |
 | `target_object` | `text` | no | Entity or object name | What was checked. | Set by the validator. | Non-personal |
 | `severity` | `text` | no | `critical` \| `warning` \| `info` (CHECK constrained) | **`critical` failures fail the run**; warnings do not. | Constant per check. | Non-personal |
 | `status` | `text` | no | `passed` \| `failed` \| `skipped` (CHECK constrained) | Outcome. `skipped` is recorded explicitly so a silently absent check is distinguishable from a passing one. | Set by the validator. | Non-personal |
@@ -1130,22 +1142,98 @@ purged, so prior run history is preserved ([ARCHITECTURE.md §17.3](ARCHITECTURE
 | `message` | `text` | yes | Free text | Explanatory message. NULL when none. | Set by the validator. | Non-personal |
 | `evaluated_at` | `timestamptz` | no | UTC timestamp | When the check ran. | Wall clock. | Non-personal |
 
-### 21.2 Phase 0 check register
+### 21.1.1 The canonical category vocabulary
 
-| `check_id` | Assertion | Target | Severity |
-|---|---|---|---|
-| `DQ-DATE-001` | `date_key` is unique | `dim_date` | critical |
-| `DQ-DATE-002` | The date range is contiguous — no missing days | `dim_date` | critical |
-| `DQ-DATE-003` | `date_key` equals `full_date` formatted `YYYYMMDD` | `dim_date` | critical |
-| `DQ-DATE-004` | No required field is NULL | `dim_date` | critical |
-| `DQ-DATE-005` | Selling-day ratio is within the configured tolerance | `dim_date` | warning |
-| `DQ-DLR-001` | `dealership_key` is unique | `dim_dealership` | critical |
-| `DQ-DLR-002` | `dealership_id` is unique among current rows | `dim_dealership` | critical |
-| `DQ-DLR-003` | Store count matches `generation.store_count` | `dim_dealership` | critical |
-| `DQ-DLR-004` | No prohibited PII column is present | `dim_dealership` | critical |
-| `DQ-DLR-005` | `franchise_brand` is present for franchise stores | `dim_dealership` | critical |
-| `DQ-GEN-001` | The declared schema matches the output schema | all generated entities | critical |
-| `DQ-GEN-002` | The determinism digest is recorded | all generated entities | **info** |
+**There are exactly seven categories, and there is one authority for them:**
+`CHECK_CATEGORIES` in `src/arpi/constants.py`.
+
+| Category | What it asserts | Example |
+|---|---|---|
+| `structural` | The shape of the data or of the catalogue: declared columns, their order, the presence of the constraints that enforce a grain. | `DQ-GEN-001`, `DQ-REF-004` |
+| `completeness` | Nothing is missing: no NULL in a required column, no gap in a sequence. | `DQ-DATE-002`, `DQ-DATE-004`, `DQ-REF-003` |
+| `uniqueness` | A key identifies one thing. | `DQ-DATE-001`, `DQ-DLR-001`, `DQ-DLR-002` |
+| `referential` | A row resolves to the row it claims to belong to, and a declared grain holds. | `DQ-REF-001`, `DQ-AUD-001` |
+| `business_rule` | A rule from the business domain rather than from the schema. | `DQ-DLR-005`, `DQ-DATE-005` |
+| `privacy` | No prohibited personal-data column exists. See [PRIVACY_AND_ETHICS.md](PRIVACY_AND_ETHICS.md). | `DQ-DLR-004` |
+| `reproducibility` | The output can be regenerated and the claim can be recomputed. | `DQ-GEN-002` |
+
+**`reconciliation` is deliberately not a category.** A reconciliation compares two totals
+and is a different kind of evidence; it lives in `audit.reconciliation_result` (§22).
+
+**How this stays fixed.** The column carries the CHECK constraint
+`ck_validation_result_check_category` over exactly these seven values, so a new spelling is
+rejected on INSERT rather than quietly becoming an eighth vocabulary. `sql/08_validation/`
+emits the same strings, and `src/arpi/validation/registry.py` records one per check. A test
+reads the constraint definition out of `pg_constraint` and asserts it equals the Python set,
+so the two cannot drift apart silently.
+
+Earlier revisions used four incompatible vocabularies — the gap recorded as `DOC-24`. The
+retired spellings and their replacements are:
+
+| Retired spelling | Canonical category | Note |
+|---|---|---|
+| `schema` | `structural` | Except `DQ-DLR-004`, which becomes `privacy`: it is the privacy tripwire, and its Python implementation always said so. |
+| `domain` | `business_rule` | Named only in a `COMMENT ON COLUMN`; nothing emitted it. |
+| `determinism` | `reproducibility` | Documented in this file; nothing emitted it. |
+
+`sql/00_database/03_audit_tables.sql` performs that rewrite idempotently before adding the
+constraint, so an existing database is migrated by re-running the initialisation sequence and
+no historical audit row is deleted. A row carrying an unmapped spelling is **not** guessed at:
+the constraint fails loudly and names it.
+
+### 21.2 Check register
+
+**`src/arpi/validation/registry.py` is the canonical register.** Every `DQ-*` identifier the
+platform can emit is declared there exactly once, whether it is evaluated in pandas, in SQL,
+or in both, together with its category, severity, implementing layer, entity and the reason
+it exists. The tables below are the human-readable rendering of that module; a test asserts
+that every identifier emitted at runtime is registered, so the two cannot diverge.
+
+#### 21.2.1 Family prefixes
+
+A prefix is reserved before any check uses it, so that entities built in parallel cannot
+collide on an ordinal. Identifiers match `^DQ-[A-Z]{3,4}-\d{3}$`.
+
+| Prefix | Entity or area | Status |
+|---|---|---|
+| `DQ-DATE-*` | `dim_date` | **Implemented** |
+| `DQ-DLR-*` | `dim_dealership` | **Implemented** |
+| `DQ-GEN-*` | Cross-entity generation: schema conformance, determinism digest | **Implemented** |
+| `DQ-REF-*` | Cross-object referential and grain integrity (SQL) | **Implemented** |
+| `DQ-AUD-*` | Audit-layer integrity (SQL) | **Implemented** |
+| `DQ-VMD-*` | `dim_vehicle_model` | Planned (Phase 1.1) |
+| `DQ-VEH-*` | `dim_vehicle` | Planned (Phase 1.1) |
+| `DQ-EMP-*` | `dim_employee` | Planned (Phase 1.1) |
+| `DQ-CUS-*` | `dim_customer` | Planned (Phase 1.2) |
+| `DQ-ACQ-*` | `acquisition_event` (inventory acquisition source entity) | Planned (Phase 1.2) |
+| `DQ-SLE-*` | `fact_vehicle_sale` | Planned (Phase 1.2) |
+| `DQ-INV-*` | `fact_vehicle_inventory_snapshot` | Planned (Phase 1.2) |
+| `DQ-LDS-*` | `dim_lead_source` | Planned (Phase 1.4) |
+| `DQ-LED-*` | `fact_lead` | Planned (Phase 1.4) |
+| `DQ-APT-*` | `fact_appointment` | Planned (Phase 1.4) |
+| `DQ-CMP-*` | `dim_marketing_campaign` | Planned (Phase 1.5) |
+| `DQ-MKT-*` | `fact_marketing_spend` | Planned (Phase 1.5) |
+| `DQ-ING-*` | Ingestion and the row-count chain | Planned (Phase 1.2) |
+
+Reserving a prefix is **not** a claim that any check in that family exists. Only the five
+Implemented families have registered checks today; the rest are reserved names.
+
+#### 21.2.2 Registered checks
+
+| `check_id` | Assertion | Category | Target | Severity | Layer |
+|---|---|---|---|---|---|
+| `DQ-DATE-001` | `date_key` is unique | `uniqueness` | `dim_date` | critical | both |
+| `DQ-DATE-002` | The date range is contiguous — no missing days | `completeness` | `dim_date` | critical | both |
+| `DQ-DATE-003` | `date_key` equals `full_date` formatted `YYYYMMDD` | `business_rule` | `dim_date` | critical | both |
+| `DQ-DATE-004` | No required field is NULL | `completeness` | `dim_date` | critical | both |
+| `DQ-DATE-005` | Selling-day ratio is within the configured tolerance | `business_rule` | `dim_date` | warning | both |
+| `DQ-DLR-001` | `dealership_key` is unique | `uniqueness` | `dim_dealership` | critical | both |
+| `DQ-DLR-002` | `dealership_id` is unique among current rows | `uniqueness` | `dim_dealership` | critical | both |
+| `DQ-DLR-003` | Store count matches `generation.store_count` | `business_rule` | `dim_dealership` | critical | both |
+| `DQ-DLR-004` | No prohibited PII column is present | `privacy` | `dim_dealership` | critical | both |
+| `DQ-DLR-005` | `franchise_brand` is present for franchise stores | `business_rule` | `dim_dealership` | critical | both |
+| `DQ-GEN-001` | The declared schema matches the output schema | `structural` | all generated entities | critical | Python |
+| `DQ-GEN-002` | The determinism digest is recorded | `reproducibility` | all generated entities | **info** | Python |
 
 **`DQ-GEN-002` is `info`, not a gate.** It records the SHA-256 digest of each entity's canonical CSV
 rendering so a reviewer can recompute it; it does not compare that digest against a stored expectation,
@@ -1160,37 +1248,66 @@ column list, and the digest of the CSV bytes before they are written — so ther
 observe. They have no counterpart in `sql/08_validation/`. All ten `DQ-DATE-*` and `DQ-DLR-*` checks do
 appear verbatim in both layers.
 
-**Supplementary SQL-side check families.** The SQL validation layer (`sql/08_validation/`) additionally
-implements two families
-that have no Python counterpart, because they assert properties only the database can observe — catalogue
-state and cross-table referential integrity. They are Implemented and are listed here so the register is
-complete rather than merely canonical.
+**SQL-only check families.** The SQL validation layer (`sql/08_validation/`) implements two further
+families that have no Python counterpart, because they assert properties only the database can observe —
+catalogue state and cross-table referential integrity. Until `DOC-21` was closed these appeared in no
+shared register at all; they are now registered in `src/arpi/validation/registry.py` alongside every other
+check, because a register that is incomplete stops being a register.
 
-| `check_id` | Assertion | Target | Severity |
-|---|---|---|---|
-| `DQ-REF-001` | `warehouse.dim_date` grain is unique on `full_date` | `dim_date` | critical |
-| `DQ-REF-002` | `warehouse.dim_dealership` grain is unique on `(dealership_id, effective_date)` | `dim_dealership` | critical |
-| `DQ-REF-003` | `warehouse.dim_date` has no gaps in its date sequence — a window-function check, distinct from `DQ-DATE-002`, which compares a count | `dim_date` | critical |
-| `DQ-REF-004` | The constraints that enforce these grains are actually present in the catalogue | `warehouse` | critical |
-| `DQ-REF-005` | Every store's SCD Type 2 timeline is contiguous and non-overlapping | `dim_dealership` | critical |
-| `DQ-AUD-001` | Every `audit.validation_result` resolves to an `audit.pipeline_run` | `audit` | critical |
-| `DQ-AUD-002` | Every `audit.rejected_record` resolves to an `audit.pipeline_run` | `audit` | critical |
-| `DQ-AUD-003` | Every `audit.pipeline_run_row_count` resolves to an `audit.pipeline_run` | `audit` | critical |
-| `DQ-AUD-004` | Every `audit.reconciliation_result` resolves to an `audit.pipeline_run` | `audit` | critical |
-| `DQ-AUD-005` | No run is internally inconsistent — finished before it started, or otherwise self-contradictory | `audit.pipeline_run` | critical |
+| `check_id` | Assertion | Category | Target | Severity | Layer |
+|---|---|---|---|---|---|
+| `DQ-REF-001` | `warehouse.dim_date` grain is unique on `full_date` | `referential` | `dim_date` | critical | SQL |
+| `DQ-REF-002` | `warehouse.dim_dealership` grain is unique on `(dealership_id, effective_date)` | `referential` | `dim_dealership` | critical | SQL |
+| `DQ-REF-003` | `warehouse.dim_date` has no gaps in its date sequence | `completeness` | `dim_date` | critical | SQL |
+| `DQ-REF-004` | The constraints that enforce these grains are actually present in the catalogue | `structural` | `warehouse`, `audit` | critical | SQL |
+| `DQ-REF-005` | Every store's SCD Type 2 timeline is contiguous and non-overlapping | `referential` | `dim_dealership` | critical | SQL |
+| `DQ-AUD-001` | Every `audit.validation_result` resolves to an `audit.pipeline_run` | `referential` | `audit.validation_result` | critical | SQL |
+| `DQ-AUD-002` | Every `audit.rejected_record` resolves to an `audit.pipeline_run` | `referential` | `audit.rejected_record` | critical | SQL |
+| `DQ-AUD-003` | Every `audit.pipeline_run_row_count` resolves to an `audit.pipeline_run` | `referential` | `audit.pipeline_run_row_count` | critical | SQL |
+| `DQ-AUD-004` | Every `audit.reconciliation_result` resolves to an `audit.pipeline_run` | `referential` | `audit.reconciliation_result` | critical | SQL |
+| `DQ-AUD-005` | No run is internally inconsistent — finished before it started, or otherwise self-contradictory | `business_rule` | `audit.pipeline_run` | warning | SQL |
+
+**`DQ-AUD-005` is `warning`, not `critical`.** This table previously said `critical`, which the SQL view
+never emitted. A run that died without updating its own row is a defect worth reporting, but the data that
+run produced may still be sound, so it does not gate.
+
+**The `DQ-REF-003` / `DQ-DATE-002` overlap is deliberate**, and is now recorded as the `overlaps_with`
+field on both definitions rather than left as folklore. `DQ-DATE-002` compares a row count against the
+span of the reporting window, which detects **that** dates are missing. `DQ-REF-003` uses a window
+function to find **where** they are missing and reports the first gap, so it can be fixed rather than
+merely noticed. Two methods, two identifiers, one stated relationship.
 
 These are exposed through the helper views `audit.vw_dq_dim_date`, `audit.vw_dq_dim_dealership`,
 `audit.vw_dq_referential`, `audit.vw_dq_audit`, and `audit.vw_dq_all`, all shaped by
-`audit.vw_dq_result_template`. Those views are query helpers over the audit schema, not part of the
-reporting boundary — `arpi_reporter` reads validation outcomes through
+`audit.vw_dq_result_template`. All six appear in the entity index (§4). They are query helpers over the
+audit schema, not part of the reporting boundary — `arpi_reporter` reads validation outcomes through
 `reporting.vw_data_quality_summary`.
+
+#### 21.2.3 Adding a check
+
+A module that implements a new family registers its own checks; nobody edits the registry module.
+
+```python
+from arpi.validation.registry import CheckDefinition, CheckLayer, register_checks
+```
+
+`register_check(definition)` refuses a malformed identifier, an unreserved prefix, a non-canonical
+category, an empty name, entity or description, a check that applies to nothing, and — importantly — a
+second registration of an identifier that is already taken. Two entities built in parallel therefore
+cannot silently collide on `DQ-INV-001`; the second one fails at import time. See the module docstring in
+`src/arpi/validation/registry.py`.
 
 ### 21.3 Business rules
 
 - `severity = 'critical'` and `status = 'failed'` must increment `audit.pipeline_run.critical_failure_count`.
 - `status = 'passed'` implies `failed_record_count = 0`.
+- `check_category` must be one of the seven canonical categories (§21.1.1), enforced by
+  `ck_validation_result_check_category`.
 - Every check in the register above must produce a row on every run, including `skipped` rows. A check that
-  produces no row is itself a defect.
+  produces no row is itself a defect, because a silently absent check reads exactly like a passing one.
+  This is no longer left to each suite to remember: `arpi.validation.datasets.ensure_registry_coverage`
+  reconciles a run's report against `CHECK_REGISTRY` and fills any gap with an explicit `skipped` row that
+  says why.
 
 ### 21.4 PII classification / history policy
 

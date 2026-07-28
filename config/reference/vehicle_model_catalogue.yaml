@@ -1,0 +1,1486 @@
+# =====================================================================================
+# ARPI reference data: vehicle model catalogue
+# =====================================================================================
+# Purpose
+#   Source-controlled reference data for `warehouse.dim_vehicle_model`. Every physical
+#   vehicle, inventory snapshot, and sale in ARPI resolves to one row expanded from this
+#   file, so it is the governed vocabulary for make, model, trim, body style, vehicle
+#   class, fuel type, drivetrain, and transmission.
+#
+# WHAT THIS FILE IS -- AND IS NOT
+#   * It is a **representative synthetic subset**, hand-authored for this project.
+#   * It is **not** sourced from any manufacturer feed, dealer management system,
+#     NHTSA vPIC extract, or any other external data source. **No network call is made
+#     at any point.** `features.enable_public_vehicle_enrichment` stays `false` and is
+#     not read by the generator.
+#   * It is **not complete** and **not current**. It does not enumerate every model line,
+#     trim, model year, or specification a manufacturer has offered or offers today, and
+#     the specifications recorded here are plausible rather than verified. Nothing in
+#     ARPI may be presented as an authoritative product catalogue.
+#   * Make, model, and trim strings are factual product names. They are commercial
+#     product identifiers, not personal data, and they carry no relationship to any real
+#     vehicle, VIN, owner, or transaction.
+#
+# STRUCTURE
+#   `model_lines` holds one entry per model line. Each entry declares the attributes the
+#   whole line shares, a default `model_years` list, and a `trims` list. The generator
+#   expands the cross product of (trim, model year) into one catalogue row per
+#   `(model_year, make, model, trim)` -- the declared grain of `dim_vehicle_model`.
+#
+#   Model-line keys
+#     make                    required, text
+#     model                   required, text
+#     franchise_alignment     required, one of: Chevrolet | Subaru | Independent Used
+#     body_style              required, one of: Sedan | Coupe | Hatchback | Wagon | SUV |
+#                             Crossover | Pickup | Van | Convertible
+#     vehicle_class           required, one of: Compact | Midsize | Fullsize | Luxury |
+#                             Sports | Truck | SUV | Van
+#     doors                   required, integer 2..5
+#     seating_capacity        required, integer 2..8
+#     is_current_model_line   required, boolean
+#     model_years             required, non-empty list of integers 1990..2030
+#     trims                   required, non-empty list
+#
+#   Trim keys
+#     trim                    required, text
+#     fuel_type               required, one of: Gasoline | Diesel | Hybrid |
+#                             Plug-in Hybrid | Electric
+#     drivetrain              required, one of: FWD | RWD | AWD | 4WD
+#     transmission            required, one of: Automatic | Manual | CVT
+#     model_years             optional, overrides the model-line list
+#     doors                   optional, overrides the model-line value
+#     seating_capacity        optional, overrides the model-line value
+#
+# AUTHORING RULES (enforced by the loader; a violation fails the run)
+#   * Every enumerated value must be spelled exactly as listed above.
+#   * `(model_year, make, model, trim)` must be unique across the whole expansion.
+#   * A model line with `is_current_model_line: false` must not carry a model year later
+#     than 2025 -- a discontinued line cannot have a current model year.
+#
+# DISTRIBUTION INTENT (asserted as bands by the test suite, never as exact figures)
+#   * All-wheel drive is **elevated but not universal**, reflecting the New England
+#     market: Subaru is heavily AWD but not entirely (the BRZ is rear-wheel drive),
+#     Chevrolet is mixed across FWD/RWD/AWD/4WD, and the used long tail is mixed.
+#   * Model years span 2015..2026 with a deliberate recent-year skew, so used inventory
+#     of every plausible age exists alongside current-model-year new inventory.
+#   * Trim counts differ by model line, so the trim distribution is non-uniform.
+#
+# See DATA_DICTIONARY.md and docs/source-to-target/STM-004-dim-vehicle-model.md.
+# =====================================================================================
+
+catalogue_version: 1
+
+model_lines:
+
+  # ---------------------------------------------------------------------------------
+  # Chevrolet franchise catalogue (GSA-001, Granite Chevrolet of Nashua)
+  # ---------------------------------------------------------------------------------
+  - make: Chevrolet
+    model: Silverado 1500
+    franchise_alignment: Chevrolet
+    body_style: Pickup
+    vehicle_class: Truck
+    doors: 4
+    seating_capacity: 6
+    is_current_model_line: true
+    model_years: [2018, 2021, 2023, 2025, 2026]
+    trims:
+      - trim: WT
+        fuel_type: Gasoline
+        drivetrain: 4WD
+        transmission: Automatic
+      - trim: LT
+        fuel_type: Gasoline
+        drivetrain: 4WD
+        transmission: Automatic
+      - trim: RST
+        fuel_type: Gasoline
+        drivetrain: RWD
+        transmission: Automatic
+        model_years: [2021, 2023, 2025, 2026]
+      - trim: LT Duramax
+        fuel_type: Diesel
+        drivetrain: 4WD
+        transmission: Automatic
+        model_years: [2021, 2023, 2025]
+      - trim: High Country
+        fuel_type: Gasoline
+        drivetrain: 4WD
+        transmission: Automatic
+        model_years: [2023, 2025, 2026]
+        seating_capacity: 5
+
+  - make: Chevrolet
+    model: Colorado
+    franchise_alignment: Chevrolet
+    body_style: Pickup
+    vehicle_class: Truck
+    doors: 4
+    seating_capacity: 5
+    is_current_model_line: true
+    model_years: [2019, 2022, 2024, 2026]
+    trims:
+      - trim: WT
+        fuel_type: Gasoline
+        drivetrain: 4WD
+        transmission: Automatic
+      - trim: LT
+        fuel_type: Gasoline
+        drivetrain: 4WD
+        transmission: Automatic
+      - trim: Z71
+        fuel_type: Gasoline
+        drivetrain: 4WD
+        transmission: Automatic
+        model_years: [2022, 2024, 2026]
+
+  - make: Chevrolet
+    model: Equinox
+    franchise_alignment: Chevrolet
+    body_style: Crossover
+    vehicle_class: SUV
+    doors: 5
+    seating_capacity: 5
+    is_current_model_line: true
+    model_years: [2017, 2019, 2021, 2023, 2025, 2026]
+    trims:
+      - trim: LS
+        fuel_type: Gasoline
+        drivetrain: FWD
+        transmission: Automatic
+      - trim: LT
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: Automatic
+      - trim: RS
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: Automatic
+        model_years: [2021, 2023, 2025, 2026]
+      - trim: Premier
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: Automatic
+        model_years: [2017, 2019, 2021, 2023]
+
+  - make: Chevrolet
+    model: Traverse
+    franchise_alignment: Chevrolet
+    body_style: Crossover
+    vehicle_class: SUV
+    doors: 5
+    seating_capacity: 8
+    is_current_model_line: true
+    model_years: [2018, 2021, 2024, 2026]
+    trims:
+      - trim: LS
+        fuel_type: Gasoline
+        drivetrain: FWD
+        transmission: Automatic
+      - trim: LT
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: Automatic
+      - trim: RS
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: Automatic
+        model_years: [2024, 2026]
+        seating_capacity: 7
+      - trim: High Country
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: Automatic
+        seating_capacity: 7
+
+  - make: Chevrolet
+    model: Tahoe
+    franchise_alignment: Chevrolet
+    body_style: SUV
+    vehicle_class: SUV
+    doors: 5
+    seating_capacity: 8
+    is_current_model_line: true
+    model_years: [2019, 2022, 2025]
+    trims:
+      - trim: LS
+        fuel_type: Gasoline
+        drivetrain: 4WD
+        transmission: Automatic
+      - trim: LT
+        fuel_type: Gasoline
+        drivetrain: 4WD
+        transmission: Automatic
+      - trim: Z71
+        fuel_type: Gasoline
+        drivetrain: 4WD
+        transmission: Automatic
+        model_years: [2022, 2025]
+      - trim: Premier
+        fuel_type: Gasoline
+        drivetrain: 4WD
+        transmission: Automatic
+        seating_capacity: 7
+
+  - make: Chevrolet
+    model: Suburban
+    franchise_alignment: Chevrolet
+    body_style: SUV
+    vehicle_class: Fullsize
+    doors: 5
+    seating_capacity: 8
+    is_current_model_line: true
+    model_years: [2020, 2023, 2026]
+    trims:
+      - trim: LT
+        fuel_type: Gasoline
+        drivetrain: 4WD
+        transmission: Automatic
+      - trim: Premier
+        fuel_type: Gasoline
+        drivetrain: 4WD
+        transmission: Automatic
+        seating_capacity: 7
+
+  - make: Chevrolet
+    model: Blazer
+    franchise_alignment: Chevrolet
+    body_style: Crossover
+    vehicle_class: SUV
+    doors: 5
+    seating_capacity: 5
+    is_current_model_line: true
+    model_years: [2020, 2022, 2024, 2026]
+    trims:
+      - trim: 2LT
+        fuel_type: Gasoline
+        drivetrain: FWD
+        transmission: Automatic
+      - trim: 3LT
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: Automatic
+      - trim: RS
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: Automatic
+        model_years: [2022, 2024, 2026]
+
+  - make: Chevrolet
+    model: Trax
+    franchise_alignment: Chevrolet
+    body_style: Crossover
+    vehicle_class: Compact
+    doors: 5
+    seating_capacity: 5
+    is_current_model_line: true
+    model_years: [2019, 2024, 2026]
+    trims:
+      - trim: LS
+        fuel_type: Gasoline
+        drivetrain: FWD
+        transmission: Automatic
+      - trim: LT
+        fuel_type: Gasoline
+        drivetrain: FWD
+        transmission: Automatic
+      - trim: ACTIV
+        fuel_type: Gasoline
+        drivetrain: FWD
+        transmission: Automatic
+        model_years: [2024, 2026]
+
+  - make: Chevrolet
+    model: Trailblazer
+    franchise_alignment: Chevrolet
+    body_style: Crossover
+    vehicle_class: Compact
+    doors: 5
+    seating_capacity: 5
+    is_current_model_line: true
+    model_years: [2021, 2023, 2025, 2026]
+    trims:
+      - trim: LS
+        fuel_type: Gasoline
+        drivetrain: FWD
+        transmission: Automatic
+      - trim: LT
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: Automatic
+      - trim: ACTIV
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: Automatic
+        model_years: [2023, 2025, 2026]
+
+  - make: Chevrolet
+    model: Malibu
+    franchise_alignment: Chevrolet
+    body_style: Sedan
+    vehicle_class: Midsize
+    doors: 4
+    seating_capacity: 5
+    is_current_model_line: false
+    model_years: [2016, 2018, 2020, 2022, 2024]
+    trims:
+      - trim: LS
+        fuel_type: Gasoline
+        drivetrain: FWD
+        transmission: CVT
+      - trim: LT
+        fuel_type: Gasoline
+        drivetrain: FWD
+        transmission: CVT
+      - trim: RS
+        fuel_type: Gasoline
+        drivetrain: FWD
+        transmission: CVT
+        model_years: [2020, 2022, 2024]
+
+  - make: Chevrolet
+    model: Camaro
+    franchise_alignment: Chevrolet
+    body_style: Coupe
+    vehicle_class: Sports
+    doors: 2
+    seating_capacity: 4
+    is_current_model_line: false
+    model_years: [2017, 2019, 2022, 2024]
+    trims:
+      - trim: 1LT
+        fuel_type: Gasoline
+        drivetrain: RWD
+        transmission: Manual
+      - trim: 2SS
+        fuel_type: Gasoline
+        drivetrain: RWD
+        transmission: Automatic
+      - trim: ZL1
+        fuel_type: Gasoline
+        drivetrain: RWD
+        transmission: Automatic
+        model_years: [2019, 2022]
+
+  - make: Chevrolet
+    model: Corvette Stingray
+    franchise_alignment: Chevrolet
+    body_style: Coupe
+    vehicle_class: Sports
+    doors: 2
+    seating_capacity: 2
+    is_current_model_line: true
+    model_years: [2021, 2024, 2026]
+    trims:
+      - trim: 1LT
+        fuel_type: Gasoline
+        drivetrain: RWD
+        transmission: Automatic
+      - trim: 3LT
+        fuel_type: Gasoline
+        drivetrain: RWD
+        transmission: Automatic
+
+  - make: Chevrolet
+    model: Bolt EUV
+    franchise_alignment: Chevrolet
+    body_style: Hatchback
+    vehicle_class: Compact
+    doors: 5
+    seating_capacity: 5
+    is_current_model_line: false
+    model_years: [2022, 2023]
+    trims:
+      - trim: LT
+        fuel_type: Electric
+        drivetrain: FWD
+        transmission: Automatic
+      - trim: Premier
+        fuel_type: Electric
+        drivetrain: FWD
+        transmission: Automatic
+
+  - make: Chevrolet
+    model: Blazer EV
+    franchise_alignment: Chevrolet
+    body_style: Crossover
+    vehicle_class: SUV
+    doors: 5
+    seating_capacity: 5
+    is_current_model_line: true
+    model_years: [2024, 2025, 2026]
+    trims:
+      - trim: LT
+        fuel_type: Electric
+        drivetrain: AWD
+        transmission: Automatic
+      - trim: RS
+        fuel_type: Electric
+        drivetrain: AWD
+        transmission: Automatic
+
+  - make: Chevrolet
+    model: Silverado EV
+    franchise_alignment: Chevrolet
+    body_style: Pickup
+    vehicle_class: Truck
+    doors: 4
+    seating_capacity: 5
+    is_current_model_line: true
+    model_years: [2024, 2026]
+    trims:
+      - trim: WT
+        fuel_type: Electric
+        drivetrain: 4WD
+        transmission: Automatic
+      - trim: RST
+        fuel_type: Electric
+        drivetrain: 4WD
+        transmission: Automatic
+
+  - make: Chevrolet
+    model: Express 2500
+    franchise_alignment: Chevrolet
+    body_style: Van
+    vehicle_class: Van
+    doors: 3
+    seating_capacity: 2
+    is_current_model_line: true
+    model_years: [2018, 2021, 2024]
+    trims:
+      - trim: Cargo
+        fuel_type: Gasoline
+        drivetrain: RWD
+        transmission: Automatic
+
+  # ---------------------------------------------------------------------------------
+  # Subaru franchise catalogue (GSA-002, Granite Subaru of Manchester)
+  # ---------------------------------------------------------------------------------
+  - make: Subaru
+    model: Outback
+    franchise_alignment: Subaru
+    body_style: Wagon
+    vehicle_class: Midsize
+    doors: 5
+    seating_capacity: 5
+    is_current_model_line: true
+    model_years: [2016, 2018, 2020, 2022, 2024, 2025, 2026]
+    trims:
+      - trim: Base
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: CVT
+      - trim: Premium
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: CVT
+      - trim: Limited
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: CVT
+        model_years: [2018, 2020, 2022, 2024, 2026]
+      - trim: Onyx Edition XT
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: CVT
+        model_years: [2020, 2022, 2024, 2026]
+      - trim: Wilderness
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: CVT
+        model_years: [2022, 2024, 2026]
+
+  - make: Subaru
+    model: Forester
+    franchise_alignment: Subaru
+    body_style: Crossover
+    vehicle_class: SUV
+    doors: 5
+    seating_capacity: 5
+    is_current_model_line: true
+    model_years: [2017, 2019, 2021, 2023, 2025, 2026]
+    trims:
+      - trim: Base
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: CVT
+      - trim: Premium
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: CVT
+      - trim: Sport
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: CVT
+        model_years: [2019, 2021, 2023, 2025, 2026]
+      - trim: Limited
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: CVT
+        model_years: [2017, 2019, 2021, 2023]
+      - trim: Touring
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: CVT
+        model_years: [2021, 2023, 2025, 2026]
+
+  - make: Subaru
+    model: Crosstrek
+    franchise_alignment: Subaru
+    body_style: Crossover
+    vehicle_class: Compact
+    doors: 5
+    seating_capacity: 5
+    is_current_model_line: true
+    model_years: [2018, 2020, 2022, 2024, 2026]
+    trims:
+      - trim: Base
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: Manual
+        model_years: [2018, 2020, 2022]
+      - trim: Premium
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: CVT
+      - trim: Sport
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: CVT
+        model_years: [2022, 2024, 2026]
+      - trim: Limited
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: CVT
+      - trim: Hybrid
+        fuel_type: Plug-in Hybrid
+        drivetrain: AWD
+        transmission: CVT
+        model_years: [2019, 2021, 2023]
+
+  - make: Subaru
+    model: Ascent
+    franchise_alignment: Subaru
+    body_style: Crossover
+    vehicle_class: SUV
+    doors: 5
+    seating_capacity: 8
+    is_current_model_line: true
+    model_years: [2019, 2021, 2023, 2025, 2026]
+    trims:
+      - trim: Base
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: CVT
+      - trim: Premium
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: CVT
+      - trim: Onyx Edition
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: CVT
+        model_years: [2021, 2023, 2025, 2026]
+        seating_capacity: 7
+      - trim: Touring
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: CVT
+        seating_capacity: 7
+
+  - make: Subaru
+    model: Impreza
+    franchise_alignment: Subaru
+    body_style: Hatchback
+    vehicle_class: Compact
+    doors: 5
+    seating_capacity: 5
+    is_current_model_line: true
+    model_years: [2017, 2020, 2023, 2025]
+    trims:
+      - trim: Base
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: CVT
+      - trim: Sport
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: CVT
+      - trim: RS
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: CVT
+        model_years: [2024, 2025]
+
+  - make: Subaru
+    model: Legacy
+    franchise_alignment: Subaru
+    body_style: Sedan
+    vehicle_class: Midsize
+    doors: 4
+    seating_capacity: 5
+    is_current_model_line: false
+    model_years: [2016, 2019, 2021, 2023, 2025]
+    trims:
+      - trim: Base
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: CVT
+      - trim: Premium
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: CVT
+      - trim: Limited
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: CVT
+        model_years: [2019, 2021, 2023]
+
+  - make: Subaru
+    model: WRX
+    franchise_alignment: Subaru
+    body_style: Sedan
+    vehicle_class: Sports
+    doors: 4
+    seating_capacity: 5
+    is_current_model_line: true
+    model_years: [2018, 2022, 2024, 2026]
+    trims:
+      - trim: Base
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: Manual
+      - trim: Premium
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: Manual
+      - trim: GT
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: Automatic
+        model_years: [2022, 2024, 2026]
+
+  - make: Subaru
+    model: BRZ
+    franchise_alignment: Subaru
+    body_style: Coupe
+    vehicle_class: Sports
+    doors: 2
+    seating_capacity: 4
+    is_current_model_line: true
+    model_years: [2017, 2022, 2025]
+    trims:
+      - trim: Premium
+        fuel_type: Gasoline
+        drivetrain: RWD
+        transmission: Manual
+      - trim: Limited
+        fuel_type: Gasoline
+        drivetrain: RWD
+        transmission: Automatic
+
+  - make: Subaru
+    model: Solterra
+    franchise_alignment: Subaru
+    body_style: Crossover
+    vehicle_class: SUV
+    doors: 5
+    seating_capacity: 5
+    is_current_model_line: true
+    model_years: [2023, 2025, 2026]
+    trims:
+      - trim: Premium
+        fuel_type: Electric
+        drivetrain: AWD
+        transmission: Automatic
+      - trim: Limited
+        fuel_type: Electric
+        drivetrain: AWD
+        transmission: Automatic
+
+  # ---------------------------------------------------------------------------------
+  # Used-only long tail (GSA-003, Granite Used Auto Center of Merrimack, and the
+  # non-franchise used inventory carried by the two franchise stores)
+  # ---------------------------------------------------------------------------------
+  - make: Toyota
+    model: RAV4
+    franchise_alignment: Independent Used
+    body_style: Crossover
+    vehicle_class: SUV
+    doors: 5
+    seating_capacity: 5
+    is_current_model_line: true
+    model_years: [2017, 2019, 2021, 2023, 2025]
+    trims:
+      - trim: LE
+        fuel_type: Gasoline
+        drivetrain: FWD
+        transmission: Automatic
+      - trim: XLE
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: Automatic
+      - trim: Adventure
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: Automatic
+        model_years: [2019, 2021, 2023]
+      - trim: Hybrid XLE
+        fuel_type: Hybrid
+        drivetrain: AWD
+        transmission: CVT
+        model_years: [2021, 2023, 2025]
+
+  - make: Honda
+    model: CR-V
+    franchise_alignment: Independent Used
+    body_style: Crossover
+    vehicle_class: SUV
+    doors: 5
+    seating_capacity: 5
+    is_current_model_line: true
+    model_years: [2016, 2018, 2020, 2022, 2024]
+    trims:
+      - trim: LX
+        fuel_type: Gasoline
+        drivetrain: FWD
+        transmission: CVT
+      - trim: EX
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: CVT
+      - trim: EX-L
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: CVT
+        model_years: [2018, 2020, 2022, 2024]
+
+  - make: Honda
+    model: Civic
+    franchise_alignment: Independent Used
+    body_style: Sedan
+    vehicle_class: Compact
+    doors: 4
+    seating_capacity: 5
+    is_current_model_line: true
+    model_years: [2015, 2017, 2019, 2021, 2023]
+    trims:
+      - trim: LX
+        fuel_type: Gasoline
+        drivetrain: FWD
+        transmission: CVT
+      - trim: Sport
+        fuel_type: Gasoline
+        drivetrain: FWD
+        transmission: CVT
+        model_years: [2019, 2021, 2023]
+      - trim: Touring
+        fuel_type: Gasoline
+        drivetrain: FWD
+        transmission: CVT
+
+  - make: Toyota
+    model: Camry
+    franchise_alignment: Independent Used
+    body_style: Sedan
+    vehicle_class: Midsize
+    doors: 4
+    seating_capacity: 5
+    is_current_model_line: true
+    model_years: [2016, 2018, 2021, 2023]
+    trims:
+      - trim: LE
+        fuel_type: Gasoline
+        drivetrain: FWD
+        transmission: Automatic
+      - trim: SE
+        fuel_type: Gasoline
+        drivetrain: FWD
+        transmission: Automatic
+      - trim: XSE
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: Automatic
+        model_years: [2021, 2023]
+
+  - make: Ford
+    model: F-150
+    franchise_alignment: Independent Used
+    body_style: Pickup
+    vehicle_class: Truck
+    doors: 4
+    seating_capacity: 5
+    is_current_model_line: true
+    model_years: [2016, 2018, 2020, 2022, 2024]
+    trims:
+      - trim: XL
+        fuel_type: Gasoline
+        drivetrain: 4WD
+        transmission: Automatic
+      - trim: XLT
+        fuel_type: Gasoline
+        drivetrain: 4WD
+        transmission: Automatic
+      - trim: Lariat
+        fuel_type: Gasoline
+        drivetrain: 4WD
+        transmission: Automatic
+        model_years: [2018, 2020, 2022, 2024]
+
+  - make: Ford
+    model: Escape
+    franchise_alignment: Independent Used
+    body_style: Crossover
+    vehicle_class: Compact
+    doors: 5
+    seating_capacity: 5
+    is_current_model_line: true
+    model_years: [2017, 2020, 2022]
+    trims:
+      - trim: S
+        fuel_type: Gasoline
+        drivetrain: FWD
+        transmission: Automatic
+      - trim: SE
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: Automatic
+      - trim: Titanium
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: Automatic
+
+  - make: Jeep
+    model: Grand Cherokee
+    franchise_alignment: Independent Used
+    body_style: SUV
+    vehicle_class: SUV
+    doors: 5
+    seating_capacity: 5
+    is_current_model_line: true
+    model_years: [2016, 2019, 2021, 2023]
+    trims:
+      - trim: Laredo
+        fuel_type: Gasoline
+        drivetrain: 4WD
+        transmission: Automatic
+      - trim: Limited
+        fuel_type: Gasoline
+        drivetrain: 4WD
+        transmission: Automatic
+      - trim: Overland
+        fuel_type: Gasoline
+        drivetrain: 4WD
+        transmission: Automatic
+        model_years: [2019, 2021, 2023]
+
+  - make: Jeep
+    model: Wrangler
+    franchise_alignment: Independent Used
+    body_style: SUV
+    vehicle_class: SUV
+    doors: 4
+    seating_capacity: 5
+    is_current_model_line: true
+    model_years: [2018, 2020, 2022, 2024]
+    trims:
+      - trim: Sport
+        fuel_type: Gasoline
+        drivetrain: 4WD
+        transmission: Manual
+      - trim: Sahara
+        fuel_type: Gasoline
+        drivetrain: 4WD
+        transmission: Automatic
+      - trim: Rubicon
+        fuel_type: Gasoline
+        drivetrain: 4WD
+        transmission: Automatic
+        model_years: [2020, 2022, 2024]
+      - trim: 4xe Sahara
+        fuel_type: Plug-in Hybrid
+        drivetrain: 4WD
+        transmission: Automatic
+        model_years: [2022, 2024]
+
+  - make: Nissan
+    model: Rogue
+    franchise_alignment: Independent Used
+    body_style: Crossover
+    vehicle_class: SUV
+    doors: 5
+    seating_capacity: 5
+    is_current_model_line: true
+    model_years: [2016, 2018, 2021, 2023]
+    trims:
+      - trim: S
+        fuel_type: Gasoline
+        drivetrain: FWD
+        transmission: CVT
+      - trim: SV
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: CVT
+      - trim: SL
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: CVT
+        model_years: [2021, 2023]
+
+  - make: Hyundai
+    model: Elantra
+    franchise_alignment: Independent Used
+    body_style: Sedan
+    vehicle_class: Compact
+    doors: 4
+    seating_capacity: 5
+    is_current_model_line: true
+    model_years: [2017, 2019, 2022, 2024]
+    trims:
+      - trim: SE
+        fuel_type: Gasoline
+        drivetrain: FWD
+        transmission: CVT
+      - trim: SEL
+        fuel_type: Gasoline
+        drivetrain: FWD
+        transmission: CVT
+      - trim: Limited
+        fuel_type: Gasoline
+        drivetrain: FWD
+        transmission: Automatic
+        model_years: [2019, 2022, 2024]
+
+  - make: Kia
+    model: Telluride
+    franchise_alignment: Independent Used
+    body_style: Crossover
+    vehicle_class: SUV
+    doors: 5
+    seating_capacity: 8
+    is_current_model_line: true
+    model_years: [2020, 2022, 2024]
+    trims:
+      - trim: LX
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: Automatic
+      - trim: EX
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: Automatic
+      - trim: SX
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: Automatic
+        seating_capacity: 7
+
+  - make: Mazda
+    model: CX-5
+    franchise_alignment: Independent Used
+    body_style: Crossover
+    vehicle_class: SUV
+    doors: 5
+    seating_capacity: 5
+    is_current_model_line: true
+    model_years: [2017, 2019, 2021, 2023]
+    trims:
+      - trim: Sport
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: Automatic
+      - trim: Touring
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: Automatic
+      - trim: Grand Touring
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: Automatic
+        model_years: [2019, 2021, 2023]
+
+  - make: Volkswagen
+    model: Jetta
+    franchise_alignment: Independent Used
+    body_style: Sedan
+    vehicle_class: Compact
+    doors: 4
+    seating_capacity: 5
+    is_current_model_line: true
+    model_years: [2016, 2019, 2022]
+    trims:
+      - trim: S
+        fuel_type: Gasoline
+        drivetrain: FWD
+        transmission: Automatic
+      - trim: SE
+        fuel_type: Gasoline
+        drivetrain: FWD
+        transmission: Automatic
+      - trim: SEL
+        fuel_type: Gasoline
+        drivetrain: FWD
+        transmission: Automatic
+
+  - make: Volkswagen
+    model: Golf GTI
+    franchise_alignment: Independent Used
+    body_style: Hatchback
+    vehicle_class: Sports
+    doors: 5
+    seating_capacity: 5
+    is_current_model_line: true
+    model_years: [2018, 2021, 2023]
+    trims:
+      - trim: S
+        fuel_type: Gasoline
+        drivetrain: FWD
+        transmission: Manual
+      - trim: Autobahn
+        fuel_type: Gasoline
+        drivetrain: FWD
+        transmission: Automatic
+
+  - make: RAM
+    model: "1500"
+    franchise_alignment: Independent Used
+    body_style: Pickup
+    vehicle_class: Truck
+    doors: 4
+    seating_capacity: 5
+    is_current_model_line: true
+    model_years: [2017, 2019, 2021, 2023]
+    trims:
+      - trim: Tradesman
+        fuel_type: Gasoline
+        drivetrain: 4WD
+        transmission: Automatic
+      - trim: Big Horn
+        fuel_type: Gasoline
+        drivetrain: 4WD
+        transmission: Automatic
+      - trim: Big Horn EcoDiesel
+        fuel_type: Diesel
+        drivetrain: 4WD
+        transmission: Automatic
+        model_years: [2019, 2021]
+      - trim: Laramie
+        fuel_type: Gasoline
+        drivetrain: 4WD
+        transmission: Automatic
+        model_years: [2019, 2021, 2023]
+
+  - make: BMW
+    model: X3
+    franchise_alignment: Independent Used
+    body_style: Crossover
+    vehicle_class: Luxury
+    doors: 5
+    seating_capacity: 5
+    is_current_model_line: true
+    model_years: [2018, 2020, 2022, 2024]
+    trims:
+      - trim: xDrive30i
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: Automatic
+      - trim: M40i
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: Automatic
+        model_years: [2020, 2022, 2024]
+
+  - make: Lexus
+    model: RX 350
+    franchise_alignment: Independent Used
+    body_style: Crossover
+    vehicle_class: Luxury
+    doors: 5
+    seating_capacity: 5
+    is_current_model_line: true
+    model_years: [2017, 2020, 2023]
+    trims:
+      - trim: Base
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: Automatic
+      - trim: F Sport
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: Automatic
+
+  - make: Audi
+    model: Q5
+    franchise_alignment: Independent Used
+    body_style: Crossover
+    vehicle_class: Luxury
+    doors: 5
+    seating_capacity: 5
+    is_current_model_line: true
+    model_years: [2018, 2021, 2023]
+    trims:
+      - trim: Premium
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: Automatic
+      - trim: Prestige
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: Automatic
+
+  - make: Volvo
+    model: XC60
+    franchise_alignment: Independent Used
+    body_style: Crossover
+    vehicle_class: Luxury
+    doors: 5
+    seating_capacity: 5
+    is_current_model_line: true
+    model_years: [2019, 2021, 2023]
+    trims:
+      - trim: Momentum
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: Automatic
+      - trim: Inscription
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: Automatic
+
+  - make: Tesla
+    model: Model 3
+    franchise_alignment: Independent Used
+    body_style: Sedan
+    vehicle_class: Midsize
+    doors: 4
+    seating_capacity: 5
+    is_current_model_line: true
+    model_years: [2019, 2021, 2023, 2025]
+    trims:
+      - trim: Standard Range Plus
+        fuel_type: Electric
+        drivetrain: RWD
+        transmission: Automatic
+      - trim: Long Range
+        fuel_type: Electric
+        drivetrain: AWD
+        transmission: Automatic
+
+  - make: Toyota
+    model: Sienna
+    franchise_alignment: Independent Used
+    body_style: Van
+    vehicle_class: Van
+    doors: 5
+    seating_capacity: 8
+    is_current_model_line: true
+    model_years: [2021, 2023, 2025]
+    trims:
+      - trim: LE
+        fuel_type: Hybrid
+        drivetrain: FWD
+        transmission: CVT
+      - trim: XLE
+        fuel_type: Hybrid
+        drivetrain: AWD
+        transmission: CVT
+        seating_capacity: 7
+
+  - make: Chrysler
+    model: Pacifica
+    franchise_alignment: Independent Used
+    body_style: Van
+    vehicle_class: Van
+    doors: 5
+    seating_capacity: 7
+    is_current_model_line: true
+    model_years: [2018, 2020, 2022, 2024]
+    trims:
+      - trim: Touring
+        fuel_type: Gasoline
+        drivetrain: FWD
+        transmission: Automatic
+      - trim: Limited
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: Automatic
+        model_years: [2020, 2022, 2024]
+      - trim: Hybrid Select
+        fuel_type: Plug-in Hybrid
+        drivetrain: FWD
+        transmission: Automatic
+        model_years: [2020, 2022, 2024]
+
+  - make: Honda
+    model: Odyssey
+    franchise_alignment: Independent Used
+    body_style: Van
+    vehicle_class: Van
+    doors: 5
+    seating_capacity: 8
+    is_current_model_line: true
+    model_years: [2018, 2021, 2023]
+    trims:
+      - trim: EX
+        fuel_type: Gasoline
+        drivetrain: FWD
+        transmission: Automatic
+      - trim: Touring
+        fuel_type: Gasoline
+        drivetrain: FWD
+        transmission: Automatic
+
+  - make: Ford
+    model: Mustang
+    franchise_alignment: Independent Used
+    body_style: Convertible
+    vehicle_class: Sports
+    doors: 2
+    seating_capacity: 4
+    is_current_model_line: true
+    model_years: [2017, 2019, 2022]
+    trims:
+      - trim: EcoBoost
+        fuel_type: Gasoline
+        drivetrain: RWD
+        transmission: Automatic
+      - trim: GT Premium
+        fuel_type: Gasoline
+        drivetrain: RWD
+        transmission: Manual
+
+  - make: Dodge
+    model: Charger
+    franchise_alignment: Independent Used
+    body_style: Sedan
+    vehicle_class: Fullsize
+    doors: 4
+    seating_capacity: 5
+    is_current_model_line: false
+    model_years: [2016, 2019, 2021, 2023]
+    trims:
+      - trim: SXT
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: Automatic
+      - trim: R/T
+        fuel_type: Gasoline
+        drivetrain: RWD
+        transmission: Automatic
+
+  - make: GMC
+    model: Acadia
+    franchise_alignment: Independent Used
+    body_style: Crossover
+    vehicle_class: SUV
+    doors: 5
+    seating_capacity: 7
+    is_current_model_line: true
+    model_years: [2018, 2020, 2022, 2024]
+    trims:
+      - trim: SLE
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: Automatic
+      - trim: SLT
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: Automatic
+
+  - make: Nissan
+    model: Altima
+    franchise_alignment: Independent Used
+    body_style: Sedan
+    vehicle_class: Midsize
+    doors: 4
+    seating_capacity: 5
+    is_current_model_line: true
+    model_years: [2017, 2019, 2021, 2023]
+    trims:
+      - trim: S
+        fuel_type: Gasoline
+        drivetrain: FWD
+        transmission: CVT
+      - trim: SV
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: CVT
+        model_years: [2019, 2021, 2023]
+
+  - make: Hyundai
+    model: Tucson
+    franchise_alignment: Independent Used
+    body_style: Crossover
+    vehicle_class: SUV
+    doors: 5
+    seating_capacity: 5
+    is_current_model_line: true
+    model_years: [2018, 2020, 2022, 2024]
+    trims:
+      - trim: SE
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: Automatic
+      - trim: SEL
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: Automatic
+      - trim: Limited
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: Automatic
+        model_years: [2020, 2022, 2024]
+
+  - make: Toyota
+    model: Tacoma
+    franchise_alignment: Independent Used
+    body_style: Pickup
+    vehicle_class: Truck
+    doors: 4
+    seating_capacity: 5
+    is_current_model_line: true
+    model_years: [2017, 2019, 2021, 2023, 2025]
+    trims:
+      - trim: SR
+        fuel_type: Gasoline
+        drivetrain: 4WD
+        transmission: Automatic
+      - trim: TRD Off-Road
+        fuel_type: Gasoline
+        drivetrain: 4WD
+        transmission: Automatic
+
+  - make: Ford
+    model: Explorer
+    franchise_alignment: Independent Used
+    body_style: SUV
+    vehicle_class: SUV
+    doors: 5
+    seating_capacity: 7
+    is_current_model_line: true
+    model_years: [2017, 2020, 2022, 2024]
+    trims:
+      - trim: XLT
+        fuel_type: Gasoline
+        drivetrain: 4WD
+        transmission: Automatic
+      - trim: Limited
+        fuel_type: Gasoline
+        drivetrain: 4WD
+        transmission: Automatic
+
+  - make: Ford
+    model: Bronco Sport
+    franchise_alignment: Independent Used
+    body_style: Crossover
+    vehicle_class: Compact
+    doors: 5
+    seating_capacity: 5
+    is_current_model_line: true
+    model_years: [2021, 2023, 2025]
+    trims:
+      - trim: Big Bend
+        fuel_type: Gasoline
+        drivetrain: 4WD
+        transmission: Automatic
+      - trim: Badlands
+        fuel_type: Gasoline
+        drivetrain: 4WD
+        transmission: Automatic
+
+  - make: Kia
+    model: Sportage
+    franchise_alignment: Independent Used
+    body_style: Crossover
+    vehicle_class: Compact
+    doors: 5
+    seating_capacity: 5
+    is_current_model_line: true
+    model_years: [2019, 2022, 2024]
+    trims:
+      - trim: LX
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: Automatic
+      - trim: EX
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: Automatic
+
+  - make: Nissan
+    model: Frontier
+    franchise_alignment: Independent Used
+    body_style: Pickup
+    vehicle_class: Truck
+    doors: 4
+    seating_capacity: 5
+    is_current_model_line: true
+    model_years: [2018, 2022, 2024]
+    trims:
+      - trim: SV
+        fuel_type: Gasoline
+        drivetrain: 4WD
+        transmission: Automatic
+      - trim: PRO-4X
+        fuel_type: Gasoline
+        drivetrain: 4WD
+        transmission: Automatic
+
+  - make: BMW
+    model: 330i
+    franchise_alignment: Independent Used
+    body_style: Sedan
+    vehicle_class: Luxury
+    doors: 4
+    seating_capacity: 5
+    is_current_model_line: true
+    model_years: [2019, 2021, 2023]
+    trims:
+      - trim: xDrive
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: Automatic
+
+  - make: Toyota
+    model: Highlander
+    franchise_alignment: Independent Used
+    body_style: Crossover
+    vehicle_class: SUV
+    doors: 5
+    seating_capacity: 8
+    is_current_model_line: true
+    model_years: [2018, 2020, 2022, 2024]
+    trims:
+      - trim: LE
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: Automatic
+      - trim: XLE
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: Automatic
+      - trim: Hybrid Limited
+        fuel_type: Hybrid
+        drivetrain: AWD
+        transmission: CVT
+        model_years: [2020, 2022, 2024]
+        seating_capacity: 7
+
+  - make: Volkswagen
+    model: Atlas
+    franchise_alignment: Independent Used
+    body_style: Crossover
+    vehicle_class: SUV
+    doors: 5
+    seating_capacity: 7
+    is_current_model_line: true
+    model_years: [2019, 2021, 2023]
+    trims:
+      - trim: SE
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: Automatic
+      - trim: SEL
+        fuel_type: Gasoline
+        drivetrain: AWD
+        transmission: Automatic

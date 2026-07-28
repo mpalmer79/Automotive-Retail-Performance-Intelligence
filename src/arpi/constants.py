@@ -503,7 +503,7 @@ APPROVED_NAME_COLUMNS: Final[Mapping[str, str]] = MappingProxyType(
         "month_name": "Calendar vocabulary from MONTH_NAMES: January..December.",
         "pipeline_name": "Logical pipeline such as phase0_foundation.",
         "profile_name": "ARPI configuration profile: development, test or portfolio.",
-        "quarter_name": "Calendar vocabulary: Q1..Q4.",
+        "quarter_name": "Calendar vocabulary: Q1, Q2, Q3, Q4. Names a period, never a person.",
         "store_name": (
             "Fictional dealership store name such as 'Granite Chevrolet of Nashua'. "
             "Names a business, never a person."

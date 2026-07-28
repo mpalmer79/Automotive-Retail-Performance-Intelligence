@@ -3,7 +3,7 @@
 -- Project:         Automotive Retail Performance Intelligence (ARPI)
 -- Purpose:         Create the audit-layer tables that record pipeline runs, row counts, validation results, reconciliations and rejected records.
 -- Execution order: 3 of 25 — after the schemas exist and before any layer that writes audit rows.
--- Idempotency:     Fully idempotent. CREATE TABLE IF NOT EXISTS only; existing data is never touched. Rerunning adds nothing.
+-- Idempotency:     Fully idempotent. CREATE TABLE IF NOT EXISTS, plus one guarded DO block that migrates retired check_category spellings and adds the category CHECK constraint only when it is absent. Rerunning changes nothing.
 -- Ownership:       Created by the bootstrap superuser, reassigned to arpi_admin by sql/07_security/01_grants.sql. Written by arpi_loader.
 -- Grain:           One grain per table; each table declares it in its COMMENT ON TABLE.
 -- =============================================================================
@@ -131,7 +131,11 @@ COMMENT ON COLUMN audit.validation_result.validation_result_id IS 'Surrogate key
 COMMENT ON COLUMN audit.validation_result.pipeline_run_id IS 'Run during which the check was evaluated.';
 COMMENT ON COLUMN audit.validation_result.check_id IS 'Stable check identifier, for example DQ-DATE-001.';
 COMMENT ON COLUMN audit.validation_result.check_name IS 'Human-readable name of the check.';
-COMMENT ON COLUMN audit.validation_result.check_category IS 'Grouping such as uniqueness, completeness, domain, referential or business_rule.';
+COMMENT ON COLUMN audit.validation_result.check_category IS
+    'One of exactly seven canonical categories: structural, completeness, uniqueness, referential, '
+    'business_rule, privacy, reproducibility. Enforced by ck_validation_result_check_category and '
+    'defined once in src/arpi/constants.py (CHECK_CATEGORIES). reconciliation is deliberately not a '
+    'category: reconciliations live in audit.reconciliation_result.';
 COMMENT ON COLUMN audit.validation_result.target_object IS 'Fully qualified object the check was evaluated against.';
 COMMENT ON COLUMN audit.validation_result.severity IS 'critical | warning | info. Critical failures fail the pipeline run.';
 COMMENT ON COLUMN audit.validation_result.status IS 'passed | failed | skipped. skipped is used when the target object holds no rows.';
@@ -140,6 +144,73 @@ COMMENT ON COLUMN audit.validation_result.expected_value IS 'Numeric value expec
 COMMENT ON COLUMN audit.validation_result.failed_record_count IS 'Number of records that violated the rule; 0 for a passing check.';
 COMMENT ON COLUMN audit.validation_result.message IS 'Human-readable explanation shown to operators.';
 COMMENT ON COLUMN audit.validation_result.evaluated_at IS 'UTC instant the check ran.';
+
+-- -----------------------------------------------------------------------------
+-- check_category domain: migration-safe constraint
+-- -----------------------------------------------------------------------------
+-- The table above is CREATE TABLE IF NOT EXISTS, so a constraint added to its body
+-- would never reach a database created before this change: re-running the file is a
+-- no-op once the table exists. Four incompatible category vocabularies had already
+-- accumulated for exactly that reason (documentation backlog DOC-24), and describing
+-- the domain in a COMMENT is what allowed the drift.
+--
+-- This block therefore does the work a migration would do, idempotently:
+--   1. rewrite every pre-existing row that carries a retired spelling;
+--   2. add the CHECK constraint only when it is not already present.
+--
+-- The rewrite must come first. ALTER TABLE ... ADD CONSTRAINT validates existing rows,
+-- so historical audit evidence would otherwise make the constraint unaddable, and the
+-- only ways out would be to delete evidence or to leave the domain unenforced.
+--
+-- Retired spelling -> canonical category (mirrors RETIRED_CHECK_CATEGORIES in
+-- src/arpi/constants.py):
+--     schema       -> structural       (but DQ-DLR-004 -> privacy: it is the privacy
+--                                       tripwire, not a structural check)
+--     domain       -> business_rule
+--     determinism  -> reproducibility
+--
+-- A row carrying some other unknown spelling is deliberately NOT rewritten. The ADD
+-- CONSTRAINT then fails loudly and names the row, which is the correct outcome: an
+-- unrecognised category is a defect somebody must look at, not something to guess at.
+DO $ck_validation_result_check_category$
+BEGIN
+    UPDATE audit.validation_result
+       SET check_category = 'privacy'
+     WHERE check_category = 'schema'
+       AND check_id = 'DQ-DLR-004';
+
+    UPDATE audit.validation_result
+       SET check_category = 'structural'
+     WHERE check_category = 'schema';
+
+    UPDATE audit.validation_result
+       SET check_category = 'business_rule'
+     WHERE check_category = 'domain';
+
+    UPDATE audit.validation_result
+       SET check_category = 'reproducibility'
+     WHERE check_category = 'determinism';
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname  = 'ck_validation_result_check_category'
+          AND conrelid = 'audit.validation_result'::regclass
+    ) THEN
+        ALTER TABLE audit.validation_result
+            ADD CONSTRAINT ck_validation_result_check_category
+            CHECK (check_category IN (
+                'structural',
+                'completeness',
+                'uniqueness',
+                'referential',
+                'business_rule',
+                'privacy',
+                'reproducibility'
+            ));
+    END IF;
+END
+$ck_validation_result_check_category$;
 
 -- -----------------------------------------------------------------------------
 -- audit.reconciliation_result

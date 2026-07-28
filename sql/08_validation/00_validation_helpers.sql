@@ -15,8 +15,9 @@
 --
 --     check_id             text     stable identifier, e.g. DQ-DATE-001
 --     check_name           text     human-readable name
---     check_category       text     uniqueness | completeness | domain |
---                                   referential | business_rule | schema
+--     check_category       text     structural | completeness | uniqueness |
+--                                   referential | business_rule | privacy |
+--                                   reproducibility
 --     target_object        text     fully qualified object under test
 --     severity             text     critical | warning | info
 --     status               text     passed | failed | skipped
@@ -29,6 +30,16 @@
 -- check result can be recorded with a plain INSERT ... SELECT. The check
 -- identifiers are shared verbatim with the Python validation framework, so a
 -- given rule has one identity whether it is evaluated in pandas or in SQL.
+--
+-- CATEGORY VOCABULARY
+-- -------------------
+-- There are EXACTLY seven categories, and they are the same seven in Python, in SQL
+-- and in the database. They are defined once as CHECK_CATEGORIES in
+-- src/arpi/constants.py, enforced by ck_validation_result_check_category on
+-- audit.validation_result, and registered per check in src/arpi/validation/registry.py.
+-- A check view that emits any other spelling will be rejected on INSERT rather than
+-- quietly adding a fifth vocabulary, which is how the earlier drift happened (DOC-24).
+-- `reconciliation` is not a category: reconciliations use audit.reconciliation_result.
 --
 -- STATUS SEMANTICS
 -- ----------------

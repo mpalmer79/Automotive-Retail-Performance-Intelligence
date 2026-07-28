@@ -15,7 +15,6 @@ from arpi.constants import (
     ALLOWED_STORE_TYPES,
     CHECK_CATEGORY_BUSINESS_RULE,
     CHECK_CATEGORY_REPRODUCIBILITY,
-    CHECK_CATEGORY_STRUCTURAL,
     CHECK_DATE_CONTIGUOUS_RANGE,
     CHECK_DATE_KEY_MATCHES_FULL_DATE,
     CHECK_DATE_NO_NULL_REQUIRED,
@@ -44,7 +43,9 @@ from arpi.validation.checks import (
     check_ratio_within_bounds,
     check_unique_column,
     check_values_in_allowed_set,
+    skipped_check,
 )
+from arpi.validation.registry import expected_check_ids, require_registered
 from arpi.validation.results import CheckResult, CheckSeverity, ValidationReport
 
 if TYPE_CHECKING:  # pragma: no cover - import cycle guard for type checking only
@@ -196,13 +197,65 @@ def validate_foundation_datasets(
         config: Resolved configuration.
 
     Returns:
-        A single combined report.
+        A single combined report, guaranteed to contain a result for every registered
+        Python-layer check of these entities -- ``skipped`` where one could not be
+        evaluated, never absent.
     """
-    return ValidationReport.combine(
+    combined = ValidationReport.combine(
         validate_date_dataset(date_dataset, config),
         validate_dealership_dataset(dealership_dataset, config),
         validate_generation((date_dataset, dealership_dataset), config),
     )
+    return ensure_registry_coverage(combined, entities=(ENTITY_DIM_DATE, ENTITY_DIM_DEALERSHIP))
+
+
+def ensure_registry_coverage(
+    report: ValidationReport,
+    *,
+    entities: Sequence[str],
+    reason: str = (
+        "registered in CHECK_REGISTRY but not evaluated by this run; recorded as skipped "
+        "so the result set is complete rather than silently partial"
+    ),
+) -> ValidationReport:
+    """Append a ``skipped`` result for every registered check the report omits.
+
+    ``DATA_DICTIONARY.md`` §21.3 requires every registered check to produce a row on
+    every run: a check that produces no row is a defect, because a silently absent check
+    reads exactly like a passing one. Rather than trust each suite to remember, the
+    report is reconciled against :data:`~arpi.validation.registry.CHECK_REGISTRY` here,
+    once, and any gap is filled with an honest ``skipped`` row.
+
+    Args:
+        report: The report produced by the suites.
+        entities: Entities this run covered. Cross-entity checks are always included.
+        reason: Message recorded on each generated ``skipped`` result.
+
+    Returns:
+        ``report`` unchanged when it is already complete, otherwise a new report with
+        the missing checks appended in identifier order.
+    """
+    produced = {result.check_id for result in report.results}
+    missing = [
+        check_id
+        for check_id in expected_check_ids(entities=tuple(entities))
+        if check_id not in produced
+    ]
+    if not missing:
+        return report
+
+    fillers = tuple(
+        skipped_check(
+            check_id=definition.check_id,
+            check_name=definition.check_name,
+            target_object=definition.applies_to[0],
+            reason=reason,
+            check_category=definition.category,
+            severity=definition.severity,
+        )
+        for definition in (require_registered(check_id) for check_id in missing)
+    )
+    return ValidationReport((*report.results, *fillers))
 
 
 def _check_date_key_matches_full_date(frame: pd.DataFrame) -> CheckResult:
@@ -211,7 +264,7 @@ def _check_date_key_matches_full_date(frame: pd.DataFrame) -> CheckResult:
         check_id=CHECK_DATE_KEY_MATCHES_FULL_DATE,
         check_name="dim_date.date_key encodes dim_date.full_date",
         target_object=ENTITY_DIM_DATE,
-        check_category=CHECK_CATEGORY_STRUCTURAL,
+        check_category=CHECK_CATEGORY_BUSINESS_RULE,
         expected_value=0.0,
         observed_value=0.0,
     )
