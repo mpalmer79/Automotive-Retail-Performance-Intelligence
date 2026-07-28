@@ -1052,9 +1052,7 @@ def _draft_sale(
         return None
 
     salesperson = _choose_salesperson(intervals, acquisition.dealership_id, sale_date, rng)
-    desk_manager = _choose(
-        intervals, acquisition.dealership_id, DESK_MANAGER_ROLES, sale_date, rng
-    )
+    desk_manager = _choose(intervals, acquisition.dealership_id, DESK_MANAGER_ROLES, sale_date, rng)
     finance_manager = (
         _choose(intervals, acquisition.dealership_id, FINANCE_MANAGER_ROLES, sale_date, rng)
         if is_retail and rng.random() < FINANCE_MANAGER_PARTICIPATION
@@ -1188,9 +1186,7 @@ def _draw_pricing(
         )
         sale_price = money(investment * _decimal_triangular(rng, *share))
     else:
-        retention = Decimal(
-            str(salesperson.gross_retention if salesperson is not None else 1.0)
-        )
+        retention = Decimal(str(salesperson.gross_retention if salesperson is not None else 1.0))
         discount = min(
             _decimal_triangular(rng, *RETAIL_DISCOUNT) / max(retention, MINIMUM_RETENTION),
             MAXIMUM_RETAIL_DISCOUNT,
@@ -1227,9 +1223,7 @@ def _draw_back_end_gross(
         return _ZERO
     drawn = money(Decimal(str(round(rng.triangular(*BACK_END_GROSS), 2))))
     factor = (
-        Decimal(str(manager.gross_retention))
-        if manager is not None
-        else UNSTAFFED_FINANCE_FACTOR
+        Decimal(str(manager.gross_retention)) if manager is not None else UNSTAFFED_FINANCE_FACTOR
     )
     if sale_type == SALE_TYPE_LEASE:
         factor *= LEASE_BACK_END_FACTOR
@@ -1388,9 +1382,7 @@ def sale_links(config: ArpiConfig, catalogue_path: Path | None = None) -> tuple[
     )
 
 
-def disposition_dates(
-    config: ArpiConfig, catalogue_path: Path | None = None
-) -> dict[str, date]:
+def disposition_dates(config: ArpiConfig, catalogue_path: Path | None = None) -> dict[str, date]:
     """Map every sold ``vehicle_id`` to the date it left inventory.
 
     The inventory-snapshot generator needs this to stop snapshotting a unit: a vehicle
@@ -1639,7 +1631,11 @@ def _check_is_retail_derived(frame: pd.DataFrame) -> CheckResult:
         return result
     return result.failed(
         f"{mismatched} row(s) carry an is_retail flag that contradicts their sale_type"
-        + (f", and sale_type(s) {', '.join(unknown)} are outside the enumeration" if unknown else "")
+        + (
+            f", and sale_type(s) {', '.join(unknown)} are outside the enumeration"
+            if unknown
+            else ""
+        )
         + ".",
         failed_record_count=total,
     )
@@ -1663,9 +1659,7 @@ def _check_unit_count(frame: pd.DataFrame) -> CheckResult:
     )
 
 
-def _check_employee_roles(
-    frame: pd.DataFrame, intervals: Sequence[_RoleInterval]
-) -> CheckResult:
+def _check_employee_roles(frame: pd.DataFrame, intervals: Sequence[_RoleInterval]) -> CheckResult:
     """``DQ-SLE-008`` -- every employee on a sale held an eligible role on that date."""
     base = _base_result(
         CHECK_SALE_EMPLOYEE_ROLES,
@@ -1713,9 +1707,7 @@ def _check_negative_gross_present(frame: pd.DataFrame) -> CheckResult:
         return base.failed("sale_event produced no rows, so the gross population is absent.")
     negative = sum(1 for value in frame["front_end_gross"] if Decimal(str(value)) < 0)
     share = negative / total
-    result = replace(
-        base, observed_value=share, expected_value=(minimum + maximum) / 2
-    )
+    result = replace(base, observed_value=share, expected_value=(minimum + maximum) / 2)
     if minimum <= share <= maximum:
         return result
     return result.failed(

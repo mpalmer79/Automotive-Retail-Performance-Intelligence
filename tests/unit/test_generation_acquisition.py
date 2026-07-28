@@ -56,7 +56,12 @@ def acquisitions(test_config: ArpiConfig) -> tuple[AcquisitionRecord, ...]:
 # --------------------------------------------------------------------------------------
 @pytest.mark.parametrize(
     ("ordinal", "expected"),
-    [(1, "ACQ-00000001"), (42, "ACQ-00000042"), (12_044, "ACQ-00012044"), (99_999_999, "ACQ-99999999")],
+    [
+        (1, "ACQ-00000001"),
+        (42, "ACQ-00000042"),
+        (12_044, "ACQ-00012044"),
+        (99_999_999, "ACQ-99999999"),
+    ],
 )
 def test_acquisition_id_is_zero_padded_to_eight_digits(ordinal: int, expected: str) -> None:
     assert acquisition_id_for(ordinal) == expected
@@ -96,9 +101,7 @@ def test_every_acquisition_is_placed_at_the_vehicles_intended_store(
         vehicle.vehicle_id: vehicle.intended_dealership_id
         for vehicle in build_vehicle_records(test_config)
     }
-    assert all(
-        intended[record.vehicle_id] == record.dealership_id for record in acquisitions
-    )
+    assert all(intended[record.vehicle_id] == record.dealership_id for record in acquisitions)
 
 
 def test_the_independent_used_store_books_no_manufacturer_allocation(
@@ -196,9 +199,7 @@ def test_inventory_investment_is_the_exact_sum_of_its_parts(
     acquisitions: tuple[AcquisitionRecord, ...],
 ) -> None:
     for record in acquisitions:
-        assert record.inventory_investment == (
-            record.acquisition_cost + record.reconditioning_cost
-        )
+        assert record.inventory_investment == (record.acquisition_cost + record.reconditioning_cost)
 
 
 def test_msrp_is_populated_for_new_units_and_absent_for_the_rest(

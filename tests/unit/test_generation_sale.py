@@ -133,7 +133,7 @@ def test_is_retail_rejects_a_sale_type_outside_the_enumeration() -> None:
 
 
 def test_the_declared_enumeration_and_the_retail_set_agree() -> None:
-    assert RETAIL_SALE_TYPES < set(ALLOWED_SALE_TYPES)
+    assert set(ALLOWED_SALE_TYPES) > RETAIL_SALE_TYPES
     assert set(ALLOWED_SALE_TYPES) - RETAIL_SALE_TYPES == {
         SALE_TYPE_WHOLESALE,
         SALE_TYPE_DEALER_TRADE,
@@ -179,7 +179,6 @@ def test_every_monetary_value_is_a_quantized_decimal(sales: tuple[SaleRecord, ..
         for field in MONEY_FIELDS:
             value = getattr(record, field)
             assert isinstance(value, Decimal), field
-            assert not isinstance(value, float), field
             assert value.as_tuple().exponent == -2, (record.sale_id, field, value)
 
 
@@ -228,7 +227,9 @@ def test_markdowns_accumulate_with_age_and_then_stop() -> None:
     sixty = markdown_to_asking_price(asking, MARKDOWN_INTERVAL_DAYS * 2, "Used")
     assert thirty < asking
     assert sixty < thirty
-    capped = markdown_to_asking_price(asking, MARKDOWN_INTERVAL_DAYS * MAXIMUM_MARKDOWN_STEPS, "Used")
+    capped = markdown_to_asking_price(
+        asking, MARKDOWN_INTERVAL_DAYS * MAXIMUM_MARKDOWN_STEPS, "Used"
+    )
     assert markdown_to_asking_price(asking, 3_650, "Used") == capped
 
 
@@ -259,9 +260,10 @@ def test_no_vehicle_is_ever_sold_before_it_is_acquired(
     }
     for record in sales:
         assert record.sale_date >= acquired[record.vehicle_id], record.sale_id
-        assert record.days_in_inventory_at_sale == (
-            record.sale_date - acquired[record.vehicle_id]
-        ).days
+        assert (
+            record.days_in_inventory_at_sale
+            == (record.sale_date - acquired[record.vehicle_id]).days
+        )
         assert record.days_in_inventory_at_sale >= 0
 
 

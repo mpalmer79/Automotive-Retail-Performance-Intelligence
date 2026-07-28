@@ -115,6 +115,18 @@ def acquisition_dataset(test_config: ArpiConfig) -> GeneratedDataset:
     return generate_acquisition_dataset(test_config)
 
 
+def _replace_cell(frame: pd.DataFrame, column: str, position: int, value: object) -> None:
+    """Overwrite one cell of a ``Decimal``-bearing object column, in place.
+
+    ``DataFrame.loc`` assignment of a ``Decimal`` is rejected by the pandas type stubs,
+    so the column is rebuilt instead. Only tests need this: the generator never mutates
+    a frame.
+    """
+    values = list(frame[column])
+    values[position] = value
+    frame[column] = pd.Series(values, index=frame.index, dtype=object)
+
+
 def _tampered(dataset: GeneratedDataset, frame: pd.DataFrame) -> GeneratedDataset:
     """Wrap a modified frame so the gating suite can be run against it."""
     return GeneratedDataset(
@@ -192,7 +204,9 @@ def test_a_substantial_minority_of_the_fleet_is_acquired_before_the_window_opens
     development_acquisitions: pd.DataFrame, development_config: ArpiConfig
 ) -> None:
     share = float(
-        (development_acquisitions["acquisition_date"] < development_config.reporting.start_date).mean()
+        (
+            development_acquisitions["acquisition_date"] < development_config.reporting.start_date
+        ).mean()
     )
     assert 0.15 < share < 0.55, share
 
@@ -479,7 +493,7 @@ def test_a_negative_cost_fails_the_run(
     acquisition_dataset: GeneratedDataset, test_config: ArpiConfig
 ) -> None:
     frame = acquisition_dataset.frame.copy()
-    frame.loc[frame.index[0], "acquisition_cost"] = Decimal("-1.00")
+    _replace_cell(frame, "acquisition_cost", 0, Decimal("-1.00"))
     assert "DQ-ACQ-004" in _failed_ids(_tampered(acquisition_dataset, frame), test_config)
 
 
