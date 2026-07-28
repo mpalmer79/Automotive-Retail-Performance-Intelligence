@@ -245,7 +245,8 @@ def test_fact_tables_are_empty(cursor: Any) -> None:
     unexpectedly held rows would let a reporting view present numbers nobody generated.
     """
     for table in FACT_TABLES:
-        cursor.execute(f"SELECT count(*) FROM warehouse.{table}")  # noqa: S608 - literal
+        # The table name comes from the literal FACT_TABLES tuple above, never from input.
+        cursor.execute(f"SELECT count(*) FROM warehouse.{table}")
         row = cursor.fetchone()
         assert row is not None
         assert row[0] == 0, f"warehouse.{table} is expected to be empty in this increment"
