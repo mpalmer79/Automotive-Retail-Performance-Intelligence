@@ -145,8 +145,8 @@ A mapping is ready for review when all of the following are true:
 | [STM-001](STM-001-dim-date.md) | Calendar date dimension | `warehouse.dim_date` (via `raw.calendar_date_load`, `staging.stg_calendar_date`) | 1.0 | **Implemented** |
 | [STM-002](STM-002-dim-dealership.md) | Dealership dimension | `warehouse.dim_dealership` (via `raw.dealership_load`, `staging.stg_dealership`) | 1.0 | **Implemented** |
 | [STM-003](STM-003-audit-metadata.md) | Audit and pipeline metadata | `audit.pipeline_run`, `audit.pipeline_run_row_count`, `audit.validation_result`, `audit.reconciliation_result`, `audit.rejected_record` | 1.0 | **Implemented** |
-| STM-004 | Vehicle model dimension | `warehouse.dim_vehicle_model` | — | Planned (Phase 1.1) |
-| STM-005 | Vehicle dimension | `warehouse.dim_vehicle` | — | Planned (Phase 1.1) |
+| [STM-004](STM-004-dim-vehicle-model.md) | Vehicle model dimension | `warehouse.dim_vehicle_model` | 1.0 | **Implemented** (source generation and data-quality checks; SQL load Planned) |
+| [STM-005](STM-005-dim-vehicle.md) | Vehicle dimension | `warehouse.dim_vehicle` | 1.0 | **Implemented** (source generation and data-quality checks; SQL load Planned) |
 | STM-006 | Employee dimension | `warehouse.dim_employee` | — | Planned (Phase 1.1) |
 | STM-007 | Customer dimension | `warehouse.dim_customer` | — | Planned (Phase 1.2) |
 | STM-008 | Vehicle sale fact | `warehouse.fact_vehicle_sale` | — | Planned (Phase 1.2) |

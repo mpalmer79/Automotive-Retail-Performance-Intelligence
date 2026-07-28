@@ -167,8 +167,57 @@ def test_rows_for_copy_renders_null_as_empty(dealership_dataset: GeneratedDatase
 
 
 def test_entity_tables_cover_both_dimensions() -> None:
-    assert set(ENTITY_TABLES) == {"dim_date", "dim_dealership"}
+    assert {"dim_date", "dim_dealership"} <= set(ENTITY_TABLES)
     assert ENTITY_TABLES["dim_date"] == ("calendar_date_load", "dim_date")
+    assert ENTITY_TABLES["dim_dealership"] == ("dealership_load", "dim_dealership")
+
+
+def test_entity_tables_is_a_projection_of_the_spec_registry() -> None:
+    from arpi.ingestion.spec import ENTITY_SPECS
+
+    expected = {
+        spec.entity_name: (spec.raw_table, spec.warehouse_table)
+        for spec in ENTITY_SPECS
+        if spec.warehouse_table is not None
+    }
+    assert ENTITY_TABLES == expected
+
+
+def test_every_registered_spec_is_internally_consistent() -> None:
+    from arpi.ingestion.spec import ENTITY_SPECS, spec_for
+
+    assert len({spec.entity_name for spec in ENTITY_SPECS}) == len(ENTITY_SPECS)
+    for spec in ENTITY_SPECS:
+        assert spec_for(spec.entity_name) is spec
+        assert spec.natural_key
+        assert spec.warehouse_match_key == spec.natural_key[0]
+        assert spec.chain_reconciliation_id.startswith("RECON-INGEST-")
+        assert spec.chain_reconciliation_id.endswith("-CHAIN")
+        assert spec.warehouse_reconciliation_id.endswith("-WAREHOUSE")
+        if spec.warehouse_table is None:
+            assert spec.merge_script is None
+
+
+def test_spec_for_names_the_registered_entities_when_it_fails() -> None:
+    from arpi.ingestion.spec import spec_for
+
+    with pytest.raises(DatabaseLoadError, match="dim_date") as excinfo:
+        spec_for("not_an_entity")
+    assert excinfo.value.entity == "not_an_entity"
+
+
+def test_a_spec_must_declare_a_natural_key() -> None:
+    from arpi.ingestion.spec import EntityIngestionSpec
+
+    with pytest.raises(ValueError, match="natural_key"):
+        EntityIngestionSpec(
+            entity_name="broken",
+            raw_table="broken_load",
+            staging_view="stg_broken",
+            warehouse_table=None,
+            natural_key=(),
+            merge_script=None,
+        )
 
 
 def test_load_foundation_rejects_an_unknown_entity(
@@ -348,7 +397,26 @@ def test_load_foundation_copies_merges_counts_and_audits(
     (sql_dir / "10_dim_date_merge.sql").write_text("-- merge date", encoding="utf-8")
     (sql_dir / "20_dim_dealership_merge.sql").write_text("-- merge dealership", encoding="utf-8")
 
-    connection = _RecordingConnection([(59,), (3,), (1,)])
+    # Six scalar queries per entity, in the order _collect_layer_counts issues them:
+    # raw, staging, distinct staging keys, deduplicated, warehouse, warehouse-matched.
+    # The final response is the pipeline_run_id returned by the audit insert.
+    connection = _RecordingConnection(
+        [
+            (59,),
+            (59,),
+            (59,),
+            (59,),
+            (59,),
+            (59,),
+            (3,),
+            (3,),
+            (3,),
+            (3,),
+            (3,),
+            (3,),
+            (1,),
+        ]
+    )
     monkeypatch.setattr(database, "psycopg", _RecordingPsycopg(connection))
 
     recorder = AuditRecorder(run=PipelineRun.start(db_config, pipeline_name="test"))
@@ -358,6 +426,8 @@ def test_load_foundation_copies_merges_counts_and_audits(
 
     assert result.raw_row_counts == {"dim_date": 59, "dim_dealership": 3}
     assert result.warehouse_row_counts == {"dim_date": 59, "dim_dealership": 3}
+    assert all(counts.chain_balances for counts in result.layer_counts.values())
+    assert result.rejected_records == ()
     assert [path.name for path in result.executed_sql] == [
         "10_dim_date_merge.sql",
         "20_dim_dealership_merge.sql",
@@ -372,15 +442,24 @@ def test_load_foundation_copies_merges_counts_and_audits(
     assert audit_statements
     assert all(isinstance(params, tuple) for _, params in audit_statements)
 
+    # DOC-23: all four database-side layers are recorded, not just raw and warehouse.
     layers = {(row.entity_name, row.layer) for row in recorder.row_counts}
     assert layers == {
         ("dim_date", "raw"),
+        ("dim_date", "staging"),
+        ("dim_date", "rejected"),
         ("dim_date", "warehouse"),
         ("dim_dealership", "raw"),
+        ("dim_dealership", "staging"),
+        ("dim_dealership", "rejected"),
         ("dim_dealership", "warehouse"),
     }
     assert [item.reconciliation_id for item in recorder.reconciliation_results] == [
+        "RECON-INGEST-DIM-DATE-CHAIN",
+        "RECON-INGEST-DIM-DATE-WAREHOUSE",
         "RECON-DIM-DATE-ROWCOUNT",
+        "RECON-INGEST-DIM-DEALERSHIP-CHAIN",
+        "RECON-INGEST-DIM-DEALERSHIP-WAREHOUSE",
         "RECON-DIM-DEALERSHIP-ROWCOUNT",
     ]
     assert all(item.status == "passed" for item in recorder.reconciliation_results)
@@ -398,12 +477,19 @@ def test_load_foundation_reports_a_row_count_mismatch(
     sql_dir.mkdir()
     (sql_dir / "10_dim_date_merge.sql").write_text("-- merge", encoding="utf-8")
 
-    connection = _RecordingConnection([(58,), (1,)])
+    # raw, staging, staging keys, deduplicated, warehouse, warehouse-matched, run id.
+    # The warehouse holds one row fewer than the generator produced.
+    connection = _RecordingConnection([(59,), (59,), (59,), (59,), (58,), (58,), (1,)])
     monkeypatch.setattr(database, "psycopg", _RecordingPsycopg(connection))
 
     recorder = AuditRecorder(run=PipelineRun.start(db_config, pipeline_name="test"))
     load_foundation(db_config, [date_dataset], recorder, sql_root=tmp_path)
 
-    reconciliation = recorder.reconciliation_results[0]
-    assert reconciliation.status == "failed"
-    assert reconciliation.difference == pytest.approx(1.0)
+    by_id = {item.reconciliation_id: item for item in recorder.reconciliation_results}
+    # The raw-to-staging chain still balances: nothing was lost before the warehouse.
+    assert by_id["RECON-INGEST-DIM-DATE-CHAIN"].status == "passed"
+    # The staging-to-warehouse comparison is what fails, and it names the missing row.
+    assert by_id["RECON-INGEST-DIM-DATE-WAREHOUSE"].status == "failed"
+    assert by_id["RECON-INGEST-DIM-DATE-WAREHOUSE"].difference == pytest.approx(1.0)
+    assert by_id["RECON-DIM-DATE-ROWCOUNT"].status == "failed"
+    assert by_id["RECON-DIM-DATE-ROWCOUNT"].difference == pytest.approx(1.0)
