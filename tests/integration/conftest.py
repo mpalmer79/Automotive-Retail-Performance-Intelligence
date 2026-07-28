@@ -13,6 +13,19 @@ Connection details are resolved in this order:
 3. Nothing at all, which means libpq's defaults: the local Unix socket as the
    current operating-system user.
 
+These variables are captured **at import time** into :data:`_CONNECTION_ENV`. The
+repository-wide ``_hermetic_environment`` fixture in ``tests/conftest.py`` deletes every
+``ARPI_*`` variable and ``PGPASSWORD`` before each test so that unit tests cannot inherit
+ambient configuration -- which is correct, and must stay. But fixtures run *after* it, so
+reading ``os.environ`` at fixture time would see the stripped environment and build a
+password-less connection. That is invisible locally, where the Unix socket uses peer
+authentication and needs no password, and fatal in CI, where the connection is TCP to a
+service container and libpq fails with ``fe_sendauth: no password supplied``.
+
+Capturing at import time happens during collection, before any fixture runs, so the
+integration tests keep the real credentials while unit tests keep their hermetic
+environment.
+
 The session fixture creates a **throwaway database**, runs the complete SQL
 initialisation sequence into it, yields its name, and drops it at teardown. No
 test ever touches a database a human might care about.
@@ -24,7 +37,7 @@ import os
 import uuid
 from collections.abc import Iterator
 from pathlib import Path
-from typing import Any
+from typing import Any, Final
 
 import pytest
 
@@ -86,12 +99,36 @@ def run_init_sequence(conn: Any) -> list[str]:
 # --------------------------------------------------------------------------------------
 
 
+#: Connection-relevant environment captured before the hermetic fixture strips it.
+#:
+#: Only connection variables are captured. Everything else -- ``ARPI_PROFILE``,
+#: feature flags, output paths -- is deliberately left to the hermetic fixture, so an
+#: integration test still cannot inherit ambient *configuration*, only credentials.
+_CONNECTION_ENV: Final[dict[str, str]] = {
+    name: value
+    for name, value in os.environ.items()
+    if name.startswith("ARPI_DATABASE__")
+    or name in {"PGHOST", "PGPORT", "PGUSER", "PGPASSWORD", "PGDATABASE", "PGSSLMODE"}
+    or name == "ARPI_TEST_MAINTENANCE_DATABASE"
+}
+
+
 def _first_env(*names: str) -> str | None:
+    """Return the first non-empty captured value, or ``None``.
+
+    Reads the import-time snapshot rather than ``os.environ`` so the hermetic fixture
+    cannot strip the credentials out from under a fixture.
+    """
     for name in names:
-        value = os.environ.get(name)
+        value = _CONNECTION_ENV.get(name)
         if value not in (None, ""):
             return value
     return None
+
+
+def connection_password() -> str | None:
+    """The password the integration suite should authenticate with, if any."""
+    return _first_env("ARPI_DATABASE__PASSWORD", "PGPASSWORD")
 
 
 def base_connection_kwargs() -> dict[str, Any]:
