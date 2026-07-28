@@ -31,6 +31,7 @@ RAW_ENTITIES = (
     "lead_load",
     "appointment_load",
     "marketing_spend_load",
+    "inventory_snapshot_load",
 )
 
 #: Entities whose staging layer follows the Phase 1 three-view pattern:
@@ -47,6 +48,7 @@ STAGING_ENTITIES = (
     "lead",
     "appointment",
     "marketing_spend",
+    "inventory_snapshot",
 )
 
 #: The conformed dimensions.
