@@ -100,6 +100,28 @@ class EntityIngestionSpec:
         return self.natural_key[0]
 
     @property
+    def source_grain_is_version(self) -> bool:
+        """Whether the generator emits one row per Type 2 *version*, not per business key.
+
+        Both Type 2 entities keep one warehouse row per version, but they differ on the
+        source side, and the difference decides which warehouse count the generated row
+        count may honestly be compared against.
+
+        ``dim_dealership`` generates one row per store and lets the merge open the first
+        version, so its three generated rows correspond to three *current* rows.
+        ``dim_employee`` generates the versions itself -- that is how the contract's
+        "at least three people with a genuine role or store change" is expressed -- so
+        its generated rows correspond to *every* warehouse row, current or superseded.
+        Counting only current rows there would compare 34 generated versions against 30
+        current people and fail a load that was entirely correct.
+
+        A multi-column natural key whose extra component is the version's effective date
+        is exactly what "the source grain is the version" means, so the distinction is
+        read from the key rather than declared twice.
+        """
+        return self.scd_type_2 and len(self.natural_key) > 1
+
+    @property
     def chain_reconciliation_id(self) -> str:
         """Identifier of this entity's five-layer row-count chain reconciliation."""
         return f"{RECONCILIATION_INGEST_PREFIX}-{_slug(self.entity_name)}-CHAIN"

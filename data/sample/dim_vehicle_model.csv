@@ -1,0 +1,121 @@
+vehicle_model_key,vehicle_model_id,model_year,make,model,trim,body_style,vehicle_class,fuel_type,drivetrain,transmission,doors,seating_capacity,franchise_alignment,is_current_model_line,source_system
+1,VMD-00001,2016,Chevrolet,Malibu,LS,Sedan,Midsize,Gasoline,FWD,CVT,4,5,Chevrolet,false,arpi_synthetic_generator
+2,VMD-00002,2016,Jeep,Grand Cherokee,Laredo,SUV,SUV,Gasoline,4WD,Automatic,5,5,Independent Used,true,arpi_synthetic_generator
+3,VMD-00003,2016,Subaru,Legacy,Base,Sedan,Midsize,Gasoline,AWD,CVT,4,5,Subaru,false,arpi_synthetic_generator
+4,VMD-00004,2016,Subaru,Outback,Premium,Wagon,Midsize,Gasoline,AWD,CVT,5,5,Subaru,true,arpi_synthetic_generator
+5,VMD-00005,2016,Toyota,Camry,SE,Sedan,Midsize,Gasoline,FWD,Automatic,4,5,Independent Used,true,arpi_synthetic_generator
+6,VMD-00006,2016,Volkswagen,Jetta,S,Sedan,Compact,Gasoline,FWD,Automatic,4,5,Independent Used,true,arpi_synthetic_generator
+7,VMD-00007,2016,Volkswagen,Jetta,SEL,Sedan,Compact,Gasoline,FWD,Automatic,4,5,Independent Used,true,arpi_synthetic_generator
+8,VMD-00008,2017,Chevrolet,Camaro,1LT,Coupe,Sports,Gasoline,RWD,Manual,2,4,Chevrolet,false,arpi_synthetic_generator
+9,VMD-00009,2017,Chevrolet,Equinox,LS,Crossover,SUV,Gasoline,FWD,Automatic,5,5,Chevrolet,true,arpi_synthetic_generator
+10,VMD-00010,2017,Lexus,RX 350,Base,Crossover,Luxury,Gasoline,AWD,Automatic,5,5,Independent Used,true,arpi_synthetic_generator
+11,VMD-00011,2017,Nissan,Altima,S,Sedan,Midsize,Gasoline,FWD,CVT,4,5,Independent Used,true,arpi_synthetic_generator
+12,VMD-00012,2017,Subaru,Forester,Premium,Crossover,SUV,Gasoline,AWD,CVT,5,5,Subaru,true,arpi_synthetic_generator
+13,VMD-00013,2017,Subaru,Impreza,Sport,Hatchback,Compact,Gasoline,AWD,CVT,5,5,Subaru,true,arpi_synthetic_generator
+14,VMD-00014,2017,Toyota,RAV4,XLE,Crossover,SUV,Gasoline,AWD,Automatic,5,5,Independent Used,true,arpi_synthetic_generator
+15,VMD-00015,2017,Toyota,Tacoma,SR,Pickup,Truck,Gasoline,4WD,Automatic,4,5,Independent Used,true,arpi_synthetic_generator
+16,VMD-00016,2018,Chevrolet,Silverado 1500,LT,Pickup,Truck,Gasoline,4WD,Automatic,4,6,Chevrolet,true,arpi_synthetic_generator
+17,VMD-00017,2018,Ford,F-150,Lariat,Pickup,Truck,Gasoline,4WD,Automatic,4,5,Independent Used,true,arpi_synthetic_generator
+18,VMD-00018,2018,GMC,Acadia,SLT,Crossover,SUV,Gasoline,AWD,Automatic,5,7,Independent Used,true,arpi_synthetic_generator
+19,VMD-00019,2018,Honda,CR-V,EX,Crossover,SUV,Gasoline,AWD,CVT,5,5,Independent Used,true,arpi_synthetic_generator
+20,VMD-00020,2018,Honda,Odyssey,Touring,Van,Van,Gasoline,FWD,Automatic,5,8,Independent Used,true,arpi_synthetic_generator
+21,VMD-00021,2018,Hyundai,Tucson,SE,Crossover,SUV,Gasoline,AWD,Automatic,5,5,Independent Used,true,arpi_synthetic_generator
+22,VMD-00022,2018,Nissan,Rogue,S,Crossover,SUV,Gasoline,FWD,CVT,5,5,Independent Used,true,arpi_synthetic_generator
+23,VMD-00023,2018,Subaru,Crosstrek,Base,Crossover,Compact,Gasoline,AWD,Manual,5,5,Subaru,true,arpi_synthetic_generator
+24,VMD-00024,2018,Subaru,Crosstrek,Limited,Crossover,Compact,Gasoline,AWD,CVT,5,5,Subaru,true,arpi_synthetic_generator
+25,VMD-00025,2018,Subaru,Outback,Limited,Wagon,Midsize,Gasoline,AWD,CVT,5,5,Subaru,true,arpi_synthetic_generator
+26,VMD-00026,2018,Toyota,Highlander,XLE,Crossover,SUV,Gasoline,AWD,Automatic,5,8,Independent Used,true,arpi_synthetic_generator
+27,VMD-00027,2019,Chevrolet,Equinox,LS,Crossover,SUV,Gasoline,FWD,Automatic,5,5,Chevrolet,true,arpi_synthetic_generator
+28,VMD-00028,2019,Chevrolet,Equinox,LT,Crossover,SUV,Gasoline,AWD,Automatic,5,5,Chevrolet,true,arpi_synthetic_generator
+29,VMD-00029,2019,Dodge,Charger,R/T,Sedan,Fullsize,Gasoline,RWD,Automatic,4,5,Independent Used,false,arpi_synthetic_generator
+30,VMD-00030,2019,Hyundai,Elantra,Limited,Sedan,Compact,Gasoline,FWD,Automatic,4,5,Independent Used,true,arpi_synthetic_generator
+31,VMD-00031,2019,Kia,Sportage,EX,Crossover,Compact,Gasoline,AWD,Automatic,5,5,Independent Used,true,arpi_synthetic_generator
+32,VMD-00032,2019,Subaru,Forester,Base,Crossover,SUV,Gasoline,AWD,CVT,5,5,Subaru,true,arpi_synthetic_generator
+33,VMD-00033,2019,Volvo,XC60,Inscription,Crossover,Luxury,Gasoline,AWD,Automatic,5,5,Independent Used,true,arpi_synthetic_generator
+34,VMD-00034,2019,Volvo,XC60,Momentum,Crossover,Luxury,Gasoline,AWD,Automatic,5,5,Independent Used,true,arpi_synthetic_generator
+35,VMD-00035,2020,Chevrolet,Blazer,3LT,Crossover,SUV,Gasoline,AWD,Automatic,5,5,Chevrolet,true,arpi_synthetic_generator
+36,VMD-00036,2020,Chevrolet,Suburban,Premier,SUV,Fullsize,Gasoline,4WD,Automatic,5,7,Chevrolet,true,arpi_synthetic_generator
+37,VMD-00037,2020,Chrysler,Pacifica,Hybrid Select,Van,Van,Plug-in Hybrid,FWD,Automatic,5,7,Independent Used,true,arpi_synthetic_generator
+38,VMD-00038,2020,Chrysler,Pacifica,Limited,Van,Van,Gasoline,AWD,Automatic,5,7,Independent Used,true,arpi_synthetic_generator
+39,VMD-00039,2020,Ford,Escape,S,Crossover,Compact,Gasoline,FWD,Automatic,5,5,Independent Used,true,arpi_synthetic_generator
+40,VMD-00040,2020,Ford,Escape,Titanium,Crossover,Compact,Gasoline,AWD,Automatic,5,5,Independent Used,true,arpi_synthetic_generator
+41,VMD-00041,2020,Ford,F-150,XLT,Pickup,Truck,Gasoline,4WD,Automatic,4,5,Independent Used,true,arpi_synthetic_generator
+42,VMD-00042,2020,Honda,CR-V,EX-L,Crossover,SUV,Gasoline,AWD,CVT,5,5,Independent Used,true,arpi_synthetic_generator
+43,VMD-00043,2020,Honda,CR-V,LX,Crossover,SUV,Gasoline,FWD,CVT,5,5,Independent Used,true,arpi_synthetic_generator
+44,VMD-00044,2020,Jeep,Wrangler,Sport,SUV,SUV,Gasoline,4WD,Manual,4,5,Independent Used,true,arpi_synthetic_generator
+45,VMD-00045,2020,Kia,Telluride,SX,Crossover,SUV,Gasoline,AWD,Automatic,5,7,Independent Used,true,arpi_synthetic_generator
+46,VMD-00046,2020,Subaru,Impreza,Base,Hatchback,Compact,Gasoline,AWD,CVT,5,5,Subaru,true,arpi_synthetic_generator
+47,VMD-00047,2020,Subaru,Outback,Onyx Edition XT,Wagon,Midsize,Gasoline,AWD,CVT,5,5,Subaru,true,arpi_synthetic_generator
+48,VMD-00048,2021,Audi,Q5,Premium,Crossover,Luxury,Gasoline,AWD,Automatic,5,5,Independent Used,true,arpi_synthetic_generator
+49,VMD-00049,2021,Chevrolet,Corvette Stingray,1LT,Coupe,Sports,Gasoline,RWD,Automatic,2,2,Chevrolet,true,arpi_synthetic_generator
+50,VMD-00050,2021,Chevrolet,Equinox,LT,Crossover,SUV,Gasoline,AWD,Automatic,5,5,Chevrolet,true,arpi_synthetic_generator
+51,VMD-00051,2021,Chevrolet,Silverado 1500,RST,Pickup,Truck,Gasoline,RWD,Automatic,4,6,Chevrolet,true,arpi_synthetic_generator
+52,VMD-00052,2021,Jeep,Grand Cherokee,Laredo,SUV,SUV,Gasoline,4WD,Automatic,5,5,Independent Used,true,arpi_synthetic_generator
+53,VMD-00053,2021,Jeep,Grand Cherokee,Overland,SUV,SUV,Gasoline,4WD,Automatic,5,5,Independent Used,true,arpi_synthetic_generator
+54,VMD-00054,2021,RAM,1500,Tradesman,Pickup,Truck,Gasoline,4WD,Automatic,4,5,Independent Used,true,arpi_synthetic_generator
+55,VMD-00055,2021,Subaru,Ascent,Base,Crossover,SUV,Gasoline,AWD,CVT,5,8,Subaru,true,arpi_synthetic_generator
+56,VMD-00056,2021,Subaru,Forester,Base,Crossover,SUV,Gasoline,AWD,CVT,5,5,Subaru,true,arpi_synthetic_generator
+57,VMD-00057,2021,Tesla,Model 3,Long Range,Sedan,Midsize,Electric,AWD,Automatic,4,5,Independent Used,true,arpi_synthetic_generator
+58,VMD-00058,2021,Toyota,Camry,XSE,Sedan,Midsize,Gasoline,AWD,Automatic,4,5,Independent Used,true,arpi_synthetic_generator
+59,VMD-00059,2021,Toyota,RAV4,Hybrid XLE,Crossover,SUV,Hybrid,AWD,CVT,5,5,Independent Used,true,arpi_synthetic_generator
+60,VMD-00060,2021,Toyota,Tacoma,SR,Pickup,Truck,Gasoline,4WD,Automatic,4,5,Independent Used,true,arpi_synthetic_generator
+61,VMD-00061,2022,Chevrolet,Bolt EUV,Premier,Hatchback,Compact,Electric,FWD,Automatic,5,5,Chevrolet,false,arpi_synthetic_generator
+62,VMD-00062,2022,Chevrolet,Camaro,ZL1,Coupe,Sports,Gasoline,RWD,Automatic,2,4,Chevrolet,false,arpi_synthetic_generator
+63,VMD-00063,2022,Chevrolet,Tahoe,LT,SUV,SUV,Gasoline,4WD,Automatic,5,8,Chevrolet,true,arpi_synthetic_generator
+64,VMD-00064,2022,Chevrolet,Tahoe,Z71,SUV,SUV,Gasoline,4WD,Automatic,5,8,Chevrolet,true,arpi_synthetic_generator
+65,VMD-00065,2022,Ford,Escape,S,Crossover,Compact,Gasoline,FWD,Automatic,5,5,Independent Used,true,arpi_synthetic_generator
+66,VMD-00066,2022,Ford,Explorer,Limited,SUV,SUV,Gasoline,4WD,Automatic,5,7,Independent Used,true,arpi_synthetic_generator
+67,VMD-00067,2022,GMC,Acadia,SLE,Crossover,SUV,Gasoline,AWD,Automatic,5,7,Independent Used,true,arpi_synthetic_generator
+68,VMD-00068,2022,Hyundai,Elantra,SE,Sedan,Compact,Gasoline,FWD,CVT,4,5,Independent Used,true,arpi_synthetic_generator
+69,VMD-00069,2022,Hyundai,Elantra,SEL,Sedan,Compact,Gasoline,FWD,CVT,4,5,Independent Used,true,arpi_synthetic_generator
+70,VMD-00070,2022,Hyundai,Tucson,Limited,Crossover,SUV,Gasoline,AWD,Automatic,5,5,Independent Used,true,arpi_synthetic_generator
+71,VMD-00071,2022,Hyundai,Tucson,SE,Crossover,SUV,Gasoline,AWD,Automatic,5,5,Independent Used,true,arpi_synthetic_generator
+72,VMD-00072,2022,Kia,Telluride,EX,Crossover,SUV,Gasoline,AWD,Automatic,5,8,Independent Used,true,arpi_synthetic_generator
+73,VMD-00073,2022,Subaru,BRZ,Limited,Coupe,Sports,Gasoline,RWD,Automatic,2,4,Subaru,true,arpi_synthetic_generator
+74,VMD-00074,2022,Subaru,Crosstrek,Limited,Crossover,Compact,Gasoline,AWD,CVT,5,5,Subaru,true,arpi_synthetic_generator
+75,VMD-00075,2022,Subaru,Outback,Base,Wagon,Midsize,Gasoline,AWD,CVT,5,5,Subaru,true,arpi_synthetic_generator
+76,VMD-00076,2022,Subaru,Outback,Wilderness,Wagon,Midsize,Gasoline,AWD,CVT,5,5,Subaru,true,arpi_synthetic_generator
+77,VMD-00077,2022,Subaru,WRX,GT,Sedan,Sports,Gasoline,AWD,Automatic,4,5,Subaru,true,arpi_synthetic_generator
+78,VMD-00078,2023,Audi,Q5,Premium,Crossover,Luxury,Gasoline,AWD,Automatic,5,5,Independent Used,true,arpi_synthetic_generator
+79,VMD-00079,2023,Chevrolet,Equinox,LS,Crossover,SUV,Gasoline,FWD,Automatic,5,5,Chevrolet,true,arpi_synthetic_generator
+80,VMD-00080,2023,Chevrolet,Equinox,Premier,Crossover,SUV,Gasoline,AWD,Automatic,5,5,Chevrolet,true,arpi_synthetic_generator
+81,VMD-00081,2023,Chevrolet,Trailblazer,LS,Crossover,Compact,Gasoline,FWD,Automatic,5,5,Chevrolet,true,arpi_synthetic_generator
+82,VMD-00082,2023,Dodge,Charger,SXT,Sedan,Fullsize,Gasoline,AWD,Automatic,4,5,Independent Used,false,arpi_synthetic_generator
+83,VMD-00083,2023,Ford,Bronco Sport,Big Bend,Crossover,Compact,Gasoline,4WD,Automatic,5,5,Independent Used,true,arpi_synthetic_generator
+84,VMD-00084,2023,Subaru,Impreza,Base,Hatchback,Compact,Gasoline,AWD,CVT,5,5,Subaru,true,arpi_synthetic_generator
+85,VMD-00085,2023,Toyota,RAV4,XLE,Crossover,SUV,Gasoline,AWD,Automatic,5,5,Independent Used,true,arpi_synthetic_generator
+86,VMD-00086,2023,Volkswagen,Atlas,SEL,Crossover,SUV,Gasoline,AWD,Automatic,5,7,Independent Used,true,arpi_synthetic_generator
+87,VMD-00087,2024,Chevrolet,Blazer EV,LT,Crossover,SUV,Electric,AWD,Automatic,5,5,Chevrolet,true,arpi_synthetic_generator
+88,VMD-00088,2024,Chevrolet,Camaro,1LT,Coupe,Sports,Gasoline,RWD,Manual,2,4,Chevrolet,false,arpi_synthetic_generator
+89,VMD-00089,2024,Chevrolet,Silverado EV,RST,Pickup,Truck,Electric,4WD,Automatic,4,5,Chevrolet,true,arpi_synthetic_generator
+90,VMD-00090,2024,Chevrolet,Traverse,LT,Crossover,SUV,Gasoline,AWD,Automatic,5,8,Chevrolet,true,arpi_synthetic_generator
+91,VMD-00091,2024,Chrysler,Pacifica,Hybrid Select,Van,Van,Plug-in Hybrid,FWD,Automatic,5,7,Independent Used,true,arpi_synthetic_generator
+92,VMD-00092,2024,Ford,F-150,XL,Pickup,Truck,Gasoline,4WD,Automatic,4,5,Independent Used,true,arpi_synthetic_generator
+93,VMD-00093,2024,GMC,Acadia,SLE,Crossover,SUV,Gasoline,AWD,Automatic,5,7,Independent Used,true,arpi_synthetic_generator
+94,VMD-00094,2024,Hyundai,Elantra,Limited,Sedan,Compact,Gasoline,FWD,Automatic,4,5,Independent Used,true,arpi_synthetic_generator
+95,VMD-00095,2024,Hyundai,Elantra,SE,Sedan,Compact,Gasoline,FWD,CVT,4,5,Independent Used,true,arpi_synthetic_generator
+96,VMD-00096,2024,Hyundai,Tucson,SE,Crossover,SUV,Gasoline,AWD,Automatic,5,5,Independent Used,true,arpi_synthetic_generator
+97,VMD-00097,2024,Jeep,Wrangler,Rubicon,SUV,SUV,Gasoline,4WD,Automatic,4,5,Independent Used,true,arpi_synthetic_generator
+98,VMD-00098,2024,Jeep,Wrangler,Sport,SUV,SUV,Gasoline,4WD,Manual,4,5,Independent Used,true,arpi_synthetic_generator
+99,VMD-00099,2024,Nissan,Frontier,PRO-4X,Pickup,Truck,Gasoline,4WD,Automatic,4,5,Independent Used,true,arpi_synthetic_generator
+100,VMD-00100,2024,Subaru,Impreza,RS,Hatchback,Compact,Gasoline,AWD,CVT,5,5,Subaru,true,arpi_synthetic_generator
+101,VMD-00101,2024,Subaru,Outback,Wilderness,Wagon,Midsize,Gasoline,AWD,CVT,5,5,Subaru,true,arpi_synthetic_generator
+102,VMD-00102,2024,Toyota,Highlander,XLE,Crossover,SUV,Gasoline,AWD,Automatic,5,8,Independent Used,true,arpi_synthetic_generator
+103,VMD-00103,2025,Chevrolet,Blazer EV,LT,Crossover,SUV,Electric,AWD,Automatic,5,5,Chevrolet,true,arpi_synthetic_generator
+104,VMD-00104,2025,Chevrolet,Tahoe,LS,SUV,SUV,Gasoline,4WD,Automatic,5,8,Chevrolet,true,arpi_synthetic_generator
+105,VMD-00105,2025,Chevrolet,Tahoe,LT,SUV,SUV,Gasoline,4WD,Automatic,5,8,Chevrolet,true,arpi_synthetic_generator
+106,VMD-00106,2025,Subaru,Ascent,Onyx Edition,Crossover,SUV,Gasoline,AWD,CVT,5,7,Subaru,true,arpi_synthetic_generator
+107,VMD-00107,2025,Subaru,Ascent,Touring,Crossover,SUV,Gasoline,AWD,CVT,5,7,Subaru,true,arpi_synthetic_generator
+108,VMD-00108,2025,Subaru,Forester,Base,Crossover,SUV,Gasoline,AWD,CVT,5,5,Subaru,true,arpi_synthetic_generator
+109,VMD-00109,2025,Subaru,Impreza,Base,Hatchback,Compact,Gasoline,AWD,CVT,5,5,Subaru,true,arpi_synthetic_generator
+110,VMD-00110,2025,Subaru,Impreza,Sport,Hatchback,Compact,Gasoline,AWD,CVT,5,5,Subaru,true,arpi_synthetic_generator
+111,VMD-00111,2026,Chevrolet,Blazer,2LT,Crossover,SUV,Gasoline,FWD,Automatic,5,5,Chevrolet,true,arpi_synthetic_generator
+112,VMD-00112,2026,Chevrolet,Blazer EV,LT,Crossover,SUV,Electric,AWD,Automatic,5,5,Chevrolet,true,arpi_synthetic_generator
+113,VMD-00113,2026,Chevrolet,Colorado,WT,Pickup,Truck,Gasoline,4WD,Automatic,4,5,Chevrolet,true,arpi_synthetic_generator
+114,VMD-00114,2026,Chevrolet,Colorado,Z71,Pickup,Truck,Gasoline,4WD,Automatic,4,5,Chevrolet,true,arpi_synthetic_generator
+115,VMD-00115,2026,Chevrolet,Silverado 1500,WT,Pickup,Truck,Gasoline,4WD,Automatic,4,6,Chevrolet,true,arpi_synthetic_generator
+116,VMD-00116,2026,Chevrolet,Silverado EV,RST,Pickup,Truck,Electric,4WD,Automatic,4,5,Chevrolet,true,arpi_synthetic_generator
+117,VMD-00117,2026,Chevrolet,Traverse,High Country,Crossover,SUV,Gasoline,AWD,Automatic,5,7,Chevrolet,true,arpi_synthetic_generator
+118,VMD-00118,2026,Subaru,Ascent,Base,Crossover,SUV,Gasoline,AWD,CVT,5,8,Subaru,true,arpi_synthetic_generator
+119,VMD-00119,2026,Subaru,Ascent,Onyx Edition,Crossover,SUV,Gasoline,AWD,CVT,5,7,Subaru,true,arpi_synthetic_generator
+120,VMD-00120,2026,Subaru,Outback,Onyx Edition XT,Wagon,Midsize,Gasoline,AWD,CVT,5,5,Subaru,true,arpi_synthetic_generator

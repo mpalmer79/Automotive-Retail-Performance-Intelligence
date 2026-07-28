@@ -1,0 +1,401 @@
+vehicle_key,vehicle_id,synthetic_vin,vehicle_model_key,vehicle_model_id,condition_type,exterior_color,interior_color,odometer_reading,odometer_band,acquisition_source,source_system
+1,VEH-0000001,ARPIR691A7YMM0FZF,47,VMD-00047,Certified,Sunlit Yellow,Medium Ash Gray,51548,30k-60k,Auction,arpi_synthetic_generator
+2,VEH-0000002,ARPIXG4LN2GAFXUAS,54,VMD-00054,Used,Mosaic Black,Jet Black,39834,30k-60k,Customer Trade,arpi_synthetic_generator
+3,VEH-0000003,ARPI6W4GY22XBCTG9,50,VMD-00050,Used,Cherry Red,Saddle Tan,74137,60k-100k,Off-street Purchase,arpi_synthetic_generator
+4,VEH-0000004,ARPI78L2A01WE36VR,3,VMD-00003,Used,Silver Ice,Warm Ivory,145619,Over 100k,Lease Return,arpi_synthetic_generator
+5,VEH-0000005,ARPIYET4Y1N1WXJP2,104,VMD-00104,New,Northsky Blue,Saddle Tan,5,New,Manufacturer Allocation,arpi_synthetic_generator
+6,VEH-0000006,ARPIAVPGMFDAJAXX4,47,VMD-00047,Used,Magnetite Gray,Jet Black,54697,30k-60k,Auction,arpi_synthetic_generator
+7,VEH-0000007,ARPI0FFD4XGAPJ5AH,104,VMD-00104,New,Mosaic Black,Jet Black,28,New,Manufacturer Allocation,arpi_synthetic_generator
+8,VEH-0000008,ARPI9J3NX7HNN5C9S,19,VMD-00019,Used,Cayenne Orange,Slate Gray,63096,60k-100k,Auction,arpi_synthetic_generator
+9,VEH-0000009,ARPI70XNYAWH2Z6LV,3,VMD-00003,Used,Silver Ice,Jet Black,141132,Over 100k,Auction,arpi_synthetic_generator
+10,VEH-0000010,ARPIZCB98XJBKDZX6,106,VMD-00106,New,Summit White,Jet Black,10,New,Manufacturer Allocation,arpi_synthetic_generator
+11,VEH-0000011,ARPIYDP2AHL5D37J4,111,VMD-00111,Used,Summit White,Titanium,3279,Under 10k,Off-street Purchase,arpi_synthetic_generator
+12,VEH-0000012,ARPIZCFC5RY86X5F6,110,VMD-00110,Certified,Crystal Black Silica,Medium Ash Gray,8486,Under 10k,Lease Return,arpi_synthetic_generator
+13,VEH-0000013,ARPIPE6TJEZB8PAUU,50,VMD-00050,Used,Magnetite Gray,Warm Ivory,91415,60k-100k,Off-street Purchase,arpi_synthetic_generator
+14,VEH-0000014,ARPIYD9XY5UM9RK97,103,VMD-00103,New,Mosaic Black,Jet Black,12,New,Manufacturer Allocation,arpi_synthetic_generator
+15,VEH-0000015,ARPIL9Z9VW84GFWH9,7,VMD-00007,Used,Northsky Blue,Jet Black,109207,Over 100k,Auction,arpi_synthetic_generator
+16,VEH-0000016,ARPIGD16DGXA0XRNT,103,VMD-00103,New,Summit White,Jet Black,3,New,Manufacturer Allocation,arpi_synthetic_generator
+17,VEH-0000017,ARPI9XB823C1ZZ3CB,92,VMD-00092,Used,Autumn Green,Jet Black,37369,30k-60k,Customer Trade,arpi_synthetic_generator
+18,VEH-0000018,ARPI5B33HWMF930W8,119,VMD-00119,Used,Summit White,Warm Ivory,1743,Under 10k,Off-street Purchase,arpi_synthetic_generator
+19,VEH-0000019,ARPIJJ4G89V51JL96,29,VMD-00029,Used,Sandstone Beige,Warm Ivory,86895,60k-100k,Auction,arpi_synthetic_generator
+20,VEH-0000020,ARPITE13P509BRKAP,41,VMD-00041,Used,Summit White,Warm Ivory,92315,60k-100k,Customer Trade,arpi_synthetic_generator
+21,VEH-0000021,ARPIACD7YM72JLB38,89,VMD-00089,Used,Crystal Black Silica,Jet Black,28357,10k-30k,Auction,arpi_synthetic_generator
+22,VEH-0000022,ARPIH8WGEB8LEX4BY,5,VMD-00005,Used,Cherry Red,Jet Black,84960,60k-100k,Customer Trade,arpi_synthetic_generator
+23,VEH-0000023,ARPI5YTAVM8XUYW2Y,79,VMD-00079,Used,Ice Silver,Jet Black,41696,30k-60k,Customer Trade,arpi_synthetic_generator
+24,VEH-0000024,ARPI7PMAL9TH7T6NS,3,VMD-00003,Used,Summit White,Slate Gray,77593,60k-100k,Auction,arpi_synthetic_generator
+25,VEH-0000025,ARPIXXX487LNCAN4P,120,VMD-00120,Used,Summit White,Jet Black,13993,10k-30k,Auction,arpi_synthetic_generator
+26,VEH-0000026,ARPIN41GKDGUF9GWF,41,VMD-00041,Used,Sunlit Yellow,Medium Ash Gray,80656,60k-100k,Customer Trade,arpi_synthetic_generator
+27,VEH-0000027,ARPIA2A4SP3JU32YE,104,VMD-00104,Used,Summit White,Medium Ash Gray,17039,10k-30k,Lease Return,arpi_synthetic_generator
+28,VEH-0000028,ARPIG5D31679KJNKF,107,VMD-00107,Used,Summit White,Jet Black,4905,Under 10k,Dealer Trade,arpi_synthetic_generator
+29,VEH-0000029,ARPIKNKW0KU8P1YJN,55,VMD-00055,Used,Magnetite Gray,Slate Gray,33858,30k-60k,Off-street Purchase,arpi_synthetic_generator
+30,VEH-0000030,ARPIHEKGG66HEJKWG,119,VMD-00119,Used,Sunlit Yellow,Medium Ash Gray,11684,10k-30k,Auction,arpi_synthetic_generator
+31,VEH-0000031,ARPICB3FC4U255NHK,119,VMD-00119,Used,Summit White,Titanium,6211,Under 10k,Customer Trade,arpi_synthetic_generator
+32,VEH-0000032,ARPIUS21RRFU7LH7C,103,VMD-00103,Used,Silver Ice,Warm Ivory,18122,10k-30k,Customer Trade,arpi_synthetic_generator
+33,VEH-0000033,ARPIRAGX4Y2PXV8TB,86,VMD-00086,Used,Silver Ice,Warm Ivory,26440,10k-30k,Customer Trade,arpi_synthetic_generator
+34,VEH-0000034,ARPI7KEZF1C9TBXZF,104,VMD-00104,New,Autumn Green,Jet Black,8,New,Manufacturer Allocation,arpi_synthetic_generator
+35,VEH-0000035,ARPIE334RUHPRS6PW,89,VMD-00089,New,Mosaic Black,Medium Ash Gray,29,New,Manufacturer Allocation,arpi_synthetic_generator
+36,VEH-0000036,ARPIAMY255DPKV5D3,43,VMD-00043,Used,Summit White,Jet Black,95819,60k-100k,Customer Trade,arpi_synthetic_generator
+37,VEH-0000037,ARPI0MLU2FWL38Y5G,38,VMD-00038,Used,Summit White,Warm Ivory,47705,30k-60k,Customer Trade,arpi_synthetic_generator
+38,VEH-0000038,ARPIAN5DBRSRPD9M3,64,VMD-00064,Used,Mosaic Black,Warm Ivory,65803,60k-100k,Auction,arpi_synthetic_generator
+39,VEH-0000039,ARPIRC18E3L1KLZ1C,36,VMD-00036,Certified,Summit White,Medium Ash Gray,74936,60k-100k,Customer Trade,arpi_synthetic_generator
+40,VEH-0000040,ARPIL9SR1FUU9CCZP,74,VMD-00074,Used,Summit White,Jet Black,66792,60k-100k,Off-street Purchase,arpi_synthetic_generator
+41,VEH-0000041,ARPISN97ZAKRZ0VEM,120,VMD-00120,New,Ice Silver,Jet Black,15,New,Manufacturer Allocation,arpi_synthetic_generator
+42,VEH-0000042,ARPI2TPAKNLGFCXUW,109,VMD-00109,New,Magnetite Gray,Warm Ivory,16,New,Manufacturer Allocation,arpi_synthetic_generator
+43,VEH-0000043,ARPI4D6ECPH4TNMN9,18,VMD-00018,Used,Summit White,Jet Black,50629,30k-60k,Auction,arpi_synthetic_generator
+44,VEH-0000044,ARPI1481B211WEC1C,39,VMD-00039,Used,Sunlit Yellow,Jet Black,90817,60k-100k,Auction,arpi_synthetic_generator
+45,VEH-0000045,ARPIHYA3XYWTC69SP,98,VMD-00098,Used,Mosaic Black,Saddle Tan,19300,10k-30k,Customer Trade,arpi_synthetic_generator
+46,VEH-0000046,ARPIEFCW64ENGYD0E,33,VMD-00033,Used,Northsky Blue,Saddle Tan,80999,60k-100k,Customer Trade,arpi_synthetic_generator
+47,VEH-0000047,ARPI9UR1H8ZP25ZCS,112,VMD-00112,New,Summit White,Saddle Tan,16,New,Manufacturer Allocation,arpi_synthetic_generator
+48,VEH-0000048,ARPIB2RXMAAE4BV30,100,VMD-00100,New,Magnetite Gray,Jet Black,10,New,Manufacturer Allocation,arpi_synthetic_generator
+49,VEH-0000049,ARPI64J88648BNT8S,109,VMD-00109,New,Northsky Blue,Saddle Tan,31,New,Manufacturer Allocation,arpi_synthetic_generator
+50,VEH-0000050,ARPI91093X4C4WWV8,119,VMD-00119,New,Sunlit Yellow,Medium Ash Gray,16,New,Manufacturer Allocation,arpi_synthetic_generator
+51,VEH-0000051,ARPI0X72YYWFFE3S3,113,VMD-00113,New,Cayenne Orange,Slate Gray,25,New,Manufacturer Allocation,arpi_synthetic_generator
+52,VEH-0000052,ARPIA2TPDG225WH6A,104,VMD-00104,New,Silver Ice,Jet Black,14,New,Manufacturer Allocation,arpi_synthetic_generator
+53,VEH-0000053,ARPIVGAFDD5NTYJT5,77,VMD-00077,Certified,Sandstone Beige,Saddle Tan,47134,30k-60k,Lease Return,arpi_synthetic_generator
+54,VEH-0000054,ARPIKBNWB24GFAS92,68,VMD-00068,Used,Autumn Green,Jet Black,32028,30k-60k,Customer Trade,arpi_synthetic_generator
+55,VEH-0000055,ARPIMEUY16USTFCFT,8,VMD-00008,Used,Mosaic Black,Jet Black,162722,Over 100k,Customer Trade,arpi_synthetic_generator
+56,VEH-0000056,ARPI3UB6T8XUPCE4T,108,VMD-00108,Certified,Crystal Black Silica,Jet Black,12038,10k-30k,Lease Return,arpi_synthetic_generator
+57,VEH-0000057,ARPIGPZXLE5GET911,90,VMD-00090,Certified,Ice Silver,Jet Black,21660,10k-30k,Customer Trade,arpi_synthetic_generator
+58,VEH-0000058,ARPITSNR17MA55B3K,5,VMD-00005,Used,Cayenne Orange,Slate Gray,119131,Over 100k,Customer Trade,arpi_synthetic_generator
+59,VEH-0000059,ARPIUL5H0DXNE2ZH7,113,VMD-00113,New,Silver Ice,Jet Black,38,New,Manufacturer Allocation,arpi_synthetic_generator
+60,VEH-0000060,ARPIFAR8JG17MSUAS,111,VMD-00111,Used,Sunlit Yellow,Jet Black,5537,Under 10k,Customer Trade,arpi_synthetic_generator
+61,VEH-0000061,ARPIN276AMULRJJDC,75,VMD-00075,Certified,Mosaic Black,Medium Ash Gray,32809,30k-60k,Customer Trade,arpi_synthetic_generator
+62,VEH-0000062,ARPIJ5XKBX1FVV1N1,104,VMD-00104,New,Mosaic Black,Saddle Tan,23,New,Manufacturer Allocation,arpi_synthetic_generator
+63,VEH-0000063,ARPITB9XP2CWD5L8T,50,VMD-00050,Certified,Sandstone Beige,Slate Gray,59612,30k-60k,Lease Return,arpi_synthetic_generator
+64,VEH-0000064,ARPIG4J3ERM46SNW7,100,VMD-00100,Certified,Summit White,Jet Black,24557,10k-30k,Customer Trade,arpi_synthetic_generator
+65,VEH-0000065,ARPIL2HJP6M1F525C,103,VMD-00103,New,Mosaic Black,Jet Black,9,New,Manufacturer Allocation,arpi_synthetic_generator
+66,VEH-0000066,ARPISRNBTUCXF7U4M,19,VMD-00019,Used,Northsky Blue,Slate Gray,84891,60k-100k,Customer Trade,arpi_synthetic_generator
+67,VEH-0000067,ARPIK4TH3C5GJ1ECL,112,VMD-00112,New,Mosaic Black,Slate Gray,28,New,Manufacturer Allocation,arpi_synthetic_generator
+68,VEH-0000068,ARPIWR9XSTBXVSZ71,113,VMD-00113,New,Northsky Blue,Jet Black,6,New,Manufacturer Allocation,arpi_synthetic_generator
+69,VEH-0000069,ARPIRWYET78SVESXW,101,VMD-00101,New,Cherry Red,Jet Black,20,New,Manufacturer Allocation,arpi_synthetic_generator
+70,VEH-0000070,ARPIF2ZBY64D6PJAW,29,VMD-00029,Used,Magnetite Gray,Jet Black,106802,Over 100k,Off-street Purchase,arpi_synthetic_generator
+71,VEH-0000071,ARPIS48UGXD4AWVSH,88,VMD-00088,Used,Summit White,Slate Gray,24350,10k-30k,Customer Trade,arpi_synthetic_generator
+72,VEH-0000072,ARPIUS7YA91M5CHHP,34,VMD-00034,Used,Silver Ice,Jet Black,74333,60k-100k,Customer Trade,arpi_synthetic_generator
+73,VEH-0000073,ARPIBYBSKN22EPL0Z,103,VMD-00103,Certified,Silver Ice,Slate Gray,10367,10k-30k,Lease Return,arpi_synthetic_generator
+74,VEH-0000074,ARPIZ00LWKM8TXR17,23,VMD-00023,Used,Mosaic Black,Jet Black,51583,30k-60k,Dealer Trade,arpi_synthetic_generator
+75,VEH-0000075,ARPIA081J1EM5W7JU,34,VMD-00034,Used,Mosaic Black,Saddle Tan,70401,60k-100k,Lease Return,arpi_synthetic_generator
+76,VEH-0000076,ARPIMWKEXZSXA5VER,109,VMD-00109,New,Summit White,Slate Gray,44,New,Manufacturer Allocation,arpi_synthetic_generator
+77,VEH-0000077,ARPIXV3UDTN1FPJGC,5,VMD-00005,Used,Magnetite Gray,Medium Ash Gray,73952,60k-100k,Customer Trade,arpi_synthetic_generator
+78,VEH-0000078,ARPIFGKFBKBZL0HFX,61,VMD-00061,Certified,Summit White,Warm Ivory,30716,30k-60k,Lease Return,arpi_synthetic_generator
+79,VEH-0000079,ARPIAP4RVDZMRFYMT,55,VMD-00055,Used,Mosaic Black,Slate Gray,42972,30k-60k,Dealer Trade,arpi_synthetic_generator
+80,VEH-0000080,ARPIR4138H5ZJ5Z0E,112,VMD-00112,New,Magnetite Gray,Titanium,18,New,Manufacturer Allocation,arpi_synthetic_generator
+81,VEH-0000081,ARPIX6C69ZC8RVXCK,20,VMD-00020,Used,Cherry Red,Slate Gray,91055,60k-100k,Off-street Purchase,arpi_synthetic_generator
+82,VEH-0000082,ARPICNDU9GDUGCL9U,97,VMD-00097,Used,Crystal Black Silica,Warm Ivory,22825,10k-30k,Customer Trade,arpi_synthetic_generator
+83,VEH-0000083,ARPI0WG3AMYGC7C07,2,VMD-00002,Used,Magnetite Gray,Saddle Tan,150226,Over 100k,Dealer Trade,arpi_synthetic_generator
+84,VEH-0000084,ARPID57MA145VAHGG,109,VMD-00109,New,Crystal Black Silica,Warm Ivory,50,New,Manufacturer Allocation,arpi_synthetic_generator
+85,VEH-0000085,ARPIWEEJAUCTX88DR,69,VMD-00069,Used,Sunlit Yellow,Jet Black,62161,60k-100k,Customer Trade,arpi_synthetic_generator
+86,VEH-0000086,ARPIZGWEA8JWGUVUU,46,VMD-00046,Used,Cherry Red,Slate Gray,72206,60k-100k,Auction,arpi_synthetic_generator
+87,VEH-0000087,ARPI6FKGXDUPUM02P,84,VMD-00084,Certified,Northsky Blue,Jet Black,35588,30k-60k,Lease Return,arpi_synthetic_generator
+88,VEH-0000088,ARPI72H7MR0EAX6JG,56,VMD-00056,Used,Summit White,Saddle Tan,61359,60k-100k,Off-street Purchase,arpi_synthetic_generator
+89,VEH-0000089,ARPITU4N19NX92121,115,VMD-00115,New,Crystal Black Silica,Jet Black,37,New,Manufacturer Allocation,arpi_synthetic_generator
+90,VEH-0000090,ARPIEB9ULD5VZENSU,117,VMD-00117,New,Mosaic Black,Warm Ivory,34,New,Manufacturer Allocation,arpi_synthetic_generator
+91,VEH-0000091,ARPIMVMFLSJG4W2J9,117,VMD-00117,New,Crystal Black Silica,Titanium,43,New,Manufacturer Allocation,arpi_synthetic_generator
+92,VEH-0000092,ARPIYUU3XC1VHEL08,41,VMD-00041,Used,Cherry Red,Jet Black,101487,Over 100k,Customer Trade,arpi_synthetic_generator
+93,VEH-0000093,ARPIMSNTRN2TNZHE1,75,VMD-00075,Certified,Cayenne Orange,Jet Black,41053,30k-60k,Lease Return,arpi_synthetic_generator
+94,VEH-0000094,ARPIMWJH2E9FB70FS,111,VMD-00111,New,Silver Ice,Slate Gray,9,New,Manufacturer Allocation,arpi_synthetic_generator
+95,VEH-0000095,ARPI0WAFSJV7N7DYP,116,VMD-00116,Used,Silver Ice,Jet Black,8967,Under 10k,Auction,arpi_synthetic_generator
+96,VEH-0000096,ARPIBRZGM8YFR3N2P,83,VMD-00083,Used,Crystal Black Silica,Medium Ash Gray,34383,30k-60k,Off-street Purchase,arpi_synthetic_generator
+97,VEH-0000097,ARPISSXYHK27FK4EL,39,VMD-00039,Used,Sandstone Beige,Slate Gray,92570,60k-100k,Customer Trade,arpi_synthetic_generator
+98,VEH-0000098,ARPI3P6D34AYVWDY0,118,VMD-00118,New,Crystal Black Silica,Warm Ivory,15,New,Manufacturer Allocation,arpi_synthetic_generator
+99,VEH-0000099,ARPIEUH5VZHDKMLX3,61,VMD-00061,Used,Silver Ice,Slate Gray,54319,30k-60k,Customer Trade,arpi_synthetic_generator
+100,VEH-0000100,ARPI2ZMRFW74UJMMN,108,VMD-00108,New,Magnetite Gray,Warm Ivory,38,New,Manufacturer Allocation,arpi_synthetic_generator
+101,VEH-0000101,ARPIST7HV13Z5GPN1,89,VMD-00089,New,Sunlit Yellow,Slate Gray,37,New,Manufacturer Allocation,arpi_synthetic_generator
+102,VEH-0000102,ARPISYVPL72765VGS,101,VMD-00101,Used,Silver Ice,Slate Gray,33311,30k-60k,Auction,arpi_synthetic_generator
+103,VEH-0000103,ARPICA8LJMKHE46RS,27,VMD-00027,Used,Silver Ice,Medium Ash Gray,50205,30k-60k,Customer Trade,arpi_synthetic_generator
+104,VEH-0000104,ARPIZXZZ9BPDSHXGW,119,VMD-00119,New,Mosaic Black,Warm Ivory,43,New,Manufacturer Allocation,arpi_synthetic_generator
+105,VEH-0000105,ARPIKY6B2FPZF44F6,103,VMD-00103,Used,Magnetite Gray,Jet Black,19466,10k-30k,Customer Trade,arpi_synthetic_generator
+106,VEH-0000106,ARPI36XM5TBB9CDLJ,103,VMD-00103,Used,Sandstone Beige,Jet Black,10417,10k-30k,Customer Trade,arpi_synthetic_generator
+107,VEH-0000107,ARPI3N0LF3S6PBX91,120,VMD-00120,New,Ice Silver,Jet Black,8,New,Manufacturer Allocation,arpi_synthetic_generator
+108,VEH-0000108,ARPIR4N5SGJ4K3WA9,113,VMD-00113,New,Autumn Green,Medium Ash Gray,33,New,Manufacturer Allocation,arpi_synthetic_generator
+109,VEH-0000109,ARPIK4X0PR9L1444B,14,VMD-00014,Used,Sandstone Beige,Saddle Tan,62477,60k-100k,Dealer Trade,arpi_synthetic_generator
+110,VEH-0000110,ARPILV6VXZX1JGSBU,56,VMD-00056,Used,Mosaic Black,Medium Ash Gray,90782,60k-100k,Auction,arpi_synthetic_generator
+111,VEH-0000111,ARPI7U92N2N4157VV,103,VMD-00103,New,Cayenne Orange,Jet Black,41,New,Manufacturer Allocation,arpi_synthetic_generator
+112,VEH-0000112,ARPI13Z7N5TSXDN23,90,VMD-00090,New,Crystal Black Silica,Warm Ivory,20,New,Manufacturer Allocation,arpi_synthetic_generator
+113,VEH-0000113,ARPIP062WJX5KF6NG,114,VMD-00114,New,Summit White,Jet Black,39,New,Manufacturer Allocation,arpi_synthetic_generator
+114,VEH-0000114,ARPIG1T3YFX0GBYEP,14,VMD-00014,Used,Silver Ice,Medium Ash Gray,101675,Over 100k,Auction,arpi_synthetic_generator
+115,VEH-0000115,ARPIUA2UHWXK06AHE,111,VMD-00111,Used,Sandstone Beige,Slate Gray,11633,10k-30k,Customer Trade,arpi_synthetic_generator
+116,VEH-0000116,ARPIKGS4AYLGWEMHS,111,VMD-00111,New,Mosaic Black,Titanium,13,New,Manufacturer Allocation,arpi_synthetic_generator
+117,VEH-0000117,ARPI0HB54623E810J,47,VMD-00047,Certified,Summit White,Warm Ivory,51042,30k-60k,Lease Return,arpi_synthetic_generator
+118,VEH-0000118,ARPIFE3S1S1HZDZ0W,104,VMD-00104,New,Mosaic Black,Saddle Tan,31,New,Manufacturer Allocation,arpi_synthetic_generator
+119,VEH-0000119,ARPI5XCECW4RGM4VU,106,VMD-00106,New,Silver Ice,Medium Ash Gray,6,New,Manufacturer Allocation,arpi_synthetic_generator
+120,VEH-0000120,ARPI8MNZRCT887B9H,105,VMD-00105,New,Crystal Black Silica,Jet Black,18,New,Manufacturer Allocation,arpi_synthetic_generator
+121,VEH-0000121,ARPI1C5875VV46BA9,104,VMD-00104,New,Magnetite Gray,Jet Black,5,New,Manufacturer Allocation,arpi_synthetic_generator
+122,VEH-0000122,ARPIGR0B5A2U6ZK5E,89,VMD-00089,Used,Silver Ice,Medium Ash Gray,30184,30k-60k,Dealer Trade,arpi_synthetic_generator
+123,VEH-0000123,ARPIVZH3YZBCSU9FR,28,VMD-00028,Used,Northsky Blue,Jet Black,75489,60k-100k,Auction,arpi_synthetic_generator
+124,VEH-0000124,ARPIMH6HE26PWFAMJ,53,VMD-00053,Used,Summit White,Medium Ash Gray,53558,30k-60k,Auction,arpi_synthetic_generator
+125,VEH-0000125,ARPIRUK57KRG5HVNG,113,VMD-00113,New,Summit White,Warm Ivory,31,New,Manufacturer Allocation,arpi_synthetic_generator
+126,VEH-0000126,ARPI0TL9HKJ4U6J9C,32,VMD-00032,Used,Crystal Black Silica,Warm Ivory,124693,Over 100k,Customer Trade,arpi_synthetic_generator
+127,VEH-0000127,ARPICSTGVEUV1Z5GG,38,VMD-00038,Used,Mosaic Black,Saddle Tan,89045,60k-100k,Dealer Trade,arpi_synthetic_generator
+128,VEH-0000128,ARPIXVVMNHC9YVW3L,112,VMD-00112,New,Autumn Green,Medium Ash Gray,49,New,Manufacturer Allocation,arpi_synthetic_generator
+129,VEH-0000129,ARPI47ZYSE8SXMYLS,116,VMD-00116,Used,Mosaic Black,Jet Black,13343,10k-30k,Off-street Purchase,arpi_synthetic_generator
+130,VEH-0000130,ARPIEEBU0RG2C5RC1,101,VMD-00101,New,Mosaic Black,Slate Gray,49,New,Manufacturer Allocation,arpi_synthetic_generator
+131,VEH-0000131,ARPIU5R0NA4HZMHZX,109,VMD-00109,New,Summit White,Medium Ash Gray,38,New,Manufacturer Allocation,arpi_synthetic_generator
+132,VEH-0000132,ARPIE2J3K0WJCZY82,23,VMD-00023,Used,Crystal Black Silica,Medium Ash Gray,113788,Over 100k,Off-street Purchase,arpi_synthetic_generator
+133,VEH-0000133,ARPI56NW67PU7M4TV,106,VMD-00106,New,Cayenne Orange,Medium Ash Gray,46,New,Manufacturer Allocation,arpi_synthetic_generator
+134,VEH-0000134,ARPIZ1Y5H4JEEYLYT,20,VMD-00020,Used,Magnetite Gray,Warm Ivory,91175,60k-100k,Customer Trade,arpi_synthetic_generator
+135,VEH-0000135,ARPILR94GX3LW6V1E,56,VMD-00056,Used,Summit White,Slate Gray,36439,30k-60k,Auction,arpi_synthetic_generator
+136,VEH-0000136,ARPIDYC7UZPL98WAV,40,VMD-00040,Used,Sandstone Beige,Warm Ivory,82164,60k-100k,Lease Return,arpi_synthetic_generator
+137,VEH-0000137,ARPIC0ADPUDZLVMDG,101,VMD-00101,Used,Summit White,Medium Ash Gray,21610,10k-30k,Customer Trade,arpi_synthetic_generator
+138,VEH-0000138,ARPI1J57DPP428H6T,49,VMD-00049,Used,Magnetite Gray,Medium Ash Gray,33370,30k-60k,Lease Return,arpi_synthetic_generator
+139,VEH-0000139,ARPI5F4WEBY35KB8R,85,VMD-00085,Used,Magnetite Gray,Slate Gray,23796,10k-30k,Customer Trade,arpi_synthetic_generator
+140,VEH-0000140,ARPIYE0H7618323MV,95,VMD-00095,Used,Summit White,Medium Ash Gray,21084,10k-30k,Auction,arpi_synthetic_generator
+141,VEH-0000141,ARPINMTWAG1J5MX0E,47,VMD-00047,Certified,Autumn Green,Medium Ash Gray,62211,60k-100k,Customer Trade,arpi_synthetic_generator
+142,VEH-0000142,ARPIYH2ATB3JTMY8P,106,VMD-00106,New,Northsky Blue,Slate Gray,16,New,Manufacturer Allocation,arpi_synthetic_generator
+143,VEH-0000143,ARPIBHVKHGL8RT2L2,110,VMD-00110,Used,Cayenne Orange,Jet Black,8544,Under 10k,Dealer Trade,arpi_synthetic_generator
+144,VEH-0000144,ARPIUKN8L29C6XWR8,69,VMD-00069,Used,Sunlit Yellow,Medium Ash Gray,36996,30k-60k,Customer Trade,arpi_synthetic_generator
+145,VEH-0000145,ARPITN8M8XKACM1AT,18,VMD-00018,Used,Ice Silver,Warm Ivory,100454,Over 100k,Customer Trade,arpi_synthetic_generator
+146,VEH-0000146,ARPIS8URAS5WDAU6H,119,VMD-00119,New,Cherry Red,Saddle Tan,9,New,Manufacturer Allocation,arpi_synthetic_generator
+147,VEH-0000147,ARPIZZN730S1322K8,103,VMD-00103,Used,Silver Ice,Jet Black,18040,10k-30k,Auction,arpi_synthetic_generator
+148,VEH-0000148,ARPIXSSN1HUEKJG2D,92,VMD-00092,Used,Cherry Red,Slate Gray,28922,10k-30k,Auction,arpi_synthetic_generator
+149,VEH-0000149,ARPIB22ZJZU9J2912,120,VMD-00120,Used,Ice Silver,Jet Black,11168,10k-30k,Lease Return,arpi_synthetic_generator
+150,VEH-0000150,ARPIVYLB5AFZHS545,118,VMD-00118,New,Summit White,Warm Ivory,26,New,Manufacturer Allocation,arpi_synthetic_generator
+151,VEH-0000151,ARPIGGGF2NEGD92HM,62,VMD-00062,Certified,Summit White,Slate Gray,41332,30k-60k,Lease Return,arpi_synthetic_generator
+152,VEH-0000152,ARPITNWYEMEF73CP8,120,VMD-00120,New,Mosaic Black,Titanium,8,New,Manufacturer Allocation,arpi_synthetic_generator
+153,VEH-0000153,ARPIPU7DDU6TFZ8EC,100,VMD-00100,New,Sandstone Beige,Jet Black,47,New,Manufacturer Allocation,arpi_synthetic_generator
+154,VEH-0000154,ARPI05YEPZ19XE25L,36,VMD-00036,Used,Northsky Blue,Slate Gray,43768,30k-60k,Lease Return,arpi_synthetic_generator
+155,VEH-0000155,ARPIXS7JJAUYUDC2S,119,VMD-00119,New,Crystal Black Silica,Medium Ash Gray,17,New,Manufacturer Allocation,arpi_synthetic_generator
+156,VEH-0000156,ARPI798S8YDSE05R7,119,VMD-00119,New,Northsky Blue,Medium Ash Gray,39,New,Manufacturer Allocation,arpi_synthetic_generator
+157,VEH-0000157,ARPI7Y0U4HRUYFAY3,21,VMD-00021,Used,Silver Ice,Medium Ash Gray,118638,Over 100k,Auction,arpi_synthetic_generator
+158,VEH-0000158,ARPIHF6RX25TW0S8C,103,VMD-00103,Used,Northsky Blue,Medium Ash Gray,14065,10k-30k,Customer Trade,arpi_synthetic_generator
+159,VEH-0000159,ARPI0F2XKPE3LYPVF,110,VMD-00110,New,Summit White,Slate Gray,12,New,Manufacturer Allocation,arpi_synthetic_generator
+160,VEH-0000160,ARPIAXPBHZDVUD4EP,88,VMD-00088,Used,Sandstone Beige,Medium Ash Gray,33780,30k-60k,Auction,arpi_synthetic_generator
+161,VEH-0000161,ARPIL0D284YSWCN61,104,VMD-00104,Used,Autumn Green,Slate Gray,12653,10k-30k,Auction,arpi_synthetic_generator
+162,VEH-0000162,ARPIUXB8RK268K1LD,50,VMD-00050,Used,Summit White,Jet Black,58952,30k-60k,Auction,arpi_synthetic_generator
+163,VEH-0000163,ARPIW4D6AW3YBEJUC,97,VMD-00097,Used,Sunlit Yellow,Titanium,24414,10k-30k,Dealer Trade,arpi_synthetic_generator
+164,VEH-0000164,ARPI5W2WCBGKU4VHH,78,VMD-00078,Used,Autumn Green,Medium Ash Gray,53062,30k-60k,Customer Trade,arpi_synthetic_generator
+165,VEH-0000165,ARPI9SF865SD51C4K,5,VMD-00005,Used,Northsky Blue,Medium Ash Gray,165062,Over 100k,Customer Trade,arpi_synthetic_generator
+166,VEH-0000166,ARPIUCVFH5WRMM442,14,VMD-00014,Used,Mosaic Black,Jet Black,117606,Over 100k,Off-street Purchase,arpi_synthetic_generator
+167,VEH-0000167,ARPI48U6Z066YLR7D,65,VMD-00065,Used,Autumn Green,Saddle Tan,30353,30k-60k,Customer Trade,arpi_synthetic_generator
+168,VEH-0000168,ARPI877WTZ31RP8YK,103,VMD-00103,New,Autumn Green,Medium Ash Gray,6,New,Manufacturer Allocation,arpi_synthetic_generator
+169,VEH-0000169,ARPI0F51193DFBWVB,104,VMD-00104,Certified,Autumn Green,Warm Ivory,6012,Under 10k,Lease Return,arpi_synthetic_generator
+170,VEH-0000170,ARPI6FD6ME57ZPR2D,19,VMD-00019,Used,Silver Ice,Jet Black,53909,30k-60k,Customer Trade,arpi_synthetic_generator
+171,VEH-0000171,ARPIRL1C0BGKGK75E,103,VMD-00103,New,Autumn Green,Jet Black,28,New,Manufacturer Allocation,arpi_synthetic_generator
+172,VEH-0000172,ARPIUAW45GEYDZPK5,40,VMD-00040,Used,Silver Ice,Slate Gray,102643,Over 100k,Lease Return,arpi_synthetic_generator
+173,VEH-0000173,ARPI6RPDB47S5AYNE,119,VMD-00119,New,Ice Silver,Jet Black,44,New,Manufacturer Allocation,arpi_synthetic_generator
+174,VEH-0000174,ARPIVYTCGUJM89V8H,104,VMD-00104,Used,Summit White,Medium Ash Gray,10991,10k-30k,Customer Trade,arpi_synthetic_generator
+175,VEH-0000175,ARPIUREU4EE8CDK33,53,VMD-00053,Used,Summit White,Jet Black,75853,60k-100k,Auction,arpi_synthetic_generator
+176,VEH-0000176,ARPILWAX288V9XVD8,110,VMD-00110,Certified,Mosaic Black,Slate Gray,9791,Under 10k,Auction,arpi_synthetic_generator
+177,VEH-0000177,ARPIT3TRRK5U04MG8,90,VMD-00090,New,Cherry Red,Slate Gray,44,New,Manufacturer Allocation,arpi_synthetic_generator
+178,VEH-0000178,ARPI71XX64K7ECCPK,108,VMD-00108,New,Sunlit Yellow,Jet Black,34,New,Manufacturer Allocation,arpi_synthetic_generator
+179,VEH-0000179,ARPISD43DAYY8K233,1,VMD-00001,Used,Crystal Black Silica,Jet Black,163212,Over 100k,Customer Trade,arpi_synthetic_generator
+180,VEH-0000180,ARPITJBJ3VLWVZK2X,53,VMD-00053,Used,Mosaic Black,Medium Ash Gray,45264,30k-60k,Off-street Purchase,arpi_synthetic_generator
+181,VEH-0000181,ARPIYUV8TVJKUBGYT,53,VMD-00053,Used,Summit White,Jet Black,86147,60k-100k,Customer Trade,arpi_synthetic_generator
+182,VEH-0000182,ARPI2H7EM9D9LCKD8,92,VMD-00092,Used,Magnetite Gray,Titanium,26160,10k-30k,Lease Return,arpi_synthetic_generator
+183,VEH-0000183,ARPIC60K5M4YYD04Z,32,VMD-00032,Used,Summit White,Medium Ash Gray,45471,30k-60k,Customer Trade,arpi_synthetic_generator
+184,VEH-0000184,ARPI643H6V7YJDXHP,109,VMD-00109,Used,Cherry Red,Medium Ash Gray,14037,10k-30k,Lease Return,arpi_synthetic_generator
+185,VEH-0000185,ARPILSCZ1FRL9VJU1,23,VMD-00023,Certified,Sunlit Yellow,Medium Ash Gray,80000,60k-100k,Lease Return,arpi_synthetic_generator
+186,VEH-0000186,ARPIJ5Y7KSD2532DA,110,VMD-00110,New,Summit White,Slate Gray,35,New,Manufacturer Allocation,arpi_synthetic_generator
+187,VEH-0000187,ARPIB2P2YVXJ7FRXU,120,VMD-00120,New,Cayenne Orange,Jet Black,7,New,Manufacturer Allocation,arpi_synthetic_generator
+188,VEH-0000188,ARPIKY830VL1LMEZ9,47,VMD-00047,Used,Mosaic Black,Slate Gray,75687,60k-100k,Customer Trade,arpi_synthetic_generator
+189,VEH-0000189,ARPIKXE4ZU56VGKNY,103,VMD-00103,New,Mosaic Black,Slate Gray,7,New,Manufacturer Allocation,arpi_synthetic_generator
+190,VEH-0000190,ARPI4B8CA4FBTD04H,5,VMD-00005,Used,Magnetite Gray,Warm Ivory,66848,60k-100k,Lease Return,arpi_synthetic_generator
+191,VEH-0000191,ARPI7283GR8V6VFV9,116,VMD-00116,New,Cherry Red,Saddle Tan,47,New,Manufacturer Allocation,arpi_synthetic_generator
+192,VEH-0000192,ARPI2FNDLZ9X15DKV,92,VMD-00092,Used,Summit White,Jet Black,28346,10k-30k,Customer Trade,arpi_synthetic_generator
+193,VEH-0000193,ARPI7T4W7TET9YEWK,120,VMD-00120,New,Summit White,Warm Ivory,5,New,Manufacturer Allocation,arpi_synthetic_generator
+194,VEH-0000194,ARPI7VZ935PLTUK1E,113,VMD-00113,Used,Crystal Black Silica,Slate Gray,6139,Under 10k,Auction,arpi_synthetic_generator
+195,VEH-0000195,ARPI6KJES5KDAW74F,87,VMD-00087,Used,Magnetite Gray,Slate Gray,35971,30k-60k,Auction,arpi_synthetic_generator
+196,VEH-0000196,ARPIZRX8BVK02BK4V,76,VMD-00076,Certified,Mosaic Black,Medium Ash Gray,34397,30k-60k,Customer Trade,arpi_synthetic_generator
+197,VEH-0000197,ARPI9U33EZ66KCCN9,45,VMD-00045,Used,Silver Ice,Warm Ivory,104391,Over 100k,Off-street Purchase,arpi_synthetic_generator
+198,VEH-0000198,ARPIRYPLSNLMSVC6K,110,VMD-00110,Used,Mosaic Black,Medium Ash Gray,16262,10k-30k,Off-street Purchase,arpi_synthetic_generator
+199,VEH-0000199,ARPI2A2WEFCCW45E1,118,VMD-00118,New,Northsky Blue,Warm Ivory,5,New,Manufacturer Allocation,arpi_synthetic_generator
+200,VEH-0000200,ARPI25WYNKSG2DXAG,10,VMD-00010,Used,Sunlit Yellow,Jet Black,56776,30k-60k,Customer Trade,arpi_synthetic_generator
+201,VEH-0000201,ARPIGA5JW28BNBF5T,83,VMD-00083,Used,Mosaic Black,Titanium,38957,30k-60k,Auction,arpi_synthetic_generator
+202,VEH-0000202,ARPIE9Z6D9UXC5DRM,77,VMD-00077,Certified,Mosaic Black,Saddle Tan,49669,30k-60k,Lease Return,arpi_synthetic_generator
+203,VEH-0000203,ARPIC3DZBH28KNG9L,113,VMD-00113,New,Magnetite Gray,Warm Ivory,36,New,Manufacturer Allocation,arpi_synthetic_generator
+204,VEH-0000204,ARPISFY60RC7SZJX6,50,VMD-00050,Certified,Magnetite Gray,Warm Ivory,56555,30k-60k,Customer Trade,arpi_synthetic_generator
+205,VEH-0000205,ARPILFYHWJ5UT478D,73,VMD-00073,Used,Cherry Red,Medium Ash Gray,57203,30k-60k,Lease Return,arpi_synthetic_generator
+206,VEH-0000206,ARPIKHEYHW32RXRZ0,119,VMD-00119,New,Mosaic Black,Saddle Tan,31,New,Manufacturer Allocation,arpi_synthetic_generator
+207,VEH-0000207,ARPI8RV6LV9HS44SF,104,VMD-00104,Certified,Summit White,Slate Gray,10958,10k-30k,Customer Trade,arpi_synthetic_generator
+208,VEH-0000208,ARPIYWYE0BF6X51Y1,31,VMD-00031,Used,Crystal Black Silica,Jet Black,106570,Over 100k,Auction,arpi_synthetic_generator
+209,VEH-0000209,ARPIK9MNMDF9EUHHC,46,VMD-00046,Certified,Ice Silver,Jet Black,57490,30k-60k,Customer Trade,arpi_synthetic_generator
+210,VEH-0000210,ARPITCBEEV88AK9U2,106,VMD-00106,New,Sandstone Beige,Warm Ivory,49,New,Manufacturer Allocation,arpi_synthetic_generator
+211,VEH-0000211,ARPI655MHT0GCEN5V,112,VMD-00112,New,Mosaic Black,Jet Black,18,New,Manufacturer Allocation,arpi_synthetic_generator
+212,VEH-0000212,ARPIW3TKD0FETZV56,43,VMD-00043,Used,Northsky Blue,Jet Black,46873,30k-60k,Auction,arpi_synthetic_generator
+213,VEH-0000213,ARPI2UX4ZZYT3V1KM,110,VMD-00110,Used,Summit White,Jet Black,13691,10k-30k,Off-street Purchase,arpi_synthetic_generator
+214,VEH-0000214,ARPIP6ZT9E6TNH3ZD,119,VMD-00119,New,Silver Ice,Slate Gray,14,New,Manufacturer Allocation,arpi_synthetic_generator
+215,VEH-0000215,ARPIK3J3TPCXDXZJN,56,VMD-00056,Certified,Magnetite Gray,Jet Black,54025,30k-60k,Customer Trade,arpi_synthetic_generator
+216,VEH-0000216,ARPIPYZ4175PHFBE4,110,VMD-00110,Used,Summit White,Medium Ash Gray,15212,10k-30k,Off-street Purchase,arpi_synthetic_generator
+217,VEH-0000217,ARPIM11GDYAWR0LDT,54,VMD-00054,Used,Magnetite Gray,Jet Black,80393,60k-100k,Customer Trade,arpi_synthetic_generator
+218,VEH-0000218,ARPI63GT3NXUS41WL,119,VMD-00119,Used,Magnetite Gray,Slate Gray,3093,Under 10k,Lease Return,arpi_synthetic_generator
+219,VEH-0000219,ARPI1F7FHLA4RECB5,50,VMD-00050,Used,Northsky Blue,Jet Black,69190,60k-100k,Lease Return,arpi_synthetic_generator
+220,VEH-0000220,ARPILZRG6TSTEG0FB,68,VMD-00068,Used,Northsky Blue,Saddle Tan,49670,30k-60k,Auction,arpi_synthetic_generator
+221,VEH-0000221,ARPIU5KM5U4SBGXJP,109,VMD-00109,New,Northsky Blue,Warm Ivory,47,New,Manufacturer Allocation,arpi_synthetic_generator
+222,VEH-0000222,ARPIB8NLDC8U6S0EN,115,VMD-00115,New,Sandstone Beige,Medium Ash Gray,29,New,Manufacturer Allocation,arpi_synthetic_generator
+223,VEH-0000223,ARPI81EG0ZDVLEHUG,45,VMD-00045,Used,Northsky Blue,Jet Black,64851,60k-100k,Auction,arpi_synthetic_generator
+224,VEH-0000224,ARPIVKPSFVW61U0W8,89,VMD-00089,New,Autumn Green,Medium Ash Gray,50,New,Manufacturer Allocation,arpi_synthetic_generator
+225,VEH-0000225,ARPICRY97CPCM7ZM5,112,VMD-00112,Used,Mosaic Black,Medium Ash Gray,3101,Under 10k,Lease Return,arpi_synthetic_generator
+226,VEH-0000226,ARPIE786XE1R0LXBA,109,VMD-00109,New,Autumn Green,Jet Black,6,New,Manufacturer Allocation,arpi_synthetic_generator
+227,VEH-0000227,ARPID7EY4C3458JVB,90,VMD-00090,New,Northsky Blue,Medium Ash Gray,24,New,Manufacturer Allocation,arpi_synthetic_generator
+228,VEH-0000228,ARPIVLL2M592ZV70T,108,VMD-00108,New,Mosaic Black,Jet Black,33,New,Manufacturer Allocation,arpi_synthetic_generator
+229,VEH-0000229,ARPI21BFFKNGDJVFF,41,VMD-00041,Used,Ice Silver,Slate Gray,47299,30k-60k,Customer Trade,arpi_synthetic_generator
+230,VEH-0000230,ARPIXKALRGAJNYWX5,13,VMD-00013,Used,Mosaic Black,Jet Black,128801,Over 100k,Lease Return,arpi_synthetic_generator
+231,VEH-0000231,ARPIA0J6U46S810BY,47,VMD-00047,Used,Mosaic Black,Slate Gray,89031,60k-100k,Customer Trade,arpi_synthetic_generator
+232,VEH-0000232,ARPIM00CP8UZS2D04,103,VMD-00103,Used,Summit White,Medium Ash Gray,15675,10k-30k,Customer Trade,arpi_synthetic_generator
+233,VEH-0000233,ARPIPY94WRLFBEWHV,103,VMD-00103,New,Ice Silver,Medium Ash Gray,22,New,Manufacturer Allocation,arpi_synthetic_generator
+234,VEH-0000234,ARPIT72HHBYFYUWMZ,89,VMD-00089,New,Sunlit Yellow,Warm Ivory,23,New,Manufacturer Allocation,arpi_synthetic_generator
+235,VEH-0000235,ARPIBRZY9EXJC1R2J,61,VMD-00061,Used,Sunlit Yellow,Saddle Tan,57532,30k-60k,Customer Trade,arpi_synthetic_generator
+236,VEH-0000236,ARPIL9GCCK3SRBMLM,50,VMD-00050,Used,Silver Ice,Warm Ivory,55762,30k-60k,Auction,arpi_synthetic_generator
+237,VEH-0000237,ARPIUD3VR9AWBSBP4,5,VMD-00005,Used,Mosaic Black,Titanium,175436,Over 100k,Auction,arpi_synthetic_generator
+238,VEH-0000238,ARPIEMBTVR85KRS8W,119,VMD-00119,Used,Magnetite Gray,Slate Gray,2512,Under 10k,Auction,arpi_synthetic_generator
+239,VEH-0000239,ARPITXXTZ28E39DEX,23,VMD-00023,Certified,Silver Ice,Slate Gray,76967,60k-100k,Auction,arpi_synthetic_generator
+240,VEH-0000240,ARPIYTKE7GDHEX9UG,46,VMD-00046,Certified,Mosaic Black,Jet Black,58616,30k-60k,Lease Return,arpi_synthetic_generator
+241,VEH-0000241,ARPIRPF2J5BNH8KBK,74,VMD-00074,Used,Sunlit Yellow,Titanium,34494,30k-60k,Lease Return,arpi_synthetic_generator
+242,VEH-0000242,ARPIU5DRZWCBB72W3,97,VMD-00097,Used,Silver Ice,Jet Black,33995,30k-60k,Off-street Purchase,arpi_synthetic_generator
+243,VEH-0000243,ARPIDWTFBV5M10SJV,36,VMD-00036,Used,Magnetite Gray,Jet Black,92809,60k-100k,Customer Trade,arpi_synthetic_generator
+244,VEH-0000244,ARPIEAT7CDAC0SVKG,101,VMD-00101,New,Mosaic Black,Jet Black,19,New,Manufacturer Allocation,arpi_synthetic_generator
+245,VEH-0000245,ARPI9TMPYDKUG8D65,21,VMD-00021,Used,Magnetite Gray,Medium Ash Gray,109031,Over 100k,Auction,arpi_synthetic_generator
+246,VEH-0000246,ARPIM7BNCEDNC9P65,40,VMD-00040,Used,Crystal Black Silica,Jet Black,65495,60k-100k,Dealer Trade,arpi_synthetic_generator
+247,VEH-0000247,ARPI4F3E8NU1ARCZV,74,VMD-00074,Used,Cayenne Orange,Jet Black,41140,30k-60k,Auction,arpi_synthetic_generator
+248,VEH-0000248,ARPI2V9YPGYELDU59,65,VMD-00065,Used,Mosaic Black,Slate Gray,34166,30k-60k,Auction,arpi_synthetic_generator
+249,VEH-0000249,ARPI34KG7GP0LFEPG,88,VMD-00088,Certified,Cherry Red,Jet Black,18152,10k-30k,Lease Return,arpi_synthetic_generator
+250,VEH-0000250,ARPIYU0R6KENZKXT4,117,VMD-00117,Used,Crystal Black Silica,Warm Ivory,10590,10k-30k,Auction,arpi_synthetic_generator
+251,VEH-0000251,ARPIF6RZLNWP7UNV6,56,VMD-00056,Used,Magnetite Gray,Medium Ash Gray,89905,60k-100k,Customer Trade,arpi_synthetic_generator
+252,VEH-0000252,ARPIW6218W6Z37M16,50,VMD-00050,Used,Northsky Blue,Slate Gray,86906,60k-100k,Auction,arpi_synthetic_generator
+253,VEH-0000253,ARPIHKGL940FV36CW,107,VMD-00107,New,Summit White,Jet Black,40,New,Manufacturer Allocation,arpi_synthetic_generator
+254,VEH-0000254,ARPITLVRT4TA8WGK6,115,VMD-00115,Used,Magnetite Gray,Jet Black,4474,Under 10k,Auction,arpi_synthetic_generator
+255,VEH-0000255,ARPISZLYTW2A3K630,72,VMD-00072,Used,Magnetite Gray,Jet Black,62648,60k-100k,Dealer Trade,arpi_synthetic_generator
+256,VEH-0000256,ARPI75GLFHFGFTTNK,78,VMD-00078,Used,Magnetite Gray,Slate Gray,32926,30k-60k,Off-street Purchase,arpi_synthetic_generator
+257,VEH-0000257,ARPIF2L4YBSWXJASJ,107,VMD-00107,New,Magnetite Gray,Jet Black,28,New,Manufacturer Allocation,arpi_synthetic_generator
+258,VEH-0000258,ARPIYE3VE8E3648RC,74,VMD-00074,Used,Autumn Green,Titanium,52339,30k-60k,Auction,arpi_synthetic_generator
+259,VEH-0000259,ARPIYFW9ZJX1K19L1,90,VMD-00090,New,Mosaic Black,Jet Black,43,New,Manufacturer Allocation,arpi_synthetic_generator
+260,VEH-0000260,ARPIZT9F44PXM50S9,89,VMD-00089,New,Ice Silver,Medium Ash Gray,15,New,Manufacturer Allocation,arpi_synthetic_generator
+261,VEH-0000261,ARPI77VFBT2LMUV71,113,VMD-00113,New,Silver Ice,Jet Black,4,New,Manufacturer Allocation,arpi_synthetic_generator
+262,VEH-0000262,ARPI8E8P6KD4NLC65,104,VMD-00104,New,Ice Silver,Medium Ash Gray,33,New,Manufacturer Allocation,arpi_synthetic_generator
+263,VEH-0000263,ARPI94R1N0ZUGBHM5,42,VMD-00042,Used,Magnetite Gray,Jet Black,49988,30k-60k,Customer Trade,arpi_synthetic_generator
+264,VEH-0000264,ARPIRTZHP3SJCG408,113,VMD-00113,New,Cherry Red,Jet Black,41,New,Manufacturer Allocation,arpi_synthetic_generator
+265,VEH-0000265,ARPIWMRC47CGC0ACL,29,VMD-00029,Used,Cayenne Orange,Saddle Tan,92461,60k-100k,Auction,arpi_synthetic_generator
+266,VEH-0000266,ARPI1UPN2R57W6B7G,92,VMD-00092,Used,Mosaic Black,Medium Ash Gray,28692,10k-30k,Off-street Purchase,arpi_synthetic_generator
+267,VEH-0000267,ARPILR05TN136JTRS,83,VMD-00083,Used,Mosaic Black,Jet Black,47702,30k-60k,Off-street Purchase,arpi_synthetic_generator
+268,VEH-0000268,ARPIYTVTB82S53865,22,VMD-00022,Used,Silver Ice,Medium Ash Gray,101936,Over 100k,Lease Return,arpi_synthetic_generator
+269,VEH-0000269,ARPIC3K8U4P7P8D41,52,VMD-00052,Used,Northsky Blue,Slate Gray,69526,60k-100k,Off-street Purchase,arpi_synthetic_generator
+270,VEH-0000270,ARPI3K29TCY1T78RV,27,VMD-00027,Used,Summit White,Saddle Tan,109996,Over 100k,Auction,arpi_synthetic_generator
+271,VEH-0000271,ARPIPCTMX0XEGJ4NX,118,VMD-00118,New,Mosaic Black,Slate Gray,33,New,Manufacturer Allocation,arpi_synthetic_generator
+272,VEH-0000272,ARPIV2CC3591EPX1T,117,VMD-00117,New,Sunlit Yellow,Slate Gray,30,New,Manufacturer Allocation,arpi_synthetic_generator
+273,VEH-0000273,ARPIDPEGTDM63G8LM,58,VMD-00058,Used,Cayenne Orange,Medium Ash Gray,70314,60k-100k,Customer Trade,arpi_synthetic_generator
+274,VEH-0000274,ARPI5LTTHTU7P23S3,69,VMD-00069,Used,Mosaic Black,Jet Black,44058,30k-60k,Dealer Trade,arpi_synthetic_generator
+275,VEH-0000275,ARPIWAK9BS4PNCR0A,89,VMD-00089,New,Silver Ice,Jet Black,13,New,Manufacturer Allocation,arpi_synthetic_generator
+276,VEH-0000276,ARPI3G0CTR66UBPSD,119,VMD-00119,Used,Summit White,Slate Gray,7636,Under 10k,Auction,arpi_synthetic_generator
+277,VEH-0000277,ARPIARLV84F6D4469,54,VMD-00054,Used,Summit White,Warm Ivory,72129,60k-100k,Off-street Purchase,arpi_synthetic_generator
+278,VEH-0000278,ARPIA8Y6TUFJDBXFR,116,VMD-00116,Used,Mosaic Black,Jet Black,9400,Under 10k,Auction,arpi_synthetic_generator
+279,VEH-0000279,ARPIW842UE184PANM,29,VMD-00029,Used,Mosaic Black,Jet Black,98824,60k-100k,Customer Trade,arpi_synthetic_generator
+280,VEH-0000280,ARPIT06KTD4R0JY5X,109,VMD-00109,Certified,Mosaic Black,Slate Gray,9008,Under 10k,Customer Trade,arpi_synthetic_generator
+281,VEH-0000281,ARPIFK65CYS0W9FKL,82,VMD-00082,Used,Northsky Blue,Slate Gray,49622,30k-60k,Auction,arpi_synthetic_generator
+282,VEH-0000282,ARPIBAFNX8LZ3EH70,104,VMD-00104,Used,Crystal Black Silica,Titanium,14608,10k-30k,Customer Trade,arpi_synthetic_generator
+283,VEH-0000283,ARPI9R3X0FYDC576J,119,VMD-00119,New,Summit White,Warm Ivory,22,New,Manufacturer Allocation,arpi_synthetic_generator
+284,VEH-0000284,ARPI8MMSY5V5Y35L0,104,VMD-00104,Used,Autumn Green,Slate Gray,12024,10k-30k,Dealer Trade,arpi_synthetic_generator
+285,VEH-0000285,ARPIF3UUBDCTEHY3X,104,VMD-00104,Used,Silver Ice,Jet Black,11274,10k-30k,Dealer Trade,arpi_synthetic_generator
+286,VEH-0000286,ARPIVRM0FXSCNAKPZ,116,VMD-00116,New,Northsky Blue,Jet Black,9,New,Manufacturer Allocation,arpi_synthetic_generator
+287,VEH-0000287,ARPI638YTLAWZGD63,89,VMD-00089,New,Magnetite Gray,Jet Black,29,New,Manufacturer Allocation,arpi_synthetic_generator
+288,VEH-0000288,ARPIMYRKX50LK4VRJ,104,VMD-00104,Used,Mosaic Black,Titanium,17189,10k-30k,Auction,arpi_synthetic_generator
+289,VEH-0000289,ARPILER5DCV2F8X93,20,VMD-00020,Used,Silver Ice,Jet Black,99919,60k-100k,Lease Return,arpi_synthetic_generator
+290,VEH-0000290,ARPI5RX15W8CV3H00,113,VMD-00113,New,Mosaic Black,Medium Ash Gray,4,New,Manufacturer Allocation,arpi_synthetic_generator
+291,VEH-0000291,ARPIZ4BB66VR1KNZP,106,VMD-00106,Certified,Silver Ice,Jet Black,10744,10k-30k,Dealer Trade,arpi_synthetic_generator
+292,VEH-0000292,ARPI65PAYHRGBLL7E,38,VMD-00038,Used,Northsky Blue,Medium Ash Gray,54363,30k-60k,Customer Trade,arpi_synthetic_generator
+293,VEH-0000293,ARPIWJ3FHFP2E3300,113,VMD-00113,New,Sunlit Yellow,Saddle Tan,28,New,Manufacturer Allocation,arpi_synthetic_generator
+294,VEH-0000294,ARPIYW1WV98A73T4Z,86,VMD-00086,Used,Magnetite Gray,Jet Black,35220,30k-60k,Customer Trade,arpi_synthetic_generator
+295,VEH-0000295,ARPIXBE5AWDJ5PFJS,32,VMD-00032,Used,Magnetite Gray,Jet Black,63384,60k-100k,Lease Return,arpi_synthetic_generator
+296,VEH-0000296,ARPIRP2HEY3Y080WR,74,VMD-00074,Certified,Silver Ice,Slate Gray,34309,30k-60k,Customer Trade,arpi_synthetic_generator
+297,VEH-0000297,ARPI40KMJX5WWTZ7X,80,VMD-00080,Used,Cherry Red,Saddle Tan,47379,30k-60k,Off-street Purchase,arpi_synthetic_generator
+298,VEH-0000298,ARPIPPDAM3H7YE8G0,104,VMD-00104,New,Ice Silver,Warm Ivory,29,New,Manufacturer Allocation,arpi_synthetic_generator
+299,VEH-0000299,ARPIB2WEEC8TEXFH2,89,VMD-00089,Certified,Northsky Blue,Warm Ivory,27442,10k-30k,Auction,arpi_synthetic_generator
+300,VEH-0000300,ARPIFE2Y8S36K3XXL,7,VMD-00007,Used,Northsky Blue,Saddle Tan,138968,Over 100k,Auction,arpi_synthetic_generator
+301,VEH-0000301,ARPI6ALX6G50SRMEL,110,VMD-00110,Certified,Silver Ice,Medium Ash Gray,9991,Under 10k,Customer Trade,arpi_synthetic_generator
+302,VEH-0000302,ARPI9DGA5D114H0TT,89,VMD-00089,New,Magnetite Gray,Slate Gray,41,New,Manufacturer Allocation,arpi_synthetic_generator
+303,VEH-0000303,ARPIKSBD2W50H8WKB,103,VMD-00103,New,Mosaic Black,Slate Gray,5,New,Manufacturer Allocation,arpi_synthetic_generator
+304,VEH-0000304,ARPILGZ82WSMVBPHP,23,VMD-00023,Used,Cherry Red,Jet Black,65968,60k-100k,Dealer Trade,arpi_synthetic_generator
+305,VEH-0000305,ARPID8BM5J1YKESD5,89,VMD-00089,Certified,Sunlit Yellow,Slate Gray,14173,10k-30k,Customer Trade,arpi_synthetic_generator
+306,VEH-0000306,ARPI19XLXJXJLKH1N,103,VMD-00103,New,Mosaic Black,Slate Gray,44,New,Manufacturer Allocation,arpi_synthetic_generator
+307,VEH-0000307,ARPI0TWSHLKDAZH84,109,VMD-00109,New,Ice Silver,Jet Black,32,New,Manufacturer Allocation,arpi_synthetic_generator
+308,VEH-0000308,ARPIFZ5PTTV58RG8B,92,VMD-00092,Used,Sandstone Beige,Jet Black,24004,10k-30k,Off-street Purchase,arpi_synthetic_generator
+309,VEH-0000309,ARPIRZK2GS708C8M1,89,VMD-00089,Used,Magnetite Gray,Slate Gray,13672,10k-30k,Customer Trade,arpi_synthetic_generator
+310,VEH-0000310,ARPIX8LD88JAPFZHU,104,VMD-00104,Used,Summit White,Titanium,10658,10k-30k,Customer Trade,arpi_synthetic_generator
+311,VEH-0000311,ARPI72JU191B6X21A,108,VMD-00108,New,Autumn Green,Jet Black,47,New,Manufacturer Allocation,arpi_synthetic_generator
+312,VEH-0000312,ARPICEAFF22TCANGS,119,VMD-00119,New,Magnetite Gray,Medium Ash Gray,38,New,Manufacturer Allocation,arpi_synthetic_generator
+313,VEH-0000313,ARPI28A9JNCCZH4H9,41,VMD-00041,Used,Magnetite Gray,Medium Ash Gray,110926,Over 100k,Lease Return,arpi_synthetic_generator
+314,VEH-0000314,ARPISGH1YHBKGFS8N,31,VMD-00031,Used,Sandstone Beige,Medium Ash Gray,48447,30k-60k,Auction,arpi_synthetic_generator
+315,VEH-0000315,ARPIKFG7ZXSHXD7R5,91,VMD-00091,Used,Northsky Blue,Jet Black,24412,10k-30k,Lease Return,arpi_synthetic_generator
+316,VEH-0000316,ARPIRYLVDVESM22L9,119,VMD-00119,Used,Sandstone Beige,Saddle Tan,6448,Under 10k,Dealer Trade,arpi_synthetic_generator
+317,VEH-0000317,ARPIWEYKUR78CNPLA,108,VMD-00108,New,Summit White,Medium Ash Gray,46,New,Manufacturer Allocation,arpi_synthetic_generator
+318,VEH-0000318,ARPICNPEZZL66MZRL,104,VMD-00104,New,Summit White,Warm Ivory,28,New,Manufacturer Allocation,arpi_synthetic_generator
+319,VEH-0000319,ARPI4VCVGGJXTUHYU,40,VMD-00040,Used,Crystal Black Silica,Jet Black,49400,30k-60k,Customer Trade,arpi_synthetic_generator
+320,VEH-0000320,ARPI3SC8PM5J9N7EX,23,VMD-00023,Certified,Sunlit Yellow,Warm Ivory,79894,60k-100k,Customer Trade,arpi_synthetic_generator
+321,VEH-0000321,ARPI7W0KC64XPRUWB,112,VMD-00112,New,Summit White,Jet Black,2,New,Manufacturer Allocation,arpi_synthetic_generator
+322,VEH-0000322,ARPIK5SR3V8SBRGBZ,112,VMD-00112,Used,Cherry Red,Medium Ash Gray,12281,10k-30k,Customer Trade,arpi_synthetic_generator
+323,VEH-0000323,ARPIYD5W17KMENPEY,65,VMD-00065,Used,Summit White,Medium Ash Gray,39751,30k-60k,Lease Return,arpi_synthetic_generator
+324,VEH-0000324,ARPI9H5NYL6712PU1,64,VMD-00064,Used,Mosaic Black,Warm Ivory,35083,30k-60k,Lease Return,arpi_synthetic_generator
+325,VEH-0000325,ARPIGEENH1B13Z2B2,110,VMD-00110,New,Sandstone Beige,Jet Black,42,New,Manufacturer Allocation,arpi_synthetic_generator
+326,VEH-0000326,ARPIKY472TXT5DZA4,90,VMD-00090,New,Mosaic Black,Medium Ash Gray,37,New,Manufacturer Allocation,arpi_synthetic_generator
+327,VEH-0000327,ARPIC36FA169NMGDM,55,VMD-00055,Used,Northsky Blue,Titanium,60634,60k-100k,Lease Return,arpi_synthetic_generator
+328,VEH-0000328,ARPI74UU0NBHX3CPR,111,VMD-00111,Used,Summit White,Jet Black,9808,Under 10k,Customer Trade,arpi_synthetic_generator
+329,VEH-0000329,ARPIEJ5ABJ4YACJED,89,VMD-00089,New,Sunlit Yellow,Slate Gray,34,New,Manufacturer Allocation,arpi_synthetic_generator
+330,VEH-0000330,ARPI20H4KS7WC16AU,38,VMD-00038,Used,Summit White,Medium Ash Gray,57026,30k-60k,Customer Trade,arpi_synthetic_generator
+331,VEH-0000331,ARPI1VWHV0VKZZG35,92,VMD-00092,Used,Summit White,Jet Black,17667,10k-30k,Off-street Purchase,arpi_synthetic_generator
+332,VEH-0000332,ARPIWRY68EJYKHCE5,32,VMD-00032,Certified,Magnetite Gray,Slate Gray,59133,30k-60k,Lease Return,arpi_synthetic_generator
+333,VEH-0000333,ARPIGTT5VYR40VBN1,107,VMD-00107,New,Mosaic Black,Medium Ash Gray,38,New,Manufacturer Allocation,arpi_synthetic_generator
+334,VEH-0000334,ARPIV4RYPEJNRUZVG,7,VMD-00007,Used,Magnetite Gray,Saddle Tan,130907,Over 100k,Customer Trade,arpi_synthetic_generator
+335,VEH-0000335,ARPIV7RF37CGZHKBW,89,VMD-00089,Used,Crystal Black Silica,Warm Ivory,12306,10k-30k,Off-street Purchase,arpi_synthetic_generator
+336,VEH-0000336,ARPI84PHBY600S8LN,63,VMD-00063,Certified,Northsky Blue,Jet Black,29948,10k-30k,Lease Return,arpi_synthetic_generator
+337,VEH-0000337,ARPISUXTHV3V6C3J3,92,VMD-00092,Used,Summit White,Medium Ash Gray,25063,10k-30k,Dealer Trade,arpi_synthetic_generator
+338,VEH-0000338,ARPIRB7B304A36RVC,109,VMD-00109,New,Sunlit Yellow,Jet Black,20,New,Manufacturer Allocation,arpi_synthetic_generator
+339,VEH-0000339,ARPIC2RS4N5XJZNHK,113,VMD-00113,Used,Crystal Black Silica,Jet Black,1578,Under 10k,Auction,arpi_synthetic_generator
+340,VEH-0000340,ARPIFZ7T4UCZ8AJJE,79,VMD-00079,Used,Summit White,Titanium,23724,10k-30k,Auction,arpi_synthetic_generator
+341,VEH-0000341,ARPI5ZGLBA6D2HLJJ,98,VMD-00098,Used,Ice Silver,Medium Ash Gray,21477,10k-30k,Dealer Trade,arpi_synthetic_generator
+342,VEH-0000342,ARPITG0Z364KXAC44,65,VMD-00065,Used,Mosaic Black,Medium Ash Gray,72023,60k-100k,Off-street Purchase,arpi_synthetic_generator
+343,VEH-0000343,ARPIUXAKRUU4LZPGX,58,VMD-00058,Used,Sunlit Yellow,Jet Black,47394,30k-60k,Auction,arpi_synthetic_generator
+344,VEH-0000344,ARPID9BLBD1W2LY8W,116,VMD-00116,Used,Silver Ice,Slate Gray,10281,10k-30k,Auction,arpi_synthetic_generator
+345,VEH-0000345,ARPILGK9CNBMDXKSF,59,VMD-00059,Used,Magnetite Gray,Jet Black,44607,30k-60k,Lease Return,arpi_synthetic_generator
+346,VEH-0000346,ARPIRF5TS3WVNKPXB,11,VMD-00011,Used,Silver Ice,Medium Ash Gray,78434,60k-100k,Auction,arpi_synthetic_generator
+347,VEH-0000347,ARPILRM9NV810DN88,9,VMD-00009,Used,Mosaic Black,Medium Ash Gray,128282,Over 100k,Customer Trade,arpi_synthetic_generator
+348,VEH-0000348,ARPIXXNR8LUKC22FP,47,VMD-00047,Used,Magnetite Gray,Warm Ivory,52198,30k-60k,Off-street Purchase,arpi_synthetic_generator
+349,VEH-0000349,ARPI3R102C0WT6L9D,6,VMD-00006,Used,Sandstone Beige,Warm Ivory,126693,Over 100k,Lease Return,arpi_synthetic_generator
+350,VEH-0000350,ARPIBULML2MAFSK85,90,VMD-00090,Used,Mosaic Black,Jet Black,18152,10k-30k,Customer Trade,arpi_synthetic_generator
+351,VEH-0000351,ARPIHCFUD14CHJWDU,24,VMD-00024,Certified,Summit White,Titanium,80000,60k-100k,Lease Return,arpi_synthetic_generator
+352,VEH-0000352,ARPISYN704UYPU88E,79,VMD-00079,Used,Northsky Blue,Jet Black,33191,30k-60k,Customer Trade,arpi_synthetic_generator
+353,VEH-0000353,ARPIR71PH01M7RWFR,101,VMD-00101,New,Summit White,Medium Ash Gray,2,New,Manufacturer Allocation,arpi_synthetic_generator
+354,VEH-0000354,ARPIP3P98BKM73XZN,80,VMD-00080,Certified,Mosaic Black,Slate Gray,38925,30k-60k,Auction,arpi_synthetic_generator
+355,VEH-0000355,ARPITBMFJEXP070C0,92,VMD-00092,Used,Cayenne Orange,Jet Black,19414,10k-30k,Dealer Trade,arpi_synthetic_generator
+356,VEH-0000356,ARPIMVW3ELGGKLCKK,53,VMD-00053,Used,Silver Ice,Slate Gray,52146,30k-60k,Auction,arpi_synthetic_generator
+357,VEH-0000357,ARPIYK48VCVY7H5YS,103,VMD-00103,New,Magnetite Gray,Warm Ivory,32,New,Manufacturer Allocation,arpi_synthetic_generator
+358,VEH-0000358,ARPIS84074U3T0RWG,115,VMD-00115,New,Silver Ice,Titanium,4,New,Manufacturer Allocation,arpi_synthetic_generator
+359,VEH-0000359,ARPIDXMKGBCTLUBG8,61,VMD-00061,Used,Silver Ice,Jet Black,40017,30k-60k,Lease Return,arpi_synthetic_generator
+360,VEH-0000360,ARPIZ7L1A41UT1ZX9,83,VMD-00083,Used,Cayenne Orange,Titanium,38229,30k-60k,Lease Return,arpi_synthetic_generator
+361,VEH-0000361,ARPIEZDL123E650E5,72,VMD-00072,Used,Crystal Black Silica,Slate Gray,46823,30k-60k,Customer Trade,arpi_synthetic_generator
+362,VEH-0000362,ARPI2MTN3PBELJLRC,114,VMD-00114,Used,Sandstone Beige,Medium Ash Gray,5463,Under 10k,Auction,arpi_synthetic_generator
+363,VEH-0000363,ARPINLZHL4V19DN9M,6,VMD-00006,Used,Cherry Red,Medium Ash Gray,149114,Over 100k,Auction,arpi_synthetic_generator
+364,VEH-0000364,ARPI67LPFPSN011NH,46,VMD-00046,Certified,Magnetite Gray,Jet Black,47346,30k-60k,Customer Trade,arpi_synthetic_generator
+365,VEH-0000365,ARPI53H7LK3DX2MDD,70,VMD-00070,Used,Crystal Black Silica,Slate Gray,30284,30k-60k,Off-street Purchase,arpi_synthetic_generator
+366,VEH-0000366,ARPIM9HA0TFX8YK1H,120,VMD-00120,New,Ice Silver,Jet Black,13,New,Manufacturer Allocation,arpi_synthetic_generator
+367,VEH-0000367,ARPIFBN3XNRGL4LKG,38,VMD-00038,Used,Mosaic Black,Warm Ivory,55161,30k-60k,Auction,arpi_synthetic_generator
+368,VEH-0000368,ARPI6ENELL6GSWMUD,5,VMD-00005,Used,Mosaic Black,Saddle Tan,82907,60k-100k,Auction,arpi_synthetic_generator
+369,VEH-0000369,ARPIZU4N1CF2MM4AZ,56,VMD-00056,Certified,Mosaic Black,Medium Ash Gray,61346,60k-100k,Lease Return,arpi_synthetic_generator
+370,VEH-0000370,ARPI0GF5FH2TVMJWK,83,VMD-00083,Used,Crystal Black Silica,Saddle Tan,38813,30k-60k,Dealer Trade,arpi_synthetic_generator
+371,VEH-0000371,ARPITH47DPXDFGSE4,103,VMD-00103,New,Summit White,Slate Gray,24,New,Manufacturer Allocation,arpi_synthetic_generator
+372,VEH-0000372,ARPIXMG94F198698Y,87,VMD-00087,New,Sandstone Beige,Warm Ivory,5,New,Manufacturer Allocation,arpi_synthetic_generator
+373,VEH-0000373,ARPI73W20VC8KNNNF,36,VMD-00036,Certified,Cayenne Orange,Jet Black,77533,60k-100k,Lease Return,arpi_synthetic_generator
+374,VEH-0000374,ARPI09XBXU3KMG7WW,43,VMD-00043,Used,Magnetite Gray,Jet Black,92425,60k-100k,Auction,arpi_synthetic_generator
+375,VEH-0000375,ARPIE4U58RMXTB126,83,VMD-00083,Used,Northsky Blue,Saddle Tan,29355,10k-30k,Auction,arpi_synthetic_generator
+376,VEH-0000376,ARPI6BJE4C8V1MEBK,62,VMD-00062,Used,Mosaic Black,Warm Ivory,36598,30k-60k,Lease Return,arpi_synthetic_generator
+377,VEH-0000377,ARPIGGFF65L0KAZFX,87,VMD-00087,Used,Silver Ice,Jet Black,33423,30k-60k,Customer Trade,arpi_synthetic_generator
+378,VEH-0000378,ARPISJKF9XNMM6SNS,101,VMD-00101,New,Northsky Blue,Saddle Tan,3,New,Manufacturer Allocation,arpi_synthetic_generator
+379,VEH-0000379,ARPIP9LXGME2RT8J2,115,VMD-00115,Used,Mosaic Black,Warm Ivory,6638,Under 10k,Auction,arpi_synthetic_generator
+380,VEH-0000380,ARPI3V9VGKB0CFF4L,70,VMD-00070,Used,Northsky Blue,Slate Gray,36507,30k-60k,Auction,arpi_synthetic_generator
+381,VEH-0000381,ARPIA8ZLMTVV6BBS0,4,VMD-00004,Used,Cherry Red,Slate Gray,63764,60k-100k,Customer Trade,arpi_synthetic_generator
+382,VEH-0000382,ARPIYS3UACLMU577Y,49,VMD-00049,Certified,Summit White,Slate Gray,38518,30k-60k,Customer Trade,arpi_synthetic_generator
+383,VEH-0000383,ARPI51C03VY5P0A70,78,VMD-00078,Used,Cherry Red,Jet Black,27934,10k-30k,Auction,arpi_synthetic_generator
+384,VEH-0000384,ARPIHTR6WT8L4NJGL,64,VMD-00064,Used,Crystal Black Silica,Jet Black,36582,30k-60k,Customer Trade,arpi_synthetic_generator
+385,VEH-0000385,ARPI82Y34RAGTVJY0,120,VMD-00120,New,Summit White,Medium Ash Gray,34,New,Manufacturer Allocation,arpi_synthetic_generator
+386,VEH-0000386,ARPIJ9ARBEDLNYPY1,114,VMD-00114,New,Autumn Green,Slate Gray,27,New,Manufacturer Allocation,arpi_synthetic_generator
+387,VEH-0000387,ARPITFJ4M2344EFHH,75,VMD-00075,Used,Summit White,Medium Ash Gray,25496,10k-30k,Auction,arpi_synthetic_generator
+388,VEH-0000388,ARPIL5UJ95K0C01SP,84,VMD-00084,Used,Mosaic Black,Slate Gray,24022,10k-30k,Dealer Trade,arpi_synthetic_generator
+389,VEH-0000389,ARPIECZ90CERNS2ST,24,VMD-00024,Certified,Northsky Blue,Saddle Tan,80000,60k-100k,Auction,arpi_synthetic_generator
+390,VEH-0000390,ARPIDCR50VSKX2BN6,113,VMD-00113,New,Mosaic Black,Titanium,23,New,Manufacturer Allocation,arpi_synthetic_generator
+391,VEH-0000391,ARPIJHRJFBXXP1WZB,89,VMD-00089,New,Crystal Black Silica,Saddle Tan,11,New,Manufacturer Allocation,arpi_synthetic_generator
+392,VEH-0000392,ARPI9HTS0RTXASBNV,63,VMD-00063,Used,Silver Ice,Medium Ash Gray,49325,30k-60k,Customer Trade,arpi_synthetic_generator
+393,VEH-0000393,ARPIED309CADP3C7D,79,VMD-00079,Certified,Silver Ice,Titanium,23836,10k-30k,Customer Trade,arpi_synthetic_generator
+394,VEH-0000394,ARPIDMGUT6AW7R5EE,103,VMD-00103,New,Sandstone Beige,Titanium,38,New,Manufacturer Allocation,arpi_synthetic_generator
+395,VEH-0000395,ARPI3350VB0ZZ4Z0B,120,VMD-00120,New,Magnetite Gray,Slate Gray,32,New,Manufacturer Allocation,arpi_synthetic_generator
+396,VEH-0000396,ARPI3EF5G59FDCMCH,117,VMD-00117,Used,Crystal Black Silica,Titanium,4341,Under 10k,Lease Return,arpi_synthetic_generator
+397,VEH-0000397,ARPI4BBP09PJBEM05,91,VMD-00091,Used,Sandstone Beige,Jet Black,10558,10k-30k,Customer Trade,arpi_synthetic_generator
+398,VEH-0000398,ARPIGDZ9XA9L8WF4Z,17,VMD-00017,Used,Summit White,Jet Black,51299,30k-60k,Customer Trade,arpi_synthetic_generator
+399,VEH-0000399,ARPI12N1FD8RJYX8B,82,VMD-00082,Used,Magnetite Gray,Medium Ash Gray,43530,30k-60k,Auction,arpi_synthetic_generator
+400,VEH-0000400,ARPIL93LGR1V4HTNL,110,VMD-00110,New,Crystal Black Silica,Slate Gray,8,New,Manufacturer Allocation,arpi_synthetic_generator

@@ -1,0 +1,401 @@
+acquisition_id,vehicle_id,dealership_id,acquisition_date,acquisition_source,acquisition_cost,reconditioning_cost,original_asking_price,msrp,initial_inventory_status,source_system
+ACQ-00000001,VEH-0000001,GSA-002,2025-11-29,Auction,8266.36,2469.25,14260.92,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000002,VEH-0000002,GSA-003,2025-05-23,Customer Trade,14895.50,1376.27,21117.60,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000003,VEH-0000003,GSA-003,2025-08-25,Off-street Purchase,10635.07,848.44,14500.25,,In Stock,arpi_synthetic_generator
+ACQ-00000004,VEH-0000004,GSA-002,2025-09-30,Lease Return,2124.90,872.47,4249.39,,In Stock,arpi_synthetic_generator
+ACQ-00000005,VEH-0000005,GSA-001,2025-12-23,Manufacturer Allocation,35362.50,58.00,39589.36,39424.57,In Transit,arpi_synthetic_generator
+ACQ-00000006,VEH-0000006,GSA-002,2025-10-24,Auction,7113.29,2169.46,12231.45,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000007,VEH-0000007,GSA-001,2025-03-31,Manufacturer Allocation,37590.80,131.00,40519.27,40600.43,In Transit,arpi_synthetic_generator
+ACQ-00000008,VEH-0000008,GSA-003,2025-06-16,Auction,5602.20,1492.70,9103.64,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000009,VEH-0000009,GSA-003,2025-10-31,Auction,2054.65,854.21,3998.97,,In Stock,arpi_synthetic_generator
+ACQ-00000010,VEH-0000010,GSA-002,2025-08-18,Manufacturer Allocation,35024.91,162.00,38605.11,38470.27,In Transit,arpi_synthetic_generator
+ACQ-00000011,VEH-0000011,GSA-001,2025-09-24,Off-street Purchase,31796.46,1208.76,44951.72,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000012,VEH-0000012,GSA-002,2025-06-03,Lease Return,19243.64,2564.69,29719.67,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000013,VEH-0000013,GSA-001,2025-08-19,Off-street Purchase,8875.31,2336.38,15110.95,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000014,VEH-0000014,GSA-001,2025-08-22,Manufacturer Allocation,35098.70,52.00,39154.93,38281.42,In Transit,arpi_synthetic_generator
+ACQ-00000015,VEH-0000015,GSA-001,2025-09-13,Auction,1738.38,771.98,3105.18,,In Stock,arpi_synthetic_generator
+ACQ-00000016,VEH-0000016,GSA-001,2025-03-15,Manufacturer Allocation,37501.22,143.00,40169.75,40267.60,In Transit,arpi_synthetic_generator
+ACQ-00000017,VEH-0000017,GSA-003,2025-09-17,Customer Trade,27198.05,881.41,35190.58,,In Stock,arpi_synthetic_generator
+ACQ-00000018,VEH-0000018,GSA-002,2025-12-31,Off-street Purchase,31518.06,1541.17,44051.72,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000019,VEH-0000019,GSA-001,2025-06-26,Auction,5329.28,1705.61,8814.97,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000020,VEH-0000020,GSA-003,2025-09-12,Customer Trade,8042.90,2411.15,13756.46,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000021,VEH-0000021,GSA-003,2025-08-28,Auction,30610.12,2142.09,41940.97,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000022,VEH-0000022,GSA-003,2025-09-03,Customer Trade,2192.97,890.17,4162.57,,In Stock,arpi_synthetic_generator
+ACQ-00000023,VEH-0000023,GSA-001,2025-10-09,Customer Trade,17591.83,2617.83,24246.18,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000024,VEH-0000024,GSA-002,2025-12-04,Auction,2290.25,915.47,4163.08,,In Stock,arpi_synthetic_generator
+ACQ-00000025,VEH-0000025,GSA-002,2025-06-19,Auction,23583.45,476.90,33299.02,,In Stock,arpi_synthetic_generator
+ACQ-00000026,VEH-0000026,GSA-002,2025-09-30,Customer Trade,9463.31,2780.46,16143.19,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000027,VEH-0000027,GSA-003,2025-12-10,Lease Return,30081.78,1997.88,38667.38,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000028,VEH-0000028,GSA-001,2025-11-05,Dealer Trade,31700.38,496.53,40639.58,,In Stock,arpi_synthetic_generator
+ACQ-00000029,VEH-0000029,GSA-002,2025-11-25,Off-street Purchase,13974.19,1075.33,19368.90,,In Stock,arpi_synthetic_generator
+ACQ-00000030,VEH-0000030,GSA-002,2025-12-18,Auction,32559.20,1807.88,44395.08,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000031,VEH-0000031,GSA-002,2025-08-01,Customer Trade,33010.48,1453.07,45072.46,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000032,VEH-0000032,GSA-001,2025-08-22,Customer Trade,31493.83,979.99,40467.41,,In Stock,arpi_synthetic_generator
+ACQ-00000033,VEH-0000033,GSA-002,2025-11-18,Customer Trade,21008.58,1652.55,31197.49,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000034,VEH-0000034,GSA-001,2025-12-03,Manufacturer Allocation,34319.94,85.00,39031.02,38443.07,In Transit,arpi_synthetic_generator
+ACQ-00000035,VEH-0000035,GSA-001,2025-09-15,Manufacturer Allocation,42075.79,13.00,46192.98,46474.10,In Transit,arpi_synthetic_generator
+ACQ-00000036,VEH-0000036,GSA-003,2025-12-23,Customer Trade,6734.26,1957.68,10492.28,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000037,VEH-0000037,GSA-003,2025-07-19,Customer Trade,8488.11,724.19,12676.13,,In Stock,arpi_synthetic_generator
+ACQ-00000038,VEH-0000038,GSA-003,2025-10-01,Auction,14397.19,1027.07,18241.05,,In Stock,arpi_synthetic_generator
+ACQ-00000039,VEH-0000039,GSA-001,2025-09-30,Customer Trade,7846.29,2360.04,13588.67,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000040,VEH-0000040,GSA-002,2025-10-22,Off-street Purchase,10038.52,1705.74,14703.85,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000041,VEH-0000041,GSA-002,2025-10-30,Manufacturer Allocation,28253.00,70.00,31980.33,31267.22,In Transit,arpi_synthetic_generator
+ACQ-00000042,VEH-0000042,GSA-002,2025-06-03,Manufacturer Allocation,23524.78,151.00,25817.39,25724.76,In Transit,arpi_synthetic_generator
+ACQ-00000043,VEH-0000043,GSA-003,2025-08-08,Auction,5844.90,1839.67,9573.26,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000044,VEH-0000044,GSA-003,2025-12-23,Auction,5169.12,1455.84,9249.01,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000045,VEH-0000045,GSA-003,2025-12-09,Customer Trade,22555.25,955.76,28445.22,,In Stock,arpi_synthetic_generator
+ACQ-00000046,VEH-0000046,GSA-003,2025-12-12,Customer Trade,7759.58,2337.49,13355.74,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000047,VEH-0000047,GSA-001,2025-09-22,Manufacturer Allocation,35633.73,99.00,38412.01,38499.98,In Transit,arpi_synthetic_generator
+ACQ-00000048,VEH-0000048,GSA-002,2025-11-05,Manufacturer Allocation,21298.93,31.00,23723.32,23528.57,In Transit,arpi_synthetic_generator
+ACQ-00000049,VEH-0000049,GSA-002,2025-06-05,Manufacturer Allocation,22428.79,66.00,24888.05,24609.86,In Transit,arpi_synthetic_generator
+ACQ-00000050,VEH-0000050,GSA-002,2025-10-13,Manufacturer Allocation,36929.31,123.00,39568.74,39565.73,In Transit,arpi_synthetic_generator
+ACQ-00000051,VEH-0000051,GSA-001,2025-08-06,Manufacturer Allocation,42926.47,108.00,47432.17,47367.09,In Transit,arpi_synthetic_generator
+ACQ-00000052,VEH-0000052,GSA-001,2025-08-28,Manufacturer Allocation,36254.57,128.00,39883.50,39502.42,In Transit,arpi_synthetic_generator
+ACQ-00000053,VEH-0000053,GSA-002,2025-07-03,Lease Return,15458.10,2357.14,23266.15,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000054,VEH-0000054,GSA-003,2025-12-04,Customer Trade,10124.53,1484.27,14632.79,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000055,VEH-0000055,GSA-001,2025-12-11,Customer Trade,2994.52,1098.58,5252.48,,In Stock,arpi_synthetic_generator
+ACQ-00000056,VEH-0000056,GSA-002,2025-09-30,Lease Return,28986.79,1925.91,39338.61,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000057,VEH-0000057,GSA-001,2025-09-09,Customer Trade,23677.99,3709.20,37993.18,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000058,VEH-0000058,GSA-003,2025-12-20,Customer Trade,2194.79,890.65,4307.68,,In Stock,arpi_synthetic_generator
+ACQ-00000059,VEH-0000059,GSA-001,2025-06-17,Manufacturer Allocation,45113.67,95.00,49676.92,49909.80,In Transit,arpi_synthetic_generator
+ACQ-00000060,VEH-0000060,GSA-003,2025-06-25,Customer Trade,31822.25,1369.94,47009.50,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000061,VEH-0000061,GSA-002,2025-08-28,Customer Trade,14123.95,3085.52,21005.31,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000062,VEH-0000062,GSA-001,2025-09-11,Manufacturer Allocation,35644.20,151.00,39442.17,38888.90,In Transit,arpi_synthetic_generator
+ACQ-00000063,VEH-0000063,GSA-001,2025-12-09,Lease Return,11606.78,3337.76,20798.76,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000064,VEH-0000064,GSA-002,2025-06-04,Customer Trade,15186.22,1627.50,21355.98,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000065,VEH-0000065,GSA-001,2025-12-27,Manufacturer Allocation,35013.44,46.00,38813.62,38542.51,In Transit,arpi_synthetic_generator
+ACQ-00000066,VEH-0000066,GSA-002,2025-05-21,Customer Trade,3848.51,1320.61,6461.56,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000067,VEH-0000067,GSA-001,2025-08-05,Manufacturer Allocation,36303.74,79.00,40505.86,40252.87,In Transit,arpi_synthetic_generator
+ACQ-00000068,VEH-0000068,GSA-001,2025-12-16,Manufacturer Allocation,43963.10,135.00,47859.29,48689.05,In Transit,arpi_synthetic_generator
+ACQ-00000069,VEH-0000069,GSA-002,2025-10-27,Manufacturer Allocation,27305.25,76.00,29958.76,30076.96,In Transit,arpi_synthetic_generator
+ACQ-00000070,VEH-0000070,GSA-001,2025-07-08,Off-street Purchase,4079.86,1380.76,7469.95,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000071,VEH-0000071,GSA-001,2025-08-15,Customer Trade,26549.63,1629.04,37925.84,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000072,VEH-0000072,GSA-003,2025-04-23,Customer Trade,7785.33,2344.19,13195.11,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000073,VEH-0000073,GSA-001,2025-07-29,Lease Return,32049.81,3332.96,49018.72,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000074,VEH-0000074,GSA-003,2025-03-19,Dealer Trade,4106.18,1387.61,6967.43,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000075,VEH-0000075,GSA-003,2025-12-03,Lease Return,9036.64,1821.28,14200.45,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000076,VEH-0000076,GSA-002,2025-08-28,Manufacturer Allocation,23632.50,59.00,25655.19,25263.13,In Transit,arpi_synthetic_generator
+ACQ-00000077,VEH-0000077,GSA-002,2025-09-25,Customer Trade,2269.11,909.97,4357.50,,In Stock,arpi_synthetic_generator
+ACQ-00000078,VEH-0000078,GSA-001,2025-12-08,Lease Return,10586.29,2810.44,18143.65,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000079,VEH-0000079,GSA-002,2025-03-04,Dealer Trade,14453.61,2615.86,21170.92,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000080,VEH-0000080,GSA-001,2025-11-04,Manufacturer Allocation,37658.55,56.00,40917.26,40622.79,In Transit,arpi_synthetic_generator
+ACQ-00000081,VEH-0000081,GSA-003,2025-08-14,Off-street Purchase,3397.25,1203.29,5993.44,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000082,VEH-0000082,GSA-002,2025-10-27,Customer Trade,23994.18,755.98,32939.67,,In Stock,arpi_synthetic_generator
+ACQ-00000083,VEH-0000083,GSA-003,2025-12-01,Dealer Trade,2775.44,1041.61,5056.45,,In Stock,arpi_synthetic_generator
+ACQ-00000084,VEH-0000084,GSA-002,2025-08-28,Manufacturer Allocation,21847.81,118.00,24153.88,24412.68,In Transit,arpi_synthetic_generator
+ACQ-00000085,VEH-0000085,GSA-003,2025-08-22,Customer Trade,8251.42,1285.00,12504.75,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000086,VEH-0000086,GSA-002,2025-11-14,Auction,5232.62,1680.48,9878.70,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000087,VEH-0000087,GSA-002,2025-09-11,Lease Return,13490.85,1291.52,19817.66,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000088,VEH-0000088,GSA-002,2025-11-10,Off-street Purchase,10998.19,1830.50,17481.53,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000089,VEH-0000089,GSA-001,2025-05-01,Manufacturer Allocation,43924.17,62.00,48757.96,47944.77,In Transit,arpi_synthetic_generator
+ACQ-00000090,VEH-0000090,GSA-001,2025-11-14,Manufacturer Allocation,36741.33,23.00,40105.94,40409.33,In Transit,arpi_synthetic_generator
+ACQ-00000091,VEH-0000091,GSA-001,2025-09-19,Manufacturer Allocation,35960.54,81.00,40070.43,39690.71,In Transit,arpi_synthetic_generator
+ACQ-00000092,VEH-0000092,GSA-003,2025-04-03,Customer Trade,8219.18,2456.99,14266.04,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000093,VEH-0000093,GSA-002,2025-03-13,Lease Return,12716.87,2651.40,20352.75,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000094,VEH-0000094,GSA-001,2025-10-23,Manufacturer Allocation,36202.50,135.00,40168.27,39799.41,In Transit,arpi_synthetic_generator
+ACQ-00000095,VEH-0000095,GSA-003,2025-06-29,Auction,34536.03,1991.80,47539.14,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000096,VEH-0000096,GSA-003,2025-08-23,Off-street Purchase,12422.82,862.71,17465.01,,In Stock,arpi_synthetic_generator
+ACQ-00000097,VEH-0000097,GSA-003,2025-09-29,Customer Trade,4535.02,1451.13,7415.66,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000098,VEH-0000098,GSA-002,2025-07-16,Manufacturer Allocation,35649.77,112.00,38846.03,38919.39,In Transit,arpi_synthetic_generator
+ACQ-00000099,VEH-0000099,GSA-003,2025-05-08,Customer Trade,8164.41,2011.94,13522.22,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000100,VEH-0000100,GSA-002,2025-10-07,Manufacturer Allocation,35535.19,86.00,38954.53,38629.62,In Transit,arpi_synthetic_generator
+ACQ-00000101,VEH-0000101,GSA-001,2025-10-20,Manufacturer Allocation,42503.86,156.00,48530.85,47863.63,In Transit,arpi_synthetic_generator
+ACQ-00000102,VEH-0000102,GSA-002,2025-09-29,Auction,20435.77,2264.05,28899.37,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000103,VEH-0000103,GSA-001,2025-06-02,Customer Trade,7541.02,884.06,11216.32,,In Stock,arpi_synthetic_generator
+ACQ-00000104,VEH-0000104,GSA-002,2025-07-02,Manufacturer Allocation,37099.59,81.00,40655.74,40601.42,In Transit,arpi_synthetic_generator
+ACQ-00000105,VEH-0000105,GSA-003,2025-12-24,Customer Trade,27672.97,1979.45,38509.00,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000106,VEH-0000106,GSA-001,2025-08-08,Customer Trade,27113.48,2302.62,37599.78,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000107,VEH-0000107,GSA-002,2025-04-30,Manufacturer Allocation,28507.28,0.00,31991.84,31769.36,In Transit,arpi_synthetic_generator
+ACQ-00000108,VEH-0000108,GSA-001,2025-11-17,Manufacturer Allocation,44480.39,60.00,49854.14,49588.00,In Transit,arpi_synthetic_generator
+ACQ-00000109,VEH-0000109,GSA-003,2025-09-03,Dealer Trade,4376.46,1457.88,7795.50,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000110,VEH-0000110,GSA-002,2025-11-12,Auction,9663.20,1256.87,15221.22,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000111,VEH-0000111,GSA-001,2025-04-18,Manufacturer Allocation,34818.57,159.00,38003.96,38434.23,In Transit,arpi_synthetic_generator
+ACQ-00000112,VEH-0000112,GSA-001,2025-08-26,Manufacturer Allocation,34414.23,107.00,37119.26,36952.38,In Transit,arpi_synthetic_generator
+ACQ-00000113,VEH-0000113,GSA-001,2025-07-08,Manufacturer Allocation,45650.68,156.00,50548.45,49971.68,In Transit,arpi_synthetic_generator
+ACQ-00000114,VEH-0000114,GSA-003,2025-06-06,Auction,2687.92,1018.86,4981.20,,In Stock,arpi_synthetic_generator
+ACQ-00000115,VEH-0000115,GSA-003,2025-11-03,Customer Trade,30928.36,1537.88,41256.64,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000116,VEH-0000116,GSA-001,2025-12-24,Manufacturer Allocation,35956.16,159.00,39813.91,39414.64,In Transit,arpi_synthetic_generator
+ACQ-00000117,VEH-0000117,GSA-002,2025-05-21,Lease Return,7751.16,2335.30,13883.42,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000118,VEH-0000118,GSA-001,2025-05-22,Manufacturer Allocation,35015.95,125.00,37811.09,38066.40,In Transit,arpi_synthetic_generator
+ACQ-00000119,VEH-0000119,GSA-002,2025-08-21,Manufacturer Allocation,36689.31,114.00,39786.41,39685.01,In Transit,arpi_synthetic_generator
+ACQ-00000120,VEH-0000120,GSA-001,2025-11-24,Manufacturer Allocation,35526.58,31.00,38113.29,38227.59,In Transit,arpi_synthetic_generator
+ACQ-00000121,VEH-0000121,GSA-001,2025-08-30,Manufacturer Allocation,35038.17,151.00,38931.03,38997.68,In Transit,arpi_synthetic_generator
+ACQ-00000122,VEH-0000122,GSA-001,2025-09-18,Dealer Trade,31139.29,856.84,40913.96,,In Stock,arpi_synthetic_generator
+ACQ-00000123,VEH-0000123,GSA-001,2025-07-24,Auction,5631.09,766.01,8038.49,,In Stock,arpi_synthetic_generator
+ACQ-00000124,VEH-0000124,GSA-003,2025-02-22,Auction,11044.89,1291.48,17055.65,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000125,VEH-0000125,GSA-001,2025-04-25,Manufacturer Allocation,44859.29,148.00,50054.13,50030.27,In Transit,arpi_synthetic_generator
+ACQ-00000126,VEH-0000126,GSA-002,2025-06-24,Customer Trade,3380.61,1198.96,5559.86,,In Stock,arpi_synthetic_generator
+ACQ-00000127,VEH-0000127,GSA-003,2025-07-04,Dealer Trade,7431.88,2252.29,11826.63,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000128,VEH-0000128,GSA-001,2025-10-25,Manufacturer Allocation,35938.68,44.00,39621.61,39589.11,In Transit,arpi_synthetic_generator
+ACQ-00000129,VEH-0000129,GSA-001,2025-09-01,Off-street Purchase,41288.83,1193.46,56412.66,,In Stock,arpi_synthetic_generator
+ACQ-00000130,VEH-0000130,GSA-002,2025-10-16,Manufacturer Allocation,28916.45,141.00,30865.54,30787.99,In Transit,arpi_synthetic_generator
+ACQ-00000131,VEH-0000131,GSA-002,2025-10-15,Manufacturer Allocation,23585.09,95.00,26049.27,25935.21,In Transit,arpi_synthetic_generator
+ACQ-00000132,VEH-0000132,GSA-002,2025-10-20,Off-street Purchase,1869.27,806.01,3457.36,,In Stock,arpi_synthetic_generator
+ACQ-00000133,VEH-0000133,GSA-002,2025-06-16,Manufacturer Allocation,34732.17,58.00,39555.72,38459.13,In Transit,arpi_synthetic_generator
+ACQ-00000134,VEH-0000134,GSA-003,2025-11-27,Customer Trade,3266.16,1169.20,5380.85,,In Stock,arpi_synthetic_generator
+ACQ-00000135,VEH-0000135,GSA-002,2025-02-12,Auction,13310.83,2268.25,21347.36,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000136,VEH-0000136,GSA-003,2025-12-05,Lease Return,5192.87,1670.15,8673.62,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000137,VEH-0000137,GSA-002,2025-09-17,Customer Trade,17877.49,1873.81,25533.49,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000138,VEH-0000138,GSA-003,2025-11-22,Lease Return,15673.33,787.28,22542.25,,In Stock,arpi_synthetic_generator
+ACQ-00000139,VEH-0000139,GSA-002,2025-08-19,Customer Trade,19280.48,1907.73,28083.45,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000140,VEH-0000140,GSA-001,2025-12-08,Auction,16233.75,2021.19,24838.49,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000141,VEH-0000141,GSA-002,2025-07-22,Customer Trade,6239.13,1942.17,10928.83,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000142,VEH-0000142,GSA-002,2025-08-05,Manufacturer Allocation,36196.59,64.00,39201.39,39362.94,In Transit,arpi_synthetic_generator
+ACQ-00000143,VEH-0000143,GSA-002,2025-06-26,Dealer Trade,21561.51,748.84,27541.10,,In Stock,arpi_synthetic_generator
+ACQ-00000144,VEH-0000144,GSA-003,2025-11-20,Customer Trade,9915.11,946.76,14905.19,,In Stock,arpi_synthetic_generator
+ACQ-00000145,VEH-0000145,GSA-003,2025-07-12,Customer Trade,2942.71,1085.10,5413.13,,In Stock,arpi_synthetic_generator
+ACQ-00000146,VEH-0000146,GSA-002,2025-07-23,Manufacturer Allocation,35824.47,119.00,38998.67,38859.98,In Transit,arpi_synthetic_generator
+ACQ-00000147,VEH-0000147,GSA-001,2025-09-19,Auction,29984.24,1015.81,38173.28,,In Stock,arpi_synthetic_generator
+ACQ-00000148,VEH-0000148,GSA-003,2025-06-25,Auction,29225.48,2440.48,44281.74,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000149,VEH-0000149,GSA-003,2025-10-14,Lease Return,23546.23,1507.57,33171.76,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000150,VEH-0000150,GSA-002,2025-11-24,Manufacturer Allocation,35831.92,81.00,39473.52,38790.34,In Transit,arpi_synthetic_generator
+ACQ-00000151,VEH-0000151,GSA-001,2025-03-26,Lease Return,15289.06,2651.50,23861.27,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000152,VEH-0000152,GSA-002,2025-08-18,Manufacturer Allocation,29947.87,37.00,33400.08,32788.22,In Transit,arpi_synthetic_generator
+ACQ-00000153,VEH-0000153,GSA-002,2025-10-20,Manufacturer Allocation,22029.56,88.00,24729.78,24800.86,In Transit,arpi_synthetic_generator
+ACQ-00000154,VEH-0000154,GSA-003,2025-06-05,Lease Return,10796.42,1971.82,15736.12,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000155,VEH-0000155,GSA-002,2025-08-12,Manufacturer Allocation,37663.22,88.00,41375.73,40426.75,In Transit,arpi_synthetic_generator
+ACQ-00000156,VEH-0000156,GSA-002,2025-07-15,Manufacturer Allocation,38110.11,26.00,40935.72,41499.41,In Transit,arpi_synthetic_generator
+ACQ-00000157,VEH-0000157,GSA-003,2025-06-12,Auction,2669.77,1014.14,4960.76,,In Stock,arpi_synthetic_generator
+ACQ-00000158,VEH-0000158,GSA-003,2025-06-09,Customer Trade,27445.80,1845.34,40684.49,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000159,VEH-0000159,GSA-002,2025-11-26,Manufacturer Allocation,23183.62,68.00,26197.89,25613.04,In Transit,arpi_synthetic_generator
+ACQ-00000160,VEH-0000160,GSA-001,2025-12-19,Auction,27182.07,2407.95,37543.73,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000161,VEH-0000161,GSA-003,2025-06-26,Auction,29914.95,1366.97,40775.04,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000162,VEH-0000162,GSA-003,2025-12-31,Auction,12479.26,972.99,17293.14,,In Stock,arpi_synthetic_generator
+ACQ-00000163,VEH-0000163,GSA-003,2025-06-26,Dealer Trade,26165.42,2391.39,36133.19,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000164,VEH-0000164,GSA-002,2025-09-30,Customer Trade,22487.00,1762.22,33021.04,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000165,VEH-0000165,GSA-003,2025-08-27,Customer Trade,2123.86,872.20,4116.21,,In Stock,arpi_synthetic_generator
+ACQ-00000166,VEH-0000166,GSA-002,2025-08-11,Off-street Purchase,2539.03,980.15,4460.64,,In Stock,arpi_synthetic_generator
+ACQ-00000167,VEH-0000167,GSA-001,2025-11-18,Customer Trade,10020.07,910.97,14429.07,,In Stock,arpi_synthetic_generator
+ACQ-00000168,VEH-0000168,GSA-001,2025-10-22,Manufacturer Allocation,36924.48,65.00,39167.02,39588.68,In Transit,arpi_synthetic_generator
+ACQ-00000169,VEH-0000169,GSA-001,2025-08-07,Lease Return,31043.79,3313.08,46181.13,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000170,VEH-0000170,GSA-001,2025-06-26,Customer Trade,5248.95,1684.73,9181.82,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000171,VEH-0000171,GSA-001,2025-07-09,Manufacturer Allocation,35094.70,52.00,37482.46,37520.43,In Transit,arpi_synthetic_generator
+ACQ-00000172,VEH-0000172,GSA-003,2025-06-19,Lease Return,4619.05,1520.95,7943.80,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000173,VEH-0000173,GSA-002,2025-07-18,Manufacturer Allocation,36726.99,84.00,40254.80,40734.53,In Transit,arpi_synthetic_generator
+ACQ-00000174,VEH-0000174,GSA-003,2025-07-21,Customer Trade,28798.96,611.27,38038.49,,In Stock,arpi_synthetic_generator
+ACQ-00000175,VEH-0000175,GSA-001,2025-06-27,Auction,10858.83,3143.30,18813.85,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000176,VEH-0000176,GSA-002,2025-08-28,Auction,20851.26,2142.70,31472.78,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000177,VEH-0000177,GSA-001,2025-11-29,Manufacturer Allocation,34448.55,71.00,38321.69,37738.81,In Transit,arpi_synthetic_generator
+ACQ-00000178,VEH-0000178,GSA-002,2025-06-27,Manufacturer Allocation,37404.73,97.00,41053.36,40563.31,In Transit,arpi_synthetic_generator
+ACQ-00000179,VEH-0000179,GSA-001,2025-12-09,Customer Trade,1929.43,821.65,3511.21,,In Stock,arpi_synthetic_generator
+ACQ-00000180,VEH-0000180,GSA-003,2025-05-06,Off-street Purchase,12743.38,3394.20,22215.40,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000181,VEH-0000181,GSA-003,2025-06-12,Customer Trade,8956.79,2318.82,14658.72,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000182,VEH-0000182,GSA-001,2025-07-02,Lease Return,31338.67,1175.33,40715.66,,In Stock,arpi_synthetic_generator
+ACQ-00000183,VEH-0000183,GSA-003,2025-10-09,Customer Trade,7363.65,1299.84,11496.40,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000184,VEH-0000184,GSA-002,2025-06-16,Lease Return,20155.67,1547.62,31066.63,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000185,VEH-0000185,GSA-002,2025-10-10,Lease Return,2826.75,1054.96,5292.14,,In Stock,arpi_synthetic_generator
+ACQ-00000186,VEH-0000186,GSA-002,2025-06-03,Manufacturer Allocation,22927.64,108.00,25061.34,25127.25,In Transit,arpi_synthetic_generator
+ACQ-00000187,VEH-0000187,GSA-002,2025-11-01,Manufacturer Allocation,30559.71,61.00,33531.21,32849.84,In Transit,arpi_synthetic_generator
+ACQ-00000188,VEH-0000188,GSA-002,2025-09-23,Customer Trade,6426.59,1990.91,11257.51,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000189,VEH-0000189,GSA-001,2025-06-26,Manufacturer Allocation,35276.31,116.00,39832.91,38949.31,In Transit,arpi_synthetic_generator
+ACQ-00000190,VEH-0000190,GSA-003,2025-12-09,Lease Return,2030.00,847.80,3889.59,,In Stock,arpi_synthetic_generator
+ACQ-00000191,VEH-0000191,GSA-001,2025-11-27,Manufacturer Allocation,42858.47,60.00,47684.13,47681.08,In Transit,arpi_synthetic_generator
+ACQ-00000192,VEH-0000192,GSA-003,2025-10-31,Customer Trade,27035.67,424.82,35670.00,,In Stock,arpi_synthetic_generator
+ACQ-00000193,VEH-0000193,GSA-002,2025-11-27,Manufacturer Allocation,29194.84,105.00,32119.87,32114.28,In Transit,arpi_synthetic_generator
+ACQ-00000194,VEH-0000194,GSA-001,2025-08-28,Auction,36430.27,2037.32,55917.34,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000195,VEH-0000195,GSA-001,2025-12-10,Auction,22613.27,1124.52,32833.92,,In Stock,arpi_synthetic_generator
+ACQ-00000196,VEH-0000196,GSA-002,2025-08-29,Customer Trade,12350.61,2358.60,19618.64,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000197,VEH-0000197,GSA-003,2025-06-02,Off-street Purchase,6871.39,1053.24,9569.26,,In Stock,arpi_synthetic_generator
+ACQ-00000198,VEH-0000198,GSA-002,2025-11-07,Off-street Purchase,18457.68,715.89,24705.36,,In Stock,arpi_synthetic_generator
+ACQ-00000199,VEH-0000199,GSA-002,2025-09-23,Manufacturer Allocation,36963.31,10.00,41156.24,40853.23,In Transit,arpi_synthetic_generator
+ACQ-00000200,VEH-0000200,GSA-003,2025-08-05,Customer Trade,4862.46,1584.24,8820.58,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000201,VEH-0000201,GSA-003,2025-06-30,Auction,13044.29,1815.56,19465.91,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000202,VEH-0000202,GSA-002,2025-09-25,Lease Return,16295.69,3305.87,24711.41,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000203,VEH-0000203,GSA-001,2025-12-03,Manufacturer Allocation,43841.78,132.00,48721.00,48284.27,In Transit,arpi_synthetic_generator
+ACQ-00000204,VEH-0000204,GSA-001,2025-05-13,Customer Trade,11062.90,3101.68,18362.34,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000205,VEH-0000205,GSA-002,2025-09-10,Lease Return,15397.79,2724.04,25826.58,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000206,VEH-0000206,GSA-002,2025-07-30,Manufacturer Allocation,35399.21,155.00,39269.77,39522.52,In Transit,arpi_synthetic_generator
+ACQ-00000207,VEH-0000207,GSA-001,2025-11-13,Customer Trade,30843.08,1695.37,40428.34,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000208,VEH-0000208,GSA-003,2025-11-07,Auction,2892.39,1072.02,5294.73,,In Stock,arpi_synthetic_generator
+ACQ-00000209,VEH-0000209,GSA-002,2025-06-18,Customer Trade,5804.33,1829.13,10205.00,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000210,VEH-0000210,GSA-002,2025-07-24,Manufacturer Allocation,34699.07,105.00,37989.88,37919.54,In Transit,arpi_synthetic_generator
+ACQ-00000211,VEH-0000211,GSA-001,2025-05-22,Manufacturer Allocation,36734.14,112.00,39402.67,39351.28,In Transit,arpi_synthetic_generator
+ACQ-00000212,VEH-0000212,GSA-002,2025-09-01,Auction,9309.20,2704.07,14689.66,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000213,VEH-0000213,GSA-003,2025-09-22,Off-street Purchase,19325.23,929.11,28005.98,,In Stock,arpi_synthetic_generator
+ACQ-00000214,VEH-0000214,GSA-002,2025-07-15,Manufacturer Allocation,36744.99,76.00,39923.11,40016.11,In Transit,arpi_synthetic_generator
+ACQ-00000215,VEH-0000215,GSA-002,2025-07-17,Customer Trade,11693.02,3360.19,20920.32,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000216,VEH-0000216,GSA-003,2025-12-15,Off-street Purchase,18256.31,1201.70,25316.62,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000217,VEH-0000217,GSA-003,2025-11-01,Customer Trade,12328.61,3525.44,20127.02,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000218,VEH-0000218,GSA-003,2025-12-01,Lease Return,33780.57,1135.84,48327.56,,In Stock,arpi_synthetic_generator
+ACQ-00000219,VEH-0000219,GSA-003,2025-05-15,Lease Return,11724.49,2805.57,18284.15,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000220,VEH-0000220,GSA-001,2025-12-22,Auction,9434.54,1901.77,14205.98,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000221,VEH-0000221,GSA-002,2025-08-21,Manufacturer Allocation,22833.64,34.00,25400.47,25244.63,In Transit,arpi_synthetic_generator
+ACQ-00000222,VEH-0000222,GSA-001,2025-07-16,Manufacturer Allocation,45166.76,25.00,49309.03,48951.49,In Transit,arpi_synthetic_generator
+ACQ-00000223,VEH-0000223,GSA-003,2025-09-10,Auction,8601.33,1354.54,12177.11,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000224,VEH-0000224,GSA-001,2025-08-11,Manufacturer Allocation,42031.11,122.00,45715.75,45848.25,In Transit,arpi_synthetic_generator
+ACQ-00000225,VEH-0000225,GSA-003,2025-09-16,Lease Return,32473.54,708.34,46146.90,,In Stock,arpi_synthetic_generator
+ACQ-00000226,VEH-0000226,GSA-002,2025-11-04,Manufacturer Allocation,23205.35,159.00,24803.60,25012.23,In Transit,arpi_synthetic_generator
+ACQ-00000227,VEH-0000227,GSA-001,2025-08-23,Manufacturer Allocation,35553.57,158.00,39010.99,38503.10,In Transit,arpi_synthetic_generator
+ACQ-00000228,VEH-0000228,GSA-002,2025-06-26,Manufacturer Allocation,36886.76,79.00,40505.18,40608.04,In Transit,arpi_synthetic_generator
+ACQ-00000229,VEH-0000229,GSA-003,2025-08-25,Customer Trade,11870.90,1197.89,17918.17,,In Stock,arpi_synthetic_generator
+ACQ-00000230,VEH-0000230,GSA-003,2025-07-31,Lease Return,1838.03,797.89,3608.90,,In Stock,arpi_synthetic_generator
+ACQ-00000231,VEH-0000231,GSA-002,2025-06-07,Customer Trade,5959.33,1869.43,9900.97,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000232,VEH-0000232,GSA-003,2025-08-11,Customer Trade,31448.31,1285.33,43783.14,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000233,VEH-0000233,GSA-001,2025-08-22,Manufacturer Allocation,35844.61,148.00,39188.52,38648.56,In Transit,arpi_synthetic_generator
+ACQ-00000234,VEH-0000234,GSA-001,2025-11-11,Manufacturer Allocation,42706.22,93.00,48391.91,47403.69,In Transit,arpi_synthetic_generator
+ACQ-00000235,VEH-0000235,GSA-001,2025-07-02,Customer Trade,9227.33,2189.00,15820.45,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000236,VEH-0000236,GSA-003,2025-10-06,Auction,11277.55,3135.31,19609.81,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000237,VEH-0000237,GSA-001,2025-06-10,Auction,2124.55,872.38,3907.27,,In Stock,arpi_synthetic_generator
+ACQ-00000238,VEH-0000238,GSA-002,2025-06-30,Auction,32300.25,1614.72,48960.70,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000239,VEH-0000239,GSA-002,2025-10-13,Auction,3028.10,1107.31,5755.56,,In Stock,arpi_synthetic_generator
+ACQ-00000240,VEH-0000240,GSA-002,2025-06-14,Lease Return,5816.18,1832.21,9941.08,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000241,VEH-0000241,GSA-001,2025-11-30,Lease Return,10077.65,1345.12,13504.56,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000242,VEH-0000242,GSA-003,2025-07-01,Off-street Purchase,26240.65,1563.10,38761.10,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000243,VEH-0000243,GSA-001,2025-07-03,Customer Trade,6317.47,1962.54,10847.98,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000244,VEH-0000244,GSA-002,2025-07-15,Manufacturer Allocation,27724.31,38.00,30225.02,30442.19,In Transit,arpi_synthetic_generator
+ACQ-00000245,VEH-0000245,GSA-003,2025-10-09,Auction,2755.78,1036.50,5017.91,,In Stock,arpi_synthetic_generator
+ACQ-00000246,VEH-0000246,GSA-002,2025-07-30,Dealer Trade,6172.49,1387.29,10207.00,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000247,VEH-0000247,GSA-002,2025-03-24,Auction,9792.44,804.06,13067.84,,In Stock,arpi_synthetic_generator
+ACQ-00000248,VEH-0000248,GSA-003,2025-08-04,Auction,10183.38,435.69,14675.19,,In Stock,arpi_synthetic_generator
+ACQ-00000249,VEH-0000249,GSA-001,2025-05-02,Lease Return,26940.12,2541.03,38614.41,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000250,VEH-0000250,GSA-001,2025-05-27,Auction,30135.79,1314.64,39398.36,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000251,VEH-0000251,GSA-002,2025-09-15,Customer Trade,9041.09,2670.68,15576.47,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000252,VEH-0000252,GSA-001,2025-03-14,Auction,10167.69,2963.60,17722.83,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000253,VEH-0000253,GSA-002,2025-07-15,Manufacturer Allocation,36033.32,117.00,39564.94,39159.29,In Transit,arpi_synthetic_generator
+ACQ-00000254,VEH-0000254,GSA-001,2025-07-16,Auction,37834.35,1107.63,50956.67,,In Stock,arpi_synthetic_generator
+ACQ-00000255,VEH-0000255,GSA-001,2025-12-23,Dealer Trade,16110.03,1021.05,24227.06,,In Stock,arpi_synthetic_generator
+ACQ-00000256,VEH-0000256,GSA-003,2025-08-11,Off-street Purchase,28106.05,1890.55,43676.13,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000257,VEH-0000257,GSA-002,2025-10-15,Manufacturer Allocation,35032.24,37.00,37837.59,38058.79,In Transit,arpi_synthetic_generator
+ACQ-00000258,VEH-0000258,GSA-002,2025-02-21,Auction,10352.30,2818.86,16798.84,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000259,VEH-0000259,GSA-001,2025-12-24,Manufacturer Allocation,33871.73,119.00,38236.17,37605.97,In Transit,arpi_synthetic_generator
+ACQ-00000260,VEH-0000260,GSA-001,2025-06-27,Manufacturer Allocation,44416.28,39.00,47296.94,47824.44,In Transit,arpi_synthetic_generator
+ACQ-00000261,VEH-0000261,GSA-001,2025-12-31,Manufacturer Allocation,45287.49,109.00,51091.49,49748.00,In Transit,arpi_synthetic_generator
+ACQ-00000262,VEH-0000262,GSA-001,2025-07-07,Manufacturer Allocation,35400.82,81.00,39829.77,39510.64,In Transit,arpi_synthetic_generator
+ACQ-00000263,VEH-0000263,GSA-003,2025-11-14,Customer Trade,9268.47,2002.17,16132.59,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000264,VEH-0000264,GSA-001,2025-11-12,Manufacturer Allocation,42423.92,112.00,48346.34,47437.07,In Transit,arpi_synthetic_generator
+ACQ-00000265,VEH-0000265,GSA-003,2025-06-05,Auction,5456.84,1738.78,8833.24,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000266,VEH-0000266,GSA-001,2025-07-16,Off-street Purchase,27751.12,792.02,37110.25,,In Stock,arpi_synthetic_generator
+ACQ-00000267,VEH-0000267,GSA-002,2025-04-14,Off-street Purchase,11673.68,3107.25,19147.91,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000268,VEH-0000268,GSA-003,2025-06-11,Lease Return,3029.09,1107.56,5502.96,,In Stock,arpi_synthetic_generator
+ACQ-00000269,VEH-0000269,GSA-003,2025-09-26,Off-street Purchase,12196.31,3270.36,20536.06,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000270,VEH-0000270,GSA-001,2025-07-10,Auction,4625.68,1522.68,8282.07,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000271,VEH-0000271,GSA-002,2025-10-20,Manufacturer Allocation,35660.53,29.00,38829.73,39088.73,In Transit,arpi_synthetic_generator
+ACQ-00000272,VEH-0000272,GSA-001,2025-10-08,Manufacturer Allocation,35361.98,1.00,38705.97,39350.81,In Transit,arpi_synthetic_generator
+ACQ-00000273,VEH-0000273,GSA-003,2025-12-16,Customer Trade,8274.42,1011.13,12713.38,,In Stock,arpi_synthetic_generator
+ACQ-00000274,VEH-0000274,GSA-003,2025-12-31,Dealer Trade,10496.75,885.43,14172.98,,In Stock,arpi_synthetic_generator
+ACQ-00000275,VEH-0000275,GSA-001,2025-05-22,Manufacturer Allocation,41368.53,118.00,46167.69,45319.18,In Transit,arpi_synthetic_generator
+ACQ-00000276,VEH-0000276,GSA-001,2025-12-30,Auction,33733.27,655.93,45965.05,,In Stock,arpi_synthetic_generator
+ACQ-00000277,VEH-0000277,GSA-001,2025-10-10,Off-street Purchase,12631.89,960.70,16132.95,,In Stock,arpi_synthetic_generator
+ACQ-00000278,VEH-0000278,GSA-002,2025-07-25,Auction,41492.55,1206.26,60569.50,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000279,VEH-0000279,GSA-003,2025-11-15,Customer Trade,4641.80,1526.87,7921.92,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000280,VEH-0000280,GSA-002,2025-06-20,Customer Trade,17346.57,2054.28,24787.34,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000281,VEH-0000281,GSA-003,2025-10-28,Auction,18494.21,1249.11,25369.02,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000282,VEH-0000282,GSA-003,2025-08-27,Customer Trade,28580.68,945.60,40005.72,,In Stock,arpi_synthetic_generator
+ACQ-00000283,VEH-0000283,GSA-002,2025-06-10,Manufacturer Allocation,36129.75,4.00,39857.00,39720.88,In Transit,arpi_synthetic_generator
+ACQ-00000284,VEH-0000284,GSA-003,2025-09-02,Dealer Trade,35732.43,713.24,45588.98,,In Stock,arpi_synthetic_generator
+ACQ-00000285,VEH-0000285,GSA-003,2025-12-11,Dealer Trade,35727.22,819.38,51580.12,,In Stock,arpi_synthetic_generator
+ACQ-00000286,VEH-0000286,GSA-001,2025-07-29,Manufacturer Allocation,44456.32,24.00,47245.31,47810.82,In Transit,arpi_synthetic_generator
+ACQ-00000287,VEH-0000287,GSA-001,2025-08-05,Manufacturer Allocation,41880.17,150.00,46559.38,46238.67,In Transit,arpi_synthetic_generator
+ACQ-00000288,VEH-0000288,GSA-001,2025-07-23,Auction,28179.48,1309.10,39181.39,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000289,VEH-0000289,GSA-001,2025-08-29,Lease Return,3013.44,1103.49,5706.53,,In Stock,arpi_synthetic_generator
+ACQ-00000290,VEH-0000290,GSA-001,2025-11-08,Manufacturer Allocation,44256.73,69.00,48849.81,48965.12,In Transit,arpi_synthetic_generator
+ACQ-00000291,VEH-0000291,GSA-002,2025-09-04,Dealer Trade,33830.68,1819.34,49145.44,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000292,VEH-0000292,GSA-003,2025-03-12,Customer Trade,8342.54,2489.06,12916.89,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000293,VEH-0000293,GSA-001,2025-09-16,Manufacturer Allocation,43772.52,48.00,49010.90,48193.82,In Transit,arpi_synthetic_generator
+ACQ-00000294,VEH-0000294,GSA-003,2025-08-08,Customer Trade,18711.20,885.25,26146.80,,In Stock,arpi_synthetic_generator
+ACQ-00000295,VEH-0000295,GSA-002,2025-12-25,Lease Return,7332.03,2226.33,11272.17,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000296,VEH-0000296,GSA-002,2025-11-06,Customer Trade,9791.92,2423.62,16799.36,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000297,VEH-0000297,GSA-001,2025-07-16,Off-street Purchase,18964.81,1726.88,27193.39,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000298,VEH-0000298,GSA-001,2025-09-10,Manufacturer Allocation,34915.33,48.00,38230.13,38527.56,In Transit,arpi_synthetic_generator
+ACQ-00000299,VEH-0000299,GSA-001,2025-06-16,Auction,28228.15,2783.91,41998.64,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000300,VEH-0000300,GSA-001,2025-04-16,Auction,1593.53,734.32,2959.88,,In Stock,arpi_synthetic_generator
+ACQ-00000301,VEH-0000301,GSA-002,2025-07-24,Customer Trade,19539.61,2096.55,27767.87,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000302,VEH-0000302,GSA-001,2025-11-27,Manufacturer Allocation,43036.92,158.00,47060.15,46941.62,In Transit,arpi_synthetic_generator
+ACQ-00000303,VEH-0000303,GSA-001,2025-07-31,Manufacturer Allocation,36091.95,120.00,40231.87,40213.69,In Transit,arpi_synthetic_generator
+ACQ-00000304,VEH-0000304,GSA-003,2025-07-01,Dealer Trade,3617.62,1260.58,6517.09,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000305,VEH-0000305,GSA-001,2025-09-10,Customer Trade,30046.98,4343.20,45068.61,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000306,VEH-0000306,GSA-001,2025-10-31,Manufacturer Allocation,34255.40,36.00,38116.64,38030.12,In Transit,arpi_synthetic_generator
+ACQ-00000307,VEH-0000307,GSA-002,2025-11-14,Manufacturer Allocation,22580.15,106.00,24947.44,24727.73,In Transit,arpi_synthetic_generator
+ACQ-00000308,VEH-0000308,GSA-003,2025-06-26,Off-street Purchase,32828.78,1734.03,46197.07,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000309,VEH-0000309,GSA-001,2025-11-17,Customer Trade,29191.70,1300.23,41207.98,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000310,VEH-0000310,GSA-001,2025-08-06,Customer Trade,29576.19,1258.02,43110.05,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000311,VEH-0000311,GSA-002,2025-07-24,Manufacturer Allocation,35529.66,159.00,39260.80,38871.27,In Transit,arpi_synthetic_generator
+ACQ-00000312,VEH-0000312,GSA-002,2025-12-05,Manufacturer Allocation,36025.33,131.00,39920.86,39553.72,In Transit,arpi_synthetic_generator
+ACQ-00000313,VEH-0000313,GSA-002,2025-06-26,Lease Return,7817.28,1836.51,12851.48,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000314,VEH-0000314,GSA-002,2025-10-29,Auction,5663.80,1602.07,9072.32,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000315,VEH-0000315,GSA-001,2025-05-20,Lease Return,23832.22,937.74,34382.49,,In Stock,arpi_synthetic_generator
+ACQ-00000316,VEH-0000316,GSA-003,2025-06-19,Dealer Trade,33530.91,1638.79,45714.10,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000317,VEH-0000317,GSA-002,2025-09-08,Manufacturer Allocation,35998.21,100.00,40285.44,39946.57,In Transit,arpi_synthetic_generator
+ACQ-00000318,VEH-0000318,GSA-001,2025-07-24,Manufacturer Allocation,34770.79,145.00,38481.88,38296.56,In Transit,arpi_synthetic_generator
+ACQ-00000319,VEH-0000319,GSA-002,2025-12-03,Customer Trade,5782.27,1629.13,9564.57,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000320,VEH-0000320,GSA-002,2025-11-27,Customer Trade,2487.80,966.83,4632.46,,In Stock,arpi_synthetic_generator
+ACQ-00000321,VEH-0000321,GSA-001,2025-10-31,Manufacturer Allocation,35788.53,44.00,38671.87,38834.35,In Transit,arpi_synthetic_generator
+ACQ-00000322,VEH-0000322,GSA-003,2025-05-30,Customer Trade,30795.98,755.90,43869.13,,In Stock,arpi_synthetic_generator
+ACQ-00000323,VEH-0000323,GSA-001,2025-10-14,Lease Return,10740.98,1127.06,14193.35,,In Stock,arpi_synthetic_generator
+ACQ-00000324,VEH-0000324,GSA-001,2025-06-10,Lease Return,16338.23,2599.57,26396.15,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000325,VEH-0000325,GSA-002,2025-07-30,Manufacturer Allocation,23257.52,151.00,25428.09,25056.48,In Transit,arpi_synthetic_generator
+ACQ-00000326,VEH-0000326,GSA-001,2025-07-19,Manufacturer Allocation,34412.64,70.00,37331.35,37207.00,In Transit,arpi_synthetic_generator
+ACQ-00000327,VEH-0000327,GSA-003,2025-05-15,Lease Return,11390.09,1722.01,17593.00,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000328,VEH-0000328,GSA-001,2025-09-10,Customer Trade,29586.20,1320.82,40721.70,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000329,VEH-0000329,GSA-001,2025-10-24,Manufacturer Allocation,41891.98,133.00,45512.51,45182.05,In Transit,arpi_synthetic_generator
+ACQ-00000330,VEH-0000330,GSA-003,2025-06-13,Customer Trade,8196.08,1862.94,12289.12,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000331,VEH-0000331,GSA-002,2025-08-13,Off-street Purchase,29996.28,1110.76,41477.41,,In Stock,arpi_synthetic_generator
+ACQ-00000332,VEH-0000332,GSA-002,2025-12-25,Lease Return,7210.68,2194.78,11666.90,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000333,VEH-0000333,GSA-002,2025-10-21,Manufacturer Allocation,34991.41,46.00,38983.88,38617.82,In Transit,arpi_synthetic_generator
+ACQ-00000334,VEH-0000334,GSA-003,2025-10-01,Customer Trade,1633.93,744.82,3068.67,,In Stock,arpi_synthetic_generator
+ACQ-00000335,VEH-0000335,GSA-002,2025-11-10,Off-street Purchase,29951.55,985.27,41738.47,,In Stock,arpi_synthetic_generator
+ACQ-00000336,VEH-0000336,GSA-001,2025-04-01,Lease Return,15717.52,2507.04,24822.54,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000337,VEH-0000337,GSA-001,2025-09-04,Dealer Trade,32570.81,1562.86,41454.69,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000338,VEH-0000338,GSA-002,2025-05-20,Manufacturer Allocation,22609.43,68.00,24763.84,24756.78,In Transit,arpi_synthetic_generator
+ACQ-00000339,VEH-0000339,GSA-001,2025-12-22,Auction,37816.53,1364.98,56211.60,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000340,VEH-0000340,GSA-001,2025-06-06,Auction,18863.35,1879.35,26923.11,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000341,VEH-0000341,GSA-001,2025-07-30,Dealer Trade,28098.60,1351.69,41145.50,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000342,VEH-0000342,GSA-003,2025-05-22,Off-street Purchase,8684.12,2577.87,14258.05,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000343,VEH-0000343,GSA-001,2025-09-26,Auction,10395.07,1717.15,16153.84,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000344,VEH-0000344,GSA-001,2025-09-24,Auction,38543.97,1279.12,56748.78,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000345,VEH-0000345,GSA-002,2025-11-25,Lease Return,12377.52,1297.38,17856.14,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000346,VEH-0000346,GSA-003,2025-05-03,Auction,2302.10,918.55,3939.74,,In Stock,arpi_synthetic_generator
+ACQ-00000347,VEH-0000347,GSA-001,2025-05-08,Customer Trade,2848.73,1060.67,5024.10,,In Stock,arpi_synthetic_generator
+ACQ-00000348,VEH-0000348,GSA-002,2025-12-18,Off-street Purchase,7244.45,1842.68,10827.74,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000349,VEH-0000349,GSA-002,2025-10-07,Lease Return,1663.23,752.44,3088.72,,In Stock,arpi_synthetic_generator
+ACQ-00000350,VEH-0000350,GSA-003,2025-08-20,Customer Trade,23586.82,1766.43,32849.62,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000351,VEH-0000351,GSA-002,2025-06-09,Lease Return,2784.54,1043.98,4732.90,,In Stock,arpi_synthetic_generator
+ACQ-00000352,VEH-0000352,GSA-003,2025-06-20,Customer Trade,18660.81,1065.97,24307.00,,In Stock,arpi_synthetic_generator
+ACQ-00000353,VEH-0000353,GSA-002,2025-07-06,Manufacturer Allocation,26667.24,131.00,29496.53,29644.40,In Transit,arpi_synthetic_generator
+ACQ-00000354,VEH-0000354,GSA-001,2025-06-20,Auction,17559.43,1581.89,23678.58,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000355,VEH-0000355,GSA-002,2025-07-05,Dealer Trade,32244.92,1304.58,45643.59,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000356,VEH-0000356,GSA-003,2025-07-28,Auction,12090.38,1172.87,17823.74,,In Stock,arpi_synthetic_generator
+ACQ-00000357,VEH-0000357,GSA-001,2025-08-05,Manufacturer Allocation,35120.28,133.00,38756.23,38635.53,In Transit,arpi_synthetic_generator
+ACQ-00000358,VEH-0000358,GSA-001,2025-07-04,Manufacturer Allocation,46186.10,33.00,50426.25,49527.52,In Transit,arpi_synthetic_generator
+ACQ-00000359,VEH-0000359,GSA-003,2025-06-12,Lease Return,9762.75,2858.32,15306.56,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000360,VEH-0000360,GSA-003,2025-12-26,Lease Return,12832.61,2481.62,20350.45,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000361,VEH-0000361,GSA-003,2025-06-19,Customer Trade,14284.86,1510.88,22385.44,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000362,VEH-0000362,GSA-001,2025-12-11,Auction,40121.34,1719.92,53514.76,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000363,VEH-0000363,GSA-003,2025-11-20,Auction,1682.02,757.33,3293.87,,In Stock,arpi_synthetic_generator
+ACQ-00000364,VEH-0000364,GSA-002,2025-06-06,Customer Trade,6151.78,1919.46,9932.72,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000365,VEH-0000365,GSA-003,2025-10-17,Off-street Purchase,16644.40,2294.95,22792.75,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000366,VEH-0000366,GSA-002,2025-10-24,Manufacturer Allocation,28443.50,135.00,32092.38,31883.29,In Transit,arpi_synthetic_generator
+ACQ-00000367,VEH-0000367,GSA-003,2025-05-16,Auction,8722.55,2280.60,14435.26,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000368,VEH-0000368,GSA-003,2025-09-26,Auction,2129.88,873.77,4036.12,,In Stock,arpi_synthetic_generator
+ACQ-00000369,VEH-0000369,GSA-002,2025-08-16,Lease Return,12448.39,3411.87,22850.67,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000370,VEH-0000370,GSA-003,2025-10-21,Dealer Trade,14150.12,1182.70,18741.26,,In Stock,arpi_synthetic_generator
+ACQ-00000371,VEH-0000371,GSA-001,2025-08-25,Manufacturer Allocation,36948.87,75.00,39953.86,39870.33,In Transit,arpi_synthetic_generator
+ACQ-00000372,VEH-0000372,GSA-001,2025-10-31,Manufacturer Allocation,35063.50,42.00,38614.84,39095.84,In Transit,arpi_synthetic_generator
+ACQ-00000373,VEH-0000373,GSA-001,2025-12-19,Lease Return,7690.26,2319.47,13735.40,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000374,VEH-0000374,GSA-002,2025-09-30,Auction,7221.01,1272.78,11565.04,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000375,VEH-0000375,GSA-003,2025-05-07,Auction,13691.12,2388.99,20441.70,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000376,VEH-0000376,GSA-001,2025-06-03,Lease Return,17402.21,1577.86,24509.06,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000377,VEH-0000377,GSA-001,2025-08-23,Customer Trade,22859.69,1138.08,31760.71,,In Stock,arpi_synthetic_generator
+ACQ-00000378,VEH-0000378,GSA-002,2025-09-22,Manufacturer Allocation,26805.90,49.00,29239.60,29075.73,In Transit,arpi_synthetic_generator
+ACQ-00000379,VEH-0000379,GSA-001,2025-05-09,Auction,35468.91,1222.16,50148.33,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000380,VEH-0000380,GSA-001,2025-04-15,Auction,16612.40,1289.02,22983.36,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000381,VEH-0000381,GSA-002,2025-11-05,Customer Trade,1993.63,838.34,3429.05,,In Stock,arpi_synthetic_generator
+ACQ-00000382,VEH-0000382,GSA-001,2025-10-01,Customer Trade,14580.71,2747.59,21872.98,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000383,VEH-0000383,GSA-003,2025-08-23,Auction,28396.02,1485.21,37785.89,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000384,VEH-0000384,GSA-001,2025-10-07,Customer Trade,16344.27,2223.83,24165.40,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000385,VEH-0000385,GSA-002,2025-05-14,Manufacturer Allocation,29563.51,102.00,33047.30,32653.66,In Transit,arpi_synthetic_generator
+ACQ-00000386,VEH-0000386,GSA-001,2025-09-20,Manufacturer Allocation,43492.42,9.00,48906.16,48583.32,In Transit,arpi_synthetic_generator
+ACQ-00000387,VEH-0000387,GSA-002,2025-08-09,Auction,12495.00,2067.93,19488.61,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000388,VEH-0000388,GSA-002,2025-06-01,Dealer Trade,14676.41,2560.18,23677.11,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000389,VEH-0000389,GSA-002,2025-09-12,Auction,2517.72,974.61,4882.14,,In Stock,arpi_synthetic_generator
+ACQ-00000390,VEH-0000390,GSA-001,2025-09-16,Manufacturer Allocation,44581.67,139.00,48766.95,48542.34,In Transit,arpi_synthetic_generator
+ACQ-00000391,VEH-0000391,GSA-001,2025-10-10,Manufacturer Allocation,42559.56,28.00,46576.73,46157.39,In Transit,arpi_synthetic_generator
+ACQ-00000392,VEH-0000392,GSA-001,2025-11-20,Customer Trade,15449.02,2150.35,24738.75,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000393,VEH-0000393,GSA-001,2025-10-15,Customer Trade,20156.25,2574.55,29798.46,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000394,VEH-0000394,GSA-001,2025-04-05,Manufacturer Allocation,35346.73,92.00,38999.79,38404.41,In Transit,arpi_synthetic_generator
+ACQ-00000395,VEH-0000395,GSA-002,2025-04-26,Manufacturer Allocation,28516.69,82.00,32247.85,32102.91,In Transit,arpi_synthetic_generator
+ACQ-00000396,VEH-0000396,GSA-003,2025-10-04,Lease Return,33651.94,1564.44,47661.39,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000397,VEH-0000397,GSA-002,2025-10-02,Customer Trade,25889.43,1357.65,32903.71,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000398,VEH-0000398,GSA-002,2025-06-27,Customer Trade,7046.15,1722.62,11415.55,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000399,VEH-0000399,GSA-003,2025-08-16,Auction,18630.87,2202.69,26477.87,,In Reconditioning,arpi_synthetic_generator
+ACQ-00000400,VEH-0000400,GSA-002,2025-06-17,Manufacturer Allocation,22514.93,162.00,25413.56,25014.23,In Transit,arpi_synthetic_generator

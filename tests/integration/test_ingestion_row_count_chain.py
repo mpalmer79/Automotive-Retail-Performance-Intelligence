@@ -57,7 +57,9 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 REPO_CONFIG_DIR = REPO_ROOT / "config"
 SQL_ROOT = REPO_ROOT / "sql"
 
-ENTITY = "vehicle_model"
+#: The entity name its generator declares, which is the name the loader looks the
+#: ingestion spec up by. The SQL objects are stemmed on the unprefixed ``vehicle_model``.
+ENTITY = "dim_vehicle_model"
 
 #: The declared column contract of the vehicle model entity, in contract order.
 VEHICLE_MODEL_COLUMNS: tuple[str, ...] = (

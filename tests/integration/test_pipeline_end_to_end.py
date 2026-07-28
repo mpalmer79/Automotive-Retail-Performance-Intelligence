@@ -173,36 +173,41 @@ def test_every_dimension_is_populated(
     look identical from the outside, which is exactly why the count is asserted here
     rather than only the non-emptiness.
 
-    ``dim_employee`` keeps Type 2 history, so the count that must match the generator's
-    one-row-per-version output is the current-row count; a superseded version is
-    legitimate history, not a duplicate.
+    Which warehouse count a generated row count may be compared against depends on the
+    entity's source grain, not on whether it is Type 2. ``dim_dealership`` generates one
+    row per store and the merge opens the version, so its rows match the *current* rows.
+    ``dim_employee`` generates the versions itself, so its rows match *every* warehouse
+    row and only the current ones match the distinct people.
     """
     result = run_foundation(loadable_config, load_database=True)
     generated = {dataset.entity_name: dataset.row_count for dataset in result.datasets}
 
     for spec in DIMENSION_SPECS:
-        predicate = " WHERE is_current" if spec.scd_type_2 else ""
-        rows = _scalar(
-            committed_connection,
-            f"SELECT count(*) FROM warehouse.{spec.warehouse_table}{predicate}",
+        table = f"warehouse.{spec.warehouse_table}"
+        total = _scalar(committed_connection, f"SELECT count(*) FROM {table}")
+        assert total > 0, f"{table} is empty after a successful run"
+
+        comparable = total
+        if spec.scd_type_2 and not spec.source_grain_is_version:
+            comparable = _scalar(
+                committed_connection, f"SELECT count(*) FROM {table} WHERE is_current"
+            )
+        assert comparable == generated[spec.entity_name], (
+            f"{table} holds {comparable} comparable row(s) but {spec.entity_name} "
+            f"generated {generated[spec.entity_name]}"
         )
-        assert rows > 0, f"warehouse.{spec.warehouse_table} is empty after a successful run"
+
         if spec.scd_type_2:
-            # The generator emits one row per version; only the current ones reconcile
-            # against a source carrying one row per business key.
-            versions = _scalar(
+            current = _scalar(
+                committed_connection, f"SELECT count(*) FROM {table} WHERE is_current"
+            )
+            people = _scalar(
                 committed_connection,
-                f"SELECT count(DISTINCT {spec.warehouse_match_key}) "
-                f"FROM warehouse.{spec.warehouse_table}",
+                f"SELECT count(DISTINCT {spec.warehouse_match_key}) FROM {table}",
             )
-            assert rows == versions, (
-                f"warehouse.{spec.warehouse_table} has {rows} current row(s) for "
-                f"{versions} business key(s)"
-            )
-        else:
-            assert rows == generated[spec.entity_name], (
-                f"warehouse.{spec.warehouse_table} holds {rows} row(s) but "
-                f"{spec.entity_name} generated {generated[spec.entity_name]}"
+            assert current == people, (
+                f"{table} has {current} current row(s) for {people} business key(s); a "
+                "Type 2 table must expose exactly one current row per key"
             )
 
 
@@ -220,9 +225,7 @@ def test_source_entities_reach_staging(
 
     for entity_name in ("acquisition_event", "sale_event"):
         spec = spec_for(entity_name)
-        staged = _scalar(
-            committed_connection, f"SELECT count(*) FROM staging.{spec.staging_view}"
-        )
+        staged = _scalar(committed_connection, f"SELECT count(*) FROM staging.{spec.staging_view}")
         assert staged == generated[entity_name], (
             f"staging.{spec.staging_view} accepted {staged} of "
             f"{generated[entity_name]} generated row(s)"
@@ -307,17 +310,14 @@ def test_run_without_database_still_generates(loadable_config: ArpiConfig) -> No
 
 def _snapshot(connection: Any) -> dict[str, int]:
     """Count every table a rerun could duplicate rows in."""
-    return {
-        table: _scalar(connection, f"SELECT count(*) FROM {table}")
-        for table in (
-            "warehouse.dim_date",
-            "warehouse.dim_dealership",
-            "audit.pipeline_run",
-            "audit.pipeline_run_row_count",
-            "audit.validation_result",
-            "audit.reconciliation_result",
-        )
-    }
+    tables = (
+        *(f"warehouse.{spec.warehouse_table}" for spec in DIMENSION_SPECS),
+        "audit.pipeline_run",
+        "audit.pipeline_run_row_count",
+        "audit.validation_result",
+        "audit.reconciliation_result",
+    )
+    return {table: _scalar(connection, f"SELECT count(*) FROM {table}") for table in tables}
 
 
 def test_reconciliation_survives_a_type_2_transition(

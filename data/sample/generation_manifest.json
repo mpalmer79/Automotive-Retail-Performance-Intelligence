@@ -18,6 +18,54 @@
       "row_count": 3,
       "column_count": 16,
       "content_digest": "83b653797c8658d7986fcc33336384a03480f6ce353dc4c15650bbd23e2568ce"
+    },
+    {
+      "entity": "dim_vehicle_model",
+      "row_count": 120,
+      "column_count": 16,
+      "content_digest": "5e6651271b95bdfcc71b40f7c9bff9553dbd4b8dcb24226496b5d2387abc1d2c"
+    },
+    {
+      "entity": "dim_vehicle",
+      "row_count": 400,
+      "column_count": 12,
+      "content_digest": "0bf12b3ed5a6c28c0b0ab4c8262f592248bf3db9ee18cdc5e3941ec85a5a1b62"
+    },
+    {
+      "entity": "dim_employee",
+      "row_count": 34,
+      "column_count": 15,
+      "content_digest": "ab8ac3387b2e22fd21e68669e3ba1e431b6302a119fbc52cbdf41e11cb4c5a56"
+    },
+    {
+      "entity": "dim_customer",
+      "row_count": 400,
+      "column_count": 12,
+      "content_digest": "f7606ae60ac04dab5f2889f0adca11d382ff98342198e965244b18805766c159"
+    },
+    {
+      "entity": "dim_lead_source",
+      "row_count": 19,
+      "column_count": 9,
+      "content_digest": "a599bc28f2ca1dc655b169e6bf8d1e73ed3e9579ee7f4955349cd2c8fe05ab79"
+    },
+    {
+      "entity": "dim_marketing_campaign",
+      "row_count": 24,
+      "column_count": 11,
+      "content_digest": "e7d9a0c4b022b3867e69f7bb2a0bf9af7f1af2cc43ed98edd78debfbbb8a1358"
+    },
+    {
+      "entity": "acquisition_event",
+      "row_count": 400,
+      "column_count": 11,
+      "content_digest": "e0fe8e249252150ab6ab223c779dde5785a1802f64779a16f7b4c87bf1db7b17"
+    },
+    {
+      "entity": "sale_event",
+      "row_count": 400,
+      "column_count": 29,
+      "content_digest": "1097c238fa6d34b6091f5289c9bc2c4f5bd3c18801a9df6555ee170ff0d8a5a9"
     }
   ],
   "synthetic_data_notice": "SYNTHETIC DATA -- 100% machine generated. Granite State Auto Group and every store, employee role and transaction referenced by this project are fictional. No real customer, employee, dealership or vendor data is present, and no record here describes a real person or a real business.",

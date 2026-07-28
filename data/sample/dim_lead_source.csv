@@ -1,0 +1,20 @@
+lead_source_key,lead_source_id,lead_source_name,source_category,is_paid,is_digital,is_third_party,is_internal,source_system
+1,LDS-001,Dealer Website Form,Owned Digital,false,true,false,false,arpi_synthetic_generator
+2,LDS-002,Dealer Website Chat,Owned Digital,false,true,false,false,arpi_synthetic_generator
+3,LDS-003,Email Marketing Response,Owned Digital,true,true,false,false,arpi_synthetic_generator
+4,LDS-004,Organic Search Landing,Organic Web,false,true,false,false,arpi_synthetic_generator
+5,LDS-005,Direct Site Visit,Organic Web,false,true,false,false,arpi_synthetic_generator
+6,LDS-006,Paid Search Brand,Paid Search,true,true,false,false,arpi_synthetic_generator
+7,LDS-007,Paid Search Non-Brand,Paid Search,true,true,false,false,arpi_synthetic_generator
+8,LDS-008,Paid Social Feed Campaign,Paid Social,true,true,false,false,arpi_synthetic_generator
+9,LDS-009,Paid Social Video Campaign,Paid Social,true,true,false,false,arpi_synthetic_generator
+10,LDS-010,Third-Party Marketplace Listing,Third Party,true,true,true,false,arpi_synthetic_generator
+11,LDS-011,Third-Party Trade Valuation Portal,Third Party,true,true,true,false,arpi_synthetic_generator
+12,LDS-012,Radio Spot Response,Traditional Media,true,false,false,false,arpi_synthetic_generator
+13,LDS-013,Direct Mail Response,Traditional Media,true,false,false,false,arpi_synthetic_generator
+14,LDS-014,Television Spot Response,Traditional Media,true,false,false,false,arpi_synthetic_generator
+15,LDS-015,Showroom Walk-in,Walk-in,false,false,false,true,arpi_synthetic_generator
+16,LDS-016,Customer Referral,Referral,false,false,false,false,arpi_synthetic_generator
+17,LDS-017,Community Partner Referral,Referral,false,false,false,false,arpi_synthetic_generator
+18,LDS-018,Service Lane Opportunity,Internal,false,false,false,true,arpi_synthetic_generator
+19,LDS-019,Repeat Customer Outreach,Internal,false,false,false,true,arpi_synthetic_generator

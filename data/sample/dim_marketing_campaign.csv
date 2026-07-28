@@ -1,0 +1,25 @@
+campaign_key,campaign_id,campaign_name,channel,vendor_name,lead_source_id,start_date,end_date,target_department,target_vehicle_category,source_system
+1,CMP-00001,Model Year Close-Out 2025 - Paid Search,Paid Search,Souhegan Media Partners,LDS-007,2025-07-01,,Sales,Both,arpi_synthetic_generator
+2,CMP-00002,Summer Clearance 2025 - Paid Social,Paid Social,Souhegan Media Partners,LDS-008,2025-08-01,2025-09-30,Sales,Both,arpi_synthetic_generator
+3,CMP-00003,Labor Day Sales Drive 2025 - Paid Search,Paid Search,Granite Ridge Digital,LDS-006,2025-07-01,,Both,New,arpi_synthetic_generator
+4,CMP-00004,Year-End Sales Event 2025 - Radio,Radio,Millyard Broadcast Sales,LDS-012,2025-10-15,,Sales,Used,arpi_synthetic_generator
+5,CMP-00005,Summer Clearance 2025 - Third-Party Listings,Third-Party Listings,Riverwalk Listings Network,LDS-010,2025-07-01,,Sales,New,arpi_synthetic_generator
+6,CMP-00006,Year-End Sales Event 2025 - Television,Television,North Bank Broadcast Group,LDS-014,2025-10-15,2025-11-30,Sales,Used,arpi_synthetic_generator
+7,CMP-00007,Service Retention Drive 2025 - Direct Mail,Direct Mail,Sable Peak Direct Marketing,LDS-013,2025-09-01,2025-11-30,Service,Both,arpi_synthetic_generator
+8,CMP-00008,Labor Day Sales Drive 2025 - Third-Party Listings,Third-Party Listings,Kearsarge Auto Marketplace,LDS-011,2025-07-01,,Sales,Both,arpi_synthetic_generator
+9,CMP-00009,Year-End Sales Event 2025 - Direct Mail,Direct Mail,Sable Peak Direct Marketing,LDS-013,2025-11-15,,Both,New,arpi_synthetic_generator
+10,CMP-00010,Summer Clearance 2025 - Paid Search,Paid Search,Granite Ridge Digital,LDS-006,2025-07-01,,Sales,Used,arpi_synthetic_generator
+11,CMP-00011,Model Year Close-Out 2025 - Paid Search,Paid Search,Granite Ridge Digital,LDS-006,2025-07-01,,Sales,Used,arpi_synthetic_generator
+12,CMP-00012,Certified Used Push 2025 - Direct Mail,Direct Mail,Sable Peak Direct Marketing,LDS-013,2025-10-01,2025-10-31,Sales,Used,arpi_synthetic_generator
+13,CMP-00013,Labor Day Sales Drive 2025 - Third-Party Listings,Third-Party Listings,Kearsarge Auto Marketplace,LDS-010,2025-07-01,,Sales,New,arpi_synthetic_generator
+14,CMP-00014,Owner Loyalty Service Offer 2025 - Television,Television,North Bank Broadcast Group,LDS-014,2025-07-15,2025-09-30,Service,Both,arpi_synthetic_generator
+15,CMP-00015,Summer Clearance 2025 - Email,Email,In-House Marketing Team,LDS-003,2025-07-01,,Sales,New,arpi_synthetic_generator
+16,CMP-00016,Summer Clearance 2025 - Paid Search,Paid Search,Souhegan Media Partners,LDS-006,2025-07-01,,Both,New,arpi_synthetic_generator
+17,CMP-00017,Service Retention Drive 2025 - Email,Email,In-House Marketing Team,LDS-003,2025-08-01,2025-10-31,Service,Both,arpi_synthetic_generator
+18,CMP-00018,Model Year Close-Out 2025 - Paid Search,Paid Search,Souhegan Media Partners,LDS-006,2025-07-01,,Sales,Used,arpi_synthetic_generator
+19,CMP-00019,Model Year Close-Out 2025 - Radio,Radio,North Bank Broadcast Group,LDS-012,2025-09-08,2025-10-31,Both,New,arpi_synthetic_generator
+20,CMP-00020,Certified Used Push 2025 - Paid Social,Paid Social,Souhegan Media Partners,LDS-008,2025-10-01,2025-11-30,Sales,Both,arpi_synthetic_generator
+21,CMP-00021,Model Year Close-Out 2025 - Paid Search,Paid Search,Souhegan Media Partners,LDS-007,2025-07-01,,Both,Used,arpi_synthetic_generator
+22,CMP-00022,Certified Used Push 2025 - Paid Social,Paid Social,Granite Ridge Digital,LDS-008,2025-11-01,,Sales,Used,arpi_synthetic_generator
+23,CMP-00023,Labor Day Sales Drive 2025 - Paid Search,Paid Search,Souhegan Media Partners,LDS-007,2025-07-01,,Sales,Used,arpi_synthetic_generator
+24,CMP-00024,Model Year Close-Out 2025 - Third-Party Listings,Third-Party Listings,Riverwalk Listings Network,LDS-011,2025-07-01,,Sales,New,arpi_synthetic_generator

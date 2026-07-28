@@ -1,0 +1,401 @@
+customer_key,customer_id,household_id,age_band,county,state_code,market_area,customer_type,is_prior_customer,is_service_customer,first_interaction_date,source_system
+1,CUS-00000001,HH-00000001,45-54,Merrimack,NH,Southern New Hampshire,Retail,true,true,2025-02-20,arpi_synthetic_generator
+2,CUS-00000002,HH-00000002,35-44,Rockingham,NH,Southern New Hampshire,Retail,true,true,2025-04-06,arpi_synthetic_generator
+3,CUS-00000003,HH-00000002,25-34,Rockingham,NH,Southern New Hampshire,Retail,false,true,2025-11-24,arpi_synthetic_generator
+4,CUS-00000004,HH-00000003,65+,Hillsborough,NH,Southern New Hampshire,Retail,true,true,2025-05-27,arpi_synthetic_generator
+5,CUS-00000005,HH-00000004,45-54,Middlesex,MA,Northern Massachusetts,Retail,false,true,2025-01-25,arpi_synthetic_generator
+6,CUS-00000006,HH-00000005,45-54,Merrimack,NH,Southern New Hampshire,Retail,true,true,2025-01-16,arpi_synthetic_generator
+7,CUS-00000007,HH-00000006,55-64,Hillsborough,NH,Southern New Hampshire,Retail,false,true,2025-07-20,arpi_synthetic_generator
+8,CUS-00000008,HH-00000007,35-44,Essex,MA,Northern Massachusetts,Retail,false,false,2025-10-12,arpi_synthetic_generator
+9,CUS-00000009,HH-00000008,35-44,Hillsborough,NH,Southern New Hampshire,Business,false,false,2025-09-09,arpi_synthetic_generator
+10,CUS-00000010,HH-00000009,35-44,Middlesex,MA,Northern Massachusetts,Retail,false,false,2025-12-28,arpi_synthetic_generator
+11,CUS-00000011,HH-00000010,35-44,Hillsborough,NH,Southern New Hampshire,Business,false,true,2025-09-27,arpi_synthetic_generator
+12,CUS-00000012,HH-00000011,35-44,Merrimack,NH,Southern New Hampshire,Retail,false,false,2025-08-03,arpi_synthetic_generator
+13,CUS-00000013,HH-00000012,45-54,Rockingham,NH,Southern New Hampshire,Retail,false,false,2025-04-28,arpi_synthetic_generator
+14,CUS-00000014,HH-00000013,35-44,Merrimack,NH,Southern New Hampshire,Retail,true,true,2025-06-06,arpi_synthetic_generator
+15,CUS-00000015,HH-00000014,25-34,Essex,MA,Northern Massachusetts,Retail,false,true,2025-12-21,arpi_synthetic_generator
+16,CUS-00000016,HH-00000014,65+,Essex,MA,Northern Massachusetts,Retail,true,true,2025-02-05,arpi_synthetic_generator
+17,CUS-00000017,HH-00000015,45-54,Merrimack,NH,Southern New Hampshire,Retail,false,false,2025-01-18,arpi_synthetic_generator
+18,CUS-00000018,HH-00000016,45-54,Rockingham,NH,Southern New Hampshire,Retail,false,false,2025-03-20,arpi_synthetic_generator
+19,CUS-00000019,HH-00000017,25-34,Hillsborough,NH,Southern New Hampshire,Retail,true,false,2025-02-03,arpi_synthetic_generator
+20,CUS-00000020,HH-00000018,45-54,Strafford,NH,Southern New Hampshire,Retail,false,false,2025-11-12,arpi_synthetic_generator
+21,CUS-00000021,HH-00000018,18-24,Strafford,NH,Southern New Hampshire,Retail,false,false,2025-01-16,arpi_synthetic_generator
+22,CUS-00000022,HH-00000018,35-44,Strafford,NH,Southern New Hampshire,Retail,false,true,2025-08-28,arpi_synthetic_generator
+23,CUS-00000023,HH-00000019,45-54,Merrimack,NH,Southern New Hampshire,Retail,false,false,2025-08-02,arpi_synthetic_generator
+24,CUS-00000024,HH-00000020,45-54,Hillsborough,NH,Southern New Hampshire,Retail,true,true,2025-02-10,arpi_synthetic_generator
+25,CUS-00000025,HH-00000021,65+,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-04-13,arpi_synthetic_generator
+26,CUS-00000026,HH-00000022,35-44,Middlesex,MA,Northern Massachusetts,Retail,false,true,2025-02-23,arpi_synthetic_generator
+27,CUS-00000027,HH-00000023,55-64,Hillsborough,NH,Southern New Hampshire,Retail,true,true,2025-01-30,arpi_synthetic_generator
+28,CUS-00000028,HH-00000024,18-24,Rockingham,NH,Southern New Hampshire,Retail,true,true,2025-06-23,arpi_synthetic_generator
+29,CUS-00000029,HH-00000025,45-54,Hillsborough,NH,Southern New Hampshire,Retail,true,true,2025-01-04,arpi_synthetic_generator
+30,CUS-00000030,HH-00000026,45-54,Hillsborough,NH,Southern New Hampshire,Retail,false,true,2025-09-17,arpi_synthetic_generator
+31,CUS-00000031,HH-00000026,45-54,Hillsborough,NH,Southern New Hampshire,Retail,false,true,2025-02-06,arpi_synthetic_generator
+32,CUS-00000032,HH-00000026,18-24,Hillsborough,NH,Southern New Hampshire,Retail,false,true,2025-10-16,arpi_synthetic_generator
+33,CUS-00000033,HH-00000027,35-44,Middlesex,MA,Northern Massachusetts,Retail,false,false,2025-06-14,arpi_synthetic_generator
+34,CUS-00000034,HH-00000028,25-34,Hillsborough,NH,Southern New Hampshire,Retail,true,true,2025-03-08,arpi_synthetic_generator
+35,CUS-00000035,HH-00000029,35-44,Strafford,NH,Southern New Hampshire,Retail,false,false,2025-07-08,arpi_synthetic_generator
+36,CUS-00000036,HH-00000030,35-44,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-10-27,arpi_synthetic_generator
+37,CUS-00000037,HH-00000031,18-24,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-02-04,arpi_synthetic_generator
+38,CUS-00000038,HH-00000032,55-64,Strafford,NH,Southern New Hampshire,Retail,false,false,2025-01-14,arpi_synthetic_generator
+39,CUS-00000039,HH-00000033,35-44,Rockingham,NH,Southern New Hampshire,Retail,true,false,2025-06-10,arpi_synthetic_generator
+40,CUS-00000040,HH-00000034,55-64,Hillsborough,NH,Southern New Hampshire,Retail,false,true,2025-02-24,arpi_synthetic_generator
+41,CUS-00000041,HH-00000035,55-64,Middlesex,MA,Northern Massachusetts,Retail,false,true,2025-03-04,arpi_synthetic_generator
+42,CUS-00000042,HH-00000035,55-64,Middlesex,MA,Northern Massachusetts,Retail,false,false,2025-09-10,arpi_synthetic_generator
+43,CUS-00000043,HH-00000036,55-64,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-01-04,arpi_synthetic_generator
+44,CUS-00000044,HH-00000036,55-64,Hillsborough,NH,Southern New Hampshire,Retail,false,true,2025-07-03,arpi_synthetic_generator
+45,CUS-00000045,HH-00000037,25-34,Strafford,NH,Southern New Hampshire,Business,true,false,2025-03-27,arpi_synthetic_generator
+46,CUS-00000046,HH-00000038,25-34,Rockingham,NH,Southern New Hampshire,Retail,false,false,2025-03-09,arpi_synthetic_generator
+47,CUS-00000047,HH-00000039,55-64,Rockingham,NH,Southern New Hampshire,Retail,false,false,2025-12-26,arpi_synthetic_generator
+48,CUS-00000048,HH-00000040,35-44,Merrimack,NH,Southern New Hampshire,Retail,true,false,2025-06-05,arpi_synthetic_generator
+49,CUS-00000049,HH-00000040,18-24,Merrimack,NH,Southern New Hampshire,Retail,true,true,2025-01-27,arpi_synthetic_generator
+50,CUS-00000050,HH-00000040,35-44,Merrimack,NH,Southern New Hampshire,Retail,false,false,2025-11-30,arpi_synthetic_generator
+51,CUS-00000051,HH-00000041,18-24,Hillsborough,NH,Southern New Hampshire,Retail,false,true,2025-01-19,arpi_synthetic_generator
+52,CUS-00000052,HH-00000042,45-54,Rockingham,NH,Southern New Hampshire,Retail,false,false,2025-02-26,arpi_synthetic_generator
+53,CUS-00000053,HH-00000042,25-34,Rockingham,NH,Southern New Hampshire,Retail,false,true,2025-09-29,arpi_synthetic_generator
+54,CUS-00000054,HH-00000043,55-64,Essex,MA,Northern Massachusetts,Retail,false,false,2025-05-12,arpi_synthetic_generator
+55,CUS-00000055,HH-00000044,25-34,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-11-12,arpi_synthetic_generator
+56,CUS-00000056,HH-00000045,35-44,Hillsborough,NH,Southern New Hampshire,Business,false,false,2025-08-17,arpi_synthetic_generator
+57,CUS-00000057,HH-00000045,35-44,Hillsborough,NH,Southern New Hampshire,Retail,false,true,2025-08-20,arpi_synthetic_generator
+58,CUS-00000058,HH-00000046,65+,Middlesex,MA,Northern Massachusetts,Retail,false,true,2025-03-13,arpi_synthetic_generator
+59,CUS-00000059,HH-00000047,18-24,Middlesex,MA,Northern Massachusetts,Retail,false,false,2025-12-14,arpi_synthetic_generator
+60,CUS-00000060,HH-00000048,65+,Rockingham,NH,Southern New Hampshire,Retail,false,true,2025-04-15,arpi_synthetic_generator
+61,CUS-00000061,HH-00000049,45-54,Essex,MA,Northern Massachusetts,Retail,false,false,2025-11-01,arpi_synthetic_generator
+62,CUS-00000062,HH-00000050,25-34,Essex,MA,Northern Massachusetts,Retail,false,false,2025-05-26,arpi_synthetic_generator
+63,CUS-00000063,HH-00000050,55-64,Essex,MA,Northern Massachusetts,Business,true,false,2025-06-01,arpi_synthetic_generator
+64,CUS-00000064,HH-00000051,45-54,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-02-03,arpi_synthetic_generator
+65,CUS-00000065,HH-00000052,35-44,Hillsborough,NH,Southern New Hampshire,Retail,true,true,2025-06-27,arpi_synthetic_generator
+66,CUS-00000066,HH-00000053,35-44,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-04-21,arpi_synthetic_generator
+67,CUS-00000067,HH-00000053,65+,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-11-22,arpi_synthetic_generator
+68,CUS-00000068,HH-00000054,45-54,Rockingham,NH,Southern New Hampshire,Retail,true,false,2025-04-15,arpi_synthetic_generator
+69,CUS-00000069,HH-00000055,35-44,Essex,MA,Northern Massachusetts,Retail,false,true,2025-09-12,arpi_synthetic_generator
+70,CUS-00000070,HH-00000056,45-54,Hillsborough,NH,Southern New Hampshire,Retail,true,true,2025-03-14,arpi_synthetic_generator
+71,CUS-00000071,HH-00000057,25-34,Essex,MA,Northern Massachusetts,Retail,true,true,2025-01-30,arpi_synthetic_generator
+72,CUS-00000072,HH-00000058,55-64,Hillsborough,NH,Southern New Hampshire,Retail,true,true,2025-03-15,arpi_synthetic_generator
+73,CUS-00000073,HH-00000059,25-34,Merrimack,NH,Southern New Hampshire,Retail,false,false,2025-04-02,arpi_synthetic_generator
+74,CUS-00000074,HH-00000060,25-34,Hillsborough,NH,Southern New Hampshire,Retail,true,true,2025-06-11,arpi_synthetic_generator
+75,CUS-00000075,HH-00000060,45-54,Hillsborough,NH,Southern New Hampshire,Business,false,true,2025-08-22,arpi_synthetic_generator
+76,CUS-00000076,HH-00000061,55-64,Hillsborough,NH,Southern New Hampshire,Retail,true,true,2025-01-13,arpi_synthetic_generator
+77,CUS-00000077,HH-00000062,35-44,Rockingham,NH,Southern New Hampshire,Retail,false,true,2025-01-09,arpi_synthetic_generator
+78,CUS-00000078,HH-00000063,35-44,Hillsborough,NH,Southern New Hampshire,Retail,true,true,2025-05-16,arpi_synthetic_generator
+79,CUS-00000079,HH-00000064,45-54,Rockingham,NH,Southern New Hampshire,Retail,false,false,2025-09-11,arpi_synthetic_generator
+80,CUS-00000080,HH-00000065,55-64,Hillsborough,NH,Southern New Hampshire,Retail,true,true,2025-04-29,arpi_synthetic_generator
+81,CUS-00000081,HH-00000066,25-34,Essex,MA,Northern Massachusetts,Retail,true,true,2025-05-21,arpi_synthetic_generator
+82,CUS-00000082,HH-00000066,25-34,Essex,MA,Northern Massachusetts,Retail,false,false,2025-09-09,arpi_synthetic_generator
+83,CUS-00000083,HH-00000066,45-54,Essex,MA,Northern Massachusetts,Business,false,false,2025-02-12,arpi_synthetic_generator
+84,CUS-00000084,HH-00000067,65+,Merrimack,NH,Southern New Hampshire,Retail,false,false,2025-10-02,arpi_synthetic_generator
+85,CUS-00000085,HH-00000068,65+,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-03-14,arpi_synthetic_generator
+86,CUS-00000086,HH-00000069,25-34,Merrimack,NH,Southern New Hampshire,Business,false,false,2025-06-16,arpi_synthetic_generator
+87,CUS-00000087,HH-00000070,45-54,Merrimack,NH,Southern New Hampshire,Retail,false,true,2025-06-03,arpi_synthetic_generator
+88,CUS-00000088,HH-00000070,25-34,Merrimack,NH,Southern New Hampshire,Retail,true,true,2025-05-09,arpi_synthetic_generator
+89,CUS-00000089,HH-00000071,65+,Merrimack,NH,Southern New Hampshire,Retail,false,false,2025-01-05,arpi_synthetic_generator
+90,CUS-00000090,HH-00000072,35-44,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-01-14,arpi_synthetic_generator
+91,CUS-00000091,HH-00000073,45-54,Hillsborough,NH,Southern New Hampshire,Retail,false,true,2025-09-16,arpi_synthetic_generator
+92,CUS-00000092,HH-00000074,25-34,Rockingham,NH,Southern New Hampshire,Retail,true,true,2025-01-24,arpi_synthetic_generator
+93,CUS-00000093,HH-00000074,55-64,Rockingham,NH,Southern New Hampshire,Retail,false,false,2025-05-08,arpi_synthetic_generator
+94,CUS-00000094,HH-00000075,25-34,Rockingham,NH,Southern New Hampshire,Retail,false,false,2025-09-11,arpi_synthetic_generator
+95,CUS-00000095,HH-00000076,55-64,Middlesex,MA,Northern Massachusetts,Retail,true,false,2025-01-25,arpi_synthetic_generator
+96,CUS-00000096,HH-00000077,18-24,Hillsborough,NH,Southern New Hampshire,Retail,true,true,2025-06-18,arpi_synthetic_generator
+97,CUS-00000097,HH-00000078,18-24,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-02-17,arpi_synthetic_generator
+98,CUS-00000098,HH-00000079,18-24,Rockingham,NH,Southern New Hampshire,Retail,true,false,2025-06-20,arpi_synthetic_generator
+99,CUS-00000099,HH-00000080,45-54,Middlesex,MA,Northern Massachusetts,Retail,false,false,2025-04-29,arpi_synthetic_generator
+100,CUS-00000100,HH-00000081,35-44,Middlesex,MA,Northern Massachusetts,Retail,false,false,2025-09-24,arpi_synthetic_generator
+101,CUS-00000101,HH-00000082,18-24,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-07-26,arpi_synthetic_generator
+102,CUS-00000102,HH-00000083,35-44,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-10-21,arpi_synthetic_generator
+103,CUS-00000103,HH-00000084,35-44,Rockingham,NH,Southern New Hampshire,Retail,false,false,2025-01-25,arpi_synthetic_generator
+104,CUS-00000104,HH-00000085,35-44,Hillsborough,NH,Southern New Hampshire,Retail,true,true,2025-02-27,arpi_synthetic_generator
+105,CUS-00000105,HH-00000085,25-34,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-10-18,arpi_synthetic_generator
+106,CUS-00000106,HH-00000086,65+,Rockingham,NH,Southern New Hampshire,Retail,false,true,2025-05-15,arpi_synthetic_generator
+107,CUS-00000107,HH-00000087,25-34,Merrimack,NH,Southern New Hampshire,Retail,false,true,2025-02-26,arpi_synthetic_generator
+108,CUS-00000108,HH-00000088,55-64,Hillsborough,NH,Southern New Hampshire,Retail,false,true,2025-12-28,arpi_synthetic_generator
+109,CUS-00000109,HH-00000088,65+,Hillsborough,NH,Southern New Hampshire,Retail,true,false,2025-01-07,arpi_synthetic_generator
+110,CUS-00000110,HH-00000088,25-34,Hillsborough,NH,Southern New Hampshire,Retail,false,true,2025-11-06,arpi_synthetic_generator
+111,CUS-00000111,HH-00000089,55-64,Rockingham,NH,Southern New Hampshire,Retail,false,true,2025-03-10,arpi_synthetic_generator
+112,CUS-00000112,HH-00000090,55-64,Rockingham,NH,Southern New Hampshire,Retail,true,false,2025-04-29,arpi_synthetic_generator
+113,CUS-00000113,HH-00000090,25-34,Rockingham,NH,Southern New Hampshire,Retail,true,false,2025-03-13,arpi_synthetic_generator
+114,CUS-00000114,HH-00000091,25-34,Hillsborough,NH,Southern New Hampshire,Retail,false,true,2025-04-10,arpi_synthetic_generator
+115,CUS-00000115,HH-00000091,65+,Hillsborough,NH,Southern New Hampshire,Retail,true,false,2025-05-18,arpi_synthetic_generator
+116,CUS-00000116,HH-00000092,55-64,Rockingham,NH,Southern New Hampshire,Business,false,false,2025-08-02,arpi_synthetic_generator
+117,CUS-00000117,HH-00000093,65+,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-10-15,arpi_synthetic_generator
+118,CUS-00000118,HH-00000094,25-34,Middlesex,MA,Northern Massachusetts,Business,true,false,2025-02-20,arpi_synthetic_generator
+119,CUS-00000119,HH-00000095,65+,Rockingham,NH,Southern New Hampshire,Retail,false,true,2025-06-30,arpi_synthetic_generator
+120,CUS-00000120,HH-00000096,65+,Merrimack,NH,Southern New Hampshire,Retail,true,true,2025-05-14,arpi_synthetic_generator
+121,CUS-00000121,HH-00000097,55-64,Middlesex,MA,Northern Massachusetts,Retail,true,true,2025-04-22,arpi_synthetic_generator
+122,CUS-00000122,HH-00000098,65+,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-01-02,arpi_synthetic_generator
+123,CUS-00000123,HH-00000099,25-34,Rockingham,NH,Southern New Hampshire,Retail,false,false,2025-02-07,arpi_synthetic_generator
+124,CUS-00000124,HH-00000100,35-44,Hillsborough,NH,Southern New Hampshire,Retail,false,true,2025-06-08,arpi_synthetic_generator
+125,CUS-00000125,HH-00000101,18-24,Merrimack,NH,Southern New Hampshire,Retail,false,true,2025-04-27,arpi_synthetic_generator
+126,CUS-00000126,HH-00000101,25-34,Merrimack,NH,Southern New Hampshire,Retail,false,true,2025-02-07,arpi_synthetic_generator
+127,CUS-00000127,HH-00000101,35-44,Merrimack,NH,Southern New Hampshire,Retail,false,false,2025-06-07,arpi_synthetic_generator
+128,CUS-00000128,HH-00000102,65+,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-05-28,arpi_synthetic_generator
+129,CUS-00000129,HH-00000103,18-24,Middlesex,MA,Northern Massachusetts,Retail,false,false,2025-05-03,arpi_synthetic_generator
+130,CUS-00000130,HH-00000104,25-34,Middlesex,MA,Northern Massachusetts,Business,false,false,2025-11-05,arpi_synthetic_generator
+131,CUS-00000131,HH-00000104,65+,Middlesex,MA,Northern Massachusetts,Retail,true,true,2025-02-16,arpi_synthetic_generator
+132,CUS-00000132,HH-00000105,35-44,Hillsborough,NH,Southern New Hampshire,Business,false,false,2025-01-13,arpi_synthetic_generator
+133,CUS-00000133,HH-00000106,45-54,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-05-10,arpi_synthetic_generator
+134,CUS-00000134,HH-00000107,55-64,Merrimack,NH,Southern New Hampshire,Retail,true,true,2025-05-08,arpi_synthetic_generator
+135,CUS-00000135,HH-00000108,25-34,Hillsborough,NH,Southern New Hampshire,Retail,false,true,2025-12-04,arpi_synthetic_generator
+136,CUS-00000136,HH-00000108,45-54,Hillsborough,NH,Southern New Hampshire,Business,true,false,2025-01-11,arpi_synthetic_generator
+137,CUS-00000137,HH-00000108,55-64,Hillsborough,NH,Southern New Hampshire,Retail,true,true,2025-04-13,arpi_synthetic_generator
+138,CUS-00000138,HH-00000109,35-44,Hillsborough,NH,Southern New Hampshire,Retail,true,true,2025-01-12,arpi_synthetic_generator
+139,CUS-00000139,HH-00000110,35-44,Strafford,NH,Southern New Hampshire,Retail,false,false,2025-01-20,arpi_synthetic_generator
+140,CUS-00000140,HH-00000111,65+,Middlesex,MA,Northern Massachusetts,Retail,false,false,2025-12-09,arpi_synthetic_generator
+141,CUS-00000141,HH-00000111,25-34,Middlesex,MA,Northern Massachusetts,Retail,false,false,2025-12-06,arpi_synthetic_generator
+142,CUS-00000142,HH-00000112,45-54,Hillsborough,NH,Southern New Hampshire,Retail,true,true,2025-06-18,arpi_synthetic_generator
+143,CUS-00000143,HH-00000113,25-34,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-03-26,arpi_synthetic_generator
+144,CUS-00000144,HH-00000113,25-34,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-05-24,arpi_synthetic_generator
+145,CUS-00000145,HH-00000113,55-64,Hillsborough,NH,Southern New Hampshire,Retail,true,true,2025-01-20,arpi_synthetic_generator
+146,CUS-00000146,HH-00000114,35-44,Hillsborough,NH,Southern New Hampshire,Retail,false,true,2025-02-22,arpi_synthetic_generator
+147,CUS-00000147,HH-00000115,25-34,Middlesex,MA,Northern Massachusetts,Retail,false,false,2025-02-21,arpi_synthetic_generator
+148,CUS-00000148,HH-00000116,25-34,Hillsborough,NH,Southern New Hampshire,Retail,true,true,2025-03-04,arpi_synthetic_generator
+149,CUS-00000149,HH-00000117,65+,Hillsborough,NH,Southern New Hampshire,Business,false,false,2025-07-16,arpi_synthetic_generator
+150,CUS-00000150,HH-00000118,18-24,Merrimack,NH,Southern New Hampshire,Business,true,false,2025-02-03,arpi_synthetic_generator
+151,CUS-00000151,HH-00000119,35-44,Hillsborough,NH,Southern New Hampshire,Retail,false,true,2025-01-23,arpi_synthetic_generator
+152,CUS-00000152,HH-00000120,65+,Strafford,NH,Southern New Hampshire,Retail,false,false,2025-09-11,arpi_synthetic_generator
+153,CUS-00000153,HH-00000121,45-54,Hillsborough,NH,Southern New Hampshire,Retail,true,false,2025-06-29,arpi_synthetic_generator
+154,CUS-00000154,HH-00000121,45-54,Hillsborough,NH,Southern New Hampshire,Retail,false,true,2025-09-29,arpi_synthetic_generator
+155,CUS-00000155,HH-00000121,65+,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-07-01,arpi_synthetic_generator
+156,CUS-00000156,HH-00000122,35-44,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-05-17,arpi_synthetic_generator
+157,CUS-00000157,HH-00000123,18-24,Middlesex,MA,Northern Massachusetts,Retail,false,false,2025-04-23,arpi_synthetic_generator
+158,CUS-00000158,HH-00000124,35-44,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-12-03,arpi_synthetic_generator
+159,CUS-00000159,HH-00000124,45-54,Hillsborough,NH,Southern New Hampshire,Retail,true,true,2025-05-13,arpi_synthetic_generator
+160,CUS-00000160,HH-00000124,25-34,Hillsborough,NH,Southern New Hampshire,Retail,false,true,2025-02-28,arpi_synthetic_generator
+161,CUS-00000161,HH-00000125,55-64,Hillsborough,NH,Southern New Hampshire,Retail,true,true,2025-06-21,arpi_synthetic_generator
+162,CUS-00000162,HH-00000126,25-34,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-11-08,arpi_synthetic_generator
+163,CUS-00000163,HH-00000127,35-44,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-02-08,arpi_synthetic_generator
+164,CUS-00000164,HH-00000128,25-34,Middlesex,MA,Northern Massachusetts,Retail,false,true,2025-08-26,arpi_synthetic_generator
+165,CUS-00000165,HH-00000128,35-44,Middlesex,MA,Northern Massachusetts,Retail,true,true,2025-05-07,arpi_synthetic_generator
+166,CUS-00000166,HH-00000129,35-44,Essex,MA,Northern Massachusetts,Retail,false,true,2025-12-14,arpi_synthetic_generator
+167,CUS-00000167,HH-00000130,25-34,Rockingham,NH,Southern New Hampshire,Retail,false,false,2025-07-11,arpi_synthetic_generator
+168,CUS-00000168,HH-00000131,55-64,Hillsborough,NH,Southern New Hampshire,Retail,false,true,2025-01-02,arpi_synthetic_generator
+169,CUS-00000169,HH-00000131,65+,Hillsborough,NH,Southern New Hampshire,Retail,true,true,2025-06-29,arpi_synthetic_generator
+170,CUS-00000170,HH-00000132,25-34,Hillsborough,NH,Southern New Hampshire,Retail,false,true,2025-12-26,arpi_synthetic_generator
+171,CUS-00000171,HH-00000133,45-54,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-08-04,arpi_synthetic_generator
+172,CUS-00000172,HH-00000133,35-44,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-10-19,arpi_synthetic_generator
+173,CUS-00000173,HH-00000134,35-44,Hillsborough,NH,Southern New Hampshire,Retail,true,true,2025-03-25,arpi_synthetic_generator
+174,CUS-00000174,HH-00000134,35-44,Hillsborough,NH,Southern New Hampshire,Business,true,false,2025-01-23,arpi_synthetic_generator
+175,CUS-00000175,HH-00000134,35-44,Hillsborough,NH,Southern New Hampshire,Retail,false,true,2025-01-08,arpi_synthetic_generator
+176,CUS-00000176,HH-00000135,45-54,Rockingham,NH,Southern New Hampshire,Retail,true,true,2025-04-30,arpi_synthetic_generator
+177,CUS-00000177,HH-00000136,65+,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-03-04,arpi_synthetic_generator
+178,CUS-00000178,HH-00000137,35-44,Middlesex,MA,Northern Massachusetts,Retail,false,false,2025-11-01,arpi_synthetic_generator
+179,CUS-00000179,HH-00000138,35-44,Strafford,NH,Southern New Hampshire,Retail,false,false,2025-08-07,arpi_synthetic_generator
+180,CUS-00000180,HH-00000138,25-34,Strafford,NH,Southern New Hampshire,Retail,false,false,2025-09-30,arpi_synthetic_generator
+181,CUS-00000181,HH-00000139,35-44,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-06-29,arpi_synthetic_generator
+182,CUS-00000182,HH-00000139,55-64,Hillsborough,NH,Southern New Hampshire,Retail,true,false,2025-02-23,arpi_synthetic_generator
+183,CUS-00000183,HH-00000139,55-64,Hillsborough,NH,Southern New Hampshire,Retail,false,true,2025-11-06,arpi_synthetic_generator
+184,CUS-00000184,HH-00000140,55-64,Middlesex,MA,Northern Massachusetts,Retail,false,false,2025-04-05,arpi_synthetic_generator
+185,CUS-00000185,HH-00000141,55-64,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-06-06,arpi_synthetic_generator
+186,CUS-00000186,HH-00000141,25-34,Hillsborough,NH,Southern New Hampshire,Retail,false,true,2025-05-29,arpi_synthetic_generator
+187,CUS-00000187,HH-00000142,25-34,Merrimack,NH,Southern New Hampshire,Retail,false,false,2025-11-03,arpi_synthetic_generator
+188,CUS-00000188,HH-00000143,65+,Essex,MA,Northern Massachusetts,Retail,false,false,2025-02-14,arpi_synthetic_generator
+189,CUS-00000189,HH-00000144,65+,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-09-09,arpi_synthetic_generator
+190,CUS-00000190,HH-00000145,35-44,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-02-21,arpi_synthetic_generator
+191,CUS-00000191,HH-00000146,55-64,Hillsborough,NH,Southern New Hampshire,Retail,false,true,2025-07-26,arpi_synthetic_generator
+192,CUS-00000192,HH-00000147,55-64,Hillsborough,NH,Southern New Hampshire,Retail,true,true,2025-03-26,arpi_synthetic_generator
+193,CUS-00000193,HH-00000147,25-34,Hillsborough,NH,Southern New Hampshire,Business,false,false,2025-10-28,arpi_synthetic_generator
+194,CUS-00000194,HH-00000147,55-64,Hillsborough,NH,Southern New Hampshire,Retail,false,true,2025-12-21,arpi_synthetic_generator
+195,CUS-00000195,HH-00000148,25-34,Hillsborough,NH,Southern New Hampshire,Retail,false,true,2025-12-22,arpi_synthetic_generator
+196,CUS-00000196,HH-00000149,45-54,Strafford,NH,Southern New Hampshire,Retail,false,true,2025-08-09,arpi_synthetic_generator
+197,CUS-00000197,HH-00000150,45-54,Rockingham,NH,Southern New Hampshire,Retail,true,true,2025-05-12,arpi_synthetic_generator
+198,CUS-00000198,HH-00000151,18-24,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-07-03,arpi_synthetic_generator
+199,CUS-00000199,HH-00000152,25-34,Hillsborough,NH,Southern New Hampshire,Retail,false,true,2025-12-18,arpi_synthetic_generator
+200,CUS-00000200,HH-00000153,65+,Rockingham,NH,Southern New Hampshire,Retail,false,false,2025-07-21,arpi_synthetic_generator
+201,CUS-00000201,HH-00000154,18-24,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-05-13,arpi_synthetic_generator
+202,CUS-00000202,HH-00000154,25-34,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-08-02,arpi_synthetic_generator
+203,CUS-00000203,HH-00000155,35-44,Rockingham,NH,Southern New Hampshire,Retail,false,true,2025-03-27,arpi_synthetic_generator
+204,CUS-00000204,HH-00000156,25-34,Merrimack,NH,Southern New Hampshire,Retail,true,true,2025-05-30,arpi_synthetic_generator
+205,CUS-00000205,HH-00000156,25-34,Merrimack,NH,Southern New Hampshire,Retail,true,true,2025-03-22,arpi_synthetic_generator
+206,CUS-00000206,HH-00000157,55-64,Hillsborough,NH,Southern New Hampshire,Retail,true,true,2025-05-10,arpi_synthetic_generator
+207,CUS-00000207,HH-00000158,45-54,Hillsborough,NH,Southern New Hampshire,Retail,false,true,2025-05-04,arpi_synthetic_generator
+208,CUS-00000208,HH-00000159,25-34,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-09-20,arpi_synthetic_generator
+209,CUS-00000209,HH-00000160,65+,Hillsborough,NH,Southern New Hampshire,Retail,true,true,2025-06-14,arpi_synthetic_generator
+210,CUS-00000210,HH-00000161,45-54,Strafford,NH,Southern New Hampshire,Retail,false,true,2025-07-31,arpi_synthetic_generator
+211,CUS-00000211,HH-00000161,55-64,Strafford,NH,Southern New Hampshire,Retail,false,false,2025-01-13,arpi_synthetic_generator
+212,CUS-00000212,HH-00000162,25-34,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-08-09,arpi_synthetic_generator
+213,CUS-00000213,HH-00000163,25-34,Hillsborough,NH,Southern New Hampshire,Retail,false,true,2025-01-31,arpi_synthetic_generator
+214,CUS-00000214,HH-00000164,45-54,Hillsborough,NH,Southern New Hampshire,Retail,true,false,2025-05-23,arpi_synthetic_generator
+215,CUS-00000215,HH-00000164,35-44,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-09-16,arpi_synthetic_generator
+216,CUS-00000216,HH-00000165,65+,Strafford,NH,Southern New Hampshire,Retail,false,false,2025-01-28,arpi_synthetic_generator
+217,CUS-00000217,HH-00000166,45-54,Merrimack,NH,Southern New Hampshire,Retail,false,false,2025-11-04,arpi_synthetic_generator
+218,CUS-00000218,HH-00000167,45-54,Rockingham,NH,Southern New Hampshire,Retail,false,true,2025-11-02,arpi_synthetic_generator
+219,CUS-00000219,HH-00000168,65+,Middlesex,MA,Northern Massachusetts,Retail,false,false,2025-01-21,arpi_synthetic_generator
+220,CUS-00000220,HH-00000169,55-64,Rockingham,NH,Southern New Hampshire,Retail,true,true,2025-03-14,arpi_synthetic_generator
+221,CUS-00000221,HH-00000170,35-44,Merrimack,NH,Southern New Hampshire,Retail,false,true,2025-10-24,arpi_synthetic_generator
+222,CUS-00000222,HH-00000171,55-64,Middlesex,MA,Northern Massachusetts,Retail,false,false,2025-06-02,arpi_synthetic_generator
+223,CUS-00000223,HH-00000172,55-64,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-06-23,arpi_synthetic_generator
+224,CUS-00000224,HH-00000173,45-54,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-02-09,arpi_synthetic_generator
+225,CUS-00000225,HH-00000174,55-64,Rockingham,NH,Southern New Hampshire,Retail,true,true,2025-06-07,arpi_synthetic_generator
+226,CUS-00000226,HH-00000174,25-34,Rockingham,NH,Southern New Hampshire,Retail,false,false,2025-03-28,arpi_synthetic_generator
+227,CUS-00000227,HH-00000175,45-54,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-01-26,arpi_synthetic_generator
+228,CUS-00000228,HH-00000176,55-64,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-04-22,arpi_synthetic_generator
+229,CUS-00000229,HH-00000177,55-64,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-03-15,arpi_synthetic_generator
+230,CUS-00000230,HH-00000178,65+,Hillsborough,NH,Southern New Hampshire,Business,false,true,2025-07-16,arpi_synthetic_generator
+231,CUS-00000231,HH-00000179,55-64,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-02-25,arpi_synthetic_generator
+232,CUS-00000232,HH-00000180,35-44,Merrimack,NH,Southern New Hampshire,Retail,false,false,2025-01-26,arpi_synthetic_generator
+233,CUS-00000233,HH-00000180,55-64,Merrimack,NH,Southern New Hampshire,Retail,false,false,2025-06-22,arpi_synthetic_generator
+234,CUS-00000234,HH-00000181,25-34,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-07-25,arpi_synthetic_generator
+235,CUS-00000235,HH-00000182,18-24,Rockingham,NH,Southern New Hampshire,Retail,true,false,2025-02-25,arpi_synthetic_generator
+236,CUS-00000236,HH-00000182,45-54,Rockingham,NH,Southern New Hampshire,Retail,false,true,2025-06-19,arpi_synthetic_generator
+237,CUS-00000237,HH-00000183,18-24,Essex,MA,Northern Massachusetts,Retail,false,true,2025-08-11,arpi_synthetic_generator
+238,CUS-00000238,HH-00000184,35-44,Merrimack,NH,Southern New Hampshire,Retail,false,true,2025-07-11,arpi_synthetic_generator
+239,CUS-00000239,HH-00000184,18-24,Merrimack,NH,Southern New Hampshire,Retail,false,false,2025-07-29,arpi_synthetic_generator
+240,CUS-00000240,HH-00000184,35-44,Merrimack,NH,Southern New Hampshire,Retail,false,true,2025-02-27,arpi_synthetic_generator
+241,CUS-00000241,HH-00000185,65+,Hillsborough,NH,Southern New Hampshire,Retail,false,true,2025-02-20,arpi_synthetic_generator
+242,CUS-00000242,HH-00000185,25-34,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-02-13,arpi_synthetic_generator
+243,CUS-00000243,HH-00000186,45-54,Middlesex,MA,Northern Massachusetts,Retail,false,false,2025-09-19,arpi_synthetic_generator
+244,CUS-00000244,HH-00000187,45-54,Hillsborough,NH,Southern New Hampshire,Retail,true,true,2025-01-09,arpi_synthetic_generator
+245,CUS-00000245,HH-00000188,55-64,Hillsborough,NH,Southern New Hampshire,Retail,false,true,2025-07-26,arpi_synthetic_generator
+246,CUS-00000246,HH-00000188,25-34,Hillsborough,NH,Southern New Hampshire,Business,false,false,2025-05-10,arpi_synthetic_generator
+247,CUS-00000247,HH-00000189,25-34,Hillsborough,NH,Southern New Hampshire,Retail,false,true,2025-04-15,arpi_synthetic_generator
+248,CUS-00000248,HH-00000190,55-64,Hillsborough,NH,Southern New Hampshire,Business,false,true,2025-10-23,arpi_synthetic_generator
+249,CUS-00000249,HH-00000190,25-34,Hillsborough,NH,Southern New Hampshire,Retail,false,true,2025-06-06,arpi_synthetic_generator
+250,CUS-00000250,HH-00000191,45-54,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-04-26,arpi_synthetic_generator
+251,CUS-00000251,HH-00000191,55-64,Hillsborough,NH,Southern New Hampshire,Retail,true,true,2025-02-10,arpi_synthetic_generator
+252,CUS-00000252,HH-00000192,35-44,Middlesex,MA,Northern Massachusetts,Retail,true,true,2025-06-04,arpi_synthetic_generator
+253,CUS-00000253,HH-00000192,45-54,Middlesex,MA,Northern Massachusetts,Retail,true,true,2025-03-16,arpi_synthetic_generator
+254,CUS-00000254,HH-00000193,25-34,Middlesex,MA,Northern Massachusetts,Retail,false,true,2025-03-02,arpi_synthetic_generator
+255,CUS-00000255,HH-00000194,45-54,Hillsborough,NH,Southern New Hampshire,Retail,true,true,2025-05-26,arpi_synthetic_generator
+256,CUS-00000256,HH-00000195,35-44,Rockingham,NH,Southern New Hampshire,Retail,false,true,2025-11-21,arpi_synthetic_generator
+257,CUS-00000257,HH-00000195,18-24,Rockingham,NH,Southern New Hampshire,Retail,false,false,2025-11-12,arpi_synthetic_generator
+258,CUS-00000258,HH-00000196,35-44,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-08-13,arpi_synthetic_generator
+259,CUS-00000259,HH-00000196,45-54,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-09-19,arpi_synthetic_generator
+260,CUS-00000260,HH-00000197,45-54,Middlesex,MA,Northern Massachusetts,Retail,true,true,2025-06-23,arpi_synthetic_generator
+261,CUS-00000261,HH-00000198,55-64,Rockingham,NH,Southern New Hampshire,Retail,false,false,2025-11-14,arpi_synthetic_generator
+262,CUS-00000262,HH-00000199,55-64,Middlesex,MA,Northern Massachusetts,Retail,false,false,2025-10-14,arpi_synthetic_generator
+263,CUS-00000263,HH-00000200,65+,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-02-17,arpi_synthetic_generator
+264,CUS-00000264,HH-00000201,25-34,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-12-14,arpi_synthetic_generator
+265,CUS-00000265,HH-00000202,35-44,Merrimack,NH,Southern New Hampshire,Retail,false,true,2025-02-22,arpi_synthetic_generator
+266,CUS-00000266,HH-00000202,65+,Merrimack,NH,Southern New Hampshire,Retail,true,false,2025-05-23,arpi_synthetic_generator
+267,CUS-00000267,HH-00000203,55-64,Merrimack,NH,Southern New Hampshire,Retail,true,true,2025-03-20,arpi_synthetic_generator
+268,CUS-00000268,HH-00000204,35-44,Rockingham,NH,Southern New Hampshire,Retail,true,true,2025-03-09,arpi_synthetic_generator
+269,CUS-00000269,HH-00000204,35-44,Rockingham,NH,Southern New Hampshire,Retail,false,false,2025-06-23,arpi_synthetic_generator
+270,CUS-00000270,HH-00000205,35-44,Merrimack,NH,Southern New Hampshire,Retail,false,false,2025-10-03,arpi_synthetic_generator
+271,CUS-00000271,HH-00000206,45-54,Essex,MA,Northern Massachusetts,Retail,false,false,2025-06-03,arpi_synthetic_generator
+272,CUS-00000272,HH-00000207,55-64,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-07-07,arpi_synthetic_generator
+273,CUS-00000273,HH-00000208,18-24,Rockingham,NH,Southern New Hampshire,Retail,false,false,2025-11-16,arpi_synthetic_generator
+274,CUS-00000274,HH-00000209,45-54,Hillsborough,NH,Southern New Hampshire,Retail,false,true,2025-03-01,arpi_synthetic_generator
+275,CUS-00000275,HH-00000210,18-24,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-07-14,arpi_synthetic_generator
+276,CUS-00000276,HH-00000211,18-24,Rockingham,NH,Southern New Hampshire,Retail,false,true,2025-10-24,arpi_synthetic_generator
+277,CUS-00000277,HH-00000212,25-34,Merrimack,NH,Southern New Hampshire,Retail,false,true,2025-02-01,arpi_synthetic_generator
+278,CUS-00000278,HH-00000213,45-54,Middlesex,MA,Northern Massachusetts,Retail,false,false,2025-02-27,arpi_synthetic_generator
+279,CUS-00000279,HH-00000214,35-44,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-07-03,arpi_synthetic_generator
+280,CUS-00000280,HH-00000215,45-54,Essex,MA,Northern Massachusetts,Retail,false,false,2025-01-12,arpi_synthetic_generator
+281,CUS-00000281,HH-00000216,45-54,Middlesex,MA,Northern Massachusetts,Retail,false,false,2025-03-10,arpi_synthetic_generator
+282,CUS-00000282,HH-00000217,35-44,Hillsborough,NH,Southern New Hampshire,Retail,false,true,2025-08-27,arpi_synthetic_generator
+283,CUS-00000283,HH-00000218,25-34,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-02-03,arpi_synthetic_generator
+284,CUS-00000284,HH-00000218,65+,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-03-17,arpi_synthetic_generator
+285,CUS-00000285,HH-00000218,35-44,Hillsborough,NH,Southern New Hampshire,Retail,true,true,2025-01-16,arpi_synthetic_generator
+286,CUS-00000286,HH-00000219,25-34,Strafford,NH,Southern New Hampshire,Retail,true,true,2025-04-13,arpi_synthetic_generator
+287,CUS-00000287,HH-00000219,55-64,Strafford,NH,Southern New Hampshire,Retail,true,true,2025-05-22,arpi_synthetic_generator
+288,CUS-00000288,HH-00000220,45-54,Merrimack,NH,Southern New Hampshire,Retail,false,true,2025-02-18,arpi_synthetic_generator
+289,CUS-00000289,HH-00000221,18-24,Merrimack,NH,Southern New Hampshire,Retail,true,true,2025-04-14,arpi_synthetic_generator
+290,CUS-00000290,HH-00000222,55-64,Hillsborough,NH,Southern New Hampshire,Retail,false,true,2025-02-23,arpi_synthetic_generator
+291,CUS-00000291,HH-00000223,35-44,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-12-24,arpi_synthetic_generator
+292,CUS-00000292,HH-00000224,65+,Merrimack,NH,Southern New Hampshire,Retail,true,false,2025-03-03,arpi_synthetic_generator
+293,CUS-00000293,HH-00000224,25-34,Merrimack,NH,Southern New Hampshire,Retail,false,true,2025-08-05,arpi_synthetic_generator
+294,CUS-00000294,HH-00000225,35-44,Hillsborough,NH,Southern New Hampshire,Retail,false,true,2025-10-07,arpi_synthetic_generator
+295,CUS-00000295,HH-00000226,65+,Rockingham,NH,Southern New Hampshire,Retail,true,true,2025-06-25,arpi_synthetic_generator
+296,CUS-00000296,HH-00000226,35-44,Rockingham,NH,Southern New Hampshire,Retail,false,false,2025-10-14,arpi_synthetic_generator
+297,CUS-00000297,HH-00000227,25-34,Middlesex,MA,Northern Massachusetts,Retail,false,false,2025-05-22,arpi_synthetic_generator
+298,CUS-00000298,HH-00000228,55-64,Rockingham,NH,Southern New Hampshire,Retail,false,true,2025-09-26,arpi_synthetic_generator
+299,CUS-00000299,HH-00000228,35-44,Rockingham,NH,Southern New Hampshire,Retail,false,false,2025-04-09,arpi_synthetic_generator
+300,CUS-00000300,HH-00000229,35-44,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-11-27,arpi_synthetic_generator
+301,CUS-00000301,HH-00000230,25-34,Hillsborough,NH,Southern New Hampshire,Retail,true,false,2025-04-09,arpi_synthetic_generator
+302,CUS-00000302,HH-00000231,55-64,Hillsborough,NH,Southern New Hampshire,Retail,true,true,2025-02-01,arpi_synthetic_generator
+303,CUS-00000303,HH-00000231,45-54,Hillsborough,NH,Southern New Hampshire,Retail,true,false,2025-03-16,arpi_synthetic_generator
+304,CUS-00000304,HH-00000232,45-54,Hillsborough,NH,Southern New Hampshire,Retail,true,false,2025-05-03,arpi_synthetic_generator
+305,CUS-00000305,HH-00000233,35-44,Hillsborough,NH,Southern New Hampshire,Retail,false,true,2025-07-31,arpi_synthetic_generator
+306,CUS-00000306,HH-00000234,55-64,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-03-03,arpi_synthetic_generator
+307,CUS-00000307,HH-00000235,35-44,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-10-28,arpi_synthetic_generator
+308,CUS-00000308,HH-00000236,25-34,Essex,MA,Northern Massachusetts,Retail,false,false,2025-05-23,arpi_synthetic_generator
+309,CUS-00000309,HH-00000237,55-64,Rockingham,NH,Southern New Hampshire,Retail,false,false,2025-10-22,arpi_synthetic_generator
+310,CUS-00000310,HH-00000238,35-44,Merrimack,NH,Southern New Hampshire,Retail,false,false,2025-11-23,arpi_synthetic_generator
+311,CUS-00000311,HH-00000238,18-24,Merrimack,NH,Southern New Hampshire,Retail,false,false,2025-09-22,arpi_synthetic_generator
+312,CUS-00000312,HH-00000239,45-54,Rockingham,NH,Southern New Hampshire,Retail,false,false,2025-06-23,arpi_synthetic_generator
+313,CUS-00000313,HH-00000239,25-34,Rockingham,NH,Southern New Hampshire,Retail,false,true,2025-11-24,arpi_synthetic_generator
+314,CUS-00000314,HH-00000240,18-24,Rockingham,NH,Southern New Hampshire,Retail,false,false,2025-08-26,arpi_synthetic_generator
+315,CUS-00000315,HH-00000241,45-54,Essex,MA,Northern Massachusetts,Retail,true,true,2025-03-10,arpi_synthetic_generator
+316,CUS-00000316,HH-00000242,55-64,Hillsborough,NH,Southern New Hampshire,Retail,true,false,2025-02-11,arpi_synthetic_generator
+317,CUS-00000317,HH-00000243,35-44,Merrimack,NH,Southern New Hampshire,Retail,false,false,2025-12-25,arpi_synthetic_generator
+318,CUS-00000318,HH-00000244,55-64,Essex,MA,Northern Massachusetts,Retail,false,false,2025-12-04,arpi_synthetic_generator
+319,CUS-00000319,HH-00000244,55-64,Essex,MA,Northern Massachusetts,Retail,true,false,2025-01-30,arpi_synthetic_generator
+320,CUS-00000320,HH-00000245,65+,Hillsborough,NH,Southern New Hampshire,Retail,false,true,2025-12-20,arpi_synthetic_generator
+321,CUS-00000321,HH-00000246,65+,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-10-26,arpi_synthetic_generator
+322,CUS-00000322,HH-00000247,55-64,Middlesex,MA,Northern Massachusetts,Retail,false,true,2025-04-19,arpi_synthetic_generator
+323,CUS-00000323,HH-00000248,35-44,Essex,MA,Northern Massachusetts,Retail,true,false,2025-03-24,arpi_synthetic_generator
+324,CUS-00000324,HH-00000249,55-64,Middlesex,MA,Northern Massachusetts,Retail,true,true,2025-04-30,arpi_synthetic_generator
+325,CUS-00000325,HH-00000250,45-54,Middlesex,MA,Northern Massachusetts,Retail,false,false,2025-02-08,arpi_synthetic_generator
+326,CUS-00000326,HH-00000251,35-44,Middlesex,MA,Northern Massachusetts,Retail,false,true,2025-01-02,arpi_synthetic_generator
+327,CUS-00000327,HH-00000252,55-64,Merrimack,NH,Southern New Hampshire,Retail,false,false,2025-01-29,arpi_synthetic_generator
+328,CUS-00000328,HH-00000253,45-54,Hillsborough,NH,Southern New Hampshire,Retail,true,true,2025-03-06,arpi_synthetic_generator
+329,CUS-00000329,HH-00000254,35-44,Middlesex,MA,Northern Massachusetts,Retail,false,false,2025-04-10,arpi_synthetic_generator
+330,CUS-00000330,HH-00000254,25-34,Middlesex,MA,Northern Massachusetts,Retail,false,false,2025-03-06,arpi_synthetic_generator
+331,CUS-00000331,HH-00000255,18-24,Rockingham,NH,Southern New Hampshire,Retail,false,false,2025-02-24,arpi_synthetic_generator
+332,CUS-00000332,HH-00000256,55-64,Rockingham,NH,Southern New Hampshire,Retail,false,true,2025-03-18,arpi_synthetic_generator
+333,CUS-00000333,HH-00000257,25-34,Rockingham,NH,Southern New Hampshire,Retail,false,false,2025-07-30,arpi_synthetic_generator
+334,CUS-00000334,HH-00000258,45-54,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-09-23,arpi_synthetic_generator
+335,CUS-00000335,HH-00000259,55-64,Hillsborough,NH,Southern New Hampshire,Retail,true,true,2025-04-03,arpi_synthetic_generator
+336,CUS-00000336,HH-00000260,35-44,Essex,MA,Northern Massachusetts,Retail,true,true,2025-02-03,arpi_synthetic_generator
+337,CUS-00000337,HH-00000261,35-44,Middlesex,MA,Northern Massachusetts,Retail,false,true,2025-07-21,arpi_synthetic_generator
+338,CUS-00000338,HH-00000262,55-64,Rockingham,NH,Southern New Hampshire,Retail,false,true,2025-01-24,arpi_synthetic_generator
+339,CUS-00000339,HH-00000262,35-44,Rockingham,NH,Southern New Hampshire,Retail,false,true,2025-06-17,arpi_synthetic_generator
+340,CUS-00000340,HH-00000263,18-24,Merrimack,NH,Southern New Hampshire,Retail,false,false,2025-04-24,arpi_synthetic_generator
+341,CUS-00000341,HH-00000263,45-54,Merrimack,NH,Southern New Hampshire,Retail,false,false,2025-12-30,arpi_synthetic_generator
+342,CUS-00000342,HH-00000263,55-64,Merrimack,NH,Southern New Hampshire,Retail,false,false,2025-05-16,arpi_synthetic_generator
+343,CUS-00000343,HH-00000264,45-54,Hillsborough,NH,Southern New Hampshire,Retail,true,true,2025-01-07,arpi_synthetic_generator
+344,CUS-00000344,HH-00000265,65+,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-07-09,arpi_synthetic_generator
+345,CUS-00000345,HH-00000266,25-34,Middlesex,MA,Northern Massachusetts,Retail,false,false,2025-10-23,arpi_synthetic_generator
+346,CUS-00000346,HH-00000267,55-64,Essex,MA,Northern Massachusetts,Retail,true,true,2025-05-25,arpi_synthetic_generator
+347,CUS-00000347,HH-00000268,18-24,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-02-13,arpi_synthetic_generator
+348,CUS-00000348,HH-00000269,35-44,Hillsborough,NH,Southern New Hampshire,Retail,false,true,2025-05-02,arpi_synthetic_generator
+349,CUS-00000349,HH-00000270,18-24,Rockingham,NH,Southern New Hampshire,Retail,true,false,2025-06-18,arpi_synthetic_generator
+350,CUS-00000350,HH-00000271,25-34,Rockingham,NH,Southern New Hampshire,Retail,false,false,2025-02-22,arpi_synthetic_generator
+351,CUS-00000351,HH-00000271,65+,Rockingham,NH,Southern New Hampshire,Retail,false,true,2025-02-01,arpi_synthetic_generator
+352,CUS-00000352,HH-00000272,35-44,Merrimack,NH,Southern New Hampshire,Retail,false,false,2025-07-21,arpi_synthetic_generator
+353,CUS-00000353,HH-00000273,35-44,Essex,MA,Northern Massachusetts,Retail,false,true,2025-04-01,arpi_synthetic_generator
+354,CUS-00000354,HH-00000274,65+,Strafford,NH,Southern New Hampshire,Retail,false,false,2025-07-25,arpi_synthetic_generator
+355,CUS-00000355,HH-00000274,45-54,Strafford,NH,Southern New Hampshire,Retail,false,true,2025-05-17,arpi_synthetic_generator
+356,CUS-00000356,HH-00000275,65+,Rockingham,NH,Southern New Hampshire,Retail,false,false,2025-12-19,arpi_synthetic_generator
+357,CUS-00000357,HH-00000276,18-24,Strafford,NH,Southern New Hampshire,Retail,false,true,2025-11-22,arpi_synthetic_generator
+358,CUS-00000358,HH-00000276,55-64,Strafford,NH,Southern New Hampshire,Retail,false,false,2025-09-18,arpi_synthetic_generator
+359,CUS-00000359,HH-00000277,65+,Hillsborough,NH,Southern New Hampshire,Business,false,true,2025-12-26,arpi_synthetic_generator
+360,CUS-00000360,HH-00000277,25-34,Hillsborough,NH,Southern New Hampshire,Retail,false,true,2025-01-18,arpi_synthetic_generator
+361,CUS-00000361,HH-00000278,65+,Merrimack,NH,Southern New Hampshire,Retail,true,false,2025-02-21,arpi_synthetic_generator
+362,CUS-00000362,HH-00000279,35-44,Middlesex,MA,Northern Massachusetts,Retail,true,true,2025-06-23,arpi_synthetic_generator
+363,CUS-00000363,HH-00000280,45-54,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-06-24,arpi_synthetic_generator
+364,CUS-00000364,HH-00000281,45-54,Strafford,NH,Southern New Hampshire,Retail,true,false,2025-06-05,arpi_synthetic_generator
+365,CUS-00000365,HH-00000282,65+,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-06-26,arpi_synthetic_generator
+366,CUS-00000366,HH-00000283,45-54,Essex,MA,Northern Massachusetts,Retail,false,false,2025-11-26,arpi_synthetic_generator
+367,CUS-00000367,HH-00000284,65+,Essex,MA,Northern Massachusetts,Retail,true,true,2025-02-13,arpi_synthetic_generator
+368,CUS-00000368,HH-00000284,55-64,Essex,MA,Northern Massachusetts,Retail,false,false,2025-08-14,arpi_synthetic_generator
+369,CUS-00000369,HH-00000284,25-34,Essex,MA,Northern Massachusetts,Retail,false,true,2025-10-12,arpi_synthetic_generator
+370,CUS-00000370,HH-00000285,25-34,Rockingham,NH,Southern New Hampshire,Retail,true,true,2025-04-22,arpi_synthetic_generator
+371,CUS-00000371,HH-00000286,35-44,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-05-06,arpi_synthetic_generator
+372,CUS-00000372,HH-00000286,55-64,Hillsborough,NH,Southern New Hampshire,Retail,true,true,2025-02-21,arpi_synthetic_generator
+373,CUS-00000373,HH-00000287,45-54,Hillsborough,NH,Southern New Hampshire,Retail,false,true,2025-06-21,arpi_synthetic_generator
+374,CUS-00000374,HH-00000288,45-54,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-10-10,arpi_synthetic_generator
+375,CUS-00000375,HH-00000288,35-44,Hillsborough,NH,Southern New Hampshire,Retail,false,true,2025-12-22,arpi_synthetic_generator
+376,CUS-00000376,HH-00000289,35-44,Middlesex,MA,Northern Massachusetts,Retail,true,true,2025-05-27,arpi_synthetic_generator
+377,CUS-00000377,HH-00000290,55-64,Rockingham,NH,Southern New Hampshire,Retail,true,false,2025-03-15,arpi_synthetic_generator
+378,CUS-00000378,HH-00000291,65+,Hillsborough,NH,Southern New Hampshire,Retail,true,false,2025-04-11,arpi_synthetic_generator
+379,CUS-00000379,HH-00000292,35-44,Middlesex,MA,Northern Massachusetts,Retail,false,true,2025-01-18,arpi_synthetic_generator
+380,CUS-00000380,HH-00000293,45-54,Hillsborough,NH,Southern New Hampshire,Retail,true,true,2025-02-10,arpi_synthetic_generator
+381,CUS-00000381,HH-00000294,35-44,Hillsborough,NH,Southern New Hampshire,Business,true,true,2025-02-19,arpi_synthetic_generator
+382,CUS-00000382,HH-00000295,35-44,Middlesex,MA,Northern Massachusetts,Retail,false,false,2025-08-12,arpi_synthetic_generator
+383,CUS-00000383,HH-00000296,35-44,Rockingham,NH,Southern New Hampshire,Retail,true,true,2025-03-17,arpi_synthetic_generator
+384,CUS-00000384,HH-00000296,35-44,Rockingham,NH,Southern New Hampshire,Retail,false,false,2025-12-23,arpi_synthetic_generator
+385,CUS-00000385,HH-00000297,35-44,Hillsborough,NH,Southern New Hampshire,Retail,false,true,2025-10-22,arpi_synthetic_generator
+386,CUS-00000386,HH-00000298,18-24,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-02-25,arpi_synthetic_generator
+387,CUS-00000387,HH-00000299,65+,Hillsborough,NH,Southern New Hampshire,Retail,true,true,2025-04-06,arpi_synthetic_generator
+388,CUS-00000388,HH-00000300,45-54,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-07-22,arpi_synthetic_generator
+389,CUS-00000389,HH-00000300,45-54,Hillsborough,NH,Southern New Hampshire,Retail,false,true,2025-09-25,arpi_synthetic_generator
+390,CUS-00000390,HH-00000301,18-24,Merrimack,NH,Southern New Hampshire,Retail,false,false,2025-09-19,arpi_synthetic_generator
+391,CUS-00000391,HH-00000302,35-44,Merrimack,NH,Southern New Hampshire,Retail,false,true,2025-05-13,arpi_synthetic_generator
+392,CUS-00000392,HH-00000303,25-34,Hillsborough,NH,Southern New Hampshire,Retail,false,false,2025-12-28,arpi_synthetic_generator
+393,CUS-00000393,HH-00000304,35-44,Middlesex,MA,Northern Massachusetts,Retail,false,false,2025-11-11,arpi_synthetic_generator
+394,CUS-00000394,HH-00000305,65+,Hillsborough,NH,Southern New Hampshire,Retail,true,true,2025-01-19,arpi_synthetic_generator
+395,CUS-00000395,HH-00000306,25-34,Merrimack,NH,Southern New Hampshire,Business,true,false,2025-01-14,arpi_synthetic_generator
+396,CUS-00000396,HH-00000307,35-44,Hillsborough,NH,Southern New Hampshire,Retail,true,true,2025-05-22,arpi_synthetic_generator
+397,CUS-00000397,HH-00000308,65+,Hillsborough,NH,Southern New Hampshire,Retail,true,true,2025-01-27,arpi_synthetic_generator
+398,CUS-00000398,HH-00000309,65+,Merrimack,NH,Southern New Hampshire,Retail,false,false,2025-06-02,arpi_synthetic_generator
+399,CUS-00000399,HH-00000310,25-34,Middlesex,MA,Northern Massachusetts,Retail,false,false,2025-07-20,arpi_synthetic_generator
+400,CUS-00000400,HH-00000311,35-44,Strafford,NH,Southern New Hampshire,Retail,false,false,2025-07-10,arpi_synthetic_generator
