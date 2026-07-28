@@ -1133,6 +1133,31 @@ never purged by a rerun ([ARCHITECTURE.md §17.3](ARCHITECTURE.md)).
 | `DQ-GEN-001` | The declared schema matches the output schema | all generated entities | critical |
 | `DQ-GEN-002` | The determinism digest is recorded | all generated entities | critical |
 
+**Supplementary SQL-side check families.** The twelve checks above are the shared register used by both the
+Python and SQL layers. The SQL validation layer (`sql/08_validation/`) additionally implements two families
+that have no Python counterpart, because they assert properties only the database can observe — catalogue
+state and cross-table referential integrity. They are Implemented and are listed here so the register is
+complete rather than merely canonical.
+
+| `check_id` | Assertion | Target | Severity |
+|---|---|---|---|
+| `DQ-REF-001` | `warehouse.dim_date` grain is unique on `full_date` | `dim_date` | critical |
+| `DQ-REF-002` | `warehouse.dim_dealership` grain is unique on `(dealership_id, effective_date)` | `dim_dealership` | critical |
+| `DQ-REF-003` | `warehouse.dim_date` has no gaps in its date sequence — a window-function check, distinct from `DQ-DATE-002`, which compares a count | `dim_date` | critical |
+| `DQ-REF-004` | The constraints that enforce these grains are actually present in the catalogue | `warehouse` | critical |
+| `DQ-REF-005` | Every store's SCD Type 2 timeline is contiguous and non-overlapping | `dim_dealership` | critical |
+| `DQ-AUD-001` | Every `audit.validation_result` resolves to an `audit.pipeline_run` | `audit` | critical |
+| `DQ-AUD-002` | Every `audit.rejected_record` resolves to an `audit.pipeline_run` | `audit` | critical |
+| `DQ-AUD-003` | Every `audit.pipeline_run_row_count` resolves to an `audit.pipeline_run` | `audit` | critical |
+| `DQ-AUD-004` | Every `audit.reconciliation_result` resolves to an `audit.pipeline_run` | `audit` | critical |
+| `DQ-AUD-005` | No run is internally inconsistent — finished before it started, or otherwise self-contradictory | `audit.pipeline_run` | critical |
+
+These are exposed through the helper views `audit.vw_dq_dim_date`, `audit.vw_dq_dim_dealership`,
+`audit.vw_dq_referential`, `audit.vw_dq_audit`, and `audit.vw_dq_all`, all shaped by
+`audit.vw_dq_result_template`. Those views are query helpers over the audit schema, not part of the
+reporting boundary — `arpi_reporter` reads validation outcomes through
+`reporting.vw_data_quality_summary`.
+
 ### 21.3 Business rules
 
 - `severity = 'critical'` and `status = 'failed'` must increment `audit.pipeline_run.critical_failure_count`.

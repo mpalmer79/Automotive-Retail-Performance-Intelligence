@@ -34,9 +34,9 @@ being *credible* to a careful reader, and those are marked **High**.
 
 | ID | Gap | Impact | Proposed resolution | Priority |
 |---|---|---|---|---|
-| `DOC-01` | **`ARCHITECTURE.md` §24 (Repository Structure) still describes the retired identity.** The directory tree names the retired working title as the repository root, uses the retired package path in place of `src/arpi/`, and names Power BI and Excel deliverables under the retired product name instead of `powerbi/ARPI_Performance_Intelligence.pbix` and `excel/ARPI_Operating_Report.xlsx`. | A reader following §24 would look for the wrong package and the wrong files. It also contradicts `ADR-0001`, which §2.1 cites as the authority, and it means `scripts/check_naming.py` can only pass because `ARCHITECTURE.md` is not yet flagged. The retired identifier is permitted only in that ADR and in `docs/research.md`. | Rewrite §24's tree to the ARPI identity. Owned by the architecture workstream. | **High** |
-| `DOC-02` | **`ARCHITECTURE.md` §33 and §36 use the retired working title in prose.** The opening sentences of "Definition of Done" and "Final Architecture Position" both name the retired product rather than ARPI. | Same as `DOC-01`: the retired identifier is permitted only in `ADR-0001` and `docs/research.md`. Two of the architecture's most quotable sentences carry the wrong product name. | Replace with "Automotive Retail Performance Intelligence" or "ARPI". Owned by the architecture workstream. | **High** |
-| `DOC-03` | **`ARCHITECTURE.md` §24 lists `requirements.txt`**, but the project's tooling decision is a single `pyproject.toml` with **no** `requirements.txt`, `setup.cfg`, `.flake8`, `mypy.ini`, `pytest.ini`, or `.coveragerc`. | A contributor could create `requirements.txt` in good faith and introduce a second, drifting dependency source. | Remove `requirements.txt` from the §24 tree and state the single-config-file rule. Owned by the architecture workstream. | **High** |
+| ~~`DOC-01`~~ | ~~`ARCHITECTURE.md` §24 (Repository Structure) described the retired project identity — retired root directory name, retired package path, and Power BI and Excel deliverables under the retired product name.~~ | ~~A reader following §24 would look for the wrong package and the wrong files, and it contradicted `ADR-0001`.~~ | **Resolved 2026-07-28.** §24 was rewritten during Phase 0 to the ARPI identity, with an explicit `[now]` / `[empty]` / `[planned]` status marker on every entry. Verified: `python scripts/check_naming.py` passes with `ARCHITECTURE.md` **not** allowlisted. | ~~High~~ **Resolved** |
+| ~~`DOC-02`~~ | ~~`ARCHITECTURE.md` §33 and §36 used the retired working title in prose.~~ | ~~Two of the architecture's most quotable sentences carried the wrong product name.~~ | **Resolved 2026-07-28.** Both sections now open with "Automotive Retail Performance Intelligence". Verified by `scripts/check_naming.py`. | ~~High~~ **Resolved** |
+| ~~`DOC-03`~~ | ~~`ARCHITECTURE.md` §24 listed `requirements.txt`, contradicting the single-`pyproject.toml` tooling decision.~~ | ~~A contributor could create `requirements.txt` in good faith and introduce a second, drifting dependency source.~~ | **Resolved 2026-07-28.** §24 no longer lists it, and the architecture now states explicitly that dependency management uses `pyproject.toml` only, with no `requirements.txt` and no `setup.cfg`. | ~~High~~ **Resolved** |
 | `DOC-04` | **`warehouse.dim_customer` has no dedicated backlog item.** [DATA_DICTIONARY.md §9](../../DATA_DICTIONARY.md) marks it Planned (Phase 1.2), but the Phase 1.2 item list is raw/staging ingestion, vehicle dimension, employee dimension, sale fact, and inventory snapshot fact. It is currently delivered as an acceptance criterion inside `P1.2-04`. | A dimension carrying the project's most privacy-sensitive schema is being delivered as a sub-clause of a fact-table item. Its prohibited-field controls deserve their own acceptance criteria and their own review. | Promote it to a first-class item `P1.2-06`, with the eight prohibited fields as explicit acceptance criteria and a dedicated privacy test. | **High** |
 | `DOC-05` | **Two phase-numbering schemes coexist.** `ARCHITECTURE.md` §27 numbers eight lifecycle phases (1 = Product Definition … 8 = Portfolio Packaging). The delivery documents use Phase 0 and Phase 1.1–1.5. "Phase 1" therefore means two different things depending on which document you are reading. | Genuine ambiguity. `ARCHITECTURE.md` §27 "Phase 1: Product Definition" and `PHASE_1_BACKLOG.md` describe entirely different work. | [README.md §3.6](README.md) explains the mapping, but the architecture itself does not. Add a short cross-reference in `ARCHITECTURE.md` §27, or rename the delivery phases to something unambiguous such as "Increment 1.1". | **High** |
 | `DOC-06` | **The generation CLI command surface is documented but not covered by any canonical-command list.** [DATA_GENERATION.md §15.1](../../DATA_GENERATION.md) documents `version`, `check-config`, `generate`, and `run-foundation` with their options. These were **verified against the implemented CLI on 2026-07-28 and are correct today**, but only the lint, type, test, and repository-script commands are pinned as canonical, so the generation commands can drift without anything failing. | A stale command in the data-generation guide is wrong in the one place a reviewer is most likely to copy and paste from, and nothing in CI would catch it. | Add a CI check that compares the documented command surface against `python -m arpi --help`, or add the generation commands to the canonical command list. Downgraded from High to Medium now that the current documentation is verified accurate. | **Medium** |
@@ -53,29 +53,29 @@ being *credible* to a careful reader, and those are marked **High**.
 | `DOC-17` | **`market_region` has a single value across all three stores.** Documented in [STM-002 §10](../source-to-target/STM-002-dim-dealership.md). | The column has no analytical variance, so any "by market region" analysis is degenerate. Harmless while disclosed, but a reviewer could reasonably expect a market dimension to discriminate. | Leave as-is. Revisit if `dim_geography` is ever promoted from Deferred. | **Low** |
 | `DOC-18` | **No cross-run data-quality trend view exists.** `audit.validation_result` records outcomes per run, and `reporting.vw_data_quality_summary` exposes them, but nothing trends quality across runs. | The Power BI Data Quality page ([ARCHITECTURE.md §19.4](../../ARCHITECTURE.md) page 9) asks "did validation pass?" — answerable today — but not "is quality improving or degrading?", which is the more useful management question. | Add a trend view during Phase 1.3 when the check count grows enough to make trending meaningful. Recorded in [STM-003 §13](../source-to-target/STM-003-audit-metadata.md). | **Low** |
 | `DOC-19` | **No audit-retention policy is defined.** Audit rows accumulate indefinitely, with no purge, archive, or partitioning strategy. | Irrelevant at Phase 0 volumes. At portfolio scale, with per-entity row counts and per-check results on every run, the audit schema will grow steadily. | Define a retention policy before the portfolio dataset is regenerated repeatedly. Low urgency, but cheaper to decide now than to retrofit. | **Low** |
+| `DOC-21` | **The SQL layer implements two check families that the shared cross-layer register does not name.** `sql/08_validation/` defines `DQ-REF-001`…`005` (grain uniqueness, calendar contiguity, constraint-catalogue presence, SCD2 timeline integrity) and `DQ-AUD-001`…`005` (audit referential integrity and run self-consistency). The register agreed across the Python and SQL layers names only the `DQ-DATE-*`, `DQ-DLR-*`, and `DQ-GEN-*` families. | Not misleading — the extra checks are strictly additional and strictly beneficial — but a register that is incomplete stops being a register. It also means `DQ-REF-003` and `DQ-DATE-002` assert overlapping properties by different methods without that relationship being recorded anywhere central. | [DATA_DICTIONARY.md §21.2](../../DATA_DICTIONARY.md) now documents both families as supplementary. Fold them into the canonical shared register so there is one list, and record the deliberate `DQ-REF-003` / `DQ-DATE-002` overlap. | **Medium** |
+| `DOC-22` | **Six `audit.vw_dq_*` helper views are not in the entity index.** `audit.vw_dq_all`, `vw_dq_audit`, `vw_dq_dim_date`, `vw_dq_dim_dealership`, `vw_dq_referential`, and `vw_dq_result_template` exist in `sql/08_validation/` but do not appear in [DATA_DICTIONARY.md §4](../../DATA_DICTIONARY.md). | The entity index claims to list every object. Six Implemented objects are missing from it, which weakens the one table a reviewer is most likely to trust as complete. | Either add them to the index as audit-layer helper views, or state explicitly at the top of §4 that the index covers raw, staging, warehouse, reporting, and audit **tables**, excluding internal audit query helpers. Prefer the former. | **Medium** |
 | `DOC-20` | **The fiscal calendar is calendar-aligned, and three columns exist purely for future flexibility.** `fiscal_month`, `fiscal_quarter`, and `fiscal_year` are exact copies of their calendar counterparts. | A reviewer could read the presence of fiscal columns as evidence that a distinct fiscal calendar is modelled. It is not. Documented in [DATA_DICTIONARY.md §6.1](../../DATA_DICTIONARY.md) and [STM-001 §10](../source-to-target/STM-001-dim-date.md). | Keep the disclosure prominent. If a non-calendar fiscal year is ever introduced, it becomes a major version bump on `STM-001`. | **Low** |
 
 ---
 
 ## 4. Summary
 
-| Priority | Count |
-|---|---:|
-| High | 5 |
-| Medium | 9 |
-| Low | 6 |
-| **Total** | **20** |
+| Priority | Open | Resolved |
+|---|---:|---:|
+| High | 2 | 3 |
+| Medium | 11 | 0 |
+| Low | 6 | 0 |
+| **Total** | **19** | **3** |
 
-**Five High items.** Four of them (`DOC-01`, `DOC-02`, `DOC-03`, `DOC-05`) are contradictions between
-documents rather than missing content — the kind of defect a careful reviewer finds quickly and that costs
-disproportionate credibility. The fifth (`DOC-04`) is a scope gap where the project's most
-privacy-sensitive dimension lacks its own item.
+**Two open High items.** `DOC-04` is a scope gap where the project's most privacy-sensitive dimension
+lacks its own backlog item; `DOC-05` is a genuine ambiguity where "Phase 1" means two different things
+depending on which document a reader has open.
 
-`DOC-01` and `DOC-02` have a further consequence worth naming: `scripts/check_naming.py` fails the build on
-any use of the retired identifier outside its two allowlisted files. `ARCHITECTURE.md` currently carries the
-retired name in §24, §33, and §36 — so either the allowlist has been widened to accommodate it, or the
-check has not yet been run against the current text. Either way, the two documents disagree about what the
-project is called.
+Three High items — the retired-identity contradictions in `ARCHITECTURE.md` §24, §33, and §36, and the
+stray `requirements.txt` — were **resolved during Phase 0** and are struck through above rather than
+deleted, because the record of what was wrong is itself useful evidence. Resolution was verified by running
+`python scripts/check_naming.py`, which passes with `ARCHITECTURE.md` not on its allowlist.
 
 ---
 

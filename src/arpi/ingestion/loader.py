@@ -309,17 +309,41 @@ def _insert_audit_rows(connection: Any, recorder: AuditRecorder) -> None:
         result = cursor.fetchone()
         pipeline_run_id = int(result[0])
 
-        for table in (
-            "pipeline_run_row_count",
-            "validation_result",
-            "reconciliation_result",
-        ):
+        # A rerun with the same parameters is the same logical run executed again, not a
+        # new one: the run_uuid is derived from those parameters. Its child rows are
+        # therefore replaced rather than appended, so the audit trail describes the most
+        # recent execution instead of accumulating duplicates. Other runs are untouched,
+        # preserving prior run history as the architecture requires.
+        for table in ("validation_result", "reconciliation_result"):
+            cursor.execute(_delete_children_statement(table), (pipeline_run_id,))
+
+        for row in rows["pipeline_run_row_count"]:
+            payload = {"pipeline_run_id": pipeline_run_id, **row}
+            cursor.execute(
+                _insert_statement("pipeline_run_row_count", tuple(payload.keys()))
+                + sql.SQL(
+                    " ON CONFLICT (pipeline_run_id, entity_name, layer) DO UPDATE SET "
+                    "row_count = EXCLUDED.row_count, recorded_at = EXCLUDED.recorded_at"
+                ),
+                tuple(payload.values()),
+            )
+
+        for table in ("validation_result", "reconciliation_result"):
             for row in rows[table]:
                 payload = {"pipeline_run_id": pipeline_run_id, **row}
                 cursor.execute(
                     _insert_statement(table, tuple(payload.keys())), tuple(payload.values())
                 )
     _LOGGER.info("Recorded audit rows for pipeline_run_id %s.", pipeline_run_id)
+
+
+def _delete_children_statement(table: str) -> sql.Composed:
+    """Build a parameterised ``DELETE`` removing one run's rows from an audit child table."""
+    return sql.SQL("DELETE FROM {}.{} WHERE pipeline_run_id = {}").format(
+        sql.Identifier(SCHEMA_AUDIT),
+        sql.Identifier(table),
+        sql.Placeholder(),
+    )
 
 
 def _insert_statement(table: str, columns: tuple[str, ...]) -> sql.Composed:

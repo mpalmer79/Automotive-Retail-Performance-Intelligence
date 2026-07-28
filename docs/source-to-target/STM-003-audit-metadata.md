@@ -266,6 +266,17 @@ checks that *write here* are:
 | `DQ-GEN-001` | Declared schema matches output schema | critical | all generated entities |
 | `DQ-GEN-002` | Determinism digest recorded | critical | all generated entities |
 
+Two further families are implemented in the SQL validation layer only, because they assert properties that
+only the database can observe — see [DATA_DICTIONARY.md §21.2](../../DATA_DICTIONARY.md) for the full list:
+
+| Check family | Assertions | Severity |
+|---|---|---|
+| `DQ-REF-001` … `DQ-REF-005` | Grain uniqueness on `dim_date` and `dim_dealership`; calendar contiguity by window function; presence of the enforcing constraints in the catalogue; SCD Type 2 timeline contiguity and non-overlap | critical |
+| `DQ-AUD-001` … `DQ-AUD-005` | Every `validation_result`, `rejected_record`, `pipeline_run_row_count`, and `reconciliation_result` resolves to a `pipeline_run`; no run is internally inconsistent | critical |
+
+`DQ-AUD-001` … `005` are the audit schema validating **itself** — the referential and self-consistency
+guarantees this document relies on are asserted, not assumed.
+
 Self-consistency rules that the audit schema must itself satisfy:
 
 - `audit.pipeline_run.critical_failure_count` equals the count of `audit.validation_result` rows for the run
