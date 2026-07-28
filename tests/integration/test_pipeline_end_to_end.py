@@ -12,7 +12,6 @@ reconciliation emission are all covered by the real database rather than by mock
 
 from __future__ import annotations
 
-import os
 import shutil
 from collections.abc import Iterator
 from pathlib import Path
@@ -21,7 +20,12 @@ from uuid import uuid4
 
 import psycopg
 import pytest
-from tests.integration.conftest import base_connection_kwargs, run_init_sequence
+from pydantic import SecretStr
+from tests.integration.conftest import (
+    base_connection_kwargs,
+    connection_password,
+    run_init_sequence,
+)
 
 from arpi.config import ArpiConfig, load_config
 from arpi.pipeline import run_foundation
@@ -90,17 +94,24 @@ def loadable_config(isolated_database: str, scratch_output_dir: Path) -> ArpiCon
     """A test-profile configuration pointed at the throwaway integration database."""
     connection = base_connection_kwargs()
     config = load_config(profile="test", config_dir=REPO_CONFIG_DIR)
+    # The password must come from the import-time snapshot. `load_config` reads
+    # `ARPI_DATABASE__PASSWORD` from the live environment, which the hermetic fixture has
+    # already stripped, so the loaded config carries no password and a TCP connection
+    # would fail with `fe_sendauth: no password supplied`.
+    password = connection_password()
+    database_update: dict[str, Any] = {
+        "enabled": True,
+        "host": connection.get("host"),
+        "port": connection.get("port", 5432),
+        "name": isolated_database,
+        "user": connection.get("user"),
+        "sslmode": connection.get("sslmode", config.database.sslmode),
+    }
+    if password is not None:
+        database_update["password"] = SecretStr(password)
     return config.model_copy(
         update={
-            "database": config.database.model_copy(
-                update={
-                    "enabled": True,
-                    "host": connection.get("host") or os.environ.get("PGHOST"),
-                    "port": connection.get("port", 5432),
-                    "name": isolated_database,
-                    "user": connection.get("user") or os.environ.get("PGUSER"),
-                }
-            ),
+            "database": config.database.model_copy(update=database_update),
             "paths": config.paths.model_copy(update={"raw_output_dir": scratch_output_dir}),
         }
     )

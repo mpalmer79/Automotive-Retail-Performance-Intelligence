@@ -141,7 +141,17 @@ docstring-code-format = true
 # Types
 # --------------------------------------------------------------------------------------
 [tool.mypy]
-python_version = "3.11"
+# `python_version` is deliberately NOT pinned.
+#
+# Pinning it to the project's minimum contradicts a CI matrix that type-checks on several
+# interpreters: mypy would analyse the *installed* third-party stubs while targeting an
+# older language level. numpy's stubs use PEP 695 `type` statements, which are valid on
+# the 3.12 interpreter actually running mypy but rejected when the target is 3.11, so the
+# 3.12 job failed with a syntax error inside numpy rather than anything in this codebase.
+#
+# Unpinned, mypy targets the interpreter it runs under, so each matrix leg checks the
+# language level it actually represents. `requires-python` remains the real floor, and
+# the 3.11 leg is what enforces it.
 files = ["src", "tests"]
 mypy_path = "src"
 namespace_packages = true
