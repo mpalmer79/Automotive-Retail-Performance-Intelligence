@@ -186,6 +186,9 @@ SELECT
     c.form_submissions,
     c.vendor_reported_leads,
     c.source_system,
+    -- Untyped natural-key text, kept so a rejected row can still be identified
+    -- even when the cast that would have typed it is what failed.
+    c.src_marketing_spend_id,
     c.raw_record_id,
     c.load_batch_id,
     c.source_file_name,

@@ -206,97 +206,79 @@ FRANCHISE_ALIGNMENT_MAKES: Final[dict[str, str]] = {
 }
 
 
-@dataclass(frozen=True, slots=True)
-class CheckDefinition:
-    """Metadata for one data-quality check.
+#: Objects every ``DQ-VMD-*`` check is evaluated against.
+VEHICLE_MODEL_CHECK_TARGETS: Final[tuple[str, ...]] = ("warehouse.dim_vehicle_model",)
 
-    Field names mirror the cross-agent registry contract exactly, so registering a check
-    with the shared registry is a one-line change once that module exists.
-
-    Attributes:
-        check_id: Stable identifier, e.g. ``"DQ-VMD-001"``.
-        check_name: Short human-readable name.
-        category: One of the seven canonical validation categories.
-        severity: ``critical``, ``warning`` or ``info``.
-        layer: Pipeline layer the check is evaluated in.
-        entity: Entity the check applies to.
-        description: What the check asserts, in one sentence.
-        applies_to: Column or column tuple the check inspects.
-    """
-
-    check_id: str
-    check_name: str
-    category: str
-    severity: str
-    layer: str
-    entity: str
-    description: str
-    applies_to: str
-
-
-VEHICLE_MODEL_CHECK_DEFINITIONS: Final[tuple[CheckDefinition, ...]] = (
-    CheckDefinition(
-        check_id=CHECK_VEHICLE_MODEL_UNIQUE_ID,
-        check_name="dim_vehicle_model.vehicle_model_id is unique",
-        category=CHECK_CATEGORY_UNIQUENESS,
-        severity="critical",
-        layer="source",
-        entity=ENTITY_DIM_VEHICLE_MODEL,
-        description="No two model rows share a vehicle_model_id.",
-        applies_to="vehicle_model_id",
-    ),
-    CheckDefinition(
-        check_id=CHECK_VEHICLE_MODEL_UNIQUE_NATURAL_KEY,
-        check_name="dim_vehicle_model natural key is unique",
-        category=CHECK_CATEGORY_UNIQUENESS,
-        severity="critical",
-        layer="source",
-        entity=ENTITY_DIM_VEHICLE_MODEL,
-        description="(model_year, make, model, trim) identifies exactly one row.",
-        applies_to="model_year, make, model, trim",
-    ),
-    CheckDefinition(
-        check_id=CHECK_VEHICLE_MODEL_SCHEMA_MATCHES,
-        check_name="dim_vehicle_model matches its declared schema",
-        category=CHECK_CATEGORY_STRUCTURAL,
-        severity="critical",
-        layer="source",
-        entity=ENTITY_DIM_VEHICLE_MODEL,
-        description="Column names, order and count match the 16-column contract.",
-        applies_to="all columns",
-    ),
-    CheckDefinition(
-        check_id=CHECK_VEHICLE_MODEL_ENUMERATIONS,
-        check_name="dim_vehicle_model enumerated values are valid",
-        category=CHECK_CATEGORY_BUSINESS_RULE,
-        severity="critical",
-        layer="source",
-        entity=ENTITY_DIM_VEHICLE_MODEL,
-        description="body_style, vehicle_class, fuel_type, drivetrain and transmission "
-        "come from their declared enumerations.",
-        applies_to="body_style, vehicle_class, fuel_type, drivetrain, transmission",
-    ),
-    CheckDefinition(
-        check_id=CHECK_VEHICLE_MODEL_FRANCHISE_ALIGNMENT,
-        check_name="dim_vehicle_model franchise alignment agrees with make",
-        category=CHECK_CATEGORY_BUSINESS_RULE,
-        severity="critical",
-        layer="source",
-        entity=ENTITY_DIM_VEHICLE_MODEL,
-        description="Chevrolet and Subaru alignments carry that make; every other make "
-        "is aligned to Independent Used.",
-        applies_to="franchise_alignment, make",
-    ),
-    CheckDefinition(
-        check_id=CHECK_VEHICLE_MODEL_NO_PROHIBITED_PII,
-        check_name="dim_vehicle_model declares no prohibited PII column",
-        category=CHECK_CATEGORY_PRIVACY,
-        severity="critical",
-        layer="source",
-        entity=ENTITY_DIM_VEHICLE_MODEL,
-        description="No column name matches the prohibited personal-data vocabulary.",
-        applies_to="all columns",
-    ),
+VEHICLE_MODEL_CHECK_DEFINITIONS: Final[tuple[CheckDefinition, ...]] = register_checks(
+    (
+        CheckDefinition(
+            check_id=CHECK_VEHICLE_MODEL_UNIQUE_ID,
+            check_name="dim_vehicle_model.vehicle_model_id is unique",
+            category=CHECK_CATEGORY_UNIQUENESS,
+            severity=CheckSeverity.CRITICAL,
+            layer=CheckLayer.PYTHON,
+            entity=ENTITY_DIM_VEHICLE_MODEL,
+            description="Two model rows sharing a vehicle_model_id would let a vehicle "
+            "resolve to two different models, silently double-counting every model metric.",
+            applies_to=VEHICLE_MODEL_CHECK_TARGETS,
+        ),
+        CheckDefinition(
+            check_id=CHECK_VEHICLE_MODEL_UNIQUE_NATURAL_KEY,
+            check_name="dim_vehicle_model natural key is unique",
+            category=CHECK_CATEGORY_UNIQUENESS,
+            severity=CheckSeverity.CRITICAL,
+            layer=CheckLayer.PYTHON,
+            entity=ENTITY_DIM_VEHICLE_MODEL,
+            description="(model_year, make, model, trim) is the declared grain. A "
+            "duplicate combination means the dimension is finer than it claims to be.",
+            applies_to=VEHICLE_MODEL_CHECK_TARGETS,
+        ),
+        CheckDefinition(
+            check_id=CHECK_VEHICLE_MODEL_SCHEMA_MATCHES,
+            check_name="dim_vehicle_model matches its declared schema",
+            category=CHECK_CATEGORY_STRUCTURAL,
+            severity=CheckSeverity.CRITICAL,
+            layer=CheckLayer.PYTHON,
+            entity=ENTITY_DIM_VEHICLE_MODEL,
+            description="Column names, order and count must match the 16-column "
+            "contract, or the positional CSV load writes values into the wrong columns.",
+            applies_to=VEHICLE_MODEL_CHECK_TARGETS,
+        ),
+        CheckDefinition(
+            check_id=CHECK_VEHICLE_MODEL_ENUMERATIONS,
+            check_name="dim_vehicle_model enumerated values are valid",
+            category=CHECK_CATEGORY_BUSINESS_RULE,
+            severity=CheckSeverity.CRITICAL,
+            layer=CheckLayer.PYTHON,
+            entity=ENTITY_DIM_VEHICLE_MODEL,
+            description="body_style, vehicle_class, fuel_type, drivetrain and "
+            "transmission must come from their declared enumerations; an unknown value "
+            "would fragment every slicer built on them.",
+            applies_to=VEHICLE_MODEL_CHECK_TARGETS,
+        ),
+        CheckDefinition(
+            check_id=CHECK_VEHICLE_MODEL_FRANCHISE_ALIGNMENT,
+            check_name="dim_vehicle_model franchise alignment agrees with make",
+            category=CHECK_CATEGORY_BUSINESS_RULE,
+            severity=CheckSeverity.CRITICAL,
+            layer=CheckLayer.PYTHON,
+            entity=ENTITY_DIM_VEHICLE_MODEL,
+            description="A Chevrolet-aligned row carrying a Subaru make would let a "
+            "franchise store appear to sell another manufacturer's new inventory.",
+            applies_to=VEHICLE_MODEL_CHECK_TARGETS,
+        ),
+        CheckDefinition(
+            check_id=CHECK_VEHICLE_MODEL_NO_PROHIBITED_PII,
+            check_name="dim_vehicle_model declares no prohibited PII column",
+            category=CHECK_CATEGORY_PRIVACY,
+            severity=CheckSeverity.CRITICAL,
+            layer=CheckLayer.PYTHON,
+            entity=ENTITY_DIM_VEHICLE_MODEL,
+            description="ARPI generates no personal data. This inspects the schema, so "
+            "an empty prohibited column still fails the run.",
+            applies_to=VEHICLE_MODEL_CHECK_TARGETS,
+        ),
+    )
 )
 
 

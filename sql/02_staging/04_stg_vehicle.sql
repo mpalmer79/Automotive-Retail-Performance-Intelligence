@@ -190,6 +190,9 @@ SELECT
     c.odometer_band,
     c.acquisition_source,
     c.source_system,
+    -- Untyped natural-key text, kept so a rejected row can still be identified
+    -- even when the cast that would have typed it is what failed.
+    c.src_vehicle_id,
     c.raw_record_id,
     c.load_batch_id,
     c.source_file_name,

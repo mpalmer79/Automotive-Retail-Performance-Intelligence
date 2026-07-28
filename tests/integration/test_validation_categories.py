@@ -124,10 +124,14 @@ def test_every_sql_check_view_emits_a_canonical_category(cursor: Any) -> None:
 
 def test_recording_every_sql_check_satisfies_the_constraint(cursor: Any) -> None:
     """The end-to-end proof: what the views emit is what the column will accept."""
+    cursor.execute("SELECT count(*) FROM audit.vw_dq_all")
+    available = cursor.fetchone()[0]
+    assert available >= 20, "audit.vw_dq_all lost checks it used to expose"
+
     run_id = _insert_run(cursor)
     cursor.execute("SELECT audit.fn_record_all_dq_checks(%s)", (run_id,))
     recorded = cursor.fetchone()[0]
-    assert recorded == 20, "the four SQL check views define twenty checks between them"
+    assert recorded == available, "a check the views expose was not recorded"
 
     cursor.execute(
         "SELECT DISTINCT check_category FROM audit.validation_result WHERE pipeline_run_id = %s",

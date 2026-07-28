@@ -35,21 +35,20 @@ import pandas as pd
 from arpi.constants import (
     CHECK_CATEGORY_BUSINESS_RULE,
     CHECK_CATEGORY_PRIVACY,
+    CHECK_CATEGORY_REFERENTIAL,
     CHECK_CATEGORY_STRUCTURAL,
+    CHECK_CATEGORY_UNIQUENESS,
     SOURCE_SYSTEM,
 )
 from arpi.exceptions import GenerationError
 from arpi.generation.base import BaseGenerator, GeneratedDataset
 from arpi.generation.vehicle_model import (
     CATALOGUE_REFERENCE_YEAR,
-    CHECK_CATEGORY_REFERENTIAL,
-    CHECK_CATEGORY_UNIQUENESS,
     FRANCHISE_ALIGNMENT_CHEVROLET,
     FRANCHISE_ALIGNMENT_INDEPENDENT,
     FRANCHISE_ALIGNMENT_SUBARU,
     NEW_MODEL_YEAR_FLOOR,
     CataloguedModel,
-    CheckDefinition,
     catalogued_models_for,
 )
 from arpi.logging_config import get_logger
@@ -60,6 +59,7 @@ from arpi.validation.checks import (
     check_unique_column,
     check_values_in_allowed_set,
 )
+from arpi.validation.registry import CheckDefinition, CheckLayer, register_checks
 from arpi.validation.results import CheckResult, CheckSeverity, ValidationReport
 
 if TYPE_CHECKING:  # pragma: no cover - import cycle guard for type checking only
@@ -297,81 +297,90 @@ CHECK_VEHICLE_CONDITION_CONSISTENCY: Final = "DQ-VEH-005"
 CHECK_VEHICLE_NO_PROHIBITED_PII: Final = "DQ-VEH-006"
 CHECK_VEHICLE_VIN_FORMAT: Final = "DQ-VEH-007"
 
-VEHICLE_CHECK_DEFINITIONS: Final[tuple[CheckDefinition, ...]] = (
-    CheckDefinition(
-        check_id=CHECK_VEHICLE_UNIQUE_ID,
-        check_name="dim_vehicle.vehicle_id is unique",
-        category=CHECK_CATEGORY_UNIQUENESS,
-        severity="critical",
-        layer="source",
-        entity=ENTITY_DIM_VEHICLE,
-        description="No two vehicles share a vehicle_id.",
-        applies_to="vehicle_id",
-    ),
-    CheckDefinition(
-        check_id=CHECK_VEHICLE_UNIQUE_VIN,
-        check_name="dim_vehicle.synthetic_vin is unique",
-        category=CHECK_CATEGORY_UNIQUENESS,
-        severity="critical",
-        layer="source",
-        entity=ENTITY_DIM_VEHICLE,
-        description="No two vehicles share a synthetic VIN.",
-        applies_to="synthetic_vin",
-    ),
-    CheckDefinition(
-        check_id=CHECK_VEHICLE_SCHEMA_MATCHES,
-        check_name="dim_vehicle matches its declared schema",
-        category=CHECK_CATEGORY_STRUCTURAL,
-        severity="critical",
-        layer="source",
-        entity=ENTITY_DIM_VEHICLE,
-        description="Column names, order and count match the declared contract.",
-        applies_to="all columns",
-    ),
-    CheckDefinition(
-        check_id=CHECK_VEHICLE_MODEL_RESOLVES,
-        check_name="every dim_vehicle row resolves to a known vehicle model",
-        category=CHECK_CATEGORY_REFERENTIAL,
-        severity="critical",
-        layer="source",
-        entity=ENTITY_DIM_VEHICLE,
-        description="Every (vehicle_model_key, vehicle_model_id) pair exists in "
-        "dim_vehicle_model and the two agree.",
-        applies_to="vehicle_model_key, vehicle_model_id",
-    ),
-    CheckDefinition(
-        check_id=CHECK_VEHICLE_CONDITION_CONSISTENCY,
-        check_name="dim_vehicle condition, source and odometer are consistent",
-        category=CHECK_CATEGORY_BUSINESS_RULE,
-        severity="critical",
-        layer="source",
-        entity=ENTITY_DIM_VEHICLE,
-        description="New units carry a manufacturer allocation, the New odometer band "
-        "and at most 50 miles; every band agrees with its reading.",
-        applies_to="condition_type, acquisition_source, odometer_reading, odometer_band",
-    ),
-    CheckDefinition(
-        check_id=CHECK_VEHICLE_NO_PROHIBITED_PII,
-        check_name="dim_vehicle declares no prohibited PII column",
-        category=CHECK_CATEGORY_PRIVACY,
-        severity="critical",
-        layer="source",
-        entity=ENTITY_DIM_VEHICLE,
-        description="No column name matches the prohibited personal-data vocabulary; no "
-        "owner relationship exists.",
-        applies_to="all columns",
-    ),
-    CheckDefinition(
-        check_id=CHECK_VEHICLE_VIN_FORMAT,
-        check_name="dim_vehicle.synthetic_vin is well formed",
-        category=CHECK_CATEGORY_BUSINESS_RULE,
-        severity="critical",
-        layer="source",
-        entity=ENTITY_DIM_VEHICLE,
-        description="17 characters, ARPI prefix, remaining characters drawn from the "
-        "VIN alphabet with I, O and Q excluded.",
-        applies_to="synthetic_vin",
-    ),
+#: Objects every ``DQ-VEH-*`` check is evaluated against.
+VEHICLE_CHECK_TARGETS: Final[tuple[str, ...]] = ("warehouse.dim_vehicle",)
+
+VEHICLE_CHECK_DEFINITIONS: Final[tuple[CheckDefinition, ...]] = register_checks(
+    (
+        CheckDefinition(
+            check_id=CHECK_VEHICLE_UNIQUE_ID,
+            check_name="dim_vehicle.vehicle_id is unique",
+            category=CHECK_CATEGORY_UNIQUENESS,
+            severity=CheckSeverity.CRITICAL,
+            layer=CheckLayer.PYTHON,
+            entity=ENTITY_DIM_VEHICLE,
+            description="Two rows sharing a vehicle_id would let one physical unit be "
+            "acquired twice and sold twice, inflating every unit measure.",
+            applies_to=VEHICLE_CHECK_TARGETS,
+        ),
+        CheckDefinition(
+            check_id=CHECK_VEHICLE_UNIQUE_VIN,
+            check_name="dim_vehicle.synthetic_vin is unique",
+            category=CHECK_CATEGORY_UNIQUENESS,
+            severity=CheckSeverity.CRITICAL,
+            layer=CheckLayer.PYTHON,
+            entity=ENTITY_DIM_VEHICLE,
+            description="The VIN is the identifier a dealer reconciles inventory on. A "
+            "duplicate would make two units indistinguishable in every downstream join.",
+            applies_to=VEHICLE_CHECK_TARGETS,
+        ),
+        CheckDefinition(
+            check_id=CHECK_VEHICLE_SCHEMA_MATCHES,
+            check_name="dim_vehicle matches its declared schema",
+            category=CHECK_CATEGORY_STRUCTURAL,
+            severity=CheckSeverity.CRITICAL,
+            layer=CheckLayer.PYTHON,
+            entity=ENTITY_DIM_VEHICLE,
+            description="Column names, order and count must match the declared "
+            "contract, or the positional CSV load writes values into the wrong columns.",
+            applies_to=VEHICLE_CHECK_TARGETS,
+        ),
+        CheckDefinition(
+            check_id=CHECK_VEHICLE_MODEL_RESOLVES,
+            check_name="every dim_vehicle row resolves to a known vehicle model",
+            category=CHECK_CATEGORY_REFERENTIAL,
+            severity=CheckSeverity.CRITICAL,
+            layer=CheckLayer.PYTHON,
+            entity=ENTITY_DIM_VEHICLE,
+            description="A vehicle whose model does not exist cannot be grouped by "
+            "make, model or trim, and would break the foreign key at load time.",
+            applies_to=VEHICLE_CHECK_TARGETS,
+        ),
+        CheckDefinition(
+            check_id=CHECK_VEHICLE_CONDITION_CONSISTENCY,
+            check_name="dim_vehicle condition, source and odometer are consistent",
+            category=CHECK_CATEGORY_BUSINESS_RULE,
+            severity=CheckSeverity.CRITICAL,
+            layer=CheckLayer.PYTHON,
+            entity=ENTITY_DIM_VEHICLE,
+            description="A new unit with auction miles, or a band that disagrees with "
+            "its reading, would make new-versus-used analysis meaningless.",
+            applies_to=VEHICLE_CHECK_TARGETS,
+        ),
+        CheckDefinition(
+            check_id=CHECK_VEHICLE_NO_PROHIBITED_PII,
+            check_name="dim_vehicle declares no prohibited PII column",
+            category=CHECK_CATEGORY_PRIVACY,
+            severity=CheckSeverity.CRITICAL,
+            layer=CheckLayer.PYTHON,
+            entity=ENTITY_DIM_VEHICLE,
+            description="ARPI generates no personal data and holds no owner "
+            "relationship. This inspects the schema, so an empty prohibited column "
+            "still fails the run.",
+            applies_to=VEHICLE_CHECK_TARGETS,
+        ),
+        CheckDefinition(
+            check_id=CHECK_VEHICLE_VIN_FORMAT,
+            check_name="dim_vehicle.synthetic_vin is well formed",
+            category=CHECK_CATEGORY_BUSINESS_RULE,
+            severity=CheckSeverity.CRITICAL,
+            layer=CheckLayer.PYTHON,
+            entity=ENTITY_DIM_VEHICLE,
+            description="The ARPI prefix and the restricted alphabet are what make a "
+            "synthetic VIN structurally impossible to mistake for a real one.",
+            applies_to=VEHICLE_CHECK_TARGETS,
+        ),
+    )
 )
 
 

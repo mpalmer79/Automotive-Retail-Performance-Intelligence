@@ -610,11 +610,6 @@ class EmployeeAssignment:
     prior_dealership_id: str | None = None
     prior_job_role: str | None = None
 
-    @property
-    def version_count(self) -> int:
-        """Number of SCD Type 2 versions this person produces."""
-        return 2 if self.change_date is not None else 1
-
 
 @dataclass(frozen=True, slots=True)
 class EmployeePerformanceProfile:

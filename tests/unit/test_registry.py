@@ -317,7 +317,7 @@ def test_the_sql_categories_registered_here_match_the_sql_files() -> None:
     assert emitted, "no SQL check literals were found; the parser needs updating"
     for check_id, category in sorted(emitted.items()):
         assert category in CHECK_CATEGORIES, f"{check_id} emits non-canonical {category!r}"
-        assert category == CHECK_REGISTRY[check_id].category, (
-            f"{check_id} emits {category!r} in SQL but is registered as "
-            f"{CHECK_REGISTRY[check_id].category!r}"
+        definition = require_registered(check_id)
+        assert category == definition.category, (
+            f"{check_id} emits {category!r} in SQL but is registered as {definition.category!r}"
         )

@@ -7,6 +7,7 @@ is entirely empty.
 
 from __future__ import annotations
 
+import pandas as pd
 import pytest
 
 from arpi.config import ArpiConfig, load_config
@@ -339,3 +340,40 @@ def test_the_gating_suite_fails_on_a_household_spanning_two_counties(
         for result in validate_customer_dataset(dataset, test_config).results
     }
     assert results["DQ-CUS-006"].is_failure
+
+
+def test_the_gating_suite_fails_on_a_first_interaction_outside_the_window(
+    customer_dataset: GeneratedDataset, test_config: ArpiConfig
+) -> None:
+    tampered = customer_dataset.frame.copy()
+    tampered.loc[tampered.index[0], "first_interaction_date"] = pd.Timestamp("2000-01-01")
+    dataset = GeneratedDataset(
+        entity_name=customer_dataset.entity_name,
+        frame=tampered,
+        declared_columns=customer_dataset.declared_columns,
+        namespace=customer_dataset.namespace,
+    )
+    results = {
+        result.check_id: result
+        for result in validate_customer_dataset(dataset, test_config).results
+    }
+    assert results["DQ-CUS-007"].is_failure
+
+
+def test_the_gating_suite_fails_on_a_prohibited_finance_column(
+    customer_dataset: GeneratedDataset, test_config: ArpiConfig
+) -> None:
+    """The finance-and-insurance prohibitions are entity-specific, so assert them here."""
+    tampered = customer_dataset.frame.copy()
+    tampered["credit_application_status"] = ""
+    dataset = GeneratedDataset(
+        entity_name=customer_dataset.entity_name,
+        frame=tampered,
+        declared_columns=customer_dataset.declared_columns,
+        namespace=customer_dataset.namespace,
+    )
+    results = {
+        result.check_id: result
+        for result in validate_customer_dataset(dataset, test_config).results
+    }
+    assert results["DQ-CUS-003"].is_failure

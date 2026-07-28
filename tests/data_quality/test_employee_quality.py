@@ -7,9 +7,11 @@ is entirely empty.
 
 from __future__ import annotations
 
+import pandas as pd
 import pytest
 
 from arpi.config import ArpiConfig, load_config
+from arpi.constants import SENTINEL_EXPIRATION_DATE
 from arpi.generation.base import GeneratedDataset
 from arpi.generation.calendar import generate_date_dataset
 from arpi.generation.customer import generate_customer_dataset
@@ -31,6 +33,7 @@ from arpi.generation.employee import (
 from arpi.generation.writer import dataframe_to_csv_bytes
 from arpi.utilities.hashing import content_digest
 from arpi.validation.registry import require_registered
+from arpi.validation.results import CheckResult
 
 pytestmark = pytest.mark.data_quality
 
@@ -370,3 +373,81 @@ def test_the_gating_suite_fails_on_a_tampered_hash(
         for result in validate_employee_dataset(dataset, test_config).results
     }
     assert results["DQ-EMP-008"].is_failure
+
+
+def _tampered(dataset: GeneratedDataset, frame: pd.DataFrame) -> GeneratedDataset:
+    """Wrap a deliberately broken frame so the gating suite can be run against it."""
+    return GeneratedDataset(
+        entity_name=dataset.entity_name,
+        frame=frame,
+        declared_columns=dataset.declared_columns,
+        namespace=dataset.namespace,
+    )
+
+
+def _results(dataset: GeneratedDataset, config: ArpiConfig) -> dict[str, CheckResult]:
+    return {
+        result.check_id: result for result in validate_employee_dataset(dataset, config).results
+    }
+
+
+def test_the_gating_suite_fails_on_a_duplicate_version(
+    employee_dataset: GeneratedDataset, test_config: ArpiConfig
+) -> None:
+    frame = employee_dataset.frame
+    duplicated = pd.concat([frame, frame.head(1)], ignore_index=True)
+    results = _results(_tampered(employee_dataset, duplicated), test_config)
+    assert results["DQ-EMP-001"].is_failure
+
+
+def test_the_gating_suite_fails_on_a_second_current_row(
+    employee_dataset: GeneratedDataset, test_config: ArpiConfig
+) -> None:
+    frame = employee_dataset.frame.copy()
+    frame.loc[frame.index[0], "is_current"] = True
+    frame.loc[frame.index[0], "expiration_date"] = pd.Timestamp(SENTINEL_EXPIRATION_DATE)
+    frame.loc[frame.index[0], "employee_id"] = frame.iloc[1]["employee_id"]
+    results = _results(_tampered(employee_dataset, frame), test_config)
+    assert results["DQ-EMP-002"].is_failure
+
+
+def test_the_gating_suite_fails_on_a_gap_between_versions(
+    employee_dataset: GeneratedDataset, test_config: ArpiConfig
+) -> None:
+    frame = employee_dataset.frame.copy()
+    historical = frame.index[~frame["is_current"]][0]
+    frame.loc[historical, "expiration_date"] = frame.loc[
+        historical, "expiration_date"
+    ] - pd.Timedelta(days=5)
+    results = _results(_tampered(employee_dataset, frame), test_config)
+    assert results["DQ-EMP-003"].is_failure
+
+
+def test_the_gating_suite_fails_on_a_termination_before_the_hire(
+    employee_dataset: GeneratedDataset, test_config: ArpiConfig
+) -> None:
+    frame = employee_dataset.frame.copy()
+    frame.loc[frame.index[0], "termination_date"] = frame.loc[
+        frame.index[0], "hire_date"
+    ] - pd.Timedelta(days=1)
+    frame.loc[frame.index[0], "is_active"] = False
+    results = _results(_tampered(employee_dataset, frame), test_config)
+    assert results["DQ-EMP-006"].is_failure
+
+
+def test_the_gating_suite_fails_when_the_headcount_drifts(
+    employee_dataset: GeneratedDataset, test_config: ArpiConfig
+) -> None:
+    frame = employee_dataset.frame.copy()
+    frame = frame.loc[frame["employee_id"] != frame.iloc[0]["employee_id"]]
+    results = _results(_tampered(employee_dataset, frame), test_config)
+    assert results["DQ-EMP-007"].is_failure
+
+
+def test_the_gating_suite_fails_on_an_out_of_domain_enumeration(
+    employee_dataset: GeneratedDataset, test_config: ArpiConfig
+) -> None:
+    frame = employee_dataset.frame.copy()
+    frame.loc[frame.index[0], "job_role"] = "Lot Porter"
+    results = _results(_tampered(employee_dataset, frame), test_config)
+    assert results["DQ-EMP-009"].is_failure
