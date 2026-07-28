@@ -227,7 +227,17 @@ bound on holiday arithmetic rather than a correctness guarantee.
 
 | Reconciliation ID | Description | Left | Right | Tolerance | Status |
 |---|---|---|---|---|---|
-| `RECON-ROWCOUNT-001` | Row counts agree across source, raw, staging, and warehouse for `dim_date`, with rejected records accounted for | `audit.pipeline_run_row_count` at `source` / `raw` / `staging` | `audit.pipeline_run_row_count` at `warehouse` / `rejected` | 0 (exact) | **Implemented** |
+| `RECON-DIM-DATE-ROWCOUNT` | The number of `dim_date` rows the generator produced equals the number of rows in `warehouse.dim_date` after the merge | `generator:dim_date` — the generated frame's row count | `warehouse.dim_date` — a live `count(*)` | 0 (exact) | **Implemented** |
+
+This reconciliation is defined in `src/arpi/constants.py` and evaluated in `src/arpi/ingestion/loader.py`.
+It compares **exactly two numbers** and runs **only when the optional database load runs**, because the
+right-hand side is a query against PostgreSQL.
+
+> **What it does not cover.** It does not compare the raw layer, it does not compare the staging layer, and
+> it does not account for rejected records. The loader records row counts for the `source`, `raw` and
+> `warehouse` layers only; **`staging` and `rejected` row counts are not recorded at all**, so
+> [ARCHITECTURE.md §21.4](../../ARCHITECTURE.md) is not yet satisfied. See
+> [LIMITATIONS.md §10.1](../../LIMITATIONS.md).
 
 Expected row counts by profile:
 

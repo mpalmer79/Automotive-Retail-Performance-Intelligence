@@ -1055,7 +1055,7 @@ never purged by a rerun ([ARCHITECTURE.md §17.3](ARCHITECTURE.md)).
 |---|---|
 | **Entity name** | `audit.pipeline_run_row_count` |
 | **Layer** | Audit |
-| **Purpose** | Row counts at every layer for every entity in a run. This is the evidence for the row-count reconciliation: source → raw → staging → warehouse, plus rejects. |
+| **Purpose** | Row counts per layer for every entity in a run. The table is designed to hold the full source → raw → staging → warehouse path plus rejects; **Phase 0 populates only `source`, `raw` and `warehouse`** (see §20.2). |
 | **Declared grain** | **One row per pipeline run, entity, and layer.** |
 | **Primary key** | Composite `(pipeline_run_id, entity_name, layer)` |
 | **Natural / source key** | Same composite |
@@ -1068,20 +1068,31 @@ never purged by a rerun ([ARCHITECTURE.md §17.3](ARCHITECTURE.md)).
 |---|---|---|---|---|---|---|
 | `pipeline_run_id` | `bigint` FK | no | Existing run | Owning run. | Set by the loader. | Non-personal |
 | `entity_name` | `text` | no | Entity name, for example `dim_date` | Entity being counted. | Set by the loader. | Non-personal |
-| `layer` | `text` | no | `source` \| `raw` \| `staging` \| `warehouse` \| `rejected` (CHECK constrained) | Layer at which the count was taken. | Set by the loader. | Non-personal |
+| `layer` | `text` | no | `source` \| `raw` \| `staging` \| `warehouse` \| `rejected` (CHECK constrained). Phase 0 writes only `source`, `raw`, `warehouse`. | Layer at which the count was taken. | Set by the pipeline (`source`) and the loader (`raw`, `warehouse`). | Non-personal |
 | `row_count` | `bigint` | no | ≥ 0 | Rows observed. | Counted. | Non-personal |
 | `recorded_at` | `timestamptz` | no | UTC timestamp | When the count was taken. | Wall clock. | Non-personal |
 
 ### 20.2 Business rules
 
 - `row_count` is non-negative.
-- For a clean run: `source = raw = staging = warehouse` and `rejected = 0`, because
+- **Phase 0 records three of the five layers.** `source` is recorded by `src/arpi/pipeline.py`; `raw` and
+  `warehouse` are recorded by `src/arpi/ingestion/loader.py`. **No `staging` or `rejected` row count is
+  recorded by any code path**, so [ARCHITECTURE.md §21.4](ARCHITECTURE.md), which requires both, is not yet
+  satisfied. This is a registered gap — see [LIMITATIONS.md §10.1](LIMITATIONS.md) and
+  [docs/requirements/DOCUMENTATION_BACKLOG.md](docs/requirements/DOCUMENTATION_BACKLOG.md).
+- Because the `raw` and `warehouse` counts are written only by the database loader, a run that skips the
+  optional database load records the `source` layer alone.
+- For a clean run: `source = raw = warehouse`, and `rejected` would be `0` if it were recorded, because
   `validation.max_rejected_record_ratio` is `0.0` for the Phase 0 slice.
-- This table is the substrate for reconciliation `RECON-ROWCOUNT-001` (see [KPI_CATALOG.md](KPI_CATALOG.md)).
+- This table supports the two implemented row-count reconciliations, `RECON-DIM-DATE-ROWCOUNT` and
+  `RECON-DIM-DEALERSHIP-ROWCOUNT` (see [KPI_CATALOG.md §36](KPI_CATALOG.md)). Note that those
+  reconciliations do not read this table: each compares the generator's in-memory row count with a live
+  `count(*)` against the warehouse table. This table is the durable record of the same numbers.
 
 ### 20.3 PII classification / history policy
 
-`Non-personal`. Insert-only.
+`Non-personal`. Written by upsert: a rerun of the same logical run replaces the counts for its
+`(pipeline_run_id, entity_name, layer)` keys rather than appending duplicates.
 
 ---
 

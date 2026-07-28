@@ -247,14 +247,26 @@ every deviation is a defect.
 
 | Reconciliation ID | Description | Left | Right | Tolerance | Status |
 |---|---|---|---|---|---|
-| `RECON-ROWCOUNT-001` | Row counts agree across source, raw, staging, and warehouse for `dim_dealership`, with rejected records accounted for | `audit.pipeline_run_row_count` at `source` / `raw` / `staging` | `audit.pipeline_run_row_count` at `warehouse` / `rejected` | 0 (exact) | **Implemented** |
+| `RECON-DIM-DEALERSHIP-ROWCOUNT` | The number of `dim_dealership` rows the generator produced equals the number of rows in `warehouse.dim_dealership` after the merge | `generator:dim_dealership` — the generated frame's row count | `warehouse.dim_dealership` — a live `count(*)` | 0 (exact) | **Implemented** |
 
-Expected counts in every profile: **3 source rows, 3 raw rows, 3 staging rows, 3 current warehouse rows,
-0 rejected.**
+This reconciliation is defined in `src/arpi/constants.py` and evaluated in `src/arpi/ingestion/loader.py`.
+It compares **exactly two numbers** and runs **only when the optional database load runs**, because the
+right-hand side is a query against PostgreSQL.
 
-Note that the warehouse row count is `3` only while exactly one version exists per store. Once any store's
-attributes change, the total row count grows while the **current** row count stays at 3 — so the
-reconciliation compares against current rows, not total rows.
+Expected counts in every profile: **3 generated rows and 3 warehouse rows.** Three rows also land in `raw`
+and are visible through the staging view, but those layers are not part of this comparison.
+
+> **What it does not cover.** It does not compare the raw layer, it does not compare the staging layer, and
+> it does not account for rejected records. The loader records row counts for the `source`, `raw` and
+> `warehouse` layers only; **`staging` and `rejected` row counts are not recorded at all**, so
+> [ARCHITECTURE.md §21.4](../../ARCHITECTURE.md) is not yet satisfied. See
+> [LIMITATIONS.md §10.1](../../LIMITATIONS.md).
+
+> **The right-hand `count(*)` is unfiltered.** `warehouse.dim_dealership` currently holds exactly one
+> version per store, so total rows and current rows are both 3 and the comparison balances. As soon as any
+> store's tracked attributes change, SCD Type 2 expires a row and inserts a successor: the **total** row
+> count grows while the generator still produces 3 rows, and this reconciliation will fail. Teaching the
+> comparison to count only `is_current` rows is Phase 1 work — see section 10.
 
 ---
 
@@ -263,6 +275,10 @@ reconciliation compares against current rows, not total rows.
 - **No SCD2 transition has ever been exercised with real data.** All three stores are on their initial
   version, so the expire-and-insert branch of section 4.3 is proven only by unit tests, not by a production
   load. This is the largest untested path in the Phase 0 slice.
+- **`RECON-DIM-DEALERSHIP-ROWCOUNT` counts all versions, not current versions.** The loader's warehouse
+  side is an unfiltered `count(*)`, which is correct only while one version per store exists. The first
+  SCD2 transition will make it fail. The fix — filter on `is_current`, or reconcile generated rows against
+  current rows and total rows separately — belongs with the first change that actually exercises SCD2.
 - **Store count is fixed at three.** Adding a fourth store requires changing the reference data and
   `generation.store_count` together; the generator will fail loudly if they diverge, which is the intended
   behaviour but does mean the two must change in one commit.

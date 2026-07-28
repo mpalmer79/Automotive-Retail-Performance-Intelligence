@@ -113,9 +113,19 @@ flowchart TB
 | Measured count | `bigint` | `row_count` | `bigint` | Direct measurement at that layer. | `n/a — required` | Not null; ≥ 0 | Insert failure aborts the run | `pipeline_run_id` | Loader |
 | Wall clock | `timestamptz` | `recorded_at` | `timestamptz` | Current UTC time at measurement. | `n/a — required` | Not null | Insert failure aborts the run | itself | Loader |
 
-**Expected pattern for a clean Phase 0 run:** `source = raw = staging = warehouse` and `rejected = 0`,
-because `validation.max_rejected_record_ratio` is `0.0`. This table is the substrate for
-`RECON-ROWCOUNT-001`.
+**Which layers Phase 0 actually writes.** The `layer` CHECK admits five values, but only three are ever
+recorded: `source` (by `src/arpi/pipeline.py`) and `raw` plus `warehouse` (by
+`src/arpi/ingestion/loader.py`). **No code path records a `staging` or a `rejected` row count**, so
+[ARCHITECTURE.md §21.4](../../ARCHITECTURE.md), which requires both, is not yet satisfied — see
+[LIMITATIONS.md §10.1](../../LIMITATIONS.md). Because `raw` and `warehouse` are written by the loader, a
+run that skips the optional database load records the `source` layer alone.
+
+**Expected pattern for a clean Phase 0 run with the database load enabled:** `source = raw = warehouse`.
+`rejected` would be `0` if it were recorded, because `validation.max_rejected_record_ratio` is `0.0`.
+
+This table is the durable record of the counts behind `RECON-DIM-DATE-ROWCOUNT` and
+`RECON-DIM-DEALERSHIP-ROWCOUNT` (section 9). Those reconciliations do not read it: each compares the
+generator's in-memory row count with a live `count(*)` against the warehouse table.
 
 ---
 
@@ -156,16 +166,16 @@ because `validation.max_rejected_record_ratio` is `0.0`. This table is the subst
 |---|---|---|---|---|---|---|---|---|---|
 | *(database)* | — | `reconciliation_result_id` | `bigserial` PK | Database sequence. | `n/a — database-assigned` | PK unique | Insert failure aborts the run | itself | Database |
 | `audit.pipeline_run.pipeline_run_id` | `bigint` | `pipeline_run_id` | `bigint` FK | Direct. | `n/a — required` | Not null; FK resolves | FK violation aborts the write | itself | Reconciliation framework |
-| Reconciliation definition | `text` | `reconciliation_id` | `text` | Direct — one of the `RECON-*` identifiers ([KPI_CATALOG.md §36](../../KPI_CATALOG.md)). | `n/a — required` | Not null | An unregistered ID is a code defect | `pipeline_run_id` | Reconciliation framework |
-| Reconciliation definition | `text` | `description` | `text` | Direct. What is being compared, in business terms. | `n/a — required` | Not null | n/a | `pipeline_run_id` | Reconciliation framework |
-| Left-hand query | `text` | `left_source` | `text` | Direct. Identity of the left-hand side. | `n/a — required` | Not null | n/a | `pipeline_run_id` | Reconciliation framework |
-| Left-hand measurement | `numeric` | `left_value` | `numeric` | Direct. | `n/a — required` | Not null | Insert failure aborts the run | `pipeline_run_id` | Reconciliation framework |
-| Right-hand query | `text` | `right_source` | `text` | Direct. Identity of the right-hand side. | `n/a — required` | Not null | n/a | `pipeline_run_id` | Reconciliation framework |
-| Right-hand measurement | `numeric` | `right_value` | `numeric` | Direct. | `n/a — required` | Not null | Insert failure aborts the run | `pipeline_run_id` | Reconciliation framework |
+| Reconciliation definition | `text` | `reconciliation_id` | `text` NULL | Direct — one of the `RECON-*` identifiers ([KPI_CATALOG.md §36](../../KPI_CATALOG.md)). | `n/a — always supplied` | **Nullable in the DDL**; no database constraint. The reconciliation framework always supplies it, so a NULL here would mean a defective writer, not permitted data. | An unregistered ID is a code defect | `pipeline_run_id` | Reconciliation framework |
+| Reconciliation definition | `text` | `description` | `text` NULL | Direct. What is being compared, in business terms. | `n/a — always supplied` | **Nullable in the DDL**; no database constraint. | n/a | `pipeline_run_id` | Reconciliation framework |
+| Left-hand query | `text` | `left_source` | `text` NULL | Direct. Identity of the left-hand side, e.g. `generator:dim_date`. | `n/a — always supplied` | **Nullable in the DDL**; no database constraint. | n/a | `pipeline_run_id` | Reconciliation framework |
+| Left-hand measurement | `numeric` | `left_value` | `numeric` NULL | Direct. | `n/a — always supplied` | **Nullable in the DDL.** A NULL would silently make the generated `difference` NULL, so the writer never omits it. | Insert failure aborts the run | `pipeline_run_id` | Reconciliation framework |
+| Right-hand query | `text` | `right_source` | `text` NULL | Direct. Identity of the right-hand side, e.g. `warehouse.dim_date`. | `n/a — always supplied` | **Nullable in the DDL**; no database constraint. | n/a | `pipeline_run_id` | Reconciliation framework |
+| Right-hand measurement | `numeric` | `right_value` | `numeric` NULL | Direct. | `n/a — always supplied` | **Nullable in the DDL.** A NULL would silently make the generated `difference` NULL, so the writer never omits it. | Insert failure aborts the run | `pipeline_run_id` | Reconciliation framework |
 | *(database)* | — | `difference` | `numeric` **GENERATED ALWAYS AS (`left_value − right_value`) STORED** | **Database-generated. The application never supplies it**, so it can never drift from its inputs. | `n/a — generated` | Always consistent with its inputs by construction | Attempting to write it is a code defect and is rejected by the database | itself | Database |
 | Configuration | `numeric` | `tolerance` | `numeric` NOT NULL DEFAULT 0 | Direct. `0` for count reconciliations; `validation.numeric_absolute_tolerance` (0.01) for monetary ones. | `0` | Not null; ≥ 0 | Insert failure aborts the run | `pipeline_run_id` | Configuration |
-| Evaluation | `text` | `status` | `text` CHECK | `passed` if and only if `abs(difference) <= tolerance`, else `failed`. **There is no `warning`** — totals either reconcile within tolerance or they do not. | `n/a — required` | CHECK `status IN ('passed','failed')`; must agree with `difference` and `tolerance` | CHECK violation aborts the write | `pipeline_run_id` | Reconciliation framework |
-| Wall clock | `timestamptz` | `evaluated_at` | `timestamptz` | Current UTC time at evaluation. | `n/a — required` | Not null | Insert failure aborts the run | itself | Reconciliation framework |
+| Evaluation | `text` | `status` | `text` NULL, CHECK | `passed` if and only if `abs(difference) <= tolerance`, else `failed`. **There is no `warning`** — totals either reconcile within tolerance or they do not. | `n/a — always supplied` | **Nullable in the DDL** — the CHECK is `status IN ('passed','failed')`, which a NULL satisfies vacuously. The writer always supplies a value, and it must agree with `difference` and `tolerance`. | CHECK violation aborts the write | `pipeline_run_id` | Reconciliation framework |
+| *(database)* | — | `evaluated_at` | `timestamptz` NULL DEFAULT `now()` | **Database-supplied.** The loader omits this column from its INSERT, so the DDL default records the UTC instant of the insert. | `now()` | **Nullable in the DDL**; in practice the default always populates it because the column is never written explicitly with NULL. | Insert failure aborts the run | itself | Database |
 
 ---
 
@@ -182,7 +192,7 @@ because `validation.max_rejected_record_ratio` is `0.0`. This table is the subst
 | Entity being loaded | `text` | `source_entity` | `text` | Direct, e.g. `dim_dealership`. | `n/a — required` | Not null | n/a | `pipeline_run_id` | Loader |
 | Offending record's natural key | `text` | `source_record_key` | `text` NULL | Direct where identifiable — the `date_key`, `dealership_id`, or source row number. | **`NULL` when the record is too malformed to identify.** The payload still preserves it, so nothing is lost. | No constraint | n/a | `pipeline_run_id` | Loader |
 | Rejection classification | `text` | `rejection_code` | `text` | Direct — one of the `REJ-*` codes in [README.md §4](README.md). | `n/a — required` | Not null; must exist in the code register | An unregistered code is a code defect | `pipeline_run_id` | Loader |
-| Rejection detail | `text` | `rejection_reason` | `text` | Direct. Human-readable reason, specific enough to diagnose from. | `n/a — required` | Not null | n/a | `pipeline_run_id` | Loader |
+| Rejection detail | `text` | `rejection_reason` | `text` NULL | Direct. Human-readable reason, specific enough to diagnose from. | `n/a — always supplied` | **Nullable in the DDL**; no database constraint. `rejection_code` next to it *is* `NOT NULL`, so a rejection is never wholly unexplained even if the prose reason is absent. | n/a | `pipeline_run_id` | Loader |
 | The offending record | `jsonb` | `record_payload` | `jsonb` NULL | The record as received, serialized to JSON. **Because all ARPI source data is synthetic, storing the payload carries no privacy risk** — this would be a materially different decision with real data. | **`NULL` when the payload cannot be serialized.** | No constraint | n/a | `pipeline_run_id` | Loader |
 | Wall clock | `timestamptz` | `rejected_at` | `timestamptz` NOT NULL | Current UTC time at rejection. | `n/a — required` | Not null | Insert failure aborts the run | itself | Loader |
 
@@ -192,17 +202,34 @@ because `validation.max_rejected_record_ratio` is `0.0`. This table is the subst
 
 | Object | Strategy | Write semantics |
 |---|---|---|
-| `audit.pipeline_run` | **Insert-then-update-once** | One insert at run start with `status = 'running'`; one update at run end setting `completed_at`, terminal `status`, and the two counts. **Never deleted, never truncated.** |
-| `audit.pipeline_run_row_count` | **Insert-only**, one row per `(pipeline_run_id, entity_name, layer)` | The composite PK prevents a duplicate count for the same run, entity, and layer. |
-| `audit.pipeline_run_row_count` (re-measure) | `INSERT … ON CONFLICT DO UPDATE` on the composite PK | Permits a corrected count within the same run without creating a second row. |
-| `audit.validation_result` | **Insert-only** | One row per check per run, including `skipped`. |
-| `audit.reconciliation_result` | **Insert-only** | One row per reconciliation per run. `difference` is database-generated. |
-| `audit.rejected_record` | **Insert-only** | One row per rejected record per run, with the payload preserved. |
+| `audit.pipeline_run` | **Upsert**: `INSERT … ON CONFLICT (run_uuid) DO UPDATE` | The run is tracked in memory for the whole execution and written **once, at the end**, already carrying its terminal `status` and `completed_at`. A rerun of the same logical run updates that row in place. **Never deleted, never truncated.** |
+| `audit.pipeline_run_row_count` | **Upsert**: `INSERT … ON CONFLICT (pipeline_run_id, entity_name, layer) DO UPDATE` | The composite PK prevents a duplicate count for the same run, entity, and layer; a re-measure corrects the existing row in place. |
+| `audit.validation_result` | **Replace-on-rerun**: `DELETE … WHERE pipeline_run_id = %s`, then insert | One row per check per run, including `skipped`. A rerun of the same logical run replaces that run's results wholesale. |
+| `audit.reconciliation_result` | **Replace-on-rerun**: `DELETE … WHERE pipeline_run_id = %s`, then insert | One row per reconciliation per run. `difference` is database-generated. |
+| `audit.rejected_record` | **Insert-only** | One row per rejected record per run, with the payload preserved. Always empty in Phase 0 — the generators emit only contract-shaped rows and so cannot reject one. |
 
-**No audit object is ever truncated as part of a pipeline run.**
-[ARCHITECTURE.md §17.3](../../ARCHITECTURE.md) requires that **audit records preserve prior run history** —
-that is the entire point of the schema. A rerun adds a new `pipeline_run` and a new set of children; it does
-not overwrite the previous run's evidence.
+### 8.1 Why the child tables are replaced rather than appended
+
+`audit.pipeline_run` is written with `INSERT … ON CONFLICT (run_uuid) DO UPDATE`, and **the `run_uuid` is
+derived deterministically from the run parameters** — a UUIDv5 over the pipeline name, profile, random
+seed, and reporting start and end dates (`build_run_uuid` in `src/arpi/audit/run.py`) — not generated
+fresh per execution. A rerun with the same parameters is therefore *the same logical run executed
+again*, not a new run. It resolves to the same `pipeline_run_id`.
+
+Given that, appending would be wrong: a single logical run would accumulate two, three, then ten copies of
+the same twelve check results, and any query counting failures would multiply them. So before re-inserting,
+`src/arpi/ingestion/loader.py` issues `DELETE FROM audit.validation_result WHERE pipeline_run_id = %s` and
+the same for `audit.reconciliation_result`. `audit.pipeline_run_row_count` reaches the same outcome through
+its composite-PK upsert.
+
+The net semantics: **a run's child rows always describe its most recent execution.**
+
+**Other runs are never touched.** The `DELETE` is scoped to one `pipeline_run_id`, so every other run's
+evidence — including runs under different profiles or seeds — survives untouched, and no audit object is
+ever truncated. That satisfies [ARCHITECTURE.md §17.3](../../ARCHITECTURE.md), which requires audit records
+to preserve prior **run** history. What is not preserved is a history of repeated executions *of the same
+run*, which is a deliberate consequence of deriving `run_uuid` from parameters. A run genuinely distinct in
+its parameters gets a distinct `run_uuid`, a distinct `pipeline_run_id`, and its own independent children.
 
 **Role separation.** `arpi_loader` inserts and updates audit tables; `arpi_reporter` has read access only,
 and only through `reporting.vw_pipeline_run_summary` and `reporting.vw_data_quality_summary`
@@ -291,11 +318,20 @@ Self-consistency rules that the audit schema must itself satisfy:
 
 | Reconciliation ID | Description | Left | Right | Tolerance | Status |
 |---|---|---|---|---|---|
-| `RECON-ROWCOUNT-001` | Row counts agree across source, raw, staging, and warehouse for every Phase 0 entity, with rejected records accounted for | `audit.pipeline_run_row_count` at `source` / `raw` / `staging` | `audit.pipeline_run_row_count` at `warehouse` / `rejected` | 0 (exact) | **Implemented** |
+| `RECON-DIM-DATE-ROWCOUNT` | Generated `dim_date` row count equals the `warehouse.dim_date` row count after the merge | `generator:dim_date` — the generated frame's row count | `warehouse.dim_date` — a live `count(*)` | 0 (exact) | **Implemented** |
+| `RECON-DIM-DEALERSHIP-ROWCOUNT` | Generated `dim_dealership` row count equals the `warehouse.dim_dealership` row count after the merge | `generator:dim_dealership` — the generated frame's row count | `warehouse.dim_dealership` — a live `count(*)` | 0 (exact) | **Implemented** |
 
-**This is the only reconciliation exercised anywhere in ARPI today.** Every other entry in the register
+**These two are the only reconciliations exercised anywhere in ARPI today.** They are defined in
+`src/arpi/constants.py` and evaluated in `src/arpi/ingestion/loader.py`, and they run only when the optional
+database load runs. Every other entry in the register
 ([KPI_CATALOG.md §36](../../KPI_CATALOG.md)) is Planned or Deferred, because the facts they reconcile do not
 exist.
+
+> **What they do not cover.** Each compares exactly two numbers — generated rows against warehouse rows. No
+> reconciliation spans the raw or staging layers, and none accounts for rejected records, because
+> `staging` and `rejected` row counts are not recorded at all (see section 4). Neither of them appears in
+> [ARCHITECTURE.md §21.3](../../ARCHITECTURE.md)'s list of six required reconciliations: they are a Phase 0
+> addition beyond it.
 
 ---
 

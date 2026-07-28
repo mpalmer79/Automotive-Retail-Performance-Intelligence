@@ -1001,13 +1001,16 @@ Two standing constraints apply when these are eventually specified:
 
 ## 36. Reconciliation register
 
-Reconciliation is how ARPI proves its numbers rather than asserting them. The required reconciliations come
-from [ARCHITECTURE.md §21.3](ARCHITECTURE.md); results are recorded in `audit.reconciliation_result`
-([DATA_DICTIONARY.md §22](DATA_DICTIONARY.md)).
+Reconciliation is how ARPI proves its numbers rather than asserting them. Six of the entries below are the
+required reconciliations from [ARCHITECTURE.md §21.3](ARCHITECTURE.md). The two `RECON-DIM-*-ROWCOUNT`
+entries are **a Phase 0 addition beyond §21.3** — §21.3 does not list a row-count reconciliation; Phase 0
+adds one per foundation dimension so the implemented slice has something it can actually prove. Results are
+recorded in `audit.reconciliation_result` ([DATA_DICTIONARY.md §22](DATA_DICTIONARY.md)).
 
 | Reconciliation ID | Description | Left source | Right source | Tolerance | Status |
 |---|---|---|---|---|---|
-| `RECON-ROWCOUNT-001` | Row counts agree across source, raw, staging, and warehouse for every Phase 0 entity, with rejected records accounted for | `audit.pipeline_run_row_count` at `source` / `raw` / `staging` | `audit.pipeline_run_row_count` at `warehouse` / `rejected` | 0 (exact) | **Implemented** |
+| `RECON-DIM-DATE-ROWCOUNT` | Generated `dim_date` row count equals the `warehouse.dim_date` row count after the merge | `generator:dim_date` (rows produced by the generator) | `warehouse.dim_date` (`count(*)`) | 0 (exact) | **Implemented** |
+| `RECON-DIM-DEALERSHIP-ROWCOUNT` | Generated `dim_dealership` row count equals the `warehouse.dim_dealership` row count after the merge | `generator:dim_dealership` (rows produced by the generator) | `warehouse.dim_dealership` (`count(*)`) | 0 (exact) | **Implemented** |
 | `RECON-UNITS-001` | Retail units by month in SQL equal Power BI totals | `reporting.vw_sales_summary` | Power BI `Retail Units Sold` measure | 0 (exact) | Planned (Phase 1.3 for the SQL side; the Power BI side follows Gate 1) |
 | `RECON-GROSS-001` | Total gross reconciles to front-end plus back-end gross at row level | `warehouse.fact_vehicle_sale.total_gross` | `front_end_gross + back_end_gross` | `validation.numeric_absolute_tolerance` = 0.01 | Planned (Phase 1.3) |
 | `RECON-GROSS-002` | Total gross by month in SQL equals Power BI totals | `reporting.vw_gross_summary` | Power BI `Total Gross` measure | 0.01 absolute / 0.001 relative | Planned (Phase 1.3 SQL side; Power BI side after Gate 1) |
@@ -1016,8 +1019,17 @@ from [ARCHITECTURE.md §21.3](ARCHITECTURE.md); results are recorded in `audit.r
 | `RECON-FI-001` | F&I product totals reconcile to transaction-level back-end gross | `warehouse.fact_finance_product_sale` net product gross | `warehouse.fact_vehicle_sale.back_end_gross` | 0.01 absolute | **Deferred** — see note below |
 | `RECON-EXCEL-001` | Excel summary totals match approved SQL reporting views | `excel/ARPI_Operating_Report.xlsx` (not yet created) | `reporting.*` views | 0.01 absolute | Planned (post-MVP) |
 
-**One reconciliation is exercised today: `RECON-ROWCOUNT-001`.** Everything else awaits the facts it
-depends on.
+**Two reconciliations are exercised today: `RECON-DIM-DATE-ROWCOUNT` and `RECON-DIM-DEALERSHIP-ROWCOUNT`**
+(defined in `src/arpi/constants.py`, evaluated in `src/arpi/ingestion/loader.py`). Both run only when the
+optional database load runs, because the right-hand side is a live `count(*)` against the warehouse table.
+Everything else awaits the facts it depends on.
+
+> **Scope limit of the implemented row-count reconciliations.** Each one compares exactly two numbers: the
+> generated row count and the warehouse row count. It does **not** span the raw or staging layers, and it
+> does not account for rejected records. The loader records row counts for the `source`, `raw` and
+> `warehouse` layers only — **`staging` and `rejected` row counts are not yet recorded at all**, so
+> [ARCHITECTURE.md §21.4](ARCHITECTURE.md) is not yet satisfied. See
+> [LIMITATIONS.md](LIMITATIONS.md) for the registered gap.
 
 > **Note on `RECON-FI-001`.** [ARCHITECTURE.md §21.3](ARCHITECTURE.md) lists this as a required
 > reconciliation, but its dependency `warehouse.fact_finance_product_sale` is **Deferred**

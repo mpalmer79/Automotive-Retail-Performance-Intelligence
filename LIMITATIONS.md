@@ -239,8 +239,11 @@ purpose.
 - **No Excel operating report.**
 - **No findings, no recommendations, no executive memo, no case study, no walkthrough video.**
 - **No employee, customer, vehicle, vehicle-model, lead-source, or campaign dimension.**
-- **Only one reconciliation is exercised:** `RECON-ROWCOUNT-001`
-  ([KPI_CATALOG.md §36](KPI_CATALOG.md)).
+- **Only two reconciliations are exercised:** `RECON-DIM-DATE-ROWCOUNT` and
+  `RECON-DIM-DEALERSHIP-ROWCOUNT` ([KPI_CATALOG.md §36](KPI_CATALOG.md)). Each compares the generated row
+  count for one dimension with the `count(*)` of the matching warehouse table, and nothing else. They run
+  only when the optional database load runs, and they say nothing about the raw or staging layers or about
+  rejected records.
 
 **What this means for a reviewer.** Judge Phase 0 on what Phase 0 claims: a governed foundation —
 conformed calendar and store dimensions, a working raw → staging → warehouse path, an audit and validation
@@ -248,6 +251,29 @@ framework that records its own results, a reporting boundary, and a complete wri
 model and metrics that follow. If you are looking for a dashboard, it is not here yet, and no document in
 this repository should have suggested otherwise. If you find one that does, that is a defect worth
 reporting.
+
+### 10.1 Known gap — `staging` and `rejected` row counts are not recorded
+
+[ARCHITECTURE.md §21.4](ARCHITECTURE.md) requires every run to produce a source row count, a **staging row
+count**, a warehouse row count and a **rejected row count**. Phase 0 does not satisfy that requirement.
+
+`audit.pipeline_run_row_count` accepts five layers (`source`, `raw`, `staging`, `warehouse`, `rejected`),
+but the implemented pipeline only ever records three of them: `source` (in `src/arpi/pipeline.py`) and
+`raw` plus `warehouse` (in `src/arpi/ingestion/loader.py`). No code path records a `staging` or a
+`rejected` row count, and `audit.rejected_record` is always empty because the Phase 0 generators emit only
+contract-shaped rows and therefore cannot reject one.
+
+Consequences:
+
+- A reviewer cannot yet use `audit.pipeline_run_row_count` to prove that nothing was lost between the raw
+  landing tables and the staging views, because the staging side of that comparison is not measured.
+- The two implemented reconciliations compare generated rows to warehouse rows directly, skipping the
+  intermediate layers entirely.
+
+This is an open gap, registered in
+[docs/requirements/DOCUMENTATION_BACKLOG.md](docs/requirements/DOCUMENTATION_BACKLOG.md). It closes when
+Phase 1 introduces a transformation step that can measurably drop or reject rows; recording a staging count
+that is unconditionally equal to the raw count would prove nothing.
 
 ---
 
@@ -331,7 +357,7 @@ Status values are exactly four: **Implemented**, **Planned**, **Deferred**, **Ou
 | `DQ-DATE-001` … `DQ-DATE-005` | Validation checks |
 | `DQ-DLR-001` … `DQ-DLR-005` | Validation checks |
 | `DQ-GEN-001`, `DQ-GEN-002` | Validation checks |
-| `RECON-ROWCOUNT-001` | Reconciliation |
+| `RECON-DIM-DATE-ROWCOUNT`, `RECON-DIM-DEALERSHIP-ROWCOUNT` | Reconciliations |
 
 ### 13.2 Planned
 

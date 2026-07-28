@@ -233,12 +233,18 @@ Labels are used strictly. **Implemented** means it exists and runs today.
 | Continuous integration | Implemented | Lint, format check, types, tests, naming check, documentation-link check |
 | Documentation set | Implemented | Architecture, data dictionary, KPI catalog, generation, privacy, limitations, ADRs, diagrams |
 | Committed sample dataset | Implemented | Small synthetic extract under `data/sample/` |
-| Vehicle, employee, customer, and remaining dimensions | Planned | Phase 1.1 |
+| `dim_vehicle_model`, `dim_vehicle`, `dim_employee` | Planned | Phase 1.1 generates the sources; Phase 1.2 loads the dimensions |
+| `dim_customer` | Planned | Phase 1.2 |
+| `dim_lead_source` | Planned | Phase 1.4 |
+| `dim_marketing_campaign` | Planned | Phase 1.5 |
 | `fact_vehicle_sale`, `fact_vehicle_inventory_snapshot` | Planned | Phase 1.2 |
-| `fact_lead`, `fact_lead_activity`, `fact_appointment` | Planned | Phase 1.3 |
-| `fact_marketing_spend`, `fact_finance_product_sale` | Planned | Phase 1.4 |
-| Sales, inventory, and funnel reporting views | Planned | Phase 1.5 — not created while the facts do not exist |
-| Reconciliation test suite | Planned | Phase 1.5 |
+| `fact_lead`, `fact_appointment` | Planned | Phase 1.4 |
+| `fact_marketing_spend` | Planned | Phase 1.5 |
+| `fact_lead_activity`, `fact_inventory_price_history`, `fact_finance_product_sale` | Deferred | Beyond the MVP — [`DATA_DICTIONARY.md` §27](DATA_DICTIONARY.md) |
+| `dim_finance_product`, `dim_lender`, `dim_sale_type`, `dim_inventory_source`, `dim_geography` | Deferred | Beyond the MVP — [`DATA_DICTIONARY.md` §27](DATA_DICTIONARY.md) |
+| Sales and inventory reporting views | Planned | Phase 1.3 — not created while the facts do not exist |
+| MVP reporting layer | Planned | Phase 1.5 |
+| Reconciliation test suite | Planned | Gross reconciliation in Phase 1.3, funnel reconciliation in Phase 1.4 |
 | NHTSA vPIC public enrichment | Planned | Phase 1.1 |
 | Power BI semantic model and reports | Planned | After the facts and reporting views land |
 | Excel operating report | Planned | After the reporting views land |
@@ -261,11 +267,11 @@ Repository, typed configuration, logging, the date and dealership dimensions end
 
 | Phase | Focus | Key deliverables |
 |---|---|---|
-| **1.1** | Remaining dimensions | Vehicle, vehicle model, employee, customer, lead source, campaign, finance product, lender, sale type, inventory source, geography; NHTSA vPIC enrichment workflow |
-| **1.2** | Inventory and sales | `fact_vehicle_sale`, `fact_vehicle_inventory_snapshot`, `fact_inventory_price_history`; sales and gross KPIs validated |
-| **1.3** | Lead funnel | `fact_lead`, `fact_lead_activity`, `fact_appointment`; funnel conversion KPIs validated |
-| **1.4** | Marketing and F&I | `fact_marketing_spend`, `fact_finance_product_sale`; cost-per-sale and penetration KPIs validated |
-| **1.5** | Reporting and reconciliation | Domain reporting views, reconciliation suite, and the data-quality evidence pack |
+| **1.1** | Source generation | Vehicle model contract and catalogue (with the NHTSA vPIC enrichment workflow), vehicle generator, employee generator, inventory acquisition events, sales source events |
+| **1.2** | Ingestion, dimensions, and the first two facts | Raw and staging ingestion for the Phase 1.1 entities; `dim_vehicle` and `dim_employee` loads; the first `fact_vehicle_sale`; the first `fact_vehicle_inventory_snapshot` |
+| **1.3** | Validation, reconciliation, and the first KPI logic | Sales and inventory validation suite, gross reconciliation, inventory-age logic, days-to-sale logic, the first sales and inventory reporting views |
+| **1.4** | Lead funnel | `dim_lead_source`; lead and appointment generators; `fact_lead` and `fact_appointment`; funnel reconciliation |
+| **1.5** | Marketing, profitability, and MVP readiness | Marketing campaign dimension and `fact_marketing_spend`, source-level profitability, the MVP reporting layer, the Power BI readiness review |
 
 **Later phases**, aligned to [`ARCHITECTURE.md` §27](ARCHITECTURE.md): the Power BI semantic model, the nine required report pages, executive findings and recommendations, the Excel operating report, and portfolio packaging. Scope gate 1 applies — no Power BI development begins until fact grains are approved, dimensions are documented, and KPI formulas are written.
 
