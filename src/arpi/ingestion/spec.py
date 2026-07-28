@@ -116,44 +116,67 @@ def _slug(entity_name: str) -> str:
 
 
 def _dimension(
-    entity_name: str,
+    subject: str,
     *,
-    raw_table: str | None = None,
-    staging_view: str | None = None,
-    warehouse_table: str | None = None,
     natural_key: tuple[str, ...],
     merge_script: str,
     scd_type_2: bool = False,
 ) -> EntityIngestionSpec:
-    """Build a spec for a Phase 1 dimension, applying the naming conventions."""
+    """Build a spec for a Phase 1 dimension, applying the naming conventions.
+
+    Args:
+        subject: The dimension's subject area, without the ``dim_`` prefix, e.g.
+            ``"vehicle_model"``. Every object name is derived from it: the entity is
+            ``dim_<subject>`` -- the name the generator declares and the name the loader
+            looks the spec up by -- while the raw table, the staging view and the
+            rejected view all use the unprefixed form the SQL layer chose.
+        natural_key: Business key columns as named in the staging view.
+        merge_script: File name of the merge script under ``sql/03_dimensions``.
+        scd_type_2: Whether the warehouse table keeps Type 2 history.
+
+    Returns:
+        The populated spec.
+    """
+    entity_name = f"dim_{subject}"
     return EntityIngestionSpec(
         entity_name=entity_name,
-        raw_table=raw_table or f"{entity_name}_load",
-        staging_view=staging_view or f"stg_{entity_name}",
-        warehouse_table=warehouse_table or f"dim_{entity_name}",
+        raw_table=f"{subject}_load",
+        staging_view=f"stg_{subject}",
+        warehouse_table=entity_name,
         natural_key=natural_key,
         merge_script=merge_script,
-        rejected_view=f"stg_{entity_name}_rejected",
+        rejected_view=f"stg_{subject}_rejected",
         scd_type_2=scd_type_2,
-        source_file_name=f"dim_{entity_name}.csv",
-        row_count_reconciliation_id=f"RECON-DIM-{_slug(entity_name)}-ROWCOUNT",
+        source_file_name=f"{entity_name}.csv",
+        row_count_reconciliation_id=f"RECON-DIM-{_slug(subject)}-ROWCOUNT",
     )
 
 
 def _source_entity(
     entity_name: str,
     *,
+    subject: str | None = None,
     natural_key: tuple[str, ...],
 ) -> EntityIngestionSpec:
-    """Build a spec for a pre-warehouse source entity with no warehouse target yet."""
+    """Build a spec for a pre-warehouse source entity with no warehouse target yet.
+
+    Args:
+        entity_name: The name the generator declares for the entity.
+        subject: The SQL layer's object stem, when it differs from ``entity_name``.
+        natural_key: Business key columns as named in the staging view.
+
+    Returns:
+        The populated spec.
+    """
+    stem = subject or entity_name
     return EntityIngestionSpec(
         entity_name=entity_name,
-        raw_table=f"{entity_name}_load",
-        staging_view=f"stg_{entity_name}",
+        raw_table=f"{stem}_load",
+        staging_view=f"stg_{stem}",
         warehouse_table=None,
         natural_key=natural_key,
         merge_script=None,
-        rejected_view=f"stg_{entity_name}_rejected",
+        rejected_view=f"stg_{stem}_rejected",
     )
 
 
@@ -224,7 +247,15 @@ ENTITY_SPECS: Final[tuple[EntityIngestionSpec, ...]] = (
     _source_entity("sale_event", natural_key=("sale_id",)),
     _source_entity("lead", natural_key=("lead_id",)),
     _source_entity("appointment", natural_key=("appointment_id",)),
-    _source_entity("marketing_spend", natural_key=("marketing_spend_id",)),
+    # The generator in arpi.generation.marketing declares this entity as
+    # `marketing_spend_event`, so that -- not the bare `marketing_spend` the SQL objects
+    # are stemmed on -- is the name the loader will look the spec up by. The stem is
+    # carried separately rather than renaming either side.
+    _source_entity(
+        "marketing_spend_event",
+        subject="marketing_spend",
+        natural_key=("marketing_spend_id",),
+    ),
 )
 
 #: The registry keyed by entity name.

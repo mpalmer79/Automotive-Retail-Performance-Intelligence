@@ -6,7 +6,7 @@
 |---|---|
 | **Mapping ID** | `STM-014` |
 | **Title** | Marketing spend (monthly periodic fact) |
-| **Status** | **Implemented** (source generator, column contract, data-quality suite). Ingestion, warehouse DDL and load are **Planned**. |
+| **Status** | **Implemented** (source generator, column contract, data-quality suite). `warehouse.fact_marketing_spend`, the raw table and the staging view exist in `sql/` and are owned by another agent — **no row has been loaded into the fact, and no fact load script exists.** See section 10 for a column-name mismatch between this source contract and the raw table. |
 | **Version** | 1.0 |
 | **Date** | 2026-07-28 |
 | **Owner** | Michael Palmer |
@@ -15,7 +15,7 @@
 | **Target object** | `warehouse.fact_marketing_spend` |
 | **Declared grain** | **One row per dealership, campaign and calendar month.** |
 | **Phase** | Phase 1.5 (delivery increment `P1.5-01`) |
-| **Intermediate objects** | `raw.marketing_spend_load`, `staging.stg_marketing_spend` (**Planned**) |
+| **Intermediate objects** | `raw.marketing_spend_load` (`sql/01_raw/12_raw_marketing_spend_load.sql`), `staging.stg_marketing_spend` (`sql/02_staging/13_stg_marketing_spend.sql`) |
 | **Downstream objects** | `reporting.vw_marketing_performance` (**Planned**), the three marketing KPIs (**Planned**, `P1.5-02`) |
 
 ---
@@ -51,9 +51,9 @@ flowchart LR
     G --> C["marketing_spend_event.csv<br/>data/raw/&lt;profile&gt;/"]
     G --> DEM["campaign_month_demand()<br/>true lead count per campaign-month-store"]
     DEM -.consumed by.-> LEAD["Lead generator (Planned, P1.4-02)"]
-    C --> R["raw.marketing_spend_load<br/>12 business columns as text (Planned)"]
-    R --> S["staging.stg_marketing_spend<br/>typed view, latest batch only (Planned)"]
-    S --> W["warehouse.fact_marketing_spend<br/>PK (month_date_key, dealership_key, campaign_key) (Planned)"]
+    C --> R["raw.marketing_spend_load<br/>12 business columns as text"]
+    R --> S["staging.stg_marketing_spend<br/>typed view, latest batch only"]
+    S --> W["warehouse.fact_marketing_spend<br/>UNIQUE (month_date_key, dealership_key, campaign_key)"]
     R -.rejections.-> A["audit.rejected_record"]
     W -.results.-> AV["audit.validation_result"]
 ```
@@ -81,7 +81,8 @@ flowchart LR
 9. Rows are sorted by `(month_date_key, dealership_id, campaign_id)` and `marketing_spend_id` is
    assigned as an ordinal over that order.
 10. **Planned**: raw load, staging view resolving `month_date_key`, `dealership_key`, `campaign_key` and
-    `lead_source_key`, then an **insert of the month** into `warehouse.fact_marketing_spend`.
+    `lead_source_key`, then an **insert of the month** into `warehouse.fact_marketing_spend`. The fact
+    table and its constraints exist; **the load script does not**, and no row has ever been loaded.
 
 ---
 
@@ -231,20 +232,23 @@ under a second, so this one band does not require a portfolio data run.
 | Layer | Strategy | Write semantics |
 |---|---|---|
 | CSV | Overwrite | The generator rewrites `data/raw/<profile>/marketing_spend_event.csv` on each run. Byte-identical between runs of the same profile and seed. |
-| `raw.marketing_spend_load` | **Truncate-and-reload per batch** (**Planned**) | Truncated and reloaded from the current CSV, then stamped with a fresh `load_batch_id`. |
-| `staging.stg_marketing_spend` | **View** (`CREATE OR REPLACE VIEW`) (**Planned**) | No data written. Casts raw text to warehouse types, resolves the four keys, and filters to the most recent `load_batch_id`. |
+| `raw.marketing_spend_load` | **Truncate-and-reload per batch** | Truncated and reloaded from the current CSV, then stamped with a fresh `load_batch_id`. |
+| `staging.stg_marketing_spend` | **View** (`CREATE OR REPLACE VIEW`) | No data written. Casts raw text to warehouse types, resolves the four keys, and filters to the most recent `load_batch_id`. |
 | `warehouse.fact_marketing_spend` | **Insert-only periodic fact, restated by month** (**Planned**) | A month is loaded once. A restated month is handled by **deleting that `month_date_key` and reloading it**, never by updating rows in place — which is what keeps a partial reload from leaving two versions of one month behind. |
 
-**Constraints to be enforced in the database — all `Planned`, because the DDL is owned by another agent
-and does not exist yet:**
+**Constraints in the database.** `sql/04_facts/04_fact_marketing_spend.sql` (owned by another agent)
+already declares:
 
-- PRIMARY KEY or UNIQUE on `(month_date_key, dealership_key, campaign_key)` — **the grain constraint**.
+- UNIQUE on `(month_date_key, dealership_key, campaign_key)` — **the grain constraint** — plus a primary
+  key on `marketing_spend_key`.
 - `CHECK (spend_amount >= 0)`, and `>= 0` on `impressions`, `clicks`, `calls`, `form_submissions` and
   `vendor_reported_leads`.
-- `CHECK (month_date_key % 100 = 1)` — the month-start rule in the database rather than only in the
-  generator.
 - FOREIGN KEYs to `dim_date`, `dim_dealership`, `dim_marketing_campaign` and `dim_lead_source`.
 - Every column `NOT NULL`.
+
+**The load itself is `Planned`.** No `sql/04_facts/14_*` load script exists, and no row has been loaded
+into the fact. The row order, keys and month-start rule described above are enforced today by the
+generator and by `DQ-MKT-001` to `DQ-MKT-007`, not by a load that has been run.
 
 ---
 
@@ -319,11 +323,15 @@ than to assert its absence. It cannot be implemented until `fact_lead` exists.
 
 ## 10. Open questions and known gaps
 
-- **The warehouse table does not exist yet.** `sql/04_facts/04_fact_marketing_spend.sql` and its load are
-  **Planned** and owned by another agent. Every database statement in sections 5 and 7 is a
-  specification, not a description of running code. **The grain is enforced today only by the generator
-  and by `DQ-MKT-001`; the acceptance criterion that calls for a primary key on
-  `(month_date_key, dealership_key, campaign_key)` is not yet met.**
+- **The fact table exists; the load does not.** `sql/04_facts/04_fact_marketing_spend.sql` exists and
+  carries the grain constraint, but there is no load script and **no row has ever been loaded**. The
+  grain is therefore exercised today only by the generator and by `DQ-MKT-001`.
+- **Open interface mismatch: `month_date_key` versus `month_date`.** This source entity emits
+  `month_date_key` as a `YYYYMM01` **integer**, as the Phase 1 cross-agent contract instructs. The raw
+  table `raw.marketing_spend_load` and the staging view `staging.stg_marketing_spend`, both owned by
+  another agent, expect a **`month_date` date column** in that position instead. Nothing reconciles the
+  two yet, so a load would fail on the column list. This is recorded rather than silently patched: the
+  contract is coordinator-owned, and one of the two sides has to change deliberately.
 - **`fact_lead` does not exist yet**, so the vendor-versus-CRM gap is currently demonstrated against the
   generator's own `campaign_month_demand()` figures rather than against loaded CRM rows. The comparison
   becomes an end-to-end reconciliation with `P1.4-02` and `P1.5-02`.

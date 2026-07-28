@@ -6,7 +6,7 @@
 |---|---|
 | **Mapping ID** | `STM-013` |
 | **Title** | Marketing campaign dimension (Slowly Changing Dimension Type 1) |
-| **Status** | **Implemented** (generator, column contract, data-quality suite). Ingestion, warehouse DDL and merge are **Planned**. |
+| **Status** | **Implemented** (generator, column contract, data-quality suite). The raw table, staging view, warehouse DDL and Type 1 merge exist in `sql/` and are owned by another agent; **this dispatch verified the generator side only** — nothing here claims a load has been run. |
 | **Version** | 1.0 |
 | **Date** | 2026-07-28 |
 | **Owner** | Michael Palmer |
@@ -14,7 +14,7 @@
 | **Target object** | `warehouse.dim_marketing_campaign` |
 | **Declared grain** | One row per campaign. |
 | **Phase** | Phase 1.5 (delivery increment `P1.5-01`) |
-| **Intermediate objects** | `raw.marketing_campaign_load`, `staging.stg_marketing_campaign` (**Planned**) |
+| **Intermediate objects** | `raw.marketing_campaign_load` (`sql/01_raw/07_raw_marketing_campaign_load.sql`), `staging.stg_marketing_campaign` (`sql/02_staging/08_stg_marketing_campaign.sql`) |
 | **Downstream objects** | `warehouse.fact_marketing_spend` ([STM-014](STM-014-fact-marketing-spend.md)), `warehouse.fact_lead` (**Planned**, `P1.4-02`) |
 
 ---
@@ -56,9 +56,9 @@ flowchart LR
     G --> POOL["campaign_records()<br/>active window, stores, targeting"]
     POOL -.consumed by.-> SPEND["Marketing spend generator (STM-014)"]
     POOL -.consumed by.-> LEAD["Lead generator (Planned, P1.4-02)"]
-    C --> R["raw.marketing_campaign_load<br/>11 business columns as text (Planned)"]
-    R --> S["staging.stg_marketing_campaign<br/>typed view, latest batch only (Planned)"]
-    S --> W["warehouse.dim_marketing_campaign<br/>Type 1, PK campaign_key (Planned)"]
+    C --> R["raw.marketing_campaign_load<br/>11 business columns as text"]
+    R --> S["staging.stg_marketing_campaign<br/>typed view, latest batch only"]
+    S --> W["warehouse.dim_marketing_campaign<br/>Type 1, PK campaign_key"]
     R -.rejections.-> A["audit.rejected_record"]
     W -.results.-> AV["audit.validation_result"]
 ```
@@ -84,7 +84,9 @@ flowchart LR
    volume between them rather than each claiming all of it. **`source_share` is a latent, not a column.**
 9. `campaign_key` is assigned as a **deterministic ordinal 1..N over `campaign_id`**.
 10. Rows are written to `data/raw/<profile>/dim_marketing_campaign.csv`.
-11. **Planned**: raw load, staging view, then a **Type 1 upsert (MERGE) on `campaign_id`**.
+11. Raw load, staging view, then a **Type 1 upsert (MERGE) on `campaign_id`**. Those three scripts exist
+    and are owned by another agent; **this dispatch did not execute them**, so the descriptions below are
+    read from the scripts rather than observed in a run.
 
 ---
 
@@ -100,7 +102,7 @@ nullable column.**
 | `campaign_name` | `text` | `campaign_name` | `varchar(80)` | Direct. Composed as `<theme> <year> - <channel>`, e.g. `Summer Clearance 2025 - Paid Search`. **Fictional.** Allowlisted in the prohibited-field policy as a campaign label rather than a person's name. | `n/a — required` | Not null | `REJ-NULL-001` if empty | `load_batch_id` | Campaign generator |
 | `channel` | `text` | `channel` | `varchar(30)` | Direct. Domain `Paid Search` \| `Paid Social` \| `Third-Party Listings` \| `Direct Mail` \| `Radio` \| `Television` \| `Email`. **Derived from `lead_source_id`.** | `n/a — required` | `DQ-CMP-005` inside the enumeration | `REJ-DOMAIN-001` outside the enumeration; `REJ-RULE-001` if it does not follow from the lead source | `load_batch_id` | Campaign generator |
 | `vendor_name` | `text` | `vendor_name` | `varchar(60)` | Direct. **Every value is invented; no real vendor is referenced.** `In-House Marketing Team` where the campaign is run internally. | `n/a — required` | Not null | `REJ-NULL-001` if empty | `load_batch_id` | Campaign generator |
-| `lead_source_id` | `text` | `lead_source_key` | `integer` FK | Resolved to `dim_lead_source.lead_source_key` at load; `lead_source_id` is retained on the source row for lineage. Only **paid** sources appear. | `n/a — required` | `DQ-CMP-004` resolves to a governed source | `REJ-FK-001` if it does not resolve | `load_batch_id` | Campaign generator |
+| `lead_source_id` | `text` | `lead_source_id` | `varchar(16)` | Direct. **The dimension carries the natural identifier, not a surrogate**: contract section 6 declares `lead_source_id varchar(16)` here, and `warehouse.dim_marketing_campaign` matches it. A join to `dim_lead_source` is therefore on the natural key. Only **paid** sources appear. | `n/a — required` | `DQ-CMP-004` resolves to a governed source | `REJ-FK-001` if it does not resolve | `load_batch_id` | Campaign generator |
 | `start_date` | `text` | `start_date` | `date` | Cast ISO-8601 `YYYY-MM-DD` to `date`. Inside the reporting window. | `n/a — required` | `DQ-CMP-003` with `end_date` | `REJ-TYPE-001` if unparseable; `REJ-NULL-001` if empty | `load_batch_id` | Campaign generator |
 | `end_date` | `text` | `end_date` | `date` **NULL** | Cast to `date`, or NULL from an empty field. **NULL means the campaign was still running when the reporting window closed** — it is not a missing value. | `NULL — still running` | `DQ-CMP-003`: NULL or ≥ `start_date` | `REJ-TYPE-001` if unparseable; `REJ-RULE-001` if earlier than `start_date` | `load_batch_id` | Campaign generator |
 | `target_department` | `text` | `target_department` | `varchar(30)` | Direct. Domain `Sales` \| `Service` \| `Both`. | `n/a — required` | `DQ-CMP-005` inside the enumeration | `REJ-DOMAIN-001` outside the enumeration | `load_batch_id` | Campaign generator |
@@ -206,23 +208,25 @@ per lead would be quadratic.
 | Layer | Strategy | Write semantics |
 |---|---|---|
 | CSV | Overwrite | The generator rewrites `data/raw/<profile>/dim_marketing_campaign.csv` on each run. Byte-identical between runs of the same profile and seed. |
-| `raw.marketing_campaign_load` | **Truncate-and-reload per batch** (**Planned**) | Truncated and reloaded from the current CSV, then stamped with a fresh `load_batch_id`. |
-| `staging.stg_marketing_campaign` | **View** (`CREATE OR REPLACE VIEW`) (**Planned**) | No data written. Casts raw text to warehouse types, resolves `lead_source_key`, and filters to the most recent `load_batch_id`. |
-| `warehouse.dim_marketing_campaign` | **Type 1 upsert (MERGE) on `campaign_id`** (**Planned**) | Matched → update in place. Unmatched → insert. **Nothing is ever deleted**: a deleted campaign would orphan its spend rows. |
+| `raw.marketing_campaign_load` | **Truncate-and-reload per batch** | Truncated and reloaded from the current CSV, then stamped with a fresh `load_batch_id`. |
+| `staging.stg_marketing_campaign` | **View** (`CREATE OR REPLACE VIEW`) | No data written. Casts raw text to warehouse types and filters to the most recent `load_batch_id`. `lead_source_id` passes through unchanged. |
+| `warehouse.dim_marketing_campaign` | **Type 1 upsert (MERGE) on `campaign_id`** | Matched → update in place. Unmatched → insert. **Nothing is ever deleted**: a deleted campaign would orphan its spend rows. |
 
 **Why Type 1.** A campaign's classification changing is a correction rather than a fact worth preserving,
 and no ARPI measure asks what a campaign's channel was last quarter.
 [ARCHITECTURE.md §14](../../ARCHITECTURE.md) lists campaign classification as a *potential* Type 2
 dimension; **promoting it requires an ADR**, not a quiet schema change.
 
-**Constraints to be enforced in the database — all `Planned`, because the DDL is owned by another agent
-and does not exist yet:**
+**Constraints in the database.** `sql/03_dimensions/07_dim_marketing_campaign.sql` (owned by another
+agent) declares them, and they match this contract column for column:
 
-- `campaign_id` UNIQUE.
+- Primary key on `campaign_key`; `campaign_id` UNIQUE.
 - `CHECK (end_date IS NULL OR end_date >= start_date)`.
-- CHECK constraints over `channel`, `target_department` and `target_vehicle_category`.
-- `lead_source_key` FOREIGN KEY to `warehouse.dim_lead_source`.
+- CHECK constraints over `target_department` and `target_vehicle_category`.
 - Every column except `end_date` `NOT NULL`.
+
+The merge is `sql/03_dimensions/17_dim_marketing_campaign_merge.sql`. **This dispatch did not run either
+script against a database**, so their behaviour is described from the scripts, not observed.
 
 ---
 
@@ -285,7 +289,7 @@ the SQL implementations arrive with the DDL and are **Planned**.
 
 | Reconciliation ID | Description | Left | Right | Tolerance | Status |
 |---|---|---|---|---|---|
-| `RECON-DIM-CAMPAIGN-ROWCOUNT` | Generated campaign rows equal `warehouse.dim_marketing_campaign` rows after the merge | `generator:dim_marketing_campaign` row count | `warehouse.dim_marketing_campaign` `count(*)` | 0 (exact) | **Planned** |
+| `RECON-DIM-CAMPAIGN-ROWCOUNT` | Generated campaign rows equal `warehouse.dim_marketing_campaign` rows after the merge | `generator:dim_marketing_campaign` row count | `warehouse.dim_marketing_campaign` `count(*)` | 0 (exact) | **Planned** — the objects exist, the reconciliation does not |
 
 Expected counts: 8 (test), 24 (development), 60 (portfolio).
 
@@ -293,9 +297,10 @@ Expected counts: 8 (test), 24 (development), 60 (portfolio).
 
 ## 10. Open questions and known gaps
 
-- **The warehouse table does not exist yet.** `sql/03_dimensions/07_dim_marketing_campaign.sql` and its
-  merge are **Planned** and owned by another agent. Sections 5 and 7 are a specification, not a
-  description of running code.
+- **The load has not been exercised from this dispatch.** `sql/03_dimensions/07_dim_marketing_campaign.sql`,
+  its merge, the raw table and the staging view exist and are owned by another agent, and their column
+  lists match this contract — but no run in this dispatch loaded a row, so sections 5 and 7 are read from
+  those scripts rather than observed.
 - **Always-on campaigns all start on the same day.** Section 4.2 explains why: ARPI holds no history
   before the reporting window. The consequence is a cluster of identical `start_date` values, which a
   reader should not mistake for a real launch pattern.

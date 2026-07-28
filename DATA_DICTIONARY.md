@@ -2129,7 +2129,7 @@ run even when it holds no values.
 | **History policy** | **SCD Type 1**, upsert in place |
 | **Generator** | `src/arpi/generation/lead_source.py` |
 | **Source-to-target mapping** | [STM-010](docs/source-to-target/STM-010-dim-lead-source.md) |
-| **Implementation status** | **Implemented** (generator, contract, data-quality suite). Warehouse DDL and merge **Planned**. |
+| **Implementation status** | **Implemented** (generator, contract, data-quality suite). The raw table, staging view, warehouse DDL and Type 1 merge exist in `sql/`; **no load has been run from this increment.** |
 | **Row counts** | 19 at every scale — fixed reference data, independent of profile and of `random_seed`. |
 
 ### 12A.1 Column contract (exact names, exact order)
@@ -2198,7 +2198,7 @@ conversion is computed downstream from `fact_lead`.
 | **History policy** | **SCD Type 1.** [ARCHITECTURE.md §14](ARCHITECTURE.md) lists campaign classification as a *potential* Type 2 dimension; promoting it requires an ADR. |
 | **Generator** | `src/arpi/generation/marketing.py` |
 | **Source-to-target mapping** | [STM-013](docs/source-to-target/STM-013-dim-marketing-campaign.md) |
-| **Implementation status** | **Implemented** (generator, contract, data-quality suite). Warehouse DDL and merge **Planned**. |
+| **Implementation status** | **Implemented** (generator, contract, data-quality suite). The raw table, staging view, warehouse DDL and Type 1 merge exist in `sql/`; **no load has been run from this increment.** |
 | **Row counts** | 8 (test) · 24 (development) · 60 (portfolio) |
 
 ### 13A.1 Column contract (exact names, exact order)
@@ -2259,7 +2259,7 @@ in-house campaign has a named in-house owner rather than no vendor at all.
 | **History policy** | **Insert-only periodic fact.** A restated month is handled by deleting and reloading that month. |
 | **Generator** | `src/arpi/generation/marketing.py` |
 | **Source-to-target mapping** | [STM-014](docs/source-to-target/STM-014-fact-marketing-spend.md) |
-| **Implementation status** | **Implemented** (generator, contract, data-quality suite). Warehouse DDL and load **Planned**. |
+| **Implementation status** | **Implemented** (generator, contract, data-quality suite). `warehouse.fact_marketing_spend` exists with its grain constraint; **the fact load script does not exist and no row has ever been loaded.** |
 | **Row counts** | 16 (test) · 212 (development) · 1,691 (portfolio) — inside the 500–2,000 portfolio target. |
 
 ### 18A.1 Column contract (exact names, exact order)
@@ -2326,3 +2326,303 @@ events the vendor counts as leads but reports under neither heading.
 | `DQ-MKT-005` | Campaign, dealership and lead source all resolve | `referential` | critical |
 | `DQ-MKT-006` | `vendor_reported_leads` is non-negative | `business_rule` | critical |
 | `DQ-MKT-007` | **No prohibited PII column exists** | `privacy` | critical |
+
+---
+
+# Part J — Phase 1.1 implemented source-entity contracts
+
+Two entities in `P1.1` are **pre-warehouse source entities** rather than warehouse tables. They are what a
+real dealer management system would export, and they are what the raw and staging layers ingest.
+`acquisition_event` feeds [§15 `warehouse.fact_vehicle_inventory_snapshot`](#15-warehousefact_vehicle_inventory_snapshot);
+`sale_event` is loaded as [§14 `warehouse.fact_vehicle_sale`](#14-warehousefact_vehicle_sale). Both are
+implemented by `src/arpi/generation/` and both carry natural identifiers and real dates rather than
+surrogate and date keys — the keys are assigned during the load, not by the generator.
+
+Status: **Implemented** (`P1.1-04`, `P1.1-05`).
+
+## 14A. `acquisition_event` — implemented source contract (`P1.1-04`)
+
+Module: `src/arpi/generation/acquisition.py`. Seeding namespace: `acquisition_event`.
+
+**Grain: exactly one acquisition event per physical vehicle.** Every `dim_vehicle` row has one, and no
+vehicle has two. This is the origin of inventory age, days to sale and inventory investment — without it
+none of the nine inventory KPIs can be computed, and a sale would have no cost basis.
+
+### 14A.1 Column contract
+
+| # | Column | Type | Null | Notes |
+|---:|---|---|---|---|
+| 1 | `acquisition_id` | `varchar(16)` | NN U | `ACQ-########`, assigned in `vehicle_id` order |
+| 2 | `vehicle_id` | `varchar(16)` | NN U | `VEH-#######`; unique — this is the grain |
+| 3 | `dealership_id` | `varchar(16)` | NN | The store that acquired the unit |
+| 4 | `acquisition_date` | `date` | NN | May precede `reporting.start_date`; see §14A.2 |
+| 5 | `acquisition_source` | `varchar(40)` | NN | Carried from `dim_vehicle`, so the two can never disagree |
+| 6 | `acquisition_cost` | `numeric(12,2)` | NN | `Decimal`, `>= 0` |
+| 7 | `reconditioning_cost` | `numeric(12,2)` | NN | `Decimal`, `>= 0` |
+| 8 | `original_asking_price` | `numeric(12,2)` | NN | `Decimal`, `>= 0`; the **first** advertised price |
+| 9 | `msrp` | `numeric(12,2)` | NULL | Populated for `New` units only; see §14A.3 |
+| 10 | `initial_inventory_status` | `varchar(30)` | NN | `In Stock` \| `In Transit` \| `In Reconditioning` |
+| 11 | `source_system` | `varchar(40)` | NN | `arpi_synthetic_generator` |
+
+`msrp` is the only nullable column.
+
+### 14A.2 The warm-up rule, stated exactly
+
+An acquisition date is drawn from the inclusive range
+
+```
+[ reporting.start_date - 180 days , reporting.end_date ]
+```
+
+where 180 is `ACQUISITION_WARM_UP_DAYS` ([PHASE1_CONTRACT.md §8]). Nothing may fall outside it, and
+`DQ-ACQ-005` plus the unit tests assert both ends.
+
+**Why it exists.** Without a warm-up the warehouse starts empty: every unit would be zero days old on
+day one, average inventory age would climb from nothing rather than from a standing position, and the
+`61-90`, `91-120` and `Over 120` age buckets would be unreachable for the first four months of any
+window. Day-one inventory age would be a fiction, and every ageing KPI computed over the first quarter
+would be wrong in the same optimistic direction.
+
+**How the volume is shaped.** The daily rate inside the reporting window is the baseline. A warm-up day
+`k` days before the window opens is drawn at `exp(-k / 65)` of that rate (`WARM_UP_TAPER_DAYS`). A *flat*
+warm-up rate would hand day one a uniform age profile in which most standing units are already older
+than the average days-to-sale, so they would all clear in the first fortnight — an artefact of the
+generator, not a business. The taper approximates the age profile of a store that was already trading.
+At the `development` profile this puts **28.4%** of the fleet before the window, with a real but thin
+tail of units over 120 days old on day one.
+
+**What the warm-up is not.** It is a *generation* window, not a reporting window. `dim_date` covers the
+reporting window only, so no fact is ever reported against a warm-up date. Consequently ARPI models **no
+disposition before `reporting.start_date`**: a unit acquired during the warm-up is, by construction,
+still in stock when the window opens. A sale on a date `dim_date` does not contain could not join the
+calendar, so generating one would create an unreportable row rather than a more realistic dataset.
+
+### 14A.3 Derivations and business rules
+
+- `dealership_id` comes from `arpi.generation.vehicle.intended_store_assignments()`. The acquisition
+  never invents a placement, so a vehicle and its acquisition can never disagree about which store holds
+  it (`DQ-ACQ-005`).
+- **`Manufacturer Allocation` never occurs at `GSA-003`.** The independent used store holds no
+  franchise, so it cannot be allocated a factory unit. This is guaranteed upstream — the vehicle
+  generator only ever issues `New` units, and therefore allocations, to the two franchise stores — and
+  asserted here by `DQ-ACQ-006`.
+- `msrp` is populated for `New` units only. A used or certified unit has no manufacturer sticker in
+  ARPI: modelling the original window sticker of a pre-owned vehicle would be inventing a number nobody
+  in the transaction ever saw.
+- `initial_inventory_status` is **derived, never drawn**: a unit carrying at least $1,200 of
+  reconditioning is `In Reconditioning`; a `New` unit needing no work is `In Transit`; everything else is
+  `In Stock`. It therefore cannot contradict the reconditioning spend beside it.
+- **All money is `decimal.Decimal`**, quantized to `0.01` with `ROUND_HALF_UP` at one governed boundary
+  (`arpi.generation.acquisition.money`). Intermediate arithmetic keeps full `Decimal` precision. No
+  monetary value is ever a float, and none is ever negative (`DQ-ACQ-004`).
+
+### 14A.4 Realism commitments, and how each is asserted
+
+| Commitment | Mechanism | Assertion |
+|---|---|---|
+| Cost relates to model year | Calendar depreciation at 85.5%/year | Correlation of `model_year` with used cost is in `(0.30, 0.99)` — a direction and a band, never a point value, and never 1.0 |
+| Cost relates to vehicle class | Class-level base MSRP, model-year inflated | Correlation with class base MSRP in `(0.15, 0.95)` |
+| Cost relates to condition | Separate new-invoice and used-market paths | New `msrp` present and cost strictly below it |
+| Residual variance survives | Every share and mark-up is a triangular draw | Cost is not constant within a `(model_year, vehicle_class)` group |
+| Used reconditioning ≫ new | New units get lot prep only (`$0–165`) | Used mean exceeds new mean by more than 5× — measured **$1,700.70** against **$86.08** at `development` |
+| Volume is seasonal | 12 month weights, max/min 1.76 | In-window monthly counts are not flat (max/min > 1.12) |
+| Volume has day-of-week structure | 7 weekday weights | Sunday is near-dormant; weekdays exceed weekend by more than 2× |
+| Models age differently | `model_aging_propensity(make, model)` over an 8-rung ladder, times a condition factor | The fleet carries ≥ 8 distinct propensities |
+
+`aging_propensity` is carried on the record rather than recomputed downstream, so the sale and
+inventory-snapshot generators age a Silverado and an Outback differently by construction. Identical
+vehicle-aging behaviour across models is a prohibited synthetic pattern
+([ARCHITECTURE.md §15.4](ARCHITECTURE.md)).
+
+### 14A.5 Data-quality checks
+
+| Check ID | Assertion | Category | Severity |
+|---|---|---|---|
+| `DQ-ACQ-001` | `acquisition_id` is unique | `uniqueness` | critical |
+| `DQ-ACQ-002` | Exactly one acquisition exists per vehicle | `uniqueness` | critical |
+| `DQ-ACQ-003` | The declared 11-column contract matches, in order | `structural` | critical |
+| `DQ-ACQ-004` | No monetary column holds a negative value | `business_rule` | critical |
+| `DQ-ACQ-005` | Every acquisition resolves to a known vehicle at its assigned store | `referential` | critical |
+| `DQ-ACQ-006` | `GSA-003` books no `Manufacturer Allocation` | `business_rule` | critical |
+| `DQ-ACQ-007` | **No prohibited PII column exists** | `privacy` | critical |
+
+## 14B. `sale_event` — implemented source contract (`P1.1-05`)
+
+Module: `src/arpi/generation/sale.py`. Seeding namespace: `sale_event`.
+
+**Grain: one row per finalized vehicle transaction.** The columns mirror
+[§14 `warehouse.fact_vehicle_sale`](#14-warehousefact_vehicle_sale) with every surrogate key replaced by
+its natural identifier and every date key by a real date.
+
+### 14B.1 Column contract
+
+Order is significant — the raw loader maps positionally, and this entity has fourteen monetary columns
+that would be silently interchangeable if the order drifted.
+
+| # | Column | Type | Null | Notes |
+|---:|---|---|---|---|
+| 1 | `sale_id` | `varchar(16)` | NN U | `SLE-########`, assigned over `(sale_date, vehicle_id)` |
+| 2 | `sale_date` | `date` | NN | Always inside the reporting window |
+| 3 | `delivery_date` | `date` | NN | Never before `sale_date`; clamped to the window |
+| 4 | `dealership_id` | `varchar(16)` | NN | Selling store |
+| 5 | `vehicle_id` | `varchar(16)` | NN U | One unit sells at most once |
+| 6 | `customer_id` | `varchar(16)` | NULL | NULL **only** when not `is_retail` |
+| 7 | `salesperson_id` | `varchar(16)` | NULL | Never a Finance Manager |
+| 8 | `desk_manager_id` | `varchar(16)` | NULL | Desk, Sales or General Manager |
+| 9 | `finance_manager_id` | `varchar(16)` | NULL | Finance Manager; retail deals only |
+| 10 | `lead_source_id` | `varchar(16)` | NULL | **Reserved for `P1.4`**; always NULL here — see §14B.2 |
+| 11 | `sale_type` | `varchar(20)` | NN | `New Retail` \| `Used Retail` \| `Certified Retail` \| `Lease` \| `Wholesale` \| `Dealer Trade` |
+| 12 | `is_retail` | `boolean` | NN | **Derived** from `sale_type`; see §14B.3 |
+| 13 | `unit_count` | `smallint` | NN | Always `1` |
+| 14 | `sale_price` | `numeric(12,2)` | NN | |
+| 15 | `msrp` | `numeric(12,2)` | NULL | Carried from the acquisition; `New` units only |
+| 16 | `original_asking_price` | `numeric(12,2)` | NN | Carried from the acquisition |
+| 17 | `final_asking_price` | `numeric(12,2)` | NN | After age-driven markdowns; `<= original_asking_price` |
+| 18 | `acquisition_cost` | `numeric(12,2)` | NN | Carried from the acquisition |
+| 19 | `reconditioning_cost` | `numeric(12,2)` | NN | Carried from the acquisition |
+| 20 | `pack_amount` | `numeric(12,2)` | NN | The store's dealer pack; a property of the store |
+| 21 | `front_end_gross` | `numeric(12,2)` | NN | **May be negative** |
+| 22 | `back_end_gross` | `numeric(12,2)` | NN | Zero on every non-retail transaction |
+| 23 | `total_gross` | `numeric(12,2)` | NN | **May be negative** |
+| 24 | `trade_allowance` | `numeric(12,2)` | NN | `0.00` when there is no trade |
+| 25 | `trade_acv` | `numeric(12,2)` | NN | `0.00` when there is no trade |
+| 26 | `cash_down` | `numeric(12,2)` | NN | `0.00` on non-retail |
+| 27 | `amount_financed` | `numeric(12,2)` | NN | `0.00` on a cash deal and on non-retail |
+| 28 | `days_in_inventory_at_sale` | `integer` | NN | `sale_date - acquisition_date`; `>= 0` |
+| 29 | `source_system` | `varchar(40)` | NN | `arpi_synthetic_generator` |
+
+`front_end_gross` and `total_gross` are the only columns permitted to be negative. That is deliberate:
+suppressing a loss would be the fabrication, not the loss itself.
+
+### 14B.2 What this entity deliberately excludes
+
+**Cancelled deals never appear.** Roughly 4.5% of otherwise-complete deals are unwound before delivery,
+which is a real and common event, and the generator models them. They are then **excluded from the
+output entirely**. The fact is called `fact_vehicle_sale` and its grain is a *finalized* transaction, so
+an unwound deal is not a sale with a flag — it is not a sale. The unit returns to inventory and remains
+available to sell later. The cancellation is modelled rather than ignored because it is what makes the
+measured sell-through lower than the survival draw alone would produce; it is not modelled as a column
+because a cancelled row in a finalized-sale fact would be counted by every additive measure that reads
+the fact.
+
+**Manufacturer incentives are excluded, and this materially changes what front-end gross means.** ARPI
+models no customer rebate, no dealer cash, no stair-step or volume bonus, no floor-plan credit, and no
+holdback paid separately from invoice. `front_end_gross` is
+`sale_price − acquisition_cost − reconditioning_cost − pack_amount` and nothing else. A real store's
+reported new-vehicle front-end gross is frequently rescued by incentive money that arrives after the
+deal, so **ARPI's new-vehicle front end is structurally more negative than a real store's would be**.
+Comparisons against published industry gross benchmarks are therefore invalid. Comparisons *within* this
+dataset — store against store, month against month, aged against fresh — remain valid, because every row
+is struck on the same basis.
+
+**Lead attribution is deferred.** `lead_source_id` is declared and always NULL. The lead, appointment
+and campaign entities arrive in `P1.4`; attribution is theirs to make, and inventing it here would create
+two sources of truth for one relationship. See §14B.6 for the supported link.
+
+### 14B.3 Derivations and exact identities
+
+- **`is_retail` is a total function of `sale_type`** — `is_retail_for_sale_type()` — and is never drawn.
+  True for `New Retail`, `Used Retail`, `Certified Retail` and `Lease`; false for `Wholesale` and
+  `Dealer Trade`. Drawn independently it would let wholesale units inflate retail units sold, which is
+  the single most consequential overstatement available in dealership reporting. `DQ-SLE-006` asserts
+  the derivation row by row.
+- **Both gross identities are exact to the cent on every row**, by construction rather than by
+  tolerance:
+  - `front_end_gross = sale_price − acquisition_cost − reconditioning_cost − pack_amount`
+  - `total_gross = front_end_gross + back_end_gross`
+
+  Every operand is a `Decimal`. `DQ-SLE-004` recomputes both and compares exactly; a cent of drift means
+  a float reached a monetary value.
+- **A retail sale always names a customer; a wholesale or dealer-trade disposal names none.** Buyers come
+  from `arpi.generation.customer.select_customer_for_sale()`, which can only return a customer whose
+  `first_interaction_date` is on or before the sale date — so a sale can never precede the existence of
+  its own buyer. No sale invents a customer identifier the customer entity does not contain
+  (`DQ-SLE-005`).
+- **Employees are resolved against the SCD Type 2 timeline on the sale date.** A participant must have
+  been employed, at that store, in an eligible role, on that day. Salespeople are preferred for
+  `salesperson_id`; where a store has no salesperson on staff that day the deal is credited to a sales
+  or general manager, which is what happens on a small floor. **A Finance Manager is never eligible as
+  the salesperson**: F&I income and vehicle gross are separately measured, and one person holding both
+  sides of a deal would corrupt both. `DQ-SLE-008` asserts store, role and date together.
+- **Employees genuinely differ.** Selection is weighted by the latent `volume_index × closing_rate_index`
+  from `employee_performance_profiles()`, and the negotiated discount is divided by the salesperson's
+  `gross_retention_index`, so a strong closer holds more gross without any outcome being deterministic.
+  These latent parameters are **generation inputs and never columns** of anything — publishing one would
+  turn a fabrication parameter into what looks like a measurement of a person
+  ([PRIVACY_AND_ETHICS.md §5](PRIVACY_AND_ETHICS.md)).
+- `sale_date` is drawn from a gamma-shaped time-on-lot hazard indexed by **days since acquisition**,
+  multiplied by month and day-of-week weights. Indexing on age rather than on the window start is what
+  makes a warm-up unit arrive already aged: its remaining hazard is on the declining tail, so it moves
+  early in the window instead of behaving like a fresh unit.
+
+### 14B.4 Realism commitments, and how each is asserted
+
+Measured at the `development` profile (900 acquired units, 650 finalized sales), which is the scale the
+data-quality suite asserts at. The `test` profile produces about thirty sales across two months — too
+few for a correlation or a variance ratio to mean anything, so no distributional claim is made there.
+
+| Commitment | Measured | Asserted as |
+|---|---|---|
+| Not every acquired unit sells | sell-through **0.7222** (`test`: 0.5167) | band `(0.55, 0.88)` at `development`; `(0.25, 0.80)` at `test` |
+| Unsold units remain for the snapshot fact | 250 units still in stock | more than 50 remain |
+| A sale never precedes its acquisition | zero violations | `DQ-SLE-003`, critical |
+| A genuine negative front-end gross population exists | **24.5%** of deals | present, and a minority: band `[0.01, 0.45]` and `< 0.5` |
+| …and it is not confined to one deal type | present in ≥ 3 deal types | ≥ 3 distinct `sale_type` values |
+| Used gross varies more than new gross | variance ratio **5.26** | ratio `> 2.0` |
+| Gross weakens as age at sale rises | correlation **−0.139** | band `(−0.70, −0.02)`, plus aged mean below fresh mean |
+| Sales volume is seasonal | monthly max/min ≈ 1.5 | not flat: max/min `> 1.15` |
+| Saturday is the floor's biggest day | Saturday highest, Sunday lowest | asserted both ways |
+| `unit_count` is 1 | every row | `DQ-SLE-007`, critical |
+
+Deal mix at `development`: `Used Retail` 42.8%, `New Retail` 23.5%, `Certified Retail` 11.2%, `Wholesale`
+9.5%, `Lease` 8.3%, `Dealer Trade` 4.6%.
+
+Where the negative gross comes from is itself modelled rather than sprinkled: wholesale disposals are
+priced off inventory investment and straddle break-even, new deals are thin because incentives are
+excluded (§14B.2), and any deal can be pushed negative by the dealer pack on a marked-down aged unit.
+
+### 14B.5 Data-quality checks
+
+| Check ID | Assertion | Category | Severity |
+|---|---|---|---|
+| `DQ-SLE-001` | `sale_id` is unique | `uniqueness` | critical |
+| `DQ-SLE-002` | The declared 29-column contract matches, in order | `structural` | critical |
+| `DQ-SLE-003` | No sale precedes the acquisition of its own vehicle | `business_rule` | critical |
+| `DQ-SLE-004` | Both gross identities hold exactly, to the cent | `business_rule` | critical |
+| `DQ-SLE-005` | Retail carries a known customer; wholesale need not | `referential` | critical |
+| `DQ-SLE-006` | `is_retail` is exactly the derivation of `sale_type` | `business_rule` | critical |
+| `DQ-SLE-007` | `unit_count` is 1 on every row | `business_rule` | critical |
+| `DQ-SLE-008` | Every employee held an eligible role at that store on that date | `referential` | critical |
+| `DQ-SLE-009` | **No prohibited PII column exists** | `privacy` | critical |
+| `DQ-SLE-010` | A negative-gross population is present and a minority | `business_rule` | warning |
+
+`DQ-SLE-010` is a `warning` rather than a gate on purpose: the exact share is a modelling choice and a
+band, not a rule, but its **absence** is a defect — unrealistically clean data is a prohibited synthetic
+pattern.
+
+### 14B.6 Helpers for downstream generators
+
+```python
+from arpi.generation.sale import SaleLink, sale_links, disposition_dates
+
+def sale_links(config: ArpiConfig, catalogue_path: Path | None = None) -> tuple[SaleLink, ...]
+# SaleLink: sale_id, sale_date, dealership_id, customer_id, vehicle_id,
+#           vehicle_model_id, salesperson_id, is_retail   -- ordered by sale_id
+
+def disposition_dates(config: ArpiConfig, catalogue_path: Path | None = None) -> dict[str, date]
+# vehicle_id -> sale_date. A vehicle absent from the mapping never sold inside the
+# window and is still in stock at the end of it.
+```
+
+`sale_links()` is the supported way for the `P1.4` attribution generators to mark a lead as sold: pick a
+link whose `dealership_id` and `customer_id` match the lead and whose `sale_date` is on or after the
+lead's creation date, then carry `sale_id` onto the lead. `disposition_dates()` is what the inventory
+snapshot generator uses to stop snapshotting a unit.
+
+### 18A.5 Known interface gap (recorded, not patched)
+
+The source entity emits `month_date_key` as a `YYYYMM01` **integer**, as the Phase 1 cross-agent contract
+instructs. `raw.marketing_spend_load` and `staging.stg_marketing_spend` expect a **`month_date` date
+column** in that position instead. The two sides do not yet agree, so a load would fail on the column
+list. It is recorded here rather than silently patched from one side: the contract is coordinator-owned,
+and the reconciliation between the integer key and the date column has to be a deliberate decision.

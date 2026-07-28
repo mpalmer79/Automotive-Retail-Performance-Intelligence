@@ -6,7 +6,7 @@
 |---|---|
 | **Mapping ID** | `STM-010` |
 | **Title** | Lead source dimension (Slowly Changing Dimension Type 1) |
-| **Status** | **Implemented** (generator, column contract, data-quality suite). Ingestion, warehouse DDL and merge are **Planned**. |
+| **Status** | **Implemented** (generator, column contract, data-quality suite). The raw table, staging view, warehouse DDL and Type 1 merge exist in `sql/` and are owned by another agent; **this dispatch verified the generator side only** — nothing here claims a load has been run. |
 | **Version** | 1.0 |
 | **Date** | 2026-07-28 |
 | **Owner** | Michael Palmer |
@@ -14,7 +14,7 @@
 | **Target object** | `warehouse.dim_lead_source` |
 | **Declared grain** | One row per normalised lead source. |
 | **Phase** | Phase 1.4 (delivery increment `P1.4-01`) |
-| **Intermediate objects** | `raw.lead_source_load`, `staging.stg_lead_source` (**Planned**) |
+| **Intermediate objects** | `raw.lead_source_load` (`sql/01_raw/06_raw_lead_source_load.sql`), `staging.stg_lead_source` (`sql/02_staging/07_stg_lead_source.sql`) |
 | **Downstream object** | `reporting.vw_lead_source_performance` (**Planned**) |
 
 ---
@@ -59,9 +59,9 @@ flowchart LR
     G --> C["dim_lead_source.csv<br/>data/raw/&lt;profile&gt;/"]
     G --> LAT["lead_source_behaviour()<br/>volume, contact, close, cost"]
     LAT -.consumed by.-> DOWN["Lead, appointment and marketing-spend generators"]
-    C --> R["raw.lead_source_load<br/>9 business columns as text (Planned)"]
-    R --> S["staging.stg_lead_source<br/>typed view, latest batch only (Planned)"]
-    S --> W["warehouse.dim_lead_source<br/>Type 1, PK lead_source_key (Planned)"]
+    C --> R["raw.lead_source_load<br/>9 business columns as text"]
+    R --> S["staging.stg_lead_source<br/>typed view, latest batch only"]
+    S --> W["warehouse.dim_lead_source<br/>Type 1, PK lead_source_key"]
     W --> V["reporting.vw_lead_source_performance<br/>Planned"]
     R -.rejections.-> A["audit.rejected_record"]
     W -.results.-> AV["audit.validation_result"]
@@ -77,11 +77,13 @@ flowchart LR
    into the row.
 4. Rows are written to `data/raw/<profile>/dim_lead_source.csv` — UTF-8, LF endings, header row,
    lowercase booleans, declared column order.
-5. **Planned**: the CSV loads into `raw.lead_source_load`, all business columns as `text`, plus the five
+5. The CSV loads into `raw.lead_source_load`, all business columns as `text`, plus the five
    load-lineage columns.
-6. **Planned**: `staging.stg_lead_source` casts to warehouse types and exposes only the most recent
-   `load_batch_id`.
-7. **Planned**: `warehouse.dim_lead_source` is loaded by **Type 1 upsert (MERGE) on `lead_source_id`**.
+6. `staging.stg_lead_source` casts to warehouse types and exposes only the most recent `load_batch_id`.
+7. `warehouse.dim_lead_source` is loaded by **Type 1 upsert (MERGE) on `lead_source_id`**.
+
+   Steps 5 to 7 are implemented in SQL owned by another agent. **This dispatch did not execute them**, so
+   the descriptions here are read from those scripts rather than observed in a run.
 
 **The latent branch leaves at step 3 and never rejoins.** `lead_source_behaviour()` returns the four
 generation inputs to the lead, appointment and marketing-spend generators. Nothing in the warehouse ever
@@ -221,22 +223,25 @@ weights say how the funnel divides, that constant says how large it is.
 | Layer | Strategy | Write semantics |
 |---|---|---|
 | CSV | Overwrite | The generator rewrites `data/raw/<profile>/dim_lead_source.csv` on each run. Byte-identical between runs, and identical between profiles. |
-| `raw.lead_source_load` | **Truncate-and-reload per batch** (**Planned**) | Truncated and reloaded from the current CSV, then stamped with a fresh `load_batch_id`. |
-| `staging.stg_lead_source` | **View** (`CREATE OR REPLACE VIEW`) (**Planned**) | No data written. Casts raw text to warehouse types and filters to the most recent `load_batch_id`. |
-| `warehouse.dim_lead_source` | **Type 1 upsert (MERGE) on `lead_source_id`** (**Planned**) | Matched → update the attribute columns in place. Unmatched → insert. **Nothing is ever deleted**: a deleted source would orphan every lead that came through it. |
+| `raw.lead_source_load` | **Truncate-and-reload per batch** | Truncated and reloaded from the current CSV, then stamped with a fresh `load_batch_id`. |
+| `staging.stg_lead_source` | **View** (`CREATE OR REPLACE VIEW`) | No data written. Casts raw text to warehouse types and filters to the most recent `load_batch_id`. |
+| `warehouse.dim_lead_source` | **Type 1 upsert (MERGE) on `lead_source_id`** | Matched → update the attribute columns in place. Unmatched → insert. **Nothing is ever deleted**: a deleted source would orphan every lead that came through it. |
 
 **Why Type 1 and not Type 2.** Reclassifying a source — deciding that a channel is third party after all
 — is a **correction**, not a historical fact worth preserving. No ARPI question asks what category a
 source was classified as last quarter. Promoting this dimension to Type 2 would require an ADR.
 
-**Constraints to be enforced in the database — all `Planned`, because the DDL is owned by another agent
-and does not exist yet:**
+**Constraints in the database.** `sql/03_dimensions/06_dim_lead_source.sql` (owned by another agent)
+declares them, and they match this contract column for column:
 
-- `lead_source_id` UNIQUE, `lead_source_name` UNIQUE.
+- `lead_source_id` UNIQUE, `lead_source_name` UNIQUE, primary key on `lead_source_key`.
 - `source_category` CHECK over the nine declared values.
-- `CHECK (NOT is_internal OR NOT is_paid)` — the rule of section 4.1 in the database rather than only in
-  the generator.
+- `CHECK` implementing `is_internal ⇒ NOT is_paid` — the rule of section 4.1 in the database rather than
+  only in the generator.
 - Every column `NOT NULL`.
+
+The merge is `sql/03_dimensions/16_dim_lead_source_merge.sql`. **This dispatch did not run either script
+against a database**, so their behaviour is described from the scripts, not observed.
 
 ---
 
@@ -301,7 +306,7 @@ the SQL implementations arrive with the DDL and are **Planned**.
 
 | Reconciliation ID | Description | Left | Right | Tolerance | Status |
 |---|---|---|---|---|---|
-| `RECON-DIM-LEAD-SOURCE-ROWCOUNT` | Generated `dim_lead_source` rows equal `warehouse.dim_lead_source` rows after the merge | `generator:dim_lead_source` row count | `warehouse.dim_lead_source` `count(*)` | 0 (exact) | **Planned** |
+| `RECON-DIM-LEAD-SOURCE-ROWCOUNT` | Generated `dim_lead_source` rows equal `warehouse.dim_lead_source` rows after the merge | `generator:dim_lead_source` row count | `warehouse.dim_lead_source` `count(*)` | 0 (exact) | **Planned** — the objects exist, the reconciliation does not |
 
 Because the history policy is Type 1, generated rows and warehouse rows stay equal indefinitely. Expected
 count: **19 at every scale**.
@@ -310,10 +315,11 @@ count: **19 at every scale**.
 
 ## 10. Open questions and known gaps
 
-- **The warehouse table does not exist yet.** The generator, contract, data-quality suite and this
-  mapping are Implemented; `sql/03_dimensions/06_dim_lead_source.sql` and its merge are **Planned** and
-  owned by another agent. Everything in sections 5 and 7 that touches the database is a specification,
-  not a description of running code.
+- **The load has not been exercised from this dispatch.** The generator, contract, data-quality suite
+  and this mapping are Implemented and tested here. `sql/03_dimensions/06_dim_lead_source.sql`, its
+  merge, the raw table and the staging view exist and are owned by another agent — but no run in this
+  dispatch loaded a row, so everything in sections 5 and 7 that touches the database is read from those
+  scripts rather than observed.
 - **The latents are assumptions, not measurements.** The conversion and cost figures in section 4.2 are
   plausible for the segment `docs/research.md` describes, and they are internally consistent — but they
   are invented. Nothing in ARPI should be read as evidence about how any real channel performs.

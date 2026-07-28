@@ -15,13 +15,23 @@ with :data:`ACQUISITION_WARM_UP_DAYS` fixed at 180 (``PHASE1_CONTRACT.md`` §8).
 that warm-up the warehouse would start empty: every unit would be zero days old on day
 one, average inventory age would climb artificially from nothing, and the aged-inventory
 buckets (``61-90``, ``91-120``, ``Over 120``) would be unreachable for the first four
-months of any window. Warm-up dates are drawn at :data:`WARM_UP_WEIGHT_FACTOR` of the
-in-window daily rate, so a substantial minority of the fleet -- roughly a third at the
-``development`` profile -- is already ageing when the window opens.
+months of any window.
+
+Warm-up volume is **tapered** rather than flat: a day ``k`` days before the window opens
+is drawn at ``exp(-k / WARM_UP_TAPER_DAYS)`` of the in-window daily rate. A flat rate
+would hand day one a uniform age profile in which most standing units are already older
+than the average days-to-sale, so they would all clear in the first fortnight -- an
+artefact of the generator rather than a business. The taper approximates the age profile
+of a store that was already trading, and puts a substantial minority of the fleet --
+roughly 28% at the ``development`` profile -- into inventory before the window opens,
+with a real but thin tail of units over 120 days old on day one.
 
 The warm-up is a **generation** window, not a reporting window. ``dim_date`` covers the
 reporting window only, so nothing that happens before ``reporting.start_date`` is
 reported; the warm-up exists purely so that day one has plausible standing inventory.
+ARPI therefore models no disposition before ``reporting.start_date``: a unit acquired
+during the warm-up is, by construction, still in stock when the window opens, because a
+sale on a date the calendar does not contain could not be reported at all.
 
 Money
 -----
