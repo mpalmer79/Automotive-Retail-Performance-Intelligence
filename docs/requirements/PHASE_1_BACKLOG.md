@@ -2,12 +2,20 @@
 
 **Project:** Automotive Retail Performance Intelligence (ARPI)
 **Owner:** Michael Palmer
-**Version:** 1.0
+**Version:** 1.1
 **Last reviewed:** 2026-07-28
 **Conventions:** [README.md](README.md) · **Parent documents:** [ARCHITECTURE.md](../../ARCHITECTURE.md) · [DATA_DICTIONARY.md](../../DATA_DICTIONARY.md) · [KPI_CATALOG.md](../../KPI_CATALOG.md) · [DATA_GENERATION.md](../../DATA_GENERATION.md)
 
 > **No item in this backlog carries an hour, day, week, or sprint estimate.** Complexity is recorded as
 > `Small`, `Medium`, or `Large` only. See [README.md §3.3](README.md).
+
+> **Terminology.** `P1.1` through `P1.5` are **delivery increments**, not lifecycle phases. The eight
+> numbered phases in [ARCHITECTURE.md §27](../../ARCHITECTURE.md) are **lifecycle phases** and mean
+> something different. [ARCHITECTURE.md §27.1](../../ARCHITECTURE.md) is the authoritative definition and
+> carries the mapping in both directions;
+> [ADR-0003](../architecture-decisions/ADR-0003-delivery-increment-terminology.md) records why the
+> existing identifiers were disambiguated rather than renumbered. Item identifiers such as `P1.2-04` are
+> permanent and are never reused or renumbered ([README.md §3.1](README.md)).
 
 ---
 
@@ -29,7 +37,7 @@ before the gate can open.
 
 ---
 
-## 2. Phase 1.1 — Source generation for vehicles, employees, inventory, and sales
+## 2. Delivery Increment P1.1 — Source generation for vehicles, employees, customers, inventory, and sales
 
 *Architecture build-order steps 6 and 7 ([ARCHITECTURE.md §34](../../ARCHITECTURE.md)).*
 
@@ -198,13 +206,13 @@ before the gate can open.
 
 ---
 
-## 3. Phase 1.2 — Ingestion, dimensions, and the first two facts
+## 3. Delivery Increment P1.2 — Ingestion, dimensions, and the first two facts
 
 *Architecture build-order steps 6 and 8.*
 
 ---
 
-### `P1.2-01` — Raw and staging ingestion for the Phase 1.1 entities
+### `P1.2-01` — Raw and staging ingestion for the `P1.1` entities
 
 | Field | Value |
 |---|---|
@@ -216,7 +224,7 @@ before the gate can open.
 
 **Acceptance criteria**
 
-- [ ] A `raw.*_load` table exists for every Phase 1.1 source entity, with **all business columns as `text`** plus `raw_record_id`, `load_batch_id`, `source_file_name`, `source_row_number`, `ingested_at`.
+- [ ] A `raw.*_load` table exists for every `P1.1` source entity, with **all business columns as `text`** plus `raw_record_id`, `load_batch_id`, `source_file_name`, `source_row_number`, `ingested_at`.
 - [ ] A `staging.stg_*` **view** exists for each, casting to warehouse types and exposing only the most recent `load_batch_id`.
 - [ ] Structurally invalid records are rejected at staging and written to `audit.rejected_record` with a registered `REJ-*` code and the full payload.
 - [ ] Deduplication occurs at staging: a natural key appearing twice in one batch results in one surviving row and one rejection.
@@ -303,7 +311,7 @@ before the gate can open.
 **Acceptance criteria**
 
 - [ ] `warehouse.fact_vehicle_sale` DDL exists with the declared grain **one row per finalized vehicle transaction**, enforced by a unique constraint on the natural key `sale_id`.
-- [ ] All declared foreign keys resolve: `sale_date_key`, `delivery_date_key`, `dealership_key`, `vehicle_key`, `customer_key` (nullable for wholesale), `salesperson_key`, `desk_manager_key`, `finance_manager_key`, `lead_source_key` (nullable until Phase 1.4).
+- [ ] All declared foreign keys resolve: `sale_date_key`, `delivery_date_key`, `dealership_key`, `vehicle_key`, `customer_key` (nullable for wholesale), `salesperson_key`, `desk_manager_key`, `finance_manager_key`, `lead_source_key` (nullable until delivery increment `P1.4`).
 - [ ] `warehouse.dim_customer` exists and is loaded, since retail sales require a resolvable customer key. **This dimension has no dedicated backlog item and is delivered here** — see [DOCUMENTATION_BACKLOG.md](DOCUMENTATION_BACKLOG.md) `DOC-04`.
 - [ ] `dim_customer` contains **none** of the eight prohibited fields listed in [DATA_DICTIONARY.md §9.2](../../DATA_DICTIONARY.md), verified by schema inspection.
 - [ ] Monetary columns are `numeric`, never floating point.
@@ -356,7 +364,7 @@ before the gate can open.
 
 ---
 
-## 4. Phase 1.3 — Validation, reconciliation, and the first KPI logic
+## 4. Delivery Increment P1.3 — Validation, reconciliation, and the first KPI logic
 
 *Architecture build-order step 9.*
 
@@ -499,11 +507,11 @@ before the gate can open.
 - `tests/integration/test_reporting_views_sales.py` — view results match direct fact-table queries.
 - `tests/integration/test_reporting_views_inventory.py` — as above for inventory, including as-of-date behaviour.
 - `tests/integration/test_reporter_role_grants.py` — extended: `arpi_reporter` can read `reporting` and cannot read `raw`, `staging`, or `warehouse`.
-- `tests/integration/test_kpi_coverage.py` — every Phase 1.3 KPI ID resolves to at least one reporting view.
+- `tests/integration/test_kpi_coverage.py` — every `P1.3` KPI ID resolves to at least one reporting view.
 
 ---
 
-## 5. Phase 1.4 — Lead funnel
+## 5. Delivery Increment P1.4 — Lead funnel
 
 *Architecture build-order steps 10 and 11.*
 
@@ -548,7 +556,7 @@ before the gate can open.
 
 **Acceptance criteria**
 
-- [ ] Lead events carry `lead_id` in the reserved scheme `LEAD-#########`, creation date, store, source, campaign (nullable until Phase 1.5), customer, vehicle or model of interest, and assigned employees.
+- [ ] Lead events carry `lead_id` in the reserved scheme `LEAD-#########`, creation date, store, source, campaign (nullable until delivery increment `P1.5`), customer, vehicle or model of interest, and assigned employees.
 - [ ] Funnel flags are internally consistent: `is_appointment_shown` implies `is_appointment_set` implies `is_contacted`.
 - [ ] `is_sold = true` **only** where a valid finalized retail sale is linked.
 - [ ] `first_response_seconds` is non-negative where present, and **NULL for a genuine population of never-responded leads** — NULL must be distinguishable from zero.
@@ -656,7 +664,7 @@ before the gate can open.
 
 ---
 
-## 6. Phase 1.5 — Marketing, profitability, and MVP readiness
+## 6. Delivery Increment P1.5 — Marketing, profitability, and MVP readiness
 
 *Architecture build-order step 12, and the run-up to Gate 1.*
 
@@ -822,15 +830,15 @@ A backlog item is Done only when **all** of the following hold:
 
 ---
 
-## 8. Dependency graph across the five sub-phases
+## 8. Dependency graph across the five delivery increments
 
 ```mermaid
 flowchart TB
-    subgraph P0["Phase 0 — Implemented"]
+    subgraph P0["Delivery Increment Phase 0 — Implemented"]
         D0["dim_date · dim_dealership<br/>raw · staging · audit · reporting"]
     end
 
-    subgraph P11["Phase 1.1 — Source generation"]
+    subgraph P11["Delivery Increment P1.1 — Source generation"]
         A1["P1.1-01<br/>Vehicle model contract"]
         A2["P1.1-02<br/>Vehicle generator"]
         A3["P1.1-03<br/>Employee generator"]
@@ -838,7 +846,7 @@ flowchart TB
         A5["P1.1-05<br/>Sales source events"]
     end
 
-    subgraph P12["Phase 1.2 — Ingestion, dimensions, first facts"]
+    subgraph P12["Delivery Increment P1.2 — Ingestion, dimensions, first facts"]
         B1["P1.2-01<br/>Raw and staging ingestion"]
         B2["P1.2-02<br/>Vehicle dimension"]
         B3["P1.2-03<br/>Employee dimension"]
@@ -846,7 +854,7 @@ flowchart TB
         B5["P1.2-05<br/>fact_vehicle_inventory_snapshot"]
     end
 
-    subgraph P13["Phase 1.3 — Validation and KPI logic"]
+    subgraph P13["Delivery Increment P1.3 — Validation and KPI logic"]
         C1["P1.3-01<br/>Sales and inventory validation"]
         C2["P1.3-02<br/>Gross reconciliation"]
         C3["P1.3-03<br/>Inventory-age logic"]
@@ -854,7 +862,7 @@ flowchart TB
         C5["P1.3-05<br/>First reporting views"]
     end
 
-    subgraph P14["Phase 1.4 — Lead funnel"]
+    subgraph P14["Delivery Increment P1.4 — Lead funnel"]
         E1["P1.4-01<br/>Lead source dimension"]
         E2["P1.4-02<br/>Lead generator"]
         E3["P1.4-03<br/>Appointment generator"]
@@ -862,7 +870,7 @@ flowchart TB
         E5["P1.4-05<br/>Funnel reconciliation"]
     end
 
-    subgraph P15["Phase 1.5 — Marketing and MVP readiness"]
+    subgraph P15["Delivery Increment P1.5 — Marketing and MVP readiness"]
         F1["P1.5-01<br/>Marketing spend"]
         F2["P1.5-02<br/>Source-level profitability"]
         F3["P1.5-03<br/>MVP reporting layer"]
@@ -936,14 +944,14 @@ flowchart TB
 `P1.2-05` → `P1.3-01` → `P1.3-03` → `P1.3-04` → `P1.3-05` → `P1.5-03` → `P1.5-04` → **Gate 1**.
 
 The funnel branch (`P1.4-*`) and the marketing branch (`P1.5-01`, `P1.5-02`) can proceed in parallel with
-Phase 1.3 once their own dependencies are met, but `P1.4-04` and `P1.5-01` are still Gate 1 blockers,
+`P1.3` once their own dependencies are met, but `P1.4-04` and `P1.5-01` are still Gate 1 blockers,
 because Gate 1 requires **all five** MVP fact grains to be approved.
 
 ---
 
 ## 9. Backlog summary
 
-| Sub-phase | Items | Small | Medium | Large | Gate 1 blockers |
+| Delivery increment | Items | Small | Medium | Large | Gate 1 blockers |
 |---|---:|---:|---:|---:|---:|
 | Phase 1.1 | 5 | 0 | 2 | 3 | 5 |
 | Phase 1.2 | 5 | 0 | 3 | 2 | 5 |
