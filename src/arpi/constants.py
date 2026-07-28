@@ -13,6 +13,9 @@ from typing import Final
 # ---------------------------------------------------------------------------------------
 # Identity
 # ---------------------------------------------------------------------------------------
+#: Single source of truth for the package version; kept in step with ``pyproject.toml``.
+ARPI_VERSION: Final = "0.1.0"
+
 PROJECT_NAME: Final = "Automotive Retail Performance Intelligence"
 SHORT_NAME: Final = "ARPI"
 PACKAGE_NAME: Final = "arpi"
@@ -207,6 +210,9 @@ DIM_DEALERSHIP_COLUMNS: Final[tuple[str, ...]] = (
     "source_system",
 )
 
+# ``expiration_date`` carries the 9999-12-31 open-ended sentinel, which overflows
+# ``datetime64[ns]`` (max 2262-04-11). Second precision is used for every dealership
+# date column so all three share one dtype and the sentinel round-trips exactly.
 DIM_DEALERSHIP_DTYPES: Final[dict[str, str]] = {
     "dealership_key": "int32",
     "dealership_id": "string",
@@ -217,10 +223,10 @@ DIM_DEALERSHIP_DTYPES: Final[dict[str, str]] = {
     "city": "string",
     "state_code": "string",
     "market_region": "string",
-    "opened_date": "datetime64[ns]",
+    "opened_date": "datetime64[s]",
     "is_active": "bool",
-    "effective_date": "datetime64[ns]",
-    "expiration_date": "datetime64[ns]",
+    "effective_date": "datetime64[s]",
+    "expiration_date": "datetime64[s]",
     "is_current": "bool",
     "attribute_hash": "string",
     "source_system": "string",

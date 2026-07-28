@@ -68,15 +68,15 @@ flowchart TB
     VL --> GATE
     VG --> GATE
 
-    GATE -- "yes" --> FAIL
-    GATE -- "no" --> RAWCSV
+    GATE -->|yes| FAIL
+    GATE -->|no| RAWCSV
     RAWCSV --> MANIFEST
     RAWCSV --> SAMPLE
     MANIFEST --> ENABLED
 
-    ENABLED -- "false" --> SKIP
+    ENABLED -->|false| SKIP
     SKIP --> OK
-    ENABLED -- "true" --> RAWT
+    ENABLED -->|true| RAWT
     RAWT --> STGV
     STGV --> DIM
     DIM --> RVIEW

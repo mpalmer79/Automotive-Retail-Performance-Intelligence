@@ -27,14 +27,17 @@ The project is not a production dealership management system, CRM, desking platf
 
 ## 2.1 Naming History
 
-This project was originally drafted under the working title *DealerPulse BI*, the name proposed in the
-research phase. Before implementation began, the product identity was changed to **Automotive Retail
-Performance Intelligence**, short identifier **ARPI**, with the Python package `arpi` and the database
-roles `arpi_admin`, `arpi_loader`, and `arpi_reporter`. The rationale, the alternatives that were weighed,
-and the full migration impact are recorded in
+Earlier drafts of this document carried a different working title — the brand-style name proposed during
+the research phase and recorded in `docs/research.md` §11.1. That title was retired before implementation
+began, and the product identity became **Automotive Retail Performance Intelligence**, short identifier
+**ARPI**, with the Python package `arpi`, the configuration prefix `ARPI_`, and the database roles
+`arpi_admin`, `arpi_loader`, and `arpi_reporter`. The retired name, the alternatives that were weighed,
+the rationale, and the full migration impact are all recorded in
 [ADR-0001: Project Identity and Naming Convention](docs/architecture-decisions/ADR-0001-project-identity.md).
-The former working title is retired and appears in the repository only in that ADR and in the preserved
-research document, `docs/research.md`, where it is historical evidence.
+
+The retired title is spelled out in exactly two places in this repository — that ADR and the preserved
+research document — and nowhere else. `scripts/check_naming.py` enforces that boundary in continuous
+integration, which is why this section describes the former name rather than repeating it.
 
 ---
 

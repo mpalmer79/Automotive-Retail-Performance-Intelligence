@@ -166,8 +166,8 @@ The name may appear in exactly two locations, and in both it is historical:
    researched and recommended, not a statement of what the project is called, and it is deliberately not
    edited.
 
-`ARCHITECTURE.md` §2.1 "Naming History" refers to the retirement in explicitly historical terms and points
-here; that reference is a pointer to this ADR, not a use of the retired identity.
+`ARCHITECTURE.md` §2.1 "Naming History" records that a retirement happened and points here for the detail.
+It deliberately does not spell the retired title out, so that the two locations above remain the only two.
 
 Anywhere else — in prose, in code, in SQL, in configuration keys, in filenames, in commit messages, in
 diagrams, in Power BI artifacts, or in portfolio copy — the retired name and every derivative of it

@@ -120,6 +120,12 @@ BINARY_SUFFIXES: frozenset[str] = frozenset(
 # the check stays fast enough to run on every commit.
 MAX_SCANNED_BYTES: int = 4 * 1024 * 1024
 
+# Longest offending line echoed into the report before truncation.
+MAX_SNIPPET_LENGTH: int = 160
+
+# Guards against an allowlist entry being added without a review.
+EXPECTED_ALLOWLIST_SIZE: int = 3
+
 
 @dataclass(frozen=True)
 class Rule:
@@ -141,9 +147,7 @@ FORBIDDEN_RULES: tuple[Rule, ...] = (
     Rule(
         name="retired-repo-slug",
         pattern=re.compile(r"DealerPulse-BI", re.IGNORECASE),
-        explanation=(
-            "retired repository slug; use 'Automotive-Retail-Performance-Intelligence'"
-        ),
+        explanation=("retired repository slug; use 'Automotive-Retail-Performance-Intelligence'"),
     ),
     Rule(
         name="retired-compact-name",
@@ -214,12 +218,12 @@ class Finding:
     line_text: str
 
     def render(self) -> str:
+        """Return the one-finding report block for this match."""
         snippet = self.line_text.strip()
-        if len(snippet) > 160:
-            snippet = snippet[:157] + "..."
+        if len(snippet) > MAX_SNIPPET_LENGTH:
+            snippet = snippet[: MAX_SNIPPET_LENGTH - 3] + "..."
         return (
-            f"{self.path}:{self.line_number}: [{self.rule_name}] "
-            f"{self.explanation}\n    {snippet}"
+            f"{self.path}:{self.line_number}: [{self.rule_name}] {self.explanation}\n    {snippet}"
         )
 
 
@@ -281,9 +285,7 @@ def read_lines(path: Path) -> list[str] | None:
         return None
 
 
-def scan_lines(
-    rel_path: str, lines: Iterable[str], rules: tuple[Rule, ...]
-) -> list[Finding]:
+def scan_lines(rel_path: str, lines: Iterable[str], rules: tuple[Rule, ...]) -> list[Finding]:
     """Apply *rules* to *lines*, recording at most one finding per line."""
     findings: list[Finding] = []
     for line_number, line in enumerate(lines, start=1):
@@ -332,8 +334,11 @@ def run_check(roots: Sequence[Path]) -> tuple[list[Finding], list[Finding], int]
         if lines is None:
             continue
         files_scanned += 1
-        if rel_path not in ALLOWLISTED_PATHS:
-            violations.extend(scan_lines(rel_path, lines, FORBIDDEN_RULES))
+        if rel_path in ALLOWLISTED_PATHS:
+            # Allowlisted files preserve history verbatim, including the retired
+            # name and the misspellings that were corrected. Skip both rule sets.
+            continue
+        violations.extend(scan_lines(rel_path, lines, FORBIDDEN_RULES))
         if path.suffix.lower() == ".md":
             warnings.extend(scan_lines(rel_path, lines, SPELLING_WARNING_RULES))
 
@@ -379,9 +384,11 @@ def self_test() -> int:
     )
     expect("catch-all fires last", first_rule("the dealerpulse thing") == "retired-identifier")
     expect("case-insensitive", first_rule("DEALERPULSE") == "retired-identifier")
-    expect("one finding per line", len(scan_lines("t.md", ["DealerPulse BI"], FORBIDDEN_RULES)) == 1)
+    single_line_hits = scan_lines("t.md", ["DealerPulse BI"], FORBIDDEN_RULES)
+    expect("one finding per line", len(single_line_hits) == 1)
 
-    expect("current name is clean", first_rule("Automotive Retail Performance Intelligence") is None)
+    current_name = "Automotive Retail Performance Intelligence"
+    expect("current name is clean", first_rule(current_name) is None)
     expect("arpi roles are clean", first_rule("arpi_admin arpi_loader arpi_reporter") is None)
     expect("src/arpi is clean", first_rule("src/arpi/config.py") is None)
     expect("ARPI prefix is clean", first_rule("ARPI_DATABASE__HOST") is None)
@@ -396,7 +403,10 @@ def self_test() -> int:
     expect("Postgress warns", spelling("Postgress") == "postgresql-spelling")
     expect("PostGres warns", spelling("PostGres") == "postgresql-capitalisation")
 
-    expect("allowlist has three entries", len(ALLOWLISTED_PATHS) == 3)
+    expect(
+        "allowlist size is unchanged",
+        len(ALLOWLISTED_PATHS) == EXPECTED_ALLOWLIST_SIZE,
+    )
     expect("this file is allowlisted", "scripts/check_naming.py" in ALLOWLISTED_PATHS)
     expect("adr is allowlisted", any("ADR-0001" in p for p in ALLOWLISTED_PATHS))
     expect(
@@ -412,6 +422,7 @@ def self_test() -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Build the command-line argument parser."""
     parser = argparse.ArgumentParser(
         description="Fail when a retired ARPI identifier is used as a current identity.",
     )
@@ -436,6 +447,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    """Run the naming check and return a process exit code."""
     args = build_parser().parse_args(argv)
 
     if args.self_test:

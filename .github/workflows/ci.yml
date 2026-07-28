@@ -1,0 +1,294 @@
+# =============================================================================
+# Automotive Retail Performance Intelligence (ARPI) — continuous integration
+# =============================================================================
+# NO SECRETS RULE
+# ---------------
+# This workflow must run to completion on a fork, with zero repository secrets
+# configured. It never touches a hosted database, a cloud account, Power BI
+# Service, or any external service. The only credential that appears anywhere in
+# this file is the throwaway password of a PostgreSQL container that lives and
+# dies inside a single job. If a future change here needs `secrets.*`, that is a
+# signal the change belongs somewhere other than CI.
+#
+# JOBS
+# ----
+#   quality             formatting, lint, types, unit and data-quality tests
+#   repository-checks   naming, documentation links, secret safety net
+#   integration         PostgreSQL DDL + integration tests against a container
+#
+# `quality` and `repository-checks` are the gate for every change.
+# `integration` is deliberately a separate job so that a PostgreSQL service
+# hiccup is visually distinguishable from a genuine code failure.
+# =============================================================================
+
+name: CI
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+  workflow_dispatch:
+
+# Superseded runs on the same ref are cancelled; the newest push is the one that
+# matters and runner minutes are finite.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Read-only by default. No job here writes to the repository, publishes a
+# package, or comments on a pull request.
+permissions:
+  contents: read
+
+env:
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  PYTHONUNBUFFERED: "1"
+  FORCE_COLOR: "1"
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # 1. quality — the authoritative gate for Python source and tests.
+  #    Runs exactly the commands documented in CONTRIBUTING.md, in the same
+  #    order, so a green local run predicts a green CI run.
+  # ---------------------------------------------------------------------------
+  quality:
+    name: Quality (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      # Do not cancel 3.12 because 3.11 failed; seeing both results is the point
+      # of the matrix.
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          # pyproject.toml is the single source of dependency truth, so it is
+          # the only sensible cache key for this project.
+          cache-dependency-path: pyproject.toml
+
+      - name: Install the package with development and database extras
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,db]"
+
+      - name: Report the resolved toolchain
+        run: |
+          python --version
+          ruff --version
+          mypy --version
+          pytest --version
+
+      # Formatting first: a formatting failure is the cheapest to fix and would
+      # otherwise create noise in the lint output.
+      - name: Check formatting (ruff format)
+        run: ruff format --check .
+
+      # `--output-format=github` turns findings into inline annotations on the
+      # pull-request diff.
+      - name: Lint (ruff check)
+        run: ruff check --output-format=github .
+
+      - name: Type-check (mypy)
+        run: mypy src tests
+
+      # Integration tests are excluded here; they need PostgreSQL and run in the
+      # dedicated job below.
+      - name: Run unit and data-quality tests with coverage
+        run: |
+          pytest -m "not integration" \
+            --cov=arpi \
+            --cov-report=term-missing \
+            --cov-report=xml
+
+      - name: Upload the coverage report
+        # Upload even when the tests failed; the partial report is often the
+        # fastest way to see what regressed.
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-py${{ matrix.python-version }}
+          path: coverage.xml
+          if-no-files-found: warn
+          retention-days: 14
+
+  # ---------------------------------------------------------------------------
+  # 2. repository-checks — repository hygiene, not code correctness.
+  #    Every script here is standard library only and is run WITHOUT installing
+  #    the package, which keeps this job to a few seconds.
+  # ---------------------------------------------------------------------------
+  repository-checks:
+    name: Repository checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+        with:
+          # check_secrets.py inspects the git index, so a shallow checkout with
+          # full file listing is enough; history is not needed.
+          fetch-depth: 1
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # Fails if the retired project name is used as a current identity.
+      # ADR-0001 is the decision this enforces.
+      - name: Naming consistency
+        run: python scripts/check_naming.py
+
+      # Fails on a broken relative Markdown link or an unresolvable heading
+      # anchor. External links are not fetched; CI has no reason to be online.
+      - name: Documentation links
+        run: python scripts/check_docs_links.py
+
+      # A safety net, not a real secret scanner. See the module docstring and
+      # SECURITY.md for what it does and does not cover.
+      - name: Secret safety net
+        run: python scripts/check_secrets.py
+
+  # ---------------------------------------------------------------------------
+  # 3. integration — SQL objects and database-backed tests.
+  #    Kept separate on purpose: if this job is red and `quality` is green, the
+  #    problem is the database layer or the service container, not the Python
+  #    package.
+  #
+  #    The job SKIPS GRACEFULLY (green, with a notice) when `sql/` or
+  #    `tests/integration/` is absent, so early-phase branches are not blocked
+  #    by infrastructure that does not exist yet.
+  # ---------------------------------------------------------------------------
+  integration:
+    name: Integration (PostgreSQL 16)
+    runs-on: ubuntu-latest
+    continue-on-error: false
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          # THROWAWAY CI-ONLY CONTAINER CREDENTIAL — NOT A SECRET.
+          # This password exists for the lifetime of one job, on a container
+          # reachable only from that job's network namespace. It is written as a
+          # literal on purpose: putting it in `secrets.*` would imply it protects
+          # something, and would stop this workflow from running on forks.
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: arpi
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      # ARPI configuration overrides (see the configuration contract: `ARPI_`
+      # prefix, `__` nested delimiter, password never in YAML).
+      ARPI_PROFILE: test
+      ARPI_DATABASE__ENABLED: "true"
+      ARPI_DATABASE__HOST: localhost
+      ARPI_DATABASE__PORT: "5432"
+      ARPI_DATABASE__NAME: arpi
+      ARPI_DATABASE__USER: postgres
+      ARPI_DATABASE__PASSWORD: postgres
+      ARPI_DATABASE__SSLMODE: disable
+      # libpq equivalents so `psql` and any direct psycopg connection agree.
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGDATABASE: arpi
+      PGUSER: postgres
+      PGPASSWORD: postgres
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      # Guard: decide once whether there is anything to do, and reuse the answer.
+      - name: Decide whether the database layer exists yet
+        id: guard
+        run: |
+          sql_count=$(find sql -name '*.sql' -type f 2>/dev/null | wc -l)
+          if [ ! -d sql ] || [ "$sql_count" -eq 0 ]; then
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Integration skipped::No SQL scripts found under sql/."
+            exit 0
+          fi
+          if [ ! -d tests/integration ]; then
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Integration skipped::tests/integration/ does not exist."
+            exit 0
+          fi
+          echo "run=true" >> "$GITHUB_OUTPUT"
+          echo "Found $sql_count SQL script(s)."
+
+      - name: Set up Python 3.11
+        if: steps.guard.outputs.run == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install the package with the database extra
+        if: steps.guard.outputs.run == 'true'
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,db]"
+
+      - name: Ensure the psql client is available
+        if: steps.guard.outputs.run == 'true'
+        run: |
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq postgresql-client
+          fi
+          psql --version
+
+      - name: Wait for the PostgreSQL service container
+        if: steps.guard.outputs.run == 'true'
+        run: |
+          for attempt in $(seq 1 30); do
+            if pg_isready -q; then
+              echo "PostgreSQL is accepting connections (attempt $attempt)."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error title=PostgreSQL unavailable::The service container never became ready."
+          exit 1
+
+      # The SQL tree is numbered so that lexical order is execution order:
+      # 00_database -> 01_raw -> 02_staging -> 03_dimensions -> ... -> 08_validation.
+      - name: Run the ordered SQL initialisation sequence
+        if: steps.guard.outputs.run == 'true'
+        run: |
+          set -euo pipefail
+          find sql -name '*.sql' -type f | LC_ALL=C sort | while read -r script; do
+            echo "::group::$script"
+            psql -v ON_ERROR_STOP=1 --quiet --no-psqlrc -f "$script"
+            echo "::endgroup::"
+          done
+
+      # `--no-cov` disables the coverage plugin that pyproject.toml enables by
+      # default. The integration subset exercises SQL, not the whole package, so
+      # measuring it against the project-wide coverage floor would fail for a
+      # reason that has nothing to do with the database.
+      - name: Run integration tests
+        if: steps.guard.outputs.run == 'true'
+        run: pytest -m integration -v --no-cov
+
+      - name: Report a skipped run
+        if: steps.guard.outputs.run != 'true'
+        run: |
+          echo "Integration job skipped: the database layer is not present on this ref."
