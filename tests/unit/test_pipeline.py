@@ -14,7 +14,6 @@ from arpi.ingestion import database
 from arpi.ingestion.spec import spec_for
 from arpi.pipeline import GENERATION_ORDER, SKIP_REASON_NOT_REQUESTED, run_foundation
 
-
 #: Data-quality results one full run produces, across every entity.
 #:
 #: Pinned rather than derived: the point of the assertion is that a check cannot quietly

@@ -28,7 +28,8 @@ from tests.integration.conftest import (
 )
 
 from arpi.config import ArpiConfig, load_config
-from arpi.pipeline import run_foundation
+from arpi.ingestion.spec import spec_for
+from arpi.pipeline import GENERATION_ORDER, run_foundation
 
 pytestmark = pytest.mark.integration
 
@@ -79,13 +80,27 @@ def clean_state(committed_connection: Any) -> Iterator[None]:
     _truncate_all(committed_connection)
 
 
+#: Warehouse tables a full run populates, with the spec that describes each one.
+#:
+#: Derived from the ingestion registry rather than hand-listed, so an entity added to
+#: :data:`~arpi.pipeline.GENERATION_ORDER` is asserted on here without editing this file.
+DIMENSION_SPECS = tuple(
+    spec_for(entity_name)
+    for entity_name in GENERATION_ORDER
+    if spec_for(entity_name).warehouse_table is not None
+)
+
+
 def _truncate_all(connection: Any) -> None:
+    targets = ", ".join(
+        [
+            *(f"warehouse.{spec.warehouse_table}" for spec in DIMENSION_SPECS),
+            *(f"raw.{spec_for(entity).raw_table}" for entity in GENERATION_ORDER),
+            "audit.pipeline_run",
+        ]
+    )
     with connection.cursor() as cursor:
-        cursor.execute(
-            "TRUNCATE warehouse.dim_date, warehouse.dim_dealership, "
-            "raw.calendar_date_load, raw.dealership_load, audit.pipeline_run "
-            "RESTART IDENTITY CASCADE"
-        )
+        cursor.execute(f"TRUNCATE {targets} RESTART IDENTITY CASCADE")
     connection.commit()
 
 
@@ -134,7 +149,7 @@ def _scalar(connection: Any, statement: str) -> Any:
 def test_run_foundation_loads_the_warehouse(
     loadable_config: ArpiConfig, committed_connection: Any
 ) -> None:
-    """A full run populates both dimensions and reports the load as performed."""
+    """A full run populates both foundation dimensions and reports the load performed."""
     result = run_foundation(loadable_config, load_database=True)
 
     assert result.database_loaded is True
@@ -145,6 +160,73 @@ def test_run_foundation_loads_the_warehouse(
     store_rows = _scalar(committed_connection, "SELECT count(*) FROM warehouse.dim_dealership")
     assert date_rows == loadable_config.reporting.date_count
     assert store_rows == 3
+
+
+def test_every_dimension_is_populated(
+    loadable_config: ArpiConfig, committed_connection: Any
+) -> None:
+    """Every generated dimension reaches the warehouse with the row count it generated.
+
+    Regression test for the defect this wiring fixes: ten generators existed and were
+    unit-tested, but the pipeline invoked two of them, so six dimensions were empty in a
+    warehouse that reported a successful run. An empty table and an unwired generator
+    look identical from the outside, which is exactly why the count is asserted here
+    rather than only the non-emptiness.
+
+    ``dim_employee`` keeps Type 2 history, so the count that must match the generator's
+    one-row-per-version output is the current-row count; a superseded version is
+    legitimate history, not a duplicate.
+    """
+    result = run_foundation(loadable_config, load_database=True)
+    generated = {dataset.entity_name: dataset.row_count for dataset in result.datasets}
+
+    for spec in DIMENSION_SPECS:
+        predicate = " WHERE is_current" if spec.scd_type_2 else ""
+        rows = _scalar(
+            committed_connection,
+            f"SELECT count(*) FROM warehouse.{spec.warehouse_table}{predicate}",
+        )
+        assert rows > 0, f"warehouse.{spec.warehouse_table} is empty after a successful run"
+        if spec.scd_type_2:
+            # The generator emits one row per version; only the current ones reconcile
+            # against a source carrying one row per business key.
+            versions = _scalar(
+                committed_connection,
+                f"SELECT count(DISTINCT {spec.warehouse_match_key}) "
+                f"FROM warehouse.{spec.warehouse_table}",
+            )
+            assert rows == versions, (
+                f"warehouse.{spec.warehouse_table} has {rows} current row(s) for "
+                f"{versions} business key(s)"
+            )
+        else:
+            assert rows == generated[spec.entity_name], (
+                f"warehouse.{spec.warehouse_table} holds {rows} row(s) but "
+                f"{spec.entity_name} generated {generated[spec.entity_name]}"
+            )
+
+
+def test_source_entities_reach_staging(
+    loadable_config: ArpiConfig, committed_connection: Any
+) -> None:
+    """The pre-warehouse source entities land in raw and are accepted by staging.
+
+    ``acquisition_event`` and ``sale_event`` have no warehouse target yet -- their facts
+    are Planned -- so the furthest they travel is the staging view. Asserting that they
+    get there proves the generators are wired even though no dimension count moves.
+    """
+    result = run_foundation(loadable_config, load_database=True)
+    generated = {dataset.entity_name: dataset.row_count for dataset in result.datasets}
+
+    for entity_name in ("acquisition_event", "sale_event"):
+        spec = spec_for(entity_name)
+        staged = _scalar(
+            committed_connection, f"SELECT count(*) FROM staging.{spec.staging_view}"
+        )
+        assert staged == generated[entity_name], (
+            f"staging.{spec.staging_view} accepted {staged} of "
+            f"{generated[entity_name]} generated row(s)"
+        )
 
 
 def test_pipeline_run_reaches_a_terminal_status(
