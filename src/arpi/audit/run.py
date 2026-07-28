@@ -365,13 +365,14 @@ class AuditRecorder:
 
         Returns:
             A mapping of unqualified ``audit`` table name to a list of row dictionaries.
-            ``audit.rejected_record`` is always empty in Phase 0: the generators cannot
-            produce a rejected record because they only emit contract-shaped rows.
+            ``rejected_record`` is empty when nothing was rejected, which is the expected
+            state of a healthy run: ARPI generates its own source data, so a rejected row
+            means a generator or mapping defect rather than a data-supplier problem.
         """
         return {
             "pipeline_run": [self.run.as_audit_row()],
             "pipeline_run_row_count": [row.as_audit_row() for row in self.row_counts],
             "validation_result": [row.as_audit_row() for row in self.validation_results],
             "reconciliation_result": [row.as_audit_row() for row in self.reconciliation_results],
-            "rejected_record": [],
+            "rejected_record": [row.as_audit_row() for row in self.rejected_records],
         }

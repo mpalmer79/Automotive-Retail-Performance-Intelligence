@@ -1686,3 +1686,225 @@ benchmarks. Status: **Deferred**.
 - Promoting an entity from Deferred to Planned requires satisfying Gate 4
   ([ARCHITECTURE.md §28](ARCHITECTURE.md)): a stakeholder question requires it, the fact grain is defined,
   KPI ownership is defined, and testing requirements are defined.
+
+---
+
+## Phase 1 column contract — `warehouse.dim_vehicle_model`
+
+> **This section supersedes the attribute-level entry in §11 for column-level purposes.** §11 remains as
+> written; the exact, binding contract for the implemented source entity is here.
+
+| Field | Value |
+|---|---|
+| **Entity name** | `warehouse.dim_vehicle_model` |
+| **Layer** | Warehouse (dimension) |
+| **Purpose** | The governed model vocabulary every physical vehicle resolves to. Without it, model and trim performance, days supply by model, and franchise-alignment analysis are ungroupable — and model and trim performance is a core analytical requirement (`docs/research.md` §4.7). |
+| **Declared grain** | **One row per model year, make, model and trim combination.** |
+| **Primary key** | `vehicle_model_key` (integer surrogate) |
+| **Natural / source key** | `vehicle_model_id` (`VMD-#####`), unique. **Business natural key:** `(model_year, make, model, trim)`, unique. |
+| **Foreign keys** | None. `dim_vehicle_model` is a leaf dimension. |
+| **Referenced by** | `dim_vehicle`, `fact_vehicle_inventory_snapshot`, `fact_lead`, `fact_appointment` |
+| **Reference data** | `config/reference/vehicle_model_catalogue.yaml` |
+| **Generator** | `src/arpi/generation/vehicle_model.py` |
+| **Source-to-target mapping** | [STM-004](docs/source-to-target/STM-004-dim-vehicle-model.md) |
+| **Implementation status** | **Implemented** — source generation and the pandas data-quality suite. The SQL DDL, raw/staging objects and warehouse merge are **Planned**. |
+
+### Columns
+
+| Column | Type | Null | Allowed values / domain | Description | Synthetic generation source | PII class |
+|---|---|---|---|---|---|---|
+| `vehicle_model_key` | `integer` PK | no | 1..N | Surrogate key. **Deterministic ordinal 1..N by `vehicle_model_id`**, so the same model always receives the same key on regeneration. | Derived: rank in sorted natural-key order. | Non-personal |
+| `vehicle_model_id` | `varchar(16)` | no | `VMD-#####` | Natural / source key. Assigned deterministically over the **sorted natural key**. | Derived. | Synthetic identifier |
+| `model_year` | `smallint` | no | 1990..2030 | Model year. **Natural-key position 1.** | Catalogue. | Non-personal |
+| `make` | `varchar(40)` | no | Free text | Manufacturer name. **Natural-key position 2.** A commercial product name; not personal data. | Catalogue. | Non-personal |
+| `model` | `varchar(60)` | no | Free text | Model line name. **Natural-key position 3.** | Catalogue. | Non-personal |
+| `trim` | `varchar(40)` | no | Free text | Trim name. **Natural-key position 4.** **Never NULL** — a line with no distinguishing trim carries an explicit `Base`, so the grain constraint needs no NULL-distinctness rule. | Catalogue. | Non-personal |
+| `body_style` | `varchar(30)` | no | `Sedan` \| `Coupe` \| `Hatchback` \| `Wagon` \| `SUV` \| `Crossover` \| `Pickup` \| `Van` \| `Convertible` | Body style. | Catalogue (model line). | Non-personal |
+| `vehicle_class` | `varchar(30)` | no | `Compact` \| `Midsize` \| `Fullsize` \| `Luxury` \| `Sports` \| `Truck` \| `SUV` \| `Van` | Analytical size and segment class. | Catalogue (model line). | Non-personal |
+| `fuel_type` | `varchar(20)` | no | `Gasoline` \| `Diesel` \| `Hybrid` \| `Plug-in Hybrid` \| `Electric` | Propulsion type. Held at **trim** level, so a hybrid trim of a petrol line is expressible. | Catalogue (trim). | Non-personal |
+| `drivetrain` | `varchar(10)` | no | `FWD` \| `RWD` \| `AWD` \| `4WD` | Driven wheels. Held at **trim** level, so the AWD share is a property of the catalogue rather than of a rule. | Catalogue (trim). | Non-personal |
+| `transmission` | `varchar(20)` | no | `Automatic` \| `Manual` \| `CVT` | Transmission type. | Catalogue (trim). | Non-personal |
+| `doors` | `smallint` | no | 2..5 | Door count. Model-line value, overridable per trim. | Catalogue. | Non-personal |
+| `seating_capacity` | `smallint` | no | 2..8 | Seat count. Model-line value, overridable per trim (a captain's-chair trim seats 7 where the line seats 8). | Catalogue. | Non-personal |
+| `franchise_alignment` | `varchar(40)` | no | `Chevrolet` \| `Subaru` \| `Independent Used` | Which franchise, if any, may sell this model **new**. **Explicit and never NULL:** `Independent Used` states "carried as used inventory only", which is information; a NULL would be an absence of information. | Catalogue (model line). | Non-personal |
+| `is_current_model_line` | `boolean` | no | `true` / `false` | Whether the line is still sold new as of model year 2026. Gates new-vehicle eligibility in `dim_vehicle`. A `false` line may not carry a model year after 2025. | Catalogue (model line). | Non-personal |
+| `source_system` | `varchar(40)` | no | `arpi_synthetic_generator` | Constant lineage marker, on every row, so no reviewer can mistake this for a manufacturer extract. | Constant. | Non-personal |
+
+**Uniqueness constraints**
+
+- `vehicle_model_id` is unique (`DQ-VMD-001`).
+- `(model_year, make, model, trim)` is unique (`DQ-VMD-002`). **This is the grain constraint.**
+
+### Reference data provenance
+
+The catalogue in `config/reference/vehicle_model_catalogue.yaml` is a **representative synthetic subset**,
+hand-authored for this project. It is **not** sourced from any manufacturer feed, dealer management system,
+NHTSA vPIC extract, or other external source — **no network call is made at any point**, and
+`features.enable_public_vehicle_enrichment` stays `false` and is never read by the generator. It is **not
+complete** and **not current**: it does not enumerate every model line, trim, model year, or specification
+a manufacturer has offered or offers today, and the specifications recorded are plausible rather than
+verified. **Nothing in ARPI may present it as an authoritative product catalogue.**
+
+Make, model and trim strings are factual commercial product names — product identifiers, not personal data
+— and no row relates to any real vehicle, VIN, owner, or transaction.
+
+### Scale and subset selection
+
+| Profile | Rows |
+|---|---:|
+| `test` | 40 |
+| `development` | 120 |
+| `portfolio` | 240 |
+
+The catalogue is deliberately larger than every target. The generator selects a **deterministic subset**,
+stratified by `(franchise_alignment, era)` with a floor of 2 rows per non-empty stratum and the balance
+allocated in proportion to spare capacity. Stratification is what guarantees that even the 40-row `test`
+profile contains new-eligible franchise models, certified-eligible franchise models, and long-tail models.
+**A catalogue smaller than the target is a hard failure** that names both counts. Full derivation:
+[STM-004 §4.2](docs/source-to-target/STM-004-dim-vehicle-model.md).
+
+### Business rules
+
+- `vehicle_model_key` is the deterministic ordinal of `vehicle_model_id`, which is itself assigned over the
+  sorted natural key. Regeneration is therefore key-stable.
+- `vehicle_model_id` is unique (`DQ-VMD-001`); the natural key is unique (`DQ-VMD-002`).
+- Column names, order and count match the 16-column contract (`DQ-VMD-003`).
+- Every enumerated column draws from its declared domain (`DQ-VMD-004`).
+- `franchise_alignment` agrees with `make`: a `Chevrolet` or `Subaru` alignment carries that make, and no
+  `Independent Used` row carries a franchise make (`DQ-VMD-005`).
+- No prohibited PII column may exist (`DQ-VMD-006`) — the check inspects the **schema**, so an empty
+  prohibited column still fails the run.
+- Every row carries `source_system = 'arpi_synthetic_generator'`.
+- **Distributions are asserted as bands, never as exact figures.** AWD share 0.32–0.68 across the
+  dimension; Subaru rows ≥ 0.80 **and strictly below 1.0**; no single drivetrain above 0.70; no single trim
+  above 0.20; no single model year above 0.30 with at least 8 distinct years. The realised drivetrain and
+  body-style shares are logged at INFO on every run.
+
+### PII classification
+
+**No personal data.** `vehicle_model_id` is a `Synthetic identifier`; every other column is `Non-personal`.
+`make`, `model` and `trim` are commercial product names, explicitly allowed by the prohibited-field policy.
+There is no owner, driver, or contact relationship anywhere on this entity.
+
+### History policy
+
+**Slowly Changing Dimension Type 1.** A model's body style, fuel type or drivetrain is a fact about the
+product, not a state that changes over time; correcting a mis-specified trim should correct history rather
+than fork it. There are no `effective_date`, `expiration_date` or `is_current` columns, and nothing is ever
+deleted — `dim_vehicle` rows reference these keys.
+
+---
+
+## Phase 1 column contract — `warehouse.dim_vehicle`
+
+> **This section supersedes the attribute-level entry in §10 for column-level purposes.** §10 remains as
+> written; the exact, binding contract for the implemented source entity is here.
+
+| Field | Value |
+|---|---|
+| **Entity name** | `warehouse.dim_vehicle` |
+| **Layer** | Warehouse (dimension) |
+| **Purpose** | The population of physical units. Every inventory snapshot and every sale references one, which makes "a sale with no inventory or vehicle record" — a prohibited synthetic pattern ([ARCHITECTURE.md §15.4](ARCHITECTURE.md)) — structurally impossible rather than merely unlikely. |
+| **Declared grain** | **One row per unique physical vehicle.** |
+| **Primary key** | `vehicle_key` (integer surrogate) |
+| **Natural / source key** | `vehicle_id` (`VEH-#######`), unique. `synthetic_vin` is a second unique business identifier. |
+| **Foreign keys** | `vehicle_model_key` → `warehouse.dim_vehicle_model.vehicle_model_key` |
+| **Referenced by** | `acquisition_event`, `fact_vehicle_inventory_snapshot`, `fact_vehicle_sale` |
+| **Generator** | `src/arpi/generation/vehicle.py` |
+| **Source-to-target mapping** | [STM-005](docs/source-to-target/STM-005-dim-vehicle.md) |
+| **Implementation status** | **Implemented** — source generation and the pandas data-quality suite. The SQL DDL, raw/staging objects and warehouse merge are **Planned**. |
+
+### Columns
+
+| Column | Type | Null | Allowed values / domain | Description | Synthetic generation source | PII class |
+|---|---|---|---|---|---|---|
+| `vehicle_key` | `integer` PK | no | 1..N | Surrogate key. **Deterministic ordinal 1..N by `vehicle_id`.** | Derived. | Non-personal |
+| `vehicle_id` | `varchar(16)` | no | `VEH-#######` | Natural / source key, assigned by deterministic sequence. | Derived. | Synthetic identifier |
+| `synthetic_vin` | `char(17)` | no | `ARPI` + 13 characters from `ABCDEFGHJKLMNPRSTUVWXYZ0123456789` | Synthetic vehicle identifier. **Deliberately not a valid VIN** — see the VIN policy below. | Drawn from a seeded generator, with deterministic collision redraw. | Synthetic identifier |
+| `vehicle_model_key` | `integer` | no | Existing `dim_vehicle_model` key | Foreign key to the model dimension. | Drawn from the eligible model pool for the unit's store and condition. | Non-personal |
+| `vehicle_model_id` | `varchar(16)` | no | `VMD-#####` | **Lineage column.** Carries the model's natural key alongside the surrogate so a vehicle can be traced to its model without a join. | Derived with `vehicle_model_key`. | Synthetic identifier |
+| `condition_type` | `varchar(12)` | no | `New` \| `Used` \| `Certified` | Sale condition of the unit. | Drawn from the intended store's condition mix. | Non-personal |
+| `exterior_color` | `varchar(30)` | no | Free text from a weighted palette | Exterior paint description. A generic plausible description, **not** a manufacturer colour code. | Weighted, non-uniform draw. | Non-personal |
+| `interior_color` | `varchar(30)` | no | Free text from a weighted palette | Interior trim colour description. | Weighted, non-uniform draw. | Non-personal |
+| `odometer_reading` | `integer` | no | ≥ 0 | Miles showing **when the unit entered inventory**. A sale-time reading is a different measure and lives on the sale. | Derived from condition and model-year age with residual variance. | Non-personal |
+| `odometer_band` | `varchar(20)` | no | `New` \| `Under 10k` \| `10k-30k` \| `30k-60k` \| `60k-100k` \| `Over 100k` | Reporting band. **Derived from `odometer_reading`, never drawn.** Each boundary belongs to the band above it: 9,999 is `Under 10k`, 10,000 is `10k-30k`. A `New` unit always bands `New`. | Derived. | Non-personal |
+| `acquisition_source` | `varchar(40)` | no | `Customer Trade` \| `Auction` \| `Off-street Purchase` \| `Lease Return` \| `Dealer Trade` \| `Manufacturer Allocation` | How the unit entered inventory. | Constant for `New`; weighted draw otherwise. | Non-personal |
+| `source_system` | `varchar(40)` | no | `arpi_synthetic_generator` | Constant lineage marker. | Constant. | Non-personal |
+
+**Uniqueness and referential constraints**
+
+- `vehicle_id` is unique (`DQ-VEH-001`); `synthetic_vin` is unique (`DQ-VEH-002`).
+- `vehicle_model_key` is a foreign key to `dim_vehicle_model`; every `(vehicle_model_key,
+  vehicle_model_id)` pair must resolve to one model row (`DQ-VEH-004`).
+
+### Synthetic VIN policy
+
+`synthetic_vin` is 17 characters: the literal prefix `ARPI` plus 13 characters drawn from
+`ABCDEFGHJKLMNPRSTUVWXYZ0123456789`. The alphabet excludes `I`, `O` and `Q`, matching real VIN character
+rules, while the `ARPI` prefix makes the value **deliberately not a valid VIN**: no real World Manufacturer
+Identifier is `ARP`, and the ninth character is not a valid ISO 3779 check digit.
+
+**No real VIN data is held, read, or derived from.** The generator makes no network call, holds no VIN
+reference table, decodes nothing, and creates no owner relationship. Collisions are redrawn deterministically
+from the same seeded generator, bounded at 64 attempts; the keyspace is 33¹³ ≈ 5.1 × 10¹⁹, so exhaustion
+would indicate a defect rather than scarcity, and the error message says so. See
+[PRIVACY_AND_ETHICS.md](PRIVACY_AND_ETHICS.md).
+
+### Why there is no store column
+
+Which store holds a unit is a property of the **acquisition event**, not of the vehicle: a unit can be
+dealer-traded between stores, and a store column on the dimension would silently rewrite history for every
+fact already attached to it. `dim_vehicle` therefore carries **no `dealership_id` and no `dealership_key`**.
+
+The generator still needs a store to decide condition and model — a used-only store cannot be allocated a
+new unit — so it makes that decision deterministically and publishes it through
+`arpi.generation.vehicle.intended_store_assignments(config)`, which returns `vehicle_id → dealership_id`.
+The acquisition generator consumes that mapping.
+
+### Scale
+
+| Profile | Rows |
+|---|---:|
+| `test` | 60 |
+| `development` | 900 |
+| `portfolio` | 9,000 |
+
+**`portfolio` is never generated in CI or in routine tests.**
+
+### Business rules
+
+- **`condition_type = 'New'` ⇒ `acquisition_source = 'Manufacturer Allocation'`, `odometer_band = 'New'`
+  and `odometer_reading <= 50`** (`DQ-VEH-005`).
+- **`acquisition_source = 'Manufacturer Allocation'` occurs only on `New` units** (`DQ-VEH-005`).
+- **`GSA-003`, the independent used store, never holds a `New` or `Certified` unit and never takes a
+  manufacturer allocation.** It holds no franchise, so it cannot take factory allocation and cannot
+  certify. This is enforced by construction — its condition mix never offers those values — not by a
+  filter applied afterwards.
+- **`Certified` units are used-derived and bounded:** the acquisition source is `Customer Trade`,
+  `Lease Return`, `Auction` or `Dealer Trade`; the model is 1–8 model years old; the reading is 500–80,000
+  miles; and the model's franchise alignment matches the certifying store.
+- **`odometer_band` agrees with `odometer_reading` on every row**, at every boundary (`DQ-VEH-005`).
+- New and certified units are always aligned to the store's own franchise brand. Used inventory follows
+  each store's used-alignment mix, so a Chevrolet store's used lot is Chevrolet-heavy but carries other
+  makes.
+- Column names, order and count match the contract (`DQ-VEH-003`); every `synthetic_vin` is well formed
+  (`DQ-VEH-007`); no prohibited PII column may exist (`DQ-VEH-006`).
+- **Documented non-degeneracy thresholds:** no exterior colour above a 0.30 share (≥ 8 distinct), no
+  interior colour above 0.45 (≥ 5 distinct), no condition above 0.70 (all three present), no acquisition
+  source above 0.50 (all six present), no single model above 0.15, and each store within 0.07 of its
+  declared share. The realised condition and store shares are logged at INFO on every run.
+
+### PII classification
+
+**No personal data, and no owner relationship of any kind.** `vehicle_id`, `synthetic_vin` and
+`vehicle_model_id` are `Synthetic identifiers`; every other column is `Non-personal`. There is no owner,
+driver, registration, licence-plate, title, lienholder, or contact column, and `DQ-VEH-006` inspects the
+**schema** so that adding one fails the run before any value is written.
+
+### History policy
+
+**Slowly Changing Dimension Type 1.** A unit's model, VIN and colours never change. Its odometer does — but
+the reading that matters analytically is the reading *at a point in time*, which belongs on the inventory
+snapshot and on the sale. Versioning the dimension for odometer drift would produce one row per unit per
+mile band for no analytical gain. `dim_vehicle` holds the acquisition-time state, Type 1 corrects it in
+place, and nothing is ever deleted because facts reference these keys.
