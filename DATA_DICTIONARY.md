@@ -1044,8 +1044,11 @@ once the lead is closed the row is final.
 
 ### 19.3 PII classification / history policy
 
-`Non-personal` throughout. **Insert-then-update-once**; audit records preserve prior run history and are
-never purged by a rerun ([ARCHITECTURE.md §17.3](ARCHITECTURE.md)).
+`Non-personal` throughout. **Upsert on `run_uuid`**: the run is tracked in memory for the whole execution
+and written once, at the end of the database load, already carrying its terminal `status` and
+`completed_at`. Because `run_uuid` is derived deterministically from the run parameters, a rerun with the
+same parameters updates that row in place rather than creating a second one. Distinct runs are never
+purged, so prior run history is preserved ([ARCHITECTURE.md §17.3](ARCHITECTURE.md)).
 
 ---
 
@@ -1142,10 +1145,23 @@ never purged by a rerun ([ARCHITECTURE.md §17.3](ARCHITECTURE.md)).
 | `DQ-DLR-004` | No prohibited PII column is present | `dim_dealership` | critical |
 | `DQ-DLR-005` | `franchise_brand` is present for franchise stores | `dim_dealership` | critical |
 | `DQ-GEN-001` | The declared schema matches the output schema | all generated entities | critical |
-| `DQ-GEN-002` | The determinism digest is recorded | all generated entities | critical |
+| `DQ-GEN-002` | The determinism digest is recorded | all generated entities | **info** |
 
-**Supplementary SQL-side check families.** The twelve checks above are the shared register used by both the
-Python and SQL layers. The SQL validation layer (`sql/08_validation/`) additionally implements two families
+**`DQ-GEN-002` is `info`, not a gate.** It records the SHA-256 digest of each entity's canonical CSV
+rendering so a reviewer can recompute it; it does not compare that digest against a stored expectation,
+because no such expectation exists in the repository. An `info` result never fails a run and never
+contributes to `critical_failure_count`. The determinism *guarantee* is enforced elsewhere — by the seeded
+generators, by the timestamp-free manifest, and by the test suite — not by this check. Treating it as a
+gating control would overstate what it does.
+
+**Ten of these twelve checks are shared between the Python and SQL layers.** `DQ-GEN-001` and `DQ-GEN-002`
+are **Python-only, by design**: both inspect the generator's in-memory output — the declared-versus-actual
+column list, and the digest of the CSV bytes before they are written — so there is nothing for SQL to
+observe. They have no counterpart in `sql/08_validation/`. All ten `DQ-DATE-*` and `DQ-DLR-*` checks do
+appear verbatim in both layers.
+
+**Supplementary SQL-side check families.** The SQL validation layer (`sql/08_validation/`) additionally
+implements two families
 that have no Python counterpart, because they assert properties only the database can observe — catalogue
 state and cross-table referential integrity. They are Implemented and are listed here so the register is
 complete rather than merely canonical.
@@ -1178,7 +1194,10 @@ reporting boundary — `arpi_reporter` reads validation outcomes through
 
 ### 21.4 PII classification / history policy
 
-`Non-personal`. Insert-only.
+`Non-personal`. **Replace-on-rerun**: the loader issues
+`DELETE FROM audit.validation_result WHERE pipeline_run_id = %s` before re-inserting, so a rerun of the
+same logical run describes its latest execution rather than accumulating duplicate check results. Other
+runs' rows are never touched. See [STM-003 §8.1](docs/source-to-target/STM-003-audit-metadata.md).
 
 ---
 
@@ -1201,16 +1220,22 @@ reporting boundary — `arpi_reporter` reads validation outcomes through
 |---|---|---|---|---|---|---|
 | `reconciliation_result_id` | `bigserial` PK | no | ≥ 1 | Surrogate key. | Database sequence. | Non-personal |
 | `pipeline_run_id` | `bigint` FK | no | Existing run | Owning run. | Set by the loader. | Non-personal |
-| `reconciliation_id` | `text` | no | `RECON-*` identifiers | Stable reconciliation identifier. | Constant per reconciliation. | Non-personal |
-| `description` | `text` | no | Free text | What is being compared, in business terms. | Constant per reconciliation. | Non-personal |
-| `left_source` | `text` | no | Object or query name | Left-hand side identity. | Set by the loader. | Non-personal |
-| `left_value` | `numeric` | no | — | Left-hand total. | Measured. | Non-personal |
-| `right_source` | `text` | no | Object or query name | Right-hand side identity. | Set by the loader. | Non-personal |
-| `right_value` | `numeric` | no | — | Right-hand total. | Measured. | Non-personal |
-| `difference` | `numeric` **GENERATED ALWAYS AS (`left_value − right_value`) STORED** | no | — | Signed difference. Database-generated so it can never drift from its inputs. | Generated column. | Non-personal |
+| `reconciliation_id` | `text` | **yes** | `RECON-*` identifiers | Stable reconciliation identifier. Nullable in the DDL; always supplied by the loader. | Constant per reconciliation. | Non-personal |
+| `description` | `text` | **yes** | Free text | What is being compared, in business terms. Nullable in the DDL; always supplied by the loader. | Constant per reconciliation. | Non-personal |
+| `left_source` | `text` | **yes** | Object or query name, e.g. `generator:dim_date` | Left-hand side identity. Nullable in the DDL; always supplied by the loader. | Set by the loader. | Non-personal |
+| `left_value` | `numeric` | **yes** | — | Left-hand total. Nullable in the DDL; a NULL would propagate into the generated `difference`, so the loader never omits it. | Measured. | Non-personal |
+| `right_source` | `text` | **yes** | Object or query name, e.g. `warehouse.dim_date` | Right-hand side identity. Nullable in the DDL; always supplied by the loader. | Set by the loader. | Non-personal |
+| `right_value` | `numeric` | **yes** | — | Right-hand total. Nullable in the DDL; a NULL would propagate into the generated `difference`, so the loader never omits it. | Measured. | Non-personal |
+| `difference` | `numeric` **GENERATED ALWAYS AS (`left_value − right_value`) STORED** | yes | — | Signed difference. Database-generated so it can never drift from its inputs; NULL if either side is NULL. | Generated column. | Non-personal |
 | `tolerance` | `numeric` | no | ≥ 0, default `0` | Permitted absolute difference. Zero for count reconciliations. | Configured. | Non-personal |
-| `status` | `text` | no | `passed` \| `failed` (CHECK constrained) | Outcome. There is no `warning` here: totals either reconcile within tolerance or they do not. | Set by the loader. | Non-personal |
-| `evaluated_at` | `timestamptz` | no | UTC timestamp | When the reconciliation ran. | Wall clock. | Non-personal |
+| `status` | `text` | **yes** | `passed` \| `failed` (CHECK constrained) | Outcome. There is no `warning` here: totals either reconcile within tolerance or they do not. Nullable in the DDL — a CHECK of the form `status IN (…)` is satisfied vacuously by NULL — but always supplied by the loader. | Set by the loader. | Non-personal |
+| `evaluated_at` | `timestamptz` | **yes** | UTC timestamp, default `now()` | When the reconciliation ran. Nullable in the DDL, but the loader omits the column from its INSERT so the `now()` default always populates it. | Database default. | Non-personal |
+
+> **Nullability here is looser than the values ever are.** Eight of these columns are nullable in
+> `sql/00_database/03_audit_tables.sql` even though the loader supplies every one of them on every write.
+> The DDL is the authority for what the database will accept; this table now matches it. The columns that
+> *must* be trusted structurally — the primary key, the foreign key, and `tolerance` — are the ones that
+> carry `NOT NULL`.
 
 ### 22.2 Business rules
 
@@ -1218,10 +1243,16 @@ reporting boundary — `arpi_reporter` reads validation outcomes through
 - Monetary reconciliations use `validation.numeric_absolute_tolerance` (0.01) and
   `validation.numeric_relative_tolerance` (0.001).
 - Count reconciliations use `tolerance = 0`.
+- Both Phase 0 reconciliations — `RECON-DIM-DATE-ROWCOUNT` and `RECON-DIM-DEALERSHIP-ROWCOUNT` — are count
+  reconciliations, so both run at `tolerance = 0` ([KPI_CATALOG.md §36](KPI_CATALOG.md)).
 
 ### 22.3 PII classification / history policy
 
-`Non-personal`. Insert-only.
+`Non-personal`. **Replace-on-rerun**: the loader issues
+`DELETE FROM audit.reconciliation_result WHERE pipeline_run_id = %s` before re-inserting, so a rerun of the
+same logical run describes its latest execution rather than accumulating duplicates. The `run_uuid` is
+derived deterministically from the run parameters, so a rerun *is* the same logical run; other runs' rows
+are never touched. See [STM-003 §8.1](docs/source-to-target/STM-003-audit-metadata.md).
 
 ---
 
@@ -1247,7 +1278,7 @@ reporting boundary — `arpi_reporter` reads validation outcomes through
 | `source_entity` | `text` | no | Entity name | Which source entity the record came from. | Set by the loader. | Non-personal |
 | `source_record_key` | `text` | yes | Natural key or row number | Identity of the rejected record. **NULL when the record is too malformed to identify** — the payload still preserves it. | Set by the loader. | Non-personal |
 | `rejection_code` | `text` | no | `REJ-*` codes (see [docs/source-to-target/](docs/source-to-target/README.md)) | Machine-readable reason. | Set by the loader. | Non-personal |
-| `rejection_reason` | `text` | no | Free text | Human-readable reason. | Set by the loader. | Non-personal |
+| `rejection_reason` | `text` | **yes** | Free text | Human-readable reason. Nullable in the DDL; `rejection_code` beside it is `NOT NULL`, so a rejection is never wholly unexplained even without the prose. | Set by the loader. | Non-personal |
 | `record_payload` | `jsonb` | yes | JSON object | The offending record as received. NULL where the payload cannot be serialized. **Because all source data is synthetic, storing the payload carries no privacy risk** — this would be a very different decision with real data. | Captured verbatim. | Non-personal |
 | `rejected_at` | `timestamptz` | no | UTC timestamp | When the rejection occurred. | Wall clock. | Non-personal |
 
@@ -1256,11 +1287,16 @@ reporting boundary — `arpi_reporter` reads validation outcomes through
 - The rejected-record ratio must not exceed `validation.max_rejected_record_ratio` (0.0 for the Phase 0
   slice). **Any rejection at all fails a Phase 0 run**, because the Phase 0 source data is generated by
   ARPI itself and there is no legitimate reason for it to be malformed.
-- Every rejection carries both a code and a reason.
+- Every rejection carries a code (`NOT NULL`) and, in practice, a reason (nullable in the DDL, always
+  written by the loader).
+- **This table is always empty in Phase 0.** The generators emit only contract-shaped rows, so no code path
+  can produce a rejection. The table exists as a contract for the ingestion work in Phase 1.2.
 
 ### 23.3 PII classification / history policy
 
-`Non-personal`. Insert-only, retained across runs.
+`Non-personal`. Insert-only, retained across runs. Unlike `audit.validation_result` and
+`audit.reconciliation_result`, this table is **not** cleared on a rerun — nothing writes to it in Phase 0,
+so there is nothing to replace.
 
 ---
 

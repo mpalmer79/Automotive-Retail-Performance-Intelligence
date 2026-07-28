@@ -224,6 +224,13 @@ its composite-PK upsert.
 
 The net semantics: **a run's child rows always describe its most recent execution.**
 
+**The SQL write path behaves differently.** `audit.fn_record_validation_result` and
+`audit.fn_record_all_dq_checks` (`sql/08_validation/`) append a row on every call — they do not replace.
+If the SQL checks are recorded against a run and the Python loader is then rerun for that same run, the
+loader's `DELETE` removes the SQL-appended rows along with its own. Recording the SQL checks *after* the
+Python load is therefore the safe order. This divergence between the two write paths is not yet reconciled
+in either direction; it is noted in section 13.
+
 **Other runs are never touched.** The `DELETE` is scoped to one `pipeline_run_id`, so every other run's
 evidence — including runs under different profiles or seeds — survives untouched, and no audit object is
 ever truncated. That satisfies [ARCHITECTURE.md §17.3](../../ARCHITECTURE.md), which requires audit records
@@ -340,9 +347,23 @@ exist.
 - **No retention policy.** Audit rows accumulate indefinitely. At Phase 0 volumes this is irrelevant, but a
   portfolio-scale pipeline run with per-entity counts and per-check results will grow the schema steadily.
   No purge, archive, or partitioning strategy is defined.
-- **No cleanup of abandoned runs.** A run whose process died stays `running` with `completed_at = NULL`
-  forever. This is deliberate — the stale row is evidence — but it means
-  `reporting.vw_pipeline_run_summary` will show runs that never completed, and a reader needs to know that.
+- **A run that dies before the database load leaves no trace in the `audit` schema.** All audit rows are
+  written in one batch at the end of the load (section 8), so an aborted run, or a run with
+  `database.enabled = false`, produces no `audit.pipeline_run` row at all. Nothing is ever observed in
+  `status = 'running'`, which is why `reporting.vw_pipeline_run_summary` can always report a real duration
+  — but it also means the database holds no evidence of a run that crashed early. In that case the CSVs,
+  the manifest, and the printed validation report are the evidence.
+- **The Python and SQL write paths disagree on rerun semantics.** The loader replaces a run's
+  `audit.validation_result` rows; `audit.fn_record_validation_result` and `audit.fn_record_all_dq_checks`
+  append to them. The two have not been reconciled, and `sql/README.md` still describes audit history as
+  purely accumulating, which is true of the SQL functions and not of the loader.
+- **`check_category` has no agreed vocabulary and no constrained domain.** The Python constants, the SQL
+  checks, [DATA_DICTIONARY.md §21.1](../../DATA_DICTIONARY.md) and the DDL comment in
+  `sql/00_database/03_audit_tables.sql` each name a different set of category values, and the column
+  carries no `CHECK` constraint. Registered as `DOC-24` in
+  [DOCUMENTATION_BACKLOG.md](../requirements/DOCUMENTATION_BACKLOG.md).
+- **`staging` and `rejected` row counts are not recorded**, so [ARCHITECTURE.md §21.4](../../ARCHITECTURE.md)
+  is not satisfied. See section 4 and `DOC-23`.
 - **`critical_failure_count` is maintained by the application**, not by a database trigger. It can in
   principle disagree with `audit.validation_result`. The self-consistency rule in section 11 is asserted by
   tests rather than enforced by a constraint.

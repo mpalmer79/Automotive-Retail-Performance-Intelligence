@@ -372,9 +372,13 @@ names "if names are used at all", and ARPI's answer is that they are not.
 
 ### 7.4 Enforcement
 
-`DQ-DLR-004` inspects the **schema** of the generated output and of `raw.dealership_load`, not merely the
-values. A prohibited column cannot be introduced accidentally and pass validation just because it happens
-to be empty. Section 12 of [PRIVACY_AND_ETHICS.md](PRIVACY_AND_ETHICS.md) records the full
+`DQ-DLR-004` inspects the **schema**, not the values. A prohibited column cannot be introduced accidentally
+and pass validation just because it happens to be empty. There are two implementations, both schema-level:
+the Python check reads the column list of the generated frame before anything is written, and the SQL check
+in `sql/08_validation/02_dim_dealership_checks.sql` reads the PostgreSQL catalogue for
+`warehouse.dim_dealership`. **Neither inspects `raw.dealership_load`** — the raw landing table carries
+whatever columns the CSV carried, and it is the generated frame and the warehouse dimension that the policy
+binds. Section 12 of [PRIVACY_AND_ETHICS.md](PRIVACY_AND_ETHICS.md) records the full
 policy-to-control mapping and its honest implementation status.
 
 ---
@@ -450,7 +454,9 @@ infer them.
 Distribution requirements, all Planned:
 
 - **Seasonality** is applied as a multiplicative monthly factor on lead and sale volume, reflecting
-  Southern New England seasonal patterns ([ARCHITECTURE.md §8.3](ARCHITECTURE.md)).
+  northern New England seasonal patterns as they present in southern New Hampshire — where all three
+  fictional stores sit, `market_region = Southern New Hampshire`
+  ([ARCHITECTURE.md §8.3](ARCHITECTURE.md)).
 - **Day-of-week effects** are applied to lead arrival and showroom traffic. Weekends are selling days.
 - **Gross** is drawn from a skewed distribution with a genuine negative tail — negative-front deals are a
   required measure (`docs/research.md` §4.2), so the generator must produce them.
@@ -824,6 +830,7 @@ pytest -m "not integration" --cov=arpi --cov-report=term-missing --cov-report=xm
 pytest -m "integration"        # only in the optional postgres job
 python scripts/check_naming.py
 python scripts/check_docs_links.py
+python scripts/check_secrets.py
 ```
 
 Pytest markers: `integration` (requires PostgreSQL), `data_quality` (runs generators, no database),

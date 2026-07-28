@@ -225,3 +225,94 @@ def _snapshot(connection: Any) -> dict[str, int]:
             "audit.reconciliation_result",
         )
     }
+
+
+def test_reconciliation_survives_a_type_2_transition(
+    loadable_config: ArpiConfig, committed_connection: Any
+) -> None:
+    """A store attribute change must not fail the dealership reconciliation.
+
+    Regression test. The warehouse row count was an unfiltered ``count(*)``, but
+    ``warehouse.dim_dealership`` keeps Type 2 history: one row per store *version*. As
+    soon as any store gained a second version the count exceeded the generator's three
+    rows and the reconciliation failed for a load that was entirely correct.
+    """
+    run_foundation(loadable_config, load_database=True)
+
+    # Expire one store and insert a superseding version, exactly as the SCD2 merge does.
+    with committed_connection.cursor() as cursor:
+        cursor.execute(
+            """
+            UPDATE warehouse.dim_dealership
+               SET is_current = false, expiration_date = DATE '2024-01-01'
+             WHERE dealership_id = 'GSA-002' AND is_current
+            """
+        )
+        cursor.execute(
+            """
+            INSERT INTO warehouse.dim_dealership
+            SELECT (SELECT max(dealership_key) + 1 FROM warehouse.dim_dealership),
+                   dealership_id, store_name, store_short_name, store_type,
+                   franchise_brand, city, state_code, 'Merrimack Valley', opened_date,
+                   is_active, DATE '2024-01-02', DATE '9999-12-31', true,
+                   attribute_hash, source_system
+              FROM warehouse.dim_dealership
+             WHERE dealership_id = 'GSA-002' AND NOT is_current
+            """
+        )
+    committed_connection.commit()
+
+    versions = _scalar(committed_connection, "SELECT count(*) FROM warehouse.dim_dealership")
+    assert versions == 4, "the fixture should have created a second store version"
+
+    run_foundation(loadable_config, load_database=True)
+
+    with committed_connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT status, left_value, right_value FROM audit.reconciliation_result "
+            "WHERE reconciliation_id = 'RECON-DIM-DEALERSHIP-ROWCOUNT'"
+        )
+        rows = cursor.fetchall()
+
+    assert rows, "the dealership reconciliation must be recorded"
+    for status, left_value, right_value in rows:
+        assert status == "passed", (
+            f"Type 2 history broke the reconciliation: generated {left_value} "
+            f"versus warehouse {right_value}"
+        )
+
+
+def test_rerun_preserves_audit_rows_written_by_the_sql_layer(
+    loadable_config: ArpiConfig, committed_connection: Any
+) -> None:
+    """Validation results recorded from SQL must survive a Python rerun.
+
+    The loader replaces its own child rows on rerun. Those rows are scoped to the
+    generator-side target names, so results the SQL data-quality scripts appended under
+    warehouse-qualified names must be left alone.
+    """
+    run_foundation(loadable_config, load_database=True)
+
+    with committed_connection.cursor() as cursor:
+        cursor.execute("SELECT max(pipeline_run_id) FROM audit.pipeline_run")
+        run_id = cursor.fetchone()[0]
+        cursor.execute(
+            """
+            INSERT INTO audit.validation_result (
+                pipeline_run_id, check_id, check_name, check_category, target_object,
+                severity, status, failed_record_count, evaluated_at
+            )
+            VALUES (%s, 'DQ-DATE-001', 'unique date key', 'uniqueness',
+                    'warehouse.dim_date', 'critical', 'passed', 0, now())
+            """,
+            (run_id,),
+        )
+    committed_connection.commit()
+
+    run_foundation(loadable_config, load_database=True)
+
+    surviving = _scalar(
+        committed_connection,
+        "SELECT count(*) FROM audit.validation_result WHERE target_object = 'warehouse.dim_date'",
+    )
+    assert surviving == 1, "the rerun deleted a validation result the SQL layer recorded"

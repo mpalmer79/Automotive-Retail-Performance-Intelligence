@@ -162,7 +162,8 @@ A public case-study page may be added after the analytical system is complete, b
 
 - Southern New Hampshire
 - Northern Massachusetts influence
-- Southern New England seasonal patterns
+- Northern New England seasonal patterns, as they present in southern New Hampshire — a four-season
+  climate with a hard winter, a mud season, and a compressed spring selling surge
 
 ### 8.4 Reporting period
 
@@ -1549,7 +1550,7 @@ Automotive-Retail-Performance-Intelligence/
 ├── .github/
 │   └── workflows/                         [now]      Continuous integration definitions
 ├── scripts/                               [now]      Repository governance checks
-│                                                     (naming and documentation-link checks)
+│                                                     (naming, documentation-link and secret checks)
 ├── config/
 │   ├── development.yaml                   [now]
 │   ├── test.yaml                          [now]
@@ -1576,7 +1577,7 @@ Automotive-Retail-Performance-Intelligence/
 │   ├── 03_dimensions/                     [now]      dim_date, dim_dealership
 │   ├── 04_facts/                          [empty]    Fact tables arrive in Phase 1
 │   ├── 05_reporting/                      [now]      Phase 0 reporting views
-│   ├── 06_indexes/                        [empty]    Index tuning follows the facts
+│   ├── 06_indexes/                        [now]      Six indexes today; further tuning follows the facts
 │   ├── 07_security/                       [now]      arpi_admin / arpi_loader / arpi_reporter
 │   └── 08_validation/                     [now]      Audit objects and SQL data-quality checks
 ├── src/
@@ -1585,7 +1586,7 @@ Automotive-Retail-Performance-Intelligence/
 │   ├── unit/                              [now]      No database required
 │   ├── data_quality/                      [now]      Runs the generators, no database required
 │   ├── integration/                       [now]      Marked `integration`, requires PostgreSQL
-│   └── fixtures/                          [now]
+│   └── fixtures/                          [empty]    Shared test fixtures arrive with the Phase 1 facts
 ├── notebooks/                             [empty]    No notebooks exist yet
 ├── powerbi/
 │   ├── ARPI_Performance_Intelligence.pbix [planned]  (not yet created)

@@ -51,7 +51,7 @@ flowchart LR
         TUNIT["tests/unit/<br/>no database"]
         TDQ["tests/data_quality/<br/>runs generators, no database"]
         TINT["tests/integration/<br/>marked integration, needs PostgreSQL"]
-        SCRIPTS["scripts/<br/>check_naming.py · check_docs_links.py"]
+        SCRIPTS["scripts/<br/>check_naming.py · check_docs_links.py<br/>check_secrets.py"]
         CI[".github/workflows/<br/>continuous integration"]
     end
 
@@ -202,9 +202,14 @@ Several directories are intentionally empty and are labelled as such everywhere 
 | `powerbi/` | Scope gate 1 blocks Power BI work until fact grains are approved and KPI formulas are written |
 | `excel/` | The operating report needs reporting views over facts that do not exist |
 | `portfolio/` | Packaging follows the analytical system, not the other way round |
-| `sql/04_facts/`, `sql/06_indexes/` | Facts arrive in Phase 1.2; index tuning follows the facts |
+| `sql/04_facts/` | Holds a README explaining the boundary, but no DDL. Facts arrive in Phase 1.2 |
 | `data/external/` | Public enrichment is planned for Phase 1.1 |
 | `docs/findings/` | Findings require analysis, and no analysis has been performed |
+| `tests/fixtures/` | Shared fixtures arrive with the Phase 1 facts; Phase 0 tests build their own inputs |
+
+**`sql/06_indexes/` is not empty.** It contains `00_indexes.sql`, which creates six secondary indexes that
+existing queries actually need and documents, at length, the indexes it deliberately does **not** create.
+Further index tuning follows the facts, but the directory is live today.
 
 They are tracked rather than deleted so the intended structure is visible, and each is labelled
 `[empty]` or `[planned]` in [`../../ARCHITECTURE.md`](../../ARCHITECTURE.md) §24.

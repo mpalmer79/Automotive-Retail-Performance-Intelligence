@@ -295,8 +295,10 @@ object is actually built, and never before.
 
 ## The twelve Phase 0 validation checks
 
-These `check_id` values are shared between the Python validation framework and the SQL checks, and they
-are written to `audit.validation_result` on every run.
+All twelve run in the Python validation framework on every run. **Ten of them are also implemented in the
+SQL checks under `sql/08_validation/`, sharing the identifier verbatim**; the two exceptions are
+`DQ-GEN-001` and `DQ-GEN-002`, which inspect the generator's in-memory output and so have nothing for SQL
+to observe. Results reach `audit.validation_result` only when the optional database load runs.
 
 | `check_id` | Checks that |
 |---|---|
@@ -311,10 +313,12 @@ are written to `audit.validation_result` on every run.
 | `DQ-DLR-004` | no prohibited PII column is present |
 | `DQ-DLR-005` | `franchise_brand` is present for franchise stores |
 | `DQ-GEN-001` | the declared schema matches the output schema |
-| `DQ-GEN-002` | the determinism digest is recorded |
+| `DQ-GEN-002` | the determinism digest is recorded (severity `info` — it records, it does not gate) |
 
 `DQ-DLR-004` is worth noting: it does not merely check that PII fields are empty, it checks that the
-columns do not exist. A prohibited column cannot be accidentally populated if it was never created.
+columns do not exist. A prohibited column cannot be accidentally populated if it was never created. The
+Python side inspects the generated frame's column list; the SQL side inspects the PostgreSQL catalogue for
+`warehouse.dim_dealership`. Neither reads row data.
 
 ---
 

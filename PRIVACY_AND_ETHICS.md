@@ -395,7 +395,7 @@ whose enforcement status is overstated is worse than one with acknowledged gaps.
 |---:|---|---|---|
 | 1 | No prohibited PII column in the dealership dimension | `DQ-DLR-004` — schema inspection, `critical` severity, fails the run | **Implemented** (Phase 0 slice) |
 | 2 | Generated output matches its declared schema, so a column cannot appear unannounced | `DQ-GEN-001` — schema conformance, `critical` | **Implemented** |
-| 3 | Output is reproducible and therefore auditable | `DQ-GEN-002` — determinism digest recorded; `content_digest` in `generation_manifest.json` | **Implemented** |
+| 3 | Output is reproducible and therefore auditable | `DQ-GEN-002` — determinism digest recorded, severity **`info`**: it publishes the digest for a reviewer to recompute, it does **not** gate the run. The enforcing controls are the seeded generators, the timestamp-free `generation_manifest.json` with its `content_digest` per entity, and the determinism tests | **Implemented** (as evidence, not as a gate) |
 | 4 | Every validation outcome is recorded and publishable | `audit.validation_result` + `reporting.vw_data_quality_summary` | **Implemented** |
 | 5 | Rejected records are quarantined, not silently dropped | `audit.rejected_record`; `validation.max_rejected_record_ratio = 0.0` | **Implemented** |
 | 6 | Every run is traceable to a seed and profile | `audit.pipeline_run.random_seed`, `profile_name`, `arpi_version` | **Implemented** |

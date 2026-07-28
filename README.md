@@ -227,7 +227,7 @@ Labels are used strictly. **Implemented** means it exists and runs today.
 | CSV and manifest writer | Implemented | Deterministic CSV plus `generation_manifest.json` with SHA-256 content digests |
 | PostgreSQL load of `dim_date` and `dim_dealership` | Implemented | Optional; `database.enabled` defaults to `false` |
 | Audit recording | Implemented | Pipeline runs, row counts, validation results, reconciliations, rejected records |
-| Command-line interface | Implemented | `arpi check-config`, `arpi generate`, `arpi run-foundation` |
+| Command-line interface | Implemented | `arpi version`, `arpi check-config`, `arpi generate`, `arpi run-foundation` |
 | SQL: schemas, roles, raw, staging, dimensions, audit, reporting views | Implemented | Ordered and re-runnable; `arpi_admin` / `arpi_loader` / `arpi_reporter` |
 | Test suite | Implemented | Unit, data-quality, and integration tests; coverage gate at 85% |
 | Continuous integration | Implemented | Lint, format check, types, tests, naming check, documentation-link check |
@@ -293,6 +293,7 @@ arpi run-foundation --profile development
 
 | Command | What it does |
 |---|---|
+| `arpi version` | Prints the project name and version and exits |
 | `arpi check-config --profile development` | Loads, validates, and prints the resolved configuration with secrets redacted |
 | `arpi generate --profile development` | Generates the date and dealership dimensions, validates them, and writes CSV plus the manifest |
 | `arpi run-foundation --profile development` | Runs the full foundation pipeline, including the PostgreSQL load when `database.enabled` is `true` |
@@ -317,6 +318,7 @@ pytest -m "not integration" --cov=arpi --cov-report=term-missing --cov-report=xm
 pytest -m "integration"        # only in the optional postgres job
 python scripts/check_naming.py
 python scripts/check_docs_links.py
+python scripts/check_secrets.py
 ```
 
 These are exactly the commands continuous integration runs.
@@ -325,6 +327,7 @@ These are exactly the commands continuous integration runs.
 - **Coverage** is measured on `src/arpi` with a floor of 85%.
 - **`check_naming.py`** fails the build if a retired identifier reappears — the enforcement mechanism behind [ADR-0001](docs/architecture-decisions/ADR-0001-project-identity.md).
 - **`check_docs_links.py`** fails the build if a relative documentation link stops resolving.
+- **`check_secrets.py`** fails the build if a tracked file looks like it contains a credential — a committed `.env`, a live connection string, or a private key. It is a high-signal safety net, not a full secret scanner.
 
 Contribution workflow and quality expectations are in [CONTRIBUTING.md](CONTRIBUTING.md).
 

@@ -128,7 +128,7 @@ You want to assess the modelling, the engineering, and whether the documentation
 | 7 | [`source-to-target/`](source-to-target/) | 4 | Lineage traceability |
 | 8 | [`../LIMITATIONS.md`](../LIMITATIONS.md) | 2 | Calibration between claims and reality |
 
-**Worth checking:** the twelve validation `check_id` values in the audit contract appear identically in the Python validation framework, the SQL checks, and the data dictionary. That consistency is the point of the contracts tier.
+**Worth checking:** all twelve validation `check_id` values in the audit contract appear identically in the Python validation framework and the data dictionary, and **ten of the twelve** also appear in the SQL checks. That consistency is the point of the contracts tier. The two exceptions are `DQ-GEN-001` and `DQ-GEN-002`: both inspect the generator's in-memory output — the declared-versus-actual column schema, and the content digest of the CSV rendering — so there is nothing for SQL to look at. They are Python-only by design, not by omission.
 
 ### Contributor
 
@@ -154,6 +154,7 @@ mypy src tests
 pytest -m "not integration" --cov=arpi --cov-report=term-missing --cov-report=xml
 python scripts/check_naming.py
 python scripts/check_docs_links.py
+python scripts/check_secrets.py
 ```
 
 **If your change adds a column, a KPI, or a table**, the contract document changes in the same commit as the code. A pull request that changes behaviour without changing the contract will be sent back.
@@ -171,11 +172,20 @@ python scripts/check_docs_links.py
 | [`architecture-decisions/ADR-0002-phase-0-technology-baseline.md`](architecture-decisions/ADR-0002-phase-0-technology-baseline.md) | Governing |
 | [`../DATA_DICTIONARY.md`](../DATA_DICTIONARY.md) | Contracts |
 | [`../KPI_CATALOG.md`](../KPI_CATALOG.md) | Contracts |
-| [`source-to-target/`](source-to-target/) | Contracts |
+| [`source-to-target/README.md`](source-to-target/README.md) | Contracts |
+| [`source-to-target/STM-000-template.md`](source-to-target/STM-000-template.md) | Contracts |
+| [`source-to-target/STM-001-dim-date.md`](source-to-target/STM-001-dim-date.md) | Contracts |
+| [`source-to-target/STM-002-dim-dealership.md`](source-to-target/STM-002-dim-dealership.md) | Contracts |
+| [`source-to-target/STM-003-audit-metadata.md`](source-to-target/STM-003-audit-metadata.md) | Contracts |
 | [`../DATA_GENERATION.md`](../DATA_GENERATION.md) | Implementation guides |
 | [`database-setup.md`](database-setup.md) | Implementation guides |
 | [`../CONTRIBUTING.md`](../CONTRIBUTING.md) | Implementation guides |
 | [`../SECURITY.md`](../SECURITY.md) | Implementation guides |
+| [`../sql/README.md`](../sql/README.md) | Implementation guides |
+| [`../sql/04_facts/README.md`](../sql/04_facts/README.md) | Implementation guides |
+| [`../config/README.md`](../config/README.md) | Implementation guides |
+| [`../scripts/README.md`](../scripts/README.md) | Implementation guides |
+| [`../data/sample/README.md`](../data/sample/README.md) | Implementation guides |
 | [`diagrams/README.md`](diagrams/README.md) | Implementation guides |
 | [`diagrams/01-system-context.md`](diagrams/01-system-context.md) | Implementation guides |
 | [`diagrams/02-phase-0-data-flow.md`](diagrams/02-phase-0-data-flow.md) | Implementation guides |
@@ -184,7 +194,9 @@ python scripts/check_docs_links.py
 | [`../LIMITATIONS.md`](../LIMITATIONS.md) | Evidence and constraints |
 | [`../PRIVACY_AND_ETHICS.md`](../PRIVACY_AND_ETHICS.md) | Evidence and constraints |
 | [`research.md`](research.md) | Evidence and constraints |
+| [`requirements/README.md`](requirements/README.md) | Planning |
 | [`requirements/PHASE_1_BACKLOG.md`](requirements/PHASE_1_BACKLOG.md) | Planning |
+| [`requirements/DOCUMENTATION_BACKLOG.md`](requirements/DOCUMENTATION_BACKLOG.md) | Planning |
 | [`index.md`](index.md) | Planning |
 
 ---

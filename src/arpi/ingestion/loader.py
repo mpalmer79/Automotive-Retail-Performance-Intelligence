@@ -14,7 +14,7 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Final
 
 from arpi.audit.run import LAYER_RAW, LAYER_WAREHOUSE, ReconciliationResult
 from arpi.constants import (
@@ -66,10 +66,24 @@ ENTITY_TABLES: dict[str, tuple[str, str]] = {
     ENTITY_DIM_DEALERSHIP: (RAW_TABLE_DEALERSHIP, WAREHOUSE_TABLE_DIM_DEALERSHIP),
 }
 
+#: Entities stored as Type 2 dimensions.
+SCD_TYPE_2_ENTITIES: Final[frozenset[str]] = frozenset({ENTITY_DIM_DEALERSHIP})
+"""Entities whose warehouse table keeps Type 2 history, so only current rows reconcile."""
+
 #: Reconciliation identifier for each entity's warehouse row count.
 ENTITY_RECONCILIATIONS: dict[str, str] = {
     ENTITY_DIM_DATE: RECONCILIATION_DIM_DATE_ROW_COUNT,
     ENTITY_DIM_DEALERSHIP: RECONCILIATION_DIM_DEALERSHIP_ROW_COUNT,
+}
+
+#: Column identifying which rows of each audit child table this loader owns.
+#:
+#: A rerun replaces the loader's own rows, but the SQL data-quality scripts append rows
+#: for the same run under warehouse-qualified target names. Scoping the delete by these
+#: columns keeps the two layers from deleting each other's results.
+AUDIT_CHILD_SCOPE: dict[str, str] = {
+    "validation_result": "target_object",
+    "reconciliation_result": "reconciliation_id",
 }
 
 #: Raw-table bookkeeping columns appended to every copied row, in this order.
@@ -206,7 +220,9 @@ def load_foundation(
 
         for dataset in datasets:
             warehouse_counts[dataset.entity_name] = _warehouse_row_count(
-                connection, ENTITY_TABLES[dataset.entity_name][1]
+                connection,
+                ENTITY_TABLES[dataset.entity_name][1],
+                current_only=dataset.entity_name in SCD_TYPE_2_ENTITIES,
             )
 
         _record_counts(recorder, datasets, raw_counts, warehouse_counts)
@@ -256,11 +272,26 @@ def _execute_script(connection: Any, script: Path) -> None:
     _LOGGER.info("Executed merge script %s.", script)
 
 
-def _warehouse_row_count(connection: Any, table: str) -> int:
-    """Count the rows currently present in a warehouse table."""
+def _warehouse_row_count(connection: Any, table: str, *, current_only: bool) -> int:
+    """Count the warehouse rows a generated dataset should reconcile against.
+
+    Args:
+        connection: An open database connection.
+        table: Unqualified warehouse table name.
+        current_only: Restrict the count to ``is_current`` rows. Required for slowly
+            changing dimensions: the generator emits one row per store, but a Type 2
+            table accumulates one row per store *version*. An unfiltered count would
+            exceed the generated count the moment any store attribute changes, failing
+            the reconciliation for a load that was entirely correct.
+
+    Returns:
+        The row count.
+    """
     statement = sql.SQL("SELECT count(*) FROM {}.{}").format(
         sql.Identifier(SCHEMA_WAREHOUSE), sql.Identifier(table)
     )
+    if current_only:
+        statement = statement + sql.SQL(" WHERE is_current")
     with connection.cursor() as cursor:
         cursor.execute(statement)
         row = cursor.fetchone()
@@ -314,8 +345,13 @@ def _insert_audit_rows(connection: Any, recorder: AuditRecorder) -> None:
         # therefore replaced rather than appended, so the audit trail describes the most
         # recent execution instead of accumulating duplicates. Other runs are untouched,
         # preserving prior run history as the architecture requires.
-        for table in ("validation_result", "reconciliation_result"):
-            cursor.execute(_delete_children_statement(table), (pipeline_run_id,))
+        for table, scope_column in AUDIT_CHILD_SCOPE.items():
+            owned = sorted({str(row[scope_column]) for row in rows[table]})
+            if owned:
+                cursor.execute(
+                    _delete_children_statement(table, scope_column),
+                    (pipeline_run_id, owned),
+                )
 
         for row in rows["pipeline_run_row_count"]:
             payload = {"pipeline_run_id": pipeline_run_id, **row}
@@ -337,11 +373,20 @@ def _insert_audit_rows(connection: Any, recorder: AuditRecorder) -> None:
     _LOGGER.info("Recorded audit rows for pipeline_run_id %s.", pipeline_run_id)
 
 
-def _delete_children_statement(table: str) -> sql.Composed:
-    """Build a parameterised ``DELETE`` removing one run's rows from an audit child table."""
-    return sql.SQL("DELETE FROM {}.{} WHERE pipeline_run_id = {}").format(
+def _delete_children_statement(table: str, scope_column: str) -> sql.Composed:
+    """Build a parameterised ``DELETE`` scoped to the rows this loader owns.
+
+    The delete is restricted to the ``target_object`` values the loader is about to
+    write. The SQL validation scripts append rows for the same run under warehouse-
+    qualified target names such as ``warehouse.dim_date``, whereas the loader writes
+    generator-side names such as ``dim_date``. Deleting the whole run's children would
+    silently discard results an operator had recorded from the SQL layer.
+    """
+    return sql.SQL("DELETE FROM {}.{} WHERE pipeline_run_id = {} AND {} = ANY({})").format(
         sql.Identifier(SCHEMA_AUDIT),
         sql.Identifier(table),
+        sql.Placeholder(),
+        sql.Identifier(scope_column),
         sql.Placeholder(),
     )
 
