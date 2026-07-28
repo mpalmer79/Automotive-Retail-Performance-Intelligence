@@ -168,18 +168,18 @@ WARM_UP_WEIGHT_FACTOR: Final = 0.55
 #: acquisition months in the north-east; January and February are the weakest. Flat
 #: monthly activity is a prohibited synthetic pattern ([ARCHITECTURE.md §15.4]).
 MONTH_ACQUISITION_WEIGHT: Final[dict[int, float]] = {
-    1: 0.80,
-    2: 0.86,
+    1: 0.74,
+    2: 0.80,
     3: 1.12,
-    4: 1.16,
-    5: 1.22,
-    6: 1.12,
-    7: 1.04,
-    8: 1.14,
-    9: 1.02,
-    10: 0.96,
-    11: 0.90,
-    12: 0.94,
+    4: 1.20,
+    5: 1.30,
+    6: 1.14,
+    7: 1.02,
+    8: 1.18,
+    9: 1.00,
+    10: 0.92,
+    11: 0.84,
+    12: 0.96,
 }
 
 #: Day-of-week multiplier, indexed by :meth:`datetime.date.weekday` (Monday is 0).
@@ -208,10 +208,11 @@ ALLOWED_INITIAL_INVENTORY_STATUSES: Final[tuple[str, ...]] = (
     INVENTORY_STATUS_IN_RECONDITIONING,
 )
 
-#: A unit carrying at least this much reconditioning is booked in as ``In Reconditioning``.
+#: A unit carrying at least this much reconditioning is booked in as ``In Reconditioning``;
+#: lighter work is done on the lot and the unit goes straight to ``In Stock``.
 #: ``initial_inventory_status`` is **derived** from the reconditioning spend and the
 #: condition, never drawn independently, so it cannot contradict them.
-RECONDITIONING_STATUS_THRESHOLD: Final = Decimal("500.00")
+RECONDITIONING_STATUS_THRESHOLD: Final = Decimal("1200.00")
 
 # ---------------------------------------------------------------------------------------
 # Valuation model
@@ -290,6 +291,12 @@ CERTIFIED_RECONDITIONING_BASE: Final[tuple[float, float, float]] = (780.0, 3900.
 #: Reconditioning uplift per year of age and per 10,000 miles.
 RECONDITIONING_AGE_UPLIFT: Final = 0.085
 RECONDITIONING_MILEAGE_UPLIFT: Final = 0.052
+
+#: Reconditioning is capped at this share of acquisition cost plus this floor. No store
+#: spends four thousand dollars fixing a two-thousand-dollar auction unit; without the cap
+#: the age and mileage uplifts compound into spend the unit could never recover.
+RECONDITIONING_CAP_SHARE: Final = Decimal("0.26")
+RECONDITIONING_CAP_FLOOR: Final = Decimal("320.00")
 
 # ---------------------------------------------------------------------------------------
 # Per-model aging propensity
