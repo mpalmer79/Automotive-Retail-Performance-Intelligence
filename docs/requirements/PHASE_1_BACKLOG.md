@@ -268,18 +268,23 @@ before the gate can open.
 
 - [ ] A `raw.*_load` table exists for every `P1.1` source entity, with **all business columns as `text`** plus `raw_record_id`, `load_batch_id`, `source_file_name`, `source_row_number`, `ingested_at`.
 - [ ] A `staging.stg_*` **view** exists for each, casting to warehouse types and exposing only the most recent `load_batch_id`.
-- [ ] Structurally invalid records are rejected at staging and written to `audit.rejected_record` with a registered `REJ-*` code and the full payload.
+- [ ] Structurally invalid records are rejected at staging and written to `audit.rejected_record` with a registered `REJ-*` code and the payload, **with every prohibited field redacted before the payload is persisted** — a rejection must never become the place a prohibited value is stored.
 - [ ] Deduplication occurs at staging: a natural key appearing twice in one batch results in one surviving row and one rejection.
-- [ ] Row counts are written to `audit.pipeline_run_row_count` at `source`, `raw`, `staging`, `warehouse`, and `rejected` for every entity.
+- [ ] **The row-count chain is complete across all five layers.** `audit.pipeline_run_row_count` receives a row for `source`, `raw`, `staging`, `warehouse`, **and** `rejected` for **every** ingested entity on **every** run, satisfying [ARCHITECTURE.md §21.4](../../ARCHITECTURE.md). A missing layer for any entity fails the run. This is what closes [DOCUMENTATION_BACKLOG.md](DOCUMENTATION_BACKLOG.md) `DOC-23`, where only `source`, `raw`, and `warehouse` were recorded.
+- [ ] **The `staging` count is read from the `staging.stg_*` view itself**, not inferred from the raw count. A staging count that is unconditionally equal to the raw count proves nothing, so the count must come from the object it describes.
+- [ ] **A genuine rejected-record path exists and is exercised by a real run**, not only by a unit-test fixture. At least one deliberately malformed source file is loaded in the integration suite and produces a non-zero `rejected` count, a populated `audit.rejected_record`, and a `raw` count that exceeds the `staging` count by exactly the number of rejections.
+- [ ] The identity `raw = staging + rejected` holds per entity per run, or the difference is explained by a documented, counted exclusion. A row-count reconciliation asserts this and fails the run when it does not hold.
 - [ ] `arpi_reporter` has **no grant** on `raw` or `staging`.
 - [ ] A rerun with identical source files produces no duplicate rows at any layer.
-- [ ] The generic prohibited-column schema check (generalizing `DQ-DLR-004`) runs against **every** raw table, not only the dealership one.
+- [ ] The generic prohibited-column schema check (generalizing `DQ-DLR-004`) runs against **every** raw table, not only the dealership one, and covers the full prohibited-field list in `P1.1-06`.
+- [ ] Every check emitted by this item uses a `check_category` from the constrained vocabulary in [ADR-0004](../architecture-decisions/ADR-0004-validation-category-taxonomy.md).
 
 **Tests required**
 
 - `tests/integration/test_raw_staging_load.py` — load, batch stamping, latest-batch filtering, deduplication, rejection path.
 - `tests/integration/test_ingestion_idempotency.py` — repeated load produces no duplicates and no new warehouse rows.
 - `tests/integration/test_reporter_role_grants.py` — `arpi_reporter` cannot select from `raw` or `staging`.
+- `tests/integration/test_row_count_chain.py` — all five layers recorded per entity per run; `raw = staging + rejected`; a malformed fixture file produces a non-zero `rejected` count and a populated `audit.rejected_record`; the persisted rejection payload contains no prohibited value.
 - `tests/data_quality/test_prohibited_columns_all_entities.py` — the generic PII schema check covers every declared entity.
 
 ---
@@ -629,7 +634,7 @@ before the gate can open.
 | Field | Value |
 |---|---|
 | **Purpose** | Produce CRM lead events with realistic funnel outcomes and response behaviour. Eight of the twenty-nine specified KPIs read from this entity, and the response-time distribution it produces is what makes the mean-versus-median governance rule meaningful rather than decorative. |
-| **Dependencies** | `P1.4-01`, `P1.1-03`, `P1.2-04` |
+| **Dependencies** | `P1.4-01`, `P1.1-03`, `P1.1-06`, `P1.2-04` |
 | **Estimated complexity** | **Large** |
 | **Blocks Power BI Gate 1** | **Yes** |
 | **Architecture references** | §12.4 (`fact_lead` grain, keys, measures, rules), §15.3 (relationships 4, 5, 6, 7, 8, 10, 16), §15.4, §21.2 (first response not before lead creation), §22.4 (no communication content), §34 step 10 |
@@ -637,6 +642,7 @@ before the gate can open.
 **Acceptance criteria**
 
 - [ ] Lead events carry `lead_id` in the reserved scheme `LEAD-#########`, creation date, store, source, campaign (nullable until delivery increment `P1.5`), customer, vehicle or model of interest, and assigned employees.
+- [ ] **Every populated customer reference on a lead is a `customer_id` from `P1.1-06`.** Leads reuse the same governed customer population as sales; no lead-specific customer record, and no customer attribute of any kind, is created here. An anonymous lead carries a NULL customer reference rather than a synthesised one.
 - [ ] Funnel flags are internally consistent: `is_appointment_shown` implies `is_appointment_set` implies `is_contacted`.
 - [ ] `is_sold = true` **only** where a valid finalized retail sale is linked.
 - [ ] `first_response_seconds` is non-negative where present, and **NULL for a genuine population of never-responded leads** — NULL must be distinguishable from zero.
@@ -691,7 +697,7 @@ before the gate can open.
 | Field | Value |
 |---|---|
 | **Purpose** | Load `warehouse.fact_lead` and `warehouse.fact_appointment`, completing the four MVP facts that Gate 1 condition 1 requires, and making all eight funnel KPIs computable. |
-| **Dependencies** | `P1.4-02`, `P1.4-03`, `P1.2-01` |
+| **Dependencies** | `P1.4-02`, `P1.4-03`, `P1.2-01`, `P1.2-06` |
 | **Estimated complexity** | **Large** |
 | **Blocks Power BI Gate 1** | **Yes** |
 | **Architecture references** | §11.1, §12.4, §12.6, §17.4, §21.1–21.2, §34 step 11 |
@@ -702,6 +708,7 @@ before the gate can open.
 - [ ] `warehouse.fact_appointment` exists with the declared grain **one row per scheduled appointment**, enforced by a unique constraint on `appointment_id`.
 - [ ] All declared foreign keys resolve, including role-playing date keys (`appointment_created_date_key`, `scheduled_date_key`, `show_date_key`) into `dim_date`.
 - [ ] `fact_lead.vehicle_sale_key` and `fact_appointment.vehicle_sale_key` resolve to `fact_vehicle_sale` where populated, and are NULL where not sold.
+- [ ] **`fact_lead.customer_key` and `fact_appointment.customer_key` resolve to the same `warehouse.dim_customer` that `fact_vehicle_sale` uses**, loaded by `P1.2-06`. There is exactly one governed customer dimension in the model; the funnel does not get its own. Both keys are nullable, because an anonymous lead is a real case.
 - [ ] Structural and business-rule validation checks are registered with stable `DQ-*` IDs and write to `audit.validation_result` on every run.
 - [ ] Loading is idempotent for both facts.
 - [ ] [DATA_DICTIONARY.md §16 and §17](../../DATA_DICTIONARY.md) updated; `STM-011` and `STM-012` written.
@@ -870,6 +877,38 @@ before the gate can open.
 
 ---
 
+### `P1.5-05` — Stakeholder-question traceability matrix
+
+| Field | Value |
+|---|---|
+| **Purpose** | Produce the artefact that Gate 4 is checked against. `ARCHITECTURE.md` §28 Gate 4 permits a new data domain only when a stakeholder question requires it, and `KPI_CATALOG.md` §37 requires every KPI to trace to at least one such question — but no document records the mapping, so the gate is currently unfalsifiable. This item makes it checkable. It also converts the personas from names in a research document into a governed table that says what each of them can actually ask of the platform today. Registered as `DOC-15`. |
+| **Dependencies** | `P1.3-05`, `P1.4-05`, `P1.5-02` |
+| **Estimated complexity** | **Small** |
+| **Blocks Power BI Gate 1** | No |
+| **Architecture references** | §19.4 (required report pages), §23 (ethical analytics requirements), §28 Gate 4, §30 (MVP definition), §35 (decisions that require an ADR) |
+
+**Ownership note:** this document is authored outside the architecture workstream. This item records the
+requirement and its acceptance criteria; it does not claim the document exists.
+
+**Acceptance criteria**
+
+- [ ] `docs/requirements/STAKEHOLDER_QUESTIONS.md` exists, is listed in the index at [`docs/requirements/README.md` §2](README.md), and passes `python scripts/check_docs_links.py`.
+- [ ] **Every persona in `docs/research.md` §11.3 appears**, primary and secondary: dealer principal, general manager, general sales manager, used-car manager, internet or BDC director, finance director, marketing manager, regional operations manager, data or BI analyst, sales manager, fixed-operations manager, new-car manager.
+- [ ] **Every persona in the "Who this is for" table in the [root `README.md`](../../README.md) appears**, and the two lists are reconciled — where the README names a persona the research document does not, or vice versa, the difference is stated rather than silently merged.
+- [ ] Each row carries: **persona**, **business question** in the stakeholder's own words, **required entities** (dimensions and facts), **KPI IDs** from [KPI_CATALOG.md](../../KPI_CATALOG.md), **reporting view** that owns the answer, **future report page** from [ARCHITECTURE.md §19.4](../../ARCHITECTURE.md), and **current implementation status**.
+- [ ] `Current implementation status` uses only the project's four status values — `Implemented`, `Planned`, `Deferred`, `Out of scope` — and is accurate on the day it is written. A question whose KPIs are all `Planned` is `Planned`, never `Implemented`.
+- [ ] Every KPI ID cited resolves to a real entry in [KPI_CATALOG.md](../../KPI_CATALOG.md), and every reporting view cited either exists or is explicitly marked as not yet built.
+- [ ] Questions that the MVP **cannot** answer are included and marked, rather than omitted. A traceability matrix that only lists what works is a marketing document.
+- [ ] Every one of the 29 specified KPIs is reachable from at least one question, and any KPI that is not is listed explicitly as unattributed so the gap is visible.
+- [ ] [DOCUMENTATION_BACKLOG.md](DOCUMENTATION_BACKLOG.md) `DOC-15` is closed with the evidence, or left open with a note stating what is still missing.
+
+**Tests required**
+
+- `tests/integration/test_stakeholder_question_traceability.py` — every KPI ID cited in the matrix resolves to a catalogued KPI; every catalogued KPI ID appears in the matrix or in its explicit unattributed list; every persona in `docs/research.md` §11.3 appears at least once.
+- `python scripts/check_docs_links.py` — every link in and to the new document resolves.
+
+---
+
 ## 7. Definition of ready / definition of done
 
 ### 7.1 Definition of ready
@@ -923,6 +962,7 @@ flowchart TB
         A2["P1.1-02<br/>Vehicle generator"]
         A3["P1.1-03<br/>Employee generator"]
         A4["P1.1-04<br/>Inventory acquisition events"]
+        A6["P1.1-06<br/>Customer contract and generator"]
         A5["P1.1-05<br/>Sales source events"]
     end
 
@@ -930,6 +970,7 @@ flowchart TB
         B1["P1.2-01<br/>Raw and staging ingestion"]
         B2["P1.2-02<br/>Vehicle dimension"]
         B3["P1.2-03<br/>Employee dimension"]
+        B6["P1.2-06<br/>Customer dimension"]
         B4["P1.2-04<br/>fact_vehicle_sale"]
         B5["P1.2-05<br/>fact_vehicle_inventory_snapshot"]
     end

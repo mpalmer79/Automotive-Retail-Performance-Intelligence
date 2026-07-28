@@ -547,10 +547,50 @@ CHECK_DEALERSHIP_FRANCHISE_BRAND: Final = "DQ-DLR-005"
 CHECK_GENERATION_SCHEMA_MATCHES: Final = "DQ-GEN-001"
 CHECK_GENERATION_DETERMINISM_DIGEST: Final = "DQ-GEN-002"
 
+# ---------------------------------------------------------------------------------------
+# Canonical validation category vocabulary
+# ---------------------------------------------------------------------------------------
+# EXACTLY seven categories exist. This module is the authority: the SQL check views in
+# sql/08_validation emit these strings verbatim, and audit.validation_result.check_category
+# carries a CHECK constraint over exactly this set (sql/00_database/03_audit_tables.sql).
+#
+# ``reconciliation`` is deliberately NOT a category -- reconciliations are a different
+# kind of evidence and live in audit.reconciliation_result.
 CHECK_CATEGORY_STRUCTURAL: Final = "structural"
+CHECK_CATEGORY_COMPLETENESS: Final = "completeness"
+CHECK_CATEGORY_UNIQUENESS: Final = "uniqueness"
+CHECK_CATEGORY_REFERENTIAL: Final = "referential"
 CHECK_CATEGORY_BUSINESS_RULE: Final = "business_rule"
 CHECK_CATEGORY_PRIVACY: Final = "privacy"
 CHECK_CATEGORY_REPRODUCIBILITY: Final = "reproducibility"
+
+#: The only values ``audit.validation_result.check_category`` may take.
+CHECK_CATEGORIES: Final[frozenset[str]] = frozenset(
+    {
+        CHECK_CATEGORY_STRUCTURAL,
+        CHECK_CATEGORY_COMPLETENESS,
+        CHECK_CATEGORY_UNIQUENESS,
+        CHECK_CATEGORY_REFERENTIAL,
+        CHECK_CATEGORY_BUSINESS_RULE,
+        CHECK_CATEGORY_PRIVACY,
+        CHECK_CATEGORY_REPRODUCIBILITY,
+    }
+)
+
+#: Spellings that earlier revisions emitted, and the canonical category each becomes.
+#:
+#: The database migration in ``sql/00_database/03_audit_tables.sql`` rewrites historical
+#: rows using exactly this mapping before the CHECK constraint is added, so an existing
+#: database can be brought up to the constrained vocabulary without losing audit history.
+#: ``DQ-DLR-004`` is the one documented exception: it spelt its category ``schema`` but is
+#: the privacy tripwire, so it becomes ``privacy`` rather than ``structural``.
+RETIRED_CHECK_CATEGORIES: Final[Mapping[str, str]] = MappingProxyType(
+    {
+        "schema": CHECK_CATEGORY_STRUCTURAL,
+        "domain": CHECK_CATEGORY_BUSINESS_RULE,
+        "determinism": CHECK_CATEGORY_REPRODUCIBILITY,
+    }
+)
 
 RECONCILIATION_DIM_DATE_ROW_COUNT: Final = "RECON-DIM-DATE-ROWCOUNT"
 RECONCILIATION_DIM_DEALERSHIP_ROW_COUNT: Final = "RECON-DIM-DEALERSHIP-ROWCOUNT"
