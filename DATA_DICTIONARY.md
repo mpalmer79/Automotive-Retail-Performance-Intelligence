@@ -2626,3 +2626,204 @@ instructs. `raw.marketing_spend_load` and `staging.stg_marketing_spend` expect a
 column** in that position instead. The two sides do not yet agree, so a load would fail on the column
 list. It is recorded here rather than silently patched from one side: the contract is coordinator-owned,
 and the reconciliation between the integer key and the date column has to be a deliberate decision.
+
+---
+
+## 16A. `warehouse.fact_lead` — implemented source contract (`P1.4-02`)
+
+| Field | Value |
+|---|---|
+| **Entity name** | `lead_event` (source entity) → `warehouse.fact_lead` |
+| **Layer** | Source entity feeding a transactional fact |
+| **Declared grain** | **One row per unique CRM lead.** |
+| **Grain key** | `lead_id` → `lead_key` in the warehouse |
+| **Natural / source key** | `lead_id` (`LED-#########`) |
+| **Foreign keys** | `lead_created_date` → `dim_date`; `dealership_id`; `customer_id`; `vehicle_model_id`; `lead_source_id`; `campaign_id`; `assigned_employee_id`; `sale_id` |
+| **History policy** | **Insert-only transactional fact.** A restated lead is handled by deleting that `lead_id` and reinserting it. |
+| **Generator** | `src/arpi/generation/lead.py` |
+| **Source-to-target mapping** | [STM-011](docs/source-to-target/STM-011-fact-lead.md) |
+| **Implementation status** | **Implemented** (generator, contract, data-quality suite). Raw table, staging view, warehouse DDL and load **Planned**. |
+| **Row counts** | 200 (test) · 6,000 (development) · 55,000 (portfolio, declared) — inside the 40,000–80,000 portfolio target. |
+
+### 16A.1 Column contract (exact names, exact order)
+
+The source entity mirrors `warehouse.fact_lead` with the surrogate key dropped and the remaining keys
+carried as natural identifiers, exactly as `sale_event` mirrors `fact_vehicle_sale`. **Eight columns are
+nullable, and every one of them is nullable for a modelled reason, never because a value was
+unavailable.**
+
+| # | Column | Type | Null | Allowed values / domain | Description | Derivation | **PII class** |
+|---:|---|---|---|---|---|---|---|
+| 1 | `lead_id` | `varchar(20)` | no | `LED-#########` | Natural key; the grain. | Deterministic ordinal over arrival order. | Non-personal |
+| 2 | `lead_created_date` | `date` | no | Inside the reporting window | Day the lead arrived. | Weighted draw over the window: month-of-year shape × day-of-week shape. | Non-personal |
+| 3 | `dealership_id` | `varchar(16)` | no | `GSA-00N` | Store that received the lead. | Weighted draw over the store shares. | Non-personal |
+| 4 | `customer_id` | `varchar(16)` | **yes** | `CUS-########` | The shopper. **NULL means an anonymous enquiry** — a real case, never a synthesised shopper. | From the linked sale where sold; otherwise drawn from the governed customer pool, constrained to customers who had already interacted. | Non-personal (governed dimension) |
+| 5 | `vehicle_model_id` | `varchar(16)` | **yes** | `VMD-#####` | Model of interest. NULL where the shopper named none. | The model actually sold where sold; otherwise drawn from the store's alignment-weighted pool. | Non-personal |
+| 6 | `lead_source_id` | `varchar(16)` | no | `LDS-###` | Governed source. All nineteen are represented. | Weighted draw on `volume_weight`. | Non-personal |
+| 7 | `campaign_id` | `varchar(16)` | **yes** | `CMP-#####` | Campaign the lead is attributed to. NULL where the source is unpaid, nothing was running, or attribution failed. | Weighted draw over campaigns active that day for that source and store; 88% attachment. | Non-personal |
+| 8 | `assigned_employee_id` | `varchar(16)` | **yes** | `EMP-#####` | Owner of the lead. **NULL means nobody owned it**, and an unowned lead is answered far less often and far later. | Resolved against the SCD Type 2 employee timeline on the arrival date; BDC first for digital sources, the floor for in-person ones. | Non-personal |
+| 9 | `sale_id` | `varchar(16)` | **yes** | `SLE-########` | The finalized retail sale this lead produced. | Sale attribution; see §16A.2. | Non-personal |
+| 10 | `lead_count` | `smallint` | no | `1` | Additive unit measure at this grain. | Constant. | Non-personal |
+| 11 | `first_response_seconds` | `integer` | **yes** | `NULL` or ≥ 30 | Seconds to the first response. **NULL means nobody ever responded — never `0`.** See §16A.3. | Lognormal draw, median 1,500 s, sigma 1.35, adjusted by source, day of week and owner. | Non-personal |
+| 12 | `is_contacted` | `boolean` | no | `true` / `false` | Two-way contact established. False on every never-responded lead. | Drawn; probability = source contact rate × response-time influence × owner discipline. | Non-personal |
+| 13 | `is_appointment_set` | `boolean` | no | `true` / `false` | An appointment was booked. **Implies `is_contacted`.** | Drawn, conditioned on contact. | Non-personal |
+| 14 | `is_appointment_shown` | `boolean` | no | `true` / `false` | The shopper showed. **Implies `is_appointment_set`.** Agrees row-for-row with `fact_appointment`. | Drawn, conditioned on the appointment. | Non-personal |
+| 15 | `is_sold` | `boolean` | no | `true` / `false` | The lead produced a finalized retail sale. | **Derived** from the presence of `sale_id`, never drawn. | Non-personal |
+| 16 | `is_duplicate` | `boolean` | no | `true` / `false` | The same shopper enquired again at the same store inside 60 days. **Excluded from every funnel numerator and denominator.** | Constructed; see §16A.4. | Non-personal |
+| 17 | `original_lead_id` | `varchar(20)` | **yes** | `LED-#########` | The lead this one duplicates. Populated exactly when `is_duplicate`, and always an earlier **non-duplicate** lead. | The root of the shopper-and-store window. | Non-personal |
+| 18 | `days_to_sale` | `integer` | **yes** | `NULL` or ≥ 0 | Days from arrival to the sale. NULL exactly when not sold. | Derived: `sale_date - lead_created_date`. | Non-personal |
+| 19 | `source_system` | `varchar(40)` | no | `arpi_synthetic_generator` | Lineage marker. | Constant. | Non-personal |
+
+### 16A.2 Sale attribution
+
+`is_sold` is only ever set by attaching the lead to a **finalized retail sale that exists in the sale
+generator's output**. Only retail sales carry a customer, so only retail sales are linkable from the
+funnel — a wholesale unit went to the auction and no shopper ever sat at a desk for it.
+
+**72%** of finalized retail sales are lead-attributed. Pretending it were 100% would make lead-to-sale
+conversion look like a complete picture of the store, which it is not. Each eligible sale is offered to
+the leads at its own store that arrived within 120 days before it, were contacted, and are not already
+credited with a deal; the winner is drawn weighted by the source close rate, the owner's closing index,
+and the funnel stage reached — `1.0` with no appointment, `1.7` with one set, **`4.2` with one shown**.
+That weighting is what makes *appointment-shown leads convert at a higher rate* true in the data.
+
+The sale supplies the lead's `customer_id` and `vehicle_model_id`, so a sold lead cannot disagree with
+the deal it claims.
+
+### 16A.3 NULL is not zero — the rule this entity exists to protect
+
+A lead nobody responded to carries `first_response_seconds = NULL`. **It never carries `0`.**
+
+Zero would mean the store answered instantaneously, the exact opposite of what happened. Averaging those
+zeros in makes the stores that ignore leads look like the fastest in the group, and because the number
+moves in the flattering direction, nobody investigates it. A genuine response is floored at 30 seconds,
+because no human answers in zero.
+
+The distribution is **right-skewed** by construction: at development scale the median is 1,714 seconds
+against a mean of 4,707, a ratio of 2.75. Reporting the mean alone is therefore misleading here in the
+same way it is in a real store, which is what makes the mean-versus-median governance rule in
+[KPI_CATALOG.md](KPI_CATALOG.md) load-bearing rather than decorative.
+
+**No `NOT NULL DEFAULT 0` may ever be placed on this column.** It would destroy the distinction
+silently and irreversibly.
+
+### 16A.4 Duplicates, and where the numerator and denominator are defined
+
+`arpi.generation.lead.funnel_population(frame)` is the **one place** the exclusion rule lives. Every
+funnel measure is: numerator = rows of that population whose stage flag is true; denominator = rows of
+that population. **Duplicates are excluded from both.** In the denominator they understate every
+conversion rate by counting one shopper twice as an opportunity; in the numerator they double-count one
+opportunity's outcome. There is no measure for which including them is correct.
+
+A duplicate is **constructed** — the generator deliberately reuses a shopper who enquired at the same
+store inside the last 60 days — rather than discovered by waiting for two draws to collide, which would
+make the duplicate share collapse at portfolio scale. Measured share: 0.085 (test), 0.077 (development).
+A lead credited with a sale is never marked a duplicate.
+
+### 16A.5 No communication content, at any layer
+
+There is no `message_body`, `message`, `subject`, `transcript`, `recording`, `call_recording`, `note`,
+`notes`, `comment`, `comments`, `chat_log` or `voicemail` column, and no free-text field of any kind.
+`DQ-LED-007` inspects the **schema**, so a prohibited column fails the run even when it holds no values.
+That is intended behaviour.
+
+### 16A.6 Data-quality checks
+
+| Check ID | Assertion | Category | Severity |
+|---|---|---|---|
+| `DQ-LED-001` | `lead_id` is unique | `uniqueness` | critical |
+| `DQ-LED-002` | The declared 19-column contract matches, in order | `structural` | critical |
+| `DQ-LED-003` | **The funnel implication chain holds** | `business_rule` | critical |
+| `DQ-LED-004` | **Never-responded leads carry NULL, never zero** | `completeness` | critical |
+| `DQ-LED-005` | Every sold lead resolves to a finalized retail sale | `referential` | critical |
+| `DQ-LED-006` | Duplicates carry a resolvable original lead reference | `business_rule` | critical |
+| `DQ-LED-007` | **No prohibited PII or communication-content column exists** | `privacy` | critical |
+| `DQ-LED-008` | The response-time distribution is right-skewed | `business_rule` | warning |
+
+---
+
+## 17A. `warehouse.fact_appointment` — implemented source contract (`P1.4-03`)
+
+| Field | Value |
+|---|---|
+| **Entity name** | `appointment_event` (source entity) → `warehouse.fact_appointment` |
+| **Layer** | Source entity feeding a transactional fact |
+| **Declared grain** | **One row per scheduled appointment.** |
+| **Grain key** | `appointment_id` → `appointment_key` in the warehouse |
+| **Natural / source key** | `appointment_id` (`APT-########`) |
+| **Foreign keys** | `created_date`, `scheduled_date`, `show_date` → `dim_date` (three role-playing keys); `dealership_id`; `lead_id`; `customer_id`; `salesperson_id`; `bdc_employee_id`; `vehicle_model_id`; `sale_id` |
+| **History policy** | **Insert-only transactional fact.** Loaded after `fact_lead`, because `lead_key` is `NOT NULL`. |
+| **Generator** | `src/arpi/generation/appointment.py` |
+| **Source-to-target mapping** | [STM-012](docs/source-to-target/STM-012-fact-appointment.md) |
+| **Implementation status** | **Implemented** (generator, contract, data-quality suite). Raw table, staging view, warehouse DDL and load **Planned**. |
+| **Row counts** | 76 (test) · 2,111 (development) · ≈19,400 (portfolio, **projected** from development, inside the 10,000–25,000 target). |
+
+### 17A.1 Column contract (exact names, exact order)
+
+| # | Column | Type | Null | Allowed values / domain | Description | Derivation | **PII class** |
+|---:|---|---|---|---|---|---|---|
+| 1 | `appointment_id` | `varchar(20)` | no | `APT-########` | Natural key; the grain. | Deterministic ordinal over `(created_date, lead_id, sequence)`. | Non-personal |
+| 2 | `created_date` | `date` | no | Inside the reporting window | Day the appointment was booked. Never before its lead arrived. | Lead arrival plus a weighted booking lag. | Non-personal |
+| 3 | `scheduled_date` | `date` | no | ≥ `created_date` | Day it was booked for. **Role-playing date key.** | Creation plus a weighted lead time, clamped to the window and to the sale date where sold. | Non-personal |
+| 4 | `show_date` | `date` | **yes** | `NULL` or `= scheduled_date` | Day the shopper arrived. **Role-playing date key.** NULL exactly when not shown. | Equals `scheduled_date` when shown. | Non-personal |
+| 5 | `dealership_id` | `varchar(16)` | no | `GSA-00N` | Store. Always the lead's store. | Carried from the lead. | Non-personal |
+| 6 | `lead_id` | `varchar(20)` | no | `LED-#########` | The opportunity behind the appointment. Never NULL. | The lead that set it. | Non-personal |
+| 7 | `customer_id` | `varchar(16)` | **yes** | `CUS-########` | The shopper. NULL where the lead was anonymous. | Carried verbatim from the lead. | Non-personal |
+| 8 | `salesperson_id` | `varchar(16)` | **yes** | `EMP-#####` | Salesperson expected to take it. NULL where the store had nobody eligible that day. | Resolved against the SCD Type 2 timeline on the **scheduled** date. | Non-personal |
+| 9 | `bdc_employee_id` | `varchar(16)` | **yes** | `EMP-#####` | Business development representative who booked it. NULL is common: a store with no BDC books off the floor. | Resolved against the SCD Type 2 timeline on the **created** date. | Non-personal |
+| 10 | `vehicle_model_id` | `varchar(16)` | **yes** | `VMD-#####` | Model of interest. | Carried verbatim from the lead. | Non-personal |
+| 11 | `sale_id` | `varchar(16)` | **yes** | `SLE-########` | The finalized retail sale this visit produced. | The lead's sale, on the shown appointment only. | Non-personal |
+| 12 | `appointment_count` | `smallint` | no | `1` | Additive unit measure at this grain. | Constant. | Non-personal |
+| 13 | `is_confirmed` | `boolean` | no | `true` / `false` | Confirmed before the slot. Predicts attendance without determining it. | Drawn conditioned on the outcome: 0.84 shown, 0.52 broken. | Non-personal |
+| 14 | `is_cancelled_in_advance` | `boolean` | no | `true` / `false` | **The shopper rang ahead.** Mutually exclusive with `is_shown`. | 45% of broken appointments. | Non-personal |
+| 15 | `is_shown` | `boolean` | no | `true` / `false` | **The shopper arrived.** | The last appointment of a lead flagged `is_appointment_shown`. | Non-personal |
+| 16 | `is_test_drive` | `boolean` | no | `true` / `false` | The visit included a test drive. Implies `is_shown`. | 63% of shown. | Non-personal |
+| 17 | `is_write_up` | `boolean` | no | `true` / `false` | A deal was written. **Implies `is_shown`.** | 55% of shown; always true when sold. | Non-personal |
+| 18 | `is_sold` | `boolean` | no | `true` / `false` | The visit produced a finalized retail sale. | **Derived** from the presence of `sale_id`. | Non-personal |
+| 19 | `minutes_early_or_late` | `integer` | **yes** | `NULL` or `-45`..`120` | Minutes relative to the booked time; negative is early. **NULL when nobody showed — never `0`.** | `round(gauss(7, 16))`, clamped. | Non-personal |
+| 20 | `source_system` | `varchar(40)` | no | `arpi_synthetic_generator` | Lineage marker. | Constant. | Non-personal |
+
+### 17A.2 An advance cancellation is not a no-show
+
+The three outcomes are three different events, and they partition the population:
+
+| Outcome | `is_cancelled_in_advance` | `is_shown` | The store's time |
+|---|:--:|:--:|---|
+| Advance cancellation | `true` | `false` | Returned — the slot could be rebooked |
+| **No-show** | `false` | `false` | Held and lost |
+| Shown | `false` | `true` | Used |
+
+Conflating the first two understates broken appointments, and it lets the show rate be flattered by
+choosing the denominator after the fact. At development scale the two denominators genuinely differ:
+**0.486** against all appointments, **0.633** excluding advance cancellations. A reporting view must
+therefore state which it means ([KPI_CATALOG.md](KPI_CATALOG.md) §27). `DQ-APT-004` fails the run on any
+row claiming both.
+
+Measured shares at development scale: shown 0.486, advance cancellation 0.233, **no-show 0.282**.
+
+### 17A.3 One lead, several appointments
+
+A lead that sets an appointment produces 1 (0.72), 2 (0.21) or 3 (0.07) of them. At development scale
+that is **1.345 appointments per appointment-setting lead**, with 27% of those leads booking more than
+once — so the grain difference against `fact_lead` is exercised rather than declared. The **last**
+appointment carries the lead's outcome; the earlier ones are the broken bookings that a lead-grain-only
+model would have hidden.
+
+### 17A.4 NULL is not zero
+
+`minutes_early_or_late` is NULL when nobody showed. **Zero is a real value meaning exactly on time**, and
+encoding an absent arrival as zero would make every broken appointment the most punctual in the dataset.
+`DQ-APT-007` enforces both directions. **No `NOT NULL DEFAULT 0` may ever be placed on this column.**
+
+### 17A.5 Data-quality checks
+
+| Check ID | Assertion | Category | Severity |
+|---|---|---|---|
+| `DQ-APT-001` | `appointment_id` is unique | `uniqueness` | critical |
+| `DQ-APT-002` | The declared 20-column contract matches, in order | `structural` | critical |
+| `DQ-APT-003` | **Date ordering**: nothing scheduled or shown before creation | `business_rule` | critical |
+| `DQ-APT-004` | **Shown implies not cancelled in advance** | `business_rule` | critical |
+| `DQ-APT-005` | A write-up implies a show | `business_rule` | critical |
+| `DQ-APT-006` | Sold implies shown and links to a finalized retail sale | `referential` | critical |
+| `DQ-APT-007` | **`minutes_early_or_late` is NULL when not shown** | `completeness` | critical |
+| `DQ-APT-008` | **No prohibited PII or communication-content column exists** | `privacy` | critical |

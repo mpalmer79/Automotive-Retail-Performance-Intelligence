@@ -976,8 +976,7 @@ def build_lead_records(
     _assign_shoppers_models_and_campaigns(rng, drafts, context)
 
     records = tuple(
-        _to_record(lead_id_for(ordinal), draft, drafts)
-        for ordinal, draft in enumerate(drafts, start=1)
+        _to_record(lead_id_for(ordinal), draft) for ordinal, draft in enumerate(drafts, start=1)
     )
     _log_declared_distributions(records)
     return records
@@ -1343,15 +1342,19 @@ def _draw_campaign(rng: random.Random, context: _LeadContext, draft: _LeadDraft)
     return rng.choices(eligible, weights=weights, k=1)[0].campaign_id
 
 
-def _to_record(lead_id: str, draft: _LeadDraft, drafts: Sequence[_LeadDraft]) -> LeadRecord:
-    """Render one working draft as an immutable record."""
+def _to_record(lead_id: str, draft: _LeadDraft) -> LeadRecord:
+    """Render one working draft as an immutable record.
+
+    ``original_lead_id`` is rendered from the original's ordinal rather than looked up in
+    the population, which is only correct because identifiers are assigned as ordinals over
+    the same ordering the drafts already hold.
+    """
     original_lead_id = (
         lead_id_for(draft.original_index + 1) if draft.original_index is not None else None
     )
     days_to_sale = (
         (draft.sale_date - draft.lead_created_date).days if draft.sale_date is not None else None
     )
-    del drafts  # Identifiers are ordinals, so no lookup into the population is needed.
     return LeadRecord(
         lead_id=lead_id,
         lead_created_date=draft.lead_created_date,
