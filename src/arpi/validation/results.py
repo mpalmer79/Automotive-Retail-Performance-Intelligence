@@ -134,9 +134,7 @@ class ValidationReport:
     @property
     def warnings(self) -> tuple[CheckResult, ...]:
         """Failed checks whose severity is ``warning``. Reported, never gating."""
-        return tuple(
-            result for result in self.failures if result.severity is CheckSeverity.WARNING
-        )
+        return tuple(result for result in self.failures if result.severity is CheckSeverity.WARNING)
 
     @property
     def info_failures(self) -> tuple[CheckResult, ...]:

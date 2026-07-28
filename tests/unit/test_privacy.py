@@ -138,7 +138,10 @@ def test_prohibited_columns_preserves_the_declared_spelling() -> None:
 
 
 def test_assert_columns_accepts_a_clean_schema() -> None:
-    assert_columns_are_privacy_safe(("customer_id", "age_band", "county"), "dim_customer") is None
+    assert (
+        assert_columns_are_privacy_safe(("customer_id", "age_band", "county"), "dim_customer")
+        is None
+    )
 
 
 def test_assert_columns_fails_closed() -> None:

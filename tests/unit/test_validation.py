@@ -457,8 +457,7 @@ def test_every_emitted_category_is_canonical(
     report = validate_foundation_datasets(date_dataset, dealership_dataset, test_config)
     for result in report.results:
         assert result.check_category in CHECK_CATEGORIES, (
-            f"{result.check_id} emitted the non-canonical category "
-            f"{result.check_category!r}"
+            f"{result.check_id} emitted the non-canonical category {result.check_category!r}"
         )
 
 
@@ -525,9 +524,9 @@ def test_ensure_registry_coverage_leaves_a_complete_report_alone(
     test_config: ArpiConfig,
 ) -> None:
     report = validate_foundation_datasets(date_dataset, dealership_dataset, test_config)
-    assert (
-        ensure_registry_coverage(report, entities=("dim_date", "dim_dealership")) is report
-    ), "a complete report must be returned unchanged, not rebuilt"
+    assert ensure_registry_coverage(report, entities=("dim_date", "dim_dealership")) is report, (
+        "a complete report must be returned unchanged, not rebuilt"
+    )
 
 
 def test_ensure_registry_coverage_fills_a_gap_with_an_honest_skip() -> None:

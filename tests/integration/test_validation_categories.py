@@ -47,7 +47,9 @@ def _insert_run(cursor: Any) -> int:
     return run_id
 
 
-def _insert_result(cursor: Any, run_id: int, category: str, *, check_id: str = "DQ-DATE-001") -> None:
+def _insert_result(
+    cursor: Any, run_id: int, category: str, *, check_id: str = "DQ-DATE-001"
+) -> None:
     cursor.execute(
         """
         INSERT INTO audit.validation_result (

@@ -83,6 +83,105 @@ any entity, any layer, any profile, or any environment.
 
 ---
 
+## 3.1 How the register is enforced: the generalised tripwire
+
+The register above is a policy. `src/arpi/validation/privacy.py` is the control that makes it
+executable, and it applies to **every** entity rather than only to the one dimension that shipped in
+Phase 0.
+
+### 3.1.1 One rule, four call sites
+
+The same rule is applied to a generator's declared column tuple, to a `pandas` frame before it is
+written, to a CSV header row before the file is loaded, and to a list of PostgreSQL column names read
+from `information_schema.columns`. All four are sequences of names, so all four go through
+`assert_columns_are_privacy_safe`. A column that would be refused in pandas is refused in PostgreSQL,
+because there is one implementation rather than four.
+
+A column name is judged in six steps:
+
+1. **Normalise** — lower-case, strip, fold `-`, `.` and spaces to `_`, collapse repeated `_`.
+   `Customer-Email`, `customer.email` and `CUSTOMER__EMAIL` are all the same column to this rule; none
+   of the three can slip past by changing its punctuation.
+2. **Exact match** against the prohibited-field vocabulary.
+3. **Substring match** against unambiguous tokens, so `customer_email`, `home_phone_number` and
+   `exact_credit_score` are caught rather than only their bare forms. Exact-name matching alone was too
+   weak to be a real tripwire: it accepted precisely the shapes a real DMS export uses.
+4. **Whole-word match** against tokens that are unsafe as substrings but unambiguous as complete words
+   — `race`, `sex`, `gender`, `note`, `notes`, `comment`, `transcript`, `recording`. Splitting on `_`
+   gives reach without false positives, so `customer_notes` and `call_recording_url` fail while
+   `body_style` and `county` pass.
+5. **The `age` rule** — any column carrying `age` as a word is refused unless it is an explicitly banded
+   spelling. `age_band` passes; `age`, `customer_age` and `age_years` do not. Banding is the
+   minimisation ARPI publishes, and an exact age is a quasi-identifier.
+6. **The `_name` suffix rule** — deny by default, described next.
+
+**Coverage.** Personal names; full birth dates; street addresses; email addresses; telephone and fax
+numbers; Social Security and other national identifiers; driver's licence numbers; bank account and
+routing numbers; payment card data; exact credit scores and credit-report fields; compensation,
+commission and pay-plan fields; protected characteristics (race, ethnicity, gender, religion, marital
+status, national origin, disability, veteran status, sexual orientation, and age as an exact value); and
+communication content (`message_body`, `transcript`, `recording`, `call_recording`, `note`, `notes`,
+`comment`, `comments`). Sub-city geography — postal codes, latitude and longitude — is refused as well.
+
+### 3.1.2 Deny by default, with a written justification to allow
+
+A person's name is prohibited. A descriptive label is not. Only an explicit allowlist can tell
+`salesperson_name` from `day_name`, so the rule denies every `*_name` column that is not on it. Denying
+by default means a future generator that adds `customer_name` fails without anyone having to remember to
+extend a blocklist first — which is the failure mode a blocklist always eventually has.
+
+**Every allowlist entry carries a written justification, stored beside it as a string**, not as a
+comment that can drift away from the value it explains:
+
+```python
+"store_name": (
+    "Fictional dealership store name such as 'Granite Chevrolet of Nashua'. "
+    "Names a business, never a person."
+),
+```
+
+A test asserts that no entry is allowlisted without a justification. Adding one is therefore a
+deliberate act that appears in a diff, with the reasoning attached to it, and a reviewer can judge the
+reasoning rather than having to reconstruct it. The same structure governs the banded-age allowlist.
+
+Currently allowlisted: `campaign_name`, `check_name`, `day_name`, `entity_name`, `holiday_name`,
+`lead_source_name`, `model_name`, `month_name`, `pipeline_name`, `profile_name`, `quarter_name`,
+`store_name`, `store_short_name`, `vendor_name` — every one of which names a period, a product, a
+process, a business or a rule, and none of which names a person.
+
+### 3.1.3 Fail closed
+
+Every entry point **raises**. There is no warn-and-continue path and no bypass flag, because a privacy
+control that can be overridden under time pressure is a privacy control that will be. The one function
+that does not raise is the framework's recording variant, `DQ-DLR-004` and its per-entity successors,
+which records a `critical` failure — the run fails, but auditably, with a row in
+`audit.validation_result`.
+
+### 3.1.4 Never persist a prohibited payload
+
+Quarantining a bad row must not itself become the leak. `audit.rejected_record.record_payload` stores the
+offending record as JSON so the defect can be reproduced, and every payload passes through
+`redact_payload` first: prohibited keys keep their position, and their values become `***REDACTED***`.
+The keys survive deliberately — dropping them would make two differently shaped rejections
+indistinguishable, and the shape is the diagnostic.
+
+### 3.1.5 What it does not do
+
+**It inspects names, not values.** A column called `market_area` holding an email address passes. The
+tripwire is a schema control, and the reason it is sufficient here is that ARPI's data is machine
+generated from a declared contract: there is no external source that could smuggle a value in under an
+innocent name. It would not be sufficient for a pipeline ingesting real data. Recorded in
+[LIMITATIONS.md §10.2](LIMITATIONS.md).
+
+### 3.1.6 Synthetic VIN policy
+
+`dim_vehicle.synthetic_vin` is fabricated, never decoded from or matched against a real vehicle, and
+carries an `ARPI` prefix that makes it structurally invalid as a real VIN. The full policy — including
+why a VIN is treated as personal-data-adjacent rather than as an inert string — is section 4 below and
+[ADR-0005](docs/architecture-decisions/ADR-0005-synthetic-vin-policy.md).
+
+---
+
 ## 4. VIN policy
 
 A VIN is a vehicle identifier rather than an inherently personal one — but `docs/research.md` §10.3 is
@@ -417,13 +516,20 @@ whose enforcement status is overstated is worse than one with acknowledged gaps.
 | 22 | No real VIN can enter the vehicle dimension | Synthetic VIN generator + a format/provenance validation check | **Planned** (Phase 1.1) |
 | 23 | Employee scorecards always carry the required contextual metrics | Reporting-view design + a Power BI model review checkpoint | **Planned** (Phase 1.5 Power BI readiness review) |
 | 24 | Automated secret scanning in CI | `python scripts/check_secrets.py` runs in the CI workflow and inspects the git index for high-signal credential patterns. **The script describes itself as a safety net, not a replacement for a dedicated scanner** — that caveat is repeated here rather than glossed over. | **Implemented** (tooling workstream) |
-| 25 | No protected characteristic can be introduced | Documentation prohibition only; **no automated control exists** | **Planned** — see the gap note below |
+| 25 | No protected characteristic can be introduced | `src/arpi/validation/privacy.py` refuses any column naming race, ethnicity, gender, sex, religion, marital status, national origin, disability, veteran status, sexual orientation, citizenship or an exact age. Parametrised tests assert each one. **A schema control, not a values control** — see 3.1.5 | **Implemented** |
 | 26 | Enrichment stays within approved boundaries when the flags are turned on | License documentation requirement + a `data/external/` provenance record | **Planned** |
+| 27 | The prohibited-field register is enforced against **any** schema, not only `dim_dealership` | `src/arpi/validation/privacy.py`: `assert_columns_are_privacy_safe` / `assert_frame_is_privacy_safe` / `assert_csv_header_is_privacy_safe`, deny-by-default `_name` rule with a justification-bearing allowlist, fail-closed. See section 3.1 | **Implemented** |
+| 28 | A quarantined bad row cannot itself leak | `redact_payload` masks prohibited keys' values with `***REDACTED***` before anything reaches `audit.rejected_record.record_payload`. See 3.1.4 | **Implemented** (the redaction function; the rejected-record write path that calls it is **Planned**, Phase 1.2) |
 
-> **Honest gap note.** Controls 25 and 26 are currently **documentation-only**. Nothing in code would stop
-> a contributor adding a protected-characteristic column to a new entity except review and the naming
-> check. The Phase 1.1 work item that generalizes `DQ-DLR-004` into a reusable per-entity
-> prohibited-column check (control 19) is the mitigation, and it is recorded in
+> **Honest gap note.** Control 26 is currently **documentation-only**.
+>
+> Controls 25, 27 and 28 became code during Phase 1: the tripwire that was specific to `dim_dealership`
+> is now a general, entity-agnostic control any layer can call, and it covers protected characteristics
+> and communication content, which nothing checked before. Two limits are worth stating plainly rather
+> than leaving a reader to infer them. First, it inspects **column names, not values** (3.1.5). Second,
+> control 19 — a per-entity `DQ-*` check registered for each new entity — is still **Planned**: the
+> mechanism exists and is tested, but each Phase 1 entity must call it, and until an entity does, its
+> schema is covered only by whichever caller runs. Both are recorded in
 > [docs/requirements/PHASE_1_BACKLOG.md](docs/requirements/PHASE_1_BACKLOG.md) and
 > [docs/requirements/DOCUMENTATION_BACKLOG.md](docs/requirements/DOCUMENTATION_BACKLOG.md).
 
