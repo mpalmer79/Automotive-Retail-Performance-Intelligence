@@ -180,7 +180,7 @@ def test_entity_tables_is_a_projection_of_the_spec_registry() -> None:
         for spec in ENTITY_SPECS
         if spec.warehouse_table is not None
     }
-    assert ENTITY_TABLES == expected
+    assert expected == ENTITY_TABLES
 
 
 def test_every_registered_spec_is_internally_consistent() -> None:
@@ -493,3 +493,96 @@ def test_load_foundation_reports_a_row_count_mismatch(
     assert by_id["RECON-INGEST-DIM-DATE-WAREHOUSE"].difference == pytest.approx(1.0)
     assert by_id["RECON-DIM-DATE-ROWCOUNT"].status == "failed"
     assert by_id["RECON-DIM-DATE-ROWCOUNT"].difference == pytest.approx(1.0)
+
+
+# --------------------------------------------------------------------------------------
+# The rejected-record path: nothing prohibited may ever be persisted
+# --------------------------------------------------------------------------------------
+
+
+def test_redact_payload_masks_a_prohibited_column() -> None:
+    from arpi.constants import REDACTED_PLACEHOLDER
+    from arpi.ingestion.rejection import redact_payload
+
+    redacted = redact_payload(
+        {
+            "customer_id": "CUS-00000001",
+            "customer_email": "someone@example.test",
+            "home_phone_number": "555-0100",
+            "age_band": "35-44",
+            "county": "Hillsborough",
+        }
+    )
+
+    # Keys survive so the shape of the offending row stays diagnosable.
+    assert set(redacted) == {
+        "customer_id",
+        "customer_email",
+        "home_phone_number",
+        "age_band",
+        "county",
+    }
+    assert redacted["customer_email"] == REDACTED_PLACEHOLDER
+    assert redacted["home_phone_number"] == REDACTED_PLACEHOLDER
+    # Values that are legitimately published are not destroyed.
+    assert redacted["customer_id"] == "CUS-00000001"
+    assert redacted["age_band"] == "35-44"
+    assert redacted["county"] == "Hillsborough"
+
+
+def test_the_fallback_redactor_fails_closed() -> None:
+    """Without the privacy module every value is masked, never passed through."""
+    from arpi.constants import REDACTED_PLACEHOLDER
+    from arpi.ingestion.rejection import _fallback_redact_payload
+
+    redacted = _fallback_redact_payload({"county": "Hillsborough", "email": "a@b.test"})
+    assert redacted == {
+        "county": REDACTED_PLACEHOLDER,
+        "email": REDACTED_PLACEHOLDER,
+    }
+
+
+def test_build_rejected_payload_redacts_and_carries_lineage() -> None:
+    import json
+
+    from arpi.constants import REDACTED_PLACEHOLDER
+    from arpi.ingestion.rejection import LINEAGE_PAYLOAD_KEY, build_rejected_payload
+
+    document = build_rejected_payload(
+        {
+            "customer_id": "CUS-00000001",
+            "customer_email": "someone@example.test",
+            # Lineage columns of the raw table are stripped, not redacted: they are
+            # re-emitted under the lineage key in a structured form.
+            "raw_record_id": 17,
+            "ingested_at": "2026-07-28T00:00:00+00:00",
+        },
+        rejection_category="completeness",
+        source_row_number=6,
+        load_batch_id="0f0e0d0c-0b0a-0908-0706-050403020100",
+        source_file_name="dim_customer.csv",
+    )
+    payload = json.loads(document)
+
+    assert payload["customer_id"] == "CUS-00000001"
+    assert payload["customer_email"] == REDACTED_PLACEHOLDER
+    assert "raw_record_id" not in payload
+    assert "ingested_at" not in payload
+    assert payload[LINEAGE_PAYLOAD_KEY] == {
+        "rejection_category": "completeness",
+        "source_row_number": 6,
+        "load_batch_id": "0f0e0d0c-0b0a-0908-0706-050403020100",
+        "source_file_name": "dim_customer.csv",
+    }
+
+
+def test_every_rejection_code_maps_to_a_canonical_category() -> None:
+    from arpi.constants import CHECK_CATEGORIES
+    from arpi.ingestion.rejection import REJECTION_CATEGORIES, category_for
+
+    assert set(REJECTION_CATEGORIES.values()) <= CHECK_CATEGORIES
+    for code in REJECTION_CATEGORIES:
+        assert code.startswith("REJ-")
+        assert category_for(code) in CHECK_CATEGORIES
+    # An unknown code still yields a category the audit table can store.
+    assert category_for("REJ-NOT-REGISTERED") in CHECK_CATEGORIES

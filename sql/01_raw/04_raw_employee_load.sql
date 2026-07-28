@@ -76,7 +76,7 @@ COMMENT ON COLUMN raw.employee_load.tenure_band IS 'Untyped source value. Banded
 COMMENT ON COLUMN raw.employee_load.effective_date IS 'Untyped source value. Inclusive start date of this version.';
 COMMENT ON COLUMN raw.employee_load.expiration_date IS 'Untyped source value. Source expiration date. Informational: the merge derives the stored value from the successor version.';
 COMMENT ON COLUMN raw.employee_load.is_current IS 'Untyped source value. Source current flag. Informational: the merge derives the stored value.';
-COMMENT ON COLUMN raw.employee_load.attribute_hash IS 'Untyped source value. 64-character lower-case SHA-256 hex digest of tracked attributes 3-11 joined with ''|''. Computed by the generator (Agent D) and carried through unchanged; the merge compares it and never recomputes it.';
+COMMENT ON COLUMN raw.employee_load.attribute_hash IS 'Untyped source value. 64-character lower-case SHA-256 hex digest of tracked attributes 3-9 (dealership_id|department|job_role|hire_date|termination_date|is_active|is_manager), joined with ''|'', UTF-8, NULL serialised as the empty string. Computed by the generator (Agent D) and carried through unchanged; the merge compares it and never recomputes it.';
 COMMENT ON COLUMN raw.employee_load.source_system IS 'Untyped source value. Originating system; constant arpi_synthetic_generator in Phase 1.';
 COMMENT ON COLUMN raw.employee_load.load_batch_id IS 'UUID identifying one ingestion batch. Every row written by a single load shares this value.';
 COMMENT ON COLUMN raw.employee_load.source_file_name IS 'File name the row was read from, for lineage.';

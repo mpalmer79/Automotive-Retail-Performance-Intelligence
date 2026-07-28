@@ -12,16 +12,74 @@ pytestmark = pytest.mark.integration
 
 EXPECTED_SCHEMAS = ("audit", "raw", "reporting", "staging", "warehouse")
 
+#: Every entity that has a raw landing table, in the order sql/01_raw declares them.
+#:
+#: Kept as a literal list rather than derived from the ingestion registry: this test is
+#: meant to fail when an object appears that nobody wrote down, so deriving the expected
+#: set from the same code that creates it would defeat the purpose.
+RAW_ENTITIES = (
+    "calendar_date_load",
+    "dealership_load",
+    "vehicle_model_load",
+    "vehicle_load",
+    "employee_load",
+    "customer_load",
+    "lead_source_load",
+    "marketing_campaign_load",
+    "acquisition_event_load",
+    "sale_event_load",
+    "lead_load",
+    "appointment_load",
+    "marketing_spend_load",
+)
+
+#: Entities whose staging layer follows the Phase 1 three-view pattern:
+#: ``stg_<entity>_typed``, ``stg_<entity>`` and ``stg_<entity>_rejected``.
+STAGING_ENTITIES = (
+    "vehicle_model",
+    "vehicle",
+    "employee",
+    "customer",
+    "lead_source",
+    "marketing_campaign",
+    "acquisition_event",
+    "sale_event",
+    "lead",
+    "appointment",
+    "marketing_spend",
+)
+
+#: The conformed dimensions.
+DIMENSION_TABLES = (
+    "dim_date",
+    "dim_dealership",
+    "dim_vehicle_model",
+    "dim_vehicle",
+    "dim_employee",
+    "dim_customer",
+    "dim_lead_source",
+    "dim_marketing_campaign",
+)
+
+#: The fact tables. Every one of these is created empty in Phase 1.2; the generators and
+#: load scripts that populate them arrive later. See test_fact_tables_are_empty.
+FACT_TABLES = (
+    "fact_vehicle_sale",
+    "fact_vehicle_inventory_snapshot",
+    "fact_lead",
+    "fact_appointment",
+    "fact_marketing_spend",
+)
+
 EXPECTED_TABLES = {
     ("audit", "pipeline_run"),
     ("audit", "pipeline_run_row_count"),
     ("audit", "reconciliation_result"),
     ("audit", "rejected_record"),
     ("audit", "validation_result"),
-    ("raw", "calendar_date_load"),
-    ("raw", "dealership_load"),
-    ("warehouse", "dim_date"),
-    ("warehouse", "dim_dealership"),
+    *(("raw", name) for name in RAW_ENTITIES),
+    *(("warehouse", name) for name in DIMENSION_TABLES),
+    *(("warehouse", name) for name in FACT_TABLES),
 }
 
 EXPECTED_VIEWS = {
@@ -37,6 +95,9 @@ EXPECTED_VIEWS = {
     ("reporting", "vw_pipeline_run_summary"),
     ("staging", "stg_calendar_date"),
     ("staging", "stg_dealership"),
+    *(("staging", f"stg_{name}") for name in STAGING_ENTITIES),
+    *(("staging", f"stg_{name}_typed") for name in STAGING_ENTITIES),
+    *(("staging", f"stg_{name}_rejected") for name in STAGING_ENTITIES),
 }
 
 # The 26 columns of the dim_date contract, in the exact order they must appear.
@@ -165,15 +226,29 @@ def test_expected_views_exist(cursor: Any) -> None:
     assert {(row[0], row[1]) for row in cursor.fetchall()} == EXPECTED_VIEWS
 
 
-def test_no_fact_tables_exist_yet(cursor: Any) -> None:
-    """Phase 0 has no facts. A stray fact table would make the reporting layer a lie."""
+def test_exactly_the_declared_fact_tables_exist(cursor: Any) -> None:
+    """The fact tables are exactly the five the contract declares -- no more."""
     cursor.execute(
         """
         SELECT table_name FROM information_schema.tables
         WHERE table_schema = 'warehouse' AND table_name LIKE 'fact\\_%'
         """
     )
-    assert cursor.fetchall() == []
+    assert {row[0] for row in cursor.fetchall()} == set(FACT_TABLES)
+
+
+def test_fact_tables_are_empty(cursor: Any) -> None:
+    """No fact row has ever been loaded, and nothing may claim otherwise.
+
+    The Phase 1.2 increment creates the fact DDL so the dimensional model is complete and
+    reviewable, but the generators and load scripts land later. A fact table that
+    unexpectedly held rows would let a reporting view present numbers nobody generated.
+    """
+    for table in FACT_TABLES:
+        cursor.execute(f"SELECT count(*) FROM warehouse.{table}")  # noqa: S608 - literal
+        row = cursor.fetchone()
+        assert row is not None
+        assert row[0] == 0, f"warehouse.{table} is expected to be empty in this increment"
 
 
 def test_reporting_layer_contains_exactly_four_views(cursor: Any) -> None:
@@ -274,7 +349,16 @@ def test_init_sequence_is_rerunnable(db: Any, init_sequence_runner: Any) -> None
 def test_merge_scripts_contain_no_psql_meta_commands(sql_root: Path) -> None:
     """The loader executes these through psycopg; a backslash command would crash it."""
     merge_files = sorted(sql_root.glob("03_dimensions/*_merge.sql"))
-    assert len(merge_files) == 2, "expected exactly the dim_date and dim_dealership merges"
+    assert [path.name for path in merge_files] == [
+        "10_dim_date_merge.sql",
+        "11_dim_dealership_merge.sql",
+        "12_dim_vehicle_model_merge.sql",
+        "13_dim_vehicle_merge.sql",
+        "14_dim_employee_merge.sql",
+        "15_dim_customer_merge.sql",
+        "16_dim_lead_source_merge.sql",
+        "17_dim_marketing_campaign_merge.sql",
+    ], "the loader runs these in sorted order; the list must stay explicit"
 
     forbidden = ("\\i ", "\\set ", "\\c ", "\\gexec", "\\copy", "\\echo")
     for path in merge_files:

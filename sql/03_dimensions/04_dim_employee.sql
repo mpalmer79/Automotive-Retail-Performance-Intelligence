@@ -19,11 +19,15 @@
 --     with no gap and no overlap for a given employee_id.
 --   * The open-ended sentinel is 9999-12-31 and is_current is kept in lock step
 --     with it by ck_dim_employee_current_flag_matches_sentinel.
---   * Change detection uses attribute_hash over tracked attributes 3-11.
---     Agent D computes that digest in Python as SHA-256 of those attributes
---     joined with '|' (NULL rendered as the empty string). The merge compares
---     the generator's value and NEVER recomputes it, so there is exactly one
---     definition of 'changed' in the whole system.
+--   * Change detection uses attribute_hash over tracked attributes 3-9:
+--       dealership_id|department|job_role|hire_date|termination_date|is_active|is_manager
+--     Agent D computes that digest in Python as the SHA-256 of those seven
+--     values joined with the pipe character, UTF-8, NULL serialised as the
+--     empty string, booleans lower-case true/false and dates ISO YYYY-MM-DD.
+--     Worked example from the generator's own assertion:
+--       GSA-003|Sales|Salesperson|2021-05-04||true|false
+--     The merge compares the generator's value and NEVER recomputes it, so
+--     there is exactly one definition of 'changed' in the whole system.
 --
 -- PRIVACY: this entity carries no name, contact detail, compensation, commission,
 -- pay plan or protected characteristic. Tenure is banded, not exact.
@@ -97,5 +101,5 @@ COMMENT ON COLUMN warehouse.dim_employee.tenure_band IS 'Banded tenure. Banded r
 COMMENT ON COLUMN warehouse.dim_employee.effective_date IS 'Inclusive start date of this version.';
 COMMENT ON COLUMN warehouse.dim_employee.expiration_date IS 'Source expiration date. Informational: the merge derives the stored value from the successor version.';
 COMMENT ON COLUMN warehouse.dim_employee.is_current IS 'Source current flag. Informational: the merge derives the stored value.';
-COMMENT ON COLUMN warehouse.dim_employee.attribute_hash IS '64-character lower-case SHA-256 hex digest of tracked attributes 3-11 joined with ''|''. Computed by the generator (Agent D) and carried through unchanged; the merge compares it and never recomputes it.';
+COMMENT ON COLUMN warehouse.dim_employee.attribute_hash IS '64-character lower-case SHA-256 hex digest of tracked attributes 3-9 (dealership_id|department|job_role|hire_date|termination_date|is_active|is_manager), joined with ''|'', UTF-8, NULL serialised as the empty string. Computed by the generator (Agent D) and carried through unchanged; the merge compares it and never recomputes it.';
 COMMENT ON COLUMN warehouse.dim_employee.source_system IS 'Originating system; constant arpi_synthetic_generator in Phase 1.';

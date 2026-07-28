@@ -278,7 +278,7 @@ COMMENT ON COLUMN staging.stg_employee.tenure_band IS 'Banded tenure. Banded rat
 COMMENT ON COLUMN staging.stg_employee.effective_date IS 'Inclusive start date of this version.';
 COMMENT ON COLUMN staging.stg_employee.expiration_date IS 'Source expiration date. Informational: the merge derives the stored value from the successor version.';
 COMMENT ON COLUMN staging.stg_employee.is_current IS 'Source current flag. Informational: the merge derives the stored value.';
-COMMENT ON COLUMN staging.stg_employee.attribute_hash IS '64-character lower-case SHA-256 hex digest of tracked attributes 3-11 joined with ''|''. Computed by the generator (Agent D) and carried through unchanged; the merge compares it and never recomputes it.';
+COMMENT ON COLUMN staging.stg_employee.attribute_hash IS '64-character lower-case SHA-256 hex digest of tracked attributes 3-9 (dealership_id|department|job_role|hire_date|termination_date|is_active|is_manager), joined with ''|'', UTF-8, NULL serialised as the empty string. Computed by the generator (Agent D) and carried through unchanged; the merge compares it and never recomputes it.';
 COMMENT ON COLUMN staging.stg_employee.source_system IS 'Originating system; constant arpi_synthetic_generator in Phase 1.';
 COMMENT ON COLUMN staging.stg_employee.load_batch_id IS 'Lineage: the load batch this row came from.';
 COMMENT ON COLUMN staging.stg_employee.source_file_name IS 'Lineage: source file name.';

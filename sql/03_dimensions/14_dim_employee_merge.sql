@@ -21,12 +21,22 @@
 --
 -- CHANGE DETECTION IS THE GENERATOR'S HASH, NOT A RECOMPUTATION
 -- ------------------------------------------------------------
--- Agent D computes attribute_hash in Python as SHA-256 over tracked attributes
--- 3-11 (dealership_id, department, job_role, hire_date, termination_date,
--- is_active, is_manager) joined with '|' and NULL rendered as the empty string.
+-- Agent D computes attribute_hash in Python as the SHA-256 of tracked attributes
+-- 3-9 joined with the pipe character, UTF-8:
+--
+--   dealership_id|department|job_role|hire_date|termination_date|is_active|is_manager
+--
+-- NULL serialises as the empty string, booleans as lower-case true/false and dates
+-- as ISO YYYY-MM-DD. The generator asserts this worked example against its literal
+-- digest:
+--
+--   GSA-003|Sales|Salesperson|2021-05-04||true|false
+--
 -- This script NEVER recomputes that digest: it carries the generator's value
--- through unchanged and only compares it. Two implementations of one rule is how
--- a warehouse starts disagreeing with itself, so there is deliberately only one.
+-- through staging unchanged and only compares it. Two implementations of one rule
+-- is how a warehouse starts disagreeing with itself -- and here the failure mode is
+-- specific and severe: a single byte of disagreement makes every employee look
+-- changed on every run, so the Type 2 table grows a new version per load forever.
 --
 -- WHY TWO STATEMENTS, IN THIS ORDER
 -- ---------------------------------

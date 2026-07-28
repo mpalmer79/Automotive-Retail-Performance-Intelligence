@@ -83,38 +83,116 @@ VEHICLE_MODEL_COLUMNS: tuple[str, ...] = (
 VEHICLE_MODEL_ROWS: tuple[tuple[str, ...], ...] = (
     # 1. Superseded later by row 5 -> REJ-KEY-001.
     (
-        "1", "VMD-00001", "2024", "Chevrolet", "Equinox", "LT", "SUV", "Midsize",
-        "Gasoline", "AWD", "Automatic", "5", "5", "Chevrolet", "true",
+        "1",
+        "VMD-00001",
+        "2024",
+        "Chevrolet",
+        "Equinox",
+        "LT",
+        "SUV",
+        "Midsize",
+        "Gasoline",
+        "AWD",
+        "Automatic",
+        "5",
+        "5",
+        "Chevrolet",
+        "true",
         "arpi_synthetic_generator",
     ),
     # 2. Clean.
     (
-        "2", "VMD-00002", "2023", "Subaru", "Outback", "Premium", "Wagon", "Midsize",
-        "Gasoline", "AWD", "CVT", "5", "5", "Subaru", "true",
+        "2",
+        "VMD-00002",
+        "2023",
+        "Subaru",
+        "Outback",
+        "Premium",
+        "Wagon",
+        "Midsize",
+        "Gasoline",
+        "AWD",
+        "CVT",
+        "5",
+        "5",
+        "Subaru",
+        "true",
         "arpi_synthetic_generator",
     ),
     # 3. model_year cannot be cast to smallint -> REJ-TYPE-001.
     (
-        "3", "VMD-00003", "not-a-year", "Chevrolet", "Malibu", "LS", "Sedan", "Midsize",
-        "Gasoline", "FWD", "Automatic", "4", "5", "Chevrolet", "true",
+        "3",
+        "VMD-00003",
+        "not-a-year",
+        "Chevrolet",
+        "Malibu",
+        "LS",
+        "Sedan",
+        "Midsize",
+        "Gasoline",
+        "FWD",
+        "Automatic",
+        "4",
+        "5",
+        "Chevrolet",
+        "true",
         "arpi_synthetic_generator",
     ),
     # 4. body_style is outside its enumerated domain -> REJ-DOMAIN-001.
     (
-        "4", "VMD-00004", "2024", "Chevrolet", "Blazer", "RS", "Spaceship", "Midsize",
-        "Gasoline", "AWD", "Automatic", "5", "5", "Chevrolet", "true",
+        "4",
+        "VMD-00004",
+        "2024",
+        "Chevrolet",
+        "Blazer",
+        "RS",
+        "Spaceship",
+        "Midsize",
+        "Gasoline",
+        "AWD",
+        "Automatic",
+        "5",
+        "5",
+        "Chevrolet",
+        "true",
         "arpi_synthetic_generator",
     ),
     # 5. Clean, and supersedes row 1 because its raw_record_id is higher.
     (
-        "5", "VMD-00001", "2024", "Chevrolet", "Equinox", "LT", "SUV", "Midsize",
-        "Gasoline", "AWD", "Automatic", "5", "5", "Chevrolet", "false",
+        "5",
+        "VMD-00001",
+        "2024",
+        "Chevrolet",
+        "Equinox",
+        "LT",
+        "SUV",
+        "Midsize",
+        "Gasoline",
+        "AWD",
+        "Automatic",
+        "5",
+        "5",
+        "Chevrolet",
+        "false",
         "arpi_synthetic_generator",
     ),
     # 6. trim is required and absent -> REJ-NULL-001.
     (
-        "6", "VMD-00006", "2024", "Chevrolet", "Trax", "", "Crossover", "Compact",
-        "Gasoline", "FWD", "Automatic", "5", "5", "Chevrolet", "true",
+        "6",
+        "VMD-00006",
+        "2024",
+        "Chevrolet",
+        "Trax",
+        "",
+        "Crossover",
+        "Compact",
+        "Gasoline",
+        "FWD",
+        "Automatic",
+        "5",
+        "5",
+        "Chevrolet",
+        "true",
         "arpi_synthetic_generator",
     ),
 )
@@ -225,7 +303,7 @@ def loaded(chain_config: ArpiConfig, defective_dataset: Any) -> Any:
 def _rows(connection: Any, statement: str, parameters: tuple[Any, ...] = ()) -> list[Any]:
     with connection.cursor() as cursor:
         cursor.execute(statement, parameters)
-        return cursor.fetchall()
+        return list(cursor.fetchall())
 
 
 def _scalar(connection: Any, statement: str, parameters: tuple[Any, ...] = ()) -> Any:
@@ -407,11 +485,12 @@ def test_each_rejection_records_its_source_row_number(loaded: Any, observer: Any
     """The source row number reaches the audit table through the payload lineage."""
     rows = _rows(
         observer,
-        "SELECT rejection_code, record_payload FROM audit.rejected_record "
-        "WHERE source_entity = %s",
+        "SELECT rejection_code, record_payload FROM audit.rejected_record WHERE source_entity = %s",
         (ENTITY,),
     )
-    row_numbers = {code: payload[LINEAGE_PAYLOAD_KEY]["source_row_number"] for code, payload in rows}
+    row_numbers = {
+        code: payload[LINEAGE_PAYLOAD_KEY]["source_row_number"] for code, payload in rows
+    }
     assert row_numbers == {
         "REJ-KEY-001": 1,
         "REJ-TYPE-001": 3,
