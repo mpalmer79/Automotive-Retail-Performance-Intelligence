@@ -278,4 +278,4 @@ def test_a_different_seed_produces_different_output(unit_config: ArpiConfig) -> 
 
 def test_every_check_identifier_is_declared_once() -> None:
     assert len(set(APPOINTMENT_CHECK_IDS)) == len(APPOINTMENT_CHECK_IDS)
-    assert APPOINTMENT_CHECK_IDS == tuple(sorted(APPOINTMENT_CHECK_IDS))
+    assert tuple(sorted(APPOINTMENT_CHECK_IDS)) == APPOINTMENT_CHECK_IDS

@@ -340,4 +340,4 @@ def test_the_record_view_and_the_frame_agree(
 
 def test_every_check_identifier_is_declared_once() -> None:
     assert len(set(LEAD_CHECK_IDS)) == len(LEAD_CHECK_IDS)
-    assert LEAD_CHECK_IDS == tuple(sorted(LEAD_CHECK_IDS))
+    assert tuple(sorted(LEAD_CHECK_IDS)) == LEAD_CHECK_IDS
