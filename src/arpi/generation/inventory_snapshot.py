@@ -681,8 +681,7 @@ def _check_grain_is_unique(frame: pd.DataFrame) -> CheckResult:
     missing = [column for column in INVENTORY_SNAPSHOT_GRAIN_COLUMNS if column not in frame.columns]
     if missing:
         return base.failed(
-            f"{ENTITY_INVENTORY_SNAPSHOT_EVENT} is missing grain column(s): "
-            f"{', '.join(missing)}."
+            f"{ENTITY_INVENTORY_SNAPSHOT_EVENT} is missing grain column(s): {', '.join(missing)}."
         )
     duplicates = int(frame.duplicated(subset=list(INVENTORY_SNAPSHOT_GRAIN_COLUMNS)).sum())
     result = replace(base, observed_value=float(duplicates))
