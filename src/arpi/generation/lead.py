@@ -327,8 +327,17 @@ MINIMUM_PROBABILITY: Final = 0.02
 #: Multiplier on the probability of a response when nobody owns the lead.
 UNASSIGNED_RESPONSE_FACTOR: Final = 0.45
 
-#: Inclusive bounds applied to an employee's CRM discipline index before it is used, so a
-#: single latent parameter cannot drive an outcome to a deterministic extreme.
+#: Mean of ``crm_discipline_index`` across the employee population. That latent is drawn as
+#: ``triangular(0.35, 1.00, 0.78)``, so it is a **fraction whose ceiling is 1.0**, not a
+#: multiplier centred on 1.0. Dividing by this mean turns it into one, which is what the
+#: draws here need: multiplying by the raw index would depress every response and contact
+#: probability by roughly thirty per cent and quietly turn a store-quality latent into a
+#: population-wide bias. A test recomputes this figure from the employee generator, so it
+#: cannot silently drift if that draw is retuned.
+MEAN_CRM_DISCIPLINE_INDEX: Final = 0.71
+
+#: Inclusive bounds applied to the normalised CRM discipline multiplier, so a single latent
+#: parameter cannot drive an outcome to a deterministic extreme.
 DISCIPLINE_BOUNDS: Final[tuple[float, float]] = (0.72, 1.24)
 
 # ---------------------------------------------------------------------------------------
@@ -754,6 +763,27 @@ def source_propensity(behaviour: LeadSourceBehaviour) -> float:
     return _clamp(ratio**SOURCE_PROPENSITY_EXPONENT, SOURCE_PROPENSITY_BOUNDS)
 
 
+def discipline_multiplier(owner: RoleInterval | None) -> float:
+    """Return the response-and-contact multiplier for the employee who owns a lead.
+
+    ``crm_discipline_index`` is drawn as a fraction whose ceiling is ``1.0`` rather than as
+    a multiplier centred on it, so it is normalised by
+    :data:`MEAN_CRM_DISCIPLINE_INDEX` before use. Without that step the *average* employee
+    would depress every probability, and a per-person difference would read as a
+    population-wide bias.
+
+    Args:
+        owner: The employee who owns the lead, or ``None`` when nobody does.
+
+    Returns:
+        ``1.0`` for an unowned lead -- the ownership penalty is applied separately -- and
+        otherwise a multiplier inside :data:`DISCIPLINE_BOUNDS`.
+    """
+    if owner is None:
+        return 1.0
+    return _clamp(owner.crm_discipline / MEAN_CRM_DISCIPLINE_INDEX, DISCIPLINE_BOUNDS)
+
+
 def funnel_population(frame: pd.DataFrame) -> pd.DataFrame:
     """Return the leads that belong in a funnel numerator **or** denominator.
 
@@ -1066,7 +1096,7 @@ def _draw_funnel(
     owner: RoleInterval | None,
 ) -> _LeadDraft:
     """Draw the response and the three funnel flags for one lead."""
-    discipline = _clamp(owner.crm_discipline, DISCIPLINE_BOUNDS) if owner is not None else 1.0
+    discipline = discipline_multiplier(owner)
     seconds = _draw_response(rng, arrival, behaviour, owner, discipline)
 
     if seconds is None:

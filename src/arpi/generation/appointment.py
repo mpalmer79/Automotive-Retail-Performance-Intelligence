@@ -891,9 +891,7 @@ def _check_write_up_implies_shown(frame: pd.DataFrame) -> CheckResult:
         "a write-up implies the shopper showed",
         CHECK_CATEGORY_BUSINESS_RULE,
     )
-    offending = int(
-        (frame["is_write_up"].astype(bool) & ~frame["is_shown"].astype(bool)).sum()
-    )
+    offending = int((frame["is_write_up"].astype(bool) & ~frame["is_shown"].astype(bool)).sum())
     if offending == 0:
         return base
     return base.failed(
@@ -925,9 +923,7 @@ def _check_sold_links_to_sale(frame: pd.DataFrame, sales: dict[str, SaleLink]) -
             offending.append(f"{appointment_id} is credited with a sale at another store")
         elif sale.sale_date < pd.Timestamp(record["show_date"]).date():
             offending.append(f"{appointment_id} shows after the sale it claims")
-    unsold_with_sale = int(
-        (~frame["is_sold"].astype(bool) & frame["sale_id"].notna()).sum()
-    )
+    unsold_with_sale = int((~frame["is_sold"].astype(bool) & frame["sale_id"].notna()).sum())
     total = len(offending) + unsold_with_sale
     if total == 0:
         return base
