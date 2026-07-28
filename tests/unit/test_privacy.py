@@ -138,10 +138,8 @@ def test_prohibited_columns_preserves_the_declared_spelling() -> None:
 
 
 def test_assert_columns_accepts_a_clean_schema() -> None:
-    assert (
-        assert_columns_are_privacy_safe(("customer_id", "age_band", "county"), "dim_customer")
-        is None
-    )
+    """A clean schema passes silently; the absence of an exception is the assertion."""
+    assert_columns_are_privacy_safe(("customer_id", "age_band", "county"), "dim_customer")
 
 
 def test_assert_columns_fails_closed() -> None:
@@ -163,8 +161,9 @@ def test_assert_frame_fails_closed() -> None:
 
 
 def test_assert_frame_accepts_a_clean_frame() -> None:
+    """A clean frame passes silently; the absence of an exception is the assertion."""
     frame = pd.DataFrame({"customer_id": ["CUS-00000001"], "age_band": ["25-34"]})
-    assert assert_frame_is_privacy_safe(frame, "dim_customer") is None
+    assert_frame_is_privacy_safe(frame, "dim_customer")
 
 
 def test_a_postgresql_column_list_uses_the_same_rule() -> None:

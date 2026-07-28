@@ -1,0 +1,372 @@
+"""Data-quality assertions over the generated employee dimension.
+
+The privacy assertions in this module are the highest-value tests in the file. They
+inspect the **schema**, not the values, so a prohibited column fails the run even when it
+is entirely empty.
+"""
+
+from __future__ import annotations
+
+import pytest
+
+from arpi.config import ArpiConfig, load_config
+from arpi.generation.base import GeneratedDataset
+from arpi.generation.calendar import generate_date_dataset
+from arpi.generation.customer import generate_customer_dataset
+from arpi.generation.dealership import generate_dealership_dataset
+from arpi.generation.employee import (
+    ALLOWED_DEPARTMENTS,
+    DEPARTMENT_SALES,
+    DIM_EMPLOYEE_COLUMNS,
+    DIM_EMPLOYEE_REQUIRED_COLUMNS,
+    EMPLOYEE_CHECK_IDS,
+    EMPLOYEE_HEADCOUNT_BOUNDS,
+    JOB_ROLE_SALESPERSON,
+    LATENT_PARAMETER_COLUMN_TOKENS,
+    employee_headcount,
+    employee_performance_profiles,
+    generate_employee_dataset,
+    validate_employee_dataset,
+)
+from arpi.generation.writer import dataframe_to_csv_bytes
+from arpi.utilities.hashing import content_digest
+from arpi.validation.registry import require_registered
+
+pytestmark = pytest.mark.data_quality
+
+#: The prohibited vocabulary spelled out verbatim, so that a future refactor of the shared
+#: privacy module cannot silently narrow what this entity is checked against.
+PROHIBITED_COLUMN_NAMES = (
+    "name",
+    "first_name",
+    "last_name",
+    "full_name",
+    "email",
+    "phone",
+    "address",
+    "street_address",
+    "ssn",
+    "social_security_number",
+    "date_of_birth",
+    "dob",
+    "drivers_license",
+    "bank_account",
+    "credit_card",
+    "credit_score",
+    "salary",
+    "compensation",
+    "commission",
+    "pay_plan",
+    "race",
+    "ethnicity",
+    "gender",
+    "religion",
+    "marital_status",
+    "veteran_status",
+    "notes",
+    "comments",
+)
+
+
+@pytest.fixture
+def employee_dataset(test_config: ArpiConfig) -> GeneratedDataset:
+    """The generated ``dim_employee`` dataset for the ``test`` profile."""
+    return generate_employee_dataset(test_config)
+
+
+@pytest.fixture
+def development_employee_dataset(development_config: ArpiConfig) -> GeneratedDataset:
+    """The generated ``dim_employee`` dataset for the ``development`` profile."""
+    return generate_employee_dataset(development_config)
+
+
+# --------------------------------------------------------------------------------------
+# Privacy
+# --------------------------------------------------------------------------------------
+@pytest.mark.parametrize("prohibited", PROHIBITED_COLUMN_NAMES)
+def test_no_prohibited_column_name_exists(
+    employee_dataset: GeneratedDataset, prohibited: str
+) -> None:
+    columns = {str(column).lower() for column in employee_dataset.frame.columns}
+    assert prohibited not in columns
+    assert not any(prohibited in column for column in columns)
+
+
+def test_the_column_set_is_exactly_the_contract(employee_dataset: GeneratedDataset) -> None:
+    """Deny by default: anything not in the contract is, by construction, not generated."""
+    assert set(employee_dataset.actual_columns) == set(DIM_EMPLOYEE_COLUMNS)
+
+
+def test_no_latent_performance_parameter_leaked_into_the_dimension(
+    employee_dataset: GeneratedDataset, test_config: ArpiConfig
+) -> None:
+    """A scorecard built on the generator's own skill parameter would be circular."""
+    columns = {str(column).lower() for column in employee_dataset.frame.columns}
+    for token in LATENT_PARAMETER_COLUMN_TOKENS:
+        assert not any(token in column for column in columns)
+
+    profile_fields = {
+        "volume_index",
+        "closing_rate_index",
+        "gross_retention_index",
+        "crm_discipline_index",
+    }
+    assert profile_fields.isdisjoint(columns)
+    assert employee_performance_profiles(test_config), "the parameters must still exist"
+
+
+def test_the_privacy_check_is_registered_as_critical() -> None:
+    definition = require_registered("DQ-EMP-005")
+    assert definition.category == "privacy"
+    assert str(definition.severity) == "critical"
+
+
+# --------------------------------------------------------------------------------------
+# Column contract
+# --------------------------------------------------------------------------------------
+def test_the_column_order_is_exactly_the_contract(employee_dataset: GeneratedDataset) -> None:
+    assert employee_dataset.actual_columns == DIM_EMPLOYEE_COLUMNS
+    assert len(DIM_EMPLOYEE_COLUMNS) == 15
+
+
+def test_required_columns_are_never_null(employee_dataset: GeneratedDataset) -> None:
+    frame = employee_dataset.frame
+    for column in DIM_EMPLOYEE_REQUIRED_COLUMNS:
+        assert not frame[column].isna().any(), column
+
+
+def test_termination_date_is_the_only_nullable_column(
+    employee_dataset: GeneratedDataset,
+) -> None:
+    nullable = {
+        column for column in DIM_EMPLOYEE_COLUMNS if column not in DIM_EMPLOYEE_REQUIRED_COLUMNS
+    }
+    assert nullable == {"termination_date"}
+
+
+# --------------------------------------------------------------------------------------
+# Scale and distribution
+# --------------------------------------------------------------------------------------
+@pytest.mark.parametrize("profile", ["test", "development"])
+def test_headcount_is_within_the_configured_bounds(profile: str) -> None:
+    config = load_config(profile=profile)
+    frame = generate_employee_dataset(config).frame
+    minimum, maximum = EMPLOYEE_HEADCOUNT_BOUNDS[profile]
+    headcount = int(frame["employee_id"].nunique())
+    assert minimum <= headcount <= maximum
+    assert headcount == employee_headcount(config)
+
+
+def test_every_store_is_staffed(employee_dataset: GeneratedDataset) -> None:
+    current = employee_dataset.frame.loc[employee_dataset.frame["is_current"]]
+    assert set(current["dealership_id"].tolist()) == {"GSA-001", "GSA-002", "GSA-003"}
+
+
+def test_the_independent_store_has_the_smallest_roster(
+    development_employee_dataset: GeneratedDataset,
+) -> None:
+    current = development_employee_dataset.frame.loc[
+        development_employee_dataset.frame["is_current"]
+    ]
+    counts = current["dealership_id"].value_counts()
+    assert counts["GSA-003"] < counts["GSA-002"]
+    assert counts["GSA-003"] < counts["GSA-001"]
+
+
+def test_the_independent_store_is_sales_weighted(
+    development_employee_dataset: GeneratedDataset,
+) -> None:
+    current = development_employee_dataset.frame.loc[
+        development_employee_dataset.frame["is_current"]
+    ]
+    shares = {
+        dealership_id: float((group["job_role"] == JOB_ROLE_SALESPERSON).mean())
+        for dealership_id, group in current.groupby("dealership_id")
+    }
+    assert shares["GSA-003"] > shares["GSA-001"]
+    assert shares["GSA-003"] > shares["GSA-002"]
+
+
+def test_every_declared_department_is_staffed_at_development_scale(
+    development_employee_dataset: GeneratedDataset,
+) -> None:
+    current = development_employee_dataset.frame.loc[
+        development_employee_dataset.frame["is_current"]
+    ]
+    assert set(current["department"].tolist()) == set(ALLOWED_DEPARTMENTS)
+
+
+def test_sales_is_the_largest_department(
+    development_employee_dataset: GeneratedDataset,
+) -> None:
+    current = development_employee_dataset.frame.loc[
+        development_employee_dataset.frame["is_current"]
+    ]
+    counts = current["department"].value_counts()
+    assert counts.idxmax() == DEPARTMENT_SALES
+
+
+def test_the_roster_is_not_all_managers(
+    development_employee_dataset: GeneratedDataset,
+) -> None:
+    current = development_employee_dataset.frame.loc[
+        development_employee_dataset.frame["is_current"]
+    ]
+    assert 0.0 < float(current["is_manager"].mean()) < 0.5
+
+
+def test_tenure_is_not_uniform(development_employee_dataset: GeneratedDataset) -> None:
+    bands = development_employee_dataset.frame["tenure_band"].nunique()
+    assert bands >= 3
+
+
+# --------------------------------------------------------------------------------------
+# SCD Type 2 coverage
+# --------------------------------------------------------------------------------------
+@pytest.mark.parametrize("profile", ["test", "development"])
+def test_at_least_three_employees_have_two_or_more_versions(profile: str) -> None:
+    """The SCD2 load path must be exercised by real data, not only by unit tests."""
+    frame = generate_employee_dataset(load_config(profile=profile)).frame
+    versions = frame.groupby("employee_id").size()
+    assert int((versions >= 2).sum()) >= 3
+
+
+def test_a_terminated_employee_population_exists(
+    development_employee_dataset: GeneratedDataset,
+) -> None:
+    frame = development_employee_dataset.frame
+    current = frame.loc[frame["is_current"]]
+    terminated = int(current["termination_date"].notna().sum())
+    assert 0 < terminated < len(current)
+
+
+# --------------------------------------------------------------------------------------
+# Reproducibility and seed isolation
+# --------------------------------------------------------------------------------------
+def test_the_same_seed_produces_byte_identical_output(test_config: ArpiConfig) -> None:
+    first = dataframe_to_csv_bytes(generate_employee_dataset(test_config).frame)
+    second = dataframe_to_csv_bytes(generate_employee_dataset(test_config).frame)
+    assert first == second
+    assert content_digest(first) == content_digest(second)
+
+
+def test_generating_employees_does_not_perturb_any_other_entity(
+    test_config: ArpiConfig,
+) -> None:
+    """One namespace per entity: adding an entity must never move another's digest."""
+    before = {
+        "dim_date": content_digest(
+            dataframe_to_csv_bytes(generate_date_dataset(test_config).frame)
+        ),
+        "dim_dealership": content_digest(
+            dataframe_to_csv_bytes(generate_dealership_dataset(test_config).frame)
+        ),
+        "dim_customer": content_digest(
+            dataframe_to_csv_bytes(generate_customer_dataset(test_config).frame)
+        ),
+    }
+    generate_employee_dataset(test_config)
+    after = {
+        "dim_date": content_digest(
+            dataframe_to_csv_bytes(generate_date_dataset(test_config).frame)
+        ),
+        "dim_dealership": content_digest(
+            dataframe_to_csv_bytes(generate_dealership_dataset(test_config).frame)
+        ),
+        "dim_customer": content_digest(
+            dataframe_to_csv_bytes(generate_customer_dataset(test_config).frame)
+        ),
+    }
+    assert before == after
+
+
+def test_the_employee_digest_is_stable_across_reruns(test_config: ArpiConfig) -> None:
+    digests = {
+        content_digest(dataframe_to_csv_bytes(generate_employee_dataset(test_config).frame))
+        for _ in range(3)
+    }
+    assert len(digests) == 1
+
+
+# --------------------------------------------------------------------------------------
+# The gating suite
+# --------------------------------------------------------------------------------------
+def test_every_gating_check_passes(
+    employee_dataset: GeneratedDataset, test_config: ArpiConfig
+) -> None:
+    report = validate_employee_dataset(employee_dataset, test_config)
+    failures = [result for result in report.results if result.is_failure]
+    assert not failures, [result.message for result in failures]
+
+
+def test_the_suite_emits_every_declared_check_exactly_once(
+    employee_dataset: GeneratedDataset, test_config: ArpiConfig
+) -> None:
+    report = validate_employee_dataset(employee_dataset, test_config)
+    emitted = [result.check_id for result in report.results]
+    assert emitted == list(EMPLOYEE_CHECK_IDS)
+    assert len(set(emitted)) == len(emitted)
+
+
+def test_every_emitted_check_is_registered(
+    employee_dataset: GeneratedDataset, test_config: ArpiConfig
+) -> None:
+    for result in validate_employee_dataset(employee_dataset, test_config).results:
+        definition = require_registered(result.check_id)
+        assert result.check_category == definition.category, result.check_id
+        assert result.severity == definition.severity, result.check_id
+
+
+def test_the_gating_suite_fails_when_a_prohibited_column_appears(
+    employee_dataset: GeneratedDataset, test_config: ArpiConfig
+) -> None:
+    """The tripwire has to actually trip, so assert the failure rather than the pass."""
+    tampered = employee_dataset.frame.copy()
+    tampered["commission_rate"] = 0.0
+    dataset = GeneratedDataset(
+        entity_name=employee_dataset.entity_name,
+        frame=tampered,
+        declared_columns=employee_dataset.declared_columns,
+        namespace=employee_dataset.namespace,
+    )
+    results = {
+        result.check_id: result
+        for result in validate_employee_dataset(dataset, test_config).results
+    }
+    assert results["DQ-EMP-005"].is_failure
+
+
+def test_the_gating_suite_fails_when_a_latent_parameter_appears(
+    employee_dataset: GeneratedDataset, test_config: ArpiConfig
+) -> None:
+    tampered = employee_dataset.frame.copy()
+    tampered["volume_index"] = 1.0
+    dataset = GeneratedDataset(
+        entity_name=employee_dataset.entity_name,
+        frame=tampered,
+        declared_columns=employee_dataset.declared_columns,
+        namespace=employee_dataset.namespace,
+    )
+    results = {
+        result.check_id: result
+        for result in validate_employee_dataset(dataset, test_config).results
+    }
+    assert results["DQ-EMP-005"].is_failure
+
+
+def test_the_gating_suite_fails_on_a_tampered_hash(
+    employee_dataset: GeneratedDataset, test_config: ArpiConfig
+) -> None:
+    tampered = employee_dataset.frame.copy()
+    tampered.loc[tampered.index[0], "attribute_hash"] = "0" * 64
+    dataset = GeneratedDataset(
+        entity_name=employee_dataset.entity_name,
+        frame=tampered,
+        declared_columns=employee_dataset.declared_columns,
+        namespace=employee_dataset.namespace,
+    )
+    results = {
+        result.check_id: result
+        for result in validate_employee_dataset(dataset, test_config).results
+    }
+    assert results["DQ-EMP-008"].is_failure

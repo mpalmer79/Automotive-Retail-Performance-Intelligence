@@ -30,6 +30,7 @@ from arpi.constants import (
     CHECK_CATEGORY_BUSINESS_RULE,
     CHECK_CATEGORY_PRIVACY,
     CHECK_CATEGORY_STRUCTURAL,
+    CHECK_CATEGORY_UNIQUENESS,
     DEFAULT_CONFIG_DIR_NAME,
     SOURCE_SYSTEM,
 )
@@ -43,6 +44,7 @@ from arpi.validation.checks import (
     check_unique_column,
     check_values_in_allowed_set,
 )
+from arpi.validation.registry import CheckDefinition, CheckLayer, register_checks
 from arpi.validation.results import CheckResult, CheckSeverity, ValidationReport
 
 if TYPE_CHECKING:  # pragma: no cover - import cycle guard for type checking only
@@ -51,16 +53,6 @@ if TYPE_CHECKING:  # pragma: no cover - import cycle guard for type checking onl
     from arpi.config import ArpiConfig
 
 _LOGGER = get_logger(__name__)
-
-# ---------------------------------------------------------------------------------------
-# Canonical validation categories not yet present in arpi.constants
-# ---------------------------------------------------------------------------------------
-# ``structural``, ``business_rule`` and ``privacy`` already exist as ``CHECK_CATEGORY_*``
-# constants. ``uniqueness`` and ``referential`` are part of the same canonical seven-value
-# vocabulary but have no constant yet; they are declared here so this module emits the
-# canonical spelling, and they move to ``arpi.constants`` with the shared check registry.
-CHECK_CATEGORY_UNIQUENESS: Final = "uniqueness"
-CHECK_CATEGORY_REFERENTIAL: Final = "referential"
 
 # ---------------------------------------------------------------------------------------
 # Entity identity

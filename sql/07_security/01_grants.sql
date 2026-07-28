@@ -2,7 +2,7 @@
 -- File:            sql/07_security/01_grants.sql
 -- Project:         Automotive Retail Performance Intelligence (ARPI)
 -- Purpose:         Move object ownership to arpi_admin and apply the least-privilege grant model for arpi_loader and arpi_reporter.
--- Execution order: 19 of 25, and again as step 25 (a final privilege-normalisation pass after the validation objects are created).
+-- Execution order: 60 of 66, and again as step 66 (a final privilege-normalisation pass after the validation objects are created).
 -- Idempotency:     Fully idempotent. Ownership changes are no-ops when already correct; GRANT and REVOKE are declarative and may be repeated indefinitely.
 -- Ownership:       Makes arpi_admin the owner of all five schemas and of every table, view, sequence and function inside them.
 -- Grain:           n/a (privileges)
@@ -116,7 +116,9 @@ REVOKE ALL ON SCHEMA raw, staging, warehouse, reporting, audit FROM PUBLIC;
 REVOKE ALL ON ALL TABLES    IN SCHEMA raw, staging, warehouse, reporting, audit FROM PUBLIC;
 REVOKE ALL ON ALL SEQUENCES IN SCHEMA raw, staging, warehouse, reporting, audit FROM PUBLIC;
 -- Functions are EXECUTE-able by PUBLIC by default; that default is not wanted.
-REVOKE ALL ON ALL FUNCTIONS IN SCHEMA audit FROM PUBLIC;
+-- The staging schema gained functions in Phase 1.2 (the staging.fn_try_* cast
+-- helpers), so it is named here alongside audit rather than left on the default.
+REVOKE ALL ON ALL FUNCTIONS IN SCHEMA staging, audit FROM PUBLIC;
 
 -- -----------------------------------------------------------------------------
 -- 3. arpi_loader: read and write the pipeline layers, create nothing.
@@ -131,7 +133,11 @@ GRANT SELECT, INSERT, UPDATE, DELETE
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA raw, staging, warehouse, audit TO arpi_loader;
 
 -- The loader records validation results through audit.fn_record_validation_result.
-GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA audit TO arpi_loader;
+-- It does not need EXECUTE on the staging.fn_try_* helpers to read a staging view --
+-- a view runs with its owner's privileges -- but it is granted anyway so that an
+-- operator debugging a rejected row can call the same cast helper the view used and
+-- get the same answer.
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA staging, audit TO arpi_loader;
 
 -- Deliberately NOT granted to arpi_loader: CREATE on any schema, TRUNCATE on any
 -- table, and any privilege on the reporting schema. The loader transforms data;
@@ -154,7 +160,7 @@ REVOKE ALL ON ALL SEQUENCES IN SCHEMA raw FROM arpi_reporter;
 REVOKE ALL ON SCHEMA staging, warehouse, audit FROM arpi_reporter;
 REVOKE ALL ON ALL TABLES    IN SCHEMA staging, warehouse, audit FROM arpi_reporter;
 REVOKE ALL ON ALL SEQUENCES IN SCHEMA staging, warehouse, audit FROM arpi_reporter;
-REVOKE ALL ON ALL FUNCTIONS IN SCHEMA audit FROM arpi_reporter;
+REVOKE ALL ON ALL FUNCTIONS IN SCHEMA staging, audit FROM arpi_reporter;
 
 -- Read-only means read-only: no write privilege on the reporting views either.
 REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON ALL TABLES IN SCHEMA reporting FROM arpi_reporter;
@@ -179,7 +185,7 @@ BEGIN
             'ALTER DEFAULT PRIVILEGES FOR ROLE %I IN SCHEMA raw, staging, warehouse, audit '
             'GRANT USAGE, SELECT ON SEQUENCES TO arpi_loader', v_creator);
         EXECUTE format(
-            'ALTER DEFAULT PRIVILEGES FOR ROLE %I IN SCHEMA audit '
+            'ALTER DEFAULT PRIVILEGES FOR ROLE %I IN SCHEMA staging, audit '
             'GRANT EXECUTE ON FUNCTIONS TO arpi_loader', v_creator);
         EXECUTE format(
             'ALTER DEFAULT PRIVILEGES FOR ROLE %I IN SCHEMA reporting '
@@ -189,7 +195,7 @@ BEGIN
             'ALTER DEFAULT PRIVILEGES FOR ROLE %I IN SCHEMA raw, staging, warehouse, reporting, audit '
             'REVOKE ALL ON TABLES FROM PUBLIC', v_creator);
         EXECUTE format(
-            'ALTER DEFAULT PRIVILEGES FOR ROLE %I IN SCHEMA audit '
+            'ALTER DEFAULT PRIVILEGES FOR ROLE %I IN SCHEMA staging, audit '
             'REVOKE ALL ON FUNCTIONS FROM PUBLIC', v_creator);
     END LOOP;
 END
@@ -227,3 +233,136 @@ BEGIN
     RAISE NOTICE 'ARPI privilege model verified: reporter is confined to the reporting schema.';
 END
 $assert$;
+
+-- -----------------------------------------------------------------------------
+-- 7. Post-condition assertions over EVERY object, not a hand-listed sample.
+-- -----------------------------------------------------------------------------
+-- Section 6 names specific objects, which is readable but goes stale: it cannot
+-- catch a table added by a later increment. These loops assert the invariant over
+-- whatever exists right now, so every Phase 1 raw table, staging view, dimension,
+-- fact and audit table is covered automatically, and so will every Phase 1.4 and
+-- 1.5 object. A new object that breaks the model fails the build the first time
+-- this script runs after it is created.
+DO $assert_all$
+DECLARE
+    v_obj    record;
+    v_priv   text;
+    v_count  integer := 0;
+BEGIN
+    -- 7a. arpi_reporter must hold NO privilege on ANY object of the pipeline layers.
+    FOR v_obj IN
+        SELECT n.nspname AS schema_name, c.relname AS object_name
+        FROM pg_class AS c
+        JOIN pg_namespace AS n ON n.oid = c.relnamespace
+        WHERE n.nspname IN ('raw', 'staging', 'warehouse', 'audit')
+          AND c.relkind IN ('r', 'p', 'v', 'm')
+        ORDER BY 1, 2
+    LOOP
+        FOREACH v_priv IN ARRAY ARRAY['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES']
+        LOOP
+            IF has_table_privilege(
+                   'arpi_reporter',
+                   format('%I.%I', v_obj.schema_name, v_obj.object_name),
+                   v_priv)
+            THEN
+                RAISE EXCEPTION
+                    'SECURITY INVARIANT VIOLATED: arpi_reporter holds % on %.%.',
+                    v_priv, v_obj.schema_name, v_obj.object_name;
+            END IF;
+        END LOOP;
+        v_count := v_count + 1;
+    END LOOP;
+    RAISE NOTICE 'arpi_reporter verified to hold no privilege on % raw/staging/warehouse/audit object(s).',
+        v_count;
+
+    -- 7b. arpi_reporter must be able to read every reporting view, or the model is
+    --     broken in the other direction: a locked-down warehouse nobody can report on.
+    v_count := 0;
+    FOR v_obj IN
+        SELECT n.nspname AS schema_name, c.relname AS object_name
+        FROM pg_class AS c
+        JOIN pg_namespace AS n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'reporting'
+          AND c.relkind IN ('r', 'p', 'v', 'm')
+        ORDER BY 1, 2
+    LOOP
+        IF NOT has_table_privilege(
+                   'arpi_reporter',
+                   format('%I.%I', v_obj.schema_name, v_obj.object_name),
+                   'SELECT')
+        THEN
+            RAISE EXCEPTION 'GRANT FAILED: arpi_reporter cannot SELECT reporting.%.', v_obj.object_name;
+        END IF;
+        IF has_table_privilege(
+                   'arpi_reporter',
+                   format('%I.%I', v_obj.schema_name, v_obj.object_name),
+                   'INSERT')
+        THEN
+            RAISE EXCEPTION
+                'SECURITY INVARIANT VIOLATED: arpi_reporter holds INSERT on reporting.%.', v_obj.object_name;
+        END IF;
+        v_count := v_count + 1;
+    END LOOP;
+    RAISE NOTICE 'arpi_reporter verified read-only on % reporting view(s).', v_count;
+
+    -- 7c. arpi_loader must be able to write every warehouse, raw, staging and audit
+    --     TABLE. Views are excluded: staging views are read-only by construction.
+    v_count := 0;
+    FOR v_obj IN
+        SELECT n.nspname AS schema_name, c.relname AS object_name
+        FROM pg_class AS c
+        JOIN pg_namespace AS n ON n.oid = c.relnamespace
+        WHERE n.nspname IN ('raw', 'warehouse', 'audit')
+          AND c.relkind IN ('r', 'p')
+        ORDER BY 1, 2
+    LOOP
+        IF NOT has_table_privilege(
+                   'arpi_loader',
+                   format('%I.%I', v_obj.schema_name, v_obj.object_name),
+                   'INSERT')
+        THEN
+            RAISE EXCEPTION 'GRANT FAILED: arpi_loader cannot INSERT into %.%.',
+                v_obj.schema_name, v_obj.object_name;
+        END IF;
+        v_count := v_count + 1;
+    END LOOP;
+    RAISE NOTICE 'arpi_loader verified writable on % raw/warehouse/audit table(s).', v_count;
+
+    -- 7d. arpi_loader must be able to READ every staging view, because that is what
+    --     the merge scripts it executes select from.
+    v_count := 0;
+    FOR v_obj IN
+        SELECT n.nspname AS schema_name, c.relname AS object_name
+        FROM pg_class AS c
+        JOIN pg_namespace AS n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'staging'
+          AND c.relkind IN ('r', 'p', 'v', 'm')
+        ORDER BY 1, 2
+    LOOP
+        IF NOT has_table_privilege(
+                   'arpi_loader',
+                   format('%I.%I', v_obj.schema_name, v_obj.object_name),
+                   'SELECT')
+        THEN
+            RAISE EXCEPTION 'GRANT FAILED: arpi_loader cannot SELECT staging.%.', v_obj.object_name;
+        END IF;
+        v_count := v_count + 1;
+    END LOOP;
+    RAISE NOTICE 'arpi_loader verified readable on % staging object(s).', v_count;
+
+    -- 7e. Nothing in the pipeline layers is exposed to PUBLIC.
+    IF EXISTS (
+        SELECT 1
+        FROM pg_class AS c
+        JOIN pg_namespace AS n ON n.oid = c.relnamespace
+        WHERE n.nspname IN ('raw', 'staging', 'warehouse', 'audit')
+          AND c.relkind IN ('r', 'p', 'v', 'm')
+          AND has_table_privilege('public', c.oid, 'SELECT')
+    ) THEN
+        RAISE EXCEPTION
+            'SECURITY INVARIANT VIOLATED: PUBLIC can SELECT from a raw/staging/warehouse/audit object.';
+    END IF;
+
+    RAISE NOTICE 'ARPI privilege model verified object by object across all five schemas.';
+END
+$assert_all$;

@@ -2,7 +2,7 @@
 -- File:            sql/04_facts/00_fact_vehicle_sale.sql
 -- Project:         Automotive Retail Performance Intelligence (ARPI)
 -- Purpose:         Create warehouse.fact_vehicle_sale, the vehicle transaction fact.
--- Execution order: @@ORDER@@ — after every dimension it references, before its indexes and grants.
+-- Execution order: 47 of 66 — after every dimension it references, before its indexes and grants.
 -- Idempotency:     Fully idempotent. CREATE TABLE IF NOT EXISTS plus guarded ALTER TABLE for the foreign keys and COMMENTs. Existing rows are never touched.
 -- Ownership:       Created by the bootstrap superuser, reassigned to arpi_admin by sql/07_security/01_grants.sql. Written by arpi_loader through the load script.
 -- Grain:           One row per finalized vehicle transaction.

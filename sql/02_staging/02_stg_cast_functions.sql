@@ -2,7 +2,7 @@
 -- File:            sql/02_staging/02_stg_cast_functions.sql
 -- Project:         Automotive Retail Performance Intelligence (ARPI)
 -- Purpose:         Non-throwing cast helpers that let a staging view drop one malformed row instead of failing the whole load.
--- Execution order: @@ORDER@@ — after the Phase 0 staging views, before every Phase 1 staging view that calls these functions.
+-- Execution order: 19 of 66 — after the Phase 0 staging views, before every Phase 1 staging view that calls these functions.
 -- Idempotency:     Fully idempotent. CREATE OR REPLACE FUNCTION only; a function holds no state, so a rerun redefines it identically.
 -- Ownership:       Created by the bootstrap superuser, reassigned to arpi_admin by sql/07_security/01_grants.sql.
 -- Grain:           n/a (scalar functions)

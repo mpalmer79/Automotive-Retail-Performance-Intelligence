@@ -2,7 +2,7 @@
 -- File:            sql/04_facts/03_fact_appointment.sql
 -- Project:         Automotive Retail Performance Intelligence (ARPI)
 -- Purpose:         Create warehouse.fact_appointment, the showroom appointment accumulating-snapshot fact.
--- Execution order: @@ORDER@@ — after warehouse.fact_lead, before its indexes and grants.
+-- Execution order: 50 of 66 — after warehouse.fact_lead, before its indexes and grants.
 -- Idempotency:     Fully idempotent. CREATE TABLE IF NOT EXISTS plus guarded ALTER TABLE for the foreign keys and COMMENTs. Existing rows are never touched.
 -- Ownership:       Created by the bootstrap superuser, reassigned to arpi_admin by sql/07_security/01_grants.sql. Written by arpi_loader through the load script.
 -- Grain:           One row per scheduled appointment.

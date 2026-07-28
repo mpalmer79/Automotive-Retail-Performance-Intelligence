@@ -9,7 +9,6 @@ import pytest
 from arpi.config import ArpiConfig
 from arpi.constants import (
     CHECK_CATEGORIES,
-    CHECK_CATEGORY_BUSINESS_RULE,
     CHECK_CATEGORY_UNIQUENESS,
     ENTITY_DIM_DATE,
     ENTITY_DIM_DEALERSHIP,

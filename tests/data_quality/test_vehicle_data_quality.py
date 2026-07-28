@@ -39,9 +39,14 @@ from arpi.generation.vehicle import (
     intended_store_assignments,
     validate_vehicle_dataset,
 )
-from arpi.generation.vehicle_model import catalogued_models_for, generate_vehicle_model_dataset
+from arpi.generation.vehicle_model import (
+    VEHICLE_MODEL_NAMESPACE,
+    catalogued_models_for,
+    generate_vehicle_model_dataset,
+)
 from arpi.generation.writer import dataframe_to_csv_bytes
 from arpi.utilities.hashing import content_digest
+from arpi.utilities.seeding import derive_seed
 
 pytestmark = pytest.mark.data_quality
 
@@ -183,7 +188,9 @@ def test_condition_mix_differs_between_stores(development_config: ArpiConfig) ->
     records = build_vehicle_records(development_config)
     totals = Counter(record.intended_dealership_id for record in records)
     new_counts = Counter(
-        record.intended_dealership_id for record in records if record.condition_type == CONDITION_NEW
+        record.intended_dealership_id
+        for record in records
+        if record.condition_type == CONDITION_NEW
     )
     chevrolet_share = new_counts[STORE_CHEVROLET] / totals[STORE_CHEVROLET]
     subaru_share = new_counts[STORE_SUBARU] / totals[STORE_SUBARU]
@@ -274,17 +281,21 @@ def test_changing_the_vehicle_sub_seed_leaves_the_foundation_entities_alone(
     monkeypatch.setattr(vehicle_module, "VEHICLE_NAMESPACE", "dim_vehicle_variant")
     changed = content_digest(dataframe_to_csv_bytes(generate_vehicle_dataset(test_config).frame))
     assert changed != baseline
-    assert content_digest(
-        dataframe_to_csv_bytes(generate_date_dataset(test_config).frame)
-    ) == date_digest
-    assert content_digest(
-        dataframe_to_csv_bytes(generate_dealership_dataset(test_config).frame)
-    ) == store_digest
+    assert (
+        content_digest(dataframe_to_csv_bytes(generate_date_dataset(test_config).frame))
+        == date_digest
+    )
+    assert (
+        content_digest(dataframe_to_csv_bytes(generate_dealership_dataset(test_config).frame))
+        == store_digest
+    )
 
 
 def test_the_vehicle_namespace_is_its_own(test_config: ArpiConfig) -> None:
     assert VEHICLE_NAMESPACE == ENTITY_DIM_VEHICLE
-    assert VEHICLE_NAMESPACE != "dim_vehicle_model"
+    assert derive_seed(test_config.random_seed, VEHICLE_NAMESPACE) != derive_seed(
+        test_config.random_seed, VEHICLE_MODEL_NAMESPACE
+    )
 
 
 # ---------------------------------------------------------------------------------------
