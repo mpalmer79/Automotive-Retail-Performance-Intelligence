@@ -26,7 +26,7 @@
 | # | Condition | Current status | Evidence |
 |---:|---|---|---|
 | 1 | **Fact grains are approved** | ⚠️ **Declared, not approved** | All five MVP fact grains are declared in [DATA_DICTIONARY.md](../../DATA_DICTIONARY.md) Part C: `fact_vehicle_sale` (one row per finalized vehicle transaction), `fact_vehicle_inventory_snapshot` (one row per vehicle per dealership per daily snapshot date while active in inventory), `fact_lead` (one row per unique CRM lead), `fact_appointment` (one row per scheduled appointment), `fact_marketing_spend` (one row per dealership, campaign, and calendar month). **Approval means a built table whose grain uniqueness is enforced and tested** — none exists. Closed by `P1.2-04`, `P1.2-05`, `P1.4-04`, `P1.5-01`. |
-| 2 | **Dimensions are documented** | ⚠️ **Partially met** | The two Implemented dimensions carry exact, binding column contracts. The six Planned MVP dimensions are documented at **attribute level** with binding grains but indicative types. Full documentation follows implementation in `P1.1-01`, `P1.2-02`, `P1.2-03`, `P1.4-01`, `P1.5-01`. |
+| 2 | **Dimensions are documented** | ⚠️ **Partially met** | The two Implemented dimensions carry exact, binding column contracts. The six Planned MVP dimensions are documented at **attribute level** with binding grains but indicative types. Full documentation follows implementation in `P1.1-01`, `P1.1-06`, `P1.2-02`, `P1.2-03`, `P1.2-06`, `P1.4-01`, `P1.5-01`. |
 | 3 | **KPI formulas are documented** | ✅ **Met** | [KPI_CATALOG.md](../../KPI_CATALOG.md) specifies 29 KPIs, each with numerator, denominator, grain, date basis, filters, exclusions, null behaviour, SQL ownership, DAX ownership, reconciliation rule, and interpretation caution. **All 29 are `Planned`; none is computed.** |
 
 **Gate 1 verdict: CLOSED.** Power BI development may not begin. The binding constraint is condition 1: no
@@ -996,27 +996,33 @@ flowchart TB
         F2["P1.5-02<br/>Source-level profitability"]
         F3["P1.5-03<br/>MVP reporting layer"]
         F4["P1.5-04<br/>Power BI readiness review"]
+        F5["P1.5-05<br/>Stakeholder-question matrix"]
     end
 
     G1{{"Gate 1<br/>Power BI development"}}
 
     D0 --> A1
     D0 --> A3
+    D0 --> A6
     A1 --> A2
     A2 --> A4
     A2 --> A5
     A3 --> A5
     A4 --> A5
+    A6 --> A5
 
     A1 --> B1
     A2 --> B1
     A3 --> B1
     A4 --> B1
     A5 --> B1
+    A6 --> B1
     B1 --> B2
     B1 --> B3
+    B1 --> B6
     B2 --> B4
     B3 --> B4
+    B6 --> B4
     B2 --> B5
     B4 --> B5
 
@@ -1036,11 +1042,13 @@ flowchart TB
     B1 --> E1
     E1 --> E2
     A3 --> E2
+    A6 --> E2
     B4 --> E2
     E2 --> E3
     E2 --> E4
     E3 --> E4
     B1 --> E4
+    B6 --> E4
     E4 --> E5
     C1 --> E5
 
@@ -1059,7 +1067,16 @@ flowchart TB
     F1 --> F4
     F3 --> F4
     F4 --> G1
+
+    C5 --> F5
+    E5 --> F5
+    F2 --> F5
 ```
+
+**Reading the two out-of-sequence identifiers.** `P1.1-06` and `P1.2-06` carry the highest numbers in their
+increments but sit early in the dependency order. Identifiers are allocated at creation time and are
+permanent ([README.md §3.1](README.md)), so promoting the customer dimension to a first-class item could not
+reuse `P1.1-04` or `P1.2-02`. The graph, not the number, is the build order.
 
 **Critical path:** `P1.1-01` → `P1.1-02` → `P1.1-04` → `P1.1-05` → `P1.2-01` → `P1.2-02` → `P1.2-04` →
 `P1.2-05` → `P1.3-01` → `P1.3-03` → `P1.3-04` → `P1.3-05` → `P1.5-03` → `P1.5-04` → **Gate 1**.
@@ -1068,17 +1085,26 @@ The funnel branch (`P1.4-*`) and the marketing branch (`P1.5-01`, `P1.5-02`) can
 `P1.3` once their own dependencies are met, but `P1.4-04` and `P1.5-01` are still Gate 1 blockers,
 because Gate 1 requires **all five** MVP fact grains to be approved.
 
+The customer chain — `P1.1-06` → `P1.2-01` → `P1.2-06` → `P1.2-04` — is shorter than the vehicle chain that
+reaches `P1.2-04`, so promoting the customer dimension to first-class items does **not** lengthen the
+critical path. It does add two Gate 1 blockers, because `P1.2-04` cannot enforce its retail-customer rule
+until `P1.2-06` has loaded the dimension.
+
 ---
 
 ## 9. Backlog summary
 
 | Delivery increment | Items | Small | Medium | Large | Gate 1 blockers |
 |---|---:|---:|---:|---:|---:|
-| Phase 1.1 | 5 | 0 | 2 | 3 | 5 |
-| Phase 1.2 | 5 | 0 | 3 | 2 | 5 |
-| Phase 1.3 | 5 | 1 | 4 | 0 | 5 |
-| Phase 1.4 | 5 | 1 | 2 | 2 | 5 |
-| Phase 1.5 | 4 | 1 | 3 | 0 | 3 |
-| **Total** | **24** | **3** | **14** | **7** | **23** |
+| `P1.1` | 6 | 0 | 3 | 3 | 6 |
+| `P1.2` | 6 | 0 | 4 | 2 | 6 |
+| `P1.3` | 5 | 1 | 4 | 0 | 5 |
+| `P1.4` | 5 | 1 | 2 | 2 | 5 |
+| `P1.5` | 5 | 2 | 3 | 0 | 3 |
+| **Total** | **27** | **4** | **16** | **7** | **25** |
+
+Three items were added on 2026-07-28: `P1.1-06` and `P1.2-06` promote the customer dimension to first-class
+delivery (`DOC-04`), and `P1.5-05` adds the stakeholder-question traceability matrix (`DOC-15`). No existing
+identifier was renumbered.
 
 **Nothing in this backlog is Implemented.** Every item is `Planned`.
