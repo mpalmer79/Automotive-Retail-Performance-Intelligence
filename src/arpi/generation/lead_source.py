@@ -142,7 +142,7 @@ ZERO_COST: Final = Decimal("0.00")
 # ---------------------------------------------------------------------------------------
 @dataclass(frozen=True, slots=True)
 class LeadSourceBehaviour:
-    """The latent behaviour of one lead source. **Never a dimension column.**
+    """The latent behaviour of one lead source, never a dimension column.
 
     These four numbers are what make [ARCHITECTURE.md §15.3](../../../ARCHITECTURE.md)
     relationship 7 -- "sources differ in cost, volume, conversion and gross" -- genuinely
