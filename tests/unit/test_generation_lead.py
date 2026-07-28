@@ -325,9 +325,9 @@ def test_the_same_seed_produces_byte_identical_output(unit_config: ArpiConfig) -
 
 def test_a_different_seed_produces_different_output(unit_config: ArpiConfig) -> None:
     other = unit_config.model_copy(update={"random_seed": unit_config.random_seed + 1})
-    assert dataframe_to_csv_bytes(generate_lead_dataset(unit_config).frame) != dataframe_to_csv_bytes(
-        generate_lead_dataset(other).frame
-    )
+    assert dataframe_to_csv_bytes(
+        generate_lead_dataset(unit_config).frame
+    ) != dataframe_to_csv_bytes(generate_lead_dataset(other).frame)
 
 
 def test_the_record_view_and_the_frame_agree(
@@ -335,9 +335,7 @@ def test_the_record_view_and_the_frame_agree(
 ) -> None:
     records = build_lead_records(unit_config)
     assert [record.lead_id for record in records] == lead_dataset.frame["lead_id"].tolist()
-    assert all(
-        (record.sale_date is None) == (record.sale_id is None) for record in records
-    )
+    assert all((record.sale_date is None) == (record.sale_id is None) for record in records)
 
 
 def test_every_check_identifier_is_declared_once() -> None:

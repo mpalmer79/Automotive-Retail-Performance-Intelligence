@@ -21,6 +21,7 @@ from arpi.generation.base import GeneratedDataset
 from arpi.generation.calendar import generate_date_dataset
 from arpi.generation.dealership import generate_dealership_dataset
 from arpi.generation.writer import dataframe_to_csv_bytes, write_outputs
+from arpi.pipeline import generate_all_datasets
 from arpi.utilities.hashing import content_digest
 from arpi.validation.datasets import validate_foundation_datasets
 
@@ -137,7 +138,10 @@ def test_committed_sample_files_are_current() -> None:
     # committed CSV only against the committed manifest would merely prove the two
     # committed artifacts agree with each other: a generator change that made both stale
     # in step would still pass. The generator itself has to be the reference.
-    expected_frames = {dataset.entity_name: dataset for dataset in _datasets(config)}
+    # The committed sample covers everything the pipeline generates, not just the two
+    # foundation dimensions the writer tests above use, so the reference has to be the
+    # pipeline's own entity set.
+    expected_frames = {dataset.entity_name: dataset for dataset in generate_all_datasets(config)}
     row_limit = config.generation.sample_row_limit
 
     entries = {entry["entity"]: entry for entry in manifest["generated_entities"]}
