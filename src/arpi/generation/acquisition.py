@@ -44,6 +44,7 @@ inventory-snapshot generators both consume this rather than a single global cons
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, replace
 from datetime import date, timedelta
 from decimal import ROUND_HALF_UP, Decimal
@@ -159,10 +160,17 @@ ACQUISITION_EVENT_DTYPES: Final[dict[str, str]] = {
 #: Acquisitions may precede ``reporting.start_date`` by at most this many days.
 ACQUISITION_WARM_UP_DAYS: Final = 180
 
-#: Relative daily acquisition rate during the warm-up compared with the reporting window.
-#: Below 1.0 so the fleet is not dominated by pre-window units, but high enough that day
-#: one carries genuinely aged inventory across every age bucket.
-WARM_UP_WEIGHT_FACTOR: Final = 0.55
+#: Relative daily acquisition rate on the **last** day of the warm-up, compared with the
+#: reporting window, before the taper below is applied.
+WARM_UP_WEIGHT_FACTOR: Final = 1.0
+
+#: Decay constant, in days, applied to warm-up acquisition volume as it recedes from the
+#: window. A flat warm-up rate would hand day one a uniform age profile, in which most
+#: standing units are older than the average days-to-sale and therefore all dump in the
+#: first fortnight -- an artefact, not a business. Tapering approximates the survival
+#: profile of a store that was already trading: plenty of recently-acquired stock, a real
+#: but thin tail of genuinely aged units.
+WARM_UP_TAPER_DAYS: Final = 65.0
 
 #: Month-of-year multiplier on acquisition volume. Spring and late summer are the strong
 #: acquisition months in the north-east; January and February are the weakest. Flat
@@ -252,7 +260,7 @@ MINIMUM_RETAINED_VALUE_SHARE: Final = Decimal("0.11")
 #: New-unit dealer cost as a share of MSRP, drawn ``(low, high, mode)``. The spread is the
 #: residual variance: holdback, floor-plan credits and volume bonuses genuinely differ
 #: unit to unit.
-NEW_INVOICE_SHARE: Final[tuple[float, float, float]] = (0.893, 0.947, 0.921)
+NEW_INVOICE_SHARE: Final[tuple[float, float, float]] = (0.882, 0.940, 0.914)
 
 #: New-unit asking price as a share of MSRP.
 NEW_ASKING_SHARE: Final[tuple[float, float, float]] = (0.982, 1.030, 1.004)
@@ -271,8 +279,8 @@ SOURCE_COST_SHARE: Final[dict[str, tuple[float, float, float]]] = {
 DEFAULT_SOURCE_COST_SHARE: Final[tuple[float, float, float]] = (0.74, 0.90, 0.82)
 
 #: Retail mark-up applied over total inventory investment when the asking price is set.
-USED_MARKUP: Final[tuple[float, float, float]] = (1.08, 1.34, 1.19)
-CERTIFIED_MARKUP: Final[tuple[float, float, float]] = (1.12, 1.38, 1.24)
+USED_MARKUP: Final[tuple[float, float, float]] = (1.17, 1.46, 1.30)
+CERTIFIED_MARKUP: Final[tuple[float, float, float]] = (1.20, 1.50, 1.34)
 
 # ---------------------------------------------------------------------------------------
 # Reconditioning
@@ -662,10 +670,18 @@ def _draw_acquisition_dates(rng: random.Random, config: ArpiConfig, count: int) 
     weights = [
         MONTH_ACQUISITION_WEIGHT[candidate.month]
         * DAY_OF_WEEK_ACQUISITION_WEIGHT[candidate.weekday()]
-        * (1.0 if candidate >= window_start else WARM_UP_WEIGHT_FACTOR)
+        * _warm_up_factor(candidate, window_start)
         for candidate in candidates
     ]
     return tuple(rng.choices(candidates, weights=weights, k=count))
+
+
+def _warm_up_factor(candidate: date, window_start: date) -> float:
+    """Return the warm-up taper applied to one candidate acquisition date."""
+    if candidate >= window_start:
+        return 1.0
+    days_before = (window_start - candidate).days
+    return WARM_UP_WEIGHT_FACTOR * math.exp(-days_before / WARM_UP_TAPER_DAYS)
 
 
 def _build_record(

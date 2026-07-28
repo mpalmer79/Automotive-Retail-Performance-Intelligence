@@ -489,6 +489,19 @@ PAID_LEAD_SOURCE_IDS: Final[tuple[str, ...]] = tuple(
     definition.lead_source_id for definition in LEAD_SOURCE_DEFINITIONS if definition.is_paid
 )
 
+#: Total CRM lead volume per scale mode, from the Phase 1 scale contract.
+#:
+#: It lives beside :data:`LEAD_SOURCE_DEFINITIONS` because it is the other half of the
+#: same calibration: the volume weights say how the funnel divides, this says how large
+#: the funnel is. The marketing-spend generator derives monthly spend from it, and the
+#: lead generator (`P1.4-02`) draws its population from it, so the two entities are
+#: calibrated against one number rather than drifting apart from two.
+TOTAL_LEAD_COUNT_BY_SCALE: Final[dict[str, int]] = {
+    "test": 200,
+    "development": 6_000,
+    "portfolio": 55_000,
+}
+
 # ---------------------------------------------------------------------------------------
 # Data-quality check identifiers (reserved in the canonical DQ registry)
 # ---------------------------------------------------------------------------------------
