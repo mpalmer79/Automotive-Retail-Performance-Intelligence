@@ -30,7 +30,7 @@ _TIME_FORMAT: Final = "%Y-%m-%dT%H:%M:%S%z"
 
 _URI_CREDENTIAL_PATTERN: Final = re.compile(r"(?i)\b(postgres(?:ql)?://[^:/@\s]+:)([^@\s]+)(@)")
 _KEY_VALUE_PATTERN: Final = re.compile(
-    r"(?i)\b([A-Z0-9_]*password[A-Z0-9_]*)(\s*[=:]\s*)([^\s,;'\"]+)"
+    r"(?i)\b([A-Z0-9_]*password[A-Z0-9_]*)([\"']?\s*[=:]\s*[\"']?)([^\s,;'\"]+)"
 )
 
 _RESERVED_RECORD_KEYS: Final[frozenset[str]] = frozenset(

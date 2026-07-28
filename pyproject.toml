@@ -119,11 +119,14 @@ known-first-party = ["arpi"]
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = [
     "ARG001",  # pytest fixtures are frequently requested for their side effects
+    "ARG002",  # test doubles mirror a real signature without using every argument
+    "ARG005",  # monkeypatch replacements likewise
     "D100",
     "D101",
     "D102",
     "D103",
     "D104",
+    "PLC0415", # local imports keep a test case self-contained
     "PLR0913",
     "PLR2004", # magic numbers are the point of an assertion
 ]
@@ -162,6 +165,9 @@ disallow_untyped_decorators = false
 [tool.pytest.ini_options]
 minversion = "8.0"
 testpaths = ["tests"]
+# Put the repository root on sys.path so test helpers can be imported as
+# `tests.<package>.<module>` without shipping an installable test package.
+pythonpath = ["."]
 addopts = "--strict-markers --strict-config --cov=arpi --cov-report=term-missing"
 markers = [
     "integration: requires a running PostgreSQL instance",
@@ -173,9 +179,11 @@ filterwarnings = ["error"]
 # --------------------------------------------------------------------------------------
 # Coverage
 # --------------------------------------------------------------------------------------
+# The measured source is `src/arpi`. It is supplied by `--cov=arpi` in the pytest
+# addopts above (and by the canonical CI command), rather than by a `source` key here:
+# declaring it in both places makes coverage warn that the package was already imported.
 [tool.coverage.run]
 branch = true
-source = ["src/arpi"]
 relative_files = true
 
 [tool.coverage.paths]

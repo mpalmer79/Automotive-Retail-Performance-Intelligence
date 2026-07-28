@@ -58,7 +58,22 @@ BEGIN
             JOIN pg_namespace AS n ON n.oid = c.relnamespace
             WHERE n.nspname = v_schema
               AND c.relkind IN ('r', 'p', 'v', 'm', 'S')
-            ORDER BY c.relkind, c.relname
+              -- Skip sequences that belong to a serial/identity column. PostgreSQL
+              -- refuses ALTER SEQUENCE ... OWNER on them and does not need it:
+              -- an owned sequence always follows its table's owner automatically.
+              AND NOT (
+                    c.relkind = 'S'
+                AND EXISTS (
+                        SELECT 1
+                        FROM pg_depend AS dep
+                        WHERE dep.classid = 'pg_class'::regclass
+                          AND dep.objid = c.oid
+                          AND dep.deptype IN ('a', 'i')
+                    )
+              )
+            -- Tables first, then everything else, so that owned sequences and
+            -- dependent views are already settled by the time they are reached.
+            ORDER BY CASE c.relkind WHEN 'r' THEN 0 WHEN 'p' THEN 0 ELSE 1 END, c.relkind, c.relname
         LOOP
             CASE v_obj.relkind
                 WHEN 'r', 'p' THEN

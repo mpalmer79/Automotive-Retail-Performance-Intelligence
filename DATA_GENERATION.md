@@ -760,6 +760,19 @@ library's `argparse` (no `click`, no `typer`). The authoritative, always-current
 .venv/bin/python -m arpi --help
 ```
 
+Commands:
+
+| Command | Purpose |
+|---|---|
+| `version` | Print the ARPI version. |
+| `check-config` | Print the resolved configuration (password redacted) and probe the database. |
+| `generate` | Generate and validate the foundation dimensions, then write CSVs. |
+| `run-foundation` | Run the full Phase 0 slice, including the optional PostgreSQL load. |
+
+Common options on `generate` and `run-foundation`: `--profile {development,test,portfolio}`,
+`--config-dir`, `--log-level {DEBUG,INFO,WARNING,ERROR,CRITICAL}`, `--output-dir`.
+`run-foundation` additionally accepts `--load-database` / `--no-load-database`.
+
 Typical invocations:
 
 ```
@@ -771,6 +784,12 @@ Typical invocations:
 
 # Portfolio profile — full 24-month dataset. Explicit local command only; never run in CI.
 .venv/bin/python -m arpi generate --profile portfolio
+
+# Full Phase 0 slice with the PostgreSQL load
+.venv/bin/python -m arpi run-foundation --profile development --load-database
+
+# Inspect the resolved configuration without generating anything
+.venv/bin/python -m arpi check-config --profile development
 ```
 
 Configuration precedence is **environment variable > YAML profile file > model default**, using the `ARPI_`

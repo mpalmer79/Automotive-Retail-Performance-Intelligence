@@ -8,7 +8,7 @@ auditable from this source file alone.
 from __future__ import annotations
 
 import calendar
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Final
@@ -181,6 +181,24 @@ def holidays_for_year(year: int) -> dict[date, Holiday]:
         (date(year, 12, 25), Holiday("Christmas Day", closure=True)),
     ]
 
+    return merge_holidays(ordered)
+
+
+def merge_holidays(ordered: Sequence[tuple[date, Holiday]]) -> dict[date, Holiday]:
+    """Fold a precedence-ordered holiday list into one entry per date.
+
+    The first entry for a date supplies ``holiday_name``; ``closure`` is the logical OR
+    of every entry for that date. No pair of rules in the Phase 0 table can collide (the
+    Gregorian computus confines Easter to 22 March -- 25 April, where nothing else
+    falls), but the rule is part of the contract and is applied unconditionally so a
+    future holiday cannot introduce a silent, order-dependent bug.
+
+    Args:
+        ordered: ``(date, holiday)`` pairs in contract precedence order.
+
+    Returns:
+        Mapping of date to the merged :class:`Holiday`.
+    """
     observed: dict[date, Holiday] = {}
     for observed_date, holiday in ordered:
         existing = observed.get(observed_date)
