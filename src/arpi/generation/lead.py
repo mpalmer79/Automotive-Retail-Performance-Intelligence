@@ -359,7 +359,7 @@ RESPONSE_INFLUENCE_BOUNDS: Final[tuple[float, float]] = (0.52, 1.26)
 # ---------------------------------------------------------------------------------------
 #: Probability that a contacted lead sets an appointment, before source and response-time
 #: influences are applied.
-APPOINTMENT_SET_BASE: Final = 0.40
+APPOINTMENT_SET_BASE: Final = 0.34
 
 #: Probability that a set appointment is shown, before the source influence is applied.
 #: The appointment generator expands this into individual appointments; a lead that shows
@@ -400,13 +400,17 @@ SOLD_WEIGHT_APPOINTMENT_SHOWN: Final = 4.2
 # ---------------------------------------------------------------------------------------
 # Duplicates
 # ---------------------------------------------------------------------------------------
-#: Probability that a later lead from the same shopper at the same store, inside
-#: :data:`DUPLICATE_WINDOW_DAYS`, is recorded as a duplicate rather than as a genuinely new
-#: opportunity.
-DUPLICATE_PROBABILITY: Final = 0.45
+#: Share of leads that repeat a recent enquiry from the same shopper at the same store.
+#:
+#: A duplicate is **constructed** rather than discovered: the generator reuses a recent
+#: shopper deliberately, which is exactly what a duplicate is -- the same person enquiring
+#: again. Waiting for two independent draws to collide on one customer instead would make
+#: the duplicate share a function of the customer-population size and the window length, so
+#: it would collapse at portfolio scale and the exclusion rule would go untested there.
+DUPLICATE_SHARE: Final = 0.08
 
-#: How long after the first lead a second one from the same shopper still counts as a
-#: duplicate. Past this the shopper has genuinely come back.
+#: How long after the original a repeat enquiry still counts as a duplicate. Past this the
+#: shopper has genuinely come back and the later lead is a new opportunity.
 DUPLICATE_WINDOW_DAYS: Final = 60
 
 # ---------------------------------------------------------------------------------------
@@ -969,8 +973,7 @@ def build_lead_records(
     context = _LeadContext.build(config, catalogue_path)
     drafts = _draw_arrivals(rng, config, context)
     _attribute_sales(rng, drafts, context)
-    _assign_customers_models_and_campaigns(rng, drafts, context)
-    _mark_duplicates(rng, drafts)
+    _assign_shoppers_models_and_campaigns(rng, drafts, context)
 
     records = tuple(
         _to_record(lead_id_for(ordinal), draft, drafts)
@@ -1245,21 +1248,70 @@ def _sale_candidates(
     return candidates, weights
 
 
-def _assign_customers_models_and_campaigns(
+def _assign_shoppers_models_and_campaigns(
     rng: random.Random, drafts: list[_LeadDraft], context: _LeadContext
 ) -> None:
-    """Fill in the shopper, the model of interest and the campaign for every lead.
+    """Fill in the shopper, the duplicate flag, the model of interest and the campaign.
 
     Sold leads already carry the buyer and the unit from the deal they are credited with, so
-    they are left alone: a lead cannot disagree with its own sale.
+    the shopper step leaves them alone: a lead cannot disagree with its own sale, and the
+    lead that produced a deal is never a duplicate -- excluding it from the funnel would
+    drop a sale out of the numerator.
+
+    ``roots`` holds, per store, the index of every lead so far that has a shopper and is not
+    itself a duplicate. A duplicate always points into that list, so ``original_lead_id``
+    resolves in a single hop and never chains through another duplicate. ``cursor`` walks
+    forward past leads that have aged out of :data:`DUPLICATE_WINDOW_DAYS`, which keeps the
+    whole pass linear.
     """
-    for draft in drafts:
-        if draft.customer_id is None and rng.random() >= ANONYMOUS_LEAD_SHARE:
-            selection = select_customer_for_sale(context.customers, draft.lead_created_date, rng)
-            draft.customer_id = selection.customer_id if selection is not None else None
+    roots: dict[str, list[int]] = {store: [] for store in STORE_IDS}
+    cursors: dict[str, int] = dict.fromkeys(roots, 0)
+    for index, draft in enumerate(drafts):
+        if draft.customer_id is None:
+            _assign_shopper(rng, drafts, draft, context, _RootWindow(roots, cursors, index))
         if draft.vehicle_model_id is None and rng.random() < MODEL_OF_INTEREST_SHARE:
             draft.vehicle_model_id = _draw_model(rng, context, draft.dealership_id)
         draft.campaign_id = _draw_campaign(rng, context, draft)
+        if draft.customer_id is not None and not draft.is_duplicate:
+            roots.setdefault(draft.dealership_id, []).append(index)
+
+
+@dataclass(frozen=True, slots=True)
+class _RootWindow:
+    """The per-store rolling window of leads a duplicate may point back at."""
+
+    roots: dict[str, list[int]]
+    cursors: dict[str, int]
+    index: int
+
+
+def _assign_shopper(
+    rng: random.Random,
+    drafts: Sequence[_LeadDraft],
+    draft: _LeadDraft,
+    context: _LeadContext,
+    window: _RootWindow,
+) -> None:
+    """Attach a shopper to one lead, sometimes by repeating a recent one as a duplicate."""
+    store = draft.dealership_id
+    candidates = window.roots.setdefault(store, [])
+    earliest = draft.lead_created_date - timedelta(days=DUPLICATE_WINDOW_DAYS)
+    cursor = window.cursors.get(store, 0)
+    while cursor < len(candidates) and drafts[candidates[cursor]].lead_created_date < earliest:
+        cursor += 1
+    window.cursors[store] = cursor
+
+    if cursor < len(candidates) and rng.random() < DUPLICATE_SHARE:
+        original = candidates[rng.randrange(cursor, len(candidates))]
+        draft.customer_id = drafts[original].customer_id
+        draft.is_duplicate = True
+        draft.original_index = original
+        return
+
+    if rng.random() < ANONYMOUS_LEAD_SHARE:
+        return
+    selection = select_customer_for_sale(context.customers, draft.lead_created_date, rng)
+    draft.customer_id = selection.customer_id if selection is not None else None
 
 
 def _draw_model(rng: random.Random, context: _LeadContext, dealership_id: str) -> str | None:
@@ -1289,31 +1341,6 @@ def _draw_campaign(rng: random.Random, context: _LeadContext, draft: _LeadDraft)
         return None
     weights = [max(campaign.source_share, 0.001) for campaign in eligible]
     return rng.choices(eligible, weights=weights, k=1)[0].campaign_id
-
-
-def _mark_duplicates(rng: random.Random, drafts: list[_LeadDraft]) -> None:
-    """Mark repeat enquiries from the same shopper at the same store as duplicates.
-
-    The reference always points at the **first** lead of that shopper at that store inside
-    the window, never at another duplicate, so following ``original_lead_id`` is a single
-    hop rather than a chain. A lead credited with a sale is never marked as a duplicate: it
-    is the opportunity that produced the deal, so excluding it from the funnel would drop a
-    sale out of the numerator.
-    """
-    roots: dict[tuple[str, str], tuple[int, date]] = {}
-    for index, draft in enumerate(drafts):
-        if draft.customer_id is None:
-            continue
-        key = (draft.customer_id, draft.dealership_id)
-        root = roots.get(key)
-        if root is None:
-            roots[key] = (index, draft.lead_created_date)
-            continue
-        root_index, root_date = root
-        within_window = (draft.lead_created_date - root_date).days <= DUPLICATE_WINDOW_DAYS
-        if draft.sale_id is None and within_window and rng.random() < DUPLICATE_PROBABILITY:
-            draft.is_duplicate = True
-            draft.original_index = root_index
 
 
 def _to_record(lead_id: str, draft: _LeadDraft, drafts: Sequence[_LeadDraft]) -> LeadRecord:
