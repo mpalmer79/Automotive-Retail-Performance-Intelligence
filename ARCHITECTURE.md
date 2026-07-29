@@ -13,7 +13,7 @@ The project is not a production dealership management system, CRM, desking platf
 ## 2. Architecture Status
 
 - **Status:** Approved for implementation
-- **Architecture version:** 1.3
+- **Architecture version:** 1.4
 - **Last reviewed:** 2026-07-29
 - **Primary owner:** Michael Palmer
 - **Primary audience:** Hiring managers, technical reviewers, dealership operators, BI professionals, and portfolio reviewers
@@ -1276,6 +1276,18 @@ The Power BI model must:
 - Target-attainment measures
 - Data-quality measures
 
+### 19.3.1 Real-engine validation of the semantic model
+
+The semantic model is validated against a **real Microsoft semantic-model engine**, never by static parsing
+alone. Two paths are accepted and they are of equal standing: **Power BI Desktop**, and the **Microsoft
+Fabric Service** — deploying the committed TMDL definition to a Fabric workspace, refreshing it against a
+cloud PostgreSQL `reporting` schema, and executing the governed DAX through the Power BI Execute Queries
+REST API. Either path, completed in full, satisfies §27 Lifecycle Phase 5's exit criteria; both carry the
+same proof obligation, set out in
+[ADR-0008](docs/architecture-decisions/ADR-0008-real-engine-validation-paths.md).
+
+**Both paths are currently pending.** No engine has yet loaded this model.
+
 ### 19.4 Required report pages
 
 #### 1. Executive Overview
@@ -1556,7 +1568,7 @@ document never implies a deliverable exists before it does.
 
 | Marker | Meaning |
 |---|---|
-| `[now]` | Exists in the repository today as part of the Phase 0 foundation |
+| `[now]` | Exists in the repository today |
 | `[empty]` | Directory is present and tracked, but intentionally contains no content yet |
 | `[planned]` | Not yet created; scheduled for a later phase |
 
@@ -1708,6 +1720,16 @@ Validate:
 - Drill-through context
 - Currency and percentage formatting
 - SQL-to-DAX reconciliation
+
+**SQL-to-DAX reconciliation is performed through a real semantic-model engine**, comparing the model's
+measure values against the governed SQL baseline in every recorded filter context. Static parsing of the
+model source does not satisfy any item in the list above, because every one of them requires evaluation.
+
+Two engines are accepted for this, of equal standing: **Power BI Desktop**, and the **Microsoft Fabric
+Service** through the semantic-model definition APIs and the Power BI Execute Queries REST API. The proof
+obligation is identical on both paths and is set out in
+[ADR-0008](docs/architecture-decisions/ADR-0008-real-engine-validation-paths.md). Both are currently
+pending.
 
 ### 25.5 Acceptance threshold
 
@@ -1886,13 +1908,22 @@ imported reporting views, relationships, the marked date table, measure tables a
 project with the model stored as TMDL ([ADR-0007](docs/architecture-decisions/ADR-0007-power-bi-project-format.md)),
 and it is validated **statically**: the model source is parsed and asserted in continuous integration.
 
-**The exit criteria above are met only after Power BI Desktop open, refresh and save validation passes.**
-That is a **manual gate**, tracked as `P2.1-09` in
-[`docs/requirements/PHASE_2_BACKLOG.md`](docs/requirements/PHASE_2_BACKLOG.md) and **PENDING** at the time of
-writing: Power BI Desktop is a Windows application and does not exist in the environment the model was built
-in, so no total has been reconciled from a refreshed model, no filter behaviour has been observed, and the
-engine has not given its verdict on relationship ambiguity. Static analysis cannot substitute for any of
-those, and continuous integration must not attempt to launch Desktop.
+**The exit criteria above are met only after a real-engine validation passes, by either accepted path
+([ADR-0008](docs/architecture-decisions/ADR-0008-real-engine-validation-paths.md)):** Power BI Desktop open,
+refresh and save validation, or deployment of the committed TMDL to a Microsoft Fabric workspace, refreshed
+against a cloud PostgreSQL `reporting` schema and queried through the Power BI Execute Queries REST API.
+Either one, completed in full, closes the gate; both carry the same seven-part proof obligation, and neither
+is a weaker substitute for the other.
+
+The gate is tracked as `P2.1-09` in
+[`docs/requirements/PHASE_2_BACKLOG.md`](docs/requirements/PHASE_2_BACKLOG.md). **Both paths are PENDING at
+the time of writing.** No total has been reconciled from a refreshed model, no filter behaviour has been
+observed, and no engine has given its verdict on relationship ambiguity. Static analysis cannot substitute
+for any of those, and continuous integration must not attempt to launch Power BI Desktop.
+
+ADR-0007 named Power BI Desktop as the only accepted path, which coupled this gate to one operating system
+and one desktop application and left it unreachable by the project's own owner. ADR-0008 corrects that. It
+does not close the gate: **Lifecycle Phase 5 remains in progress and is not complete.**
 
 ### Lifecycle Phase 6: Dashboard Development
 
@@ -1976,7 +2007,7 @@ is not "done" when `P1.1` ships, because later increments still generate entitie
 | 2 — Data Model | `Phase 0` for `dim_date` and `dim_dealership`; `P1.1`, `P1.2`, `P1.4`, `P1.5` as each further entity's column contract and source-to-target mapping is written | In progress |
 | 3 — Synthetic Data Generator | `Phase 0` (date, dealership); `P1.1` (vehicle model, vehicle, employee, customer, acquisition, sale); `P1.4` (lead source, lead, appointment); `P1.5` (campaign, marketing spend) | In progress |
 | 4 — PostgreSQL Warehouse | `Phase 0` (schemas, audit, first two dimensions, first reporting views); `P1.2` (ingestion, dimensions, first two facts); `P1.3` (validation, reconciliation, KPI logic, reporting views); `P1.4` (funnel facts); `P1.5` (marketing fact, MVP reporting layer) | In progress |
-| 5 — Power BI Semantic Model | `P2.1`. **Gate 1** (§28) is **OPEN**, recorded on 2026-07-29 by `P1.5-04` in [`docs/requirements/GATE_1_READINESS.md`](docs/requirements/GATE_1_READINESS.md). | In progress — the model is built and statically validated; the exit criteria await the manual Power BI Desktop validation `P2.1-09` |
+| 5 — Power BI Semantic Model | `P2.1`. **Gate 1** (§28) is **OPEN**, recorded on 2026-07-29 by `P1.5-04` in [`docs/requirements/GATE_1_READINESS.md`](docs/requirements/GATE_1_READINESS.md). | In progress — the model is built and statically validated; the exit criteria await the real-engine validation `P2.1-09`, by either path in [ADR-0008](docs/architecture-decisions/ADR-0008-real-engine-validation-paths.md) |
 | 6 — Dashboard Development | `P2.2`. Gate 1 is open; `P2.2` is gated on `P2.1-09` passing rather than on a scope gate. | Not started |
 | 7 — Findings and Recommendations | `P2.3`. Blocked by Gate 2, whose verdict `P2.3-04` records. | Not started |
 | 8 — Portfolio Packaging | `P2.4`. The public case study is blocked by Gate 2; the remaining items are gated on `P2.2` and `P2.3`. | Not started |
@@ -1998,7 +2029,7 @@ is not "done" when `P1.1` ships, because later increments still generate entitie
 
 The `P2.x` increments are specified in
 [`docs/requirements/PHASE_2_BACKLOG.md`](docs/requirements/PHASE_2_BACKLOG.md). `P2.1` is delivered except for
-its manual Power BI Desktop validation; `P2.2` through `P2.4` are Not started.
+its real-engine validation, which is pending on both accepted paths; `P2.2` through `P2.4` are Not started.
 
 `Phase 0` is the baseline delivery increment. It predates this terminology and keeps its historical name;
 it is a delivery increment, not lifecycle Phase 0, and there is no lifecycle Phase 0.
@@ -2230,6 +2261,7 @@ Each record must include:
 | [ADR-0005](docs/architecture-decisions/ADR-0005-synthetic-vin-policy.md) | Synthetic VIN Policy | Accepted |
 | [ADR-0006](docs/architecture-decisions/ADR-0006-scd-type-selection-phase-1.md) | SCD Type Selection for Phase 1 Dimensions | Accepted |
 | [ADR-0007](docs/architecture-decisions/ADR-0007-power-bi-project-format.md) | Power BI Project Format | Accepted |
+| [ADR-0008](docs/architecture-decisions/ADR-0008-real-engine-validation-paths.md) | Real-Engine Validation Paths | Accepted |
 
 **ADR-0001 is the naming decision of record.** It fixes the display name *Automotive Retail Performance
 Intelligence*, the short identifier *ARPI*, the Python package `arpi`, the `ARPI_` configuration prefix,
@@ -2248,7 +2280,14 @@ document. **ADR-0004** fixes the validation-category vocabulary that `audit.vali
 **ADR-0007 is the Power BI storage decision of record.** It fixes the PBIP project format with the semantic
 model stored as TMDL and the report as a PBIR shell, keeps Import mode and the `arpi_reporter` identity from
 §19.1 and §22.3, records that no `.pbix` is committed during `P2.1` and why, and states that Power BI Desktop
-open, refresh and save validation is a manual gate that continuous integration cannot satisfy.
+open, refresh and save validation is a manual gate that continuous integration cannot satisfy. Its *Desktop
+validation requirement* section — and only that section — is superseded by ADR-0008; the storage decision
+stands.
+
+**ADR-0008 is the real-engine validation decision of record.** It fixes two accepted paths of equal standing
+— Power BI Desktop, and the Microsoft Fabric Service through the semantic-model definition APIs and the
+Power BI Execute Queries REST API — with an identical proof obligation on both, and states that static
+parsing may never complete §27 Lifecycle Phase 5 by itself. Both paths are currently **pending**.
 
 ### 35.2 Decisions that require an ADR
 

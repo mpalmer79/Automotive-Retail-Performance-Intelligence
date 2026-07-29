@@ -2,7 +2,7 @@
 
 **Project:** Automotive Retail Performance Intelligence (ARPI)
 **Owner:** Michael Palmer
-**Version:** 1.0
+**Version:** 1.1
 **Last reviewed:** 2026-07-29
 **Conventions:** [README.md](README.md) · **Parent documents:** [ARCHITECTURE.md](../../ARCHITECTURE.md) · [KPI_CATALOG.md](../../KPI_CATALOG.md) · [DATA_DICTIONARY.md](../../DATA_DICTIONARY.md) · [GATE_1_READINESS.md](GATE_1_READINESS.md)
 
@@ -17,9 +17,9 @@
 > existing identifiers were disambiguated rather than renumbered. Item identifiers such as `P2.1-04` are
 > permanent and are never reused or renumbered ([README.md §3.1](README.md)).
 
-> **Two things this document does not claim.** No dashboard page exists. Power BI Desktop has not opened,
-> refreshed, or saved the semantic model, because Desktop does not run in the environment the model was
-> built in. Both statements are unpleasant and both are load-bearing; see §1.3.
+> **Two things this document does not claim.** No dashboard page exists. **No Microsoft semantic-model
+> engine has loaded, refreshed, or evaluated the semantic model** — neither Power BI Desktop nor the
+> Microsoft Fabric Service. Both statements are unpleasant and both are load-bearing; see §1.3.
 
 ---
 
@@ -56,29 +56,44 @@ control.
 **Gate 2 verdict: CLOSED.** `P2.3-04` is the item that evaluates it and records a written verdict, in the
 same form [GATE_1_READINESS.md](GATE_1_READINESS.md) uses.
 
-### 1.3 The Power BI Desktop validation gate
+### 1.3 The real-engine validation gate
 
-Power BI Desktop is a Windows application. The execution environment that built the semantic model is
-Ubuntu 24.04 with no Windows layer, no Power BI Desktop, and no Analysis Services instance. Nothing in that
-environment can open a PBIP, refresh a model, evaluate a DAX measure, or save a report.
+A semantic model is proved by an engine or it is not proved. The execution environment that built this model
+is Ubuntu 24.04 with no Windows layer, no Power BI Desktop, and no Analysis Services instance. Nothing in it
+can open a PBIP, refresh a model, or evaluate a DAX measure.
 
-This has three consequences, and they are stated here rather than buried in an item:
+[ADR-0008](../architecture-decisions/ADR-0008-real-engine-validation-paths.md) fixes **two accepted
+real-engine paths, of equal standing**, and either one closes this gate:
 
-1. **Desktop open, refresh and save validation is a manual gate.** It is tracked by `P2.1-09`, its result
-   is recorded in `powerbi/validation/desktop_validation_results.json`, and its status is **PENDING**. It is
-   never reported as passed on the basis of a static check.
-2. **Continuous integration must never attempt to launch Desktop.** The CI additions delivered by `P2.1-07`
-   parse and assert the on-disk TMDL; they do not execute it. A CI job that claimed to validate a Power BI
-   model without a tabular engine would be asserting something it cannot observe.
-3. **Static evidence goes stale.** `P2.1-07` records a hash over the semantic-model source. When the TMDL
-   changes after the last recorded Desktop validation, the recorded evidence is marked **STALE** and the
-   manual gate must be run again. Evidence with no freshness rule is evidence about a file that no longer
-   exists.
+| Path | What it is | Evidence file |
+|---|---|---|
+| **Power BI Desktop** | A person on Windows opens the PBIP with the preview features enabled, refreshes against a local PostgreSQL `reporting` schema, evaluates the governed DAX, and saves. | `powerbi/validation/desktop_validation_results.json` |
+| **Microsoft Fabric Service** | The committed TMDL is deployed to a Fabric workspace through the semantic-model definition APIs, refreshed against a **cloud** PostgreSQL `reporting` schema, and queried through the Power BI Execute Queries REST API. | `powerbi/validation/fabric_validation_results.json` |
 
-**`P2.2` must not begin until the Desktop validation in `P2.1-09` has passed.** Authoring report pages over
-a model that has never been opened would put page-level defects and model-level defects into the same
-change, and the first refresh failure would then be ambiguous. This is a hard sequencing rule, not a
-preference.
+ADR-0007 named Desktop as the only path, which coupled this gate to one operating system and one desktop
+application and left it **unreachable by the project's own owner**, who has no Windows machine, no Windows
+virtual machine, and no access to Power BI Desktop. ADR-0008 corrects that. It does not close the gate.
+
+**Both paths are PENDING.** Neither has been run.
+
+Four consequences, stated here rather than buried in an item:
+
+1. **The proof obligation is identical on both paths.** `P2.1-09` states it once and both paths discharge
+   the same seven conditions. A path that proves six of seven has not validated the model.
+2. **At least one *current* PASSED result closes the gate; both are never required.** A project with a green
+   Desktop result and no Fabric result is fully validated, and a CI rule that demanded both would have
+   invented a stricter gate than ADR-0008 sets.
+3. **Continuous integration must never attempt to launch Power BI Desktop.** The CI additions delivered by
+   `P2.1-07` parse and assert the on-disk TMDL; they do not execute it. A CI job that claimed to validate a
+   Power BI model without an engine would be asserting something it cannot observe.
+4. **Static evidence goes stale.** `P2.1-07` records a hash over the semantic-model source. When the TMDL
+   changes after the last recorded real-engine validation, that evidence is marked **STALE** and the gate
+   must be run again on one path or the other. Evidence with no freshness rule is evidence about a file that
+   no longer exists.
+
+**`P2.2` must not begin until `P2.1-09` has passed on one path.** Authoring report pages over a model that
+has never been loaded would put page-level defects and model-level defects into the same change, and the
+first refresh failure would then be ambiguous. This is a hard sequencing rule, not a preference.
 
 ---
 
@@ -94,7 +109,7 @@ preference.
 | **Estimated complexity** | **Large** |
 | **Blocking gate** | **Gate 1** — OPEN. This increment is what the gate was gating. |
 | **Architecture references** | §19.1–19.3 (connection mode, semantic model design, measure groups), §25.4 (Power BI validation), §26.2 (Power BI deployment), §27 Lifecycle Phase 5, §28 Gate 1, §34 step 13, §35 (ADR requirement) |
-| **Status** | **Delivered, except `P2.1-09`**, which is a manual gate and is `Planned`. The increment's exit criteria are not met until it passes. |
+| **Status** | **Delivered, except the real-engine validation gate `P2.1-09` and the Fabric-path items `P2.1-11` through `P2.1-15` that make one route to it reachable.** The increment's exit criteria are not met until `P2.1-09` passes on one path. |
 
 **Acceptance criteria (increment level)**
 
@@ -108,8 +123,9 @@ preference.
       exists with the documented cardinality, direction and active state, **with the one deliberate
       correction recorded in `P2.1-04`**.
 - [ ] Static validation runs in CI and fails the build on a model defect it can observe.
-- [ ] Power BI Desktop open, refresh and save validation is **recorded as PENDING** and is not reported as
-      passed.
+- [ ] Real-engine validation is **recorded as PENDING on both accepted paths** and is not reported as
+      passed. Static parsing never completes Lifecycle Phase 5 by itself
+      ([ADR-0008](../architecture-decisions/ADR-0008-real-engine-validation-paths.md)).
 
 **Required tests (increment level)**
 
@@ -122,7 +138,10 @@ preference.
 
 - No report page, visual, bookmark, theme or page layout. That is `P2.2`.
 - No `.pbix`. See [ADR-0007](../architecture-decisions/ADR-0007-power-bi-project-format.md).
-- No Power BI Service workspace, deployment pipeline, dataflow, or scheduled refresh.
+- No Power BI deployment pipeline, dataflow, or scheduled refresh. A Fabric workspace exists in this
+  increment for **validation only** (`P2.1-12`): it is where an engine loads the model long enough to answer
+  the question, not a publication target. Publication remains optional per
+  [ARCHITECTURE.md §26.2](../../ARCHITECTURE.md) and unchanged by this increment.
 - No row-level security. ARPI models one dealer group with no user population; RLS would be an unused
   control described as if it protected something.
 - No aggregation table, composite model, or DirectQuery partition. No measured performance problem exists.
@@ -543,59 +562,113 @@ preference.
 
 ---
 
-### `P2.1-09` — Power BI Desktop open, refresh and save validation
+### `P2.1-09` — Real-engine validation: an engine loads, refreshes and evaluates the model
+
+*Renamed from "Power BI Desktop open, refresh and save validation". The identifier is permanent
+([README.md §3.1](README.md)) and does not change; what changed is that the item no longer names one
+product where it meant one capability.*
 
 | Field | Value |
 |---|---|
-| **Purpose** | Obtain the only evidence that matters for a semantic model: that Power BI Desktop opens the project, refreshes it against the database, evaluates every measure, reports no ambiguous relationship, and saves without altering the on-disk shape. Every other check in `P2.1` is a proxy for this one. |
-| **Dependencies** | `P2.1-07` |
+| **Purpose** | Obtain the only evidence that matters for a semantic model: that a **Microsoft semantic-model engine** loads the definition, refreshes it against the database, evaluates every measure, reports no ambiguous relationship, and returns numbers that match the governed SQL baseline. Every other check in `P2.1` is a proxy for this one. |
+| **Dependencies** | `P2.1-07`. Then **either** a Windows machine with Power BI Desktop (Path A, no repository dependency), **or** `P2.1-11`, `P2.1-12` and `P2.1-13` (Path B). |
 | **Estimated complexity** | **Medium** |
 | **Blocking gate** | Gate 1 — open. **This item is the blocking condition on `P2.2`.** |
-| **Status** | **Planned — PENDING.** Power BI Desktop is a Windows application and does not exist in the Ubuntu 24.04 environment the model was built in. It has not been run. It has not passed. |
-| **Architecture references** | §19.1–19.2, §25.4 (the full Power BI validation list), §26.2, §27 Lifecycle Phase 5 exit criteria |
+| **Status** | **Planned — PENDING on both paths.** Power BI Desktop has never opened this model, and nothing has been deployed to a Fabric workspace. Neither path has been run. Neither has passed. |
+| **Architecture references** | §19.1–19.2, §19.3.1 (real-engine validation), §25.4 (the full Power BI validation list), §26.1 (database deployment), §26.2, §27 Lifecycle Phase 5 exit criteria, §35.1 ([ADR-0008](../architecture-decisions/ADR-0008-real-engine-validation-paths.md)) |
 
-**Acceptance criteria**
+**Two accepted paths, one proof obligation.** Either path completes this item, and neither is preferred over
+the other. **Both are never required**: a current PASSED result on one path closes the gate.
 
-- [ ] Power BI Desktop opens
-      `powerbi/ARPI_Performance_Intelligence/ARPI_Performance_Intelligence.pbip` **with the PBIP, TMDL and
-      PBIR preview features enabled**, and reports no model-load error.
-- [ ] **No ambiguous-relationship error is reported.** This is the engine's verdict on `P2.1-04`.
-- [ ] A full refresh completes against a populated PostgreSQL `reporting` schema, connecting as
-      `arpi_reporter` with credentials supplied through the Desktop credential prompt and stored in the
-      Windows credential store — **not in the project**.
-- [ ] Every one of the twenty tables loads with a row count matching `powerbi/validation/sql_baseline.json`
-      within tolerance zero.
-- [ ] **Every measure evaluates without error**, and every reconciled measure's value matches the SQL
-      baseline within `validation.numeric_absolute_tolerance`.
+| Path | Engine | Executed by | Evidence file |
+|---|---|---|---|
+| **A — Power BI Desktop** | Desktop's in-process tabular engine | A person on Windows, following `docs/powerbi/POWER_BI_DESKTOP_HANDOFF.md` | `powerbi/validation/desktop_validation_results.json` |
+| **B — Microsoft Fabric Service** | The Service's semantic-model engine | `P2.1-14`, following `docs/powerbi/FABRIC_SERVICE_HANDOFF.md` | `powerbi/validation/fabric_validation_results.json` |
+
+**Acceptance criteria — the shared proof obligation**
+
+These seven apply identically to both paths. A run that satisfies six of them has not validated the model.
+
+- [ ] **A Microsoft semantic-model engine accepted the TMDL definition** and reported no model-load error,
+      and specifically **no ambiguous-relationship error**. This is the engine's verdict on `P2.1-04`, and
+      the static path argument is an argument until it is given.
+- [ ] **All twenty imported tables refreshed** against a populated PostgreSQL `reporting` schema, connecting
+      as `arpi_reporter`. A partial refresh is a failure. Nineteen of twenty is a failure.
+- [ ] **Expected row counts are present** — every table's loaded count matches
+      `powerbi/validation/sql_baseline.json` at **tolerance zero**.
+- [ ] **All forty-two relationships exist** in the loaded model, with the recorded thirty-two active and ten
+      inactive split.
+- [ ] **All forty-nine measures exist** in the loaded model and **every one evaluates without error**.
+- [ ] **DAX results match the governed SQL baseline in every filter context, within
+      `validation.numeric_absolute_tolerance`** — every context in the baseline, not a sample, and not the
+      unfiltered total alone. The method is
+      [`09-sql-to-dax-reconciliation.md`](../../powerbi/model_documentation/09-sql-to-dax-reconciliation.md).
+- [ ] **The recorded evidence carries the current model-source hash.** Evidence recorded against a model
+      that has since been edited is reported **STALE**, never as a weaker form of passed.
+
+**Acceptance criteria — recording, and what may then be said**
+
 - [ ] The [ARCHITECTURE.md §25.4](../../ARCHITECTURE.md) list is walked item by item: relationship
       direction, role-playing date logic, filter behaviour, totals and subtotals, time-intelligence
       calculations, drill-through context, currency and percentage formatting, and SQL-to-DAX
       reconciliation. Target attainment is recorded **not applicable — Deferred fact**.
+- [ ] The result is recorded as **structured data against a schema with `additionalProperties: false`**,
+      including the engine and its version, the date, the profile refreshed, the operator, and the
+      **model-source hash at the time of validation** — in
+      `powerbi/validation/desktop_validation_results.json` against
+      `powerbi/validation/validation_results.schema.json` for Path A, or in
+      `powerbi/validation/fabric_validation_results.json` against
+      `powerbi/validation/fabric_validation_results.schema.json` for Path B.
+- [ ] **A failed run is recorded, not discarded.** A validation history in which only successes survive
+      proves nothing.
+- [ ] Until this item passes on one path, **no document states that the semantic model is validated**, and
+      [ARCHITECTURE.md §27](../../ARCHITECTURE.md) Lifecycle Phase 5 is not marked complete.
+
+**Acceptance criteria — Path A only**
+
+- [ ] Power BI Desktop opens
+      `powerbi/ARPI_Performance_Intelligence/ARPI_Performance_Intelligence.pbip` **with the PBIP, TMDL and
+      PBIR preview features enabled**.
+- [ ] Credentials are supplied through the Desktop credential prompt and stored in the Windows credential
+      store — **not in the project**.
 - [ ] The project is **saved from Desktop and the resulting diff is reviewed**. A save that rewrites file
       layout, reorders properties, or emits a format version the repository did not commit is a finding,
       recorded in [ADR-0007](../architecture-decisions/ADR-0007-power-bi-project-format.md)'s terms, not a
-      surprise absorbed silently.
-- [ ] The result is recorded in `powerbi/validation/desktop_validation_results.json` against
-      `powerbi/validation/validation_results.schema.json`, including the Desktop version, the date, the
-      profile refreshed, the operator, and the **model-source hash at the time of validation**.
-- [ ] Until this item passes, **no document states that the semantic model is validated**, and
-      [ARCHITECTURE.md §27](../../ARCHITECTURE.md) Lifecycle Phase 5 is not marked complete.
+      surprise absorbed silently. **Path B has no equivalent step**, which is the one thing Path A proves
+      that Path B does not.
+
+**Acceptance criteria — Path B only**
+
+- [ ] The deployed definition is the **committed TMDL**, posted to the workspace without transformation. No
+      second copy of the model exists anywhere.
+- [ ] The DAX executed is the **committed `powerbi/validation/validation_queries.dax`**, submitted through
+      the Power BI Execute Queries REST API, with `includeNulls` set so a blank is distinguishable from an
+      omitted value.
+- [ ] The database credential lives in the Fabric workspace connection. **No token, refresh token, client
+      secret, database password or credential-bearing connection string is committed or printed** — not in
+      logs, not in error messages, not in the evidence file.
 
 **Tests required**
 
-- **Manual procedure**, documented in `docs/powerbi/POWER_BI_DESKTOP_HANDOFF.md`, with a result recorded as
-  structured data rather than as prose.
-- `tests/unit/test_powerbi_model_structure.py` — the recorded result validates against
-  `powerbi/validation/validation_results.schema.json`, and its status is one of the permitted values.
-- `python3 scripts/check_powerbi_model.py` — reports the Desktop evidence as **STALE** when the current
-  model-source hash differs from the recorded one.
+- **Path A: a manual procedure**, documented in `docs/powerbi/POWER_BI_DESKTOP_HANDOFF.md`, with the result
+  recorded as structured data rather than as prose.
+- **Path B: `P2.1-14`**, documented in `docs/powerbi/FABRIC_SERVICE_HANDOFF.md`, likewise recorded as
+  structured data.
+- `tests/unit/test_powerbi_model_structure.py` — each recorded result validates against its schema and its
+  status is one of the permitted values.
+- The freshness check reports each engine's evidence as **STALE** when the current model-source hash differs
+  from the recorded one.
 
 **Explicit non-goals**
 
-- **No automation of this item.** It is a manual gate by necessity, and pretending otherwise is the specific
-  dishonesty this backlog is written to avoid.
+- **No emulation of a tabular engine.** A partial DAX evaluator produces confident wrong answers, which is
+  worse than no answer.
+- **No static-only completion.** No accumulation of structural assertions — 9,452 of them at present —
+  promotes to a passed real-engine result. This is the rule
+  [ADR-0008](../architecture-decisions/ADR-0008-real-engine-validation-paths.md) exists to fix in place.
 - No Windows CI runner. A hosted Windows runner still has no Power BI Desktop licence or installation, so it
   would change the operating system without changing the answer.
+- No requirement that **both** paths pass. One current PASSED result is the gate.
 - No partial credit. A refresh that loads nineteen of twenty tables is a failure, recorded as one.
 
 ---
@@ -643,6 +716,258 @@ preference.
 - No screenshots. There is nothing to screenshot until `P2.2`, and a screenshot of a model diagram taken on
   a machine nobody else has is not evidence.
 - No walkthrough video. That is `P2.4`.
+
+---
+
+### `P2.1-11` — Cloud PostgreSQL deployment for the Fabric refresh
+
+| Field | Value |
+|---|---|
+| **Purpose** | Give the Fabric Service something to refresh from. The Service runs in Microsoft's cloud and cannot reach `localhost`, so Path B of `P2.1-09` needs the `reporting` schema on a database with a public endpoint and TLS. [ARCHITECTURE.md §26.1](../../ARCHITECTURE.md) deferred managed hosting "until there is a Power BI model that needs a shared endpoint". There is one. This item invokes that deferral rather than reversing it. |
+| **Dependencies** | `P1.5-03` (MVP reporting layer) |
+| **Estimated complexity** | **Medium** |
+| **Blocking gate** | Gate 1 — open. Blocks `P2.1-14`, and therefore Path B of `P2.1-09`. |
+| **Status** | **Planned.** No cloud database exists. |
+| **Architecture references** | §22.2 (Power BI must not access raw tables), §22.3 (`arpi_reporter`), §26.1 (database deployment: managed PostgreSQL preferred, TLS, read-only reporting role), §35.2 (changing the deployment model requires an ADR — [ADR-0008](../architecture-decisions/ADR-0008-real-engine-validation-paths.md) is that record) |
+
+**Acceptance criteria**
+
+- [ ] A managed PostgreSQL instance exists with a public endpoint reachable from the Fabric Service, and
+      **TLS is required** on every connection.
+- [ ] The full ordered SQL build and the `development`-profile pipeline run against it, producing the same
+      twenty `reporting` views the local build produces.
+- [ ] `arpi_reporter` exists on it with `SELECT` on `reporting` **only** and no privilege on `raw`,
+      `staging`, `warehouse` or `audit`. The boundary is enforced by the database, not by the client.
+- [ ] The data loaded is the **same profile and seed** the committed `powerbi/validation/sql_baseline.json`
+      was generated from, verified against `powerbi/validation/sql_baseline_metadata.json`. A baseline
+      generated against one seed and a model refreshed against another disagrees for reasons that have
+      nothing to do with the model, and the disagreement looks exactly like a defect.
+- [ ] **No host, database name, user name, password or connection string is committed.** The endpoint is
+      supplied through the environment and through the Fabric connection of `P2.1-12`, and nowhere else.
+- [ ] `docs/database-setup.md` gains a section covering the cloud deployment, written so the deployment is
+      reproducible without asking a question, and without naming an instance.
+- [ ] The data is synthetic, as it is everywhere in this project. Nothing about a public endpoint changes
+      that, and nothing about it makes the endpoint safe to leave unauthenticated.
+
+**Tests required**
+
+- `tests/integration/test_reporter_role_end_to_end.py` — the privilege boundary holds on the cloud instance
+  exactly as it does locally.
+- `python3 scripts/check_secrets.py` — no endpoint, credential or connection string entered the repository.
+- The row count of every `reporting` view matches `powerbi/validation/sql_baseline_metadata.json`.
+
+**Explicit non-goals**
+
+- No production posture: no high availability, no backup policy, no monitoring, no cost alerting. This is a
+  validation dependency, not an operated service.
+- No second data profile. `portfolio` is out of scope here; a result against `development` says nothing
+  about it, and the evidence file records which profile it used.
+- No on-premises data gateway. It is a legitimate alternative to a cloud database and it re-introduces a
+  machine the project does not have, which is the problem being solved.
+
+---
+
+### `P2.1-12` — Fabric tenant, workspace, and connection
+
+| Field | Value |
+|---|---|
+| **Purpose** | Establish the three things Path B needs that cannot live in this repository: a **tenant**, a **workspace**, and a **connection** binding the workspace to the cloud database as `arpi_reporter`. Recording them as a backlog item is the point — they are unversioned, unreviewable prerequisites, and a reader who clones this repository does not thereby acquire them. |
+| **Dependencies** | `P2.1-11` |
+| **Estimated complexity** | **Medium** |
+| **Blocking gate** | Gate 1 — open. Blocks `P2.1-13` and `P2.1-14`. |
+| **Status** | **Planned.** No tenant, workspace or connection exists. |
+| **Architecture references** | §22.2, §22.3, §26.1, §26.2 (Power BI Service publication is optional and the project must remain reviewable without it), §35.2 |
+
+**Acceptance criteria**
+
+- [ ] A Fabric-enabled tenant and a **workspace dedicated to ARPI validation** exist, with capacity
+      sufficient to load and refresh the model.
+- [ ] A service principal or equivalent identity can create and update semantic-model definitions in that
+      workspace and execute queries against them, with **no more permission than that**.
+- [ ] A workspace **connection** to the cloud PostgreSQL instance exists, holding the `arpi_reporter`
+      credential. **The credential is held by the connection; the repository holds the connection's name and
+      nothing more.**
+- [ ] Tenant settings permit the semantic-model definition APIs and the Execute Queries REST API for the
+      identity used. Where a setting had to be enabled, it is recorded, because a validation that only works
+      under an undocumented tenant configuration is not reproducible.
+- [ ] `docs/powerbi/FABRIC_SERVICE_HANDOFF.md` records what must exist, what permission each piece needs,
+      and how to recreate it — **without naming a tenant, a workspace identifier, or a principal**.
+- [ ] The project **remains reviewable without any of this**, per §26.2. A reader with no Fabric access can
+      still read the TMDL, the documentation and the recorded evidence.
+
+**Tests required**
+
+- `python3 scripts/check_secrets.py` — no tenant identifier, workspace identifier, client identifier, client
+  secret or token appears anywhere in the repository.
+- `python3 scripts/check_docs_links.py` — links in and to the Fabric handoff resolve.
+- A connectivity check from the workspace to the database that reports success or failure and **prints no
+  credential**.
+
+**Explicit non-goals**
+
+- No Fabric Git integration. Attractive, and a second synchronisation surface between the repository and a
+  workspace; the repository stays the single source of the model definition.
+- No deployment pipeline, dataflow, lakehouse, warehouse item, or scheduled refresh.
+- No published report, app, or shared dataset. The workspace exists so an engine can answer a question.
+- No row-level security. ARPI models one dealer group with no user population.
+
+---
+
+### `P2.1-13` — Fabric deployment tooling
+
+| Field | Value |
+|---|---|
+| **Purpose** | Make the deployment step of Path B a repeatable script rather than a sequence of portal clicks. A gate that can only be run by remembering what someone did once in a browser is not a gate, and a deployment that cannot be repeated cannot be re-run when the model changes and the evidence goes stale. |
+| **Dependencies** | `P2.1-12` |
+| **Estimated complexity** | **Large** |
+| **Blocking gate** | Gate 1 — open. Blocks `P2.1-14`. |
+| **Status** | **Planned.** No tooling exists. |
+| **Architecture references** | §19.1 (Import mode), §24 (repository structure), §25.4, §26.2, §35.1 (ADR-0008) |
+
+**Acceptance criteria**
+
+- [ ] A script deploys the committed `.SemanticModel/definition/` tree to the workspace through the Fabric
+      **semantic-model definition APIs**, encoding the files as the API requires and **transforming
+      nothing**. The repository's TMDL is what the engine receives.
+- [ ] It sets the **Server** and **Database** parameters and binds the workspace connection, without writing
+      either value into any committed file.
+- [ ] It triggers a **full refresh** and polls to completion, distinguishing succeeded, failed and
+      still-running rather than assuming the first non-error response means success.
+- [ ] It submits `powerbi/validation/validation_queries.dax` through the **Power BI Execute Queries REST
+      API** and captures the results, with **`includeNulls` set** so a blank is distinguishable from an
+      omitted value.
+- [ ] **Every credential is read from the environment at the moment of use.** Nothing is written to disk,
+      echoed, logged, or embedded in an error message. A failure path that prints a request body is a defect
+      in this item, not a debugging convenience.
+- [ ] It fails loudly and exits non-zero on an API error, an incomplete refresh, or an empty result set. A
+      script that reports success because it did not check is worse than no script.
+- [ ] It is **runnable from Linux** — from a Chromebook shell, which is the constraint that produced
+      [ADR-0008](../architecture-decisions/ADR-0008-real-engine-validation-paths.md).
+- [ ] `powerbi/validation/fabric_validation_results.schema.json` defines the evidence shape with
+      `additionalProperties: false`, mirroring the Desktop schema's required fields and replacing the
+      Desktop-specific ones with their Fabric equivalents.
+
+**Tests required**
+
+- `tests/unit/` — the deployment payload is constructed from the committed TMDL and matches it byte for
+  byte after decoding; the result writer produces a document that validates against the Fabric schema;
+  a simulated partial refresh and a simulated API error each produce a non-zero exit.
+- `python3 scripts/check_secrets.py` — the tooling introduces no committed credential.
+- No test in this item contacts a live Fabric workspace. The execution against a real workspace is
+  `P2.1-14`, and a unit test that needs a tenant is not a unit test.
+
+**Explicit non-goals**
+
+- No DAX evaluation in Python. The tooling submits queries and compares results; it never computes one.
+- No retry loop that masks a failure. A refresh that fails is recorded as failed.
+- No `.pbix` produced, uploaded or downloaded.
+- No use of the tooling to **publish**. It deploys for validation and does not make the workspace a
+  distribution channel.
+
+---
+
+### `P2.1-14` — Fabric real-engine validation execution
+
+| Field | Value |
+|---|---|
+| **Purpose** | Run Path B of `P2.1-09` end to end against a real Fabric workspace and record the result. This is the item that produces evidence rather than machinery: every other Fabric item builds something, and this one uses it to answer the question the project has been unable to answer. |
+| **Dependencies** | `P2.1-11`, `P2.1-12`, `P2.1-13`, `P2.1-07` |
+| **Estimated complexity** | **Medium** |
+| **Blocking gate** | Gate 1 — open. **Discharges `P2.1-09` on Path B, and therefore unblocks `P2.2`.** |
+| **Status** | **Planned — PENDING.** Nothing has been deployed to a workspace. No engine has loaded this model. |
+| **Architecture references** | §19.3.1, §25.4, §26.1, §26.2, §27 Lifecycle Phase 5 exit criteria, §35.1 (ADR-0008) |
+
+**Acceptance criteria**
+
+- [ ] **The seven shared proof obligations of `P2.1-09` are discharged in full** — the engine accepted the
+      TMDL, twenty tables refreshed, row counts present at tolerance zero, forty-two relationships present,
+      forty-nine measures present, DAX matching the SQL baseline in every filter context within tolerance,
+      and the evidence carrying the current model-source hash. **Six of seven is a failure.**
+- [ ] The result is written to `powerbi/validation/fabric_validation_results.json` and validates against
+      `powerbi/validation/fabric_validation_results.schema.json`, recording the workspace's engine
+      identification, the date, the profile refreshed, the operator, and the model-source hash — and **no
+      tenant identifier, workspace identifier, endpoint or credential**.
+- [ ] The `ARCHITECTURE.md` §25.4 list is walked item by item and each outcome recorded, with target
+      attainment recorded **not applicable — Deferred fact**.
+- [ ] Any difference between a DAX value and the SQL baseline is recorded in full — the context, both
+      values, the difference and the tolerance applied — **whether or not it exceeds tolerance**. A
+      systematic within-tolerance difference is a finding regardless of its size.
+- [ ] **A failed run is committed as a failed run.** It is superseded by a later result, never deleted.
+- [ ] If the run passes, the documents that state the model is unvalidated are corrected **in the same
+      change** — `powerbi/model_documentation/08-desktop-validation.md`, `09-sql-to-dax-reconciliation.md`,
+      [ARCHITECTURE.md §27](../../ARCHITECTURE.md) Lifecycle Phase 5, and this backlog. A repository whose
+      status text lags its evidence is making a false statement in the safe direction, which is still a
+      false statement.
+
+**Tests required**
+
+- The execution itself, recorded as structured data rather than as prose.
+- `tests/unit/test_powerbi_model_structure.py` — the recorded result validates against the Fabric schema and
+  its status is one of the permitted values.
+- `python3 scripts/check_secrets.py` and `python3 scripts/check_docs_links.py` over the recorded result and
+  the documents updated with it.
+
+**Explicit non-goals**
+
+- No report page, visual or theme. Deploying a semantic model to a workspace does not begin `P2.2`.
+- No scheduled refresh. The refresh is triggered by the validation run and by nothing else.
+- No claim about the `portfolio` profile. The evidence records the profile it used, and says nothing about
+  any other.
+- No inference from a Fabric pass to a Desktop pass. They are different engines and different evidence; a
+  passed Fabric run closes the gate on its own merits, not by standing in for Desktop.
+
+---
+
+### `P2.1-15` — CI policy for two engines
+
+| Field | Value |
+|---|---|
+| **Purpose** | Teach continuous integration that there are two engines and one gate. The failure mode this item exists to prevent is precise: a CI rule that requires both engines would turn an alternative into an additional requirement and make the gate **harder** to reach than before [ADR-0008](../architecture-decisions/ADR-0008-real-engine-validation-paths.md), which is the opposite of what that record decided. |
+| **Dependencies** | `P2.1-07`, `P2.1-13` |
+| **Estimated complexity** | **Medium** |
+| **Blocking gate** | Gate 1 — open |
+| **Status** | **Planned.** CI currently reports one engine. |
+| **Architecture references** | §25.4, §25.5 (acceptance threshold), §27 Lifecycle Phase 5, §33 (definition of done), §35.1 (ADR-0008) |
+
+**Acceptance criteria**
+
+- [ ] The freshness check reports **each engine separately**, with the five states of
+      [`08-desktop-validation.md`](../../powerbi/model_documentation/08-desktop-validation.md) §3 —
+      Static passed, PASSED, PENDING, STALE, FAILED — and **MISSING** distinguished from PENDING, because an
+      absent record and a recorded "not yet" are different problems with different fixes.
+- [ ] **A branch build passes when neither engine has passed.** Both PENDING is the current state of the
+      repository and must not fail CI while `P2.1` is in flight; the word PENDING appears in the output of
+      every run so nobody can mistake "not yet validated" for "validated".
+- [ ] **`main` requires at least one *current* PASSED result** — one engine, hash matching the current
+      model. **Neither engine passing on its own may fail CI: a green Desktop result and no Fabric result is
+      a fully validated project**, and so is the reverse.
+- [ ] **STALE and FAILED exit non-zero on both engines.** A stale result is never cited as a pass, and a
+      failed one is never treated as an absence.
+- [ ] A **model source change stales both engines' evidence** in the same run, because the hash covers the
+      model and not the engine that read it.
+- [ ] **CI never attempts to launch Power BI Desktop, and never contacts a Fabric workspace.** CI reads
+      committed evidence; it does not produce it. A CI job holding a Fabric credential would move the
+      credential boundary of ADR-0008 into a place no reviewer can inspect.
+- [ ] CI output continues to say **"static model checks passed"** and never "the model is valid".
+- [ ] `README.md`'s status table and `docs/index.md` report the two-engine state accurately, and neither
+      describes 9,452 static assertions in a way a reader could mistake for real-engine validation.
+
+**Tests required**
+
+- `tests/unit/` — the state machine, with a fixture per state per engine: both PENDING exits zero; one
+  PASSED and one MISSING exits zero; one STALE exits non-zero; one FAILED exits non-zero; a changed model
+  source stales a recorded PASSED on both engines.
+- CI job — the checks run on every push, and the workflow makes no network call to a Microsoft endpoint.
+- `python3 scripts/check_docs_links.py`, `python3 scripts/check_naming.py`,
+  `python3 scripts/check_secrets.py`.
+
+**Explicit non-goals**
+
+- No requirement that both engines pass. That is the specific error this item is written to prevent.
+- No CI-triggered validation run. Producing evidence requires credentials CI must not hold.
+- No Windows runner.
+- No branch protection change disguised as a check. Enforcing "`main` requires a current PASSED result" is a
+  repository setting, and this item supplies the check it enforces, not the setting.
 
 ---
 
@@ -1387,8 +1712,9 @@ following, because a semantic model and a report fail in ways a warehouse does n
 
 ### 6.1 Additional definition of ready
 
-- [ ] For any `P2.2` item: **`P2.1-09` has passed** and its recorded model-source hash matches the current
-      model.
+- [ ] For any `P2.2` item: **`P2.1-09` has passed on one of the two accepted paths** and that result's
+      recorded model-source hash matches the current model. One current PASSED result is enough; both are
+      never required.
 - [ ] Every KPI the item surfaces is already `Implemented` in [KPI_CATALOG.md](../../KPI_CATALOG.md). A page
       may not be the first place a KPI is defined.
 - [ ] Every measure the item needs exists in the semantic model, or the item creates it explicitly.
@@ -1402,9 +1728,10 @@ following, because a semantic model and a report fail in ways a warehouse does n
 - [ ] `python3 scripts/check_powerbi_model.py` passes.
 - [ ] `python3 scripts/check_naming.py`, `python3 scripts/check_docs_links.py` and
       `python3 scripts/check_secrets.py` pass.
-- [ ] The static model checks pass in CI, and CI made **no attempt** to launch Power BI Desktop.
-- [ ] For any change to the semantic model: the Desktop validation record is either **re-run** or explicitly
-      marked **STALE**. A stale record is never cited as a pass.
+- [ ] The static model checks pass in CI, and CI made **no attempt** to launch Power BI Desktop or to
+      contact a Fabric workspace.
+- [ ] For any change to the semantic model: the real-engine validation record is either **re-run** on one
+      path or explicitly marked **STALE** on both. A stale record is never cited as a pass.
 - [ ] Every measure the change touches reconciles to the SQL baseline, or the difference is explained.
 - [ ] No zero is displayed where the correct answer is blank.
 - [ ] `powerbi/model_documentation/` matches the model as built, including any place the specification was
@@ -1433,9 +1760,16 @@ flowchart TB
         A6["P2.1-06<br/>Executive register<br/>Deferred groups as nothing"]
         A7["P2.1-07<br/>SQL baseline, static checks, CI"]
         A8["P2.1-08<br/>Gate 1 prohibition test replaced"]
-        A9["P2.1-09<br/>Desktop validation — PENDING"]
+        A9["P2.1-09<br/>Real-engine validation gate<br/>PENDING on both paths"]
         A10["P2.1-10<br/>Model docs and handoff"]
+        A11["P2.1-11<br/>Cloud PostgreSQL"]
+        A12["P2.1-12<br/>Fabric tenant, workspace, connection"]
+        A13["P2.1-13<br/>Fabric deployment tooling"]
+        A14["P2.1-14<br/>Fabric validation execution"]
+        A15["P2.1-15<br/>CI policy for two engines"]
     end
+
+    PA(["Path A — Power BI Desktop<br/>Windows machine, outside the repository"])
 
     subgraph P22["Delivery Increment P2.2 — MVP dashboard pages"]
         B1["P2.2-01<br/>Theme and template"]
@@ -1482,6 +1816,18 @@ flowchart TB
     A6 --> A10
     A7 --> A10
 
+    Z1 --> A11
+    A11 --> A12
+    A12 --> A13
+    A13 --> A14
+    A11 --> A14
+    A7 --> A14
+    A7 --> A15
+    A13 --> A15
+
+    PA --> A9
+    A14 --> A9
+
     A9 --> B1
     B1 --> B2
     B1 --> B3
@@ -1521,16 +1867,27 @@ flowchart TB
     G2 --> D5
 ```
 
-**Reading the graph.** `P2.1-09` is the single edge between the model and every page. It is a manual gate,
-and it is the narrowest point in the whole of Phase 2: nothing in `P2.2`, `P2.3` or `P2.4` can start until a
-human with a Windows machine and Power BI Desktop has opened the project, refreshed it, and recorded the
-result.
+**Reading the graph.** `P2.1-09` is still the single edge between the model and every page, and still the
+narrowest point in the whole of Phase 2: nothing in `P2.2`, `P2.3` or `P2.4` can start until an engine has
+loaded the model, refreshed it, and returned numbers that match the baseline.
 
-**Critical path:** `P2.1-01` → `P2.1-02` → `P2.1-03` → `P2.1-04` → `P2.1-05` → `P2.1-06` → `P2.1-07` →
-**`P2.1-09` (manual gate)** → `P2.2-01` → the seven pages → `P2.2-10` → `P2.3-01` → `P2.3-04` →
-**Gate 2** → `P2.4-05`.
+What changed is that **two arrows now enter `P2.1-09` and either one suffices**. Path A enters from outside
+the repository entirely — a Windows machine with Power BI Desktop, which has no backlog items because there
+is nothing to build. Path B enters through `P2.1-14`, which is why the Fabric chain `P2.1-11` → `P2.1-12` →
+`P2.1-13` → `P2.1-14` exists at all: it is the work of making a second route to the same gate, for a project
+whose owner cannot take the first.
 
-`P2.1-08` and `P2.1-10` branch off the critical path and can proceed in parallel. In `P2.4`, only
+**Critical path, assuming Path B** (the reachable one for this project): `P2.1-01` → `P2.1-02` → `P2.1-03` →
+`P2.1-04` → `P2.1-05` → `P2.1-06` → `P2.1-07` → `P2.1-11` → `P2.1-12` → `P2.1-13` → `P2.1-14` →
+**`P2.1-09` (gate)** → `P2.2-01` → the seven pages → `P2.2-10` → `P2.3-01` → `P2.3-04` → **Gate 2** →
+`P2.4-05`.
+
+**Critical path, assuming Path A:** identical up to `P2.1-07`, then straight to **`P2.1-09`**. If a Windows
+machine becomes available, the four Fabric items leave the critical path immediately and the gate closes
+without them.
+
+`P2.1-08`, `P2.1-10` and `P2.1-15` branch off the critical path and can proceed in parallel — `P2.1-15`
+because CI reporting the state of two engines does not depend on either having been run. In `P2.4`, only
 `P2.4-05` is gated by Gate 2; `P2.4-01` through `P2.4-04` follow their own dependencies.
 
 ---
@@ -1539,22 +1896,29 @@ result.
 
 | Delivery increment | Items | Small | Medium | Large | Delivered | Not started |
 |---|---:|---:|---:|---:|---:|---:|
-| `P2.1` | 10 | 2 | 4 | 4 | 9 | 1 |
+| `P2.1` | 15 | 2 | 9 | 4 | 9 | 6 |
 | `P2.2` | 10 | 0 | 9 | 1 | 0 | 10 |
 | `P2.3` | 4 | 1 | 2 | 1 | 0 | 4 |
 | `P2.4` | 5 | 1 | 3 | 1 | 0 | 5 |
-| **Total** | **29** | **4** | **18** | **7** | **9** | **20** |
+| **Total** | **34** | **4** | **23** | **7** | **9** | **25** |
+
+`P2.1` gained five items — `P2.1-11` through `P2.1-15` — when
+[ADR-0008](../architecture-decisions/ADR-0008-real-engine-validation-paths.md) added the Fabric validation
+path. They are new work, not a re-plan of existing work: the ten original items are unchanged in scope, and
+`P2.1-09` was rewritten rather than renumbered because item identifiers are permanent
+([README.md §3.1](README.md)).
 
 **What "Delivered" means in this table.** Nine `P2.1` items have their acceptance criteria met by committed
 files that a reviewer can open. It does **not** mean `P2.1` is complete: `P2.1-09` is `Planned` and
-**PENDING**, and [ARCHITECTURE.md §27](../../ARCHITECTURE.md) Lifecycle Phase 5 is not marked complete until
-it passes. One unmet item in an increment means the increment is unmet.
+**PENDING on both paths**, and [ARCHITECTURE.md §27](../../ARCHITECTURE.md) Lifecycle Phase 5 is not marked
+complete until it passes on one of them. One unmet item in an increment means the increment is unmet.
 
 **What exists at the time of writing.** A PBIP project holding a TMDL semantic model — twenty imported
 tables, the relationship set, the marked date table, six measure tables, the core DAX, the Executive
 curation register — plus a SQL baseline, a static validation harness that runs in CI, the model
 documentation, and a Desktop handoff procedure. The report is a PBIR shell with no pages.
 
-**What does not exist.** Any dashboard page. Any refreshed model. Any evaluated measure. Any
-SQL-to-Power-BI reconciliation result. Any finding. Any packaged portfolio artefact. The evidence for that
-list is the absence of the files `P2.2` through `P2.4` name.
+**What does not exist.** Any dashboard page. Any model that a Microsoft semantic-model engine has loaded,
+refreshed or evaluated — on either accepted path. Any SQL-to-DAX reconciliation result. Any cloud database,
+Fabric workspace, or deployment tooling. Any finding. Any packaged portfolio artefact. The evidence for that
+list is the absence of the files `P2.1-11` through `P2.1-15` and `P2.2` through `P2.4` name.

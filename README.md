@@ -2,12 +2,18 @@
 
 A governed, reproducible analytics platform for a fictional three-store automotive dealer group — synthetic operational data, a PostgreSQL dimensional warehouse, and one consistent set of KPI definitions that a dealership manager could actually act on.
 
-![Status](https://img.shields.io/badge/status-Phase%200%20foundation-blue)
+![Status](https://img.shields.io/badge/status-Phase%205%20semantic%20model-blue)
 ![Python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![PostgreSQL](https://img.shields.io/badge/postgresql-16-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-**Status (plain text):** Analytical warehouse and reporting layer complete; Power BI not started. Python 3.11 or newer. PostgreSQL 16. MIT licensed. All eight MVP dimensions, all five MVP facts, twenty-eight reporting views, and all 29 KPIs in [`KPI_CATALOG.md`](KPI_CATALOG.md) are implemented, computable and tested. **No Power BI report, no semantic model, no dashboard, and no analytical findings exist** — Gate 1 gates that work and its verdict is recorded in [`docs/requirements/GATE_1_READINESS.md`](docs/requirements/GATE_1_READINESS.md). See [Current implementation status](#current-implementation-status).
+**Status (plain text):** Python 3.11 or newer. PostgreSQL 16. MIT licensed.
+
+* **Lifecycle Phase 1–4 — complete.** All eight MVP dimensions, all five MVP facts, twenty-eight reporting views, and all 29 KPIs in [`KPI_CATALOG.md`](KPI_CATALOG.md) are implemented, computable and tested. Gate 1 is **OPEN** — [`docs/requirements/GATE_1_READINESS.md`](docs/requirements/GATE_1_READINESS.md).
+* **Lifecycle Phase 5 — semantic model built, NOT complete.** A source-controlled Power BI Project exists at [`powerbi/ARPI_Performance_Intelligence/`](powerbi/ARPI_Performance_Intelligence), stored as TMDL: twenty-six tables, forty-two relationships, and all twenty-nine governed KPI measures. **Static validation passes** (9,452 assertions in `scripts/check_powerbi_model.py`). **Real-engine validation is still pending** — no Microsoft semantic-model engine has yet loaded this model, refreshed it, or returned a single number from it, so its DAX is unproven. Phase 5 is not complete until that happens.
+* **No dashboard page or visual exists**, and no analytical finding has been drawn. Both are later phases.
+
+See [Current implementation status](#current-implementation-status).
 
 ---
 
@@ -122,15 +128,18 @@ Definitions, formulas, grains, inclusion and exclusion rules, and known limitati
 | **mypy** | Static type checking of `src` and `tests` |
 | **GitHub Actions** | Continuous integration |
 | **Markdown** / **Mermaid** | Documentation and source-controlled diagrams |
+| **TMDL** | The semantic model's source format — text, diffable, reviewable without a Power BI licence |
+| **DAX** | The twenty-nine governed KPI measures |
 
 ### Planned
 
 | Technology | Role | Phase |
 |---|---|---|
-| **Power BI Desktop**, Power Query, DAX | Semantic model and the primary analytical deliverable | Later |
+| **Microsoft Fabric** / Power BI Service | Real-engine validation of the semantic model, and the eventual publishing target | Now |
 | **Excel** | One supporting management operating report | Later |
 | **NHTSA vPIC** | Approved public vehicle-attribute enrichment | Phase 1.1 |
-| **Supabase** or equivalent managed PostgreSQL | Shared endpoint once a semantic model needs one | Deferred |
+| **Supabase** or equivalent managed PostgreSQL 16 | The endpoint a cloud semantic model reads | Now |
+| **Power BI Desktop** | An alternative real-engine validation path, for anyone who has Windows | Optional |
 
 Rationale for the non-obvious choices — Ruff over black-plus-isort-plus-flake8, stdlib `argparse` over click or typer, local PostgreSQL over hosted, and the deterministic holiday rule — is recorded in [ADR-0002](docs/architecture-decisions/ADR-0002-phase-0-technology-baseline.md).
 
@@ -201,10 +210,12 @@ Automotive-Retail-Performance-Intelligence/
 ├── data/              raw/ (gitignored) · sample/ (committed) · external/
 ├── docs/              index.md, research.md, database-setup.md,
 │                      architecture-decisions/, diagrams/, requirements/, source-to-target/
-├── scripts/           Repository governance checks
+├── scripts/           Repository governance checks, Power BI model validators,
+│                      SQL baseline generator, Fabric deployment and validation
 ├── .github/workflows/ Continuous integration
 ├── notebooks/         Empty — no notebooks exist yet
-├── powerbi/           Model documentation only — no PBIX, PBIP, TMDL or BIM file exists
+├── powerbi/           ARPI_Performance_Intelligence/ PBIP project (TMDL semantic model),
+│                      model_documentation/, validation/ (SQL baseline and engine evidence)
 ├── excel/             Empty — no workbook exists yet
 └── portfolio/         Empty — case study and launch material not written yet
 ```
@@ -241,15 +252,20 @@ Labels are used strictly. **Implemented** means it exists and runs today.
 | MVP reporting layer | Implemented | Twenty-eight views: eight dimension, five grain-preserving fact, thirteen governed analytical |
 | All 29 MVP KPIs | Implemented | Computable from `reporting`, each tested against an independent derivation from `warehouse` |
 | Reconciliation suite | Implemented | Fifty-eight results recorded on every database run; every critical rule proven to fail against a corrupted fixture |
-| Power BI model documentation | Implemented | `powerbi/model_documentation/` — the specification Gate 1 produces, not a model |
+| Power BI model documentation | Implemented | `powerbi/model_documentation/` — ten documents: the specification Gate 1 produced, and the as-built record of the model |
+| Power BI semantic model (PBIP + TMDL) | Implemented | `powerbi/ARPI_Performance_Intelligence/` — Import mode over `reporting` only; 20 imported tables, 6 measure tables, 42 relationships, 49 measures, `vw_calendar` marked as the date table |
+| All 29 KPIs as DAX measures | Implemented | Written and statically validated. **Never evaluated** — see the next row |
+| Static semantic-model validation | Implemented | `scripts/check_powerbi_model.py`, 9,452 assertions, plus 212 unit tests; runs on every push |
+| SQL-to-DAX baseline | Implemented | `powerbi/validation/sql_baseline.json` — the SQL side of every KPI across twenty-one filter contexts |
+| **Real-engine validation of the semantic model** | **Pending** | No Microsoft engine has loaded, refreshed or queried this model. Static parsing cannot substitute. This is the only thing between here and a complete Lifecycle Phase 5 |
 | Stakeholder-question traceability matrix | Implemented | [`docs/requirements/STAKEHOLDER_QUESTIONS.md`](docs/requirements/STAKEHOLDER_QUESTIONS.md) |
 | Gate 1 readiness review | Implemented | [`docs/requirements/GATE_1_READINESS.md`](docs/requirements/GATE_1_READINESS.md) |
 | NHTSA vPIC public enrichment | Planned | Phase 1.1 |
-| Power BI semantic model and reports | Planned | After Gate 1 opens. Nothing has been built; `tests/integration/test_gate1_readiness.py` fails if a `.pbix`, `.pbip`, `.tmdl` or `.bim` file appears. |
+| Power BI report pages and dashboards | Planned | Delivery increment `P2.2`, blocked until Lifecycle Phase 5 completes. No page, visual or bookmark exists, and `scripts/check_powerbi_model.py` fails the build if one appears. |
 | Excel operating report | Planned | Post-MVP |
 | Executive findings and recommendations | Planned | Blocked by Gate 2. Nothing has been analysed, and no conclusion drawn from synthetic data would say anything about the industry. |
 | Jupyter notebooks | Planned | Directory exists and is empty |
-| Managed hosting on Supabase | Deferred | Local PostgreSQL is sufficient until a shared endpoint is needed — [ADR-0002](docs/architecture-decisions/ADR-0002-phase-0-technology-baseline.md) |
+| Managed cloud PostgreSQL | Planned | Needed so a cloud semantic-model engine can reach the `reporting` schema. Contract and automation are written; the database itself is not provisioned |
 | Portfolio case study, walkthrough video, launch material | Deferred | Packaging work, after the analytical system is complete |
 | Real dealership, customer, or lending data | Out of scope | Permanently excluded |
 | Production DMS or CRM integration, live lender integration | Out of scope | [`ARCHITECTURE.md` §6](ARCHITECTURE.md) |
@@ -276,9 +292,21 @@ tested, fifty-eight reconciliations recorded on every run, and a formal Gate 1 r
 | **1.4** | Lead funnel | `dim_lead_source`; lead and appointment generators; `fact_lead` and `fact_appointment`; funnel reconciliation |
 | **1.5** | Marketing, profitability, and MVP readiness | `dim_marketing_campaign` and `fact_marketing_spend`, source-level profitability, the MVP reporting layer, the stakeholder-question matrix, the Gate 1 readiness review |
 
-**Later phases**, aligned to [`ARCHITECTURE.md` §27](ARCHITECTURE.md): the Power BI semantic model, the seven unblocked report pages, executive findings and recommendations, the Excel operating report, and portfolio packaging. Gate 1 controls the first of those, and the verdict with its evidence is recorded in [`docs/requirements/GATE_1_READINESS.md`](docs/requirements/GATE_1_READINESS.md).
+**Lifecycle Phase 5 — Power BI semantic model · built, not complete**
+Gate 1 opened, and the semantic model was built: a PBIP project with the model stored as TMDL, in Import mode over the `reporting` schema only. Twenty imported tables, six measure tables, forty-two single-direction relationships, `vw_calendar` marked as the date table, and all twenty-nine governed KPI measures with their format strings, display folders and descriptions. Static validation passes and the SQL side of every KPI is committed as a baseline across twenty-one filter contexts.
 
-The task-level breakdown for Phase 1 is in [`docs/requirements/PHASE_1_BACKLOG.md`](docs/requirements/PHASE_1_BACKLOG.md).
+It is **not complete**, and the reason is worth stating plainly: **no Microsoft semantic-model engine has ever loaded this model.** Every measure in it is text that has never returned a number. Phase 5's own exit criteria require a successful refresh and a SQL-to-DAX reconciliation, and the work in progress is a Microsoft Fabric validation path that delivers exactly that without needing Windows.
+
+| Increment | Focus | Status |
+|---|---|---|
+| **P2.1** | Power BI semantic model | Built and statically validated; real-engine validation pending |
+| **P2.2** | MVP dashboard pages | Not started, and blocked until `P2.1` completes |
+| **P2.3** | Findings, recommendations, Gate 2 review | Not started |
+| **P2.4** | Portfolio packaging | Not started |
+
+**Later phases**, aligned to [`ARCHITECTURE.md` §27](ARCHITECTURE.md): the seven unblocked report pages, executive findings and recommendations, the Excel operating report, and portfolio packaging.
+
+The task-level breakdowns are in [`docs/requirements/PHASE_1_BACKLOG.md`](docs/requirements/PHASE_1_BACKLOG.md) and [`docs/requirements/PHASE_2_BACKLOG.md`](docs/requirements/PHASE_2_BACKLOG.md).
 
 ---
 
@@ -363,6 +391,7 @@ Start at the [documentation hub](docs/index.md), which explains the hierarchy an
 | [ARCHITECTURE.md](ARCHITECTURE.md) | The binding technical architecture, scope, non-goals, and phase plan |
 | [docs/architecture-decisions/ADR-0001-project-identity.md](docs/architecture-decisions/ADR-0001-project-identity.md) | Project identity and naming convention |
 | [docs/architecture-decisions/ADR-0002-phase-0-technology-baseline.md](docs/architecture-decisions/ADR-0002-phase-0-technology-baseline.md) | Phase 0 technology choices and their trade-offs |
+| [docs/architecture-decisions/ADR-0007-power-bi-project-format.md](docs/architecture-decisions/ADR-0007-power-bi-project-format.md) | Why the semantic model is PBIP and TMDL rather than a binary, and where its validation boundary sits |
 | [docs/architecture-decisions/](docs/architecture-decisions/) | ADR index, format, and conventions |
 
 ### Contracts
@@ -381,6 +410,7 @@ Start at the [documentation hub](docs/index.md), which explains the hierarchy an
 | [docs/database-setup.md](docs/database-setup.md) | Optional local PostgreSQL setup and the SQL build order |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Development workflow, standards, and quality gates |
 | [SECURITY.md](SECURITY.md) | Secret handling and vulnerability reporting |
+| [powerbi/model_documentation/](powerbi/model_documentation/) | The semantic model as built: tables, relationships, measures, visibility, formats, parameters, validation |
 
 ### Evidence and constraints
 
@@ -396,6 +426,8 @@ Start at the [documentation hub](docs/index.md), which explains the hierarchy an
 | Document | Purpose |
 |---|---|
 | [docs/requirements/PHASE_1_BACKLOG.md](docs/requirements/PHASE_1_BACKLOG.md) | Task-level breakdown of Phase 1.1 through 1.5 |
+| [docs/requirements/PHASE_2_BACKLOG.md](docs/requirements/PHASE_2_BACKLOG.md) | Task-level breakdown of `P2.1` through `P2.4` |
+| [docs/requirements/GATE_1_READINESS.md](docs/requirements/GATE_1_READINESS.md) | The Gate 1 evaluation and its verdict |
 | [docs/index.md](docs/index.md) | Documentation hub and reading paths |
 
 ---

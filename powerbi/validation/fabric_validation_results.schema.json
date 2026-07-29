@@ -1,0 +1,197 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/mpalmer79/Automotive-Retail-Performance-Intelligence/powerbi/validation/fabric_validation_results.schema.json",
+  "title": "ARPI Microsoft Fabric validation result",
+  "description": "The evidence file scripts/validate_powerbi_fabric.py writes after deploying the committed TMDL definition to a Microsoft Fabric workspace, refreshing it against a cloud PostgreSQL reporting schema, and comparing every governed measure against powerbi/validation/sql_baseline.json. ADR-0008 accepts this as an equal alternative to Power BI Desktop validation: the engine differs, the proof obligation does not. scripts/check_fabric_validation_freshness.py reads it in CI. A result is only believable while model_source_hash still matches the committed semantic model - a model that was validated and then edited has no valid evidence, and CI reports that as STALE rather than as passed. Nothing here may record a token, a password or a credential-bearing connection string; a workspace ID and an item ID are identifiers, not secrets.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "validated_at",
+    "model_source_hash",
+    "overall_result"
+  ],
+  "properties": {
+    "schema": {
+      "const": "arpi.fabric_validation_results/1"
+    },
+    "validated_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "UTC ISO-8601 instant the validation ran. Null when it has never run."
+    },
+    "operator": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Who ran the validation, as free text they chose - a GitHub handle is the usual answer. Recorded because the gate is a human's attestation. Never an email address, a machine name or a domain account."
+    },
+    "engine": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "Microsoft Fabric",
+        null
+      ],
+      "description": "Named explicitly so a reader of the file alone knows which of ADR-0008's two paths produced it."
+    },
+    "workspace_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Fabric workspace GUID the model was deployed to. An identifier, not a secret."
+    },
+    "semantic_model_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Fabric semantic model item GUID."
+    },
+    "model_source_hash": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "SHA-256 over the committed semantic model definition, from scripts/check_desktop_validation_freshness.py --print-hash. One implementation, shared by both engines."
+    },
+    "retrieved_definition_hash": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "SHA-256 over the definition read back from the service with getDefinition, when it was captured. Null when the round trip was not performed in the same run. scripts/deploy_powerbi_fabric.py performs the comparison itself and fails on any unexplained difference."
+    },
+    "refresh_result": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "succeeded",
+        "failed",
+        "not attempted",
+        null
+      ]
+    },
+    "table_count": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "description": "Tables the ENGINE reports, not the TMDL."
+    },
+    "relationship_count": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "active_relationship_count": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "measure_count": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "row_counts": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": {
+        "type": "integer"
+      },
+      "description": "Rows loaded per imported table, compared against model_expectations.json."
+    },
+    "passed_checks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "failed_checks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "sql_to_dax_differences": {
+      "type": "array",
+      "description": "Every measure whose DAX value differed from the SQL baseline beyond tolerance. Empty is the only acceptable state for a passed result.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "context_id",
+          "measure_key",
+          "sql_value",
+          "dax_value"
+        ],
+        "properties": {
+          "context_id": {
+            "type": "string"
+          },
+          "measure_key": {
+            "type": "string"
+          },
+          "measure_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sql_value": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "dax_value": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "absolute_difference": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "tolerance": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        }
+      }
+    },
+    "overall_result": {
+      "type": "string",
+      "enum": [
+        "passed",
+        "failed",
+        "pending"
+      ],
+      "description": "'pending' means Fabric has never validated this model. It is not a pass, and no CI check may render it as one."
+    },
+    "notes": {
+      "type": "string"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "schema": "arpi.fabric_validation_results/1",
+  "validated_at": null,
+  "operator": null,
+  "engine": null,
+  "workspace_id": null,
+  "semantic_model_id": null,
+  "model_source_hash": null,
+  "retrieved_definition_hash": null,
+  "refresh_result": null,
+  "table_count": null,
+  "relationship_count": null,
+  "active_relationship_count": null,
+  "measure_count": null,
+  "row_counts": null,
+  "passed_checks": [],
+  "failed_checks": [],
+  "sql_to_dax_differences": [],
+  "overall_result": "pending",
+  "notes": "Microsoft Fabric has never deployed, refreshed or queried this semantic model. No Fabric workspace and no cloud PostgreSQL database exist for this project yet, and the environment this file was written in cannot reach api.fabric.microsoft.com at all. This is a placeholder that records that honestly; it is NOT a passing result and no CI check may render it as one. scripts/validate_powerbi_fabric.py overwrites it with a real result. The procedure is docs/powerbi/FABRIC_SERVICE_HANDOFF.md."
+}
