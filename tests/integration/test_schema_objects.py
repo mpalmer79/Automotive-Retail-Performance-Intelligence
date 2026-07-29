@@ -7,6 +7,8 @@ from typing import Any
 
 import pytest
 
+from arpi.constants import REPORTING_VIEWS
+
 pytestmark = pytest.mark.integration
 
 
@@ -63,8 +65,9 @@ DIMENSION_TABLES = (
     "dim_marketing_campaign",
 )
 
-#: The fact tables. Every one of these is created empty in Phase 1.2; the generators and
-#: load scripts that populate them arrive later. See test_fact_tables_are_empty.
+#: The fact tables. All five are populated by a real pipeline run; this module builds a
+#: structure-only database and never runs the pipeline, which is what
+#: test_the_sql_sequence_alone_loads_no_data relies on.
 FACT_TABLES = (
     "fact_vehicle_sale",
     "fact_vehicle_inventory_snapshot",
@@ -84,17 +87,26 @@ EXPECTED_TABLES = {
     *(("warehouse", name) for name in FACT_TABLES),
 }
 
+#: The audit-schema views: the data-quality check views and the reconciliation views.
+AUDIT_VIEWS = (
+    "vw_dq_all",
+    "vw_dq_audit",
+    "vw_dq_dim_date",
+    "vw_dq_dim_dealership",
+    "vw_dq_referential",
+    "vw_dq_result_template",
+    "vw_recon_all",
+    "vw_recon_funnel",
+    "vw_recon_gross",
+    "vw_recon_ingestion",
+    "vw_recon_marketing",
+    "vw_recon_reporting",
+    "vw_recon_result_template",
+)
+
 EXPECTED_VIEWS = {
-    ("audit", "vw_dq_all"),
-    ("audit", "vw_dq_audit"),
-    ("audit", "vw_dq_dim_date"),
-    ("audit", "vw_dq_dim_dealership"),
-    ("audit", "vw_dq_referential"),
-    ("audit", "vw_dq_result_template"),
-    ("reporting", "vw_calendar"),
-    ("reporting", "vw_data_quality_summary"),
-    ("reporting", "vw_dealership"),
-    ("reporting", "vw_pipeline_run_summary"),
+    *(("audit", name) for name in AUDIT_VIEWS),
+    *(("reporting", name) for name in REPORTING_VIEWS),
     ("staging", "stg_calendar_date"),
     ("staging", "stg_dealership"),
     *(("staging", f"stg_{name}") for name in STAGING_ENTITIES),
@@ -239,34 +251,40 @@ def test_exactly_the_declared_fact_tables_exist(cursor: Any) -> None:
     assert {row[0] for row in cursor.fetchall()} == set(FACT_TABLES)
 
 
-def test_fact_tables_are_empty(cursor: Any) -> None:
-    """No fact row has ever been loaded, and nothing may claim otherwise.
+def test_the_sql_sequence_alone_loads_no_data(cursor: Any) -> None:
+    """Applying the SQL tree builds structure and inserts nothing.
 
-    The Phase 1.2 increment creates the fact DDL so the dimensional model is complete and
-    reviewable, but the generators and load scripts land later. A fact table that
-    unexpectedly held rows would let a reporting view present numbers nobody generated.
+    This database was built by running the initialisation sequence and nothing else. A
+    fact table holding rows here would mean a DDL script had started inserting data,
+    which would make the sequence non-idempotent in a way row counts would hide: a second
+    application would double the rows. Populated facts are asserted separately, against
+    the `loaded_database` fixture, which runs the real pipeline.
     """
     for table in FACT_TABLES:
         # The table name comes from the literal FACT_TABLES tuple above, never from input.
         cursor.execute(f"SELECT count(*) FROM warehouse.{table}")
         row = cursor.fetchone()
         assert row is not None
-        assert row[0] == 0, f"warehouse.{table} is expected to be empty in this increment"
+        assert row[0] == 0, (
+            f"warehouse.{table} holds rows after a structure-only build; a DDL script is "
+            "inserting data, which makes the initialisation sequence non-idempotent"
+        )
 
 
-def test_reporting_layer_contains_exactly_four_views(cursor: Any) -> None:
+def test_reporting_layer_contains_exactly_the_declared_views(cursor: Any) -> None:
+    """The reporting surface is fixed by arpi.constants.REPORTING_VIEWS and nothing else.
+
+    A view added to sql/05_reporting without being declared there is invisible to the
+    completeness, reporter-role and Gate 1 checks, which all read the same tuple. This
+    test is what stops that happening quietly.
+    """
     cursor.execute(
         """
         SELECT table_name FROM information_schema.views
         WHERE table_schema = 'reporting' ORDER BY table_name
         """
     )
-    assert [row[0] for row in cursor.fetchall()] == [
-        "vw_calendar",
-        "vw_data_quality_summary",
-        "vw_dealership",
-        "vw_pipeline_run_summary",
-    ]
+    assert [row[0] for row in cursor.fetchall()] == list(REPORTING_VIEWS)
 
 
 @pytest.mark.parametrize(
@@ -312,10 +330,7 @@ def test_every_dimension_column_is_documented(cursor: Any, table_name: str) -> N
         "audit.validation_result",
         "staging.stg_calendar_date",
         "staging.stg_dealership",
-        "reporting.vw_calendar",
-        "reporting.vw_dealership",
-        "reporting.vw_pipeline_run_summary",
-        "reporting.vw_data_quality_summary",
+        *(f"reporting.{name}" for name in REPORTING_VIEWS),
     ],
 )
 def test_object_comment_declares_a_grain(cursor: Any, qualified_name: str) -> None:

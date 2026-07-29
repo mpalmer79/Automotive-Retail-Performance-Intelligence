@@ -7,7 +7,7 @@ A governed, reproducible analytics platform for a fictional three-store automoti
 ![PostgreSQL](https://img.shields.io/badge/postgresql-16-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-**Status (plain text):** Phase 0 foundation. Python 3.11 or newer. PostgreSQL 16. MIT licensed. The configuration layer, the date and dealership dimensions, the validation framework, the audit layer, the CLI, the SQL build scripts, the test suite, and the documentation set are implemented. No Power BI report, no fact tables, and no analytical findings exist yet — see [Current implementation status](#current-implementation-status).
+**Status (plain text):** Analytical warehouse and reporting layer complete; Power BI not started. Python 3.11 or newer. PostgreSQL 16. MIT licensed. All eight MVP dimensions, all five MVP facts, twenty-eight reporting views, and all 29 KPIs in [`KPI_CATALOG.md`](KPI_CATALOG.md) are implemented, computable and tested. **No Power BI report, no semantic model, no dashboard, and no analytical findings exist** — Gate 1 gates that work and its verdict is recorded in [`docs/requirements/GATE_1_READINESS.md`](docs/requirements/GATE_1_READINESS.md). See [Current implementation status](#current-implementation-status).
 
 ---
 
@@ -204,7 +204,7 @@ Automotive-Retail-Performance-Intelligence/
 ├── scripts/           Repository governance checks
 ├── .github/workflows/ Continuous integration
 ├── notebooks/         Empty — no notebooks exist yet
-├── powerbi/           Empty — no PBIX file exists yet
+├── powerbi/           Model documentation only — no PBIX, PBIP, TMDL or BIM file exists
 ├── excel/             Empty — no workbook exists yet
 └── portfolio/         Empty — case study and launch material not written yet
 ```
@@ -223,32 +223,31 @@ Labels are used strictly. **Implemented** means it exists and runs today.
 | Logging | Implemented | Text or JSON, level set per profile, credentials redacted |
 | Date dimension generator | Implemented | `warehouse.dim_date`, 26 columns, deterministic holiday and selling-day rules |
 | Dealership dimension generator | Implemented | `warehouse.dim_dealership`, SCD Type 2 structure, three fictional stores |
-| Validation framework | Implemented | Twelve Phase 0 checks with severities, run in memory before any load |
+| Twelve further generators | Implemented | Vehicle model, vehicle, employee, customer, lead source, campaign, acquisition, sale, inventory snapshot, lead, appointment, marketing spend |
+| Validation framework | Implemented | 114 checks across fourteen `DQ-*` families on a `development` run, with severities, run in memory before any load |
 | CSV and manifest writer | Implemented | Deterministic CSV plus `generation_manifest.json` with SHA-256 content digests |
-| PostgreSQL load of `dim_date` and `dim_dealership` | Implemented | Optional; `database.enabled` defaults to `false` |
+| PostgreSQL load of every dimension and fact | Implemented | Optional; `database.enabled` defaults to `false`. A rerun produces identical warehouse counts. |
 | Audit recording | Implemented | Pipeline runs, row counts, validation results, reconciliations, rejected records |
 | Command-line interface | Implemented | `arpi version`, `arpi check-config`, `arpi generate`, `arpi run-foundation` |
-| SQL: schemas, roles, raw, staging, dimensions, audit, reporting views | Implemented | Ordered and re-runnable; `arpi_admin` / `arpi_loader` / `arpi_reporter` |
+| SQL: schemas, roles, raw, staging, dimensions, facts, audit, reporting, validation | Implemented | Ordered and re-runnable; `arpi_admin` / `arpi_loader` / `arpi_reporter`, with the reporter provably unable to read any pipeline layer |
 | Test suite | Implemented | Unit, data-quality, and integration tests; coverage gate at 85% |
 | Continuous integration | Implemented | Lint, format check, types, tests, naming check, documentation-link check |
 | Documentation set | Implemented | Architecture, data dictionary, KPI catalog, generation, privacy, limitations, ADRs, diagrams |
 | Committed sample dataset | Implemented | Small synthetic extract under `data/sample/` |
-| `dim_vehicle_model`, `dim_vehicle`, `dim_employee` | Planned | Phase 1.1 generates the sources; Phase 1.2 loads the dimensions |
-| `dim_customer` | Planned | Phase 1.2 |
-| `dim_lead_source` | Planned | Phase 1.4 |
-| `dim_marketing_campaign` | Planned | Phase 1.5 |
-| `fact_vehicle_sale`, `fact_vehicle_inventory_snapshot` | Planned | Phase 1.2 |
-| `fact_lead`, `fact_appointment` | Planned | Phase 1.4 |
-| `fact_marketing_spend` | Planned | Phase 1.5 |
+| `dim_vehicle_model`, `dim_vehicle`, `dim_employee`, `dim_customer`, `dim_lead_source`, `dim_marketing_campaign` | Implemented | All eight MVP dimensions are built, populated and documented |
+| `fact_vehicle_sale`, `fact_vehicle_inventory_snapshot`, `fact_lead`, `fact_appointment`, `fact_marketing_spend` | Implemented | All five MVP facts, each with its grain enforced by a UNIQUE constraint and tested |
 | `fact_lead_activity`, `fact_inventory_price_history`, `fact_finance_product_sale` | Deferred | Beyond the MVP — [`DATA_DICTIONARY.md` §27](DATA_DICTIONARY.md) |
 | `dim_finance_product`, `dim_lender`, `dim_sale_type`, `dim_inventory_source`, `dim_geography` | Deferred | Beyond the MVP — [`DATA_DICTIONARY.md` §27](DATA_DICTIONARY.md) |
-| Sales and inventory reporting views | Planned | Phase 1.3 — not created while the facts do not exist |
-| MVP reporting layer | Planned | Phase 1.5 |
-| Reconciliation test suite | Planned | Gross reconciliation in Phase 1.3, funnel reconciliation in Phase 1.4 |
+| MVP reporting layer | Implemented | Twenty-eight views: eight dimension, five grain-preserving fact, thirteen governed analytical |
+| All 29 MVP KPIs | Implemented | Computable from `reporting`, each tested against an independent derivation from `warehouse` |
+| Reconciliation suite | Implemented | Fifty-eight results recorded on every database run; every critical rule proven to fail against a corrupted fixture |
+| Power BI model documentation | Implemented | `powerbi/model_documentation/` — the specification Gate 1 produces, not a model |
+| Stakeholder-question traceability matrix | Implemented | [`docs/requirements/STAKEHOLDER_QUESTIONS.md`](docs/requirements/STAKEHOLDER_QUESTIONS.md) |
+| Gate 1 readiness review | Implemented | [`docs/requirements/GATE_1_READINESS.md`](docs/requirements/GATE_1_READINESS.md) |
 | NHTSA vPIC public enrichment | Planned | Phase 1.1 |
-| Power BI semantic model and reports | Planned | After the facts and reporting views land |
-| Excel operating report | Planned | After the reporting views land |
-| Executive findings and recommendations | Planned | Requires facts; nothing has been analysed yet |
+| Power BI semantic model and reports | Planned | After Gate 1 opens. Nothing has been built; `tests/integration/test_gate1_readiness.py` fails if a `.pbix`, `.pbip`, `.tmdl` or `.bim` file appears. |
+| Excel operating report | Planned | Post-MVP |
+| Executive findings and recommendations | Planned | Blocked by Gate 2. Nothing has been analysed, and no conclusion drawn from synthetic data would say anything about the industry. |
 | Jupyter notebooks | Planned | Directory exists and is empty |
 | Managed hosting on Supabase | Deferred | Local PostgreSQL is sufficient until a shared endpoint is needed — [ADR-0002](docs/architecture-decisions/ADR-0002-phase-0-technology-baseline.md) |
 | Portfolio case study, walkthrough video, launch material | Deferred | Packaging work, after the analytical system is complete |
@@ -265,15 +264,19 @@ Labels are used strictly. **Implemented** means it exists and runs today.
 **Phase 0 — Foundation · complete**
 Repository, typed configuration, logging, the date and dealership dimensions end to end, validation, audit, CLI, SQL build scripts, tests, CI, and the governing documentation set.
 
-| Phase | Focus | Key deliverables |
-|---|---|---|
-| **1.1** | Source generation | Vehicle model contract and catalogue (with the NHTSA vPIC enrichment workflow), vehicle generator, employee generator, inventory acquisition events, sales source events |
-| **1.2** | Ingestion, dimensions, and the first two facts | Raw and staging ingestion for the Phase 1.1 entities; `dim_vehicle` and `dim_employee` loads; the first `fact_vehicle_sale`; the first `fact_vehicle_inventory_snapshot` |
-| **1.3** | Validation, reconciliation, and the first KPI logic | Sales and inventory validation suite, gross reconciliation, inventory-age logic, days-to-sale logic, the first sales and inventory reporting views |
-| **1.4** | Lead funnel | `dim_lead_source`; lead and appointment generators; `fact_lead` and `fact_appointment`; funnel reconciliation |
-| **1.5** | Marketing, profitability, and MVP readiness | Marketing campaign dimension and `fact_marketing_spend`, source-level profitability, the MVP reporting layer, the Power BI readiness review |
+**Phase 1 — Analytical warehouse and reporting layer · complete**
+All eight MVP dimensions, all five MVP facts, twenty-eight reporting views, all 29 KPIs computable and
+tested, fifty-eight reconciliations recorded on every run, and a formal Gate 1 review.
 
-**Later phases**, aligned to [`ARCHITECTURE.md` §27](ARCHITECTURE.md): the Power BI semantic model, the nine required report pages, executive findings and recommendations, the Excel operating report, and portfolio packaging. Scope gate 1 applies — no Power BI development begins until fact grains are approved, dimensions are documented, and KPI formulas are written.
+| Increment | Focus | Delivered |
+|---|---|---|
+| **1.1** | Source generation | Vehicle model contract and catalogue, vehicle generator, employee generator, customer generator, inventory acquisition events, sales source events |
+| **1.2** | Ingestion, dimensions, and the first two facts | Raw and staging ingestion; `dim_vehicle`, `dim_employee` and `dim_customer`; `fact_vehicle_sale`; `fact_vehicle_inventory_snapshot` |
+| **1.3** | Validation, reconciliation, and KPI logic | Sales and inventory validation, gross reconciliation, inventory-age logic, days-to-sale logic, the sales and inventory reporting views |
+| **1.4** | Lead funnel | `dim_lead_source`; lead and appointment generators; `fact_lead` and `fact_appointment`; funnel reconciliation |
+| **1.5** | Marketing, profitability, and MVP readiness | `dim_marketing_campaign` and `fact_marketing_spend`, source-level profitability, the MVP reporting layer, the stakeholder-question matrix, the Gate 1 readiness review |
+
+**Later phases**, aligned to [`ARCHITECTURE.md` §27](ARCHITECTURE.md): the Power BI semantic model, the seven unblocked report pages, executive findings and recommendations, the Excel operating report, and portfolio packaging. Gate 1 controls the first of those, and the verdict with its evidence is recorded in [`docs/requirements/GATE_1_READINESS.md`](docs/requirements/GATE_1_READINESS.md).
 
 The task-level breakdown for Phase 1 is in [`docs/requirements/PHASE_1_BACKLOG.md`](docs/requirements/PHASE_1_BACKLOG.md).
 

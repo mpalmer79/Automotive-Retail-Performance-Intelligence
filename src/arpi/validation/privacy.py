@@ -27,7 +27,11 @@ How a name is judged
    ``call_recording_url`` without the false positives a substring rule would cause.
 5. **The ``age`` rule.** Any name carrying ``age`` as a word is prohibited unless it is
    one of the banded spellings in :data:`~arpi.constants.APPROVED_AGE_COLUMNS`, so
-   ``age_band`` passes and ``age`` and ``customer_age`` do not.
+   ``age_band`` passes and ``age`` and ``customer_age`` do not. A second allowlist,
+   :data:`~arpi.constants.APPROVED_ASSET_AGE_COLUMNS`, covers the names whose ``age``
+   measures an asset rather than a person -- inventory age is one of the platform's
+   central measures and must not be refused as if it were a birthday. Both lists are
+   explicit and every entry carries a written justification.
 6. **The ``_name`` suffix rule.** A name ending in ``name`` is treated as a person's name
    unless it appears in :data:`~arpi.constants.APPROVED_NAME_COLUMNS`, whose every entry
    carries a written justification. Denying by default means a future generator adding
@@ -62,6 +66,7 @@ from typing import TYPE_CHECKING, Any
 
 from arpi.constants import (
     APPROVED_AGE_COLUMNS,
+    APPROVED_ASSET_AGE_COLUMNS,
     APPROVED_NAME_COLUMNS,
     CHECK_CATEGORY_PRIVACY,
     CSV_DELIMITER,
@@ -167,7 +172,11 @@ def is_prohibited_column(name: str) -> bool:
     words = frozenset(normalised.split("_"))
     if words & PROHIBITED_PII_WORD_TOKENS:
         return True
-    if "age" in words and normalised not in APPROVED_AGE_COLUMNS:
+    if (
+        "age" in words
+        and normalised not in APPROVED_AGE_COLUMNS
+        and normalised not in APPROVED_ASSET_AGE_COLUMNS
+    ):
         return True
 
     is_name_column = normalised == "name" or normalised.endswith("_name")

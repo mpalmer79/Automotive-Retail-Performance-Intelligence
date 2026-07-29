@@ -4,11 +4,10 @@ This directory is the authoritative definition of the ARPI database: schemas,
 raw landing tables, staging views, conformed dimensions, merge logic, audit
 objects, reporting views, indexes, roles, grants and data-quality checks.
 
-Everything here is **Implemented** and has been executed against PostgreSQL 16 — with
-one precise exception stated plainly: the five fact tables in `04_facts/` **exist and are
-constrained, and no fact row has ever been loaded into any of them.** Their generators
-and load scripts land in later Phase 1 increments. See
-[`04_facts/README.md`](04_facts/README.md).
+Everything here is **Implemented** and has been executed against PostgreSQL 16. All eight
+MVP dimensions and all five MVP facts are built, constrained and loaded; the reporting
+layer above them is twenty-eight views, and the validation layer includes seven
+reconciliation views the loader evaluates and records on every run.
 
 - Target: **PostgreSQL 16** or later.
 - Every script is **idempotent**: running the whole sequence twice produces the
@@ -32,7 +31,7 @@ and load scripts land in later Phase 1 increments. See
 | `01_raw/` | `raw` | Landing tables. Every business column is `text`; nothing is transformed |
 | `02_staging/` | `staging` | Views that type, deduplicate, domain-filter and expose only the newest load batch, plus the rejected-row companion views and the non-throwing cast helpers |
 | `03_dimensions/` | `warehouse` | Conformed dimensions and the idempotent merge scripts that load them |
-| `04_facts/` | `warehouse` | The five fact tables. **DDL only: no row has ever been loaded** |
+| `04_facts/` | `warehouse` | The five fact tables and their load scripts. All five are populated by the pipeline, and each grain is enforced by a UNIQUE constraint |
 | `05_reporting/` | `reporting` | The four business-facing views. The only schema Power BI may read |
 | `06_indexes/` | `warehouse`, `audit` | Secondary indexes that a query which exists today actually needs |
 | `07_security/` | cluster + all | The three group roles, the grant model, and an operator verification report |
@@ -100,33 +99,45 @@ header block.
 | 44 | `03_dimensions/15_dim_customer_merge.sql` | **Runtime.** Type 1 merge into `warehouse.dim_customer` |
 | 45 | `03_dimensions/16_dim_lead_source_merge.sql` | **Runtime.** Type 1 merge into `warehouse.dim_lead_source` |
 | 46 | `03_dimensions/17_dim_marketing_campaign_merge.sql` | **Runtime.** Type 1 merge into `warehouse.dim_marketing_campaign` |
-| 47 | `04_facts/00_fact_vehicle_sale.sql` | Creates `warehouse.fact_vehicle_sale` (empty; no row loaded yet) |
-| 48 | `04_facts/01_fact_vehicle_inventory_snapshot.sql` | Creates `warehouse.fact_vehicle_inventory_snapshot` (empty; no row loaded yet) |
-| 49 | `04_facts/02_fact_lead.sql` | Creates `warehouse.fact_lead` (empty; no row loaded yet) |
-| 50 | `04_facts/03_fact_appointment.sql` | Creates `warehouse.fact_appointment` (empty; no row loaded yet) |
-| 51 | `04_facts/04_fact_marketing_spend.sql` | Creates `warehouse.fact_marketing_spend` (empty; no row loaded yet) |
+| 47 | `04_facts/00_fact_vehicle_sale.sql` | Creates `warehouse.fact_vehicle_sale` and its load script |
+| 48 | `04_facts/01_fact_vehicle_inventory_snapshot.sql` | Creates `warehouse.fact_vehicle_inventory_snapshot` and its load script |
+| 49 | `04_facts/02_fact_lead.sql` | Creates `warehouse.fact_lead` and its load script |
+| 50 | `04_facts/03_fact_appointment.sql` | Creates `warehouse.fact_appointment` and its load script |
+| 51 | `04_facts/04_fact_marketing_spend.sql` | Creates `warehouse.fact_marketing_spend` and its load script |
 | 52 | `05_reporting/00_reporting_scope.sql` | Documents which reporting views exist and which are deliberately absent |
-| 53 | `05_reporting/01_vw_calendar.sql` | Creates `reporting.vw_calendar` |
-| 54 | `05_reporting/02_vw_dealership.sql` | Creates `reporting.vw_dealership` |
-| 55 | `05_reporting/03_vw_pipeline_run_summary.sql` | Creates `reporting.vw_pipeline_run_summary` |
-| 56 | `05_reporting/04_vw_data_quality_summary.sql` | Creates `reporting.vw_data_quality_summary` |
-| 57 | `06_indexes/00_indexes.sql` | Creates the Phase 0 justified secondary indexes |
-| 58 | `06_indexes/01_phase1_indexes.sql` | Creates the Phase 1 justified secondary indexes |
-| 59 | `07_security/00_roles.sql` | Creates `arpi_admin`, `arpi_loader`, `arpi_reporter` (NOLOGIN) |
-| 60 | `07_security/01_grants.sql` | Moves ownership to `arpi_admin`; applies the grant model; asserts it object by object |
-| 61 | `08_validation/00_validation_helpers.sql` | Result-shape template view + `audit.fn_record_validation_result` |
-| 62 | `08_validation/01_dim_date_checks.sql` | Creates `audit.vw_dq_dim_date` (`DQ-DATE-001..005`) |
-| 63 | `08_validation/02_dim_dealership_checks.sql` | Creates `audit.vw_dq_dim_dealership` (`DQ-DLR-001..005`) |
-| 64 | `08_validation/03_referential_checks.sql` | Creates `audit.vw_dq_referential` (`DQ-REF-001..005`) |
-| 65 | `08_validation/04_audit_checks.sql` | Creates `audit.vw_dq_audit` (`DQ-AUD-001..005`), `audit.vw_dq_all`, `audit.fn_record_all_dq_checks` |
-| 66 | `07_security/01_grants.sql` **(again)** | Privilege-normalisation pass over the objects created in the validation step |
+| 53–56 | `05_reporting/01_vw_calendar.sql` … `04_vw_data_quality_summary.sql` | The four Phase 0 views: `vw_calendar`, `vw_dealership`, `vw_pipeline_run_summary`, `vw_data_quality_summary` |
+| 57–62 | `05_reporting/05_vw_vehicle_model.sql` … `10_vw_marketing_campaign.sql` | The six remaining **dimension** views: `vw_vehicle_model`, `vw_vehicle`, `vw_employee`, `vw_customer`, `vw_lead_source`, `vw_marketing_campaign` |
+| 63–67 | `05_reporting/11_vw_vehicle_sales.sql` … `15_vw_marketing_spend.sql` | The five **fact** views, each preserving its fact's grain exactly: `vw_vehicle_sales`, `vw_inventory_snapshots`, `vw_leads`, `vw_appointments`, `vw_marketing_spend` |
+| 68–80 | `05_reporting/20_vw_sales_summary.sql` … `32_vw_reconciliation_status.sql` | The thirteen governed **analytical** views: sales, gross, inventory health, inventory aging, days to sale, inventory turn, days supply, lead funnel, appointment funnel, lead response, marketing performance, data-quality trend, reconciliation status |
+| 81 | `06_indexes/00_indexes.sql` | Creates the Phase 0 justified secondary indexes |
+| 82 | `06_indexes/01_phase1_indexes.sql` | Creates the Phase 1 justified secondary indexes |
+| 83 | `07_security/00_roles.sql` | Creates `arpi_admin`, `arpi_loader`, `arpi_reporter` (NOLOGIN) |
+| 84 | `07_security/01_grants.sql` | Moves ownership to `arpi_admin`; applies the grant model; asserts it object by object |
+| 85 | `08_validation/00_validation_helpers.sql` | Result-shape template view + `audit.fn_record_validation_result` |
+| 86 | `08_validation/01_dim_date_checks.sql` | Creates `audit.vw_dq_dim_date` (`DQ-DATE-001..005`) |
+| 87 | `08_validation/02_dim_dealership_checks.sql` | Creates `audit.vw_dq_dim_dealership` (`DQ-DLR-001..005`) |
+| 88 | `08_validation/03_referential_checks.sql` | Creates `audit.vw_dq_referential` (`DQ-REF-001..005`) |
+| 89 | `08_validation/04_audit_checks.sql` | Creates `audit.vw_dq_audit` (`DQ-AUD-001..005`), `audit.vw_dq_all`, `audit.fn_record_all_dq_checks` |
+| 90 | `08_validation/05_reconciliation_helpers.sql` | Creates `audit.vw_recon_result_template`, the uniform reconciliation result shape |
+| 91 | `08_validation/06_recon_ingestion.sql` | Creates `audit.vw_recon_ingestion` — the five facts' staging-to-warehouse counts, and snapshot continuity |
+| 92 | `08_validation/07_recon_gross.sql` | Creates `audit.vw_recon_gross` — `RECON-GROSS-001`, `RECON-GROSS-002`, `RECON-UNITS-001`, `RECON-REPORT-SALES` |
+| 93 | `08_validation/08_recon_funnel.sql` | Creates `audit.vw_recon_funnel` — `RECON-LEAD-001`, duplicates, funnel bounds, sold path, funnel chain |
+| 94 | `08_validation/09_recon_marketing.sql` | Creates `audit.vw_recon_marketing` — spend, attributed leads, sales and gross, and the cost-attributability rule |
+| 95 | `08_validation/10_recon_reporting.sql` | Creates `audit.vw_recon_reporting` — every reporting view reconciled to the fact it projects |
+| 96 | `08_validation/11_recon_all.sql` | Creates `audit.vw_recon_all` and `audit.fn_record_all_reconciliations` |
+| 97 | `07_security/01_grants.sql` **(again)** | Privilege-normalisation pass over the objects created in the validation step |
 
-> **The Phase 0 file headers still say "of 25".** Files created in Phase 0 carry the
-> position they held when the sequence had 25 steps. Only the files this increment
-> touched were renumbered to "of 66". **This table is the authority**; a stale header is
-> a documentation lag, not a second ordering, and
+The sequence is **104 files** in total; the table groups consecutive files of one kind
+rather than listing all of them, and the grouped ranges are contiguous.
+
+> **File headers carry stale ordinals, and deliberately so.** A file created when the
+> sequence had 25 steps says "of 25"; one created when it had 66 says "of 66". Renumbering
+> every header on every addition would produce a diff that touches every file and proves
+> nothing. **This table is the authority for ordering**, and
 > `tests/integration/conftest.py::init_sequence_files` derives the real order from the
-> file names, not from the headers.
+> file names rather than from any header. The reporting and reconciliation files added in
+> this increment state their layer rather than an ordinal, which is the convention going
+> forward.
 
 ### Files deliberately **not** in the sequence
 
@@ -138,10 +149,10 @@ header block.
 ### Why the last step repeats the grants script
 
 `ALTER DEFAULT PRIVILEGES` only covers objects created *after* it is set, and
-ownership is assigned to `arpi_admin` at step 60. The validation views and
-functions created in steps 61–65 would otherwise be owned by the bootstrap role.
+ownership is assigned to `arpi_admin` by the first grants pass. The validation views and
+functions created in the validation steps would otherwise be owned by the bootstrap role.
 `01_grants.sql` is idempotent, so re-running it costs nothing and leaves every
-object owned by `arpi_admin` with the correct grants. Step 66 is verified by
+object owned by `arpi_admin` with the correct grants. The final grants pass is verified by
 `tests/integration/test_security_roles.py`.
 
 ### Why there is no `00_database/01_extensions.sql`
@@ -157,7 +168,7 @@ exist, so the file is absent rather than empty. The numbering gap is intentional
 
 ### 3.1 As a loop
 
-The sequence is 66 steps, so pasting each one is no longer the readable option.
+The sequence is 104 files, so pasting each one is not the readable option.
 It does not need to be: the numeric directory and file prefixes are designed so
 that plain sorted order **is** the correct order. Section 2 above lists every step
 explicitly if you want to see them.
@@ -346,7 +357,7 @@ and is recorded as a follow-up rather than made unilaterally.
 
 - The initialisation sequence is run by a **superuser**, or by a role that is a
   member of `arpi_admin`. Reassigning ownership requires it.
-- After step 60 (and again after step 66) **every** schema, table, view, sequence
+- After the first grants pass (and again after the final one) **every** schema, table, view, sequence
   and function in the five ARPI schemas is owned by **`arpi_admin`**.
 - That ownership is the security mechanism, not a tidiness preference. A
   PostgreSQL view runs with its owner's privileges, so `arpi_reporter` can read

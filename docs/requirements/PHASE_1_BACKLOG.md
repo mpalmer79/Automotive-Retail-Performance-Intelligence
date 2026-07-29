@@ -25,15 +25,19 @@
 
 | # | Condition | Current status | Evidence |
 |---:|---|---|---|
-| 1 | **Fact grains are approved** | ⚠️ **Declared, not approved** | All five MVP fact grains are declared in [DATA_DICTIONARY.md](../../DATA_DICTIONARY.md) Part C: `fact_vehicle_sale` (one row per finalized vehicle transaction), `fact_vehicle_inventory_snapshot` (one row per vehicle per dealership per daily snapshot date while active in inventory), `fact_lead` (one row per unique CRM lead), `fact_appointment` (one row per scheduled appointment), `fact_marketing_spend` (one row per dealership, campaign, and calendar month). **Approval means a built table whose grain uniqueness is enforced and tested** — none exists. Closed by `P1.2-04`, `P1.2-05`, `P1.4-04`, `P1.5-01`. |
-| 2 | **Dimensions are documented** | ⚠️ **Partially met** | The two Implemented dimensions carry exact, binding column contracts. The six Planned MVP dimensions are documented at **attribute level** with binding grains but indicative types. Full documentation follows implementation in `P1.1-01`, `P1.1-06`, `P1.2-02`, `P1.2-03`, `P1.2-06`, `P1.4-01`, `P1.5-01`. |
-| 3 | **KPI formulas are documented** | ✅ **Met** | [KPI_CATALOG.md](../../KPI_CATALOG.md) specifies 29 KPIs, each with numerator, denominator, grain, date basis, filters, exclusions, null behaviour, SQL ownership, DAX ownership, reconciliation rule, and interpretation caution. **All 29 are `Planned`; none is computed.** |
+| 1 | **Fact grains are approved** | ✅ **Met** | All five MVP facts are built, populated and **constrained**: `uq_fact_vehicle_sale_sale_id`, `uq_fact_vehicle_inventory_snapshot_grain (snapshot_date_key, dealership_key, vehicle_key)`, `uq_fact_lead_lead_id`, `uq_fact_appointment_appointment_id`, `uq_fact_marketing_spend_grain (month_date_key, dealership_key, campaign_key)`. `tests/integration/test_gate1_readiness.py` reads the constraint columns from `pg_constraint`, compares them with the declared grain, and asserts the loaded data satisfies it. Closed by `P1.2-04`, `P1.2-05`, `P1.4-04`, `P1.5-01`. |
+| 2 | **Dimensions are documented** | ✅ **Met** | All eight MVP dimensions are built and populated. Each declares its grain in `COMMENT ON TABLE` and documents **every** column in `COMMENT ON COLUMN`, asserted against `pg_attribute`. Each has a source-to-target mapping (`STM-001`…`STM-014`). [DATA_DICTIONARY.md](../../DATA_DICTIONARY.md) still documents six of the eight at attribute level with indicative types; the binding column contract for those six is the DDL, and that depth gap is recorded as a surviving limitation in [GATE_1_READINESS.md §4](GATE_1_READINESS.md). |
+| 3 | **KPI formulas are documented** | ✅ **Met** | [KPI_CATALOG.md](../../KPI_CATALOG.md) specifies 29 KPIs with every field. **All 29 are now `Implemented`** — computable from `reporting` and each verified against an independent derivation from `warehouse` by `tests/integration/test_kpi_verification.py`. Four catalogue fields were corrected in the process; see [KPI_CATALOG.md §37.1](../../KPI_CATALOG.md). |
 
-**Gate 1 verdict: CLOSED.** Power BI development may not begin. The binding constraint is condition 1: no
-fact table exists.
+**Gate 1 verdict: OPEN**, recorded on 2026-07-29 in [GATE_1_READINESS.md](GATE_1_READINESS.md), which
+evaluates twenty-three conditions individually with the query or test that proves each one. Power BI
+development may begin on the seven unblocked report pages. The F&I Performance page, the Customer and
+Service Opportunities page, and the target-attainment component of the Executive Overview remain blocked by
+Deferred facts rather than by anything this review found.
 
-The items in this backlog that carry `Blocks Power BI Gate 1: Yes` are exactly those that must complete
-before the gate can open.
+**No Power BI artefact exists.** `tests/integration/test_gate1_readiness.py::test_no_power_bi_artefact_has_been_built`
+fails the build if a `.pbix`, `.pbip`, `.pbit`, `.tmdl` or `.bim` file appears, so the gate stays enforced
+until that test is deliberately and visibly changed.
 
 ---
 
@@ -1107,4 +1111,12 @@ Three items were added on 2026-07-28: `P1.1-06` and `P1.2-06` promote the custom
 delivery (`DOC-04`), and `P1.5-05` adds the stakeholder-question traceability matrix (`DOC-15`). No existing
 identifier was renumbered.
 
-**Nothing in this backlog is Implemented.** Every item is `Planned`.
+**All twenty-seven items are Implemented**, and Gate 1 is **OPEN** (see section 1). The twenty-five items
+carrying `Blocks Power BI Gate 1: Yes` are complete; the two that do not — `P1.5-02` source-level
+profitability and `P1.5-05` the stakeholder-question matrix — are complete as well.
+
+The evidence is not this table. It is
+[GATE_1_READINESS.md](GATE_1_READINESS.md), which evaluates each condition against a query or a test, and
+the eight integration suites it references. An item's acceptance criteria are marked complete only where a
+named test asserts them; where a criterion is met with a caveat, the caveat is recorded in
+[GATE_1_READINESS.md §4](GATE_1_READINESS.md) rather than dropped.

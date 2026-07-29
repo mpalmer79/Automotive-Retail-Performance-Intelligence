@@ -13,10 +13,11 @@
 ARPI analyses a fictional three-store dealership group using entirely synthetic data generated from a fixed
 random seed. **It contains no real dealership data, no real customers, no real employees, and no real
 transactions, and it therefore produces no finding about the automotive retail industry.** As of this
-review date the project is at the end of Phase 0: two dimensions, a raw and staging layer for those two
-dimensions, an audit framework, and four reporting views exist. **No fact table exists, no KPI has been
-computed, and no dashboard has been built.** Every metric in [KPI_CATALOG.md](KPI_CATALOG.md) is a
-specification, not a result. There are no industry benchmarks anywhere in this project, because ARPI has no
+review date the analytical warehouse is complete and the reporting layer above it is built: all eight MVP
+dimensions, all five MVP facts, twenty-eight reporting views, and all 29 KPIs in
+[KPI_CATALOG.md](KPI_CATALOG.md) computable and tested against an independent derivation. **No dashboard
+has been built, no semantic model exists, and no finding has been produced.** Every number the platform can
+produce describes a fictional group built from synthetic data, and every KPI definition is ARPI's own. There are no industry benchmarks anywhere in this project, because ARPI has no
 access to real performance data, so nothing here can tell you whether a number is good. What this
 repository legitimately demonstrates is **method** — dimensional modelling, KPI governance, reproducible
 data generation, validation, reconciliation, and honest documentation — and nothing beyond that.
@@ -216,64 +217,59 @@ purpose.
 
 ---
 
-## 10. Phase 0 scope limitation
+## 10. Scope limitation — what is built and what is not
 
-**The limitation.** This is the most important limitation on the list at the current review date.
+**The limitation.** The analytical platform is complete up to, and stopping at, the reporting boundary.
 
-**What exists (15 objects):**
+**What exists (58 objects):**
 
 | Layer | Objects |
 |---|---|
-| Warehouse | `warehouse.dim_date`, `warehouse.dim_dealership` |
-| Raw | `raw.calendar_date_load`, `raw.dealership_load` |
-| Staging | `staging.stg_calendar_date`, `staging.stg_dealership` |
-| Audit | `audit.pipeline_run`, `audit.pipeline_run_row_count`, `audit.validation_result`, `audit.reconciliation_result`, `audit.rejected_record` |
-| Reporting | `reporting.vw_calendar`, `reporting.vw_dealership`, `reporting.vw_pipeline_run_summary`, `reporting.vw_data_quality_summary` |
+| Warehouse | All eight MVP dimensions (`dim_date`, `dim_dealership`, `dim_vehicle_model`, `dim_vehicle`, `dim_employee`, `dim_customer`, `dim_lead_source`, `dim_marketing_campaign`) and all five MVP facts (`fact_vehicle_sale`, `fact_vehicle_inventory_snapshot`, `fact_lead`, `fact_appointment`, `fact_marketing_spend`) |
+| Raw | Fourteen landing tables, one per ingested entity |
+| Staging | Twelve entities on the three-view typed / accepted / rejected pattern, plus the two Phase 0 views |
+| Audit | `pipeline_run`, `pipeline_run_row_count`, `validation_result`, `reconciliation_result`, `rejected_record`, six `vw_dq_*` check views and seven `vw_recon_*` reconciliation views |
+| Reporting | Twenty-eight views: eight dimension views, five grain-preserving fact views, thirteen governed analytical views, and two operational views |
 
 **What does not exist:**
 
-- **No fact table of any kind.** Not sales, not inventory, not leads, not appointments, not marketing.
-- **No KPI is computed.** All 29 specified KPIs are `Planned` ([KPI_CATALOG.md §3](KPI_CATALOG.md)). There
-  is no SQL that calculates one and no DAX measure anywhere.
-- **No Power BI file, no semantic model, no report page, no dashboard, no screenshot.**
+- **No Power BI file, no semantic model, no DAX measure, no report page, no dashboard, no screenshot.**
+  `powerbi/model_documentation/` holds the specification; Gate 1 gates the construction, and
+  `tests/integration/test_gate1_readiness.py` fails the build if a `.pbix`, `.pbip`, `.tmdl` or `.bim` file
+  appears.
 - **No Excel operating report.**
-- **No findings, no recommendations, no executive memo, no case study, no walkthrough video.**
-- **No employee, customer, vehicle, vehicle-model, lead-source, or campaign dimension.**
-- **Only two reconciliations are exercised:** `RECON-DIM-DATE-ROWCOUNT` and
-  `RECON-DIM-DEALERSHIP-ROWCOUNT` ([KPI_CATALOG.md §36](KPI_CATALOG.md)). Each compares the generated row
-  count for one dimension with the `count(*)` of the matching warehouse table, and nothing else. They run
-  only when the optional database load runs, and they say nothing about the raw or staging layers or about
-  rejected records.
+- **No findings, no recommendations, no executive memo, no case study, no walkthrough video.** The platform
+  can compute numbers; nobody has drawn a conclusion from one, and no conclusion drawn from synthetic data
+  would say anything about the automotive retail industry.
+- **No F&I product detail, no service visits, no sales targets, no multi-year customer history.** Those
+  four facts are Deferred, and the four stakeholder questions they block are recorded in
+  [`docs/requirements/STAKEHOLDER_QUESTIONS.md`](docs/requirements/STAKEHOLDER_QUESTIONS.md) §6 rather than
+  omitted.
 
-**What this means for a reviewer.** Judge Phase 0 on what Phase 0 claims: a governed foundation —
-conformed calendar and store dimensions, a working raw → staging → warehouse path, an audit and validation
-framework that records its own results, a reporting boundary, and a complete written specification of the
-model and metrics that follow. If you are looking for a dashboard, it is not here yet, and no document in
-this repository should have suggested otherwise. If you find one that does, that is a defect worth
-reporting.
+**What this means for a reviewer.** Judge the platform on what it claims: a governed warehouse, a reporting
+layer whose every view declares its grain, 29 KPI definitions that are computable and tested against an
+independent derivation, and fifty-eight reconciliations recorded on every run — every critical one of which
+has been observed failing against a deliberately corrupted fixture. If you are looking for a dashboard, it
+is not here, and no document in this repository should suggest otherwise. If you find one that does, that
+is a defect worth reporting.
 
-### 10.1 Known gap — `staging` and `rejected` row counts are not recorded
+### 10.1 Closed gap — the five-layer row-count chain is now complete
 
-[ARCHITECTURE.md §21.4](ARCHITECTURE.md) requires every run to produce a source row count, a **staging row
-count**, a warehouse row count and a **rejected row count**. Phase 0 does not satisfy that requirement.
+**Previously open, now closed.** [ARCHITECTURE.md §21.4](ARCHITECTURE.md) requires every run to record a
+source row count, a staging row count, a warehouse row count and a rejected row count. Phase 0 recorded
+three of the five, so nothing could prove that rows were not lost between the raw tables and the views the
+warehouse reads.
 
-`audit.pipeline_run_row_count` accepts five layers (`source`, `raw`, `staging`, `warehouse`, `rejected`),
-but the implemented pipeline only ever records three of them: `source` (in `src/arpi/pipeline.py`) and
-`raw` plus `warehouse` (in `src/arpi/ingestion/loader.py`). No code path records a `staging` or a
-`rejected` row count, and `audit.rejected_record` is always empty because the Phase 0 generators emit only
-contract-shaped rows and therefore cannot reject one.
+All five layers are now recorded for every entity, and the chain identity
+`raw = staging accepted + rejected invalid + deduplicated` is measured term by term rather than derived:
+`raw` counts the newest batch in the landing table, `staging` counts the accepted view, and both rejection
+terms come from the rejected companion view. A staging count that were unconditionally equal to the raw
+count would prove nothing, which is why each term is measured independently.
 
-Consequences:
-
-- A reviewer cannot yet use `audit.pipeline_run_row_count` to prove that nothing was lost between the raw
-  landing tables and the staging views, because the staging side of that comparison is not measured.
-- The two implemented reconciliations compare generated rows to warehouse rows directly, skipping the
-  intermediate layers entirely.
-
-This is an open gap, registered in
-[docs/requirements/DOCUMENTATION_BACKLOG.md](docs/requirements/DOCUMENTATION_BACKLOG.md). It closes when
-Phase 1 introduces a transformation step that can measurably drop or reject rows; recording a staging count
-that is unconditionally equal to the raw count would prove nothing.
+The staging-to-warehouse half was closed for the eight dimensions by the loader and for the five facts by
+`audit.vw_recon_ingestion`, whose ingestion specs carry no warehouse target and therefore could not be
+covered in Python. Before that, a fact load that silently dropped rows on an unresolved surrogate key would
+have looked exactly like a correct one.
 
 ### 10.2 The privacy tripwire inspects schemas, not values
 
@@ -372,49 +368,32 @@ Status values are exactly four: **Implemented**, **Planned**, **Deferred**, **Ou
 
 | Item | Kind |
 |---|---|
-| `warehouse.dim_date` | Dimension |
-| `warehouse.dim_dealership` | Dimension (SCD Type 2) |
-| `raw.calendar_date_load` | Raw landing table |
-| `raw.dealership_load` | Raw landing table |
-| `staging.stg_calendar_date` | Staging view |
-| `staging.stg_dealership` | Staging view |
-| `audit.pipeline_run` | Audit table |
-| `audit.pipeline_run_row_count` | Audit table |
-| `audit.validation_result` | Audit table |
-| `audit.reconciliation_result` | Audit table |
-| `audit.rejected_record` | Audit table |
-| `reporting.vw_calendar` | Reporting view |
-| `reporting.vw_dealership` | Reporting view |
-| `reporting.vw_pipeline_run_summary` | Reporting view |
-| `reporting.vw_data_quality_summary` | Reporting view |
-| Calendar date generator | Generator |
-| Dealership generator | Generator |
-| `DQ-DATE-001` … `DQ-DATE-005` | Validation checks |
-| `DQ-DLR-001` … `DQ-DLR-005` | Validation checks |
-| `DQ-GEN-001`, `DQ-GEN-002` | Validation checks |
-| `RECON-DIM-DATE-ROWCOUNT`, `RECON-DIM-DEALERSHIP-ROWCOUNT` | Reconciliations |
+| `dim_date`, `dim_dealership`, `dim_vehicle_model`, `dim_vehicle`, `dim_employee`, `dim_customer`, `dim_lead_source`, `dim_marketing_campaign` | Dimensions (all eight MVP dimensions; `dim_dealership` and `dim_employee` are SCD Type 2) |
+| `fact_vehicle_sale`, `fact_vehicle_inventory_snapshot`, `fact_lead`, `fact_appointment`, `fact_marketing_spend` | Facts (all five MVP facts, each with its grain enforced by a UNIQUE constraint) |
+| Fourteen `raw.*_load` tables | Raw landing tables |
+| Fourteen `staging.stg_*` accepted views, twelve `_typed` and twelve `_rejected` companions | Staging views |
+| `audit.pipeline_run`, `pipeline_run_row_count`, `validation_result`, `reconciliation_result`, `rejected_record` | Audit tables |
+| `audit.vw_dq_*` (6), `audit.vw_recon_*` (7) | Audit check and reconciliation views |
+| `reporting.vw_calendar`, `vw_dealership`, `vw_employee`, `vw_customer`, `vw_vehicle`, `vw_vehicle_model`, `vw_lead_source`, `vw_marketing_campaign` | Dimension views |
+| `reporting.vw_vehicle_sales`, `vw_inventory_snapshots`, `vw_leads`, `vw_appointments`, `vw_marketing_spend` | Fact views, each preserving its fact's grain exactly |
+| `reporting.vw_sales_summary`, `vw_gross_summary`, `vw_inventory_health`, `vw_inventory_aging`, `vw_days_to_sale`, `vw_inventory_turn`, `vw_days_supply`, `vw_lead_funnel`, `vw_appointment_funnel`, `vw_lead_response`, `vw_marketing_performance`, `vw_data_quality_trend`, `vw_reconciliation_status` | Governed analytical views |
+| `reporting.vw_pipeline_run_summary`, `vw_data_quality_summary` | Operational reporting views |
+| Fourteen generators, one per entity in `GENERATION_ORDER` | Generators |
+| 114 data-quality checks across fourteen `DQ-*` families on a `development` run | Validation checks |
+| 30 loader reconciliations and 28 SQL reconciliations, recorded on every database run | Reconciliations |
+| `KPI-SLS-001`…`003`, `KPI-GRS-001`…`006`, `KPI-INV-001`…`009`, `KPI-FUN-001`…`008`, `KPI-MKT-001`…`003` | All 29 MVP KPIs, computable from `reporting` and tested against an independent warehouse derivation |
+| `powerbi/model_documentation/` | The semantic-model specification — documentation, not a model |
+| `docs/requirements/STAKEHOLDER_QUESTIONS.md`, `docs/requirements/GATE_1_READINESS.md` | Traceability matrix and Gate 1 verdict |
 
 ### 13.2 Planned
 
-| Item | Kind | Phase |
+| Item | Kind | Unlock |
 |---|---|---|
-| `dim_vehicle_model`, `dim_vehicle`, `dim_employee` | Dimensions | 1.1 |
-| Inventory acquisition events, sales source events | Generators | 1.1 |
-| `dim_customer` | Dimension | 1.2 |
-| `fact_vehicle_sale`, `fact_vehicle_inventory_snapshot` | Facts | 1.2 |
-| Sales and inventory validation; `RECON-GROSS-001`, `RECON-INV-001`, `RECON-UNITS-001` | Quality | 1.3 |
-| `KPI-SLS-001` … `KPI-SLS-003` | KPIs | 1.3 |
-| `KPI-GRS-001` … `KPI-GRS-006` | KPIs | 1.3 |
-| `KPI-INV-001` … `KPI-INV-009` | KPIs | 1.3 |
-| First sales and inventory reporting views | Reporting | 1.3 |
-| `dim_lead_source`, `fact_lead`, `fact_appointment` | Dimension and facts | 1.4 |
-| `KPI-FUN-001` … `KPI-FUN-008`; `RECON-LEAD-001` | KPIs and reconciliation | 1.4 |
-| `dim_marketing_campaign`, `fact_marketing_spend` | Dimension and fact | 1.5 |
-| `KPI-MKT-001` … `KPI-MKT-003` | KPIs | 1.5 |
-| MVP reporting layer; Power BI readiness review | Reporting | 1.5 |
-| Power BI semantic model, five MVP report pages | Power BI | After Gate 1 |
-| `RECON-GROSS-002`, `RECON-EXCEL-001` | Reconciliations | Post-MVP |
-| Excel operating report; executive findings memo | Deliverables | Post-MVP |
+| Power BI semantic model, measure groups, and the seven unblocked MVP report pages | Power BI | After Gate 1 |
+| `RECON-UNITS-001` and `RECON-GROSS-002` Power BI sides | Reconciliations | After Gate 1 — the SQL sides are Implemented |
+| `RECON-EXCEL-001` | Reconciliation | Post-MVP, with the Excel workbook |
+| Excel operating report | Deliverable | Post-MVP |
+| Executive findings memo, static case-study page, walkthrough video | Deliverables | After Gate 2 |
 
 ### 13.3 Deferred
 
@@ -431,9 +410,11 @@ multi-tenant SaaS, AI chatbots, decorative machine learning, microservices, Kube
 Databricks, Microsoft Fabric, a second complete dashboard in Tableau, and a second complete dashboard in
 React or Next.js ([ARCHITECTURE.md §6](ARCHITECTURE.md)). Multi-touch attribution is also out of scope.
 
-**What this means for a reviewer.** The Implemented column is short and it is accurate. If you find any
-claim in this repository that an item outside section 13.1 exists, treat it as a documentation defect and
-report it — keeping that column honest is the point of this document.
+**What this means for a reviewer.** The Implemented column is long now, and it is still accurate. Every
+row in it is an object you can query or a test you can run. If you find any claim in this repository that
+an item outside section 13.1 exists — a dashboard, a finding, an F&I product analysis — treat it as a
+documentation defect and report it. Keeping that column honest is the point of this document, and it gets
+harder to keep honest as the column grows.
 
 ---
 

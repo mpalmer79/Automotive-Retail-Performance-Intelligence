@@ -28,6 +28,7 @@ from tests.integration.conftest import (
 )
 
 from arpi.config import ArpiConfig, load_config
+from arpi.constants import ALLOWED_RECONCILIATION_TOLERANCES, SQL_RECONCILIATION_IDS
 from arpi.ingestion.spec import spec_for
 from arpi.pipeline import GENERATION_ORDER, run_foundation
 
@@ -280,22 +281,47 @@ def test_rerunning_is_idempotent(loadable_config: ArpiConfig, committed_connecti
 def test_reconciliations_are_recorded(
     loadable_config: ArpiConfig, committed_connection: Any
 ) -> None:
-    """Every reconciliation the run emits is persisted and passing."""
+    """Every reconciliation the run emits is persisted, within tolerance, and passing.
+
+    Both the loader's own reconciliations and the SQL ones in ``audit.vw_recon_all`` land
+    here, so this is also the assertion that the loader actually called
+    ``audit.fn_record_all_reconciliations``.
+
+    Equality is asserted **within the row's own recorded tolerance** rather than exactly.
+    Almost every rule in ARPI compares counts and carries tolerance 0, so the two sides
+    are identical; the exceptions are the currency comparisons at 0.01 and
+    ``RECON-FUNNEL-CHAIN``, which compares two rates across a documented grain shift.
+    Requiring exact equality of every row would force those rules either to be dropped or
+    to be written as a count of conforming rows, which would hide the figures a reader
+    needs to see.
+    """
     run_foundation(loadable_config, load_database=True)
 
     with committed_connection.cursor() as cursor:
         cursor.execute(
-            "SELECT reconciliation_id, left_value, right_value, status "
+            "SELECT reconciliation_id, left_value, right_value, tolerance, status "
             "FROM audit.reconciliation_result ORDER BY reconciliation_id"
         )
         rows = cursor.fetchall()
 
     assert rows, "the run must record at least one reconciliation"
-    for reconciliation_id, left_value, right_value, status in rows:
+    recorded = set()
+    for reconciliation_id, left_value, right_value, tolerance, status in rows:
+        recorded.add(reconciliation_id)
         assert status == "passed", f"{reconciliation_id} did not pass"
-        assert left_value == right_value, (
-            f"{reconciliation_id} compared {left_value} against {right_value}"
+        assert abs(left_value - right_value) <= tolerance, (
+            f"{reconciliation_id} compared {left_value} against {right_value} "
+            f"with tolerance {tolerance}"
         )
+        assert str(tolerance) in ALLOWED_RECONCILIATION_TOLERANCES, (
+            f"{reconciliation_id} carries an unexplained tolerance of {tolerance}"
+        )
+
+    missing = set(SQL_RECONCILIATION_IDS) - recorded
+    assert not missing, (
+        f"the loader did not record the SQL reconciliations {sorted(missing)}; "
+        "audit.fn_record_all_reconciliations was not called or wrote nothing"
+    )
 
 
 def test_run_without_database_still_generates(loadable_config: ArpiConfig) -> None:
