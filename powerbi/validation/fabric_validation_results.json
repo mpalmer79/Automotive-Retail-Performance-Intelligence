@@ -9,6 +9,8 @@
   "retrieved_definition_hash": null,
   "refresh_result": null,
   "table_count": null,
+  "imported_table_count": null,
+  "measure_table_count": null,
   "relationship_count": null,
   "active_relationship_count": null,
   "measure_count": null,

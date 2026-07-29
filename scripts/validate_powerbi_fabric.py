@@ -42,6 +42,8 @@ refreshing. Add ``--skip-refresh`` if you have just refreshed it in the portal.
 from __future__ import annotations
 
 import argparse
+import base64
+import hashlib
 import json
 import sys
 import time
@@ -60,6 +62,8 @@ from arpi_fabric import (
     ApiError,
     add_common_arguments,
     client_from_args,
+    connection_binding,
+    get_connection,
     log,
     redact,
     resolve_setting,
@@ -127,28 +131,164 @@ def scalar_row(rows: list[dict[str, Any]]) -> dict[str, Any]:
 
 #: DAX INFO functions are the engine's own view of what it loaded. Reading the TMDL again
 #: would prove nothing: the point is to ask the engine what it actually built.
-INVENTORY_QUERIES: dict[str, str] = {
-    "tables": 'EVALUATE ROW ( "n", COUNTROWS ( FILTER ( INFO.TABLES (), NOT [IsPrivate] ) ) )',
-    "relationships": 'EVALUATE ROW ( "n", COUNTROWS ( INFO.RELATIONSHIPS () ) )',
-    "active_relationships": (
-        'EVALUATE ROW ( "n", COUNTROWS ( FILTER ( INFO.RELATIONSHIPS (), [IsActive] ) ) )'
-    ),
-    "measures": 'EVALUATE ROW ( "n", COUNTROWS ( INFO.MEASURES () ) )',
-}
+#:
+#: These deliberately select COLUMNS BY NAME and compare SETS rather than counting rows.
+#: A count tells you "expected 26, got 27"; a set tells you which table appeared. They
+#: also avoid depending on INFO.TABLES()[IsPrivate], which could not be confirmed against
+#: published documentation -- a validation script must not fail on a column name nobody
+#: verified.
+TABLES_QUERY = (
+    'EVALUATE SELECTCOLUMNS ( INFO.TABLES (), "TableName", [Name], "Category", [DataCategory] )'
+)
+MEASURES_QUERY = 'EVALUATE SELECTCOLUMNS ( INFO.MEASURES (), "MeasureName", [Name] )'
+RELATIONSHIPS_QUERY = (
+    'EVALUATE SELECTCOLUMNS ( INFO.RELATIONSHIPS (), "Active", [IsActive], '
+    '"CrossFilter", [CrossFilteringBehavior], "FromCard", [FromCardinality], '
+    '"ToCard", [ToCardinality] )'
+)
+
+#: TOM enum values as the DMV reports them.
+CROSS_FILTER_ONE_DIRECTION = 1
+CARDINALITY_ONE = 1
+CARDINALITY_MANY = 2
+
+#: A measure table is one whose name ends in " Measures". That is the model's own naming
+#: convention and scripts/check_powerbi_model.py enforces it statically.
+MEASURE_TABLE_SUFFIX = " Measures"
 
 
-def read_inventory(client: Any, workspace_id: str, item_id: str) -> dict[str, int | None]:
-    """Return the deployed model's own table, relationship and measure counts."""
-    inventory: dict[str, int | None] = {}
-    for name, query in INVENTORY_QUERIES.items():
-        try:
-            row = scalar_row(execute_dax(client, workspace_id, item_id, query))
-            value = next(iter(row.values()))
-            inventory[name] = None if value is None else int(value)
-        except (ApiError, RuntimeError, StopIteration, TypeError, ValueError) as error:
-            log(f"    could not read {name}: {error}")
-            inventory[name] = None
-    return inventory
+def rows_of(client: Any, workspace_id: str, item_id: str, query: str) -> list[dict[str, Any]]:
+    """Run a multi-row DAX query and return its rows with DAX brackets stripped."""
+    raw = execute_dax(client, workspace_id, item_id, query)
+    return [{key.strip("[]"): value for key, value in row.items()} for row in raw]
+
+
+def check_tables(client: Any, run: Run, expectations: dict[str, Any]) -> None:
+    """Prove the engine built exactly the tables the repository declares."""
+    try:
+        rows = rows_of(client, run.workspace_id, run.item_id, TABLES_QUERY)
+    except (ApiError, RuntimeError) as error:
+        run.check("inventory:tables", False, f"INFO.TABLES() could not be read: {error}")
+        return
+
+    names = {str(row.get("TableName")) for row in rows}
+    measure_tables = {n for n in names if n.endswith(MEASURE_TABLE_SUFFIX)}
+    imported = names - measure_tables
+    run.inventory["tables"] = len(names)
+    run.inventory["imported_tables"] = len(imported)
+    run.inventory["measure_tables"] = len(measure_tables)
+
+    expected_imported = set(expectations["expected_row_counts"])
+    missing = sorted(expected_imported - imported)
+    unexpected = sorted(imported - expected_imported)
+    run.check(
+        "inventory:imported-tables",
+        not missing and not unexpected,
+        f"missing {missing}, unexpected {unexpected}" if (missing or unexpected) else "",
+    )
+    run.check(
+        "inventory:measure-tables",
+        len(measure_tables) == expectations["measure_table_count"],
+        f"expected {expectations['measure_table_count']}, engine has {sorted(measure_tables)}",
+    )
+    run.check(
+        "inventory:table-count",
+        len(names) == expectations["table_count"],
+        f"expected {expectations['table_count']}, engine reports {len(names)}",
+    )
+
+    # The marked date table. A model that lost it still refreshes and still returns
+    # numbers -- it just silently stops doing time intelligence, which is precisely the
+    # kind of defect no static check and no total can catch.
+    marked = {str(r.get("TableName")) for r in rows if str(r.get("Category") or "") == "Time"}
+    run.check(
+        "inventory:marked-date-table",
+        marked == {expectations["marked_date_table"]},
+        f"expected exactly {{{expectations['marked_date_table']!r}}} marked as a date "
+        f"table, engine reports {sorted(marked)}",
+    )
+
+
+def check_measures(client: Any, run: Run, expectations: dict[str, Any]) -> None:
+    """Prove every governed measure exists on the engine, by name."""
+    try:
+        rows = rows_of(client, run.workspace_id, run.item_id, MEASURES_QUERY)
+    except (ApiError, RuntimeError) as error:
+        run.check("inventory:measures", False, f"INFO.MEASURES() could not be read: {error}")
+        return
+
+    names = {str(row.get("MeasureName")) for row in rows}
+    run.inventory["measures"] = len(names)
+    run.check(
+        "inventory:measure-count",
+        len(names) == expectations["measure_count"],
+        f"expected {expectations['measure_count']}, engine reports {len(names)}",
+    )
+    # Every measure the baseline reconciles must exist under exactly that name, or the
+    # reconciliation below would fail with a confusing DAX error instead of a clear one.
+    reconciled = set(expectations.get("measure_map", {}).values())
+    missing = sorted(reconciled - names)
+    run.check(
+        "inventory:reconciled-measures-present",
+        not missing,
+        f"the engine has no measure named: {missing}",
+    )
+
+
+def check_relationships(client: Any, run: Run, expectations: dict[str, Any]) -> None:
+    """Prove the relationship register survived deployment, including its shape."""
+    try:
+        rows = rows_of(client, run.workspace_id, run.item_id, RELATIONSHIPS_QUERY)
+    except (ApiError, RuntimeError) as error:
+        run.check(
+            "inventory:relationships", False, f"INFO.RELATIONSHIPS() could not be read: {error}"
+        )
+        return
+
+    def truthy(value: Any) -> bool:
+        return str(value).strip().lower() in {"true", "1"}
+
+    active = [r for r in rows if truthy(r.get("Active"))]
+    bidirectional = [
+        r
+        for r in rows
+        if r.get("CrossFilter") is not None and int(r["CrossFilter"]) != CROSS_FILTER_ONE_DIRECTION
+    ]
+    many_to_many = [
+        r for r in rows if r.get("ToCard") is not None and int(r["ToCard"]) != CARDINALITY_ONE
+    ]
+    wrong_from = [
+        r for r in rows if r.get("FromCard") is not None and int(r["FromCard"]) != CARDINALITY_MANY
+    ]
+
+    run.inventory["relationships"] = len(rows)
+    run.inventory["active_relationships"] = len(active)
+
+    run.check(
+        "inventory:relationship-count",
+        len(rows) == expectations["relationship_count"],
+        f"expected {expectations['relationship_count']}, engine reports {len(rows)}",
+    )
+    run.check(
+        "inventory:active-relationships",
+        len(active) == expectations["active_relationship_count"],
+        f"expected {expectations['active_relationship_count']}, engine reports {len(active)}",
+    )
+    run.check(
+        "inventory:no-bidirectional",
+        not bidirectional,
+        f"{len(bidirectional)} relationship(s) filter in both directions",
+    )
+    run.check(
+        "inventory:no-many-to-many",
+        not many_to_many,
+        f"{len(many_to_many)} relationship(s) are not many-to-one on the 'to' side",
+    )
+    run.check(
+        "inventory:many-to-one",
+        not wrong_from,
+        f"{len(wrong_from)} relationship(s) are not many on the 'from' side",
+    )
 
 
 # ---------------------------------------------------------------------------------------
@@ -157,10 +297,17 @@ def read_inventory(client: Any, workspace_id: str, item_id: str) -> dict[str, in
 
 
 def bind_connection(client: Any, workspace_id: str, item_id: str, connection_id: str) -> None:
-    """Bind the semantic model's data source to an existing Fabric cloud connection."""
+    """Bind the semantic model's data source to an existing Fabric cloud connection.
+
+    ``connectionDetails`` is REQUIRED by the API. It is read from the connection itself
+    rather than guessed, so the PostgreSQL ``type`` and ``path`` strings come from the
+    service that owns them.
+    """
+    connection = get_connection(client, connection_id)
     url = f"{FABRIC_API}/workspaces/{workspace_id}/semanticModels/{item_id}/bindConnection"
-    body = {"connectionBinding": {"id": connection_id, "connectivityType": "ShareableCloud"}}
-    client.request("POST", url, body=body, expected=(200,))
+    client.request(
+        "POST", url, body={"connectionBinding": connection_binding(connection)}, expected=(200,)
+    )
     log(f"  bound to connection {connection_id}")
 
 
@@ -293,6 +440,7 @@ class Run:
     operator: str | None
     tolerance: float
     refresh_result: str | None = None
+    retrieved_definition_hash: str | None = None
     row_counts: dict[str, int] = field(default_factory=dict)
     inventory: dict[str, int | None] = field(default_factory=dict)
     passed: list[str] = field(default_factory=list)
@@ -309,23 +457,12 @@ class Run:
 
 
 def check_inventory(client: Any, run: Run, expectations: dict[str, Any]) -> None:
-    """Compare the engine's own inventory with the committed expectations."""
+    """Ask the engine what it actually built, and compare it with the repository."""
     log("")
     log("  Reading the deployed model's own inventory ...")
-    run.inventory = read_inventory(client, run.workspace_id, run.item_id)
-    for key, expected_key in (
-        ("tables", "table_count"),
-        ("relationships", "relationship_count"),
-        ("active_relationships", "active_relationship_count"),
-        ("measures", "measure_count"),
-    ):
-        expected = expectations[expected_key]
-        actual = run.inventory.get(key)
-        run.check(
-            f"inventory:{key.replace('_', '-')}",
-            actual == expected,
-            f"expected {expected}, engine reports {actual}",
-        )
+    check_tables(client, run, expectations)
+    check_measures(client, run, expectations)
+    check_relationships(client, run, expectations)
 
 
 def check_row_counts(client: Any, run: Run, expectations: dict[str, Any]) -> None:
@@ -404,6 +541,45 @@ def reconcile_context(
         )
 
 
+def capture_retrieved_definition_hash(client: Any, run: Run) -> None:
+    """Re-read the deployed definition and hash it, so the evidence names both sides.
+
+    ``deploy_powerbi_fabric.py`` already compares sent against retrieved and fails on any
+    unexplained difference. Recording the retrieved hash HERE as well matters because
+    deploy and validate can be separated by hours: this proves the thing that was
+    validated is the thing that is still deployed, not merely the thing that was once
+    uploaded.
+    """
+    try:
+        url = (
+            f"{FABRIC_API}/workspaces/{run.workspace_id}/semanticModels/{run.item_id}"
+            "/getDefinition?format=TMDL"
+        )
+        status, headers, payload = client.request("POST", url, expected=(200, HTTP_ACCEPTED))
+        if status == HTTP_ACCEPTED:
+            payload = client.poll_operation(headers, what="get semantic model definition")
+        parts = ((payload or {}).get("definition") or {}).get("parts") or []
+        digest = hashlib.sha256()
+        for part in sorted(parts, key=lambda item: str(item.get("path"))):
+            path = str(part.get("path"))
+            if path == ".platform":
+                # Service-owned; excluded for the same reason the model source hash
+                # excludes it. See check_desktop_validation_freshness.model_source_files.
+                continue
+            content = base64.b64decode(part.get("payload") or "")
+            digest.update(path.encode("utf-8"))
+            digest.update(b"\0")
+            digest.update(str(len(content)).encode("ascii"))
+            digest.update(b"\0")
+            digest.update(content)
+            digest.update(b"\0")
+        run.retrieved_definition_hash = digest.hexdigest()
+        log(f"  retrieved definition hash: {run.retrieved_definition_hash}")
+    except (ApiError, RuntimeError, ValueError) as error:
+        log(f"    could not retrieve the deployed definition: {error}")
+        run.check("definition:retrieved", False, str(error))
+
+
 def do_refresh(client: Any, run: Run, *, skip: bool) -> bool:
     """Refresh the model. Returns False when nothing downstream can be trusted."""
     if skip:
@@ -438,9 +614,11 @@ def write_results(run: Run) -> int:
         "workspace_id": run.workspace_id,
         "semantic_model_id": run.item_id,
         "model_source_hash": run.model_hash,
-        "retrieved_definition_hash": None,
+        "retrieved_definition_hash": run.retrieved_definition_hash,
         "refresh_result": run.refresh_result,
         "table_count": run.inventory.get("tables"),
+        "imported_table_count": run.inventory.get("imported_tables"),
+        "measure_table_count": run.inventory.get("measure_tables"),
         "relationship_count": run.inventory.get("relationships"),
         "active_relationship_count": run.inventory.get("active_relationships"),
         "measure_count": run.inventory.get("measures"),
@@ -506,6 +684,7 @@ def main(argv: list[str] | None = None) -> int:
             log("")
             log("  Binding the PostgreSQL connection ...")
             bind_connection(client, run.workspace_id, run.item_id, connection_id)
+        capture_retrieved_definition_hash(client, run)
         if do_refresh(client, run, skip=args.skip_refresh):
             check_inventory(client, run, expectations)
             check_row_counts(client, run, expectations)

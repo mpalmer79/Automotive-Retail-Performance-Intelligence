@@ -80,7 +80,9 @@ __all__ = [
     "TokenSet",
     "acquire_token",
     "add_common_arguments",
+    "connection_binding",
     "definition_parts",
+    "get_connection",
     "log",
     "redact",
     "resolve_setting",
@@ -331,20 +333,42 @@ def _save_cache(tokens: TokenSet) -> None:
 
 
 def _post_form(url: str, form: dict[str, str]) -> dict[str, Any]:
+    """POST a form-encoded body to Entra ID, retrying throttling and server errors.
+
+    The device-code poll runs this every few seconds for up to fifteen minutes, so a
+    single 429 or 503 must not end a sign-in the user has already completed in a browser.
+    An ordinary 400 (``authorization_pending``) is NOT retried here -- the caller reads it
+    and decides, because it is the normal state of a poll rather than a failure.
+    """
     data = urllib.parse.urlencode(form).encode("ascii")
-    request = urllib.request.Request(
-        url, data=data, headers={"Content-Type": "application/x-www-form-urlencoded"}
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=60) as response:
-            return json.loads(response.read().decode("utf-8"))
-    except urllib.error.HTTPError as error:
-        body = error.read().decode("utf-8", errors="replace")
+    attempt = 0
+    while True:
+        attempt += 1
+        request = urllib.request.Request(
+            url, data=data, headers={"Content-Type": "application/x-www-form-urlencoded"}
+        )
         try:
-            parsed = json.loads(body)
-        except json.JSONDecodeError:
-            parsed = {"message": body[:ERROR_BODY_CHARACTERS]}
-        raise ApiError(error.code, url, parsed) from error
+            with urllib.request.urlopen(request, timeout=60) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except urllib.error.HTTPError as error:
+            body = error.read().decode("utf-8", errors="replace")
+            try:
+                parsed = json.loads(body)
+            except json.JSONDecodeError:
+                parsed = {"message": body[:ERROR_BODY_CHARACTERS]}
+            retryable = error.code == HTTP_TOO_MANY_REQUESTS or (
+                HTTP_SERVER_ERROR_FLOOR <= error.code < HTTP_SERVER_ERROR_CEILING
+            )
+            if retryable and attempt <= MAX_NETWORK_ATTEMPTS:
+                headers = {k.lower(): v for k, v in error.headers.items()}
+                time.sleep(int(headers.get("retry-after", 2**attempt)))
+                continue
+            raise ApiError(error.code, url, parsed) from error
+        except urllib.error.URLError:
+            if attempt <= MAX_NETWORK_ATTEMPTS:
+                time.sleep(2**attempt)
+                continue
+            raise
 
 
 def acquire_token(
@@ -667,6 +691,43 @@ def client_from_args(args: Any) -> FabricClient:
         tenant_id=resolve_setting(args.tenant_id, "ARPI_FABRIC_TENANT_ID") or "organizations",
         client_id=resolve_setting(args.client_id, "ARPI_FABRIC_CLIENT_ID") or DEFAULT_CLIENT_ID,
     )
+
+
+def get_connection(client: FabricClient, connection_id: str) -> dict[str, Any]:
+    """Return the Fabric connection object for *connection_id*.
+
+    ``bindConnection`` REQUIRES ``connectionBinding.connectionDetails`` -- the OpenAPI
+    specification marks it required, and a request without it is rejected. Rather than
+    guess the ``type`` and ``path`` strings for a PostgreSQL connection, this reads them
+    from the connection the user already created and passes them straight back. Guessing
+    would have produced a first-contact failure that looked like a Fabric bug.
+    """
+    _, _, payload = client.request(
+        "GET", f"{FABRIC_API}/connections/{connection_id}", expected=(200,)
+    )
+    if not isinstance(payload, dict):
+        raise RuntimeError(f"connection {connection_id} returned no object")
+    return payload
+
+
+def connection_binding(connection: dict[str, Any]) -> dict[str, Any]:
+    """Build the ``connectionBinding`` payload from a retrieved connection.
+
+    ``connectionDetails`` is required; ``id`` and ``connectivityType`` are echoed back
+    when the service supplied them.
+    """
+    details = connection.get("connectionDetails")
+    if not isinstance(details, dict) or not details.get("path"):
+        raise RuntimeError(
+            "the connection has no connectionDetails.path, so it cannot be bound. "
+            "Re-create it in the Fabric portal and confirm its test connection succeeds."
+        )
+    binding: dict[str, Any] = {"connectionDetails": details}
+    if connection.get("id"):
+        binding["id"] = connection["id"]
+    if connection.get("connectivityType"):
+        binding["connectivityType"] = connection["connectivityType"]
+    return binding
 
 
 def fail(message: str) -> None:
