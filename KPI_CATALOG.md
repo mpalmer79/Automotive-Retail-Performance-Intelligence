@@ -137,7 +137,7 @@ gate.
 | `KPI-MKT-002` | Marketing cost per sale | Marketing | Currency per sale (USD) | Store × campaign × month | **Implemented** | No |
 | `KPI-MKT-003` | Gross return on advertising spend | Marketing | Ratio (2 decimals) | Store × campaign × month | **Implemented** | No |
 
-**29 KPIs specified. 0 Implemented. 29 Planned. Deferred KPIs are listed separately in section 11.**
+**29 KPIs specified. All 29 Implemented — computable from `reporting` and verified against an independent derivation from `warehouse`. Deferred KPIs are listed separately in section 35.**
 
 ---
 
