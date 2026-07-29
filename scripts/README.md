@@ -156,7 +156,7 @@ not have, and they write artefacts that are then committed and checked.
 
 ### `generate_sql_baseline.py`
 
-Evaluates the SQL side of all twenty-nine governed KPIs across seventeen filter
+Evaluates the SQL side of all twenty-nine governed KPIs across twenty-one filter
 contexts and writes `powerbi/validation/sql_baseline.json`, its metadata, the
 matching DAX queries, and the model inventories the Desktop validator checks
 against.
@@ -164,10 +164,18 @@ against.
 The contexts are the point. A measure can have a correct grand total and still
 be wrong under filter context, so the baseline covers the unfiltered model, each
 of the three stores, each of the six months, new versus used, one employee, one
-lead source, one vehicle model, a context whose denominator is zero, and a
-context that exercises an inactive date relationship. The DAX queries are
+lead source, one vehicle model, a context whose denominator is zero, a context
+that exercises an inactive date relationship, and four combinations that apply
+two or three filters at once. The combinations do the real work: a filter that
+reaches a table by the wrong route usually agrees with every single-axis
+expectation and diverges only where two of them intersect. The DAX queries are
 generated from the **same** context definitions, so the two sides cannot drift
 into describing different populations.
+
+The script also models **filter propagation** rather than assuming it — a
+condition-group filter reaches the sale and inventory facts through `vw_vehicle`
+and reaches `vw_inventory_turn` not at all — because a baseline that applied
+every filter to every table would disagree with a correct model.
 
 Requires `psycopg` and a database built from `sql/` and loaded with the
 `development` profile. Records no host, user name or password.

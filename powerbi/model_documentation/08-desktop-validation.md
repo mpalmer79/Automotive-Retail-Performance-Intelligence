@@ -157,10 +157,12 @@ Four fields are **required**; the rest are nullable and are null while the state
 `model_source_hash` are null, both check arrays are empty, and its `notes` field states plainly that Desktop
 has never opened the project.
 
-One thing the schema does **not** currently require, and should: an **operator** field. A manual gate with no
-named person who performed it is unattributable, and `P2.1-09` asks for the operator to be recorded. The
-schema's `additionalProperties: false` means it cannot simply be added to the file — the schema has to change
-first. Noted here rather than worked around.
+The schema also carries an **operator** field, because a manual gate with no named person who performed it is
+unattributable and `P2.1-09` asks for the operator to be recorded. It is optional and nullable — the
+placeholder records `null` — and `scripts/validate_powerbi_model.ps1` takes an `-Operator` parameter that
+writes it. It is deliberately **free text the operator chooses**, a GitHub handle being the usual answer: an
+email address, a machine name or a domain account would all be personal data this repository has no reason to
+hold, and none of them is needed to know who to ask.
 
 `powerbi/validation/` also holds the SQL side of the comparison; see
 [09-sql-to-dax-reconciliation.md §6](09-sql-to-dax-reconciliation.md).
@@ -204,7 +206,7 @@ The supporting artefacts exist. What has not happened is the run.
 | Artefact | Present | Role |
 |---|---|---|
 | `powerbi/validation/model_expectations.json` | Yes | The structural facts the static checker asserts: 26 tables, 20 imported, 6 measure tables, 42 relationships (32 active, 10 inactive), 0 bidirectional, 0 many-to-many, `vw_calendar` marked on `calendar_date`, 49 measures (29 KPI, 20 supporting), and the expected row count per table. |
-| `powerbi/validation/sql_baseline.json` | Yes | The SQL side of the reconciliation, across seventeen filter contexts. |
+| `powerbi/validation/sql_baseline.json` | Yes | The SQL side of the reconciliation, across twenty-one filter contexts. |
 | `powerbi/validation/sql_baseline_metadata.json` | Yes | Its provenance: profile `development`, seed, commit, date range, reconciliation status. It records **no host, user name or password**, on purpose. |
 | `powerbi/validation/validation_queries.dax` | Yes | The DAX queries a human runs against the refreshed model. |
 | `powerbi/validation/validation_results.schema.json` | Yes | The contract of §5. |

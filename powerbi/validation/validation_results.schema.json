@@ -24,6 +24,10 @@
       "description": "SHA-256 over every file under ARPI_Performance_Intelligence.SemanticModel/definition/ plus definition.pbism, computed by scripts/check_desktop_validation_freshness.py --print-hash. Null when validation has never run.",
       "pattern": "^[0-9a-f]{64}$"
     },
+    "operator": {
+      "type": ["string", "null"],
+      "description": "Who ran the validation, as free text they chose — a GitHub handle is the usual answer. Recorded because P2.1-09 makes the Desktop gate a human's attestation and an unattributed attestation is worth less than an attributed one. Null when the run did not supply it. Do not record an email address, a machine name or a domain account: none of those is needed to know who to ask, and all of them are personal data this repository has no reason to hold."
+    },
     "power_bi_desktop_version": {
       "type": ["string", "null"],
       "description": "Product version of the Power BI Desktop instance that was validated."

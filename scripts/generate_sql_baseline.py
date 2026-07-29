@@ -454,7 +454,7 @@ STORES: tuple[str, ...] = ("GSA-001", "GSA-002", "GSA-003")
 
 
 def contexts() -> list[Context]:
-    """The seventeen filter contexts the SQL and DAX sides are both evaluated over."""
+    """The twenty-one filter contexts the SQL and DAX sides are both evaluated over."""
     built: list[Context] = [
         Context("unfiltered", "The whole model, no filter of any kind."),
     ]
@@ -503,6 +503,52 @@ def contexts() -> list[Context]:
             "One model line, filtered through the vw_vehicle_model -> vw_vehicle "
             "snowflake. Reaches the sale and inventory-snapshot facts only.",
             vehicle_model_code="VMD-00104",
+        ),
+        # ---------------------------------------------------------------------------
+        # Combination contexts.
+        #
+        # Every context above varies one axis. A filter that reaches a table by the
+        # wrong route very often agrees with each single-axis expectation and diverges
+        # only where two of them intersect, so single-axis agreement is weak evidence.
+        # These four are where the eight relationships added for the imported analytical
+        # views are actually tested: a store filter and a month filter both have to land
+        # on vw_inventory_turn, vw_days_supply and vw_marketing_performance at once.
+        # ---------------------------------------------------------------------------
+        Context(
+            "store-and-month",
+            "One store in one month. The first context in which two filters have to "
+            "reach the same table by two different relationships simultaneously.",
+            date_from="2025-10-01",
+            date_to="2025-10-31",
+            year_month_label="2025-10",
+            dealership_code="GSA-001",
+        ),
+        Context(
+            "store-and-condition",
+            "One store, new vehicles only. The store filter reaches every fact directly; "
+            "the condition filter reaches two of them through vw_vehicle and reaches "
+            "vw_inventory_turn and vw_days_supply not at all.",
+            dealership_code="GSA-002",
+            condition_group="New",
+        ),
+        Context(
+            "month-and-condition",
+            "One month, used vehicles only. Isolates the snowflake path from the store "
+            "path: any disagreement here is a vehicle-dimension problem, not a store one.",
+            date_from="2025-11-01",
+            date_to="2025-11-30",
+            year_month_label="2025-11",
+            condition_group="Used",
+        ),
+        Context(
+            "store-month-and-condition",
+            "Three filters at once, on the used-only store. Any measure that resolves a "
+            "filter path by luck rather than by design fails here or nowhere.",
+            date_from="2025-09-01",
+            date_to="2025-09-30",
+            year_month_label="2025-09",
+            dealership_code="GSA-003",
+            condition_group="Used",
         ),
         Context(
             "zero-denominator",
@@ -734,7 +780,7 @@ def write_dax_queries(path: Path) -> int:
 // name rather than by position.
 //
 // A measure can have a correct grand total and still be wrong under filter context.
-// That is why the unfiltered query is one of seventeen rather than the only one.
+// That is why the unfiltered query is one of twenty-one rather than the only one.
 // =============================================================================
 """
     blocks: list[str] = [header]

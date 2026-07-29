@@ -1,6 +1,6 @@
 {
   "generated_from": "scripts/generate_sql_baseline.py",
-  "git_commit": "2dc3bea99ba5f1e3748ff0c3947f5c4ab5a3d631",
+  "git_commit": "dac2ad74c777dcc46d9cc98859869f95898a25b5",
   "profile": "development",
   "random_seed": 20250701,
   "pipeline_run_status": "succeeded",

@@ -1,6 +1,7 @@
 {
   "schema": "arpi.desktop_validation_results/1",
   "validated_at": null,
+  "operator": null,
   "model_source_hash": null,
   "power_bi_desktop_version": null,
   "compatibility_level": null,

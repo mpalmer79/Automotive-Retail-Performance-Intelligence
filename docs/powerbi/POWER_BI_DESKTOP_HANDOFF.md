@@ -14,7 +14,7 @@ Everything in the ARPI semantic model that a text file can prove has been proved
 TMDL parses, the table inventory is exactly the twenty approved views, the forty-two
 relationships are the register, every surrogate key is hidden, all twenty-nine governed
 KPI measures exist with their formats and descriptions, no credential appears anywhere,
-and the SQL side of every KPI has been evaluated across seventeen filter contexts and
+and the SQL side of every KPI has been evaluated across twenty-one filter contexts and
 committed as a baseline. `scripts/check_powerbi_model.py` enforces all of that on every
 push.
 
@@ -263,11 +263,17 @@ Leave Power BI Desktop **open** with the model loaded. In PowerShell, from the r
 root:
 
 ```powershell
-.\scripts\validate_powerbi_model.ps1
+.\scripts\validate_powerbi_model.ps1 -Operator 'your-github-handle'
 ```
 
+`-Operator` is optional but please pass it: this gate is a human's attestation, and an
+unattributed attestation is worth less than an attributed one. Free text you choose — a
+GitHub handle is the usual answer. Do **not** pass an email address, a machine name or a
+domain account; none is needed to know who to ask, and all are personal data this
+repository has no reason to hold.
+
 It finds the running Desktop instance, connects to its local Analysis Services endpoint,
-reads the model's own metadata, runs all seventeen generated DAX queries, compares every
+reads the model's own metadata, runs all twenty-one generated DAX queries, compares every
 value against `powerbi/validation/sql_baseline.json`, and writes
 `powerbi/validation/desktop_validation_results.json`.
 
@@ -286,10 +292,13 @@ The script prints a summary and exits non-zero on any failure. What it checks:
   the TMDL on disk;
 - that no relationship is bidirectional and none is many-to-many;
 - that every table refreshed to its expected non-zero row count;
-- all twenty-nine KPI measures and nine supporting measures, in each of the seventeen
+- all twenty-nine KPI measures and nine supporting measures, in each of the twenty-one
   filter contexts — unfiltered, each of the three stores, each of the six months, new
   versus used, one employee, one lead source, one vehicle model, a zero-denominator
-  context, and a context that activates the inactive show-date relationship.
+  context, a context that activates the inactive show-date relationship, and four
+  combination contexts that apply two or three filters at once. The combinations are the
+  ones that matter most: a filter reaching a table by the wrong route usually agrees with
+  every single-axis expectation and diverges only where two of them intersect.
 
 The comparison that matters most is the **blank-versus-zero** one. If a measure returns
 `0` where the SQL returns null — a gross-per-unit figure in a month with no sales, or a

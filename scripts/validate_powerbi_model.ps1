@@ -34,6 +34,12 @@
     Relative tolerance for a floating-point comparison. Defaults to 1e-6. Counts are
     compared exactly regardless of this value.
 
+.PARAMETER Operator
+    Who is running this validation, as free text you choose — a GitHub handle is the usual
+    answer. Recorded in the evidence file because P2.1-09 makes the Desktop gate a human's
+    attestation, and an unattributed attestation is worth less than an attributed one. Do
+    not pass an email address, a machine name or a domain account.
+
 .PARAMETER SkipRefresh
     Record the refresh result as "not attempted" instead of requiring that you refreshed
     before running. Use only when you have just refreshed by hand; the default assumes
@@ -53,6 +59,7 @@
 param(
     [int] $Port = 0,
     [double] $Tolerance = 1e-6,
+    [string] $Operator = '',
     [switch] $SkipRefresh
 )
 
@@ -357,6 +364,7 @@ $overall = if ($failed.Count -eq 0) { 'passed' } else { 'failed' }
 $result = [ordered] @{
     schema                      = 'arpi.desktop_validation_results/1'
     validated_at                = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+    operator                    = if ([string]::IsNullOrWhiteSpace($Operator)) { $null } else { $Operator.Trim() }
     model_source_hash           = $modelHash
     power_bi_desktop_version    = $desktopVersion
     compatibility_level         = $compatibilityLevel

@@ -311,14 +311,23 @@ being met rather than assumed.
 `powerbi/model_documentation/01-table-inventory.md` §5 requires `age_bucket` to be sorted by
 `age_bucket_sort_order`. That column does not exist on `reporting.vw_inventory_snapshots`; it exists only on
 `reporting.vw_inventory_aging`, which §3 of the same document deliberately excludes from the model. Without a
-sort column, the age buckets render alphabetically — `0-15`, `16-30`, `31-45`, `46-60`, `61-90`, `over 90`
-sorts to put `over 90` in the middle — which makes every aging visual read wrong. A **hidden DAX calculated
-column** on the imported table supplies the ordinal, and `age_bucket` is sorted by it. **The reporting SQL is
-unchanged**: the reporting layer is governed, reconciled on every run, and has its own consumers, so a Power
-BI presentation concern is not a reason to alter it. This is a documented departure from `ARCHITECTURE.md`
-§19.2's "avoid calculated columns when Power Query or SQL is more appropriate" — SQL *would* be more
-appropriate, and the cost of changing it is higher than the cost of one hidden column. It is the only
-calculated column in the model.
+sort column, the age buckets render alphabetically — `0-30`, `31-60`, `61-90`, `91-120`, `Over 120` sorts to
+put `91-120` before `Over 120` but `0-30` after neither, and `Over 120` lands in the middle — which makes
+every aging visual read wrong. A **hidden DAX calculated column** on the imported table supplies the ordinal,
+and `age_bucket` is sorted by it. **The reporting SQL is unchanged**: the reporting layer is governed,
+reconciled on every run, and has its own consumers, so a Power BI presentation concern is not a reason to
+alter it. This is a documented departure from `ARCHITECTURE.md` §19.2's "avoid calculated columns when Power
+Query or SQL is more appropriate" — SQL *would* be more appropriate, and the cost of changing a governed view
+is higher than the cost of a hidden column.
+
+The same problem turned out to affect five more ordered labels that the reporting layer publishes without an
+ordering column, so there are **seven** calculated columns in the model, not one: `age_bucket_sort_order` on
+`vw_inventory_snapshots`, `response_time_band_sort_order` on `vw_leads`, `age_band_sort_order` on
+`vw_customer`, `tenure_band_sort_order` on `vw_employee`, `odometer_band_sort_order` on `vw_vehicle`, and
+`severity_sort_order` twice — once on `vw_data_quality_trend` and once on `vw_data_quality_summary`, because a
+calculated column belongs to exactly one table. Every one is hidden, every one is a `SWITCH` over a fixed
+label set returning `99` for an unrecognised value, and every one exists for the same reason. Seven is still a
+bounded, enumerable exception rather than a habit; `scripts/check_powerbi_model.py` asserts the list.
 
 **3. The Executive measure group is a curation register, not a measure table.**
 `powerbi/model_documentation/03-measure-groups.md` §7 states that the Executive Overview reuses measures from
@@ -328,9 +337,16 @@ measures under new names — vanity measures, which the model prohibits because 
 a report starts disagreeing with itself — or shipping an empty table, which a reviewer reads as unfinished
 work. Neither is acceptable. Six measure tables own the measures (Sales, Gross, Inventory, Lead Funnel,
 Marketing, Data Quality), and the Executive group is implemented as a governed **curation register**: an
-`ARPI_ExecutiveCard` annotation on **exactly the eight measures** §7 names, plus documentation. A static check
-asserts the annotation count is eight; nine is a defect, because the point of a curated selection is that it
-is curated. `P2.2-02` builds the Executive Overview from the register rather than from a page author's
+`ARPI_ExecutiveCard` annotation, plus documentation.
+
+The register carries **eleven** measures, not eight. §7 of that document lists eight Executive Overview cards
+while §10 of the same document marks ten KPIs as "also surfaced on Executive" — the two lists disagree, and
+the disagreement predates this work. The register takes their **union**: the eight §7 cards are the default
+Executive Overview selection, and the eleven are what an Executive page may draw from. Recording the union is
+the conservative reading, because a measure omitted from the register is invisible to `P2.2-02`, while a
+measure in the register that no card uses costs nothing. `scripts/check_powerbi_model.py` asserts the count is
+exactly eleven and that each annotated measure is one of the named eleven; twelve is a defect, because the
+point of a curated selection is that it is curated. `P2.2-02` builds the Executive Overview from the register rather than from a page author's
 memory.
 
 The four Deferred measure groups — F&I, Customer Retention, Service to Sales, Target Attainment — are created

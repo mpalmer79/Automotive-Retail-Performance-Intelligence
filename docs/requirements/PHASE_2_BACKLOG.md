@@ -374,8 +374,8 @@ preference.
   measure defined outside a measure table.
 - `tests/unit/test_powerbi_model_structure.py` — every ratio measure's DAX contains `DIVIDE` and no bare
   `/` division; every measure has a non-empty description and a format string.
-- `tests/unit/test_powerbi_model_structure.py` — the measure inventory in the TMDL
-  define the same measure set, so the mirror cannot silently drift.
+- `tests/unit/test_powerbi_model_structure.py` — the measure inventory in the TMDL is exactly the
+  twenty-nine governed KPI measures and the twenty supporting measures, each name unique.
 - **Manual, in `P2.1-09`:** every measure evaluates without error against a refreshed model, and the totals
   match `powerbi/validation/sql_baseline.json`.
 
@@ -409,13 +409,14 @@ preference.
       it would require either duplicating eight measures under new names — vanity measures, forbidden by
       `P2.1-05` — or shipping an empty table that a reviewer would read as an unfinished one.
 - [ ] The Executive group is implemented as a **governed curation register**: an `ARPI_ExecutiveCard`
-      annotation applied to **exactly the eight measures** that
-      [`03-measure-groups.md §7`](../../powerbi/model_documentation/03-measure-groups.md) lists, and nothing
-      else.
+      annotation applied to **exactly eleven measures** — the union of the eight cards
+      [`03-measure-groups.md §7`](../../powerbi/model_documentation/03-measure-groups.md) lists and the ten
+      KPIs its §10 marks as also surfaced on Executive. The two lists disagree; the register takes the union,
+      because a measure omitted from it is invisible to `P2.2-02` while a spare one costs nothing.
 - [ ] The register is documented in `powerbi/model_documentation/`, so `P2.2-02` can build the Executive
       Overview from a list that the model itself carries rather than from a page author's memory.
-- [ ] A static check asserts the annotation appears on exactly eight measures, and that each annotated
-      measure is one of the eight named. **Nine annotated measures is a defect**, because the point of a
+- [ ] A static check asserts the annotation appears on exactly eleven measures, and that each annotated
+      measure is one of the eleven named. **A twelfth annotated measure is a defect**, because the point of a
       curation register is that it is curated.
 - [ ] **Target attainment is absent from the Executive register and stays absent.**
       [ARCHITECTURE.md §19.4](../../ARCHITECTURE.md) lists it as an Executive Overview component; it is
@@ -432,7 +433,7 @@ preference.
 **Tests required**
 
 - `tests/unit/test_powerbi_model_structure.py` — the `ARPI_ExecutiveCard` annotation appears on exactly the
-  eight named measures.
+  eleven named measures.
 - `tests/unit/test_powerbi_model_structure.py` — no table exists for any of the four Deferred groups; no
   measure references a Deferred fact.
 
@@ -737,8 +738,10 @@ preference.
 
 **Acceptance criteria**
 
-- [ ] The KPI cards are **exactly the eight measures carrying the `ARPI_ExecutiveCard` annotation** from
-      `P2.1-06`. The page reads the register; it does not curate a second one.
+- [ ] The KPI cards are drawn **only** from the eleven measures carrying the `ARPI_ExecutiveCard`
+      annotation from `P2.1-06`, with the eight cards named in
+      [`03-measure-groups.md §7`](../../powerbi/model_documentation/03-measure-groups.md) as the default
+      selection. The page reads the register; it does not curate a second one.
 - [ ] Period-over-period trend, store comparison and an exception summary are present.
 - [ ] **Target attainment is absent, and the page says why** — `fact_sales_target` is Deferred. An empty
       target visual would imply a target exists.

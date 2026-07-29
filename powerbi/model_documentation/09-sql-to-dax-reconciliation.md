@@ -8,7 +8,7 @@ comparison has to cover before it counts as evidence.
 
 **No reconciliation has been performed.** Power BI Desktop has never opened this model, so the DAX side of
 every comparison below is currently empty. The SQL side exists — `powerbi/validation/sql_baseline.json`
-holds the expected value of every reconciled measure across seventeen filter contexts — and it was generated
+holds the expected value of every reconciled measure across twenty-one filter contexts — and it was generated
 before any model was refreshed, which is the ordering that makes it an expectation rather than a
 transcription. See [08-desktop-validation.md](08-desktop-validation.md); its status is **PENDING**.
 
@@ -105,9 +105,9 @@ Nine context classes must be covered for every reconciled measure.
 | 8 | **A zero-denominator context** | The blank-versus-zero rule of §4. Deliberately chosen: a store-month with no retail sales, and a lead source with no spend. |
 | 9 | **A context using an inactive date relationship** | `KPI-FUN-005` on the show-date basis, via `USERELATIONSHIP`. The only measure in the model that activates an inactive relationship, and the only place `USERELATIONSHIP` can be observed working or not. |
 
-### 3.0 The seventeen contexts in the committed baseline
+### 3.0 The twenty-one contexts in the committed baseline
 
-`powerbi/validation/sql_baseline.json` implements the nine classes as seventeen concrete contexts:
+`powerbi/validation/sql_baseline.json` implements the nine classes as twenty-one concrete contexts:
 
 | Class | Contexts in the baseline |
 |---|---|
@@ -120,12 +120,21 @@ Nine context classes must be covered for every reconciled measure.
 | 7. A vehicle model | `vehicle-model-VMD-00104` |
 | 8. A zero denominator | `zero-denominator` |
 | 9. An inactive date relationship | `inactive-relationship-show-date` |
+| 10. Combinations | `store-and-month`, `store-and-condition`, `month-and-condition`, `store-month-and-condition` |
 
-**Two combination contexts are not in the baseline and should be**: **store × month** and **store ×
-condition group**. A filter path that is correct on each axis alone can still be wrong when two are applied —
-a relationship reached by the wrong route often agrees with a single-axis expectation and diverges only where
-the paths intersect. This is a known gap in the current baseline, recorded rather than left for a later
-reader to notice.
+**Class 10 is the one that earns its place.** Every other context varies a single axis, and single-axis
+agreement is weak evidence: a filter that reaches a table by the wrong route very often agrees with each
+axis on its own and diverges only where two of them intersect. The four combination contexts are also the
+only place the eight relationships added for the imported analytical views are genuinely tested, because a
+store filter and a month filter have to land on `vw_inventory_turn`, `vw_days_supply` and
+`vw_marketing_performance` at the same time. `store-month-and-condition` applies three filters at once on the
+used-only store: a measure that resolves a filter path by luck rather than by design fails there or nowhere.
+
+The combination contexts also exercise the asymmetry deliberately. A condition-group filter comes from
+`vw_vehicle` and therefore reaches the sale and inventory-snapshot facts but **not** `vw_inventory_turn` or
+`vw_days_supply`, which carry a `condition_group` column of their own and no relationship to `vw_vehicle`.
+`store-and-condition` is the context where a baseline that applied every filter to every table would disagree
+with a correct model — and the baseline models the propagation rather than assuming it.
 
 ### 3.1 Contexts that require special handling
 
@@ -211,7 +220,7 @@ them.
 
 | Artefact | Role |
 |---|---|
-| `powerbi/validation/sql_baseline.json` | The expected value of every reconciled measure, across the seventeen contexts of §3.0, generated from the database. |
+| `powerbi/validation/sql_baseline.json` | The expected value of every reconciled measure, across the twenty-one contexts of §3.0, generated from the database. |
 | `powerbi/validation/sql_baseline_metadata.json` | The baseline's provenance: `development` profile, seed `20250701`, the git commit, the reporting date range 2025-07-01 to 2025-12-31, the row count per view, and 58 reconciliations with 0 failing. It deliberately records **no host, user name or password** — it describes the data it was taken from, not the machine it was taken on. |
 | `powerbi/validation/validation_queries.dax` | The DAX queries a human runs against the refreshed model to produce the other side. |
 | `powerbi/validation/validation_results.schema.json` | The shape of a recorded result, so a hand-recorded one cannot omit a field. See [08-desktop-validation.md §5](08-desktop-validation.md). |
@@ -229,7 +238,7 @@ introduce one. It reports through the existing framework, the same rule the SQL-
 
 | | |
 |---|---|
-| SQL baseline generated | **Yes** — `powerbi/validation/sql_baseline.json`, seventeen contexts, `development` profile |
+| SQL baseline generated | **Yes** — `powerbi/validation/sql_baseline.json`, twenty-one contexts, `development` profile |
 | Model refreshed | **No** — Power BI Desktop has never opened this model |
 | Measures evaluated | **No** — none of the forty-nine has returned a value |
 | Comparison performed | **No** — `sql_to_dax_differences` is empty because nothing has been compared, not because nothing differed |

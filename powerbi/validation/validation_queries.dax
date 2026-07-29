@@ -11,7 +11,7 @@
 // name rather than by position.
 //
 // A measure can have a correct grand total and still be wrong under filter context.
-// That is why the unfiltered query is one of seventeen rather than the only one.
+// That is why the unfiltered query is one of twenty-one rather than the only one.
 // =============================================================================
 
 
@@ -735,6 +735,206 @@ CALCULATETABLE (
         "SUP-CANCELLATION-RATE", [Cancellation Rate]
     ),
         'vw_vehicle_model'[vehicle_model_code] = "VMD-00104"
+)
+
+
+// ARPI-CONTEXT: store-and-month
+// One store in one month. The first context in which two filters have to reach the same table by two different relationships simultaneously.
+EVALUATE
+CALCULATETABLE (
+    ROW (
+        "KPI-SLS-001", [Retail Units Sold],
+        "KPI-SLS-002", [New Units Sold],
+        "KPI-SLS-003", [Used Units Sold],
+        "KPI-GRS-001", [Front-End Gross],
+        "KPI-GRS-002", [Back-End Gross],
+        "KPI-GRS-003", [Total Gross],
+        "KPI-GRS-004", [Front Gross per Retail Unit],
+        "KPI-GRS-005", [Back Gross per Retail Unit],
+        "KPI-GRS-006", [Total Gross per Retail Unit],
+        "KPI-INV-001", [Active Inventory Count],
+        "KPI-INV-002", [Inventory Investment],
+        "KPI-INV-003", [Average Inventory Age],
+        "KPI-INV-004", [Median Inventory Age],
+        "KPI-INV-005", [Aged Inventory Count],
+        "KPI-INV-006", [Aged Inventory Percentage],
+        "KPI-INV-007", [Days to Sale (Median)],
+        "KPI-INV-008", [Inventory Turn],
+        "KPI-INV-009", [Dealer Days Supply],
+        "KPI-FUN-001", [Leads Received],
+        "KPI-FUN-002", [Contact Rate],
+        "KPI-FUN-003", [Appointment-Set Rate],
+        "KPI-FUN-004", [Show Rate],
+        "KPI-FUN-005", [Show-to-Sale Conversion],
+        "KPI-FUN-006", [Lead-to-Sale Conversion],
+        "KPI-FUN-007", [Average Response Time],
+        "KPI-FUN-008", [Median Response Time],
+        "KPI-MKT-001", [Cost per Lead],
+        "KPI-MKT-002", [Cost per Sale],
+        "KPI-MKT-003", [Gross Return on Advertising Spend],
+        "SUP-DAYS-TO-SALE-MEAN", [Days to Sale (Mean)],
+        "SUP-AGED-INVESTMENT", [Aged Inventory Investment],
+        "SUP-UNRESPONDED-LEADS", [Unresponded Leads],
+        "SUP-DUPLICATE-LEADS", [Duplicate Leads],
+        "SUP-SOLD-LEADS", [Sold Leads],
+        "SUP-ELIGIBLE-APPOINTMENTS", [Eligible Appointments],
+        "SUP-SHOWN-APPOINTMENTS", [Shown Appointments],
+        "SUP-ADVANCE-CANCELLATIONS", [Advance Cancellations],
+        "SUP-CANCELLATION-RATE", [Cancellation Rate]
+    ),
+        'vw_calendar'[calendar_date] >= DATE ( 2025, 10, 1 )
+            && 'vw_calendar'[calendar_date] <= DATE ( 2025, 10, 31 ),
+        'vw_dealership'[dealership_code] = "GSA-001"
+)
+
+
+// ARPI-CONTEXT: store-and-condition
+// One store, new vehicles only. The store filter reaches every fact directly; the condition filter reaches two of them through vw_vehicle and reaches vw_inventory_turn and vw_days_supply not at all.
+EVALUATE
+CALCULATETABLE (
+    ROW (
+        "KPI-SLS-001", [Retail Units Sold],
+        "KPI-SLS-002", [New Units Sold],
+        "KPI-SLS-003", [Used Units Sold],
+        "KPI-GRS-001", [Front-End Gross],
+        "KPI-GRS-002", [Back-End Gross],
+        "KPI-GRS-003", [Total Gross],
+        "KPI-GRS-004", [Front Gross per Retail Unit],
+        "KPI-GRS-005", [Back Gross per Retail Unit],
+        "KPI-GRS-006", [Total Gross per Retail Unit],
+        "KPI-INV-001", [Active Inventory Count],
+        "KPI-INV-002", [Inventory Investment],
+        "KPI-INV-003", [Average Inventory Age],
+        "KPI-INV-004", [Median Inventory Age],
+        "KPI-INV-005", [Aged Inventory Count],
+        "KPI-INV-006", [Aged Inventory Percentage],
+        "KPI-INV-007", [Days to Sale (Median)],
+        "KPI-INV-008", [Inventory Turn],
+        "KPI-INV-009", [Dealer Days Supply],
+        "KPI-FUN-001", [Leads Received],
+        "KPI-FUN-002", [Contact Rate],
+        "KPI-FUN-003", [Appointment-Set Rate],
+        "KPI-FUN-004", [Show Rate],
+        "KPI-FUN-005", [Show-to-Sale Conversion],
+        "KPI-FUN-006", [Lead-to-Sale Conversion],
+        "KPI-FUN-007", [Average Response Time],
+        "KPI-FUN-008", [Median Response Time],
+        "KPI-MKT-001", [Cost per Lead],
+        "KPI-MKT-002", [Cost per Sale],
+        "KPI-MKT-003", [Gross Return on Advertising Spend],
+        "SUP-DAYS-TO-SALE-MEAN", [Days to Sale (Mean)],
+        "SUP-AGED-INVESTMENT", [Aged Inventory Investment],
+        "SUP-UNRESPONDED-LEADS", [Unresponded Leads],
+        "SUP-DUPLICATE-LEADS", [Duplicate Leads],
+        "SUP-SOLD-LEADS", [Sold Leads],
+        "SUP-ELIGIBLE-APPOINTMENTS", [Eligible Appointments],
+        "SUP-SHOWN-APPOINTMENTS", [Shown Appointments],
+        "SUP-ADVANCE-CANCELLATIONS", [Advance Cancellations],
+        "SUP-CANCELLATION-RATE", [Cancellation Rate]
+    ),
+        'vw_dealership'[dealership_code] = "GSA-002",
+        'vw_vehicle'[condition_group] = "New"
+)
+
+
+// ARPI-CONTEXT: month-and-condition
+// One month, used vehicles only. Isolates the snowflake path from the store path: any disagreement here is a vehicle-dimension problem, not a store one.
+EVALUATE
+CALCULATETABLE (
+    ROW (
+        "KPI-SLS-001", [Retail Units Sold],
+        "KPI-SLS-002", [New Units Sold],
+        "KPI-SLS-003", [Used Units Sold],
+        "KPI-GRS-001", [Front-End Gross],
+        "KPI-GRS-002", [Back-End Gross],
+        "KPI-GRS-003", [Total Gross],
+        "KPI-GRS-004", [Front Gross per Retail Unit],
+        "KPI-GRS-005", [Back Gross per Retail Unit],
+        "KPI-GRS-006", [Total Gross per Retail Unit],
+        "KPI-INV-001", [Active Inventory Count],
+        "KPI-INV-002", [Inventory Investment],
+        "KPI-INV-003", [Average Inventory Age],
+        "KPI-INV-004", [Median Inventory Age],
+        "KPI-INV-005", [Aged Inventory Count],
+        "KPI-INV-006", [Aged Inventory Percentage],
+        "KPI-INV-007", [Days to Sale (Median)],
+        "KPI-INV-008", [Inventory Turn],
+        "KPI-INV-009", [Dealer Days Supply],
+        "KPI-FUN-001", [Leads Received],
+        "KPI-FUN-002", [Contact Rate],
+        "KPI-FUN-003", [Appointment-Set Rate],
+        "KPI-FUN-004", [Show Rate],
+        "KPI-FUN-005", [Show-to-Sale Conversion],
+        "KPI-FUN-006", [Lead-to-Sale Conversion],
+        "KPI-FUN-007", [Average Response Time],
+        "KPI-FUN-008", [Median Response Time],
+        "KPI-MKT-001", [Cost per Lead],
+        "KPI-MKT-002", [Cost per Sale],
+        "KPI-MKT-003", [Gross Return on Advertising Spend],
+        "SUP-DAYS-TO-SALE-MEAN", [Days to Sale (Mean)],
+        "SUP-AGED-INVESTMENT", [Aged Inventory Investment],
+        "SUP-UNRESPONDED-LEADS", [Unresponded Leads],
+        "SUP-DUPLICATE-LEADS", [Duplicate Leads],
+        "SUP-SOLD-LEADS", [Sold Leads],
+        "SUP-ELIGIBLE-APPOINTMENTS", [Eligible Appointments],
+        "SUP-SHOWN-APPOINTMENTS", [Shown Appointments],
+        "SUP-ADVANCE-CANCELLATIONS", [Advance Cancellations],
+        "SUP-CANCELLATION-RATE", [Cancellation Rate]
+    ),
+        'vw_calendar'[calendar_date] >= DATE ( 2025, 11, 1 )
+            && 'vw_calendar'[calendar_date] <= DATE ( 2025, 11, 30 ),
+        'vw_vehicle'[condition_group] = "Used"
+)
+
+
+// ARPI-CONTEXT: store-month-and-condition
+// Three filters at once, on the used-only store. Any measure that resolves a filter path by luck rather than by design fails here or nowhere.
+EVALUATE
+CALCULATETABLE (
+    ROW (
+        "KPI-SLS-001", [Retail Units Sold],
+        "KPI-SLS-002", [New Units Sold],
+        "KPI-SLS-003", [Used Units Sold],
+        "KPI-GRS-001", [Front-End Gross],
+        "KPI-GRS-002", [Back-End Gross],
+        "KPI-GRS-003", [Total Gross],
+        "KPI-GRS-004", [Front Gross per Retail Unit],
+        "KPI-GRS-005", [Back Gross per Retail Unit],
+        "KPI-GRS-006", [Total Gross per Retail Unit],
+        "KPI-INV-001", [Active Inventory Count],
+        "KPI-INV-002", [Inventory Investment],
+        "KPI-INV-003", [Average Inventory Age],
+        "KPI-INV-004", [Median Inventory Age],
+        "KPI-INV-005", [Aged Inventory Count],
+        "KPI-INV-006", [Aged Inventory Percentage],
+        "KPI-INV-007", [Days to Sale (Median)],
+        "KPI-INV-008", [Inventory Turn],
+        "KPI-INV-009", [Dealer Days Supply],
+        "KPI-FUN-001", [Leads Received],
+        "KPI-FUN-002", [Contact Rate],
+        "KPI-FUN-003", [Appointment-Set Rate],
+        "KPI-FUN-004", [Show Rate],
+        "KPI-FUN-005", [Show-to-Sale Conversion],
+        "KPI-FUN-006", [Lead-to-Sale Conversion],
+        "KPI-FUN-007", [Average Response Time],
+        "KPI-FUN-008", [Median Response Time],
+        "KPI-MKT-001", [Cost per Lead],
+        "KPI-MKT-002", [Cost per Sale],
+        "KPI-MKT-003", [Gross Return on Advertising Spend],
+        "SUP-DAYS-TO-SALE-MEAN", [Days to Sale (Mean)],
+        "SUP-AGED-INVESTMENT", [Aged Inventory Investment],
+        "SUP-UNRESPONDED-LEADS", [Unresponded Leads],
+        "SUP-DUPLICATE-LEADS", [Duplicate Leads],
+        "SUP-SOLD-LEADS", [Sold Leads],
+        "SUP-ELIGIBLE-APPOINTMENTS", [Eligible Appointments],
+        "SUP-SHOWN-APPOINTMENTS", [Shown Appointments],
+        "SUP-ADVANCE-CANCELLATIONS", [Advance Cancellations],
+        "SUP-CANCELLATION-RATE", [Cancellation Rate]
+    ),
+        'vw_calendar'[calendar_date] >= DATE ( 2025, 9, 1 )
+            && 'vw_calendar'[calendar_date] <= DATE ( 2025, 9, 30 ),
+        'vw_dealership'[dealership_code] = "GSA-003",
+        'vw_vehicle'[condition_group] = "Used"
 )
 
 
