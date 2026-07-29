@@ -3,16 +3,22 @@
 The warehouse and audit objects that **Automotive Retail Performance Intelligence (ARPI)** builds today,
 followed by the fact constellation they are designed to support.
 
-Phase 0 deliberately ships two conformed dimensions and no facts. Dimensions are the part of a star schema
-that everything else depends on, and getting `dim_date` wrong is expensive to discover later. The facts
-come in Phase 1, once their grains are approved.
+Phase 0 shipped two conformed dimensions and no facts, deliberately: dimensions are the part of a star
+schema that everything else depends on, and getting `dim_date` wrong is expensive to discover later. Phase 1
+added the remaining six dimensions and all five facts. **All thirteen warehouse entities now exist, are
+populated, and have their grain enforced by a database constraint.**
+
+The first section below keeps the full column detail for the two foundation dimensions. The second shows
+the complete fact constellation as it is actually built.
 
 ---
 
-## Implemented today
+## The two foundation dimensions, in full
 
 `warehouse.dim_date` and `warehouse.dim_dealership` exist with exactly the columns below, in exactly this
-order, and are populated by the generator and verified by the test suite.
+order, and are populated by the generator and verified by the test suite. Only these two are shown at
+column level here; the column contract for the other eleven entities is the DDL under `sql/03_dimensions/`
+and `sql/04_facts/`, which is where the database comments live.
 
 ```mermaid
 erDiagram
@@ -164,115 +170,154 @@ changed and a new version row is required, without diffing eleven columns by han
 
 ---
 
-## Planned fact constellation
+## The fact constellation, as built
 
-None of the fact tables below exist. They are shown so the dimensions can be read in context — a date
-dimension with 26 columns only makes sense once you can see what will slice by it.
-
-Every planned entity carries an explicit `planned` marker as its first attribute. Nothing in this section
-is implemented.
+Every entity below exists, is populated, and has its grain enforced by a `UNIQUE` or `PRIMARY KEY`
+constraint. Attributes are the relationship keys and the headline measures only; the full column contract
+lives in the DDL.
 
 ```mermaid
 erDiagram
     dim_date {
-        integer date_key PK "IMPLEMENTED"
+        integer date_key PK "YYYYMMDD"
     }
-
     dim_dealership {
-        integer dealership_key PK "IMPLEMENTED"
+        integer dealership_key PK "current version only in reporting"
     }
-
+    dim_vehicle_model {
+        integer vehicle_model_key PK "year x make x model x trim"
+    }
     dim_vehicle {
-        text status "PLANNED - Phase 1.1"
-        integer vehicle_key PK "not yet implemented"
+        integer vehicle_key PK "one physical vehicle"
+        integer vehicle_model_key FK "the one snowflake"
+        varchar condition_type "New, Used or Certified"
     }
-
     dim_employee {
-        text status "PLANNED - Phase 1.1"
-        integer employee_key PK "not yet implemented"
+        integer employee_key PK "SCD2, current version in reporting"
     }
-
     dim_customer {
-        text status "PLANNED - Phase 1.1"
-        integer customer_key PK "not yet implemented"
+        integer customer_key PK "banded attributes only"
     }
-
     dim_lead_source {
-        text status "PLANNED - Phase 1.1"
-        integer lead_source_key PK "not yet implemented"
+        integer lead_source_key PK "normalised source"
+        boolean is_paid "cost attributability"
     }
-
     dim_marketing_campaign {
-        text status "PLANNED - Phase 1.1"
-        integer campaign_key PK "not yet implemented"
+        integer campaign_key PK "one campaign"
     }
 
     fact_vehicle_sale {
-        text status "PLANNED - Phase 1.2"
-        integer sale_date_key FK "grain: one finalized transaction"
-        integer dealership_key FK "not yet implemented"
-        integer vehicle_key FK "not yet implemented"
-        integer customer_key FK "not yet implemented"
-        integer salesperson_key FK "not yet implemented"
-        numeric front_end_gross "not yet implemented"
-        numeric back_end_gross "not yet implemented"
-        integer unit_count "not yet implemented"
+        bigint sale_key PK "grain: one finalized transaction"
+        integer sale_date_key FK "role: sale"
+        integer delivery_date_key FK "role: delivery"
+        integer dealership_key FK "store"
+        integer vehicle_key FK "vehicle"
+        integer customer_key FK "nullable on wholesale"
+        integer salesperson_key FK "role: seller"
+        integer desk_manager_key FK "role: desk"
+        integer finance_manager_key FK "role: F and I"
+        integer lead_source_key FK "first-touch attribution"
+        smallint unit_count "always 1"
+        numeric front_end_gross "vehicle profit"
+        numeric back_end_gross "F and I profit"
+        numeric total_gross "front plus back, to the cent"
+        integer days_in_inventory_at_sale "days to sale"
     }
-
     fact_vehicle_inventory_snapshot {
-        text status "PLANNED - Phase 1.2"
-        integer snapshot_date_key FK "grain: vehicle x store x day"
-        integer dealership_key FK "not yet implemented"
-        integer vehicle_key FK "not yet implemented"
-        integer days_in_stock "not yet implemented"
-        numeric current_asking_price "not yet implemented"
+        bigint inventory_snapshot_key PK "grain: vehicle x store x day"
+        integer snapshot_date_key FK "as-of date"
+        integer dealership_key FK "store"
+        integer vehicle_key FK "vehicle"
+        integer vehicle_model_key FK "model line"
+        smallint inventory_unit_count "always 1, SEMI-ADDITIVE"
+        numeric inventory_investment "acquisition plus reconditioning"
+        integer days_in_stock "row-level, for the median"
     }
-
     fact_lead {
-        text status "PLANNED - Phase 1.3"
-        integer lead_created_date_key FK "grain: one CRM lead"
-        integer dealership_key FK "not yet implemented"
-        integer lead_source_key FK "not yet implemented"
-        integer first_response_seconds "not yet implemented"
-        boolean sold_flag "not yet implemented"
+        bigint lead_key PK "grain: one CRM lead"
+        integer lead_created_date_key FK "cohort date"
+        integer dealership_key FK "store"
+        integer lead_source_key FK "source"
+        integer campaign_key FK "nullable"
+        integer customer_key FK "nullable when anonymous"
+        integer assigned_employee_key FK "role: owner"
+        bigint sale_key FK "nullable, the deal produced"
+        boolean is_duplicate "excluded from every funnel measure"
+        integer first_response_seconds "row-level, NULL means never"
     }
-
     fact_appointment {
-        text status "PLANNED - Phase 1.3"
-        integer scheduled_date_key FK "grain: one scheduled appointment"
-        integer dealership_key FK "not yet implemented"
-        boolean showed_flag "not yet implemented"
+        bigint appointment_key PK "grain: one scheduled appointment"
+        integer created_date_key FK "role: booked"
+        integer scheduled_date_key FK "role: due, show-rate basis"
+        integer show_date_key FK "role: arrived, nullable"
+        integer dealership_key FK "store"
+        bigint lead_key FK "the originating lead"
+        integer salesperson_key FK "role: seller"
+        integer bdc_employee_key FK "role: setter"
+        bigint sale_key FK "nullable, the deal produced"
+        boolean is_cancelled_in_advance "excluded from the show denominator"
+        boolean is_shown "arrived"
     }
-
     fact_marketing_spend {
-        text status "PLANNED - Phase 1.4"
-        integer month_date_key FK "grain: store x campaign x month"
-        integer dealership_key FK "not yet implemented"
-        integer campaign_key FK "not yet implemented"
-        numeric spend_amount "not yet implemented"
+        bigint marketing_spend_key PK "grain: store x campaign x month"
+        integer month_date_key FK "always a month start"
+        integer dealership_key FK "store"
+        integer campaign_key FK "campaign"
+        integer lead_source_key FK "source"
+        numeric spend_amount "non-negative"
+        integer vendor_reported_leads "deliberately differs from the CRM"
     }
 
-    dim_date ||--o{ fact_vehicle_sale : "planned"
-    dim_date ||--o{ fact_vehicle_inventory_snapshot : "planned"
-    dim_date ||--o{ fact_lead : "planned"
-    dim_date ||--o{ fact_appointment : "planned"
-    dim_date ||--o{ fact_marketing_spend : "planned"
+    dim_date ||--o{ fact_vehicle_sale : "sale and delivery"
+    dim_date ||--o{ fact_vehicle_inventory_snapshot : "snapshot"
+    dim_date ||--o{ fact_lead : "created"
+    dim_date ||--o{ fact_appointment : "created, scheduled, show"
+    dim_date ||--o{ fact_marketing_spend : "month start"
 
-    dim_dealership ||--o{ fact_vehicle_sale : "planned"
-    dim_dealership ||--o{ fact_vehicle_inventory_snapshot : "planned"
-    dim_dealership ||--o{ fact_lead : "planned"
-    dim_dealership ||--o{ fact_appointment : "planned"
-    dim_dealership ||--o{ fact_marketing_spend : "planned"
+    dim_dealership ||--o{ fact_vehicle_sale : "store"
+    dim_dealership ||--o{ fact_vehicle_inventory_snapshot : "store"
+    dim_dealership ||--o{ fact_lead : "store"
+    dim_dealership ||--o{ fact_appointment : "store"
+    dim_dealership ||--o{ fact_marketing_spend : "store"
+    dim_dealership ||--o{ dim_employee : "works at"
 
-    dim_vehicle ||--o{ fact_vehicle_sale : "planned"
-    dim_vehicle ||--o{ fact_vehicle_inventory_snapshot : "planned"
-    dim_employee ||--o{ fact_vehicle_sale : "planned"
-    dim_customer ||--o{ fact_vehicle_sale : "planned"
-    dim_lead_source ||--o{ fact_lead : "planned"
-    dim_lead_source ||--o{ fact_marketing_spend : "planned"
-    dim_marketing_campaign ||--o{ fact_marketing_spend : "planned"
-    fact_lead ||--o{ fact_appointment : "planned"
+    dim_vehicle_model ||--o{ dim_vehicle : "model line"
+    dim_vehicle ||--o{ fact_vehicle_sale : "vehicle sold"
+    dim_vehicle ||--o{ fact_vehicle_inventory_snapshot : "vehicle in stock"
+
+    dim_employee ||--o{ fact_vehicle_sale : "three roles"
+    dim_employee ||--o{ fact_lead : "assigned"
+    dim_employee ||--o{ fact_appointment : "two roles"
+
+    dim_customer ||--o{ fact_vehicle_sale : "buyer"
+    dim_customer ||--o{ fact_lead : "enquirer"
+    dim_customer ||--o{ fact_appointment : "visitor"
+
+    dim_lead_source ||--o{ fact_lead : "source"
+    dim_lead_source ||--o{ fact_vehicle_sale : "attributed source"
+    dim_lead_source ||--o{ fact_marketing_spend : "source"
+
+    dim_marketing_campaign ||--o{ fact_lead : "campaign"
+    dim_marketing_campaign ||--o{ fact_marketing_spend : "campaign"
+
+    fact_lead ||--o{ fact_appointment : "one lead, several appointments"
+    fact_vehicle_sale ||--o{ fact_lead : "the deal a lead produced"
+    fact_vehicle_sale ||--o{ fact_appointment : "the deal a visit produced"
 ```
+
+### What the diagram does not show
+
+* **The reporting layer.** Twenty-eight views sit above this model, and they are what a semantic model
+  reads. Their relationships, cardinality and filter direction are documented in
+  [`../../powerbi/model_documentation/02-relationship-plan.md`](../../powerbi/model_documentation/02-relationship-plan.md).
+* **Which relationships are active.** In a star schema the role-playing keys — three dates on the
+  appointment fact, two on the sale fact, three employee roles on the sale fact — cannot all be active at
+  once. The relationship plan records which one is, and which use `USERELATIONSHIP`.
+* **The three fact-to-fact relationships**, which exist and are shown here but are **inactive** in the
+  semantic model. Activating them would let a sale's period filter the funnel, and a lead counts in the
+  period it arrived.
+* **The ten Deferred entities**, which do not exist. They are listed in
+  [`../../DATA_DICTIONARY.md`](../../DATA_DICTIONARY.md) §27.
 
 ---
 
@@ -280,25 +325,24 @@ erDiagram
 
 | Marker | Meaning |
 |---|---|
-| Attribute comment `IMPLEMENTED` | The entity exists in the database today |
-| First attribute `status` with comment `PLANNED - Phase N.N` | The entity does not exist; the comment states the phase that will create it |
-| Relationship label `planned` | The relationship does not exist; both sides or one side is unbuilt |
 | `PK` | Primary key |
 | `UK` | Unique constraint |
 | `FK` | Foreign key |
+| `SEMI-ADDITIVE` | Additive across every dimension except **date**. Summing it over a date range yields unit-days, not units. |
 
-The planned fact attributes above are illustrative of the intended shape only. They are **not** a column
-contract. Column contracts are written into [`../../DATA_DICTIONARY.md`](../../DATA_DICTIONARY.md) when the
-object is actually built, and never before.
+Every entity in both diagrams exists in the database today. There is no `PLANNED` marker in this document
+any more, because there is nothing on it left to plan.
 
 ---
 
-## The twelve Phase 0 validation checks
+## The twelve foundation validation checks
 
-All twelve run in the Python validation framework on every run. **Ten of them are also implemented in the
-SQL checks under `sql/08_validation/`, sharing the identifier verbatim**; the two exceptions are
+These twelve are the original `dim_date` and `dim_dealership` checks. A `development` run now records
+**114** results across fourteen `DQ-*` families; the twelve below are shown because they are the ones
+implemented in **both** Python and SQL, sharing the identifier verbatim. The two exceptions are
 `DQ-GEN-001` and `DQ-GEN-002`, which inspect the generator's in-memory output and so have nothing for SQL
-to observe. Results reach `audit.validation_result` only when the optional database load runs.
+to observe. Results reach `audit.validation_result` only when the optional database load runs, and are
+readable through `reporting.vw_data_quality_summary` and `reporting.vw_data_quality_trend`.
 
 | `check_id` | Checks that |
 |---|---|
@@ -325,6 +369,7 @@ Python side inspects the generated frame's column list; the SQL side inspects th
 ## Related
 
 - [`02-phase-0-data-flow.md`](02-phase-0-data-flow.md) — how these objects get populated
+- [`../../powerbi/model_documentation/02-relationship-plan.md`](../../powerbi/model_documentation/02-relationship-plan.md) — the reporting layer above this model, with cardinality and filter direction
 - [`../../DATA_DICTIONARY.md`](../../DATA_DICTIONARY.md) — the authoritative column contract
 - [`../../ARCHITECTURE.md`](../../ARCHITECTURE.md) §§11–13 — dimensions, fact grains, and the full constellation
 - [`../source-to-target/`](../source-to-target/) — field-level lineage

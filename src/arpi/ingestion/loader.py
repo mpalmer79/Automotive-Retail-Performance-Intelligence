@@ -764,7 +764,10 @@ def _record_sql_reconciliations(connection: Any, pipeline_run_id: int) -> int:
     Returns:
         The number of reconciliation results written.
     """
-    statement = sql.SQL("SELECT {}.{}({})").format(
+    # The cast is load-bearing. psycopg infers the smallest integer type that fits the
+    # value, so a low pipeline_run_id arrives as smallint and PostgreSQL cannot resolve
+    # the bigint overload -- which fails on a fresh database and works on a busy one.
+    statement = sql.SQL("SELECT {}.{}({}::bigint)").format(
         sql.Identifier(SCHEMA_AUDIT),
         sql.Identifier(RECONCILIATION_RECORDER_FUNCTION),
         sql.Placeholder(),

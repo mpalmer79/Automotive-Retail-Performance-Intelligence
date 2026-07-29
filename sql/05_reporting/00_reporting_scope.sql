@@ -2,71 +2,113 @@
 -- File:            sql/05_reporting/00_reporting_scope.sql
 -- Project:         Automotive Retail Performance Intelligence (ARPI)
 -- Purpose:         Record the deliberate scope of the reporting layer — which views exist, which are deliberately absent, and why.
--- Execution order: 12 of 25 — first file of the reporting layer.
+-- Execution order: Reporting layer, first file.
 -- Idempotency:     Fully idempotent. Documentation only; the single statement is a COMMENT ON SCHEMA.
 -- Ownership:       n/a (comment applied by the bootstrap superuser; schema ownership moves to arpi_admin in sql/07_security/01_grants.sql).
 -- Grain:           n/a (documentation only)
 -- =============================================================================
 --
 -- =============================================================================
--- WHAT THE REPORTING LAYER CONTAINS TODAY  (status: Implemented)
+-- WHAT THE REPORTING LAYER CONTAINS  (status: Implemented — 28 views)
 -- =============================================================================
---   reporting.vw_calendar               one row per calendar date
---   reporting.vw_dealership             one row per CURRENT dealership store version
---   reporting.vw_pipeline_run_summary   one row per pipeline run, with counts
---   reporting.vw_data_quality_summary   one row per validation result, with run context
+-- DIMENSION VIEWS — one per MVP dimension. Each relates one-to-many into the
+-- facts, in a single direction, and each dimension key is unique so no
+-- relationship is ever forced into many-to-many.
 --
--- These four are the complete reporting surface of Phase 0, exactly as fixed by
--- the ARPI cross-agent contract section 11. arpi_reporter (and therefore Power BI
--- and Excel) can read these and nothing else.
+--   vw_calendar               one row per calendar date  (the marked date table)
+--   vw_dealership             one row per CURRENT dealership store version
+--   vw_employee               one row per CURRENT employee version, minimised
+--   vw_customer               one row per customer, banded attributes only
+--   vw_vehicle                one row per physical vehicle
+--   vw_vehicle_model          one row per model line
+--   vw_lead_source            one row per normalised lead source
+--   vw_marketing_campaign     one row per campaign
+--
+-- FACT VIEWS — one per MVP fact, at the fact's own grain. No aggregation, no
+-- filtering, no row lost; RECON-REPORT-*-ROWS reconciles each one to its fact on
+-- every run.
+--
+--   vw_vehicle_sales          one row per finalized vehicle transaction
+--   vw_inventory_snapshots    one row per vehicle per store per snapshot date
+--   vw_leads                  one row per CRM lead, duplicates included
+--   vw_appointments           one row per scheduled appointment
+--   vw_marketing_spend        one row per store x campaign x month
+--
+-- GOVERNED ANALYTICAL VIEWS — each owns the SQL side of one or more KPIs at a
+-- declared grain, publishing numerators and denominators as separate additive
+-- columns.
+--
+--   vw_sales_summary          KPI-SLS-001..003, KPI-INV-007 mean
+--   vw_gross_summary          KPI-GRS-001..006
+--   vw_inventory_health       KPI-INV-001..006
+--   vw_inventory_aging        the age distribution behind KPI-INV-004
+--   vw_days_to_sale           KPI-INV-007
+--   vw_inventory_turn         KPI-INV-008
+--   vw_days_supply            KPI-INV-009
+--   vw_lead_funnel            KPI-FUN-001, 002, 003, 006
+--   vw_appointment_funnel     KPI-FUN-004, 005
+--   vw_lead_response          KPI-FUN-007, 008
+--   vw_marketing_performance  KPI-MKT-001..003
+--   vw_data_quality_trend     quality across runs
+--   vw_reconciliation_status  reconciliation evidence, without a grant on audit
+--
+-- OPERATIONAL VIEWS — run context for the Data Quality page.
+--
+--   vw_pipeline_run_summary   one row per pipeline run, with counts
+--   vw_data_quality_summary   one row per validation result, with run context
+--
+-- arpi_reporter can read these twenty-eight views and nothing else. The expected
+-- set is fixed in arpi.constants.REPORTING_VIEWS, and
+-- tests/integration/test_reporting_layer_completeness.py asserts the schema
+-- contains exactly those and no others — a view added here and not declared there
+-- fails the build rather than appearing silently.
 --
 -- =============================================================================
--- WHAT IS DELIBERATELY ABSENT  (status: Planned — Phase 1.2 and later)
+-- WHAT IS DELIBERATELY ABSENT  (status: Deferred)
 -- =============================================================================
--- The following views are NOT created, and their absence is a decision rather
--- than an oversight:
---
---   reporting.vw_sales_performance      needs warehouse.fact_vehicle_sale
---   reporting.vw_gross_summary          needs warehouse.fact_vehicle_sale and
---                                            warehouse.fact_finance_product_sale
---   reporting.vw_inventory_aging        needs warehouse.fact_vehicle_inventory_snapshot
---   reporting.vw_lead_funnel            needs warehouse.fact_lead,
---                                            warehouse.fact_lead_activity and
---                                            warehouse.fact_appointment
---   reporting.vw_marketing_efficiency   needs warehouse.fact_marketing_spend
 --   reporting.vw_service_summary        needs warehouse.fact_service_visit
 --   reporting.vw_target_attainment      needs warehouse.fact_sales_target
+--   an F&I product-detail view          needs warehouse.fact_finance_product_sale
 --
--- REASON. None of the underlying fact tables exist yet (see sql/04_facts/README.md).
--- A view over a non-existent table cannot be created at all, and a view that
--- returns a correctly-shaped but permanently empty result set would be worse than
--- nothing: it would let a Power BI model bind to a KPI that has never been
--- computed, and it would let a reader conclude that ARPI reports on sales
--- performance today. It does not. ARCHITECTURE.md is explicit that nothing may
--- claim facts, dashboards or findings exist before they do.
---
--- WHEN THE FACTS LAND. Each view above is added in the same change that adds its
--- fact table, together with its grain comment, its column comments, the grants in
--- sql/07_security/01_grants.sql and its data-quality checks in sql/08_validation.
+-- REASON. All three underlying facts are Deferred (DATA_DICTIONARY.md section 27).
+-- A view over a non-existent table cannot be created at all, and a view returning
+-- a correctly-shaped but permanently empty result set would be worse than nothing:
+-- it would let a Power BI model bind to a KPI that has never been computed. The
+-- stakeholder questions those three facts block are recorded in
+-- docs/requirements/STAKEHOLDER_QUESTIONS.md section 6 rather than left absent.
 --
 -- =============================================================================
 -- REPORTING LAYER RULES
 -- =============================================================================
---   1. Every reporting object is a view. No physical reporting tables exist in
---      Phase 0; if a materialised view is ever needed it must be justified by a
---      measured performance problem.
+--   1. Every reporting object is a view. No physical reporting table exists; if a
+--      materialised view is ever needed it must be justified by a MEASURED
+--      performance problem, not an anticipated one.
 --   2. Views are owned by arpi_admin and read warehouse and audit objects that
---      arpi_admin also owns, so arpi_reporter needs no privileges on those
---      schemas. That is the mechanism which keeps Power BI out of the raw layer.
+--      arpi_admin also owns, so arpi_reporter needs no privilege on those schemas.
+--      That is the mechanism which keeps Power BI out of the raw layer.
 --   3. Column names are business-facing and stable. Renaming a warehouse column
 --      must not change a reporting column; the view absorbs the change.
 --   4. Column names remain lower_snake_case and unquoted so that psql, Power BI
---      and Excel all address them the same way; consumer tools apply display
---      formatting.
---   5. Every view declares its grain in COMMENT ON VIEW.
+--      and Excel all address them the same way; consumer tools apply formatting.
+--   5. Every view declares its grain in COMMENT ON VIEW, and every column carries
+--      a COMMENT ON COLUMN. Both are asserted by the integration suite.
+--   6. A fact view preserves its fact's grain exactly. Where one joins a dimension
+--      to derive a column, the row count is reconciled on every run.
+--   7. A ratio's numerator and denominator are published as separate ADDITIVE
+--      columns. Where a ratio column exists it is valid at that view's grain only,
+--      and a semantic model must divide in DAX so the result recomputes.
+--   8. A zero denominator yields NULL, never zero and never infinity.
+--   9. Row-level values are exposed wherever a median is specified, because an
+--      order statistic cannot be recomputed from an aggregate.
+--  10. No prohibited or sensitive field appears. Age is a band, geography is
+--      county and market area, and no name, contact detail, pay field or
+--      communication content exists anywhere in ARPI.
 
 COMMENT ON SCHEMA reporting IS
-    'ARPI reporting layer. The only schema Power BI, Excel and arpi_reporter may read. Phase 0 exposes '
-    'exactly four views: vw_calendar, vw_dealership, vw_pipeline_run_summary and vw_data_quality_summary. '
-    'Sales, gross, inventory, lead, marketing, service and target views are deliberately absent because '
-    'the underlying fact tables do not exist yet (Phase 1.2). See sql/05_reporting/00_reporting_scope.sql.';
+    'ARPI reporting layer. The only schema Power BI, Excel and arpi_reporter may read, and the only schema '
+    'they need: 28 views covering all eight MVP dimensions, all five MVP facts at their own grain, thirteen '
+    'governed analytical views owning the SQL side of all 29 KPIs, and two operational views. Every view '
+    'declares its grain and comments every column; every ratio publishes its numerator and denominator as '
+    'separate additive columns and returns NULL on an empty denominator; row-level values are exposed '
+    'wherever a median is specified. Service, target-attainment and F&I product views are deliberately '
+    'absent because their facts are Deferred. See sql/05_reporting/00_reporting_scope.sql.';

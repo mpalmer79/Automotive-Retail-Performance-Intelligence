@@ -504,6 +504,11 @@ APPROVED_NAME_COLUMNS: Final[Mapping[str, str]] = MappingProxyType(
         "pipeline_name": "Logical pipeline such as phase0_foundation.",
         "profile_name": "ARPI configuration profile: development, test or portfolio.",
         "quarter_name": "Calendar vocabulary: Q1, Q2, Q3, Q4. Names a period, never a person.",
+        "source_file_name": (
+            "Ingestion lineage: the CSV a raw row was copied from, for example "
+            "dim_vehicle.csv. Names a file, never a person, and exists only in the raw "
+            "and staging layers -- it never reaches the reporting boundary."
+        ),
         "store_name": (
             "Fictional dealership store name such as 'Granite Chevrolet of Nashua'. "
             "Names a business, never a person."

@@ -26,7 +26,8 @@ this directory owns **acceptance criteria and sequencing**.
 |---|---|
 | [PHASE_1_BACKLOG.md](PHASE_1_BACKLOG.md) | The Phase 1 work backlog, organised into delivery increments `P1.1` through `P1.5`, with acceptance criteria, tests, and dependencies for every item. |
 | [DOCUMENTATION_BACKLOG.md](DOCUMENTATION_BACKLOG.md) | An honest register of documentation gaps identified during Phase 0 and after, with proposed resolutions and priorities. |
-| `STAKEHOLDER_QUESTIONS.md` | **Planned, not yet written.** The persona → business question → KPI → reporting view → report page traceability matrix required by Gate 4. Specified by `P1.5-05` in the Phase 1 backlog and registered as `DOC-15`. It is named here without a link because the file does not exist; the link is added when it does. |
+| [STAKEHOLDER_QUESTIONS.md](STAKEHOLDER_QUESTIONS.md) | The persona → business question → KPI → reporting view → report page traceability matrix required by Gate 4. Thirty-five questions across all twelve personas, including the four the MVP cannot answer and the Deferred fact each is blocked by. Specified by `P1.5-05`; closes `DOC-15`. |
+| [GATE_1_READINESS.md](GATE_1_READINESS.md) | The formal Gate 1 evaluation: every condition with its evidence, the test or query that proves it, its limitations, and a written verdict. Specified by `P1.5-04`. |
 
 ---
 

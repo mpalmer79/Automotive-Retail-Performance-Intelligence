@@ -2,7 +2,7 @@
 
 **Project:** Automotive Retail Performance Intelligence (ARPI)
 **Owner:** Michael Palmer
-**Last reviewed:** 2026-07-28
+**Last reviewed:** 2026-07-29
 **Parent documents:** [ARCHITECTURE.md](../../ARCHITECTURE.md) · [DATA_DICTIONARY.md](../../DATA_DICTIONARY.md) · [DATA_GENERATION.md](../../DATA_GENERATION.md)
 
 ---
@@ -145,19 +145,27 @@ A mapping is ready for review when all of the following are true:
 | [STM-001](STM-001-dim-date.md) | Calendar date dimension | `warehouse.dim_date` (via `raw.calendar_date_load`, `staging.stg_calendar_date`) | 1.0 | **Implemented** |
 | [STM-002](STM-002-dim-dealership.md) | Dealership dimension | `warehouse.dim_dealership` (via `raw.dealership_load`, `staging.stg_dealership`) | 1.0 | **Implemented** |
 | [STM-003](STM-003-audit-metadata.md) | Audit and pipeline metadata | `audit.pipeline_run`, `audit.pipeline_run_row_count`, `audit.validation_result`, `audit.reconciliation_result`, `audit.rejected_record` | 1.0 | **Implemented** |
-| [STM-004](STM-004-dim-vehicle-model.md) | Vehicle model dimension | `warehouse.dim_vehicle_model` | 1.0 | **Implemented** (source generation and data-quality checks; SQL load Planned) |
-| [STM-005](STM-005-dim-vehicle.md) | Vehicle dimension | `warehouse.dim_vehicle` | 1.0 | **Implemented** (source generation and data-quality checks; SQL load Planned) |
-| STM-006 | Employee dimension | `warehouse.dim_employee` | — | Planned (Phase 1.1) |
-| STM-007 | Customer dimension | `warehouse.dim_customer` | — | Planned (Phase 1.2) |
-| STM-008 | Vehicle sale fact | `warehouse.fact_vehicle_sale` | — | Planned (Phase 1.2) |
-| STM-009 | Vehicle inventory snapshot fact | `warehouse.fact_vehicle_inventory_snapshot` | — | Planned (Phase 1.2) |
-| STM-010 | Lead source dimension | `warehouse.dim_lead_source` | — | Planned (Phase 1.4) |
-| STM-011 | Lead fact | `warehouse.fact_lead` | — | Planned (Phase 1.4) |
-| STM-012 | Appointment fact | `warehouse.fact_appointment` | — | Planned (Phase 1.4) |
-| STM-013 | Marketing campaign dimension | `warehouse.dim_marketing_campaign` | — | Planned (Phase 1.5) |
-| STM-014 | Marketing spend fact | `warehouse.fact_marketing_spend` | — | Planned (Phase 1.5) |
+| [STM-004](STM-004-dim-vehicle-model.md) | Vehicle model dimension | `warehouse.dim_vehicle_model` (via `raw.vehicle_model_load`, `staging.stg_vehicle_model`) | 1.0 | **Implemented** |
+| [STM-005](STM-005-dim-vehicle.md) | Vehicle dimension | `warehouse.dim_vehicle` (via `raw.vehicle_load`, `staging.stg_vehicle`) | 1.0 | **Implemented** |
+| [STM-006](STM-006-dim-employee.md) | Employee dimension | `warehouse.dim_employee` (via `raw.employee_load`, `staging.stg_employee`) | 1.0 | **Implemented** |
+| [STM-007](STM-007-dim-customer.md) | Customer dimension | `warehouse.dim_customer` (via `raw.customer_load`, `staging.stg_customer`) | 1.0 | **Implemented** |
+| [STM-008](STM-008-fact-vehicle-sale.md) | Vehicle sale fact | `warehouse.fact_vehicle_sale` (via `raw.sale_event_load`, `staging.stg_sale_event`) | 1.0 | **Implemented** |
+| [STM-009](STM-009-fact-vehicle-inventory-snapshot.md) | Vehicle inventory snapshot fact | `warehouse.fact_vehicle_inventory_snapshot` (via `raw.inventory_snapshot_load`, `staging.stg_inventory_snapshot`) | 1.0 | **Implemented** |
+| [STM-010](STM-010-dim-lead-source.md) | Lead source dimension | `warehouse.dim_lead_source` (via `raw.lead_source_load`, `staging.stg_lead_source`) | 1.0 | **Implemented** |
+| [STM-011](STM-011-fact-lead.md) | Lead fact | `warehouse.fact_lead` (via `raw.lead_load`, `staging.stg_lead`) | 1.0 | **Implemented** |
+| [STM-012](STM-012-fact-appointment.md) | Appointment fact | `warehouse.fact_appointment` (via `raw.appointment_load`, `staging.stg_appointment`) | 1.0 | **Implemented** |
+| [STM-013](STM-013-dim-marketing-campaign.md) | Marketing campaign dimension | `warehouse.dim_marketing_campaign` (via `raw.marketing_campaign_load`, `staging.stg_marketing_campaign`) | 1.0 | **Implemented** |
+| [STM-014](STM-014-fact-marketing-spend.md) | Marketing spend fact | `warehouse.fact_marketing_spend` (via `raw.marketing_spend_load`, `staging.stg_marketing_spend`) | 1.0 | **Implemented** |
 
-**Three mappings are written. Eleven are Planned. None cover a fact table, because no fact table exists.**
+**All fourteen mappings are written, and every MVP dimension and fact has one.**
+`tests/integration/test_gate1_readiness.py` asserts a mapping exists for each of the thirteen warehouse
+entities; it does not verify that a mapping's *content* is current, which stays a review responsibility and
+is why the Definition of Done requires an STM update in the same change as its target object.
+
+**No mapping covers the reporting layer**, and none should: an STM records how a value reaches the
+warehouse. How it is then projected for reporting is documented on the view itself — every reporting view
+carries a `COMMENT ON VIEW` declaring its grain and a comment on every column — and mapped to KPIs in
+[`powerbi/model_documentation/04-reporting-view-to-kpi-map.md`](../../powerbi/model_documentation/04-reporting-view-to-kpi-map.md).
 
 ---
 

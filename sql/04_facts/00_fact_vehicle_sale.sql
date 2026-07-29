@@ -14,10 +14,14 @@
 --
 -- STATUS
 -- ------
--- The table exists and is constrained; **no row has ever been loaded into it.** The
--- generator (Agent E) and the load script sql/04_facts/10_fact_vehicle_sale_load.sql
--- land in the follow-up increment. Nothing in this repository should be read as
--- claiming sales reporting exists.
+-- The table exists, is constrained, and is loaded by sql/04_facts/10_fact_vehicle_sale_load.sql on every
+-- pipeline run. Its grain is enforced by a UNIQUE constraint, and
+-- tests/integration/test_gate1_readiness.py asserts both that the constraint covers
+-- exactly the declared grain columns and that the loaded data satisfies it. The
+-- staging-to-warehouse count is reconciled on every run by audit.vw_recon_ingestion,
+-- so a load that silently dropped rows on an unresolved surrogate key fails rather
+-- than passing quietly. warehouse.fact_vehicle_sale is projected for reporting without
+-- aggregation or filtering; see sql/05_reporting/.
 --
 -- WHAT IS AND IS NOT IN THE GRAIN
 -- -------------------------------

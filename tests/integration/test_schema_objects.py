@@ -65,8 +65,9 @@ DIMENSION_TABLES = (
     "dim_marketing_campaign",
 )
 
-#: The fact tables. Every one of these is created empty in Phase 1.2; the generators and
-#: load scripts that populate them arrive later. See test_fact_tables_are_empty.
+#: The fact tables. All five are populated by a real pipeline run; this module builds a
+#: structure-only database and never runs the pipeline, which is what
+#: test_the_sql_sequence_alone_loads_no_data relies on.
 FACT_TABLES = (
     "fact_vehicle_sale",
     "fact_vehicle_inventory_snapshot",
@@ -250,19 +251,24 @@ def test_exactly_the_declared_fact_tables_exist(cursor: Any) -> None:
     assert {row[0] for row in cursor.fetchall()} == set(FACT_TABLES)
 
 
-def test_fact_tables_are_empty(cursor: Any) -> None:
-    """No fact row has ever been loaded, and nothing may claim otherwise.
+def test_the_sql_sequence_alone_loads_no_data(cursor: Any) -> None:
+    """Applying the SQL tree builds structure and inserts nothing.
 
-    The Phase 1.2 increment creates the fact DDL so the dimensional model is complete and
-    reviewable, but the generators and load scripts land later. A fact table that
-    unexpectedly held rows would let a reporting view present numbers nobody generated.
+    This database was built by running the initialisation sequence and nothing else. A
+    fact table holding rows here would mean a DDL script had started inserting data,
+    which would make the sequence non-idempotent in a way row counts would hide: a second
+    application would double the rows. Populated facts are asserted separately, against
+    the `loaded_database` fixture, which runs the real pipeline.
     """
     for table in FACT_TABLES:
         # The table name comes from the literal FACT_TABLES tuple above, never from input.
         cursor.execute(f"SELECT count(*) FROM warehouse.{table}")
         row = cursor.fetchone()
         assert row is not None
-        assert row[0] == 0, f"warehouse.{table} is expected to be empty in this increment"
+        assert row[0] == 0, (
+            f"warehouse.{table} holds rows after a structure-only build; a DDL script is "
+            "inserting data, which makes the initialisation sequence non-idempotent"
+        )
 
 
 def test_reporting_layer_contains_exactly_the_declared_views(cursor: Any) -> None:

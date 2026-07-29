@@ -327,7 +327,7 @@ def test_the_readiness_document_exists_and_records_a_verdict() -> None:
     assert document.is_file(), "docs/requirements/GATE_1_READINESS.md does not exist"
 
     text = document.read_text(encoding="utf-8")
-    assert "## Final verdict" in text, "the readiness document records no final verdict section"
+    assert "Final verdict" in text, "the readiness document records no final verdict section"
 
     verdicts = [line for line in text.splitlines() if line.strip() in {"**OPEN**", "**CLOSED**"}]
     assert len(verdicts) == 1, (

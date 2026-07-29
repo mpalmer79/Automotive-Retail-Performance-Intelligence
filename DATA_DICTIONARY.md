@@ -117,9 +117,13 @@ All operational data is synthetic.
 
 ## 4. Entity index
 
-> **Status reality check.** Twenty-one objects are Implemented. **No fact table exists yet.** Every entity
-> whose name begins with `fact_` is Planned or Deferred. Consequently no KPI is computed anywhere in this
-> repository today — see [KPI_CATALOG.md](KPI_CATALOG.md).
+> **Status reality check.** Fifty-eight objects are Implemented, including all eight MVP dimensions, all
+> five MVP facts, and the twenty-eight views of the reporting layer. Every one of the 29 KPIs in
+> [KPI_CATALOG.md](KPI_CATALOG.md) is computable from `reporting`, asserted by
+> `tests/integration/test_kpi_verification.py`. Ten entities remain **Deferred**; none of them is an MVP
+> object, and the questions they block are recorded in
+> [`docs/requirements/STAKEHOLDER_QUESTIONS.md`](docs/requirements/STAKEHOLDER_QUESTIONS.md) §6 rather than
+> left absent.
 
 > **Scope of this index.** It lists every database object ARPI creates, including the six `audit.vw_dq_*`
 > helper views in `sql/08_validation/`. Those views are internal query helpers over the audit schema, not
@@ -131,17 +135,17 @@ All operational data is synthetic.
 |---|---|---|---|
 | `warehouse.dim_date` | Warehouse | One row per calendar date | **Implemented** |
 | `warehouse.dim_dealership` | Warehouse | One row per dealership store version (SCD2) | **Implemented** |
-| `warehouse.dim_employee` | Warehouse | One row per employee role-assignment version (SCD2) | Planned (Phase 1.1) |
-| `warehouse.dim_customer` | Warehouse | One row per synthetic customer | Planned (Phase 1.2) |
-| `warehouse.dim_vehicle` | Warehouse | One row per unique physical vehicle | Planned (Phase 1.1) |
-| `warehouse.dim_vehicle_model` | Warehouse | One row per model-year / make / model / trim combination | Planned (Phase 1.1) |
-| `warehouse.dim_lead_source` | Warehouse | One row per normalized lead source | Planned (Phase 1.4) |
-| `warehouse.dim_marketing_campaign` | Warehouse | One row per campaign | Planned (Phase 1.5) |
-| `warehouse.fact_vehicle_sale` | Warehouse | One row per finalized vehicle transaction | Planned (Phase 1.2) |
-| `warehouse.fact_vehicle_inventory_snapshot` | Warehouse | One row per vehicle per dealership per daily snapshot date while active in inventory | Planned (Phase 1.2) |
-| `warehouse.fact_lead` | Warehouse | One row per unique CRM lead | Planned (Phase 1.4) |
-| `warehouse.fact_appointment` | Warehouse | One row per scheduled appointment | Planned (Phase 1.4) |
-| `warehouse.fact_marketing_spend` | Warehouse | One row per dealership, campaign, and calendar month | Planned (Phase 1.5) |
+| `warehouse.dim_employee` | Warehouse | One row per employee role-assignment version (SCD2) | **Implemented** |
+| `warehouse.dim_customer` | Warehouse | One row per synthetic customer | **Implemented** |
+| `warehouse.dim_vehicle` | Warehouse | One row per unique physical vehicle | **Implemented** |
+| `warehouse.dim_vehicle_model` | Warehouse | One row per model-year / make / model / trim combination | **Implemented** |
+| `warehouse.dim_lead_source` | Warehouse | One row per normalized lead source | **Implemented** |
+| `warehouse.dim_marketing_campaign` | Warehouse | One row per campaign | **Implemented** |
+| `warehouse.fact_vehicle_sale` | Warehouse | One row per finalized vehicle transaction | **Implemented** |
+| `warehouse.fact_vehicle_inventory_snapshot` | Warehouse | One row per vehicle per dealership per daily snapshot date while active in inventory | **Implemented** |
+| `warehouse.fact_lead` | Warehouse | One row per unique CRM lead | **Implemented** |
+| `warehouse.fact_appointment` | Warehouse | One row per scheduled appointment | **Implemented** |
+| `warehouse.fact_marketing_spend` | Warehouse | One row per dealership, campaign, and calendar month | **Implemented** |
 | `audit.pipeline_run` | Audit | One row per pipeline execution | **Implemented** |
 | `audit.pipeline_run_row_count` | Audit | One row per run, entity, and layer | **Implemented** |
 | `audit.validation_result` | Audit | One row per validation check evaluation per run | **Implemented** |
@@ -429,7 +433,7 @@ attribute values in force at the time of the transaction. Type 2 rows carry `eff
 | **Primary key** | `employee_key` |
 | **Natural / source key** | `employee_id` (`EMP-#####`) |
 | **Foreign keys** | `dealership_key` → `warehouse.dim_dealership` |
-| **Implementation status** | **Planned (Phase 1.1)** |
+| **Implementation status** | **Implemented** |
 
 ### 8.1 Attributes
 
@@ -453,7 +457,7 @@ attribute values in force at the time of the transaction. Type 2 rows carry `eff
 | *Employee name* | — | — | — | **Prohibited by default.** [ARCHITECTURE.md §22.4](ARCHITECTURE.md) permits fictional names "if names are used at all". ARPI's decision is **not** to generate names: a synthetic identifier plus role and tenure is sufficient for every planned KPI, and fictional names invite confusion with real staff. | Not generated. | Prohibited |
 | *Compensation, pay plan, commission* | — | — | — | **Prohibited.** Real employee compensation is on the prohibited-data list in `docs/research.md` §10.2, and synthetic compensation adds no analytical value to any planned KPI. | Not generated. | Prohibited |
 
-### 8.2 Business rules (planned)
+### 8.2 Business rules
 
 - `termination_date`, when present, is on or after `hire_date`.
 - `hire_date` is on or after the assigned store's `opened_date`.
@@ -483,7 +487,7 @@ roles and historical performance must stay attached to the correct assignment.
 | **Primary key** | `customer_key` |
 | **Natural / source key** | `customer_id` (`CUS-########`) |
 | **Foreign keys** | None in the MVP. A `geography_key` FK is Deferred with `dim_geography`. |
-| **Implementation status** | **Planned (Phase 1.2)** |
+| **Implementation status** | **Implemented** |
 
 ### 9.1 Attributes
 
@@ -523,7 +527,7 @@ details, insurance information, and actual deal jackets. ARPI treats those as pr
 credit dimension is ever required, only a broad synthetic tier is permissible
 ([ARCHITECTURE.md §22.4](ARCHITECTURE.md)) — and that is Deferred, not Planned.
 
-### 9.3 Business rules (planned)
+### 9.3 Business rules
 
 - `first_interaction_date` is on or before the earliest fact date referencing the customer.
 - Every customer referenced by a retail sale exists in this dimension; wholesale transactions may carry no
@@ -554,7 +558,7 @@ age band held historically. If trade-cycle analysis later requires history, that
 | **Primary key** | `vehicle_key` |
 | **Natural / source key** | `vehicle_id` (`VEH-#######`) and the synthetic VIN-like identifier |
 | **Foreign keys** | `vehicle_model_key` → `warehouse.dim_vehicle_model` |
-| **Implementation status** | **Planned (Phase 1.1)** |
+| **Implementation status** | **Implemented** |
 
 ### 10.1 Attributes
 
@@ -579,7 +583,7 @@ age band held historically. If trade-cycle analysis later requires history, that
 | `vehicle_source` | text | no | `Customer Trade`, `Auction`, `Off-street Purchase`, `Lease Return`, `Dealer Trade`, `Manufacturer Allocation`, `Service-lane Acquisition` | Acquisition source. Denormalized here in the MVP; `dim_inventory_source` is Deferred. | Controlled distribution. | Non-personal |
 | `source_system` | text | no | `arpi_synthetic_generator` | Lineage marker. | Constant. | Non-personal |
 
-### 10.2 Business rules (planned)
+### 10.2 Business rules
 
 - `synthetic_vin` is unique across the dimension.
 - `vehicle_condition = 'New'` implies `odometer_band = 'New'` and `vehicle_source` in
@@ -613,7 +617,7 @@ holding period. Price and age change over time and live in the snapshot fact, pe
 | **Primary key** | `vehicle_model_key` |
 | **Natural / source key** | The natural composite `(model_year, make, model, trim)` |
 | **Foreign keys** | None |
-| **Implementation status** | **Planned (Phase 1.1)** |
+| **Implementation status** | **Implemented** |
 
 ### 11.1 Attributes
 
@@ -631,7 +635,7 @@ holding period. Price and age change over time and live in the snapshot fact, pe
 | `franchise_alignment` | text | yes | `Chevrolet`, `Subaru`, NULL | Which franchise store can sell this model as new. NULL means the model appears only as used inventory. | Derived from `make`. | Non-personal |
 | `source_system` | text | no | `arpi_synthetic_generator` | Lineage marker. | Constant. | Non-personal |
 
-### 11.2 Business rules (planned)
+### 11.2 Business rules
 
 - The natural composite `(model_year, make, model, trim)` is unique, with NULL `trim` treated as a distinct
   value.
@@ -662,7 +666,7 @@ Type 1 examples given in [ARCHITECTURE.md §14](ARCHITECTURE.md).
 | **Primary key** | `lead_source_key` |
 | **Natural / source key** | `lead_source_id` |
 | **Foreign keys** | None |
-| **Implementation status** | **Planned (Phase 1.4)** |
+| **Implementation status** | **Implemented** |
 
 ### 12.1 Attributes
 
@@ -678,7 +682,7 @@ Type 1 examples given in [ARCHITECTURE.md §14](ARCHITECTURE.md).
 | `is_internal` | boolean | no | `true` / `false` | Whether the source is generated inside the store (walk-in, service lane, repeat customer). | Reference data. | Non-personal |
 | `source_system` | text | no | `arpi_synthetic_generator` | Lineage marker. | Constant. | Non-personal |
 
-### 12.2 Business rules (planned)
+### 12.2 Business rules
 
 - Sources differ in cost, volume, conversion, and gross — a required business relationship
   ([ARCHITECTURE.md §15.3](ARCHITECTURE.md)).
@@ -706,7 +710,7 @@ Type 1 examples given in [ARCHITECTURE.md §14](ARCHITECTURE.md).
 | **Primary key** | `campaign_key` |
 | **Natural / source key** | `campaign_id` |
 | **Foreign keys** | `lead_source_key` → `warehouse.dim_lead_source` (primary channel) |
-| **Implementation status** | **Planned (Phase 1.5)** |
+| **Implementation status** | **Implemented** |
 
 ### 13.1 Attributes
 
@@ -723,7 +727,7 @@ Type 1 examples given in [ARCHITECTURE.md §14](ARCHITECTURE.md).
 | `target_vehicle_category` | text | yes | Vehicle class values | Intended vehicle category. NULL means untargeted. | Generated. | Non-personal |
 | `source_system` | text | no | `arpi_synthetic_generator` | Lineage marker. | Constant. | Non-personal |
 
-### 13.2 Business rules (planned)
+### 13.2 Business rules
 
 - `end_date`, when present, is on or after `start_date`.
 - **Campaigns may create leads outside their primary target segment** — an explicitly required business
@@ -742,10 +746,13 @@ Type 1 examples given in [ARCHITECTURE.md §14](ARCHITECTURE.md).
 
 ---
 
-# Part C — Planned facts
+# Part C — Facts
 
-> **No fact table exists in this repository today.** Everything in Part C is Planned. Grains below are
-> binding and are taken directly from [ARCHITECTURE.md §12](ARCHITECTURE.md).
+> **All five MVP facts are built, constrained and populated.** Each grain below is binding, is taken
+> directly from [ARCHITECTURE.md §12](ARCHITECTURE.md), and is **enforced by a UNIQUE or PRIMARY KEY
+> constraint** on the table rather than only declared here —
+> `tests/integration/test_gate1_readiness.py` asserts the constraint exists over exactly the grain columns
+> and that the loaded data satisfies it. That enforcement is what "approved" means for Gate 1 condition 1.
 
 ---
 
@@ -760,7 +767,7 @@ Type 1 examples given in [ARCHITECTURE.md §14](ARCHITECTURE.md).
 | **Primary key** | `vehicle_sale_key` |
 | **Natural / source key** | `sale_id` |
 | **Foreign keys** | `sale_date_key`, `delivery_date_key` → `dim_date`; `dealership_key`; `vehicle_key`; `customer_key` (nullable for wholesale); `salesperson_key`, `desk_manager_key`, `finance_manager_key` → `dim_employee`; `lead_source_key`; `sale_type_key` → `dim_sale_type` *(Deferred — denormalized to a `sale_type` text column in the MVP)*; `lender_key` → `dim_lender` *(Deferred)* |
-| **Implementation status** | **Planned (Phase 1.2)** |
+| **Implementation status** | **Implemented** |
 
 ### 14.1 Measures and degenerate attributes
 
@@ -787,7 +794,7 @@ Type 1 examples given in [ARCHITECTURE.md §14](ARCHITECTURE.md).
 | `sale_type` | text | no | `New Retail`, `Used Retail`, `Certified Retail`, `Lease`, `Wholesale`, `Dealer Trade` | Transaction classification. Denormalized text in the MVP; becomes an FK when `dim_sale_type` is built. | Generated. | Non-personal |
 | `is_retail` | boolean | no | `true` / `false` | True for retail and lease deliveries; false for wholesale and dealer trades. **This is the single flag that defines every "retail unit" denominator in [KPI_CATALOG.md](KPI_CATALOG.md).** | Derived from `sale_type`. | Non-personal |
 
-### 14.2 Business rules (planned)
+### 14.2 Business rules
 
 - `unit_count = 1` for finalized retail and wholesale sales.
 - `total_gross = front_end_gross + back_end_gross` — enforced by validation, not assumed.
@@ -820,7 +827,7 @@ affected period, not by in-place update.
 | **Primary key** | Composite `(snapshot_date_key, dealership_key, vehicle_key)` |
 | **Natural / source key** | Composite of snapshot date and `vehicle_id` |
 | **Foreign keys** | `snapshot_date_key` → `dim_date`; `dealership_key`; `vehicle_key`; `vehicle_model_key`; `inventory_source_key` → `dim_inventory_source` *(Deferred — denormalized in the MVP)* |
-| **Implementation status** | **Planned (Phase 1.2)** |
+| **Implementation status** | **Implemented** |
 
 ### 15.1 Measures
 
@@ -840,7 +847,7 @@ affected period, not by in-place update.
 | `lead_count_to_date` | integer | no | ≥ 0 | Leads received on this unit so far. | Derived. | Non-personal |
 | `appointment_count_to_date` | integer | no | ≥ 0 | Appointments booked on this unit so far. | Derived. | Non-personal |
 
-### 15.2 Business rules (planned)
+### 15.2 Business rules
 
 - **Exactly one record per vehicle, store, and date** — grain uniqueness is a critical failure if violated
   ([ARCHITECTURE.md §17.4](ARCHITECTURE.md), §21.2).
@@ -872,7 +879,7 @@ affected period, not by in-place update.
 | **Primary key** | `lead_key` |
 | **Natural / source key** | `lead_id` (`LEAD-#########`) |
 | **Foreign keys** | `lead_created_date_key` → `dim_date`; `dealership_key`; `customer_key`; `vehicle_key` or `vehicle_model_key`; `lead_source_key`; `campaign_key`; `assigned_salesperson_key`, `assigned_bdc_employee_key` → `dim_employee` |
-| **Implementation status** | **Planned (Phase 1.4)** |
+| **Implementation status** | **Implemented** |
 
 ### 16.1 Measures and flags
 
@@ -893,7 +900,7 @@ affected period, not by in-place update.
 **No communication content is stored** — no message bodies, call recordings, transcripts, or notes.
 Only response-time seconds ([ARCHITECTURE.md §22.4](ARCHITECTURE.md), `docs/research.md` §10.4).
 
-### 16.2 Business rules (planned)
+### 16.2 Business rules
 
 - First response cannot occur before lead creation.
 - `is_sold = true` requires a resolvable `vehicle_sale_key`.
@@ -926,7 +933,7 @@ once the lead is closed the row is final.
 | **Primary key** | `appointment_key` |
 | **Natural / source key** | `appointment_id` |
 | **Foreign keys** | `appointment_created_date_key`, `scheduled_date_key`, `show_date_key` → `dim_date`; `dealership_key`; `lead_key`; `customer_key`; `salesperson_key`, `bdc_employee_key` → `dim_employee`; `vehicle_key` or `vehicle_model_key` |
-| **Implementation status** | **Planned (Phase 1.4)** |
+| **Implementation status** | **Implemented** |
 
 ### 17.1 Measures and flags
 
@@ -942,7 +949,7 @@ once the lead is closed the row is final.
 | `minutes_early_or_late` | integer | yes | Negative = early, positive = late | Punctuality relative to the scheduled time. NULL when the customer did not show. | Generated. | Non-personal |
 | `vehicle_sale_key` | integer | yes | FK | Resulting sale. NULL when not sold. | Derived. | Non-personal |
 
-### 17.2 Business rules (planned)
+### 17.2 Business rules
 
 - Show date cannot precede appointment creation.
 - Sold appointments must link to a finalized vehicle sale.
@@ -972,7 +979,7 @@ once the lead is closed the row is final.
 | **Primary key** | Composite `(month_date_key, dealership_key, campaign_key)` |
 | **Natural / source key** | Composite of month, `dealership_id`, and `campaign_id` |
 | **Foreign keys** | `month_date_key` → `dim_date`; `dealership_key`; `campaign_key`; `lead_source_key` |
-| **Implementation status** | **Planned (Phase 1.5)** |
+| **Implementation status** | **Implemented** |
 
 ### 18.1 Measures
 
@@ -985,7 +992,7 @@ once the lead is closed the row is final.
 | `form_submissions` | integer | yes | ≥ 0 | Form submissions attributed by the vendor. NULL where not applicable. | Generated. | Non-personal |
 | `vendor_reported_leads` | integer | yes | ≥ 0 | Leads the vendor claims. **Deliberately allowed to differ from the CRM lead count** — that discrepancy is itself an analytical finding, and reconciling the two is a documented objective, not a defect. | Generated. | Non-personal |
 
-### 18.2 Business rules (planned)
+### 18.2 Business rules
 
 - `month_date_key` always points at the **first day of the month** so that monthly rows join cleanly to
   `dim_date`.
@@ -1201,22 +1208,25 @@ collide on an ordinal. Identifiers match `^DQ-[A-Z]{3,4}-\d{3}$`.
 | `DQ-GEN-*` | Cross-entity generation: schema conformance, determinism digest | **Implemented** |
 | `DQ-REF-*` | Cross-object referential and grain integrity (SQL) | **Implemented** |
 | `DQ-AUD-*` | Audit-layer integrity (SQL) | **Implemented** |
-| `DQ-VMD-*` | `dim_vehicle_model` | Planned (Phase 1.1) |
-| `DQ-VEH-*` | `dim_vehicle` | Planned (Phase 1.1) |
-| `DQ-EMP-*` | `dim_employee` | Planned (Phase 1.1) |
-| `DQ-CUS-*` | `dim_customer` | Planned (Phase 1.2) |
-| `DQ-ACQ-*` | `acquisition_event` (inventory acquisition source entity) | Planned (Phase 1.2) |
-| `DQ-SLE-*` | `fact_vehicle_sale` | Planned (Phase 1.2) |
-| `DQ-INV-*` | `fact_vehicle_inventory_snapshot` | Planned (Phase 1.2) |
-| `DQ-LDS-*` | `dim_lead_source` | Planned (Phase 1.4) |
-| `DQ-LED-*` | `fact_lead` | Planned (Phase 1.4) |
-| `DQ-APT-*` | `fact_appointment` | Planned (Phase 1.4) |
-| `DQ-CMP-*` | `dim_marketing_campaign` | Planned (Phase 1.5) |
-| `DQ-MKT-*` | `fact_marketing_spend` | Planned (Phase 1.5) |
-| `DQ-ING-*` | Ingestion and the row-count chain | Planned (Phase 1.2) |
+| `DQ-VMD-*` | `dim_vehicle_model` | **Implemented** |
+| `DQ-VEH-*` | `dim_vehicle` | **Implemented** |
+| `DQ-EMP-*` | `dim_employee` | **Implemented** |
+| `DQ-CUS-*` | `dim_customer` | **Implemented** |
+| `DQ-ACQ-*` | `acquisition_event` (inventory acquisition source entity) | **Implemented** |
+| `DQ-SLE-*` | `fact_vehicle_sale` | **Implemented** |
+| `DQ-INV-*` | `fact_vehicle_inventory_snapshot` | **Implemented** |
+| `DQ-LDS-*` | `dim_lead_source` | **Implemented** |
+| `DQ-LED-*` | `fact_lead` | **Implemented** |
+| `DQ-APT-*` | `fact_appointment` | **Implemented** |
+| `DQ-CMP-*` | `dim_marketing_campaign` | **Implemented** |
+| `DQ-MKT-*` | `fact_marketing_spend` | **Implemented** |
+| `DQ-ING-*` | Ingestion and the row-count chain | Reserved — the chain is covered by the `RECON-INGEST-*` reconciliations instead |
 
-Reserving a prefix is **not** a claim that any check in that family exists. Only the five
-Implemented families have registered checks today; the rest are reserved names.
+Reserving a prefix is **not** a claim that any check in that family exists. Fourteen families emit checks
+on a `development` run today — 114 results in total, of which 0 are critical failures. `DQ-ING-*` remains a
+reserved name: the ingestion row-count chain turned out to be reconciliation evidence rather than
+data-quality evidence, and is covered by `RECON-INGEST-*` in `audit.reconciliation_result`. The two kinds
+are deliberately kept apart, and `reconciliation` is not a check category.
 
 #### 21.2.2 Registered checks
 

@@ -1,33 +1,58 @@
-# `sql/04_facts/` — five fact tables, and not one fact row
+# `sql/04_facts/` — the five MVP fact tables
 
-**Status: DDL Implemented (Phase 1.2). Data Planned.**
+**Status: Implemented. All five are built, constrained, and loaded on every pipeline run.**
 
-Read that heading literally, because the distinction is the whole point of this file.
-The five fact tables below **exist** in the warehouse: they are created, typed,
-constrained, commented and covered by tests. **No fact row has ever been loaded into any
-of them, and no measure has ever been computed from one.** Nothing in this repository
-should be read as claiming otherwise, and
-`tests/integration/test_schema_objects.py::test_fact_tables_are_empty` asserts it on
-every run rather than leaving it to this paragraph.
+The five fact tables below exist in the warehouse: created, typed, constrained, commented,
+covered by tests, and **populated**. Each declared grain is enforced by a `UNIQUE` or
+`PRIMARY KEY` constraint over exactly the grain columns, and
+`tests/integration/test_gate1_readiness.py` asserts both that the constraint exists and
+that the loaded data satisfies it — which is what "approved" means for Gate 1 condition 1.
+
+Row counts are from the `development` profile (2025-07-01 … 2025-12-31, three stores,
+seed 20250701).
 
 | File | Table | Declared grain | Type | Rows |
 |---|---|---|---|---:|
-| `00_fact_vehicle_sale.sql` | `warehouse.fact_vehicle_sale` | One row per finalized vehicle transaction | Transaction | 0 |
-| `01_fact_vehicle_inventory_snapshot.sql` | `warehouse.fact_vehicle_inventory_snapshot` | One row per vehicle per store per snapshot date, while in stock | Periodic snapshot | 0 |
-| `02_fact_lead.sql` | `warehouse.fact_lead` | One row per unique CRM lead | Accumulating snapshot | 0 |
-| `03_fact_appointment.sql` | `warehouse.fact_appointment` | One row per scheduled appointment | Accumulating snapshot | 0 |
-| `04_fact_marketing_spend.sql` | `warehouse.fact_marketing_spend` | One row per store per campaign per calendar month | Periodic snapshot | 0 |
+| `00_fact_vehicle_sale.sql` | `warehouse.fact_vehicle_sale` | One row per finalized vehicle transaction | Transaction | 650 |
+| `01_fact_vehicle_inventory_snapshot.sql` | `warehouse.fact_vehicle_inventory_snapshot` | One row per vehicle per store per snapshot date, while in stock | Periodic snapshot | 45,754 |
+| `02_fact_lead.sql` | `warehouse.fact_lead` | One row per unique CRM lead | Accumulating snapshot | 6,000 |
+| `03_fact_appointment.sql` | `warehouse.fact_appointment` | One row per scheduled appointment | Accumulating snapshot | 2,111 |
+| `04_fact_marketing_spend.sql` | `warehouse.fact_marketing_spend` | One row per store per campaign per calendar month | Periodic snapshot | 212 |
+
+Each table has a matching `NN_<name>_load.sql` script, which the loader runs after every
+dimension merge. A fact resolves its surrogate keys by joining the dimensions, so running
+a fact load before the dimensions are merged would resolve nothing.
+
+---
+
+## Reconciliation is what makes the loads trustworthy
+
+Their ingestion specs carry no warehouse target — the specs describe the source entity,
+and the fact is loaded by SQL rather than by a Python merge — so the loader could not
+reconcile staging against the warehouse for any of these five. Until that gap was closed,
+**a fact load that silently dropped rows on an unresolved surrogate key would have looked
+exactly like a correct one.**
+
+`audit.vw_recon_ingestion` closes it: each fact's distinct staged business keys are
+compared against the rows the warehouse actually holds, exactly, with no tolerance, on
+every run. `audit.vw_recon_reporting` then extends the chain upward, comparing each
+reporting view against the fact it projects. Every one of those rules has been observed
+**failing** against a deliberately corrupted fixture in
+`tests/integration/test_reconciliations.py`; a reconciliation that has never been seen to
+fail is not evidence.
 
 ---
 
 ## Why the DDL landed before the data
 
+Kept as a record of the reasoning, because the risk it managed is still real.
+
 Phase 0's version of this file argued the opposite case — that an empty fact table lets a
 Power BI model bind to something that has never held a row and produce "dashboards full
-of confident zeros". That risk is real and has not gone away. What changed is that the
-grain, the columns, the types and the arithmetic identities are now **fixed** by the
-Phase 1 cross-agent contract, and several agents are building generators against them
-concurrently. Publishing the constrained DDL now means:
+of confident zeros". What changed was that the grain, the columns, the types and the
+arithmetic identities became **fixed** by the Phase 1 cross-agent contract, with several
+generators being built against them concurrently. Publishing the constrained DDL first
+meant:
 
 - every generator author writes against a table that will reject a violation, instead of
   against a prose description of one;
@@ -36,22 +61,23 @@ concurrently. Publishing the constrained DDL now means:
   loading bug has already produced a plausible-looking wrong number;
 - the dimensional model is reviewable as a whole, foreign keys included.
 
-The confident-zeros risk is instead managed where it actually bites: no reporting view
-selects from any of these tables, `sql/05_reporting/00_reporting_scope.sql` still records
-the sales and inventory views as absent, and the emptiness is asserted by a test.
+The confident-zeros risk was managed by refusing to build a reporting view over an empty
+table. That constraint has now been satisfied rather than lifted: every reporting view
+over these facts was created in the same change that first had data behind it, and
+`tests/integration/test_reporting_layer_completeness.py` asserts each one returns rows.
 
-## What has to be true before rows arrive
+## What had to be true before rows arrived, and now is
 
-1. The conformed dimensions load cleanly and pass their `DQ-*` checks. `dim_date` and
-   `dim_dealership` do today; the six Phase 1 dimensions are loaded by
-   `sql/03_dimensions/12_*` through `17_*`.
-2. The generator for the business process exists, is deterministic, and its output passes
-   the privacy tripwire.
-3. `docs/source-to-target/` carries the mapping. `STM-008` and `STM-009` are written;
-   `STM-011`, `STM-012` and `STM-014` are Agent H's.
-4. The load script — `10_fact_vehicle_sale_load.sql` onward, following the same
-   `NN_<name>_load.sql` convention the dimension merges use — lands in the same change as
-   the data, together with its `DQ-*` checks and any index a real query needs.
+1. **The conformed dimensions load cleanly and pass their `DQ-*` checks.** All eight do;
+   the six Phase 1 dimensions are loaded by `sql/03_dimensions/12_*` through `17_*`.
+2. **The generator exists, is deterministic, and its output passes the privacy tripwire.**
+   Fourteen generators, one per entity in `GENERATION_ORDER`, with the determinism digest
+   recorded on every run as `DQ-GEN-002`.
+3. **`docs/source-to-target/` carries the mapping.** All fourteen `STM-*` documents are
+   written, and `tests/integration/test_gate1_readiness.py` asserts one exists per entity.
+4. **The load script lands in the same change as the data**, together with its `DQ-*`
+   checks and any index a real query needs. `10_fact_vehicle_sale_load.sql` onward follow
+   the same `NN_<name>_load.sql` convention the dimension merges use.
 
 ## Rules every file here already follows
 
