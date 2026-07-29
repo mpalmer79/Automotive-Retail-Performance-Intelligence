@@ -1,0 +1,311 @@
+/// Grain: one row per scheduled appointment -- identical to warehouse.fact_appointment, with no
+/// aggregation and no filtering. One lead can produce several appointments, so this fact is a grain
+/// shift from vw_leads and the two must not share a denominator silently. Fact table for the
+/// semantic model; owns the row-level inputs to KPI-FUN-004 (scheduled-date basis) and KPI-FUN-005
+/// (show-date basis). Three role-playing date keys -- created, scheduled and show -- all relate to
+/// vw_calendar as one active and two inactive relationships activated with USERELATIONSHIP; the
+/// calendar view is never duplicated. show_date_key is NULL when the customer did not arrive.
+/// Appointments cancelled in advance are excluded from the show-rate denominator because they never
+/// had the opportunity to show; that exclusion is the manipulable part of the measure, so
+/// cancelled_in_advance_count is published and must appear on the same visual as the show rate.
+/// Surrogate keys should be hidden in the semantic model.
+table vw_appointments
+	lineageTag: 8a92ffb6-5b9e-5fc9-b44e-5ec836a1b27c
+
+	/// Warehouse surrogate key of the appointment. Hide in the semantic model.
+	column appointment_key
+		dataType: int64
+		isHidden
+		sourceColumn: appointment_key
+		summarizeBy: none
+		lineageTag: b427e2de-2ecd-583e-b28b-f2024d583c2f
+
+		annotation SummarizationSetBy = User
+
+	/// Stable business identifier of the appointment.
+	column appointment_code
+		dataType: string
+		sourceColumn: appointment_code
+		summarizeBy: none
+		lineageTag: 2ba15e64-5e5e-5e80-bb02-2609ef8a075b
+
+		annotation SummarizationSetBy = User
+
+	/// Role-playing date key: when the appointment was booked. Inactive relationship to vw_calendar.
+	column created_date_key
+		dataType: int64
+		isHidden
+		sourceColumn: created_date_key
+		summarizeBy: none
+		lineageTag: 2368ed43-010c-505b-9362-a11c7fd6d7f4
+
+		annotation SummarizationSetBy = User
+
+	/// Role-playing date key: when the appointment was due. The governed date basis for KPI-FUN-004
+	/// show rate -- an appointment scheduled for a later period is not eligible to show in this one.
+	/// Active relationship to vw_calendar.
+	column scheduled_date_key
+		dataType: int64
+		isHidden
+		sourceColumn: scheduled_date_key
+		summarizeBy: none
+		lineageTag: 3a84d913-1f5a-568c-9933-852e248682a0
+
+		annotation SummarizationSetBy = User
+
+	/// Role-playing date key: when the customer arrived, NULL when they did not. The governed date
+	/// basis for KPI-FUN-005 show-to-sale conversion, so the visit and its outcome sit in the same
+	/// period. Inactive relationship to vw_calendar.
+	column show_date_key
+		dataType: int64
+		isHidden
+		sourceColumn: show_date_key
+		summarizeBy: none
+		lineageTag: a55a42dc-33d4-5e2c-8298-3c26f22b1fef
+
+		annotation SummarizationSetBy = User
+
+	/// Store surrogate key. Relationship column; hide in the semantic model.
+	column dealership_key
+		dataType: int64
+		isHidden
+		sourceColumn: dealership_key
+		summarizeBy: none
+		lineageTag: dcf58b9d-8398-5ea2-8588-ef866e6f80fd
+
+		annotation SummarizationSetBy = User
+
+	/// The lead that produced the appointment. Relationship column into vw_leads; hide in the semantic
+	/// model.
+	column lead_key
+		dataType: int64
+		isHidden
+		sourceColumn: lead_key
+		summarizeBy: none
+		lineageTag: b613e3b5-f171-5e63-b637-b6c129d8c215
+
+		annotation SummarizationSetBy = User
+
+	/// Customer surrogate key, or NULL for an anonymous appointment.
+	column customer_key
+		dataType: int64
+		isHidden
+		sourceColumn: customer_key
+		summarizeBy: none
+		lineageTag: bd1bb054-1ec9-52ee-8dfd-f9ae2f34817b
+
+		annotation SummarizationSetBy = User
+
+	/// Role-playing employee key: the salesperson who took the appointment.
+	column salesperson_key
+		dataType: int64
+		isHidden
+		sourceColumn: salesperson_key
+		summarizeBy: none
+		lineageTag: 07f14b1b-144b-5161-a13f-e56767a4c267
+
+		annotation SummarizationSetBy = User
+
+	/// Role-playing employee key: the BDC representative who set the appointment.
+	column bdc_employee_key
+		dataType: int64
+		isHidden
+		sourceColumn: bdc_employee_key
+		summarizeBy: none
+		lineageTag: 45ec600a-bf3f-5295-bb3c-a3fed05fb1db
+
+		annotation SummarizationSetBy = User
+
+	/// Model line of interest, or NULL.
+	column vehicle_model_key
+		dataType: int64
+		isHidden
+		sourceColumn: vehicle_model_key
+		summarizeBy: none
+		lineageTag: c1b9fff5-4ed0-51f7-9441-4e2d99416bc2
+
+		annotation SummarizationSetBy = User
+
+	/// The finalized sale the appointment produced, or NULL. Relationship column into vw_vehicle_sales.
+	column sale_key
+		dataType: int64
+		isHidden
+		sourceColumn: sale_key
+		summarizeBy: none
+		lineageTag: 021a5e54-497c-521c-a2eb-0408f841d469
+
+		annotation SummarizationSetBy = User
+
+	/// True when the appointment was confirmed before the scheduled date.
+	column is_confirmed
+		dataType: boolean
+		sourceColumn: is_confirmed
+		summarizeBy: none
+		lineageTag: 3fb92452-b03e-5375-b3fa-59ccab034f3f
+
+		annotation SummarizationSetBy = User
+
+	/// True when the customer cancelled before the scheduled date. Excluded from the show-rate
+	/// denominator.
+	column is_cancelled_in_advance
+		dataType: boolean
+		sourceColumn: is_cancelled_in_advance
+		summarizeBy: none
+		lineageTag: acca4017-c091-5936-9082-188bb9af43d6
+
+		annotation SummarizationSetBy = User
+
+	/// True when the customer arrived. Implies show_date_key is populated and is_cancelled_in_advance
+	/// is false.
+	column is_shown
+		dataType: boolean
+		sourceColumn: is_shown
+		summarizeBy: none
+		lineageTag: ebe96df2-059c-5d99-8271-1cd2ec91cb01
+
+		annotation SummarizationSetBy = User
+
+	/// True when a test drive took place.
+	column is_test_drive
+		dataType: boolean
+		sourceColumn: is_test_drive
+		summarizeBy: none
+		lineageTag: 380a6c7a-720f-5cc8-a145-cfcbe9900370
+
+		annotation SummarizationSetBy = User
+
+	/// True when the visit reached a written deal. Implies is_shown.
+	column is_write_up
+		dataType: boolean
+		sourceColumn: is_write_up
+		summarizeBy: none
+		lineageTag: 5f3be881-4387-56cd-9a1b-7a48c3e3e2ec
+
+		annotation SummarizationSetBy = User
+
+	/// True when the visit produced a finalized retail sale. Implies sale_key is populated.
+	column is_sold
+		dataType: boolean
+		sourceColumn: is_sold
+		summarizeBy: none
+		lineageTag: 26b30402-930d-5a41-a04a-7626ba6fcba8
+
+		annotation SummarizationSetBy = User
+
+	/// Always 1. Counts every scheduled appointment, cancellations included.
+	column appointment_count
+		dataType: int64
+		sourceColumn: appointment_count
+		summarizeBy: none
+		lineageTag: 0c58b3e2-d9df-5c23-acdf-55e1facc5036
+
+		annotation SummarizationSetBy = User
+
+	/// KPI-FUN-004 denominator: appointments that had the opportunity to show. 1 unless cancelled in
+	/// advance.
+	column eligible_appointment_count
+		dataType: int64
+		isHidden
+		sourceColumn: eligible_appointment_count
+		summarizeBy: none
+		lineageTag: 99cd3e30-0d03-58bf-a87e-394662b91cb8
+
+		annotation SummarizationSetBy = User
+
+	/// The excluded cancellation population. Must be published on the same visual as show rate, because
+	/// reclassifying no-shows as advance cancellations is what makes a flattering show rate possible.
+	column cancelled_in_advance_count
+		dataType: int64
+		isHidden
+		sourceColumn: cancelled_in_advance_count
+		summarizeBy: none
+		lineageTag: 29338fd2-341b-5e76-bdd1-d9eaecd30f4f
+
+		annotation SummarizationSetBy = User
+
+	/// KPI-FUN-004 numerator on the scheduled-date basis, and the KPI-FUN-005 denominator on the show-
+	/// date basis.
+	column shown_appointment_count
+		dataType: int64
+		isHidden
+		sourceColumn: shown_appointment_count
+		summarizeBy: none
+		lineageTag: 1d7641e5-e4bd-5b44-99d2-194005410bb1
+
+		annotation SummarizationSetBy = User
+
+	/// KPI-FUN-005 numerator: shown appointments that produced a finalized retail sale.
+	column shown_and_sold_appointment_count
+		dataType: int64
+		isHidden
+		sourceColumn: shown_and_sold_appointment_count
+		summarizeBy: none
+		lineageTag: 9985ce27-4627-5093-b558-772d4614fdeb
+
+		annotation SummarizationSetBy = User
+
+	/// Confirmed appointments. Context for show rate: confirmation practice moves it.
+	column confirmed_appointment_count
+		dataType: int64
+		isHidden
+		sourceColumn: confirmed_appointment_count
+		summarizeBy: none
+		lineageTag: a2de1149-6d56-55d1-abd3-30b6bab40a4a
+
+		annotation SummarizationSetBy = User
+
+	/// Appointments that included a test drive.
+	column test_drive_count
+		dataType: int64
+		isHidden
+		sourceColumn: test_drive_count
+		summarizeBy: none
+		lineageTag: 16455114-0381-5c7c-9d9d-bbd9a8c129be
+
+		annotation SummarizationSetBy = User
+
+	/// Appointments that reached a written deal.
+	column write_up_count
+		dataType: int64
+		isHidden
+		sourceColumn: write_up_count
+		summarizeBy: none
+		lineageTag: 7442e5bd-46d3-57e7-a8b7-34ec74dc2d5f
+
+		annotation SummarizationSetBy = User
+
+	/// Punctuality in minutes relative to the scheduled time, negative when early. NULL unless the
+	/// customer showed.
+	column minutes_early_or_late
+		dataType: int64
+		sourceColumn: minutes_early_or_late
+		summarizeBy: none
+		lineageTag: 0e680548-fc36-5206-a4ce-ae6d99ebecbf
+
+		annotation SummarizationSetBy = User
+
+	/// Originating system. Present so no reader mistakes this for real CRM data.
+	column source_system
+		dataType: string
+		sourceColumn: source_system
+		summarizeBy: none
+		lineageTag: 793c61a4-3e1f-5192-88f7-0a365a9ace35
+
+		annotation SummarizationSetBy = User
+
+	partition vw_appointments = m
+		mode: import
+		source =
+				let
+				    Source = PostgreSQL.Database(ArpiServer, ArpiDatabase),
+				    Data = Source{[Schema = "reporting", Item = "vw_appointments"]}[Data]
+				in
+				    Data
+
+	annotation ARPI_SourceView = reporting.vw_appointments
+
+	annotation ARPI_Grain = One row per scheduled appointment.
+
+	annotation ARPI_TableRole = Fact
+
+	annotation PBI_ResultType = Table

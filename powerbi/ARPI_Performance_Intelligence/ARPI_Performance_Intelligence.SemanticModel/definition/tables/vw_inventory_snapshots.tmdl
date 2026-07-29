@@ -1,0 +1,256 @@
+/// Grain: one row per vehicle per dealership per daily snapshot date while the unit is active --
+/// identical to warehouse.fact_vehicle_inventory_snapshot, with no aggregation and no filtering.
+/// Fact table for the semantic model. Owns the row-level inputs to KPI-INV-001..006, the KPI-
+/// INV-008 denominator and the KPI-INV-009 numerator. SEMI-ADDITIVE: inventory_unit_count and
+/// inventory_investment are additive across store, vehicle and model but NOT across dates --
+/// summing them over a date range yields unit-days, not units. Use LASTNONBLANKVALUE or an average
+/// of daily values and state the rule on the visual. days_in_stock is published at row level
+/// because KPI-INV-004 is a median and cannot be recomputed from a pre-aggregated view.
+/// aged_unit_count uses the ARPI default 60-day threshold from ARCHITECTURE.md section 18.2, which
+/// is a project convention and not an industry benchmark. Surrogate keys should be hidden in the
+/// semantic model.
+table vw_inventory_snapshots
+	lineageTag: d25202f7-3f7c-51c4-9d14-d827158282d0
+
+	/// Warehouse surrogate key of the snapshot row. Hide in the semantic model.
+	column inventory_snapshot_key
+		dataType: int64
+		isHidden
+		sourceColumn: inventory_snapshot_key
+		summarizeBy: none
+		lineageTag: 85c85da5-7e4e-5b99-92c4-65ff38c75ea8
+
+		annotation SummarizationSetBy = User
+
+	/// The as-of date of the snapshot. Single active relationship to vw_calendar. Every inventory
+	/// measure is evaluated at ONE selected date.
+	column snapshot_date_key
+		dataType: int64
+		isHidden
+		sourceColumn: snapshot_date_key
+		summarizeBy: none
+		lineageTag: 32ea7999-97b7-530d-9eb2-6859f326135c
+
+		annotation SummarizationSetBy = User
+
+	/// Store surrogate key. Relationship column; hide in the semantic model.
+	column dealership_key
+		dataType: int64
+		isHidden
+		sourceColumn: dealership_key
+		summarizeBy: none
+		lineageTag: 2225f74e-7b71-59cc-be88-7332bfc67e62
+
+		annotation SummarizationSetBy = User
+
+	/// Vehicle surrogate key. Relationship column; hide in the semantic model.
+	column vehicle_key
+		dataType: int64
+		isHidden
+		sourceColumn: vehicle_key
+		summarizeBy: none
+		lineageTag: c74be301-8bc7-53ec-86b0-bb4d93f6e396
+
+		annotation SummarizationSetBy = User
+
+	/// Model-line surrogate key. Relationship column; hide in the semantic model.
+	column vehicle_model_key
+		dataType: int64
+		isHidden
+		sourceColumn: vehicle_model_key
+		summarizeBy: none
+		lineageTag: 18b96942-7808-542a-8be9-284fcc93c85c
+
+		annotation SummarizationSetBy = User
+
+	/// Governed new/used split taken from the vehicle. New and used inventory turn at different rates
+	/// and are reported separately by default.
+	column condition_group
+		dataType: string
+		sourceColumn: condition_group
+		summarizeBy: none
+		lineageTag: 0cfc8ada-856a-5fd7-a07f-b72a19646e73
+
+		annotation SummarizationSetBy = User
+
+	/// New, Used or Certified as recorded on the vehicle.
+	column vehicle_condition_type
+		dataType: string
+		sourceColumn: vehicle_condition_type
+		summarizeBy: none
+		lineageTag: 4633eaae-e30b-55f6-8d6e-1f0a22ba0261
+
+		annotation SummarizationSetBy = User
+
+	/// Pre-computed age bucket: 0-30, 31-60, 61-90, 91-120 or Over 120 days.
+	column age_bucket
+		dataType: string
+		sourceColumn: age_bucket
+		summarizeBy: none
+		sortByColumn: age_bucket_sort_order
+		lineageTag: 42d68d56-3c4b-5bf7-93fa-ed372407de66
+
+		annotation SummarizationSetBy = User
+
+	/// Advertised price on the snapshot date.
+	column current_asking_price
+		dataType: decimal
+		sourceColumn: current_asking_price
+		summarizeBy: none
+		lineageTag: 48801b60-ae89-5150-b092-51433ec64cc8
+
+		annotation SummarizationSetBy = User
+
+	/// First advertised price.
+	column original_asking_price
+		dataType: decimal
+		sourceColumn: original_asking_price
+		summarizeBy: none
+		lineageTag: 15cc48dd-0318-5464-8195-9c178cb087cb
+
+		annotation SummarizationSetBy = User
+
+	/// Manufacturer suggested retail price where one applies, otherwise NULL.
+	column msrp
+		dataType: decimal
+		sourceColumn: msrp
+		summarizeBy: none
+		lineageTag: efc3cc02-9ae5-59af-b09c-7c796af6cd3d
+
+		annotation SummarizationSetBy = User
+
+	/// What the unit cost to acquire.
+	column acquisition_cost
+		dataType: decimal
+		sourceColumn: acquisition_cost
+		summarizeBy: none
+		lineageTag: 4943f1d7-c933-5b3f-8efd-3c2115b753ca
+
+		annotation SummarizationSetBy = User
+
+	/// What the unit cost to recondition.
+	column reconditioning_cost
+		dataType: decimal
+		sourceColumn: reconditioning_cost
+		summarizeBy: none
+		lineageTag: 9baa8150-429a-5f57-852c-4c7857e174a4
+
+		annotation SummarizationSetBy = User
+
+	/// KPI-INV-002 numerator: acquisition_cost + reconditioning_cost. SEMI-ADDITIVE across dates. This
+	/// is cost invested, not market value and not floor-plan exposure -- ARPI models no floor-plan
+	/// interest or carrying cost.
+	column inventory_investment
+		dataType: decimal
+		sourceColumn: inventory_investment
+		summarizeBy: none
+		lineageTag: d9c90b91-c339-5d54-93ef-b60a4453bb9c
+
+		annotation SummarizationSetBy = User
+
+	/// KPI-INV-003 numerator and the KPI-INV-004 median population. Calendar days between acquisition
+	/// and the snapshot date. Published at row level because a median cannot be recomputed from an
+	/// aggregate.
+	column days_in_stock
+		dataType: int64
+		sourceColumn: days_in_stock
+		summarizeBy: none
+		lineageTag: 5d929f6a-1170-502d-a42c-bee018cb397e
+
+		annotation SummarizationSetBy = User
+
+	/// True when days_in_stock exceeds the ARPI default of 60 days. A project convention from
+	/// ARCHITECTURE.md section 18.2, not an industry benchmark.
+	column is_aged_over_default_threshold
+		dataType: boolean
+		sourceColumn: is_aged_over_default_threshold
+		summarizeBy: none
+		lineageTag: 7d0720cf-a410-5fa3-bd7a-774676625a5c
+
+		annotation SummarizationSetBy = User
+
+	/// KPI-INV-005 numerator and the KPI-INV-006 numerator at the default 60-day threshold. 1 when
+	/// aged, 0 otherwise. For any other threshold, filter days_in_stock instead.
+	column aged_unit_count
+		dataType: int64
+		isHidden
+		sourceColumn: aged_unit_count
+		summarizeBy: none
+		lineageTag: 1ac27bc3-53e6-5977-8584-c30db0c1a27b
+
+		annotation SummarizationSetBy = User
+
+	/// Capital committed to units past the default threshold. The honest statement is how much capital
+	/// is committed, not what the aging is costing per day.
+	column aged_inventory_investment
+		dataType: decimal
+		isHidden
+		sourceColumn: aged_inventory_investment
+		summarizeBy: none
+		lineageTag: 431d1bbe-acf6-58d0-ae1a-4c64677067b5
+
+		annotation SummarizationSetBy = User
+
+	/// Number of price reductions applied to the unit so far.
+	column markdown_count_to_date
+		dataType: int64
+		sourceColumn: markdown_count_to_date
+		summarizeBy: none
+		lineageTag: cd0d627e-86b3-50a8-b15d-bda4852fc1ff
+
+		annotation SummarizationSetBy = User
+
+	/// KPI-INV-001 numerator and the KPI-INV-003/006 denominator. Always 1. SEMI-ADDITIVE across dates.
+	column inventory_unit_count
+		dataType: int64
+		sourceColumn: inventory_unit_count
+		summarizeBy: none
+		lineageTag: b1971a4c-882c-5408-a2d4-af260665ca6d
+
+		annotation SummarizationSetBy = User
+
+	/// Originating system. Present so no reader mistakes this for real inventory data.
+	column source_system
+		dataType: string
+		sourceColumn: source_system
+		summarizeBy: none
+		lineageTag: e8137ddf-d871-5848-9388-5e992c0a0bf4
+
+		annotation SummarizationSetBy = User
+
+	/// Hidden sort order for age_bucket. The reporting layer publishes the label without an ordering
+	/// column, so the order is defined once here and set as the sort-by column for age_bucket. Values
+	/// outside the known set sort last.
+	column age_bucket_sort_order =
+			SWITCH (
+			    'vw_inventory_snapshots'[age_bucket],
+			    "0-30", 1,
+			    "31-60", 2,
+			    "61-90", 3,
+			    "91-120", 4,
+			    "Over 120", 5,
+			    99
+			)
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		lineageTag: 3d8f7a8e-9d8e-52f7-a11c-f4e8c2938c84
+
+		annotation SummarizationSetBy = Automatic
+
+	partition vw_inventory_snapshots = m
+		mode: import
+		source =
+				let
+				    Source = PostgreSQL.Database(ArpiServer, ArpiDatabase),
+				    Data = Source{[Schema = "reporting", Item = "vw_inventory_snapshots"]}[Data]
+				in
+				    Data
+
+	annotation ARPI_SourceView = reporting.vw_inventory_snapshots
+
+	annotation ARPI_Grain = One row per vehicle per store per daily snapshot date.
+
+	annotation ARPI_TableRole = Fact
+
+	annotation PBI_ResultType = Table

@@ -1,0 +1,170 @@
+/// Grain: one row per employee, restricted to the current SCD Type 2 version. Dimension table;
+/// relates one-to-many into the role-playing employee keys on vw_vehicle_sales, vw_leads and
+/// vw_appointments, single direction. Role-playing is handled with inactive relationships and
+/// USERELATIONSHIP, never by duplicating this view. Deliberately minimised: no name, contact
+/// detail, pay plan, commission, salary or termination date is exposed, and tenure is published
+/// only as a band. ARCHITECTURE.md section 23 requires contextual metrics alongside any employee
+/// comparison; department, job_role, is_manager and tenure_band are that context.
+table vw_employee
+	lineageTag: fca29f8c-05c1-50db-ad4c-66f9f3d99c66
+
+	/// Warehouse surrogate key of the current version. Relationship column; hide in the semantic model.
+	column employee_key
+		dataType: int64
+		isHidden
+		sourceColumn: employee_key
+		summarizeBy: none
+		lineageTag: 49d713a7-89bc-5e9b-ba7a-8ded6a6e0fff
+
+		annotation SummarizationSetBy = User
+
+	/// Stable, non-identifying employee code from the source system. The only employee label ARPI
+	/// publishes.
+	column employee_code
+		dataType: string
+		sourceColumn: employee_code
+		summarizeBy: none
+		lineageTag: a40a0e8d-dd24-557a-99b4-fbd3c757be33
+
+		annotation SummarizationSetBy = User
+
+	/// Surrogate key of the store the person works at, resolved from the current dealership version.
+	/// Relationship column; hide in the semantic model.
+	column dealership_key
+		dataType: int64
+		isHidden
+		sourceColumn: dealership_key
+		summarizeBy: none
+		lineageTag: 0d9bf70d-965d-5e22-be5a-3adb3fcd99a7
+
+		annotation SummarizationSetBy = User
+
+	/// Store code the person works at, for example GSA-001.
+	column dealership_code
+		dataType: string
+		sourceColumn: dealership_code
+		summarizeBy: none
+		lineageTag: d02b5e42-831d-5bd1-a2de-366535777a72
+
+		annotation SummarizationSetBy = User
+
+	/// Short store name, denormalised so an employee slicer can group by store without a second
+	/// relationship.
+	column store_short_name
+		dataType: string
+		sourceColumn: store_short_name
+		summarizeBy: none
+		lineageTag: 47c3689d-2f89-51c6-82c2-9d29e1ff3458
+
+		annotation SummarizationSetBy = User
+
+	/// Sales, Finance, BDC, Management or Service.
+	column department
+		dataType: string
+		sourceColumn: department
+		summarizeBy: none
+		lineageTag: cb6807eb-7340-5006-944f-f8156f63f123
+
+		annotation SummarizationSetBy = User
+
+	/// Job role. Drives which role-playing relationship is meaningful for a given person.
+	column job_role
+		dataType: string
+		sourceColumn: job_role
+		summarizeBy: none
+		lineageTag: 385c43e6-f5b5-549c-a95c-e0ddd1e62b1d
+
+		annotation SummarizationSetBy = User
+
+	/// True for a management role.
+	column is_manager
+		dataType: boolean
+		sourceColumn: is_manager
+		summarizeBy: none
+		lineageTag: 8227201a-a3b9-5b70-9011-d77179b055ac
+
+		annotation SummarizationSetBy = User
+
+	/// Banded tenure. Published instead of a hire date so employee comparison carries tenure context
+	/// without exposing a precise personal date.
+	column tenure_band
+		dataType: string
+		sourceColumn: tenure_band
+		summarizeBy: none
+		sortByColumn: tenure_band_sort_order
+		lineageTag: c5708dfa-a6e5-5b12-8376-bf965bb0d6ee
+
+		annotation SummarizationSetBy = User
+
+	/// True while the person is employed.
+	column is_active
+		dataType: boolean
+		sourceColumn: is_active
+		summarizeBy: none
+		lineageTag: 9ea690c2-52f2-5e46-8faa-c4ae4267252c
+
+		annotation SummarizationSetBy = User
+
+	/// Readable label combining code and role. Preferred slicer label.
+	column employee_label
+		dataType: string
+		sourceColumn: employee_label
+		summarizeBy: none
+		lineageTag: 7946b4b3-f663-505e-9486-d1777ee7207f
+
+		annotation SummarizationSetBy = User
+
+	/// Start date of the current attribute version, so an analyst can see when the record last changed.
+	column version_effective_date
+		dataType: dateTime
+		sourceColumn: version_effective_date
+		summarizeBy: none
+		lineageTag: 3e546c39-6d25-55fa-9710-9b6c32bf4834
+
+		annotation SummarizationSetBy = User
+
+	/// Originating system. Present so no reader mistakes this for real employee data.
+	column source_system
+		dataType: string
+		sourceColumn: source_system
+		summarizeBy: none
+		lineageTag: 44371995-72d2-5a1f-950c-b927fe424a23
+
+		annotation SummarizationSetBy = User
+
+	/// Hidden sort order for tenure_band. The reporting layer publishes the label without an ordering
+	/// column, so the order is defined once here and set as the sort-by column for tenure_band. Values
+	/// outside the known set sort last.
+	column tenure_band_sort_order =
+			SWITCH (
+			    'vw_employee'[tenure_band],
+			    "Under 1 Year", 1,
+			    "1-3 Years", 2,
+			    "3-5 Years", 3,
+			    "5-10 Years", 4,
+			    "Over 10 Years", 5,
+			    99
+			)
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		lineageTag: 0c1fa35e-01b1-5003-8b25-85cb1e21551d
+
+		annotation SummarizationSetBy = Automatic
+
+	partition vw_employee = m
+		mode: import
+		source =
+				let
+				    Source = PostgreSQL.Database(ArpiServer, ArpiDatabase),
+				    Data = Source{[Schema = "reporting", Item = "vw_employee"]}[Data]
+				in
+				    Data
+
+	annotation ARPI_SourceView = reporting.vw_employee
+
+	annotation ARPI_Grain = One row per employee, current SCD Type 2 version only.
+
+	annotation ARPI_TableRole = Dimension
+
+	annotation PBI_ResultType = Table

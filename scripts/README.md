@@ -97,11 +97,108 @@ python scripts/check_secrets.py
 python scripts/check_secrets.py --paths config docs
 ```
 
+### `check_powerbi_model.py`
+
+Validates the source-controlled Power BI Project under
+`powerbi/ARPI_Performance_Intelligence/` against the specification in
+`powerbi/model_documentation/`.
+
+Gate 1 opened on 2026-07-29 and Power BI development is now authorised, which
+means the semantic model is source code and needs the same treatment as the SQL:
+a reviewable definition and a check that fails when the definition drifts from
+what was agreed. TMDL makes that possible, because the model is text.
+
+- **Reads:** the `.pbip`, both `.platform` files, `definition.pbism`,
+  `definition.pbir`, and every `.tmdl` file, with a purpose-built light parser.
+  It does **not** implement TMDL; it reads the structure it needs.
+- **Fails on:** an unexpected table; a partition reading anything other than the
+  `reporting` schema; a `_key` column left visible; a missing sort-by pairing; a
+  missing, duplicated or misnamed relationship; a bidirectional or many-to-many
+  relationship; more or fewer than one marked date table; a missing KPI measure;
+  a format string outside the approved set; a ratio that divides with `/` instead
+  of `DIVIDE`; a PII-shaped column name; anything resembling a credential; a
+  committed `.pbix`; report visual content; local Power BI machine state.
+- **Never launches Power BI Desktop.** It cannot: Desktop is a Windows
+  application. What it proves is what a text file can prove.
+
+```bash
+python scripts/check_powerbi_model.py
+```
+
+### `check_desktop_validation_freshness.py`
+
+Reports whether the Power BI Desktop validation evidence still describes the
+model that is actually committed.
+
+It hashes every file in the semantic model definition and compares that hash
+with the one recorded in `powerbi/validation/desktop_validation_results.json`.
+Evidence for a model that has since been edited is not evidence, and the point
+of this check is that it says so instead of staying green.
+
+- **Statuses:** `PASSED`, `PENDING`, `STALE`, `FAILED`, `MISSING`. `PENDING`
+  exits `0` because it is the expected state while `P2.1` is in flight — but it
+  is never rendered as a pass. `STALE`, `FAILED` and `MISSING` exit non-zero.
+- **Extra flag:** `--print-hash` prints only the hash, which is how
+  `validate_powerbi_model.ps1` records the same value CI will recompute. One
+  implementation, so the two cannot disagree.
+
+```bash
+python scripts/check_desktop_validation_freshness.py
+python scripts/check_desktop_validation_freshness.py --print-hash
+```
+
+---
+
+## The generators and the Desktop validator
+
+These two are **not** CI checks. They are run by hand, they need things CI does
+not have, and they write artefacts that are then committed and checked.
+
+### `generate_sql_baseline.py`
+
+Evaluates the SQL side of all twenty-nine governed KPIs across twenty-one filter
+contexts and writes `powerbi/validation/sql_baseline.json`, its metadata, the
+matching DAX queries, and the model inventories the Desktop validator checks
+against.
+
+The contexts are the point. A measure can have a correct grand total and still
+be wrong under filter context, so the baseline covers the unfiltered model, each
+of the three stores, each of the six months, new versus used, one employee, one
+lead source, one vehicle model, a context whose denominator is zero, a context
+that exercises an inactive date relationship, and four combinations that apply
+two or three filters at once. The combinations do the real work: a filter that
+reaches a table by the wrong route usually agrees with every single-axis
+expectation and diverges only where two of them intersect. The DAX queries are
+generated from the **same** context definitions, so the two sides cannot drift
+into describing different populations.
+
+The script also models **filter propagation** rather than assuming it — a
+condition-group filter reaches the sale and inventory facts through `vw_vehicle`
+and reaches `vw_inventory_turn` not at all — because a baseline that applied
+every filter to every table would disagree with a correct model.
+
+Requires `psycopg` and a database built from `sql/` and loaded with the
+`development` profile. Records no host, user name or password.
+
+```bash
+python scripts/generate_sql_baseline.py
+```
+
+### `validate_powerbi_model.ps1`
+
+The manual Desktop gate. Windows and PowerShell only. Connects to a running
+Power BI Desktop instance, reads the model's own metadata, runs the generated
+DAX queries, compares every value with the SQL baseline, and writes
+`powerbi/validation/desktop_validation_results.json`.
+
+The procedure around it is `docs/powerbi/POWER_BI_DESKTOP_HANDOFF.md`. Nothing
+in CI runs it, and nothing in CI ever may.
+
 ---
 
 ## When CI runs them
 
-All three run in the `repository-checks` job of
+The five Python checks run in the `repository-checks` job of
 [`.github/workflows/ci.yml`](../.github/workflows/ci.yml), on every push to any
 branch, on every pull request, and on manual dispatch. That job installs
 nothing beyond a Python interpreter.
@@ -119,14 +216,18 @@ From anywhere in the repository:
 python scripts/check_naming.py
 python scripts/check_docs_links.py
 python scripts/check_secrets.py
+python scripts/check_powerbi_model.py
+python scripts/check_desktop_validation_freshness.py
 ```
 
-Or all three, stopping at the first failure:
+Or all five, stopping at the first failure:
 
 ```bash
 python scripts/check_naming.py \
   && python scripts/check_docs_links.py \
-  && python scripts/check_secrets.py
+  && python scripts/check_secrets.py \
+  && python scripts/check_powerbi_model.py \
+  && python scripts/check_desktop_validation_freshness.py
 ```
 
 They are also linted and formatted like the rest of the project, because CI runs

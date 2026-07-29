@@ -44,7 +44,7 @@ flowchart TD
 
 | Document | Purpose | Audience | Status |
 |---|---|---|---|
-| [`../ARCHITECTURE.md`](../ARCHITECTURE.md) | The binding technical architecture: goals, non-goals, schemas, dimensional model, fact grains, pipeline, security, phases, and scope gates | Technical reviewers, contributors, the author's future self | Implemented — version 1.1, reviewed 2026-07-28 |
+| [`../ARCHITECTURE.md`](../ARCHITECTURE.md) | The binding technical architecture: goals, non-goals, schemas, dimensional model, fact grains, pipeline, security, phases, and scope gates | Technical reviewers, contributors, the author's future self | Implemented — version 1.3, reviewed 2026-07-29 |
 | [`architecture-decisions/ADR-0001-project-identity.md`](architecture-decisions/ADR-0001-project-identity.md) | Fixes the project name, short identifier, package, config prefix, and database roles; retires the former working title and defines enforcement | Anyone touching a name, a path, or a role | Accepted |
 | [`architecture-decisions/ADR-0002-phase-0-technology-baseline.md`](architecture-decisions/ADR-0002-phase-0-technology-baseline.md) | Records the non-obvious Phase 0 engineering choices and their trade-offs | Technical reviewers, contributors | Accepted |
 | [`architecture-decisions/README.md`](architecture-decisions/README.md) | ADR format, `ADR-NNNN-kebab-title.md` convention, required sections, and the index of current records | Contributors writing a new ADR | Implemented |
@@ -94,8 +94,10 @@ Contracts are the tier most worth reading closely. They are also the tier a revi
 | Document | Purpose | Audience | Status |
 |---|---|---|---|
 | [`requirements/PHASE_1_BACKLOG.md`](requirements/PHASE_1_BACKLOG.md) | Task-level breakdown of delivery increments `P1.1` through `P1.5`, with acceptance criteria and the Gate 1 checklist | Contributors picking up work | Implemented — all twenty-seven items complete |
+| [`requirements/PHASE_2_BACKLOG.md`](requirements/PHASE_2_BACKLOG.md) | Task-level breakdown of delivery increments `P2.1` through `P2.4` — semantic model, dashboard pages, findings and the Gate 2 review, portfolio packaging — with the Gate 2 checklist | Contributors picking up work; reviewers checking Gate 2 | Implemented — `P2.1` delivered except its manual Power BI Desktop validation; `P2.2`–`P2.4` Not started |
 | [`requirements/STAKEHOLDER_QUESTIONS.md`](requirements/STAKEHOLDER_QUESTIONS.md) | Persona → business question → KPI → reporting view → report page traceability, including the four questions the MVP cannot answer | Reviewers checking Gate 4; anyone asking what the platform can answer | Implemented |
 | [`requirements/GATE_1_READINESS.md`](requirements/GATE_1_READINESS.md) | The formal Gate 1 evaluation: twenty-three conditions, each with evidence, a test or query, limitations, and a verdict | Anyone deciding whether Power BI work may begin | Implemented — verdict **OPEN** |
+| [`powerbi/POWER_BI_DESKTOP_HANDOFF.md`](powerbi/POWER_BI_DESKTOP_HANDOFF.md) | The single manual checkpoint for delivery increment `P2.1`: open, refresh, save and validate the semantic model in Power BI Desktop, which GitHub Actions cannot do | Whoever runs the Desktop validation | Implemented — the validation itself is **pending** |
 | [`index.md`](index.md) | This page | Everyone | Implemented |
 
 ---
@@ -198,9 +200,11 @@ python scripts/check_secrets.py
 | [`research.md`](research.md) | Evidence and constraints |
 | [`requirements/README.md`](requirements/README.md) | Planning |
 | [`requirements/PHASE_1_BACKLOG.md`](requirements/PHASE_1_BACKLOG.md) | Planning |
+| [`requirements/PHASE_2_BACKLOG.md`](requirements/PHASE_2_BACKLOG.md) | Planning |
 | [`requirements/DOCUMENTATION_BACKLOG.md`](requirements/DOCUMENTATION_BACKLOG.md) | Planning |
 | [`requirements/STAKEHOLDER_QUESTIONS.md`](requirements/STAKEHOLDER_QUESTIONS.md) | Planning |
 | [`requirements/GATE_1_READINESS.md`](requirements/GATE_1_READINESS.md) | Planning |
+| [`powerbi/POWER_BI_DESKTOP_HANDOFF.md`](powerbi/POWER_BI_DESKTOP_HANDOFF.md) | Operations |
 | [`../powerbi/model_documentation/`](../powerbi/model_documentation/) | Design |
 | [`index.md`](index.md) | Planning |
 

@@ -310,10 +310,11 @@ All figures come from one evaluation performed on 2026-07-29:
 | **Condition ID** | `G1-C23` |
 | **Requirement** | Gate 1 gates Power BI **development**. Building the model before evaluating the gate would invalidate the review regardless of its verdict. |
 | **Evidence** | No `.pbix`, `.pbip`, `.pbit`, `.tmdl` or `.bim` file exists anywhere under `powerbi/`. `powerbi/measures/` is empty. `powerbi/model_documentation/` holds four Markdown documents, which are the **specification the gate produces**, not an implementation of it. |
-| **Test or SQL query** | `tests/integration/test_gate1_readiness.py::test_no_power_bi_artefact_has_been_built` |
+| **Test or SQL query** | `tests/integration/test_gate1_readiness.py::test_no_power_bi_artefact_has_been_built` (renamed after the gate opened — see the post-gate note below) |
 | **Result** | **Pass** |
 | **Limitation** | None. The test fails the build if any such file appears, so this condition stays enforced after the gate opens as well — at which point the test is the thing to update, deliberately and visibly. |
 | **Verdict** | **Met** |
+| **Post-gate note (added 2026-07-29, after the verdict)** | The gate opened, and the test was updated exactly as the Limitation above anticipated. It is now `tests/integration/test_gate1_readiness.py::test_only_approved_power_bi_artefacts_exist`, and the policy it enforces changed from "no Power BI artefact may exist" to "only approved Power BI artefacts may exist": the PBIP project and its TMDL are permitted under `powerbi/ARPI_Performance_Intelligence/`, while `.pbix`, `.pbit` and `.bim` stay prohibited everywhere, report visual content stays prohibited until `P2.2`, and local Power BI machine state stays untracked. The new test also asserts that the verdict recorded below is still a single **OPEN**, so the authorisation cannot be assumed after the fact. The row above is left as it was written, because the evidence as at the review date is what the verdict rested on; this note records what changed afterwards rather than rewriting the record. Delivery increment `P2.1-08`; [ADR-0007](../architecture-decisions/ADR-0007-power-bi-project-format.md). |
 
 ---
 

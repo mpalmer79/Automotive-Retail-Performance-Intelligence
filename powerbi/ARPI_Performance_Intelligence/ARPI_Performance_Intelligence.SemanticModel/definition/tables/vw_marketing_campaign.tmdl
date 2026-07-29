@@ -1,0 +1,165 @@
+/// Grain: one row per marketing campaign. Dimension table; relates one-to-many to
+/// vw_marketing_spend, vw_leads and vw_marketing_performance on campaign_key, single direction.
+/// campaign_key is nullable on vw_leads, so the model needs a blank-row policy rather than a
+/// bidirectional filter. lead_source_key is resolved here so a campaign can be sliced by source
+/// category. Every campaign and vendor name is fictional; no real vendor, agency or platform is
+/// referenced. Contains no personal data.
+table vw_marketing_campaign
+	lineageTag: 27451a54-7a99-5709-903e-a44eea099235
+
+	/// Warehouse surrogate key. Relationship column; hide in the semantic model.
+	column campaign_key
+		dataType: int64
+		isHidden
+		sourceColumn: campaign_key
+		summarizeBy: none
+		lineageTag: 4b240633-3216-50e1-ab4c-c1bbdd676fdb
+
+		annotation SummarizationSetBy = User
+
+	/// Stable business identifier of the campaign.
+	column campaign_code
+		dataType: string
+		sourceColumn: campaign_code
+		summarizeBy: none
+		lineageTag: 6229622e-b76a-54db-8c33-07482ff06c6d
+
+		annotation SummarizationSetBy = User
+
+	/// Fictional campaign label. Names a campaign, never a person.
+	column campaign_name
+		dataType: string
+		sourceColumn: campaign_name
+		summarizeBy: none
+		lineageTag: 6c1de4c3-49c8-5cc2-aada-42734e3327f4
+
+		annotation SummarizationSetBy = User
+
+	/// Marketing channel the campaign runs on.
+	column channel
+		dataType: string
+		sourceColumn: channel
+		summarizeBy: none
+		lineageTag: 306dc7f1-b2fd-5261-a8fe-0bdc04fc38c4
+
+		annotation SummarizationSetBy = User
+
+	/// Fictional vendor label. Names a business, never a person, and references no real vendor.
+	column vendor_name
+		dataType: string
+		sourceColumn: vendor_name
+		summarizeBy: none
+		lineageTag: 03c26af8-94cf-55f2-8132-a49c71bd31ee
+
+		annotation SummarizationSetBy = User
+
+	/// Surrogate key of the lead source the campaign feeds. Relationship column; hide in the semantic
+	/// model.
+	column lead_source_key
+		dataType: int64
+		isHidden
+		sourceColumn: lead_source_key
+		summarizeBy: none
+		lineageTag: 1af53d70-5bf1-518e-a163-094d9ce2f945
+
+		annotation SummarizationSetBy = User
+
+	/// Business identifier of the lead source the campaign feeds.
+	column lead_source_code
+		dataType: string
+		sourceColumn: lead_source_code
+		summarizeBy: none
+		lineageTag: 4bdaee4f-33f0-5f82-a8f9-6d40e6ac89e0
+
+		annotation SummarizationSetBy = User
+
+	/// Lead-source label, denormalised so a campaign slicer can group by source.
+	column lead_source_name
+		dataType: string
+		sourceColumn: lead_source_name
+		summarizeBy: none
+		lineageTag: 5e19832c-074f-5551-812f-1f4bcabf76a0
+
+		annotation SummarizationSetBy = User
+
+	/// True when cost-per and gross-return measures are defined for this campaign's source. Mirrors
+	/// vw_lead_source.is_cost_attributable.
+	column is_cost_attributable
+		dataType: boolean
+		sourceColumn: is_cost_attributable
+		summarizeBy: none
+		lineageTag: e9367c19-e5d0-574d-9011-d1e9510b4273
+
+		annotation SummarizationSetBy = User
+
+	/// First date the campaign ran.
+	column start_date
+		dataType: dateTime
+		sourceColumn: start_date
+		summarizeBy: none
+		lineageTag: 99713f34-e7a3-5d14-b29f-d4f5ca9974be
+
+		annotation SummarizationSetBy = User
+
+	/// Last date the campaign ran, or NULL while it is still running.
+	column end_date
+		dataType: dateTime
+		sourceColumn: end_date
+		summarizeBy: none
+		lineageTag: 3096fa70-17ba-5af0-941d-85d404e79218
+
+		annotation SummarizationSetBy = User
+
+	/// True while the campaign has no end date.
+	column is_open_ended
+		dataType: boolean
+		sourceColumn: is_open_ended
+		summarizeBy: none
+		lineageTag: 2d2afa06-b45a-5268-b342-a247ff2327d9
+
+		annotation SummarizationSetBy = User
+
+	/// Sales, Service or Both.
+	column target_department
+		dataType: string
+		sourceColumn: target_department
+		summarizeBy: none
+		lineageTag: 99380625-22c2-5629-ac0a-f9a0f99ae2da
+
+		annotation SummarizationSetBy = User
+
+	/// New, Used or Both. Campaigns do generate leads outside their target segment; attribution must
+	/// not assume perfect targeting.
+	column target_vehicle_category
+		dataType: string
+		sourceColumn: target_vehicle_category
+		summarizeBy: none
+		lineageTag: fd62b73c-fda6-5df5-b80f-9bb9c1c1bf05
+
+		annotation SummarizationSetBy = User
+
+	/// Originating system. Present so no reader mistakes this for real campaign data.
+	column source_system
+		dataType: string
+		sourceColumn: source_system
+		summarizeBy: none
+		lineageTag: eeb9295b-89e0-5294-ab78-8eda0f042d1f
+
+		annotation SummarizationSetBy = User
+
+	partition vw_marketing_campaign = m
+		mode: import
+		source =
+				let
+				    Source = PostgreSQL.Database(ArpiServer, ArpiDatabase),
+				    Data = Source{[Schema = "reporting", Item = "vw_marketing_campaign"]}[Data]
+				in
+				    Data
+
+	annotation ARPI_SourceView = reporting.vw_marketing_campaign
+
+	annotation ARPI_Grain = One row per campaign.
+
+	annotation ARPI_TableRole = Dimension
+
+	annotation PBI_ResultType = Table

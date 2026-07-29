@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Report",
+    "displayName": "ARPI_Performance_Intelligence",
+    "description": "Report shell for the ARPI semantic model. No pages and no visuals exist: report development is Lifecycle Phase 6 (delivery increment P2.2) and has not started."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "4157ac53-7838-5041-9087-dd6c8a3e94de"
+  }
+}

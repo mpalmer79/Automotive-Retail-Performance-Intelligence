@@ -1,0 +1,211 @@
+/// Grain: one row per pipeline run per check category per severity. The trend companion to
+/// vw_data_quality_summary, which shows individual results: this view answers "is quality improving
+/// or decaying?" rather than "what failed?". pass_rate divides passed checks by EVALUATED checks,
+/// and checks_skipped and evaluation_coverage are published beside it, because a 100% pass rate
+/// with forty skipped checks has proved far less than a 100% pass rate with none -- a skipped check
+/// is one that could not be meaningfully evaluated, almost always because its target held no rows,
+/// and it must never read as a pass. Categories are the seven canonical values fixed in
+/// src/arpi/constants.py and enforced by a check constraint on audit.validation_result. Reads audit
+/// tables arpi_reporter holds no privilege on; it works because a view executes with its owner's
+/// privileges, which is the mechanism that lets Power BI see data-quality evidence without reaching
+/// the audit schema.
+table vw_data_quality_trend
+	lineageTag: 88c1d01d-6836-541f-bac2-4f489dfb8a5f
+
+	/// Identifier of the pipeline run. Relationship column into vw_pipeline_run_summary.
+	column pipeline_run_id
+		dataType: int64
+		sourceColumn: pipeline_run_id
+		summarizeBy: none
+		lineageTag: 19a00f05-ad67-598a-9967-4d959c0758b0
+
+		annotation SummarizationSetBy = User
+
+	/// Deterministic run identifier, derived from the run parameters. Two runs with identical
+	/// parameters share it.
+	column run_uuid
+		dataType: string
+		sourceColumn: run_uuid
+		summarizeBy: none
+		lineageTag: 5829d13a-1b2c-50cb-a033-01b720455b0e
+
+		annotation SummarizationSetBy = User
+
+	/// Logical pipeline the run executed.
+	column pipeline_name
+		dataType: string
+		sourceColumn: pipeline_name
+		summarizeBy: none
+		lineageTag: da5a87f0-cd6b-5364-b213-0ae04664f578
+
+		annotation SummarizationSetBy = User
+
+	/// Configuration profile: development, test or portfolio. Never compare quality across profiles
+	/// without saying so; they generate different volumes.
+	column profile_name
+		dataType: string
+		sourceColumn: profile_name
+		summarizeBy: none
+		lineageTag: 8adcf3b4-c153-511b-a9f0-fb7c88a697c0
+
+		annotation SummarizationSetBy = User
+
+	/// When the run started, with time zone.
+	column run_started_at
+		dataType: dateTime
+		sourceColumn: run_started_at
+		summarizeBy: none
+		lineageTag: 39dbb558-c51b-5289-b2bc-aec8514861ea
+
+		annotation SummarizationSetBy = User
+
+	/// UTC date of the run. The x-axis of a quality trend.
+	column run_date
+		dataType: dateTime
+		sourceColumn: run_date
+		summarizeBy: none
+		lineageTag: 523bdad9-ea06-5855-840f-9082e92ac166
+
+		annotation SummarizationSetBy = User
+
+	/// Terminal status of the run: running, succeeded, failed or aborted.
+	column run_status
+		dataType: string
+		sourceColumn: run_status
+		summarizeBy: none
+		lineageTag: 010ff5db-18fb-5b23-836a-bbc3a2417c4a
+
+		annotation SummarizationSetBy = User
+
+	/// One of the seven canonical categories: structural, completeness, uniqueness, referential,
+	/// business_rule, privacy, reproducibility. Reconciliation is deliberately not a category;
+	/// reconciliations live in vw_reconciliation_status.
+	column check_category
+		dataType: string
+		sourceColumn: check_category
+		summarizeBy: none
+		lineageTag: 28141758-f319-5fc0-aa3c-c35eea6be8bd
+
+		annotation SummarizationSetBy = User
+
+	/// critical, warning or info. A critical failure fails the run; a warning does not.
+	column severity
+		dataType: string
+		sourceColumn: severity
+		summarizeBy: none
+		sortByColumn: severity_sort_order
+		lineageTag: 3b4a5637-96ac-5281-8a23-32453d4c863b
+
+		annotation SummarizationSetBy = User
+
+	/// Every result recorded in the group, skipped ones included.
+	column checks_recorded
+		dataType: int64
+		sourceColumn: checks_recorded
+		summarizeBy: none
+		lineageTag: fca44645-09f2-566d-a1ad-bcde34d2f988
+
+		annotation SummarizationSetBy = User
+
+	/// Rules evaluated and holding.
+	column checks_passed
+		dataType: int64
+		sourceColumn: checks_passed
+		summarizeBy: none
+		lineageTag: 3aad1303-77c6-58da-b8d8-367e6e13c647
+
+		annotation SummarizationSetBy = User
+
+	/// Rules evaluated and violated.
+	column checks_failed
+		dataType: int64
+		sourceColumn: checks_failed
+		summarizeBy: none
+		lineageTag: 189bc0fd-3be7-5104-855c-d881cee4303f
+
+		annotation SummarizationSetBy = User
+
+	/// Rules that could not be meaningfully evaluated, almost always because the target object held no
+	/// rows. A skipped check is not a passing check and must never be displayed as one.
+	column checks_skipped
+		dataType: int64
+		sourceColumn: checks_skipped
+		summarizeBy: none
+		lineageTag: 01203aa1-b6be-51c0-abde-3a9c5da3c964
+
+		annotation SummarizationSetBy = User
+
+	/// The pass-rate denominator: recorded checks less skipped ones.
+	column checks_evaluated
+		dataType: int64
+		sourceColumn: checks_evaluated
+		summarizeBy: none
+		lineageTag: b14438fa-c487-54b4-85dc-49286e92c91b
+
+		annotation SummarizationSetBy = User
+
+	/// Total offending records across the group. Zero on a passing group.
+	column failed_record_count
+		dataType: int64
+		sourceColumn: failed_record_count
+		summarizeBy: none
+		lineageTag: 0d41a1c3-09d7-5b6d-9bcf-42833a947505
+
+		annotation SummarizationSetBy = User
+
+	/// checks_passed / checks_evaluated, as a fraction of 1. NULL when every check in the group was
+	/// skipped -- there is no pass rate over an unevaluated population.
+	column pass_rate
+		dataType: double
+		isHidden
+		sourceColumn: pass_rate
+		summarizeBy: none
+		lineageTag: becb1678-d95e-5a1f-ba17-0c258bb0145c
+
+		annotation SummarizationSetBy = User
+
+	/// checks_evaluated / checks_recorded, as a fraction of 1. Must be read with pass_rate: a high pass
+	/// rate at low coverage proves very little.
+	column evaluation_coverage
+		dataType: double
+		isHidden
+		sourceColumn: evaluation_coverage
+		summarizeBy: none
+		lineageTag: 957e9900-9cdf-5e89-a874-e5163845b316
+
+		annotation SummarizationSetBy = User
+
+	/// Hidden sort order for severity. The reporting layer publishes the label without an ordering
+	/// column, so the order is defined once here and set as the sort-by column for severity. Values
+	/// outside the known set sort last.
+	column severity_sort_order =
+			SWITCH (
+			    'vw_data_quality_trend'[severity],
+			    "critical", 1,
+			    "warning", 2,
+			    "info", 3,
+			    99
+			)
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		lineageTag: 1d9c748c-1c96-50ac-b060-63a0d8684f18
+
+		annotation SummarizationSetBy = Automatic
+
+	partition vw_data_quality_trend = m
+		mode: import
+		source =
+				let
+				    Source = PostgreSQL.Database(ArpiServer, ArpiDatabase),
+				    Data = Source{[Schema = "reporting", Item = "vw_data_quality_trend"]}[Data]
+				in
+				    Data
+
+	annotation ARPI_SourceView = reporting.vw_data_quality_trend
+
+	annotation ARPI_Grain = One row per run x check category x severity.
+
+	annotation ARPI_TableRole = Operational
+
+	annotation PBI_ResultType = Table

@@ -1,0 +1,41 @@
+{
+  "generated_from": "scripts/generate_sql_baseline.py",
+  "git_commit": "dac2ad74c777dcc46d9cc98859869f95898a25b5",
+  "profile": "development",
+  "random_seed": 20250701,
+  "pipeline_run_status": "succeeded",
+  "reporting_date_range": {
+    "first": "2025-07-01",
+    "last": "2025-12-31"
+  },
+  "reporting_view_count": 28,
+  "database_schema_version": "sql/ tree at the commit above; 104 ordered scripts",
+  "row_counts": {
+    "vw_vehicle_sales": 650,
+    "vw_inventory_snapshots": 45754,
+    "vw_leads": 6000,
+    "vw_appointments": 2111,
+    "vw_marketing_performance": 537,
+    "vw_inventory_turn": 30,
+    "vw_days_supply": 920,
+    "vw_calendar": 184,
+    "vw_customer": 2500,
+    "vw_data_quality_summary": 114,
+    "vw_data_quality_trend": 9,
+    "vw_dealership": 3,
+    "vw_employee": 30,
+    "vw_lead_source": 19,
+    "vw_marketing_campaign": 24,
+    "vw_marketing_spend": 212,
+    "vw_pipeline_run_summary": 1,
+    "vw_reconciliation_status": 58,
+    "vw_vehicle": 900,
+    "vw_vehicle_model": 120
+  },
+  "reconciliations": {
+    "total": 58,
+    "failing": 0
+  },
+  "credentials_recorded": false,
+  "note": "No host, user name or password is recorded here on purpose. The baseline describes the DATA it was taken from, not the machine it was taken on."
+}

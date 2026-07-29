@@ -1,0 +1,18 @@
+/// PostgreSQL host for the ARPI reporting layer, optionally carrying a port, for
+/// example localhost:5432. This is a NON-SECRET connection setting. The database
+/// identity (arpi_reporter) and its password are never stored here or anywhere else in
+/// this repository; they live in the Power BI credential store on the machine that
+/// refreshes the model. Change this value in Transform data > Manage parameters.
+expression ArpiServer = "localhost:5432" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
+	lineageTag: c8941245-fc87-5ebd-b958-c940c972f108
+
+	annotation PBI_ResultType = Text
+
+/// PostgreSQL database name holding the ARPI reporting schema, for example arpi_dev.
+/// NON-SECRET. The model reads the reporting schema and nothing else; arpi_reporter
+/// holds no privilege on raw, staging, warehouse or audit, which is enforced by the
+/// database rather than by this parameter.
+expression ArpiDatabase = "arpi_dev" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
+	lineageTag: c651e484-7541-573f-bad7-cecff8a42d07
+
+	annotation PBI_ResultType = Text

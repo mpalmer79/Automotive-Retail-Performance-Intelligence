@@ -1,0 +1,196 @@
+/// Grain: one row per vehicle model line (model year x make x model x trim). Dimension table for
+/// the semantic model; relates one-to-many to vw_vehicle, vw_inventory_snapshots, vw_leads and
+/// vw_appointments on vehicle_model_key, single direction in every case. Hide vehicle_model_key in
+/// the model and label with model_label. Contains no personal data.
+table vw_vehicle_model
+	lineageTag: 987e75e0-395c-5ba0-b205-9c5900786ca0
+
+	/// Warehouse surrogate key. Relationship column; hide in the semantic model.
+	column vehicle_model_key
+		dataType: int64
+		isHidden
+		sourceColumn: vehicle_model_key
+		summarizeBy: none
+		lineageTag: f70e42ed-78be-5c63-a3d5-3fd3f352c0df
+
+		annotation SummarizationSetBy = User
+
+	/// Stable business identifier of the model line.
+	column vehicle_model_code
+		dataType: string
+		sourceColumn: vehicle_model_code
+		summarizeBy: none
+		lineageTag: 923138cf-d8bc-527a-a507-3e83c36a1b1d
+
+		annotation SummarizationSetBy = User
+
+	/// Manufacturer model year.
+	column model_year
+		dataType: int64
+		sourceColumn: model_year
+		summarizeBy: none
+		lineageTag: fe0f6caa-3e7b-52d3-9835-2f8985d44c93
+
+		annotation SummarizationSetBy = User
+
+	/// Vehicle make.
+	column make
+		dataType: string
+		sourceColumn: make
+		summarizeBy: none
+		lineageTag: a677ad55-3a0e-5421-8588-d9eb6ca2ef56
+
+		annotation SummarizationSetBy = User
+
+	/// Vehicle model label. Names a product, never a person.
+	column model_name
+		dataType: string
+		sourceColumn: model_name
+		summarizeBy: none
+		lineageTag: a899eabb-470e-53b9-adf3-fb82ae92baaa
+
+		annotation SummarizationSetBy = User
+
+	/// Trim level. Reporting name for the reserved warehouse column dim_vehicle_model.trim.
+	column trim_level
+		dataType: string
+		sourceColumn: trim_level
+		summarizeBy: none
+		lineageTag: 1aeff0df-ba01-5ca8-b486-53f1dfece1f2
+
+		annotation SummarizationSetBy = User
+
+	/// Readable make and model, for example Chevrolet Equinox.
+	column make_model_label
+		dataType: string
+		sourceColumn: make_model_label
+		summarizeBy: none
+		lineageTag: b29bf842-2d4b-55b4-8ffa-6df72126690d
+
+		annotation SummarizationSetBy = User
+
+	/// Fully qualified readable model line. Preferred slicer label.
+	column model_label
+		dataType: string
+		sourceColumn: model_label
+		summarizeBy: none
+		lineageTag: 85579a75-f0fc-5a26-8636-87b20b417206
+
+		annotation SummarizationSetBy = User
+
+	/// Body style.
+	column body_style
+		dataType: string
+		sourceColumn: body_style
+		summarizeBy: none
+		lineageTag: 76b3606f-971a-522a-8460-8c9266c984be
+
+		annotation SummarizationSetBy = User
+
+	/// Vehicle class used for segment comparison.
+	column vehicle_class
+		dataType: string
+		sourceColumn: vehicle_class
+		summarizeBy: none
+		lineageTag: d6c8709b-f6b1-5ab0-b55b-7df9a8ffc846
+
+		annotation SummarizationSetBy = User
+
+	/// Fuel type.
+	column fuel_type
+		dataType: string
+		sourceColumn: fuel_type
+		summarizeBy: none
+		lineageTag: 9e5223be-cca5-54cb-838b-4d13a3adbd2e
+
+		annotation SummarizationSetBy = User
+
+	/// True for hybrid, plug-in hybrid and electric. Convenience flag so reports do not compare
+	/// fuel_type strings.
+	column is_electrified
+		dataType: boolean
+		sourceColumn: is_electrified
+		summarizeBy: none
+		lineageTag: 62734875-d67b-5dce-8e73-5027a06d315f
+
+		annotation SummarizationSetBy = User
+
+	/// Drivetrain layout.
+	column drivetrain
+		dataType: string
+		sourceColumn: drivetrain
+		summarizeBy: none
+		lineageTag: 22796f75-a939-558d-9ba7-66addaf5093f
+
+		annotation SummarizationSetBy = User
+
+	/// Transmission type.
+	column transmission
+		dataType: string
+		sourceColumn: transmission
+		summarizeBy: none
+		lineageTag: 86b4a55f-d1dd-59ef-96f3-054dd8d3c93c
+
+		annotation SummarizationSetBy = User
+
+	/// Door count.
+	column doors
+		dataType: int64
+		sourceColumn: doors
+		summarizeBy: none
+		lineageTag: f4bf8289-419c-5bbb-be2e-dd33fb4fa966
+
+		annotation SummarizationSetBy = User
+
+	/// Seating capacity.
+	column seating_capacity
+		dataType: int64
+		sourceColumn: seating_capacity
+		summarizeBy: none
+		lineageTag: b577d018-3ae0-5879-b460-86c2f86e8ab4
+
+		annotation SummarizationSetBy = User
+
+	/// Franchise the model line belongs to, or Independent Used.
+	column franchise_alignment
+		dataType: string
+		sourceColumn: franchise_alignment
+		summarizeBy: none
+		lineageTag: 33a36998-1aee-5587-8527-17096de93162
+
+		annotation SummarizationSetBy = User
+
+	/// True while the model line is still sold new.
+	column is_current_model_line
+		dataType: boolean
+		sourceColumn: is_current_model_line
+		summarizeBy: none
+		lineageTag: 808d7702-ba5d-5314-9895-5880d4bc8531
+
+		annotation SummarizationSetBy = User
+
+	/// Originating system. Present so no reader mistakes this for real manufacturer data.
+	column source_system
+		dataType: string
+		sourceColumn: source_system
+		summarizeBy: none
+		lineageTag: 7fa0e23a-be40-536d-9d8f-24a306a5311b
+
+		annotation SummarizationSetBy = User
+
+	partition vw_vehicle_model = m
+		mode: import
+		source =
+				let
+				    Source = PostgreSQL.Database(ArpiServer, ArpiDatabase),
+				    Data = Source{[Schema = "reporting", Item = "vw_vehicle_model"]}[Data]
+				in
+				    Data
+
+	annotation ARPI_SourceView = reporting.vw_vehicle_model
+
+	annotation ARPI_Grain = One row per model line (year x make x model x trim).
+
+	annotation ARPI_TableRole = Dimension
+
+	annotation PBI_ResultType = Table

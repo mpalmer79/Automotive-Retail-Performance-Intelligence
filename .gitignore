@@ -145,8 +145,19 @@ pip-log.txt
 ~$*.pbix
 *.pbix.tmp
 *.pbix.bak
-.pbi/
 *.pbiviz
+
+# Machine-specific Power BI Desktop project state, documented at
+# https://learn.microsoft.com/power-bi/developer/projects/projects-dataset.
+# These are per-user and per-machine, and `localSettings.json` in particular can carry a
+# data-source path or a resolved connection for the person who last opened the project.
+# Nothing here is part of the semantic model definition.
+**/.pbi/localSettings.json
+**/.pbi/cache.abf
+**/.pbi/unappliedChanges.json
+# Belt and braces: the two files above are the documented ones, and this catches a cache
+# or backup that a future Desktop release adds beside them.
+**/.pbi/*.abf
 
 
 # -----------------------------------------------------------------------------

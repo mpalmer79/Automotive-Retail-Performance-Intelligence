@@ -1,0 +1,176 @@
+/// Grain: one row per physical vehicle. Dimension table for the semantic model; relates one-to-many
+/// to vw_vehicle_sales and vw_inventory_snapshots on vehicle_key, single direction. condition_group
+/// is the governed new/used split: a Certified unit is a USED unit, per KPI_CATALOG.md KPI-SLS-003.
+/// Hide vehicle_key and vehicle_model_key in the model. synthetic_vin is a deliberately invalid
+/// generated identifier (ADR-0005) and is not a real VIN. Contains no personal data.
+table vw_vehicle
+	lineageTag: a6a572e4-5eda-57e0-9cb2-5bae1be19a06
+
+	/// Warehouse surrogate key. Relationship column; hide in the semantic model.
+	column vehicle_key
+		dataType: int64
+		isHidden
+		sourceColumn: vehicle_key
+		summarizeBy: none
+		lineageTag: 9a85dd6b-59b0-55f0-8092-cae478b41af5
+
+		annotation SummarizationSetBy = User
+
+	/// Stable business identifier of the vehicle.
+	column vehicle_code
+		dataType: string
+		sourceColumn: vehicle_code
+		summarizeBy: none
+		lineageTag: 27c414bb-20b7-5a86-9614-c71b3bce06a5
+
+		annotation SummarizationSetBy = User
+
+	/// Machine-generated 17-character identifier. Deliberately not a valid VIN (ADR-0005); decodes to
+	/// nothing and identifies no real vehicle.
+	column synthetic_vin
+		dataType: string
+		sourceColumn: synthetic_vin
+		summarizeBy: none
+		lineageTag: 8bb8de7f-35d8-5fc7-9355-0d19f31bb71f
+
+		annotation SummarizationSetBy = User
+
+	/// Model-line surrogate key. Relationship column into vw_vehicle_model; hide in the semantic model.
+	column vehicle_model_key
+		dataType: int64
+		isHidden
+		sourceColumn: vehicle_model_key
+		summarizeBy: none
+		lineageTag: d77980a9-ac58-55cb-a3d5-9161072bb139
+
+		annotation SummarizationSetBy = User
+
+	/// New, Used or Certified as recorded by the source system.
+	column condition_type
+		dataType: string
+		sourceColumn: condition_type
+		summarizeBy: none
+		lineageTag: 5551a677-063e-5cb2-a875-3a6c03eee9ac
+
+		annotation SummarizationSetBy = User
+
+	/// Governed two-way split: New, or Used. Certified units are Used. Use this, not condition_type,
+	/// for the new-versus-used comparison every sales and inventory KPI requires.
+	column condition_group
+		dataType: string
+		sourceColumn: condition_group
+		summarizeBy: none
+		lineageTag: d4b4885c-efda-5d96-ac82-9de841fb4c8a
+
+		annotation SummarizationSetBy = User
+
+	/// True only for a new unit.
+	column is_new_vehicle
+		dataType: boolean
+		sourceColumn: is_new_vehicle
+		summarizeBy: none
+		lineageTag: e416192a-15fb-5d0f-a573-d5ed0dd0f6a9
+
+		annotation SummarizationSetBy = User
+
+	/// True for a manufacturer-certified pre-owned unit, which is still a used unit.
+	column is_certified
+		dataType: boolean
+		sourceColumn: is_certified
+		summarizeBy: none
+		lineageTag: 842bc634-7cdf-57e6-91b3-e9260e1c552a
+
+		annotation SummarizationSetBy = User
+
+	/// Exterior colour label.
+	column exterior_color
+		dataType: string
+		sourceColumn: exterior_color
+		summarizeBy: none
+		lineageTag: 3cc7d212-9404-58a2-a478-d4e6934529d3
+
+		annotation SummarizationSetBy = User
+
+	/// Interior colour label.
+	column interior_color
+		dataType: string
+		sourceColumn: interior_color
+		summarizeBy: none
+		lineageTag: 270b6365-08e0-5376-a0e0-216457c8188b
+
+		annotation SummarizationSetBy = User
+
+	/// Odometer reading in miles at acquisition.
+	column odometer_reading
+		dataType: int64
+		sourceColumn: odometer_reading
+		summarizeBy: none
+		lineageTag: 8f891f26-dfeb-567c-9e48-32762508fab6
+
+		annotation SummarizationSetBy = User
+
+	/// Banded odometer reading, the preferred slicer.
+	column odometer_band
+		dataType: string
+		sourceColumn: odometer_band
+		summarizeBy: none
+		sortByColumn: odometer_band_sort_order
+		lineageTag: 95817f8f-2f93-5a33-9e62-6621d3f78ede
+
+		annotation SummarizationSetBy = User
+
+	/// How the vehicle entered inventory.
+	column acquisition_source
+		dataType: string
+		sourceColumn: acquisition_source
+		summarizeBy: none
+		lineageTag: c87747c5-c327-5342-b239-22dbf623d119
+
+		annotation SummarizationSetBy = User
+
+	/// Originating system. Present so no reader mistakes this for real inventory data.
+	column source_system
+		dataType: string
+		sourceColumn: source_system
+		summarizeBy: none
+		lineageTag: 246b3a3e-4bc6-5f2b-a5b3-fa88d6f40d21
+
+		annotation SummarizationSetBy = User
+
+	/// Hidden sort order for odometer_band. The reporting layer publishes the label without an ordering
+	/// column, so the order is defined once here and set as the sort-by column for odometer_band.
+	/// Values outside the known set sort last.
+	column odometer_band_sort_order =
+			SWITCH (
+			    'vw_vehicle'[odometer_band],
+			    "New", 1,
+			    "Under 10k", 2,
+			    "10k-30k", 3,
+			    "30k-60k", 4,
+			    "60k-100k", 5,
+			    "Over 100k", 6,
+			    99
+			)
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		lineageTag: f170853e-597e-5e07-a3d8-56a456d2519c
+
+		annotation SummarizationSetBy = Automatic
+
+	partition vw_vehicle = m
+		mode: import
+		source =
+				let
+				    Source = PostgreSQL.Database(ArpiServer, ArpiDatabase),
+				    Data = Source{[Schema = "reporting", Item = "vw_vehicle"]}[Data]
+				in
+				    Data
+
+	annotation ARPI_SourceView = reporting.vw_vehicle
+
+	annotation ARPI_Grain = One row per physical vehicle.
+
+	annotation ARPI_TableRole = Dimension
+
+	annotation PBI_ResultType = Table

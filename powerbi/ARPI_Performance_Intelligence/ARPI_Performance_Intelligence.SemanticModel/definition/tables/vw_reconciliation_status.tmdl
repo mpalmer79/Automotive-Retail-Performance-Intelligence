@@ -1,0 +1,235 @@
+/// Grain: one row per recorded reconciliation result -- one per pipeline run per reconciliation
+/// identifier. The sanctioned window onto audit.reconciliation_result, which arpi_reporter holds no
+/// privilege on: a view executes with its owner's privileges, so reconciliation evidence reaches a
+/// reviewer, an Excel workbook or a future Data Quality page without any grant on the audit schema.
+/// Both sides of every comparison are published, not just the verdict, because two compensating
+/// errors can produce a passing difference and a reader must be able to see the numbers and their
+/// sources. is_critical is derived from the identifier rather than stored -- criticality is a
+/// property of the rule, not of the result -- and every reconciliation is critical except RECON-
+/// FUNNEL-CHAIN, which compares a product of four funnel rates against lead-to-sale conversion and
+/// is a finding to explain rather than a defect to fail on. No other reconciliation carries an
+/// unexplained tolerance; the only non-zero tolerance in ARPI is 0.01, used where two currency
+/// figures are compared to the cent.
+table vw_reconciliation_status
+	lineageTag: 8599f26e-fbef-5033-b8fc-4982d316ef51
+
+	/// Identifier of the recorded result.
+	column reconciliation_result_id
+		dataType: int64
+		sourceColumn: reconciliation_result_id
+		summarizeBy: none
+		lineageTag: 5ba16096-ed09-5baf-868e-6c72d38ddd46
+
+		annotation SummarizationSetBy = User
+
+	/// The run the result belongs to. Relationship column into vw_pipeline_run_summary.
+	column pipeline_run_id
+		dataType: int64
+		sourceColumn: pipeline_run_id
+		summarizeBy: none
+		lineageTag: edc73201-1049-58cb-8c72-e645ac12e63d
+
+		annotation SummarizationSetBy = User
+
+	/// Deterministic run identifier derived from the run parameters.
+	column run_uuid
+		dataType: string
+		sourceColumn: run_uuid
+		summarizeBy: none
+		lineageTag: 7be61838-2e46-571e-b44a-01e1069a4a16
+
+		annotation SummarizationSetBy = User
+
+	/// Logical pipeline the run executed.
+	column pipeline_name
+		dataType: string
+		sourceColumn: pipeline_name
+		summarizeBy: none
+		lineageTag: 683baec1-cff4-5644-8d69-5ddea6980770
+
+		annotation SummarizationSetBy = User
+
+	/// Configuration profile: development, test or portfolio.
+	column profile_name
+		dataType: string
+		sourceColumn: profile_name
+		summarizeBy: none
+		lineageTag: 6fdfcd51-0280-54bb-a334-27ca0a1423aa
+
+		annotation SummarizationSetBy = User
+
+	/// When the run started, with time zone.
+	column run_started_at
+		dataType: dateTime
+		sourceColumn: run_started_at
+		summarizeBy: none
+		lineageTag: 63b0a87e-bfac-5eaa-9a74-ab5a3d095143
+
+		annotation SummarizationSetBy = User
+
+	/// UTC date of the run. The x-axis of a reconciliation trend.
+	column run_date
+		dataType: dateTime
+		sourceColumn: run_date
+		summarizeBy: none
+		lineageTag: eb9f0794-9ee3-54a8-854e-a34f10307028
+
+		annotation SummarizationSetBy = User
+
+	/// Terminal status of the run.
+	column run_status
+		dataType: string
+		sourceColumn: run_status
+		summarizeBy: none
+		lineageTag: 9cc2903a-47c4-5323-ae19-d287a29b2ad6
+
+		annotation SummarizationSetBy = User
+
+	/// Stable identifier of the rule, for example RECON-GROSS-001. Registered in KPI_CATALOG.md section
+	/// 36.
+	column reconciliation_id
+		dataType: string
+		sourceColumn: reconciliation_id
+		summarizeBy: none
+		lineageTag: 9e265508-59d6-52fa-8c07-bf65ae5ad8d1
+
+		annotation SummarizationSetBy = User
+
+	/// What the rule compares, in words, including the observed figures where the recorder supplies
+	/// them.
+	column description
+		dataType: string
+		sourceColumn: description
+		summarizeBy: none
+		lineageTag: 1f248bd1-dbc5-5c29-82bb-2b8b83ca1cf0
+
+		annotation SummarizationSetBy = User
+
+	/// Where the left-hand figure came from.
+	column left_source
+		dataType: string
+		sourceColumn: left_source
+		summarizeBy: none
+		lineageTag: bd828d6f-ef10-5e25-a739-bdd97814d2cc
+
+		annotation SummarizationSetBy = User
+
+	/// The left-hand figure.
+	column left_value
+		dataType: double
+		sourceColumn: left_value
+		summarizeBy: none
+		lineageTag: 7e238690-02a9-53e7-afbf-e8ef40b9de33
+
+		annotation SummarizationSetBy = User
+
+	/// Where the right-hand figure came from.
+	column right_source
+		dataType: string
+		sourceColumn: right_source
+		summarizeBy: none
+		lineageTag: e55e676b-6f18-5deb-af15-e8e2d854e7b6
+
+		annotation SummarizationSetBy = User
+
+	/// The right-hand figure.
+	column right_value
+		dataType: double
+		sourceColumn: right_value
+		summarizeBy: none
+		lineageTag: 96b95be0-2541-52ce-8d61-9fbe86a63521
+
+		annotation SummarizationSetBy = User
+
+	/// left_value - right_value, stored as a generated column on the audit table so it cannot drift
+	/// from its operands.
+	column difference
+		dataType: double
+		sourceColumn: difference
+		summarizeBy: none
+		lineageTag: 2f6162eb-bb3c-565f-9767-b500e25123e0
+
+		annotation SummarizationSetBy = User
+
+	/// Magnitude of the difference, for sorting the worst offenders to the top.
+	column absolute_difference
+		dataType: double
+		sourceColumn: absolute_difference
+		summarizeBy: none
+		lineageTag: 4a476dc6-3139-59d6-a9f8-826f9c0c3793
+
+		annotation SummarizationSetBy = User
+
+	/// The tolerance applied. Zero means exact. The only non-zero value in ARPI is 0.01, where two
+	/// currency figures are compared to the cent.
+	column tolerance
+		dataType: double
+		sourceColumn: tolerance
+		summarizeBy: none
+		lineageTag: c6cbde64-c1e8-5a3d-8a8f-f61ff72ee8b6
+
+		annotation SummarizationSetBy = User
+
+	/// passed or failed.
+	column status
+		dataType: string
+		sourceColumn: status
+		summarizeBy: none
+		lineageTag: e6c72386-0fbc-541d-97ce-d9386d559084
+
+		annotation SummarizationSetBy = User
+
+	/// Convenience flag so a report does not compare status strings.
+	column is_passing
+		dataType: boolean
+		sourceColumn: is_passing
+		summarizeBy: none
+		lineageTag: 8adeb02a-b7a1-5f98-8dc6-a1b16c23665e
+
+		annotation SummarizationSetBy = User
+
+	/// True for every reconciliation except RECON-FUNNEL-CHAIN. A failing critical reconciliation
+	/// invalidates the numbers built on it.
+	column is_critical
+		dataType: boolean
+		sourceColumn: is_critical
+		summarizeBy: none
+		lineageTag: 591c7562-343f-5e22-b5a3-943f046d515d
+
+		annotation SummarizationSetBy = User
+
+	/// 0 passing, 1 failing but informational, 2 failing and critical. Sort descending to surface what
+	/// matters first.
+	column severity_rank
+		dataType: int64
+		sourceColumn: severity_rank
+		summarizeBy: none
+		lineageTag: c831904a-983c-5f83-b8da-a8a6a7316f1c
+
+		annotation SummarizationSetBy = User
+
+	/// When the result was recorded.
+	column evaluated_at
+		dataType: dateTime
+		sourceColumn: evaluated_at
+		summarizeBy: none
+		lineageTag: ccc283a0-950d-543e-8316-14f77ed2f0e7
+
+		annotation SummarizationSetBy = User
+
+	partition vw_reconciliation_status = m
+		mode: import
+		source =
+				let
+				    Source = PostgreSQL.Database(ArpiServer, ArpiDatabase),
+				    Data = Source{[Schema = "reporting", Item = "vw_reconciliation_status"]}[Data]
+				in
+				    Data
+
+	annotation ARPI_SourceView = reporting.vw_reconciliation_status
+
+	annotation ARPI_Grain = One row per run x reconciliation identifier.
+
+	annotation ARPI_TableRole = Operational
+
+	annotation PBI_ResultType = Table

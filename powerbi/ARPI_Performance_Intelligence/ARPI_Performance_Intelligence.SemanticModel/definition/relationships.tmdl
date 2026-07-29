@@ -1,0 +1,258 @@
+/// ---------------------------------------------------------------------------------
+/// ARPI relationship register.
+///
+/// Every relationship here is many-to-one from the fact to the dimension and filters in
+/// a single direction, from the dimension to the fact. Those are the TMDL/TOM defaults
+/// (fromCardinality: many, toCardinality: one, crossFilteringBehavior: oneDirection) and
+/// they are deliberately left implicit so that a Power BI Desktop round-trip produces no
+/// diff. Any relationship that ever needs to state a cardinality or a filter direction
+/// explicitly is, by that fact alone, a departure from the design and must be reviewed.
+///
+/// No relationship is bidirectional. No relationship is many-to-many. Ten relationships
+/// are inactive and carry `isActive: false`; every other relationship is active.
+///
+/// The register is specified in powerbi/model_documentation/02-relationship-plan.md.
+/// ---------------------------------------------------------------------------------
+/// Calendar to sale date. The governed date basis for every sales and gross KPI.
+relationship cal_to_vehicle_sales_sale_date
+	fromColumn: vw_vehicle_sales.sale_date_key
+	toColumn: vw_calendar.date_key
+
+/// Calendar to delivery date. INACTIVE. Delivery-basis reporting only, through
+/// USERELATIONSHIP, and any such measure must be labelled as delivery-based.
+relationship cal_to_vehicle_sales_delivery_date
+	isActive: false
+	fromColumn: vw_vehicle_sales.delivery_date_key
+	toColumn: vw_calendar.date_key
+
+/// Calendar to inventory snapshot date. The single as-of date every inventory KPI is
+/// evaluated at.
+relationship cal_to_inventory_snapshots_snapshot_date
+	fromColumn: vw_inventory_snapshots.snapshot_date_key
+	toColumn: vw_calendar.date_key
+
+/// Calendar to lead creation date. Both sides of every lead-grain funnel rate anchor
+/// here: a lead counts in the period it arrived, whatever happened later.
+relationship cal_to_leads_created_date
+	fromColumn: vw_leads.lead_created_date_key
+	toColumn: vw_calendar.date_key
+
+/// Calendar to scheduled appointment date. The show-rate basis: an appointment booked
+/// for a later period is not eligible to show in this one.
+relationship cal_to_appointments_scheduled_date
+	fromColumn: vw_appointments.scheduled_date_key
+	toColumn: vw_calendar.date_key
+
+/// Calendar to appointment creation date. INACTIVE. Booking-activity analysis only.
+relationship cal_to_appointments_created_date
+	isActive: false
+	fromColumn: vw_appointments.created_date_key
+	toColumn: vw_calendar.date_key
+
+/// Calendar to appointment show date. INACTIVE. The show-to-sale basis, activated by
+/// USERELATIONSHIP in KPI-FUN-005. NULL when the customer did not arrive, which is the
+/// majority case, so this relationship carries a blank row.
+relationship cal_to_appointments_show_date
+	isActive: false
+	fromColumn: vw_appointments.show_date_key
+	toColumn: vw_calendar.date_key
+
+/// Calendar to marketing spend month. The key is always a month start, which is what
+/// makes a day-grain cost figure structurally impossible rather than merely discouraged.
+relationship cal_to_marketing_spend_month
+	fromColumn: vw_marketing_spend.month_date_key
+	toColumn: vw_calendar.date_key
+
+/// ---------------------------------------------------------------------------------
+/// Store, vehicle and customer
+/// ---------------------------------------------------------------------------------
+relationship dealership_to_vehicle_sales
+	fromColumn: vw_vehicle_sales.dealership_key
+	toColumn: vw_dealership.dealership_key
+
+relationship dealership_to_inventory_snapshots
+	fromColumn: vw_inventory_snapshots.dealership_key
+	toColumn: vw_dealership.dealership_key
+
+relationship dealership_to_leads
+	fromColumn: vw_leads.dealership_key
+	toColumn: vw_dealership.dealership_key
+
+relationship dealership_to_appointments
+	fromColumn: vw_appointments.dealership_key
+	toColumn: vw_dealership.dealership_key
+
+relationship dealership_to_marketing_spend
+	fromColumn: vw_marketing_spend.dealership_key
+	toColumn: vw_dealership.dealership_key
+
+/// Store to employee, dimension to dimension. INACTIVE, and deliberately so.
+/// 02-relationship-plan.md section 3.2 specifies this relationship as active. Activating
+/// it creates a second active filter path from vw_dealership to vw_vehicle_sales and to
+/// vw_appointments -- one direct, one through the employee role relationships -- which
+/// the tabular engine rejects as an ambiguous path. It is also unnecessary:
+/// reporting.vw_employee already carries dealership_code and store_short_name on every
+/// row, so an employee can be filtered by store without any relationship at all. Left in
+/// place and inactive so the modelled link stays visible and available to
+/// USERELATIONSHIP. Recorded in ADR-0007.
+relationship dealership_to_employee
+	isActive: false
+	fromColumn: vw_employee.dealership_key
+	toColumn: vw_dealership.dealership_key
+
+/// The one snowflake in the model. A model line filters vehicles, which filter the facts.
+relationship vehicle_model_to_vehicle
+	fromColumn: vw_vehicle.vehicle_model_key
+	toColumn: vw_vehicle_model.vehicle_model_key
+
+relationship vehicle_to_vehicle_sales
+	fromColumn: vw_vehicle_sales.vehicle_key
+	toColumn: vw_vehicle.vehicle_key
+
+relationship vehicle_to_inventory_snapshots
+	fromColumn: vw_inventory_snapshots.vehicle_key
+	toColumn: vw_vehicle.vehicle_key
+
+/// Customer to sale. Blank row: NULL on wholesale and dealer trades, which have no
+/// retail customer.
+relationship customer_to_vehicle_sales
+	fromColumn: vw_vehicle_sales.customer_key
+	toColumn: vw_customer.customer_key
+
+/// Customer to lead. Blank row: NULL for an anonymous lead. No customer record is
+/// synthesised to fill it.
+relationship customer_to_leads
+	fromColumn: vw_leads.customer_key
+	toColumn: vw_customer.customer_key
+
+relationship customer_to_appointments
+	fromColumn: vw_appointments.customer_key
+	toColumn: vw_customer.customer_key
+
+/// ---------------------------------------------------------------------------------
+/// Employee -- six role-playing relationships, one dimension
+/// ---------------------------------------------------------------------------------
+/// The default employee relationship on the sale fact: the selling salesperson.
+relationship employee_to_vehicle_sales_salesperson
+	fromColumn: vw_vehicle_sales.salesperson_key
+	toColumn: vw_employee.employee_key
+
+/// INACTIVE. Manager-involvement context, required beside any employee comparison by
+/// ARCHITECTURE.md section 23.
+relationship employee_to_vehicle_sales_desk_manager
+	isActive: false
+	fromColumn: vw_vehicle_sales.desk_manager_key
+	toColumn: vw_employee.employee_key
+
+/// INACTIVE. Finance-office productivity analysis.
+relationship employee_to_vehicle_sales_finance_manager
+	isActive: false
+	fromColumn: vw_vehicle_sales.finance_manager_key
+	toColumn: vw_employee.employee_key
+
+/// Lead ownership.
+relationship employee_to_leads_assigned
+	fromColumn: vw_leads.assigned_employee_key
+	toColumn: vw_employee.employee_key
+
+relationship employee_to_appointments_salesperson
+	fromColumn: vw_appointments.salesperson_key
+	toColumn: vw_employee.employee_key
+
+/// INACTIVE. BDC appointment-setting performance.
+relationship employee_to_appointments_bdc
+	isActive: false
+	fromColumn: vw_appointments.bdc_employee_key
+	toColumn: vw_employee.employee_key
+
+/// ---------------------------------------------------------------------------------
+/// Marketing
+/// ---------------------------------------------------------------------------------
+relationship lead_source_to_leads
+	fromColumn: vw_leads.lead_source_key
+	toColumn: vw_lead_source.lead_source_key
+
+/// Blank row: NULL where no source was recorded on the deal.
+relationship lead_source_to_vehicle_sales
+	fromColumn: vw_vehicle_sales.lead_source_key
+	toColumn: vw_lead_source.lead_source_key
+
+relationship lead_source_to_marketing_spend
+	fromColumn: vw_marketing_spend.lead_source_key
+	toColumn: vw_lead_source.lead_source_key
+
+/// Blank row: NULL for a walk-in and every other campaign-less lead.
+relationship campaign_to_leads
+	fromColumn: vw_leads.campaign_key
+	toColumn: vw_marketing_campaign.campaign_key
+
+relationship campaign_to_marketing_spend
+	fromColumn: vw_marketing_spend.campaign_key
+	toColumn: vw_marketing_campaign.campaign_key
+
+/// ---------------------------------------------------------------------------------
+/// Fact to fact -- all three INACTIVE
+///
+/// These are legitimate: they are how a funnel outcome is traced to the deal it
+/// produced. Activating any of them would let a sale's period filter the funnel, and a
+/// lead counts in the period it arrived, not the period it converted.
+/// ---------------------------------------------------------------------------------
+relationship vehicle_sales_to_leads
+	isActive: false
+	fromColumn: vw_leads.sale_key
+	toColumn: vw_vehicle_sales.sale_key
+
+relationship vehicle_sales_to_appointments
+	isActive: false
+	fromColumn: vw_appointments.sale_key
+	toColumn: vw_vehicle_sales.sale_key
+
+relationship leads_to_appointments
+	isActive: false
+	fromColumn: vw_appointments.lead_key
+	toColumn: vw_leads.lead_key
+
+/// ---------------------------------------------------------------------------------
+/// The three imported governed analytical tables
+///
+/// 02-relationship-plan.md registers relationships for the eight dimensions and five
+/// grain-preserving facts only; it does not cover the three cross-fact analytical views
+/// that 01-table-inventory.md section 3 requires the model to import. Without these
+/// eight relationships, KPI-INV-008, KPI-INV-009 and KPI-MKT-001..003 would not respond
+/// to a store, month, source or campaign filter -- they would show the same number
+/// everywhere, which is worse than showing nothing. Each one is single-direction,
+/// many-to-one and active; none introduces a second filter path. Recorded in ADR-0007.
+/// ---------------------------------------------------------------------------------
+relationship cal_to_inventory_turn_month
+	fromColumn: vw_inventory_turn.month_date_key
+	toColumn: vw_calendar.date_key
+
+relationship dealership_to_inventory_turn
+	fromColumn: vw_inventory_turn.dealership_key
+	toColumn: vw_dealership.dealership_key
+
+relationship cal_to_days_supply_as_of_date
+	fromColumn: vw_days_supply.as_of_date_key
+	toColumn: vw_calendar.date_key
+
+relationship dealership_to_days_supply
+	fromColumn: vw_days_supply.dealership_key
+	toColumn: vw_dealership.dealership_key
+
+relationship cal_to_marketing_performance_month
+	fromColumn: vw_marketing_performance.month_date_key
+	toColumn: vw_calendar.date_key
+
+relationship dealership_to_marketing_performance
+	fromColumn: vw_marketing_performance.dealership_key
+	toColumn: vw_dealership.dealership_key
+
+relationship lead_source_to_marketing_performance
+	fromColumn: vw_marketing_performance.lead_source_key
+	toColumn: vw_lead_source.lead_source_key
+
+/// Blank row: campaign_key is NULL on a spend-free attributed-outcome row, because
+/// vw_marketing_performance is a full outer join of spend against outcome.
+relationship campaign_to_marketing_performance
+	fromColumn: vw_marketing_performance.campaign_key
+	toColumn: vw_marketing_campaign.campaign_key

@@ -1,0 +1,131 @@
+/// Grain: one row per dealership per calendar month per condition group (New / Used). Governed SQL
+/// owner of KPI-INV-008. The numerator is driven by sale_date_key and the denominator by
+/// snapshot_date_key -- two different columns on two different facts -- and both are aligned to one
+/// month key here rather than left to a report author. ARPI's method, which must be quoted with any
+/// figure: calendar-day annualization (365 / days in month), retail-only numerator, daily-average
+/// active denominator computed as unit-days / snapshot days rather than a beginning-plus-ending
+/// approximation, new and used separated, sold units excluded from the denominator after
+/// disposition, no rolling average, month as the minimum window. An ARPI turn figure is NOT
+/// comparable to one from another system unless that system makes the same seven choices.
+/// inventory_turn is NULL when the period has no snapshot rows, never 0. ARPI publishes no target
+/// turn rate, because it has no benchmark data.
+table vw_inventory_turn
+	lineageTag: bcded79f-4a5b-5f71-9189-69bbbd495a18
+
+	/// Store surrogate key. Relationship column into vw_dealership.
+	column dealership_key
+		dataType: int64
+		isHidden
+		sourceColumn: dealership_key
+		summarizeBy: none
+		lineageTag: f3e73145-f0a2-5241-a874-3c6ff5e711af
+
+		annotation SummarizationSetBy = User
+
+	/// First day of the month, as a YYYYMMDD key. Relationship column into vw_calendar. Drives BOTH the
+	/// sale-date numerator and the snapshot-date denominator.
+	column month_date_key
+		dataType: int64
+		isHidden
+		sourceColumn: month_date_key
+		summarizeBy: none
+		lineageTag: 9d7ee204-c2b7-5375-958b-7c2c3a401f27
+
+		annotation SummarizationSetBy = User
+
+	/// New or Used. Their turn rates are not comparable and are never blended.
+	column condition_group
+		dataType: string
+		sourceColumn: condition_group
+		summarizeBy: none
+		lineageTag: a7397b2f-49ca-54ba-a4a2-01acee85b22f
+
+		annotation SummarizationSetBy = User
+
+	/// Retail units delivered in the month, before annualization. Wholesale and dealer trades are
+	/// excluded: they dispose of inventory but are not retail turn.
+	column retail_units_sold
+		dataType: int64
+		sourceColumn: retail_units_sold
+		summarizeBy: none
+		lineageTag: 19217d26-a2a3-54ec-806d-a50b91b8cdc2
+
+		annotation SummarizationSetBy = User
+
+	/// Calendar days in the month, taken from vw_calendar. Calendar days, not selling days -- the
+	/// choice is fixed and must be stated on the visual.
+	column calendar_days_in_period
+		dataType: int64
+		sourceColumn: calendar_days_in_period
+		summarizeBy: none
+		lineageTag: 3a01014c-912b-58d6-9d4f-94b04f84bcad
+
+		annotation SummarizationSetBy = User
+
+	/// KPI-INV-008 numerator: retail_units_sold x 365 / calendar_days_in_period.
+	column annualized_retail_units
+		dataType: double
+		sourceColumn: annualized_retail_units
+		summarizeBy: none
+		lineageTag: 3d0de3f0-cd46-5be5-9801-319af068f7fa
+
+		annotation SummarizationSetBy = User
+
+	/// Sum of daily active unit counts across the month. Unit-DAYS, not units; this is the quantity
+	/// that makes the daily average exact.
+	column inventory_unit_days
+		dataType: int64
+		sourceColumn: inventory_unit_days
+		summarizeBy: none
+		lineageTag: 0f9c957b-6d2f-57e1-9f80-57444c62bc6a
+
+		annotation SummarizationSetBy = User
+
+	/// Distinct snapshot dates observed in the month. A value below calendar_days_in_period means
+	/// snapshot coverage is incomplete and the average is taken over the dates that exist.
+	column snapshot_day_count
+		dataType: int64
+		sourceColumn: snapshot_day_count
+		summarizeBy: none
+		lineageTag: b76125ea-7020-52a6-975f-a81fd8e4a940
+
+		annotation SummarizationSetBy = User
+
+	/// KPI-INV-008 denominator: inventory_unit_days / snapshot_day_count. A true daily average, not a
+	/// beginning-plus-ending-divided-by-two approximation. NULL when the period has no snapshot rows.
+	column average_daily_active_inventory
+		dataType: double
+		sourceColumn: average_daily_active_inventory
+		summarizeBy: none
+		lineageTag: 097512c2-6731-59e1-a9c0-6b7a20dca431
+
+		annotation SummarizationSetBy = User
+
+	/// KPI-INV-008 at this view's grain, in turns per year to two decimals. NULL when the denominator
+	/// is zero or the period has no snapshot rows, never 0. Unstable over short periods; one calendar
+	/// month is the minimum recommended window.
+	column inventory_turn
+		dataType: double
+		isHidden
+		sourceColumn: inventory_turn
+		summarizeBy: none
+		lineageTag: d37ab154-66a1-56c4-ba77-8d27e5efda7c
+
+		annotation SummarizationSetBy = User
+
+	partition vw_inventory_turn = m
+		mode: import
+		source =
+				let
+				    Source = PostgreSQL.Database(ArpiServer, ArpiDatabase),
+				    Data = Source{[Schema = "reporting", Item = "vw_inventory_turn"]}[Data]
+				in
+				    Data
+
+	annotation ARPI_SourceView = reporting.vw_inventory_turn
+
+	annotation ARPI_Grain = One row per store x calendar month x condition group.
+
+	annotation ARPI_TableRole = Analytical
+
+	annotation PBI_ResultType = Table

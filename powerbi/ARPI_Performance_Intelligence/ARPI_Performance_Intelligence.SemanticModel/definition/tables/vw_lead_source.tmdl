@@ -1,0 +1,127 @@
+/// Grain: one row per normalised lead source. Dimension table; relates one-to-many to vw_leads,
+/// vw_vehicle_sales, vw_marketing_spend and vw_marketing_performance on lead_source_key, single
+/// direction. is_cost_attributable is the governed rule that marketing cost-per and gross-return
+/// measures are undefined -- NULL, never zero -- for organic and internal sources (KPI_CATALOG.md
+/// KPI-MKT-001, KPI-MKT-002, KPI-MKT-003). Contains no personal data.
+table vw_lead_source
+	lineageTag: ec138dac-b99c-5b58-877c-0b48507d332c
+
+	/// Warehouse surrogate key. Relationship column; hide in the semantic model.
+	column lead_source_key
+		dataType: int64
+		isHidden
+		sourceColumn: lead_source_key
+		summarizeBy: none
+		lineageTag: 81fa5585-ad22-5e07-a981-12c7ef66e1c9
+
+		annotation SummarizationSetBy = User
+
+	/// Stable business identifier of the source.
+	column lead_source_code
+		dataType: string
+		sourceColumn: lead_source_code
+		summarizeBy: none
+		lineageTag: 67ed812f-1c83-5b0b-931f-2fcbcece6c86
+
+		annotation SummarizationSetBy = User
+
+	/// Normalised, generic source label such as Dealer Website. Names a channel, never a person.
+	column lead_source_name
+		dataType: string
+		sourceColumn: lead_source_name
+		summarizeBy: none
+		lineageTag: 62a0ec41-4c93-5fac-ae5b-6bdec298307b
+
+		annotation SummarizationSetBy = User
+
+	/// Governed category: Owned Digital, Third Party, Paid Search, Paid Social, Traditional Media,
+	/// Walk-in, Referral, Internal or Organic Web.
+	column source_category
+		dataType: string
+		sourceColumn: source_category
+		summarizeBy: none
+		lineageTag: 20ef523e-3a41-58b6-978f-f9fc652dd6ec
+
+		annotation SummarizationSetBy = User
+
+	/// True when the source carries marketing spend.
+	column is_paid
+		dataType: boolean
+		sourceColumn: is_paid
+		summarizeBy: none
+		lineageTag: 804e2e92-3f44-5db1-a76a-df0902363049
+
+		annotation SummarizationSetBy = User
+
+	/// True for a digital channel.
+	column is_digital
+		dataType: boolean
+		sourceColumn: is_digital
+		summarizeBy: none
+		lineageTag: dd67c8e5-009d-5aa5-ad58-395d3e22f55c
+
+		annotation SummarizationSetBy = User
+
+	/// True for a third-party lead provider.
+	column is_third_party
+		dataType: boolean
+		sourceColumn: is_third_party
+		summarizeBy: none
+		lineageTag: 7a7caf77-063e-5bb6-9800-53e269f8f8b3
+
+		annotation SummarizationSetBy = User
+
+	/// True for an internally generated source. Internal sources are never paid.
+	column is_internal
+		dataType: boolean
+		sourceColumn: is_internal
+		summarizeBy: none
+		lineageTag: 05cacc31-c593-56dc-8a80-506e35e1b6b3
+
+		annotation SummarizationSetBy = User
+
+	/// True when a cost-per-lead, cost-per-sale or gross-return figure is defined for this source.
+	/// False means those measures must return NULL, not zero.
+	column is_cost_attributable
+		dataType: boolean
+		sourceColumn: is_cost_attributable
+		summarizeBy: none
+		lineageTag: 2bac9756-7719-5732-b64d-2b28094b6e0c
+
+		annotation SummarizationSetBy = User
+
+	/// Readable form of is_cost_attributable, for use on a visual that must state why a cost measure is
+	/// blank.
+	column cost_basis_label
+		dataType: string
+		sourceColumn: cost_basis_label
+		summarizeBy: none
+		lineageTag: ad21af7c-3895-5da2-85cd-8320de574eb2
+
+		annotation SummarizationSetBy = User
+
+	/// Originating system. Present so no reader mistakes this for real vendor data.
+	column source_system
+		dataType: string
+		sourceColumn: source_system
+		summarizeBy: none
+		lineageTag: 72feffb8-81a1-5847-862f-cb861f0703b4
+
+		annotation SummarizationSetBy = User
+
+	partition vw_lead_source = m
+		mode: import
+		source =
+				let
+				    Source = PostgreSQL.Database(ArpiServer, ArpiDatabase),
+				    Data = Source{[Schema = "reporting", Item = "vw_lead_source"]}[Data]
+				in
+				    Data
+
+	annotation ARPI_SourceView = reporting.vw_lead_source
+
+	annotation ARPI_Grain = One row per normalised lead source.
+
+	annotation ARPI_TableRole = Dimension
+
+	annotation PBI_ResultType = Table

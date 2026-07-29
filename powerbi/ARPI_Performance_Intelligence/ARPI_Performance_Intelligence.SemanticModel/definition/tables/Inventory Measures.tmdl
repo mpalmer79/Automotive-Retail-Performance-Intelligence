@@ -1,0 +1,264 @@
+/// Inventory measure group.
+///
+/// SEMI-ADDITIVITY IS THE CENTRAL RULE HERE. vw_inventory_snapshots holds one row per
+/// vehicle per store per DAY. Inventory count, inventory investment, aged count and every
+/// ratio over them are STOCKS, not flows: they are additive across store, model and
+/// vehicle, and are NOT additive across dates. A plain SUM over a month is wrong by
+/// roughly a factor of thirty and looks entirely plausible. Every stock measure below is
+/// therefore wrapped in LASTNONBLANKVALUE over vw_calendar[calendar_date], which evaluates
+/// it at the last date in the current filter context that has data. Every inventory visual
+/// must still state its time-aggregation rule in words.
+///
+/// The 60-day aged threshold and the 30-day days-supply window are ARPI project defaults
+/// from ARCHITECTURE.md section 18.2. Neither is an industry benchmark, and both are
+/// restated in the measure descriptions so a finding cannot quote one without it.
+table 'Inventory Measures'
+	lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba53001
+
+	/// Hidden placeholder. A measure group needs a table to live on and a table needs a
+	/// column; this one exists for that reason only and is never exposed to a report author.
+	column Placeholder
+		dataType: string
+		isHidden
+		sourceColumn: [Placeholder]
+		summarizeBy: none
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba53002
+
+		annotation SummarizationSetBy = Automatic
+
+	/// KPI-INV-001. Units in stock as at a single date. SEMI-ADDITIVE: evaluated at the last
+	/// snapshot date in the filter context, never summed across dates. Selecting a month
+	/// returns the closing position of that month, not the sum of its daily positions.
+	measure 'Active Inventory Count' =
+			LASTNONBLANKVALUE (
+			    'vw_calendar'[calendar_date],
+			    SUM ( 'vw_inventory_snapshots'[inventory_unit_count] )
+			)
+		formatString: #,0
+		displayFolder: Stock
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba53003
+
+		annotation ARPI_KpiId = KPI-INV-001
+		annotation ARPI_MeasureRole = KPI
+		annotation ARPI_SourceTable = vw_inventory_snapshots
+		annotation ARPI_DateBasis = snapshot_date_key
+		annotation ARPI_TimeAggregation = SemiAdditiveLastDate
+		annotation ARPI_ExecutiveCard = true
+
+	/// KPI-INV-002. Capital tied up in stock as at a single date: acquisition plus
+	/// reconditioning cost. NOT market value and NOT floorplan exposure. SEMI-ADDITIVE, on
+	/// the same rule as Active Inventory Count.
+	measure 'Inventory Investment' =
+			LASTNONBLANKVALUE (
+			    'vw_calendar'[calendar_date],
+			    SUM ( 'vw_inventory_snapshots'[inventory_investment] )
+			)
+		formatString: $#,0;($#,0);-
+		displayFolder: Stock
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba53004
+
+		annotation ARPI_KpiId = KPI-INV-002
+		annotation ARPI_MeasureRole = KPI
+		annotation ARPI_SourceTable = vw_inventory_snapshots
+		annotation ARPI_DateBasis = snapshot_date_key
+		annotation ARPI_TimeAggregation = SemiAdditiveLastDate
+		annotation ARPI_ExecutiveCard = true
+
+	/// KPI-INV-003. Mean days in stock across units on the lot at a single date. The wrong
+	/// headline for a right-skewed distribution and must be published beside Median
+	/// Inventory Age, never instead of it. SEMI-ADDITIVE; BLANK when the lot is empty.
+	measure 'Average Inventory Age' =
+			LASTNONBLANKVALUE (
+			    'vw_calendar'[calendar_date],
+			    DIVIDE (
+			        SUM ( 'vw_inventory_snapshots'[days_in_stock] ),
+			        SUM ( 'vw_inventory_snapshots'[inventory_unit_count] )
+			    )
+			)
+		formatString: 0.0 "days"
+		displayFolder: Age
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba53005
+
+		annotation ARPI_KpiId = KPI-INV-003
+		annotation ARPI_MeasureRole = KPI
+		annotation ARPI_SourceTable = vw_inventory_snapshots
+		annotation ARPI_DateBasis = snapshot_date_key
+		annotation ARPI_TimeAggregation = SemiAdditiveLastDate
+
+	/// KPI-INV-004. The headline age figure. Recomputed with MEDIAN over the row-level
+	/// days_in_stock column of vw_inventory_snapshots, never from a pre-aggregated median,
+	/// because the median of a group is not derivable from the medians of its subgroups.
+	/// SEMI-ADDITIVE: taken at one as-of date, so the order statistic describes a lot on a
+	/// day rather than a pile of 184 days of snapshots.
+	measure 'Median Inventory Age' =
+			LASTNONBLANKVALUE (
+			    'vw_calendar'[calendar_date],
+			    MEDIAN ( 'vw_inventory_snapshots'[days_in_stock] )
+			)
+		formatString: 0 "days"
+		displayFolder: Age
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba53006
+
+		annotation ARPI_KpiId = KPI-INV-004
+		annotation ARPI_MeasureRole = KPI
+		annotation ARPI_SourceTable = vw_inventory_snapshots
+		annotation ARPI_DateBasis = snapshot_date_key
+		annotation ARPI_TimeAggregation = SemiAdditiveLastDate
+
+	/// KPI-INV-005. Units in stock more than 60 days at a single date. 60 days is an ARPI
+	/// project default from ARCHITECTURE.md section 18.2 and is NOT an industry benchmark;
+	/// for any other threshold, filter days_in_stock instead of using this measure.
+	/// SEMI-ADDITIVE.
+	measure 'Aged Inventory Count' =
+			LASTNONBLANKVALUE (
+			    'vw_calendar'[calendar_date],
+			    SUM ( 'vw_inventory_snapshots'[aged_unit_count] )
+			)
+		formatString: #,0
+		displayFolder: Age
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba53007
+
+		annotation ARPI_KpiId = KPI-INV-005
+		annotation ARPI_MeasureRole = KPI
+		annotation ARPI_SourceTable = vw_inventory_snapshots
+		annotation ARPI_DateBasis = snapshot_date_key
+		annotation ARPI_TimeAggregation = SemiAdditiveLastDate
+		annotation ARPI_ExecutiveCard = true
+
+	/// KPI-INV-006. Aged units as a share of units on the lot at a single date, at the 60-day
+	/// default threshold. Can improve for a bad reason: wholesaling aged units removes them
+	/// from the numerator without a single retail sale, so read it beside wholesale volume.
+	/// SEMI-ADDITIVE; BLANK on an empty lot.
+	measure 'Aged Inventory Percentage' =
+			LASTNONBLANKVALUE (
+			    'vw_calendar'[calendar_date],
+			    DIVIDE (
+			        SUM ( 'vw_inventory_snapshots'[aged_unit_count] ),
+			        SUM ( 'vw_inventory_snapshots'[inventory_unit_count] )
+			    )
+			)
+		formatString: 0.0%
+		displayFolder: Age
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba53008
+
+		annotation ARPI_KpiId = KPI-INV-006
+		annotation ARPI_MeasureRole = KPI
+		annotation ARPI_SourceTable = vw_inventory_snapshots
+		annotation ARPI_DateBasis = snapshot_date_key
+		annotation ARPI_TimeAggregation = SemiAdditiveLastDate
+		annotation ARPI_ExecutiveCard = true
+
+	/// Supporting measure for KPI-INV-005: capital tied up in units aged over the 60-day
+	/// default threshold, at a single date. The Executive Overview card. SEMI-ADDITIVE.
+	measure 'Aged Inventory Investment' =
+			LASTNONBLANKVALUE (
+			    'vw_calendar'[calendar_date],
+			    SUM ( 'vw_inventory_snapshots'[aged_inventory_investment] )
+			)
+		formatString: $#,0;($#,0);-
+		displayFolder: Age
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba53009
+
+		annotation ARPI_MeasureRole = Supporting
+		annotation ARPI_SupportsKpiId = KPI-INV-005
+		annotation ARPI_SourceTable = vw_inventory_snapshots
+		annotation ARPI_DateBasis = snapshot_date_key
+		annotation ARPI_TimeAggregation = SemiAdditiveLastDate
+		annotation ARPI_ExecutiveCard = true
+
+	/// KPI-INV-007, the headline statistic. Median calendar days between acquisition and
+	/// retail delivery, recomputed with MEDIAN over the row-level retail_days_in_inventory
+	/// column so it recomputes under any filter context. A flow, not a stock: additive date
+	/// behaviour is correct here. Non-retail rows are NULL in the source column and are
+	/// excluded from the order statistic rather than pulling it towards zero. Never publish a
+	/// chart titled only "days to sale": say which statistic it is.
+	measure 'Days to Sale (Median)' = MEDIAN ( 'vw_vehicle_sales'[retail_days_in_inventory] )
+		formatString: 0 "days"
+		displayFolder: Velocity
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba53010
+
+		annotation ARPI_KpiId = KPI-INV-007
+		annotation ARPI_MeasureRole = KPI
+		annotation ARPI_SourceTable = vw_vehicle_sales
+		annotation ARPI_DateBasis = sale_date_key
+
+	/// Supporting measure for KPI-INV-007. Mean calendar days from acquisition to retail
+	/// delivery. KPI_CATALOG.md section 5 requires the median as the headline and the mean as
+	/// an available companion; this is the companion, separately named so the two can never
+	/// be confused on a visual.
+	measure 'Days to Sale (Mean)' =
+			DIVIDE (
+			    SUM ( 'vw_vehicle_sales'[retail_days_in_inventory_total] ),
+			    [Retail Units Sold]
+			)
+		formatString: 0.0 "days"
+		displayFolder: Velocity
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba53011
+
+		annotation ARPI_MeasureRole = Supporting
+		annotation ARPI_SupportsKpiId = KPI-INV-007
+		annotation ARPI_SourceTable = vw_vehicle_sales
+		annotation ARPI_DateBasis = sale_date_key
+
+	/// KPI-INV-008. Annualized retail units divided by average daily active inventory, in
+	/// turns per year. Read from the governed vw_inventory_turn view rather than recomputed:
+	/// its numerator is driven by sale_date_key and its denominator by snapshot_date_key,
+	/// two different columns on two different facts over one window, which is exactly where a
+	/// hand-written DAX measure silently drifts. VALID AT MONTH GRAIN OR COARSER; the view
+	/// carries no finer key. Across several months this is a spend-weighted blend of the
+	/// monthly figures rather than a single recomputation. An ARPI turn figure is not
+	/// comparable to one from another system unless that system uses the same method.
+	measure 'Inventory Turn' =
+			DIVIDE (
+			    SUM ( 'vw_inventory_turn'[annualized_retail_units] ),
+			    SUM ( 'vw_inventory_turn'[average_daily_active_inventory] )
+			)
+		formatString: 0.00
+		displayFolder: Velocity
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba53012
+
+		annotation ARPI_KpiId = KPI-INV-008
+		annotation ARPI_MeasureRole = KPI
+		annotation ARPI_SourceTable = vw_inventory_turn
+		annotation ARPI_DateBasis = month_date_key
+		annotation ARPI_ValidGrain = MonthOrCoarser
+
+	/// KPI-INV-009. Units in stock at an as-of date divided by the average daily retail
+	/// selling pace over the trailing 30 CALENDAR days ending on that date. The 30-day window
+	/// is an ARPI project default from ARCHITECTURE.md section 18.2 and is NOT an industry
+	/// benchmark; it is extremely sensitive to seasonality, and 30 days ending in a slow
+	/// month makes a normal lot look overstocked. Read from the governed vw_days_supply view.
+	/// SEMI-ADDITIVE: the numerator is a stock, so the ratio is evaluated at the last as-of
+	/// date in context rather than summed across dates. BLANK at a zero selling pace -- never
+	/// infinity, never a large sentinel. State the window on any visual.
+	///
+	/// The anchor date is the last date that HAS a row, found with LASTNONBLANK over
+	/// COUNTROWS, rather than the last date at which the ratio happens to be defined. The
+	/// other seven semi-additive measures use LASTNONBLANKVALUE, which is equivalent for
+	/// them because their inner expression is non-blank whenever a row exists. It is NOT
+	/// equivalent here: this ratio is legitimately blank on a day with no trailing sales, and
+	/// LASTNONBLANKVALUE would silently walk backwards to an earlier day and report a stale
+	/// days supply as if it were current. A blank is the honest answer on such a day.
+	measure 'Dealer Days Supply' =
+			CALCULATE (
+			    DIVIDE (
+			        SUM ( 'vw_days_supply'[active_inventory_units] ),
+			        SUM ( 'vw_days_supply'[average_daily_retail_sales] )
+			    ),
+			    LASTNONBLANK ( 'vw_calendar'[calendar_date], COUNTROWS ( 'vw_days_supply' ) )
+			)
+		formatString: 0 "days"
+		displayFolder: Velocity
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba53013
+
+		annotation ARPI_KpiId = KPI-INV-009
+		annotation ARPI_MeasureRole = KPI
+		annotation ARPI_SourceTable = vw_days_supply
+		annotation ARPI_DateBasis = as_of_date_key
+		annotation ARPI_TimeAggregation = SemiAdditiveLastDate
+
+	partition 'Inventory Measures' = calculated
+		mode: import
+		source = ROW("Placeholder", "")
+
+	annotation ARPI_MeasureGroup = Inventory

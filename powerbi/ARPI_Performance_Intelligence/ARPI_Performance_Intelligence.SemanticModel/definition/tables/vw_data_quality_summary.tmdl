@@ -1,0 +1,233 @@
+/// Grain: one row per validation result (audit.validation_result), joined to its pipeline run. The
+/// detail counterpart to reporting.vw_pipeline_run_summary: which check, on which object, with what
+/// observed and expected values. Filter on is_latest_run_for_check for current data-quality state.
+table vw_data_quality_summary
+	lineageTag: c9529894-ffc2-5d0e-b73f-90e7c664f754
+
+	/// Identifier of the individual check evaluation.
+	column validation_result_id
+		dataType: int64
+		sourceColumn: validation_result_id
+		summarizeBy: none
+		lineageTag: 16581085-682d-58d7-b1e2-a216c6b3ff1d
+
+		annotation SummarizationSetBy = User
+
+	/// Run the check was evaluated in. Join key to reporting.vw_pipeline_run_summary.
+	column pipeline_run_id
+		dataType: int64
+		sourceColumn: pipeline_run_id
+		summarizeBy: none
+		lineageTag: da62bd86-8053-57f0-8deb-84ef92645e41
+
+		annotation SummarizationSetBy = User
+
+	/// UUID of the run; correlates with log output.
+	column run_uuid
+		dataType: string
+		sourceColumn: run_uuid
+		summarizeBy: none
+		lineageTag: 593ed067-a05e-59f7-9263-13a04412380e
+
+		annotation SummarizationSetBy = User
+
+	/// Logical pipeline that executed the check.
+	column pipeline_name
+		dataType: string
+		sourceColumn: pipeline_name
+		summarizeBy: none
+		lineageTag: c291f6b3-89fb-58a8-a9f1-4eb20c4f08c0
+
+		annotation SummarizationSetBy = User
+
+	/// ARPI configuration profile the run used.
+	column profile_name
+		dataType: string
+		sourceColumn: profile_name
+		summarizeBy: none
+		lineageTag: 4b09e20f-136b-5ad6-a0a9-a0582064d76e
+
+		annotation SummarizationSetBy = User
+
+	/// Overall status of the run the check belongs to.
+	column run_status
+		dataType: string
+		sourceColumn: run_status
+		summarizeBy: none
+		lineageTag: c1d02606-fd5b-574c-897c-9fcd6a10d795
+
+		annotation SummarizationSetBy = User
+
+	/// UTC instant the run began. Use this to order results by run.
+	column run_started_at
+		dataType: dateTime
+		sourceColumn: run_started_at
+		summarizeBy: none
+		lineageTag: 4745c6c7-dad7-5933-90d4-7c1f08bd602d
+
+		annotation SummarizationSetBy = User
+
+	/// Stable check identifier such as DQ-DATE-001. Identical in Python and in sql/08_validation.
+	column check_id
+		dataType: string
+		sourceColumn: check_id
+		summarizeBy: none
+		lineageTag: 7bc4f5bb-d739-5edb-9239-b3c5f6f7b1f7
+
+		annotation SummarizationSetBy = User
+
+	/// Human-readable check name.
+	column check_name
+		dataType: string
+		sourceColumn: check_name
+		summarizeBy: none
+		lineageTag: f3c013bf-66fd-5f7d-a308-66d40362ca18
+
+		annotation SummarizationSetBy = User
+
+	/// One of exactly seven canonical categories: structural, completeness, uniqueness, referential,
+	/// business_rule, privacy, reproducibility. Constrained on audit.validation_result, so a "checks by
+	/// category" breakdown groups one taxonomy rather than several.
+	column check_category
+		dataType: string
+		sourceColumn: check_category
+		summarizeBy: none
+		lineageTag: 9d5db136-574f-522b-85e1-d02e794c99d5
+
+		annotation SummarizationSetBy = User
+
+	/// Fully qualified object the check was evaluated against.
+	column target_object
+		dataType: string
+		sourceColumn: target_object
+		summarizeBy: none
+		lineageTag: ecd23ef6-347f-5cd8-8e1a-88d82b92d91d
+
+		annotation SummarizationSetBy = User
+
+	/// critical | warning | info.
+	column severity
+		dataType: string
+		sourceColumn: severity
+		summarizeBy: none
+		sortByColumn: severity_sort_order
+		lineageTag: 4de59ead-e39a-5a2a-b400-cff32b5c376d
+
+		annotation SummarizationSetBy = User
+
+	/// passed | failed | skipped.
+	column check_status
+		dataType: string
+		sourceColumn: check_status
+		summarizeBy: none
+		lineageTag: b2c48d41-bdcf-52b3-b817-67077328ab31
+
+		annotation SummarizationSetBy = User
+
+	/// Convenience flag: the check failed at any severity.
+	column is_failed
+		dataType: boolean
+		sourceColumn: is_failed
+		summarizeBy: none
+		lineageTag: 91dc26fe-6065-5601-be4f-56460369745b
+
+		annotation SummarizationSetBy = User
+
+	/// Convenience flag: the check failed at critical severity and therefore fails the run.
+	column is_critical_failure
+		dataType: boolean
+		sourceColumn: is_critical_failure
+		summarizeBy: none
+		lineageTag: 9a49a337-7c21-5bbb-afd5-33f6bb949e5a
+
+		annotation SummarizationSetBy = User
+
+	/// Numeric value observed, or NULL when the check is not numeric.
+	column observed_value
+		dataType: double
+		sourceColumn: observed_value
+		summarizeBy: none
+		lineageTag: 046a4c75-012f-5ad7-aff1-f2a6fe7a188e
+
+		annotation SummarizationSetBy = User
+
+	/// Numeric value expected or the boundary tested, or NULL when not applicable.
+	column expected_value
+		dataType: double
+		sourceColumn: expected_value
+		summarizeBy: none
+		lineageTag: 7859eaf7-7f17-5259-8554-712fc29fb1d4
+
+		annotation SummarizationSetBy = User
+
+	/// Number of records that violated the rule; 0 when the check passed.
+	column failed_record_count
+		dataType: int64
+		sourceColumn: failed_record_count
+		summarizeBy: none
+		lineageTag: 8142e520-6972-5d7d-a3b6-53d6db76fc41
+
+		annotation SummarizationSetBy = User
+
+	/// Human-readable explanation of the outcome.
+	column message
+		dataType: string
+		sourceColumn: message
+		summarizeBy: none
+		lineageTag: 96d5da9c-b95c-536a-812b-bc7c8c8047bf
+
+		annotation SummarizationSetBy = User
+
+	/// UTC instant the check ran.
+	column evaluated_at
+		dataType: dateTime
+		sourceColumn: evaluated_at
+		summarizeBy: none
+		lineageTag: 77758ca9-6329-5ace-a954-d055f67893de
+
+		annotation SummarizationSetBy = User
+
+	/// True on the most recent evaluation of this check_id across all runs. Filter on it to see current
+	/// state.
+	column is_latest_run_for_check
+		dataType: boolean
+		sourceColumn: is_latest_run_for_check
+		summarizeBy: none
+		lineageTag: 2b911c9c-59da-54c4-b59b-ee99f0bc9115
+
+		annotation SummarizationSetBy = User
+
+	/// Hidden sort order for severity. The reporting layer publishes the label without an ordering
+	/// column, so the order is defined once here and set as the sort-by column for severity. Values
+	/// outside the known set sort last.
+	column severity_sort_order =
+			SWITCH (
+			    'vw_data_quality_summary'[severity],
+			    "critical", 1,
+			    "warning", 2,
+			    "info", 3,
+			    99
+			)
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		lineageTag: afacdac0-276f-50a8-a882-cfe9cbf0a155
+
+		annotation SummarizationSetBy = Automatic
+
+	partition vw_data_quality_summary = m
+		mode: import
+		source =
+				let
+				    Source = PostgreSQL.Database(ArpiServer, ArpiDatabase),
+				    Data = Source{[Schema = "reporting", Item = "vw_data_quality_summary"]}[Data]
+				in
+				    Data
+
+	annotation ARPI_SourceView = reporting.vw_data_quality_summary
+
+	annotation ARPI_Grain = One row per validation result.
+
+	annotation ARPI_TableRole = Operational
+
+	annotation PBI_ResultType = Table

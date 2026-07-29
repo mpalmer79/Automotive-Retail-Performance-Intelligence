@@ -1,0 +1,111 @@
+/// Grain: one row per dealership per snapshot (as-of) date per condition group (New / Used).
+/// Governed SQL owner of KPI-INV-009. Numerator: active units at the single as-of date.
+/// Denominator: retail units sold over the trailing 30 CALENDAR days ending on that date, divided
+/// by 30. The 30-day window is the ARPI project default from ARCHITECTURE.md section 18.2, is NOT
+/// an industry benchmark, and is published on every row so a finding can state it. Calendar days,
+/// not selling days; retail only; new and used separated; no rolling average. days_supply is NULL
+/// when the trailing window contains no retail sales -- the measure is genuinely undefined at a
+/// zero selling pace, never infinite and never a large sentinel, and the visual must say
+/// "insufficient sales history". Extremely sensitive to the window and to seasonality: 30 days
+/// ending in a slow month makes a normal lot look overstocked. ARPI publishes no target days
+/// supply, because it has no benchmark data.
+table vw_days_supply
+	lineageTag: 3d756256-47cd-586d-89e0-323c7d49f2f0
+
+	/// Store surrogate key. Relationship column into vw_dealership.
+	column dealership_key
+		dataType: int64
+		isHidden
+		sourceColumn: dealership_key
+		summarizeBy: none
+		lineageTag: f78aaf72-4ef8-5010-886a-5630cb14f658
+
+		annotation SummarizationSetBy = User
+
+	/// The single as-of date, taken from the inventory snapshot. Relationship column into vw_calendar.
+	/// The trailing sales window ends on this date.
+	column as_of_date_key
+		dataType: int64
+		isHidden
+		sourceColumn: as_of_date_key
+		summarizeBy: none
+		lineageTag: 6359ea9f-a4d6-500b-a677-86c4126f3640
+
+		annotation SummarizationSetBy = User
+
+	/// New or Used. Reported separately; a blended days supply describes neither.
+	column condition_group
+		dataType: string
+		sourceColumn: condition_group
+		summarizeBy: none
+		lineageTag: 459dbe02-995a-557e-9a50-880135c09899
+
+		annotation SummarizationSetBy = User
+
+	/// KPI-INV-009 numerator: units in stock on the as-of date. Equals KPI-INV-001 in the same context.
+	column active_inventory_units
+		dataType: int64
+		sourceColumn: active_inventory_units
+		summarizeBy: none
+		lineageTag: ddc766f8-8727-5d6c-aa69-0c9661e3b05d
+
+		annotation SummarizationSetBy = User
+
+	/// The trailing window in calendar days, published on every row. 30 is the ARPI default from
+	/// ARCHITECTURE.md section 18.2, not an industry benchmark.
+	column trailing_days
+		dataType: int64
+		sourceColumn: trailing_days
+		summarizeBy: none
+		lineageTag: 2e7dc166-c568-5fd7-a1b1-f9973531c5ec
+
+		annotation SummarizationSetBy = User
+
+	/// Retail units delivered in the trailing window. Wholesale and dealer trades are excluded. Must
+	/// match KPI-SLS-001 over the same window (RECON-UNITS-001).
+	column trailing_retail_units
+		dataType: int64
+		sourceColumn: trailing_retail_units
+		summarizeBy: none
+		lineageTag: 30b68e0f-1a87-5463-a9c3-135485dc0b95
+
+		annotation SummarizationSetBy = User
+
+	/// KPI-INV-009 denominator: trailing_retail_units / trailing_days. Zero when the store sold nothing
+	/// in the window, which is what makes the measure undefined rather than large.
+	column average_daily_retail_sales
+		dataType: double
+		sourceColumn: average_daily_retail_sales
+		summarizeBy: none
+		lineageTag: c546d2b0-2460-5bb4-a7fb-693cc1efbbf0
+
+		annotation SummarizationSetBy = User
+
+	/// KPI-INV-009 at this view's grain, in days. NULL when average_daily_retail_sales is zero -- never
+	/// infinity, never a sentinel. State the trailing window on any visual, for example "days supply,
+	/// 30-day pace".
+	column days_supply
+		dataType: double
+		isHidden
+		sourceColumn: days_supply
+		summarizeBy: none
+		lineageTag: 5cdf743d-ad1a-5bd0-bc8b-86054a039f15
+
+		annotation SummarizationSetBy = User
+
+	partition vw_days_supply = m
+		mode: import
+		source =
+				let
+				    Source = PostgreSQL.Database(ArpiServer, ArpiDatabase),
+				    Data = Source{[Schema = "reporting", Item = "vw_days_supply"]}[Data]
+				in
+				    Data
+
+	annotation ARPI_SourceView = reporting.vw_days_supply
+
+	annotation ARPI_Grain = One row per store x as-of date x condition group.
+
+	annotation ARPI_TableRole = Analytical
+
+	annotation PBI_ResultType = Table

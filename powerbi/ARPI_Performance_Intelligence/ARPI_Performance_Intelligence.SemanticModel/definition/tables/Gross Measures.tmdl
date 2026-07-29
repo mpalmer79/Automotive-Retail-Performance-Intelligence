@@ -1,0 +1,108 @@
+/// Gross measure group. Source table vw_vehicle_sales, date basis sale_date_key. The
+/// three totals are additive sums of retail-only numerator columns; the three per-unit
+/// measures are ratios over one shared denominator, which is what makes
+/// Total Gross per Retail Unit = Front + Back hold exactly. Every ratio uses DIVIDE, so a
+/// period with no retail sales renders as a gap rather than as $0.
+///
+/// Modelling boundary to state on any new-vehicle gross visual: manufacturer incentives,
+/// holdback and floorplan credits are excluded from front gross, so ARPI new-vehicle
+/// front gross is systematically understated relative to how a real store reports it.
+table 'Gross Measures'
+	lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba52001
+
+	/// Hidden placeholder. A measure group needs a table to live on and a table needs a
+	/// column; this one exists for that reason only and is never exposed to a report author.
+	column Placeholder
+		dataType: string
+		isHidden
+		sourceColumn: [Placeholder]
+		summarizeBy: none
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba52002
+
+		annotation SummarizationSetBy = Automatic
+
+	/// KPI-GRS-001. Vehicle profit on retail deliveries: sale price less acquisition,
+	/// reconditioning and pack. Negative values are legitimate and must stay visible, and
+	/// must be distinguished by more than colour alone.
+	measure 'Front-End Gross' = SUM ( 'vw_vehicle_sales'[retail_front_end_gross] )
+		formatString: $#,0;($#,0);-
+		displayFolder: Totals
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba52003
+
+		annotation ARPI_KpiId = KPI-GRS-001
+		annotation ARPI_MeasureRole = KPI
+		annotation ARPI_SourceTable = vw_vehicle_sales
+		annotation ARPI_DateBasis = sale_date_key
+
+	/// KPI-GRS-002. Finance-office profit on retail deliveries. A cash deal with no products
+	/// contributes 0 at row level rather than being excluded. ARPI holds no product-level
+	/// detail behind this number: warehouse.fact_finance_product_sale is Deferred, so no
+	/// product-mix narrative is supportable from it.
+	measure 'Back-End Gross' = SUM ( 'vw_vehicle_sales'[retail_back_end_gross] )
+		formatString: $#,0;($#,0);-
+		displayFolder: Totals
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba52004
+
+		annotation ARPI_KpiId = KPI-GRS-002
+		annotation ARPI_MeasureRole = KPI
+		annotation ARPI_SourceTable = vw_vehicle_sales
+		annotation ARPI_DateBasis = sale_date_key
+
+	/// KPI-GRS-003. Front-End Gross + Back-End Gross on retail deliveries. Reconciled to the
+	/// cent at row level by RECON-GROSS-001.
+	measure 'Total Gross' = SUM ( 'vw_vehicle_sales'[retail_total_gross] )
+		formatString: $#,0;($#,0);-
+		displayFolder: Totals
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba52005
+
+		annotation ARPI_KpiId = KPI-GRS-003
+		annotation ARPI_MeasureRole = KPI
+		annotation ARPI_SourceTable = vw_vehicle_sales
+		annotation ARPI_DateBasis = sale_date_key
+		annotation ARPI_ExecutiveCard = true
+
+	/// KPI-GRS-004. Front-End Gross divided by Retail Units Sold. BLANK when no retail unit
+	/// was delivered in the context: $0 front gross per unit in a month with no sales would
+	/// be a false statement, not a zero.
+	measure 'Front Gross per Retail Unit' = DIVIDE ( [Front-End Gross], [Retail Units Sold] )
+		formatString: $#,0;($#,0);-
+		displayFolder: Per retail unit
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba52006
+
+		annotation ARPI_KpiId = KPI-GRS-004
+		annotation ARPI_MeasureRole = KPI
+		annotation ARPI_SourceTable = vw_vehicle_sales
+		annotation ARPI_DateBasis = sale_date_key
+
+	/// KPI-GRS-005. Back-End Gross divided by Retail Units Sold. The denominator includes
+	/// cash deals, which cannot generate finance reserve; that is deliberate, and it is why
+	/// this figure moves with finance penetration as well as with product performance.
+	measure 'Back Gross per Retail Unit' = DIVIDE ( [Back-End Gross], [Retail Units Sold] )
+		formatString: $#,0;($#,0);-
+		displayFolder: Per retail unit
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba52007
+
+		annotation ARPI_KpiId = KPI-GRS-005
+		annotation ARPI_MeasureRole = KPI
+		annotation ARPI_SourceTable = vw_vehicle_sales
+		annotation ARPI_DateBasis = sale_date_key
+
+	/// KPI-GRS-006. Total Gross divided by Retail Units Sold. Equals Front Gross per Retail
+	/// Unit + Back Gross per Retail Unit in every filter context, because all three share one
+	/// denominator. A divergence means the filter contexts have come apart.
+	measure 'Total Gross per Retail Unit' = DIVIDE ( [Total Gross], [Retail Units Sold] )
+		formatString: $#,0;($#,0);-
+		displayFolder: Per retail unit
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba52008
+
+		annotation ARPI_KpiId = KPI-GRS-006
+		annotation ARPI_MeasureRole = KPI
+		annotation ARPI_SourceTable = vw_vehicle_sales
+		annotation ARPI_DateBasis = sale_date_key
+		annotation ARPI_ExecutiveCard = true
+
+	partition 'Gross Measures' = calculated
+		mode: import
+		source = ROW("Placeholder", "")
+
+	annotation ARPI_MeasureGroup = Gross

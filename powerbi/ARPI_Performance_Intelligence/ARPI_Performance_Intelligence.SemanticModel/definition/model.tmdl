@@ -1,0 +1,47 @@
+/// ARPI semantic model. Import mode over the PostgreSQL `reporting` schema only, read as
+/// arpi_reporter, which holds no privilege on raw, staging, warehouse or audit. Twenty
+/// imported tables, six measure tables, forty-two relationships, one marked date table.
+/// The specification this implements is powerbi/model_documentation/.
+model Model
+	culture: en-US
+	defaultPowerBIDataSourceVersion: powerBI_V3
+	discourageImplicitMeasures
+	sourceQueryCulture: en-US
+	dataAccessOptions
+		legacyRedirects
+		returnErrorValuesAsNull
+
+/// Power BI's automatic date/time hierarchy is disabled for this project. vw_calendar is
+/// the marked date table and the only date table; a hidden auto-generated calendar per
+/// date column would give two answers to "what is last month" and disable the marked date
+/// table's time intelligence without saying so.
+annotation __PBI_TimeIntelligenceEnabled = 0
+
+annotation PBI_QueryOrder = ["ArpiServer","ArpiDatabase","vw_calendar","vw_dealership","vw_employee","vw_customer","vw_vehicle_model","vw_vehicle","vw_lead_source","vw_marketing_campaign","vw_vehicle_sales","vw_inventory_snapshots","vw_leads","vw_appointments","vw_marketing_spend","vw_inventory_turn","vw_days_supply","vw_marketing_performance","vw_data_quality_trend","vw_reconciliation_status","vw_pipeline_run_summary","vw_data_quality_summary"]
+
+ref table vw_calendar
+ref table vw_dealership
+ref table vw_employee
+ref table vw_customer
+ref table vw_vehicle_model
+ref table vw_vehicle
+ref table vw_lead_source
+ref table vw_marketing_campaign
+ref table vw_vehicle_sales
+ref table vw_inventory_snapshots
+ref table vw_leads
+ref table vw_appointments
+ref table vw_marketing_spend
+ref table vw_inventory_turn
+ref table vw_days_supply
+ref table vw_marketing_performance
+ref table vw_data_quality_trend
+ref table vw_reconciliation_status
+ref table vw_pipeline_run_summary
+ref table vw_data_quality_summary
+ref table 'Sales Measures'
+ref table 'Gross Measures'
+ref table 'Inventory Measures'
+ref table 'Lead Funnel Measures'
+ref table 'Marketing Measures'
+ref table 'Data Quality Measures'

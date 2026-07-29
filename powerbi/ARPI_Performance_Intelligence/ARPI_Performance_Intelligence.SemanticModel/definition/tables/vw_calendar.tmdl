@@ -1,0 +1,304 @@
+/// Grain: one row per calendar date. Business-facing projection of warehouse.dim_date and the date
+/// table a Power BI or Excel model should bind to. Adds year_month_number as the chronological sort
+/// key for year_month_label. is_showroom_closed is the reporting name for
+/// dim_date.is_closure_holiday; note that weekends are selling days because New Hampshire permits
+/// Sunday vehicle sales.
+table vw_calendar
+	dataCategory: Time
+	lineageTag: 740ad841-bee9-517f-a621-0a2a70efa153
+
+	/// Integer YYYYMMDD key. Join key for every fact table.
+	column date_key
+		dataType: int64
+		isHidden
+		sourceColumn: date_key
+		summarizeBy: none
+		lineageTag: 1eea1759-b833-5821-b0ec-67082d6e86ed
+
+		annotation SummarizationSetBy = User
+
+	/// The calendar date.
+	column calendar_date
+		dataType: dateTime
+		isKey
+		formatString: yyyy-mm-dd
+		sourceColumn: calendar_date
+		summarizeBy: none
+		lineageTag: 3410eaa1-ef3f-5d8e-a4d8-b000093426eb
+
+		annotation SummarizationSetBy = User
+
+	/// Day number within the month, 1-31.
+	column day_of_month
+		dataType: int64
+		sourceColumn: day_of_month
+		summarizeBy: none
+		lineageTag: 6a284314-7f2e-522c-9dec-7d281018fd63
+
+		annotation SummarizationSetBy = User
+
+	/// Weekday name, Monday through Sunday.
+	column day_name
+		dataType: string
+		sourceColumn: day_name
+		summarizeBy: none
+		sortByColumn: iso_day_of_week
+		lineageTag: dbd457a2-517d-5b34-8c7f-26c555f6a786
+
+		annotation SummarizationSetBy = User
+
+	/// ISO weekday number, 1 = Monday through 7 = Sunday.
+	column iso_day_of_week
+		dataType: int64
+		sourceColumn: iso_day_of_week
+		summarizeBy: none
+		lineageTag: ec36760c-21fc-5ffe-9e6a-0475e36c623c
+
+		annotation SummarizationSetBy = User
+
+	/// Ordinal day within the calendar year, 1-366.
+	column day_of_year
+		dataType: int64
+		sourceColumn: day_of_year
+		summarizeBy: none
+		lineageTag: c8077379-5524-5cdd-bb0b-08b19d05668d
+
+		annotation SummarizationSetBy = User
+
+	/// ISO-8601 week number, 1-53. Use with iso_week_year, not calendar_year.
+	column iso_week_number
+		dataType: int64
+		sourceColumn: iso_week_number
+		summarizeBy: none
+		lineageTag: 1052be2e-8e57-5c86-9ae2-10ae646cbf22
+
+		annotation SummarizationSetBy = User
+
+	/// ISO-8601 week-numbering year.
+	column iso_week_year
+		dataType: int64
+		sourceColumn: iso_week_year
+		summarizeBy: none
+		lineageTag: a38fd962-287f-54f7-b9c6-588aabec8e04
+
+		annotation SummarizationSetBy = User
+
+	/// Month number, 1-12.
+	column month_number
+		dataType: int64
+		sourceColumn: month_number
+		summarizeBy: none
+		lineageTag: 69ffe396-65b8-50b9-a465-cb4e18510192
+
+		annotation SummarizationSetBy = User
+
+	/// Month name, January through December.
+	column month_name
+		dataType: string
+		sourceColumn: month_name
+		summarizeBy: none
+		sortByColumn: month_number
+		lineageTag: e1ca258a-51bf-53ee-a2a6-cee490084f51
+
+		annotation SummarizationSetBy = User
+
+	/// First date of the month.
+	column month_start_date
+		dataType: dateTime
+		sourceColumn: month_start_date
+		summarizeBy: none
+		lineageTag: 286b1104-302b-5f52-9429-c7308dd2ea2b
+
+		annotation SummarizationSetBy = User
+
+	/// Last date of the month.
+	column month_end_date
+		dataType: dateTime
+		sourceColumn: month_end_date
+		summarizeBy: none
+		lineageTag: fa3ae571-b311-5274-bb9a-6d51c6dddba4
+
+		annotation SummarizationSetBy = User
+
+	/// YYYYMM integer. Chronological sort key for year_month_label.
+	column year_month_number
+		dataType: int64
+		isHidden
+		sourceColumn: year_month_number
+		summarizeBy: none
+		lineageTag: 9b351ea9-9446-5b76-99a5-5afcbd56b48e
+
+		annotation SummarizationSetBy = User
+
+	/// Month label in YYYY-MM form, for example 2025-07.
+	column year_month_label
+		dataType: string
+		sourceColumn: year_month_label
+		summarizeBy: none
+		sortByColumn: year_month_number
+		lineageTag: 1d67bdc3-241d-54c1-983b-2e1c85eab020
+
+		annotation SummarizationSetBy = User
+
+	/// Readable month label, for example July 2025.
+	column month_year_label
+		dataType: string
+		sourceColumn: month_year_label
+		summarizeBy: none
+		sortByColumn: year_month_number
+		lineageTag: 55f458ff-962a-5a07-8c82-7430fe86cba8
+
+		annotation SummarizationSetBy = User
+
+	/// Calendar quarter number, 1-4.
+	column quarter_number
+		dataType: int64
+		sourceColumn: quarter_number
+		summarizeBy: none
+		lineageTag: 9982ee37-2a85-5f84-8eac-b1d2288740f2
+
+		annotation SummarizationSetBy = User
+
+	/// Quarter label Q1 through Q4.
+	column quarter_name
+		dataType: string
+		sourceColumn: quarter_name
+		summarizeBy: none
+		sortByColumn: quarter_number
+		lineageTag: 3796c541-d328-561a-a781-adebfda17d4b
+
+		annotation SummarizationSetBy = User
+
+	/// Readable quarter label, for example Q3 2025.
+	column quarter_year_label
+		dataType: string
+		sourceColumn: quarter_year_label
+		summarizeBy: none
+		lineageTag: 32427594-2497-5bdd-8526-e08f15733f71
+
+		annotation SummarizationSetBy = User
+
+	/// Gregorian calendar year.
+	column calendar_year
+		dataType: int64
+		sourceColumn: calendar_year
+		summarizeBy: none
+		lineageTag: c193d4ff-81d8-52a7-b534-73f8ecbabd30
+
+		annotation SummarizationSetBy = User
+
+	/// Fiscal month; equals month_number while the fiscal year is calendar-aligned.
+	column fiscal_month
+		dataType: int64
+		sourceColumn: fiscal_month
+		summarizeBy: none
+		lineageTag: 35171867-233b-582e-9285-88ddaabf9661
+
+		annotation SummarizationSetBy = User
+
+	/// Fiscal quarter; equals quarter_number while the fiscal year is calendar-aligned.
+	column fiscal_quarter
+		dataType: int64
+		sourceColumn: fiscal_quarter
+		summarizeBy: none
+		lineageTag: 6bb56233-4bb5-5d2a-b7e6-5d4f2cbd37a4
+
+		annotation SummarizationSetBy = User
+
+	/// Fiscal year; equals calendar_year while the fiscal year is calendar-aligned.
+	column fiscal_year
+		dataType: int64
+		sourceColumn: fiscal_year
+		summarizeBy: none
+		lineageTag: 7f5ddc20-1090-5bea-9a07-5f11929ee5ed
+
+		annotation SummarizationSetBy = User
+
+	/// True on Saturday and Sunday. Weekends are still selling days.
+	column is_weekend
+		dataType: boolean
+		sourceColumn: is_weekend
+		summarizeBy: none
+		lineageTag: 3f90124d-6ce5-5784-8fc1-a30cd2c7d155
+
+		annotation SummarizationSetBy = User
+
+	/// True on the last date of the month.
+	column is_month_end
+		dataType: boolean
+		sourceColumn: is_month_end
+		summarizeBy: none
+		lineageTag: 30b0ca95-187a-5cbb-b97a-e70425040500
+
+		annotation SummarizationSetBy = User
+
+	/// True on the last date of the calendar quarter.
+	column is_quarter_end
+		dataType: boolean
+		sourceColumn: is_quarter_end
+		summarizeBy: none
+		lineageTag: 0948da49-42af-5788-b82a-c862959f2fe4
+
+		annotation SummarizationSetBy = User
+
+	/// True on 31 December.
+	column is_year_end
+		dataType: boolean
+		sourceColumn: is_year_end
+		summarizeBy: none
+		lineageTag: ebf4d526-6271-5e09-a669-15deceff7fe3
+
+		annotation SummarizationSetBy = User
+
+	/// True on a recognised holiday, whether or not the showroom closes.
+	column is_holiday
+		dataType: boolean
+		sourceColumn: is_holiday
+		summarizeBy: none
+		lineageTag: 71b042f0-6272-5c9c-a772-03e68256864b
+
+		annotation SummarizationSetBy = User
+
+	/// Holiday name, or NULL when the date is not a holiday.
+	column holiday_name
+		dataType: string
+		sourceColumn: holiday_name
+		summarizeBy: none
+		lineageTag: 13b1b5c7-cb7d-51a4-895b-ee7fa2f0361b
+
+		annotation SummarizationSetBy = User
+
+	/// True when the showroom is closed for the holiday.
+	column is_showroom_closed
+		dataType: boolean
+		sourceColumn: is_showroom_closed
+		summarizeBy: none
+		lineageTag: dcd9f66a-7d0d-50f0-83ac-644a604d9688
+
+		annotation SummarizationSetBy = User
+
+	/// True when a vehicle can be retailed. Denominator for every per-selling-day KPI.
+	column is_selling_day
+		dataType: boolean
+		sourceColumn: is_selling_day
+		summarizeBy: none
+		lineageTag: 03142bec-63d7-53a3-9fbb-4f1aca5e1ed5
+
+		annotation SummarizationSetBy = User
+
+	partition vw_calendar = m
+		mode: import
+		source =
+				let
+				    Source = PostgreSQL.Database(ArpiServer, ArpiDatabase),
+				    Data = Source{[Schema = "reporting", Item = "vw_calendar"]}[Data]
+				in
+				    Data
+
+	annotation ARPI_SourceView = reporting.vw_calendar
+
+	annotation ARPI_Grain = One row per calendar date.
+
+	annotation ARPI_TableRole = Dimension
+
+	annotation PBI_ResultType = Table
