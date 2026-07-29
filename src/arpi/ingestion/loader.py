@@ -142,8 +142,13 @@ class LayerCounts:
             outside its domain.
         deduplicated: Rows dropped because their natural key repeated within the batch.
         warehouse: Rows present in the warehouse table after the merge.
-        warehouse_matched: Distinct staged natural keys that reached the warehouse.
+        warehouse_matched: Distinct staged business keys that reached the warehouse.
         staging_keys: Distinct natural keys present in staging.
+        staging_match_keys: Distinct *business* keys present in staging. Identical to
+            ``staging_keys`` for every entity whose natural key is one column; they
+            diverge for a Type 2 entity staged at version grain, where the natural key is
+            ``(business key, effective date)`` and the warehouse is matched on the
+            business key alone.
     """
 
     raw: int = 0
@@ -153,6 +158,7 @@ class LayerCounts:
     warehouse: int = 0
     warehouse_matched: int = 0
     staging_keys: int = 0
+    staging_match_keys: int = 0
 
     @property
     def rejected_total(self) -> int:
@@ -411,13 +417,30 @@ def _collect_layer_counts(connection: Any, entity_spec: EntityIngestionSpec) -> 
             sql.Identifier(entity_spec.staging_view),
         ),
     )
+    staging_match_keys = (
+        staging_keys
+        if len(entity_spec.natural_key) == 1
+        else _scalar(
+            connection,
+            sql.SQL("SELECT count(DISTINCT {}) FROM {}.{}").format(
+                sql.Identifier(entity_spec.warehouse_match_key),
+                sql.Identifier(SCHEMA_STAGING),
+                sql.Identifier(entity_spec.staging_view),
+            ),
+        )
+    )
     rejected_invalid, deduplicated = _collect_drop_counts(connection, entity_spec, raw_count)
 
     warehouse_count = 0
     warehouse_matched = 0
     if entity_spec.warehouse_table is not None:
         warehouse_count = _warehouse_row_count(
-            connection, entity_spec.warehouse_table, current_only=entity_spec.scd_type_2
+            connection,
+            entity_spec.warehouse_table,
+            # Only current rows when the generator emits one row per business key. An
+            # entity that generates its own versions must be compared against every
+            # warehouse row, or its superseded versions read as rows that went missing.
+            current_only=entity_spec.scd_type_2 and not entity_spec.source_grain_is_version,
         )
         warehouse_matched = _warehouse_matched_count(connection, entity_spec)
 
@@ -429,6 +452,7 @@ def _collect_layer_counts(connection: Any, entity_spec: EntityIngestionSpec) -> 
         warehouse=warehouse_count,
         warehouse_matched=warehouse_matched,
         staging_keys=staging_keys,
+        staging_match_keys=staging_match_keys,
     )
 
 
@@ -655,11 +679,11 @@ def _record_counts(
             ReconciliationResult(
                 reconciliation_id=entity_spec.warehouse_reconciliation_id,
                 description=(
-                    f"Every {entity} natural key accepted by staging was inserted into or "
-                    f"matched in the warehouse."
+                    f"Every {entity} business key accepted by staging was inserted into "
+                    f"or matched in the warehouse."
                 ),
                 left_source=f"{SCHEMA_STAGING}.{entity_spec.staging_view}",
-                left_value=float(layer.staging_keys),
+                left_value=float(layer.staging_match_keys),
                 right_source=f"{SCHEMA_WAREHOUSE}.{entity_spec.warehouse_table}",
                 right_value=float(layer.warehouse_matched),
             )

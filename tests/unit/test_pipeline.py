@@ -11,7 +11,15 @@ from arpi.audit.run import STATUS_FAILED, STATUS_SUCCEEDED
 from arpi.config import ArpiConfig, load_config
 from arpi.constants import MANIFEST_FILENAME
 from arpi.ingestion import database
-from arpi.pipeline import SKIP_REASON_NOT_REQUESTED, run_foundation
+from arpi.ingestion.spec import spec_for
+from arpi.pipeline import GENERATION_ORDER, SKIP_REASON_NOT_REQUESTED, run_foundation
+
+#: Data-quality results one full run produces, across every entity.
+#:
+#: Pinned rather than derived: the point of the assertion is that a check cannot quietly
+#: stop being emitted. Ten entity suites plus the two cross-entity generation checks,
+#: with one ``DQ-GEN-001`` schema result per entity.
+EXPECTED_CHECK_COUNT = 80
 
 
 @pytest.fixture
@@ -31,7 +39,44 @@ def test_run_writes_raw_outputs(slice_config: ArpiConfig, working_dir: Path) -> 
     assert (raw_dir / "dim_date.csv").is_file()
     assert (raw_dir / "dim_dealership.csv").is_file()
     assert (raw_dir / MANIFEST_FILENAME).is_file()
-    assert {entity.entity for entity in result.raw_files} == {"dim_date", "dim_dealership"}
+    assert {entity.entity for entity in result.raw_files} == set(GENERATION_ORDER)
+
+
+def test_run_generates_every_entity_in_dependency_order(slice_config: ArpiConfig) -> None:
+    """Every registered entity is produced, and the order is the declared one.
+
+    A vehicle cannot be drawn before its model catalogue exists and a sale cannot be
+    drawn before the vehicle it disposes of, so the order is part of the contract, not a
+    presentation detail.
+    """
+    result = run_foundation(slice_config, load_database=False)
+    assert tuple(dataset.entity_name for dataset in result.datasets) == GENERATION_ORDER
+    for dataset in result.datasets:
+        assert dataset.row_count > 0, f"{dataset.entity_name} generated no rows"
+
+
+def test_every_generated_entity_has_an_ingestion_spec(slice_config: ArpiConfig) -> None:
+    """A generated entity with no spec would be refused by the loader at run time.
+
+    Asserting it here means the failure surfaces without a database, rather than only on
+    a machine that has PostgreSQL.
+    """
+    result = run_foundation(slice_config, load_database=False)
+    for dataset in result.datasets:
+        assert spec_for(dataset.entity_name).entity_name == dataset.entity_name
+
+
+def test_generation_is_deterministic_for_one_seed(slice_config: ArpiConfig) -> None:
+    """The same seed must produce byte-identical CSV content for every entity."""
+    first = {
+        entity.entity: entity.content_digest
+        for entity in run_foundation(slice_config, load_database=False).raw_files
+    }
+    second = {
+        entity.entity: entity.content_digest
+        for entity in run_foundation(slice_config, load_database=False).raw_files
+    }
+    assert first == second
 
 
 def test_test_profile_writes_no_sample_outputs(slice_config: ArpiConfig, working_dir: Path) -> None:
@@ -70,9 +115,10 @@ def test_output_dir_override(slice_config: ArpiConfig, working_dir: Path) -> Non
 def test_run_records_the_audit_trail(slice_config: ArpiConfig) -> None:
     result = run_foundation(slice_config, load_database=False)
     rows = result.recorder.to_rows()
-    assert len(rows["pipeline_run_row_count"]) == 2
+    assert len(rows["pipeline_run_row_count"]) == len(GENERATION_ORDER)
     assert {row["layer"] for row in rows["pipeline_run_row_count"]} == {"source"}
-    assert len(rows["validation_result"]) == 13
+    assert {row["entity_name"] for row in rows["pipeline_run_row_count"]} == set(GENERATION_ORDER)
+    assert len(rows["validation_result"]) == EXPECTED_CHECK_COUNT
     assert rows["reconciliation_result"] == []
     assert result.run.status == STATUS_SUCCEEDED
     assert result.run.completed_at is not None
@@ -82,7 +128,7 @@ def test_run_succeeds_and_reports_no_critical_failures(slice_config: ArpiConfig)
     result = run_foundation(slice_config, load_database=False)
     assert result.succeeded is True
     assert not result.report.has_critical_failure
-    assert len(result.report) == 13
+    assert len(result.report) == EXPECTED_CHECK_COUNT
 
 
 def test_database_step_is_skipped_not_failed(slice_config: ArpiConfig) -> None:
@@ -146,9 +192,7 @@ def test_critical_failure_marks_the_run_failed(
             ).failed("forced failure"),
         )
     )
-    monkeypatch.setattr(
-        "arpi.pipeline.validate_foundation_datasets", lambda *args, **kwargs: failing
-    )
+    monkeypatch.setattr("arpi.pipeline.validate_all_datasets", lambda *args, **kwargs: failing)
     result = run_foundation(slice_config, load_database=False)
     assert result.succeeded is False
     assert result.run.status == STATUS_FAILED

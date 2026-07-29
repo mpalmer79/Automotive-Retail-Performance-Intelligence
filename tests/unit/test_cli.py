@@ -181,7 +181,7 @@ def test_run_foundation_exits_one_on_a_critical_failure(
             ).failed("forced failure"),
         )
     )
-    monkeypatch.setattr("arpi.pipeline.validate_foundation_datasets", lambda *a, **k: failing)
+    monkeypatch.setattr("arpi.pipeline.validate_all_datasets", lambda *a, **k: failing)
     assert main(["run-foundation", "--profile", "test", "--no-load-database"]) == EXIT_FAILURE
     assert "critical data-quality check(s) failed" in capsys.readouterr().err
 

@@ -1,0 +1,35 @@
+employee_key,employee_id,dealership_id,department,job_role,hire_date,termination_date,is_active,is_manager,tenure_band,effective_date,expiration_date,is_current,attribute_hash,source_system
+1,EMP-00001,GSA-001,Management,Sales Manager,2015-08-16,,true,true,Over 10 Years,2015-08-16,2020-12-18,false,0b88e1d8c3c16c275fba1da127bb74ff59538d89e3541aa9bcc1d08b21c99b39,arpi_synthetic_generator
+2,EMP-00001,GSA-001,Management,General Manager,2015-08-16,,true,true,Over 10 Years,2020-12-19,9999-12-31,true,48f36e8bf540e86ca81726c3c5e5f9cb210f0d6b44054898e25d8a647b8a80a5,arpi_synthetic_generator
+3,EMP-00002,GSA-001,Management,Sales Manager,2018-05-19,,true,true,5-10 Years,2018-05-19,9999-12-31,true,79a93ae376dcf58364ff08d6bba9f7624df4c3ea8feb1ff3f73764b3a161c17c,arpi_synthetic_generator
+4,EMP-00003,GSA-001,Sales,Salesperson,2021-11-16,,true,false,3-5 Years,2021-11-16,9999-12-31,true,382a74ca776642b329c4aaf46b81a1385613e2da8aa29ea35d136306b3d65b6b,arpi_synthetic_generator
+5,EMP-00004,GSA-001,Sales,Salesperson,2021-07-20,2025-08-06,false,false,3-5 Years,2021-07-20,9999-12-31,true,a0bf3c72ae88acfd5c0f93834b606f3f894d460cff7da27933a597373f51b5b2,arpi_synthetic_generator
+6,EMP-00005,GSA-001,Finance,Finance Manager,2018-06-05,,true,true,5-10 Years,2018-06-05,9999-12-31,true,8a90521fe4482d6f21e981a17d7601ccc6058fd83672fcd992dc19caec13ad1c,arpi_synthetic_generator
+7,EMP-00006,GSA-001,Sales,Salesperson,2021-09-27,,true,false,3-5 Years,2021-09-27,9999-12-31,true,90d980cf42895a3d0f8a9a81d69dffd1c9897394adc37ab1dda12fc986463c13,arpi_synthetic_generator
+8,EMP-00007,GSA-001,Sales,Salesperson,2019-04-12,,true,false,5-10 Years,2019-04-12,9999-12-31,true,027a8e85c39875f448e72d7e12fdf451055ac5a114c575025f67bcbca0782e67,arpi_synthetic_generator
+9,EMP-00008,GSA-001,Management,Desk Manager,2018-05-09,,true,true,5-10 Years,2018-05-09,9999-12-31,true,a2c7452aafd75f9b2511e563e24ba7a1894cd9815a7d7ff6665ade3a8b14d1ee,arpi_synthetic_generator
+10,EMP-00009,GSA-002,Service,Service Advisor,2021-05-20,,true,false,3-5 Years,2021-05-20,2024-05-17,false,9e6182641b349399fd0fe2705c2525dbc09c4a4cbb2b8c3acba590ae01329076,arpi_synthetic_generator
+11,EMP-00009,GSA-001,Service,Service Advisor,2021-05-20,,true,false,3-5 Years,2024-05-18,9999-12-31,true,f0923979250841cf8dbed3e267e04c77ebad6c2e56b738bf82e94ff0278a2307,arpi_synthetic_generator
+12,EMP-00010,GSA-001,Sales,Salesperson,2021-02-23,,true,false,3-5 Years,2021-02-23,9999-12-31,true,3e457e6b04014097f8a7754fbdffb8b0a16ffe0020ed1ee3267232b151aa0735,arpi_synthetic_generator
+13,EMP-00011,GSA-001,BDC,BDC Representative,2023-03-30,,true,false,1-3 Years,2023-03-30,9999-12-31,true,cb7e1a871213b172c39ae1e105531621a4d025eb2125055009381a980f28836c,arpi_synthetic_generator
+14,EMP-00012,GSA-001,Sales,Salesperson,2017-09-03,,true,false,5-10 Years,2017-09-03,9999-12-31,true,898cae16981fffd88cb792d402d7c2d07da4b3dd12deed538cff56e609ca11e2,arpi_synthetic_generator
+15,EMP-00013,GSA-002,Management,General Manager,2013-08-19,,true,true,Over 10 Years,2013-08-19,9999-12-31,true,482185f0e9dcb114fd0350b3ab41d3e25eb9e912575f2fd76d2240062784acf8,arpi_synthetic_generator
+16,EMP-00014,GSA-002,Management,Sales Manager,2016-07-05,,true,true,5-10 Years,2016-07-05,9999-12-31,true,d90323d4b0cb860be3802e60c03477231cd6f1368aecf70368dfcb608f99020d,arpi_synthetic_generator
+17,EMP-00015,GSA-002,Sales,Salesperson,2024-06-15,,true,false,1-3 Years,2024-06-15,9999-12-31,true,6332174b2ba41b7a45dbe71879c370c6a8400211dd5156789d73df1010001626,arpi_synthetic_generator
+18,EMP-00016,GSA-001,Sales,Salesperson,2023-10-07,,true,false,1-3 Years,2023-10-07,2024-12-08,false,4ff51f5623f0a939cc81871f1230a16143d9b921f06a7f05365c29b0b51c8ec8,arpi_synthetic_generator
+19,EMP-00016,GSA-002,Sales,Salesperson,2023-10-07,,true,false,1-3 Years,2024-12-09,9999-12-31,true,c3ccefbfc5711aacd5ffd3374f343a18d676e459c0c938f9a629346c635c1930,arpi_synthetic_generator
+20,EMP-00017,GSA-002,Finance,Finance Manager,2019-10-26,,true,true,5-10 Years,2019-10-26,9999-12-31,true,e050c1be0612270921ae68354d02b8d5e367bf372cfbc4b97b6198c3babe597b,arpi_synthetic_generator
+21,EMP-00018,GSA-002,Sales,Salesperson,2016-06-01,,true,false,5-10 Years,2016-06-01,9999-12-31,true,82701eba30112cf346f3928cc1bf9e1174ad66137600ee3cc066c128d4b6306d,arpi_synthetic_generator
+22,EMP-00019,GSA-002,BDC,BDC Representative,2023-06-04,,true,false,1-3 Years,2023-06-04,9999-12-31,true,9995c2edbab2a4f973d8d2d6c29eb832137145f5738fc254c4c268d25a64cc06,arpi_synthetic_generator
+23,EMP-00020,GSA-002,Sales,Salesperson,2025-03-06,2025-07-13,false,false,Under 1 Year,2025-03-06,9999-12-31,true,67639fab175fe72f4ffe1ba5e0d586400fa6a066174bec6ddb6d09b0963b79a6,arpi_synthetic_generator
+24,EMP-00021,GSA-002,Service,Service Advisor,2023-08-10,,true,false,1-3 Years,2023-08-10,9999-12-31,true,df3f07d22d6182740ff58811570a52161194189ccaff106ad0184171b0d903d7,arpi_synthetic_generator
+25,EMP-00022,GSA-002,Sales,Salesperson,2017-11-08,2025-09-02,false,false,5-10 Years,2017-11-08,9999-12-31,true,132ffd2a3b9290c5b7db12da2611522709a0c66e1c0deed5bb08e4e3fe47cbc6,arpi_synthetic_generator
+26,EMP-00023,GSA-002,Management,Desk Manager,2015-04-30,,true,true,Over 10 Years,2015-04-30,9999-12-31,true,4ee1625a3e444ea4a3ec7241ec980f8ad14fd3fa2f569e41d58ea53e34012338,arpi_synthetic_generator
+27,EMP-00024,GSA-003,Management,General Manager,2017-03-13,,true,true,5-10 Years,2017-03-13,9999-12-31,true,91f5717baa28b84481d4c57a14f5edfabc5176601b5c162c7ee6527c2bd58ab8,arpi_synthetic_generator
+28,EMP-00025,GSA-003,Sales,Salesperson,2021-02-12,,true,false,3-5 Years,2021-02-12,9999-12-31,true,805485116f9bd03f902a06be36558db87d7c3f8bb98b2b106211dc47f04f995a,arpi_synthetic_generator
+29,EMP-00026,GSA-003,Sales,Salesperson,2024-03-15,,true,false,1-3 Years,2024-03-15,9999-12-31,true,8e6f47750fb13cccfda726e74c929f23c70e1969412892a5da2097066c8827d4,arpi_synthetic_generator
+30,EMP-00027,GSA-003,Sales,Salesperson,2022-09-28,,true,false,3-5 Years,2022-09-28,9999-12-31,true,6b8699fc1001a54efe2b54e37d9c56b31ff359e5cc4e0b3385b3e3809703b9fe,arpi_synthetic_generator
+31,EMP-00028,GSA-003,Finance,Finance Manager,2019-08-11,,true,true,5-10 Years,2019-08-11,9999-12-31,true,8716df83b0b9187b0902c58aef812e4f3d3ccfa582df1ff59cfadf36711b884f,arpi_synthetic_generator
+32,EMP-00029,GSA-001,Sales,Salesperson,2018-01-22,,true,false,5-10 Years,2018-01-22,2023-12-07,false,e28dd20fb48ccca209c10e7b17ea6bf893fbca66d6cff4162e50d80bd2e1ad2e,arpi_synthetic_generator
+33,EMP-00029,GSA-003,Sales,Salesperson,2018-01-22,,true,false,5-10 Years,2023-12-08,9999-12-31,true,2fb6f10c171ca8ef5cfc3b0da5bd1c9cd67943ec265b73e39c516f3b3e2e906a,arpi_synthetic_generator
+34,EMP-00030,GSA-003,Management,Sales Manager,2017-03-13,,true,true,5-10 Years,2017-03-13,9999-12-31,true,5ea28189e87114e42ce7963c25b74d2d7024d8ee0bb7405ee82a13e9230c8ad5,arpi_synthetic_generator

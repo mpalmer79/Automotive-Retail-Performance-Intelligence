@@ -57,7 +57,9 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 REPO_CONFIG_DIR = REPO_ROOT / "config"
 SQL_ROOT = REPO_ROOT / "sql"
 
-ENTITY = "vehicle_model"
+#: The entity name its generator declares, which is the name the loader looks the
+#: ingestion spec up by. The SQL objects are stemmed on the unprefixed ``vehicle_model``.
+ENTITY = "dim_vehicle_model"
 
 #: The declared column contract of the vehicle model entity, in contract order.
 VEHICLE_MODEL_COLUMNS: tuple[str, ...] = (
@@ -394,7 +396,7 @@ def test_all_five_layers_are_persisted_for_the_run(loaded: Any, observer: Any) -
 def test_the_chain_reconciliation_is_recorded_and_passes(loaded: Any, observer: Any) -> None:
     """A ``RECON-INGEST-*-CHAIN`` result exists for the entity and reports ``passed``."""
     entity_spec = spec_for(ENTITY)
-    assert entity_spec.chain_reconciliation_id == "RECON-INGEST-VEHICLE-MODEL-CHAIN"
+    assert entity_spec.chain_reconciliation_id == "RECON-INGEST-DIM-VEHICLE-MODEL-CHAIN"
 
     rows = _rows(
         observer,

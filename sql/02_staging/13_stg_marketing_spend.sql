@@ -51,7 +51,7 @@ trimmed AS (
     -- Empty string and whitespace mean 'absent'; the raw layer keeps both verbatim.
     SELECT
         nullif(btrim(r.marketing_spend_id), '')                                AS src_marketing_spend_id,
-        nullif(btrim(r.month_date), '')                                        AS src_month_date,
+        nullif(btrim(r.month_date_key), '')                                        AS src_month_date_key,
         nullif(btrim(r.dealership_id), '')                                     AS src_dealership_id,
         nullif(btrim(r.campaign_id), '')                                       AS src_campaign_id,
         nullif(btrim(r.lead_source_id), '')                                    AS src_lead_source_id,
@@ -74,7 +74,7 @@ trimmed AS (
 cast_attempt AS (
     SELECT
         CASE WHEN length(t.src_marketing_spend_id) <= 16 THEN t.src_marketing_spend_id::varchar(16) END AS marketing_spend_id,
-        staging.fn_try_date(t.src_month_date) AS month_date,
+        staging.fn_try_integer(t.src_month_date_key) AS month_date_key,
         CASE WHEN length(t.src_dealership_id) <= 16 THEN t.src_dealership_id::varchar(16) END AS dealership_id,
         CASE WHEN length(t.src_campaign_id) <= 16 THEN t.src_campaign_id::varchar(16) END AS campaign_id,
         CASE WHEN length(t.src_lead_source_id) <= 16 THEN t.src_lead_source_id::varchar(16) END AS lead_source_id,
@@ -86,7 +86,7 @@ cast_attempt AS (
         staging.fn_try_integer(t.src_vendor_reported_leads) AS vendor_reported_leads,
         CASE WHEN length(t.src_source_system) <= 40 THEN t.src_source_system::varchar(40) END AS source_system,
         t.src_marketing_spend_id,
-        t.src_month_date,
+        t.src_month_date_key,
         t.src_dealership_id,
         t.src_campaign_id,
         t.src_lead_source_id,
@@ -111,7 +111,7 @@ flagged AS (
         -- Present in the source but not representable in the governed type.
         array_remove(ARRAY[
             CASE WHEN c.src_marketing_spend_id IS NOT NULL AND c.marketing_spend_id IS NULL THEN 'marketing_spend_id' END,
-            CASE WHEN c.src_month_date IS NOT NULL AND c.month_date IS NULL THEN 'month_date' END,
+            CASE WHEN c.src_month_date_key IS NOT NULL AND c.month_date_key IS NULL THEN 'month_date_key' END,
             CASE WHEN c.src_dealership_id IS NOT NULL AND c.dealership_id IS NULL THEN 'dealership_id' END,
             CASE WHEN c.src_campaign_id IS NOT NULL AND c.campaign_id IS NULL THEN 'campaign_id' END,
             CASE WHEN c.src_lead_source_id IS NOT NULL AND c.lead_source_id IS NULL THEN 'lead_source_id' END,
@@ -126,7 +126,7 @@ flagged AS (
         -- Required by the column contract but absent.
         array_remove(ARRAY[
             CASE WHEN c.marketing_spend_id IS NULL THEN 'marketing_spend_id' END,
-            CASE WHEN c.month_date IS NULL THEN 'month_date' END,
+            CASE WHEN c.month_date_key IS NULL THEN 'month_date_key' END,
             CASE WHEN c.dealership_id IS NULL THEN 'dealership_id' END,
             CASE WHEN c.campaign_id IS NULL THEN 'campaign_id' END,
             CASE WHEN c.lead_source_id IS NULL THEN 'lead_source_id' END,
@@ -175,7 +175,7 @@ classified AS (
 )
 SELECT
     c.marketing_spend_id,
-    c.month_date,
+    c.month_date_key,
     c.dealership_id,
     c.campaign_id,
     c.lead_source_id,
@@ -215,7 +215,7 @@ staging.stg_marketing_spend_rejected are the two halves of this view and togethe
 CREATE OR REPLACE VIEW staging.stg_marketing_spend AS
 SELECT DISTINCT ON (v.marketing_spend_id)
     v.marketing_spend_id,
-    v.month_date,
+    v.month_date_key,
     v.dealership_id,
     v.campaign_id,
     v.lead_source_id,
@@ -242,7 +242,8 @@ the highest raw_record_id; the losers are reported by staging.stg_marketing_spen
 This view is the only input the warehouse merge reads.';
 
 COMMENT ON COLUMN staging.stg_marketing_spend.marketing_spend_id IS 'Natural key, MKT-######## (contract section 5).';
-COMMENT ON COLUMN staging.stg_marketing_spend.month_date IS 'First day of the spend month.';
+COMMENT ON COLUMN staging.stg_marketing_spend.month_date_key IS
+    'Date key of the first day of the spend month, YYYYMM01.';
 COMMENT ON COLUMN staging.stg_marketing_spend.dealership_id IS 'Store the spend belongs to.';
 COMMENT ON COLUMN staging.stg_marketing_spend.campaign_id IS 'Campaign the spend belongs to.';
 COMMENT ON COLUMN staging.stg_marketing_spend.lead_source_id IS 'Lead source the campaign attributes to.';

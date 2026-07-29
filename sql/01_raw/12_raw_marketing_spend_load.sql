@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS raw.marketing_spend_load (
 
     -- Business columns (contract order, all untyped text)
     marketing_spend_id     text         NULL,
-    month_date             text         NULL,
+    month_date_key         text         NULL,
     dealership_id          text         NULL,
     campaign_id            text         NULL,
     lead_source_id         text         NULL,
@@ -58,7 +58,8 @@ Power BI or Excel and explicitly revoked from arpi_reporter.';
 
 COMMENT ON COLUMN raw.marketing_spend_load.raw_record_id IS 'Surrogate key of the landed row; also the deterministic tie-breaker when deduplicating a natural key and when resolving the newest load batch.';
 COMMENT ON COLUMN raw.marketing_spend_load.marketing_spend_id IS 'Untyped source value. Natural key, MKT-######## (contract section 5).';
-COMMENT ON COLUMN raw.marketing_spend_load.month_date IS 'Untyped source value. First day of the spend month.';
+COMMENT ON COLUMN raw.marketing_spend_load.month_date_key IS
+    'Untyped source value. Date key of the first day of the spend month, YYYYMM01.';
 COMMENT ON COLUMN raw.marketing_spend_load.dealership_id IS 'Untyped source value. Store the spend belongs to.';
 COMMENT ON COLUMN raw.marketing_spend_load.campaign_id IS 'Untyped source value. Campaign the spend belongs to.';
 COMMENT ON COLUMN raw.marketing_spend_load.lead_source_id IS 'Untyped source value. Lead source the campaign attributes to.';

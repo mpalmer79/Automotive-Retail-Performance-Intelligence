@@ -1,7 +1,10 @@
-"""The Phase 0 vertical slice: generate, validate, write, optionally load, audit.
+"""The ARPI vertical slice: generate, validate, write, optionally load, audit.
 
-This orchestrator is the whole implemented pipeline. Facts, transformations and
-reporting refreshes are **Planned**, not implemented.
+This orchestrator is the whole implemented pipeline. It generates every Phase 1
+dimension plus the pre-warehouse source entities that feed the facts, in dependency
+order, and hands them to the ingestion loader. The fact merge scripts themselves are
+**Planned**, not implemented: ``acquisition_event`` and ``sale_event`` reach ``raw`` and
+``staging`` but have no warehouse target yet.
 
 The database step is optional by design. When PostgreSQL is unavailable the run is
 reported as *skipped, not failed*, together with the exact reason, so the slice remains
@@ -21,18 +24,71 @@ from arpi.audit.run import (
     AuditRecorder,
     PipelineRun,
 )
-from arpi.constants import PIPELINE_NAME_FOUNDATION, SYNTHETIC_DATA_NOTICE
+from arpi.constants import (
+    ENTITY_DIM_DATE,
+    ENTITY_DIM_DEALERSHIP,
+    PIPELINE_NAME_FOUNDATION,
+    SYNTHETIC_DATA_NOTICE,
+)
+from arpi.generation.acquisition import (
+    ENTITY_ACQUISITION_EVENT,
+    generate_acquisition_dataset,
+    validate_acquisition_dataset,
+)
 from arpi.generation.calendar import generate_date_dataset
+from arpi.generation.customer import (
+    ENTITY_DIM_CUSTOMER,
+    generate_customer_dataset,
+    validate_customer_dataset,
+)
 from arpi.generation.dealership import generate_dealership_dataset
+from arpi.generation.employee import (
+    ENTITY_DIM_EMPLOYEE,
+    generate_employee_dataset,
+    validate_employee_dataset,
+)
+from arpi.generation.lead_source import (
+    ENTITY_DIM_LEAD_SOURCE,
+    generate_lead_source_dataset,
+    validate_lead_source_dataset,
+)
+from arpi.generation.marketing import (
+    ENTITY_DIM_MARKETING_CAMPAIGN,
+    generate_marketing_campaign_dataset,
+    validate_marketing_campaign_dataset,
+)
+from arpi.generation.sale import (
+    ENTITY_SALE_EVENT,
+    generate_sale_dataset,
+    validate_sale_dataset,
+)
+from arpi.generation.vehicle import (
+    ENTITY_DIM_VEHICLE,
+    generate_vehicle_dataset,
+    validate_vehicle_dataset,
+)
+from arpi.generation.vehicle_model import (
+    ENTITY_DIM_VEHICLE_MODEL,
+    catalogued_models_for,
+    generate_vehicle_model_dataset,
+    validate_vehicle_model_dataset,
+)
 from arpi.generation.writer import WrittenEntity, write_outputs
 from arpi.ingestion.database import database_available
 from arpi.ingestion.loader import DEFAULT_SQL_ROOT, LoadResult, load_foundation
 from arpi.logging_config import configure_logging, get_logger
 from arpi.utilities.paths import resolve_output_dir
-from arpi.validation.datasets import validate_foundation_datasets
+from arpi.validation.datasets import (
+    ensure_registry_coverage,
+    validate_date_dataset,
+    validate_dealership_dataset,
+    validate_generation,
+)
 from arpi.validation.results import ValidationReport
 
 if TYPE_CHECKING:  # pragma: no cover - import cycle guard for type checking only
+    from collections.abc import Sequence
+
     from arpi.config import ArpiConfig
     from arpi.generation.base import GeneratedDataset
 
@@ -40,6 +96,26 @@ _LOGGER = get_logger(__name__)
 
 SKIP_REASON_NOT_REQUESTED = (
     "not requested (pass --load-database, or set database.enabled and rerun)"
+)
+
+#: Every entity the foundation run generates, in dependency order.
+#:
+#: Order is load-bearing, not cosmetic. ``dim_vehicle`` draws from the model catalogue
+#: ``dim_vehicle_model`` publishes, ``acquisition_event`` needs the vehicle population,
+#: and ``sale_event`` needs vehicles, acquisitions, employees and customers. The loader
+#: copies the datasets into ``raw`` in this order too, so a reviewer reading the audit
+#: trail sees the dependency chain in the order it was built.
+GENERATION_ORDER: tuple[str, ...] = (
+    ENTITY_DIM_DATE,
+    ENTITY_DIM_DEALERSHIP,
+    ENTITY_DIM_VEHICLE_MODEL,
+    ENTITY_DIM_VEHICLE,
+    ENTITY_DIM_EMPLOYEE,
+    ENTITY_DIM_CUSTOMER,
+    ENTITY_DIM_LEAD_SOURCE,
+    ENTITY_DIM_MARKETING_CAMPAIGN,
+    ENTITY_ACQUISITION_EVENT,
+    ENTITY_SALE_EVENT,
 )
 
 
@@ -161,14 +237,12 @@ def run_foundation(
     recorder = AuditRecorder(run=run)
     _LOGGER.info("Starting %s (run_uuid=%s).", run.pipeline_name, run.run_uuid)
 
-    date_dataset = generate_date_dataset(config)
-    dealership_dataset = generate_dealership_dataset(config)
-    datasets = (date_dataset, dealership_dataset)
+    datasets = generate_all_datasets(config)
     for dataset in datasets:
         recorder.record_row_count(dataset.entity_name, LAYER_SOURCE, dataset.row_count)
         _LOGGER.info("Generated %s: %s row(s).", dataset.entity_name, dataset.row_count)
 
-    report = validate_foundation_datasets(date_dataset, dealership_dataset, config)
+    report = validate_all_datasets(datasets, config)
     recorder.record_validation(report)
     _LOGGER.info(
         "Data quality: %s passed, %s critical failure(s), %s warning(s).",
@@ -212,6 +286,76 @@ def run_foundation(
         load_result=load_result,
         recorder=recorder,
     )
+
+
+def generate_all_datasets(config: ArpiConfig) -> tuple[GeneratedDataset, ...]:
+    """Generate every entity of the slice, in :data:`GENERATION_ORDER`.
+
+    Each generator is seeded from its own namespace, so the tuple is deterministic for a
+    given ``random_seed`` and adding an entity cannot perturb one already here.
+
+    Args:
+        config: Resolved configuration.
+
+    Returns:
+        The generated datasets, in dependency order.
+    """
+    datasets = (
+        generate_date_dataset(config),
+        generate_dealership_dataset(config),
+        generate_vehicle_model_dataset(config),
+        generate_vehicle_dataset(config),
+        generate_employee_dataset(config),
+        generate_customer_dataset(config),
+        generate_lead_source_dataset(config),
+        generate_marketing_campaign_dataset(config),
+        generate_acquisition_dataset(config),
+        generate_sale_dataset(config),
+    )
+    produced = tuple(dataset.entity_name for dataset in datasets)
+    if produced != GENERATION_ORDER:
+        # A generator that renamed its entity would otherwise be discovered much later,
+        # as a missing ingestion spec or an empty warehouse table.
+        raise AssertionError(
+            f"Generated entities {produced} do not match GENERATION_ORDER "
+            f"{GENERATION_ORDER}; a generator's declared entity_name changed."
+        )
+    return datasets
+
+
+def validate_all_datasets(
+    datasets: Sequence[GeneratedDataset], config: ArpiConfig
+) -> ValidationReport:
+    """Run every entity's data-quality suite plus the cross-entity generation checks.
+
+    The per-entity suites live beside their generators; this function is only the
+    dispatch. The result is reconciled against the check registry so that a registered
+    check which could not be evaluated is recorded as ``skipped`` rather than being
+    silently absent -- an absent check reads exactly like a passing one.
+
+    Args:
+        datasets: Every dataset this run produced, as returned by
+            :func:`generate_all_datasets`.
+        config: Resolved configuration.
+
+    Returns:
+        One combined report covering every entity in ``datasets``.
+    """
+    by_entity = {dataset.entity_name: dataset for dataset in datasets}
+    report = ValidationReport.combine(
+        validate_date_dataset(by_entity[ENTITY_DIM_DATE], config),
+        validate_dealership_dataset(by_entity[ENTITY_DIM_DEALERSHIP], config),
+        validate_vehicle_model_dataset(by_entity[ENTITY_DIM_VEHICLE_MODEL]),
+        validate_vehicle_dataset(by_entity[ENTITY_DIM_VEHICLE], catalogued_models_for(config)),
+        validate_employee_dataset(by_entity[ENTITY_DIM_EMPLOYEE], config),
+        validate_customer_dataset(by_entity[ENTITY_DIM_CUSTOMER], config),
+        validate_lead_source_dataset(by_entity[ENTITY_DIM_LEAD_SOURCE]),
+        validate_marketing_campaign_dataset(by_entity[ENTITY_DIM_MARKETING_CAMPAIGN]),
+        validate_acquisition_dataset(by_entity[ENTITY_ACQUISITION_EVENT], config),
+        validate_sale_dataset(by_entity[ENTITY_SALE_EVENT], config),
+        validate_generation(datasets, config),
+    )
+    return ensure_registry_coverage(report, entities=tuple(by_entity))
 
 
 def _write_all(
