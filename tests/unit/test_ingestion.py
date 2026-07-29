@@ -399,7 +399,8 @@ def test_load_foundation_copies_merges_counts_and_audits(
 
     # Six scalar queries per entity, in the order _collect_layer_counts issues them:
     # raw, staging, distinct staging keys, deduplicated, warehouse, warehouse-matched.
-    # The final response is the pipeline_run_id returned by the audit insert.
+    # Then the pipeline_run_id returned by the audit insert, and finally the count of
+    # SQL reconciliations audit.fn_record_all_reconciliations wrote for that run.
     connection = _RecordingConnection(
         [
             (59,),
@@ -415,6 +416,7 @@ def test_load_foundation_copies_merges_counts_and_audits(
             (3,),
             (3,),
             (1,),
+            (28,),
         ]
     )
     monkeypatch.setattr(database, "psycopg", _RecordingPsycopg(connection))
@@ -464,6 +466,15 @@ def test_load_foundation_copies_merges_counts_and_audits(
     ]
     assert all(item.status == "passed" for item in recorder.reconciliation_results)
 
+    # The loader also asks the database to evaluate and record the SQL reconciliations,
+    # which is what makes "every reconciliation records a result on every applicable run"
+    # true for the rules that are expressed as SQL views rather than in Python.
+    recorder_calls = [
+        item for item in connection.executed if "fn_record_all_reconciliations" in str(item[0])
+    ]
+    assert len(recorder_calls) == 1
+    assert recorder_calls[0][1] == (1,)
+
 
 def test_load_foundation_reports_a_row_count_mismatch(
     db_config: ArpiConfig,
@@ -477,9 +488,10 @@ def test_load_foundation_reports_a_row_count_mismatch(
     sql_dir.mkdir()
     (sql_dir / "10_dim_date_merge.sql").write_text("-- merge", encoding="utf-8")
 
-    # raw, staging, staging keys, deduplicated, warehouse, warehouse-matched, run id.
-    # The warehouse holds one row fewer than the generator produced.
-    connection = _RecordingConnection([(59,), (59,), (59,), (59,), (58,), (58,), (1,)])
+    # raw, staging, staging keys, deduplicated, warehouse, warehouse-matched, run id,
+    # then the SQL reconciliation count. The warehouse holds one row fewer than the
+    # generator produced.
+    connection = _RecordingConnection([(59,), (59,), (59,), (59,), (58,), (58,), (1,), (28,)])
     monkeypatch.setattr(database, "psycopg", _RecordingPsycopg(connection))
 
     recorder = AuditRecorder(run=PipelineRun.start(db_config, pipeline_name="test"))

@@ -140,6 +140,17 @@ RAW_METADATA_COLUMNS = (
     "source_row_number",
 )
 
+#: SQL function that evaluates ``audit.vw_recon_all`` and persists every verdict.
+#:
+#: The SQL reconciliations -- the fact staging-to-warehouse counts, the gross and unit
+#: identities, the funnel rules, the marketing rules and the reporting-to-warehouse
+#: rules -- are declarative views. Evaluating one produces a verdict and writes nothing,
+#: and a verdict nobody persisted is not evidence. Calling this on every database run is
+#: what makes "every reconciliation records a result on every applicable run" true rather
+#: than aspirational. The function replaces its own rows for the run, so a rerun restates
+#: the verdicts instead of accumulating a second set.
+RECONCILIATION_RECORDER_FUNCTION: Final = "fn_record_all_reconciliations"
+
 
 @dataclass(frozen=True, slots=True)
 class LayerCounts:
@@ -333,7 +344,8 @@ def load_foundation(
         _record_counts(recorder, datasets, specs, counts)
         for rejection in rejections:
             recorder.record_rejection(rejection)
-        _insert_audit_rows(connection, recorder)
+        pipeline_run_id = _insert_audit_rows(connection, recorder)
+        _record_sql_reconciliations(connection, pipeline_run_id)
         connection.commit()
 
     return LoadResult(
@@ -734,8 +746,44 @@ def _record_counts(
             )
 
 
-def _insert_audit_rows(connection: Any, recorder: AuditRecorder) -> None:
-    """Insert the pipeline run and its child audit rows, all parameterised."""
+def _record_sql_reconciliations(connection: Any, pipeline_run_id: int) -> int:
+    """Evaluate every SQL reconciliation and persist its verdict against the run.
+
+    The Python loader records the reconciliations it can measure itself: the raw-to-
+    staging chain for every entity, and staging-to-warehouse for the dimensions. The
+    rest -- the five facts' staging-to-warehouse counts, the gross and unit identities,
+    the funnel and marketing rules, and the reporting-view-to-warehouse rules -- are
+    expressed as SQL views under ``sql/08_validation``. Those views are declarative:
+    reading one yields a verdict and writes nothing. This call is what turns the
+    verdicts into recorded evidence.
+
+    Args:
+        connection: An open database connection, inside the loader's transaction.
+        pipeline_run_id: The run the verdicts belong to.
+
+    Returns:
+        The number of reconciliation results written.
+    """
+    statement = sql.SQL("SELECT {}.{}({})").format(
+        sql.Identifier(SCHEMA_AUDIT),
+        sql.Identifier(RECONCILIATION_RECORDER_FUNCTION),
+        sql.Placeholder(),
+    )
+    recorded = _scalar(connection, statement, (pipeline_run_id,))
+    _LOGGER.info(
+        "Recorded %s SQL reconciliation result(s) for pipeline_run_id %s.",
+        recorded,
+        pipeline_run_id,
+    )
+    return recorded
+
+
+def _insert_audit_rows(connection: Any, recorder: AuditRecorder) -> int:
+    """Insert the pipeline run and its child audit rows, all parameterised.
+
+    Returns:
+        The ``audit.pipeline_run_id`` the rows were written against.
+    """
     rows = recorder.to_rows()
     run_row = rows["pipeline_run"][0]
     with connection.cursor() as cursor:
@@ -784,6 +832,7 @@ def _insert_audit_rows(connection: Any, recorder: AuditRecorder) -> None:
                     _insert_statement(table, tuple(payload.keys())), tuple(payload.values())
                 )
     _LOGGER.info("Recorded audit rows for pipeline_run_id %s.", pipeline_run_id)
+    return pipeline_run_id
 
 
 def _delete_children_statement(table: str, scope_column: str) -> sql.Composed:

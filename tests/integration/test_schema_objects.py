@@ -7,6 +7,8 @@ from typing import Any
 
 import pytest
 
+from arpi.constants import REPORTING_VIEWS
+
 pytestmark = pytest.mark.integration
 
 
@@ -84,17 +86,26 @@ EXPECTED_TABLES = {
     *(("warehouse", name) for name in FACT_TABLES),
 }
 
+#: The audit-schema views: the data-quality check views and the reconciliation views.
+AUDIT_VIEWS = (
+    "vw_dq_all",
+    "vw_dq_audit",
+    "vw_dq_dim_date",
+    "vw_dq_dim_dealership",
+    "vw_dq_referential",
+    "vw_dq_result_template",
+    "vw_recon_all",
+    "vw_recon_funnel",
+    "vw_recon_gross",
+    "vw_recon_ingestion",
+    "vw_recon_marketing",
+    "vw_recon_reporting",
+    "vw_recon_result_template",
+)
+
 EXPECTED_VIEWS = {
-    ("audit", "vw_dq_all"),
-    ("audit", "vw_dq_audit"),
-    ("audit", "vw_dq_dim_date"),
-    ("audit", "vw_dq_dim_dealership"),
-    ("audit", "vw_dq_referential"),
-    ("audit", "vw_dq_result_template"),
-    ("reporting", "vw_calendar"),
-    ("reporting", "vw_data_quality_summary"),
-    ("reporting", "vw_dealership"),
-    ("reporting", "vw_pipeline_run_summary"),
+    *(("audit", name) for name in AUDIT_VIEWS),
+    *(("reporting", name) for name in REPORTING_VIEWS),
     ("staging", "stg_calendar_date"),
     ("staging", "stg_dealership"),
     *(("staging", f"stg_{name}") for name in STAGING_ENTITIES),
@@ -254,19 +265,20 @@ def test_fact_tables_are_empty(cursor: Any) -> None:
         assert row[0] == 0, f"warehouse.{table} is expected to be empty in this increment"
 
 
-def test_reporting_layer_contains_exactly_four_views(cursor: Any) -> None:
+def test_reporting_layer_contains_exactly_the_declared_views(cursor: Any) -> None:
+    """The reporting surface is fixed by arpi.constants.REPORTING_VIEWS and nothing else.
+
+    A view added to sql/05_reporting without being declared there is invisible to the
+    completeness, reporter-role and Gate 1 checks, which all read the same tuple. This
+    test is what stops that happening quietly.
+    """
     cursor.execute(
         """
         SELECT table_name FROM information_schema.views
         WHERE table_schema = 'reporting' ORDER BY table_name
         """
     )
-    assert [row[0] for row in cursor.fetchall()] == [
-        "vw_calendar",
-        "vw_data_quality_summary",
-        "vw_dealership",
-        "vw_pipeline_run_summary",
-    ]
+    assert [row[0] for row in cursor.fetchall()] == list(REPORTING_VIEWS)
 
 
 @pytest.mark.parametrize(
@@ -312,10 +324,7 @@ def test_every_dimension_column_is_documented(cursor: Any, table_name: str) -> N
         "audit.validation_result",
         "staging.stg_calendar_date",
         "staging.stg_dealership",
-        "reporting.vw_calendar",
-        "reporting.vw_dealership",
-        "reporting.vw_pipeline_run_summary",
-        "reporting.vw_data_quality_summary",
+        *(f"reporting.{name}" for name in REPORTING_VIEWS),
     ],
 )
 def test_object_comment_declares_a_grain(cursor: Any, qualified_name: str) -> None:

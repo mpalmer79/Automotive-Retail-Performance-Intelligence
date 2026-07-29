@@ -34,6 +34,7 @@ test ever touches a database a human might care about.
 from __future__ import annotations
 
 import os
+import shutil
 import uuid
 from collections.abc import Iterator
 from pathlib import Path
@@ -482,3 +483,93 @@ def seed_dealerships() -> Any:
 def run_merges() -> Any:
     """Callable ``(cur) -> None`` running the dimension merge scripts in loader order."""
     return run_merge_scripts
+
+
+# --------------------------------------------------------------------------------------
+# A fully loaded warehouse, for the tests that need data rather than structure
+# --------------------------------------------------------------------------------------
+# Most of this package asserts on SQL structure and can work against an empty database.
+# The KPI verification, reconciliation, reporter-role and Gate 1 readiness suites cannot:
+# a KPI computed over zero rows proves only that the SQL parses, and a reconciliation
+# that compares 0 with 0 passes without exercising anything.
+#
+# These fixtures build ONE database per test session, run the full initialisation
+# sequence into it, and then run the real pipeline through the production load path
+# exactly as the CLI does. Building it once is what keeps the cost tolerable; the
+# per-test connection is transactional, so a test that writes -- the deliberate
+# corruption tests do -- rolls back and leaves the data untouched for the next one.
+
+
+@pytest.fixture(scope="session")
+def loaded_database(maintenance_connection: Any) -> Iterator[str]:
+    """A throwaway database with the SQL tree applied and one full pipeline run loaded.
+
+    Uses the ``test`` profile, whose two-month window keeps the run fast while still
+    producing non-zero rows in all eight dimensions and all five facts.
+    """
+    from pydantic import SecretStr
+
+    from arpi.config import load_config
+    from arpi.pipeline import run_foundation
+
+    database_name = f"arpi_load_{uuid.uuid4().hex[:12]}"
+    output_dir = REPO_ROOT / "data" / "raw" / f"_pytest_loaded_{uuid.uuid4().hex[:8]}"
+
+    with maintenance_connection.cursor() as cur:
+        cur.execute(f'CREATE DATABASE "{database_name}"')
+
+    try:
+        with psycopg.connect(dbname=database_name, **base_connection_kwargs()) as conn:
+            run_init_sequence(conn)
+
+        output_dir.mkdir(parents=True, exist_ok=True)
+        connection = base_connection_kwargs()
+        config = load_config(profile="test", config_dir=REPO_ROOT / "config")
+        database_update: dict[str, Any] = {
+            "enabled": True,
+            "host": connection.get("host"),
+            "port": connection.get("port", 5432),
+            "name": database_name,
+            "user": connection.get("user"),
+            "sslmode": connection.get("sslmode", config.database.sslmode),
+        }
+        password = connection_password()
+        if password is not None:
+            database_update["password"] = SecretStr(password)
+        config = config.model_copy(
+            update={
+                "database": config.database.model_copy(update=database_update),
+                "paths": config.paths.model_copy(update={"raw_output_dir": output_dir}),
+            }
+        )
+
+        result = run_foundation(config, load_database=True, output_dir=output_dir)
+        assert result.database_loaded, (
+            "the loaded_database fixture could not reach PostgreSQL through the "
+            f"production load path: {result.database_skip_reason}"
+        )
+        assert not result.report.has_critical_failure, (
+            "the loaded_database fixture produced critical data-quality failures"
+        )
+        yield database_name
+    finally:
+        shutil.rmtree(output_dir, ignore_errors=True)
+        with maintenance_connection.cursor() as cur:
+            cur.execute(f'DROP DATABASE IF EXISTS "{database_name}" WITH (FORCE)')
+
+
+@pytest.fixture()
+def loaded_db(loaded_database: str) -> Iterator[Any]:
+    """Transactional connection to the loaded database; always rolled back."""
+    with psycopg.connect(dbname=loaded_database, **base_connection_kwargs()) as conn:
+        try:
+            yield conn
+        finally:
+            conn.rollback()
+
+
+@pytest.fixture()
+def loaded_cursor(loaded_db: Any) -> Iterator[Any]:
+    """Plain cursor on the loaded, transactional connection."""
+    with loaded_db.cursor() as cur:
+        yield cur

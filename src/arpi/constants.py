@@ -529,6 +529,43 @@ APPROVED_AGE_COLUMNS: Final[Mapping[str, str]] = MappingProxyType(
     }
 )
 
+# Columns whose ``age`` measures an ASSET, not a person.
+#
+# The rule above exists because a person's age is a direct quasi-identifier. Inventory
+# age is not: it is how many days a vehicle has been in stock, and it is one of the
+# central measures of the whole platform (`KPI-INV-003`, `KPI-INV-004`, `KPI-INV-005`,
+# `KPI-INV-006`). Without this list the tripwire rejects every legitimate inventory-age
+# column, which is a false positive the project would hit on every new aging measure.
+#
+# The distinction is deliberately drawn by an explicit allowlist rather than by weakening
+# the word rule: ``customer_age`` and ``buyer_age`` must keep failing, and a new entry
+# here is a visible act in a diff that a reviewer can challenge. Every entry names the
+# asset it measures.
+APPROVED_ASSET_AGE_COLUMNS: Final[Mapping[str, str]] = MappingProxyType(
+    {
+        "age_bucket_sort_order": (
+            "Sort key for the vehicle inventory age bucket, so the bucket orders by age "
+            "rather than alphabetically. Describes a vehicle, never a person."
+        ),
+        "average_inventory_age": (
+            "KPI-INV-003. Mean days a vehicle has been in stock. Describes a vehicle, "
+            "never a person."
+        ),
+        "median_inventory_age": (
+            "KPI-INV-004. Median days a vehicle has been in stock. Describes a vehicle, "
+            "never a person."
+        ),
+        "aged_threshold_days": (
+            "The inventory aging threshold in days, published so a finding can state it. "
+            "Describes a project convention, never a person."
+        ),
+        "vehicle_age_days": (
+            "Days a vehicle has been in stock, reserved for a future row-level column. "
+            "Describes a vehicle, never a person."
+        ),
+    }
+)
+
 # ---------------------------------------------------------------------------------------
 # Data-quality check identifiers (shared verbatim between Python and SQL)
 # ---------------------------------------------------------------------------------------
@@ -594,3 +631,212 @@ RETIRED_CHECK_CATEGORIES: Final[Mapping[str, str]] = MappingProxyType(
 
 RECONCILIATION_DIM_DATE_ROW_COUNT: Final = "RECON-DIM-DATE-ROWCOUNT"
 RECONCILIATION_DIM_DEALERSHIP_ROW_COUNT: Final = "RECON-DIM-DEALERSHIP-ROWCOUNT"
+
+# ---------------------------------------------------------------------------------------
+# The reporting surface
+# ---------------------------------------------------------------------------------------
+# These tuples are the contract between the SQL under ``sql/05_reporting`` and everything
+# that consumes it: the reporting-layer completeness test, the reporter-role end-to-end
+# test, the Gate 1 readiness test, and the semantic-model documentation under
+# ``powerbi/model_documentation/``. A view added to the SQL tree and not added here is
+# invisible to those checks, and a view named here and not built fails them -- which is
+# the point. ARPI has no other list of what the reporting layer contains.
+
+#: Dimension views. One per MVP dimension, each the star-schema table a semantic model
+#: relates FROM. Every relationship is one-to-many, dimension to fact, single direction.
+MVP_DIMENSION_VIEWS: Final[tuple[str, ...]] = (
+    "vw_calendar",
+    "vw_dealership",
+    "vw_employee",
+    "vw_customer",
+    "vw_vehicle",
+    "vw_vehicle_model",
+    "vw_lead_source",
+    "vw_marketing_campaign",
+)
+
+#: Fact views. One per MVP fact, each preserving its warehouse fact's grain exactly --
+#: no aggregation and no filtering -- so a semantic model can recompute every measure,
+#: including the medians, under any filter context.
+MVP_FACT_VIEWS: Final[tuple[str, ...]] = (
+    "vw_vehicle_sales",
+    "vw_inventory_snapshots",
+    "vw_leads",
+    "vw_appointments",
+    "vw_marketing_spend",
+)
+
+#: Governed analytical views. Each owns the SQL side of one or more KPIs at a declared
+#: grain, publishing numerators and denominators as separate additive columns.
+ANALYTICAL_VIEWS: Final[tuple[str, ...]] = (
+    "vw_sales_summary",
+    "vw_gross_summary",
+    "vw_inventory_health",
+    "vw_inventory_aging",
+    "vw_days_to_sale",
+    "vw_inventory_turn",
+    "vw_days_supply",
+    "vw_lead_funnel",
+    "vw_appointment_funnel",
+    "vw_lead_response",
+    "vw_marketing_performance",
+    "vw_data_quality_trend",
+    "vw_reconciliation_status",
+)
+
+#: Operational views that predate the MVP reporting layer and remain part of it.
+OPERATIONAL_REPORTING_VIEWS: Final[tuple[str, ...]] = (
+    "vw_pipeline_run_summary",
+    "vw_data_quality_summary",
+)
+
+#: Every view the ``reporting`` schema is expected to contain, and nothing else.
+REPORTING_VIEWS: Final[tuple[str, ...]] = tuple(
+    sorted(
+        {
+            *MVP_DIMENSION_VIEWS,
+            *MVP_FACT_VIEWS,
+            *ANALYTICAL_VIEWS,
+            *OPERATIONAL_REPORTING_VIEWS,
+        }
+    )
+)
+
+# ---------------------------------------------------------------------------------------
+# KPI identifiers and their reporting owners
+# ---------------------------------------------------------------------------------------
+#: Every MVP KPI identifier, in KPI_CATALOG.md order.
+#:
+#: The catalogue is the specification; this tuple is the machine-readable index of it, so
+#: a test can assert that all 29 are computable without parsing Markdown. Adding a KPI
+#: requires a new permanent identifier in both places.
+KPI_IDS: Final[tuple[str, ...]] = (
+    "KPI-SLS-001",
+    "KPI-SLS-002",
+    "KPI-SLS-003",
+    "KPI-GRS-001",
+    "KPI-GRS-002",
+    "KPI-GRS-003",
+    "KPI-GRS-004",
+    "KPI-GRS-005",
+    "KPI-GRS-006",
+    "KPI-INV-001",
+    "KPI-INV-002",
+    "KPI-INV-003",
+    "KPI-INV-004",
+    "KPI-INV-005",
+    "KPI-INV-006",
+    "KPI-INV-007",
+    "KPI-INV-008",
+    "KPI-INV-009",
+    "KPI-FUN-001",
+    "KPI-FUN-002",
+    "KPI-FUN-003",
+    "KPI-FUN-004",
+    "KPI-FUN-005",
+    "KPI-FUN-006",
+    "KPI-FUN-007",
+    "KPI-FUN-008",
+    "KPI-MKT-001",
+    "KPI-MKT-002",
+    "KPI-MKT-003",
+)
+
+#: The reporting views each KPI can be computed from.
+#:
+#: The first entry of each tuple is the governed SQL owner named in KPI_CATALOG.md; the
+#: rest are the row-grain fact views a semantic model should bind to instead, because a
+#: row-grain fact recomputes a ratio or an order statistic under any filter context while
+#: an aggregate cannot.
+KPI_VIEW_OWNERSHIP: Final[Mapping[str, tuple[str, ...]]] = MappingProxyType(
+    {
+        "KPI-SLS-001": ("vw_sales_summary", "vw_vehicle_sales"),
+        "KPI-SLS-002": ("vw_sales_summary", "vw_vehicle_sales"),
+        "KPI-SLS-003": ("vw_sales_summary", "vw_vehicle_sales"),
+        "KPI-GRS-001": ("vw_gross_summary", "vw_vehicle_sales"),
+        "KPI-GRS-002": ("vw_gross_summary", "vw_vehicle_sales"),
+        "KPI-GRS-003": ("vw_gross_summary", "vw_vehicle_sales"),
+        "KPI-GRS-004": ("vw_gross_summary", "vw_vehicle_sales"),
+        "KPI-GRS-005": ("vw_gross_summary", "vw_vehicle_sales"),
+        "KPI-GRS-006": ("vw_gross_summary", "vw_vehicle_sales"),
+        "KPI-INV-001": ("vw_inventory_health", "vw_inventory_snapshots"),
+        "KPI-INV-002": ("vw_inventory_health", "vw_inventory_snapshots"),
+        "KPI-INV-003": ("vw_inventory_health", "vw_inventory_snapshots"),
+        "KPI-INV-004": ("vw_inventory_health", "vw_inventory_aging", "vw_inventory_snapshots"),
+        "KPI-INV-005": ("vw_inventory_health", "vw_inventory_snapshots"),
+        "KPI-INV-006": ("vw_inventory_health", "vw_inventory_snapshots"),
+        "KPI-INV-007": ("vw_days_to_sale", "vw_sales_summary", "vw_vehicle_sales"),
+        "KPI-INV-008": ("vw_inventory_turn",),
+        "KPI-INV-009": ("vw_days_supply",),
+        "KPI-FUN-001": ("vw_lead_funnel", "vw_leads"),
+        "KPI-FUN-002": ("vw_lead_funnel", "vw_leads"),
+        "KPI-FUN-003": ("vw_lead_funnel", "vw_leads"),
+        "KPI-FUN-004": ("vw_appointment_funnel", "vw_appointments"),
+        "KPI-FUN-005": ("vw_appointment_funnel", "vw_appointments"),
+        "KPI-FUN-006": ("vw_lead_funnel", "vw_leads"),
+        "KPI-FUN-007": ("vw_lead_response", "vw_leads"),
+        "KPI-FUN-008": ("vw_lead_response", "vw_leads"),
+        "KPI-MKT-001": ("vw_marketing_performance",),
+        "KPI-MKT-002": ("vw_marketing_performance",),
+        "KPI-MKT-003": ("vw_marketing_performance",),
+    }
+)
+
+# ---------------------------------------------------------------------------------------
+# Reconciliation identifiers evaluated in SQL
+# ---------------------------------------------------------------------------------------
+#: Every reconciliation ``audit.vw_recon_all`` publishes, and the loader records on each
+#: database run through ``audit.fn_record_all_reconciliations``.
+SQL_RECONCILIATION_IDS: Final[tuple[str, ...]] = (
+    "RECON-FACT-VEHICLE-SALE-WAREHOUSE",
+    "RECON-FACT-INVENTORY-SNAPSHOT-WAREHOUSE",
+    "RECON-FACT-LEAD-WAREHOUSE",
+    "RECON-FACT-APPOINTMENT-WAREHOUSE",
+    "RECON-FACT-MARKETING-SPEND-WAREHOUSE",
+    "RECON-INV-CONTINUITY",
+    "RECON-GROSS-001",
+    "RECON-GROSS-001-FRONT",
+    "RECON-GROSS-002",
+    "RECON-UNITS-001",
+    "RECON-REPORT-SALES",
+    "RECON-LEAD-001",
+    "RECON-LEAD-DUPLICATES",
+    "RECON-FUNNEL-BOUNDS",
+    "RECON-FUNNEL-SOLD-PATH",
+    "RECON-FUNNEL-CHAIN",
+    "RECON-MKT-SPEND",
+    "RECON-MKT-LEADS",
+    "RECON-MKT-SALES",
+    "RECON-MKT-GROSS",
+    "RECON-MKT-COST-RULE",
+    "RECON-REPORT-SALES-ROWS",
+    "RECON-REPORT-INVENTORY-ROWS",
+    "RECON-INV-001",
+    "RECON-REPORT-LEADS-ROWS",
+    "RECON-REPORT-APPOINTMENTS-ROWS",
+    "RECON-REPORT-SPEND-ROWS",
+    "RECON-REPORT-DAYS-TO-SALE",
+)
+
+#: The reconciliations whose failure invalidates the numbers built on them.
+#:
+#: Every SQL reconciliation is critical except ``RECON-FUNNEL-CHAIN``, which multiplies
+#: two lead-grain rates by two appointment-grain rates. One lead can produce several
+#: appointments, so that product is an approximation and cannot be made an identity; a
+#: breach is a finding to explain, not a defect. ``reporting.vw_reconciliation_status``
+#: derives the same distinction in SQL.
+NON_CRITICAL_RECONCILIATION_IDS: Final[frozenset[str]] = frozenset({"RECON-FUNNEL-CHAIN"})
+
+CRITICAL_SQL_RECONCILIATION_IDS: Final[tuple[str, ...]] = tuple(
+    identifier
+    for identifier in SQL_RECONCILIATION_IDS
+    if identifier not in NON_CRITICAL_RECONCILIATION_IDS
+)
+
+#: The only tolerance values any ARPI reconciliation may carry.
+#:
+#: ``0`` is exact, and every count and identity comparison uses it. ``0.01`` is
+#: ``validation.numeric_absolute_tolerance``, applied where two currency figures are
+#: compared to the cent or a rate crosses a documented grain shift. A third value would
+#: be an unexplained tolerance, which is a hole in the evidence rather than a setting.
+ALLOWED_RECONCILIATION_TOLERANCES: Final[frozenset[str]] = frozenset({"0", "0.01"})
