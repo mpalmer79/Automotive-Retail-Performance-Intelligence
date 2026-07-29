@@ -1,0 +1,454 @@
+/// Grain: one row per finalized vehicle transaction -- identical to warehouse.fact_vehicle_sale,
+/// with no aggregation and no filtering. Fact table for the semantic model. Owns the row-level
+/// inputs to KPI-SLS-001..003, KPI-GRS-001..006, KPI-INV-007, the KPI-INV-008 numerator, the KPI-
+/// INV-009 denominator and the KPI-MKT-002/003 attributed measures. Retail-only numerators are
+/// published as columns that are zero on excluded rows, so each measure is a plain additive SUM and
+/// numerator and denominator cannot diverge. new_unit_count and used_unit_count split on the
+/// VEHICLE condition, not on sale_type, because a lease is a retail sale type that sale_type alone
+/// leaves outside both halves of the RECON-UNITS-001 identity; a certified pre-owned unit is a used
+/// unit. No ratio is materialised: divide in DAX so the result recomputes at every level. Role-
+/// playing dates sale_date_key and delivery_date_key both relate to vw_calendar -- one active, one
+/// inactive -- never by duplicating the calendar. Surrogate keys should be hidden in the semantic
+/// model.
+table vw_vehicle_sales
+	lineageTag: 93a77ac0-37b6-5bea-ae06-a7d2d4d6136c
+
+	/// Warehouse surrogate key of the transaction. Relationship column for vw_leads and
+	/// vw_appointments; hide in the semantic model.
+	column sale_key
+		dataType: int64
+		isHidden
+		sourceColumn: sale_key
+		summarizeBy: none
+		lineageTag: db45c414-e435-5e61-99a5-9e22f3527ead
+
+		annotation SummarizationSetBy = User
+
+	/// Stable business identifier of the transaction.
+	column sale_code
+		dataType: string
+		sourceColumn: sale_code
+		summarizeBy: none
+		lineageTag: c92f13e8-56d0-5dce-80e9-75788215df3a
+
+		annotation SummarizationSetBy = User
+
+	/// Role-playing date key: the date the deal was finalized. The governed date basis for every sales
+	/// and gross KPI. Active relationship to vw_calendar.
+	column sale_date_key
+		dataType: int64
+		isHidden
+		sourceColumn: sale_date_key
+		summarizeBy: none
+		lineageTag: d588e953-3c81-5d0a-a805-c4c4a746765a
+
+		annotation SummarizationSetBy = User
+
+	/// Role-playing date key: the date the vehicle was delivered. Inactive relationship to vw_calendar;
+	/// any delivery-basis measure must be labelled as such.
+	column delivery_date_key
+		dataType: int64
+		isHidden
+		sourceColumn: delivery_date_key
+		summarizeBy: none
+		lineageTag: 3757e54e-33bb-5f8c-9a65-92096c850c66
+
+		annotation SummarizationSetBy = User
+
+	/// Store surrogate key. Relationship column; hide in the semantic model.
+	column dealership_key
+		dataType: int64
+		isHidden
+		sourceColumn: dealership_key
+		summarizeBy: none
+		lineageTag: c9a85f0b-8508-544b-9ecc-8b5da3b2122e
+
+		annotation SummarizationSetBy = User
+
+	/// Vehicle surrogate key. Relationship column; hide in the semantic model.
+	column vehicle_key
+		dataType: int64
+		isHidden
+		sourceColumn: vehicle_key
+		summarizeBy: none
+		lineageTag: 634d2408-3d0e-58e6-a0d7-cd9c697b0387
+
+		annotation SummarizationSetBy = User
+
+	/// Model-line surrogate key, resolved through the vehicle. Relationship column; hide in the
+	/// semantic model.
+	column vehicle_model_key
+		dataType: int64
+		isHidden
+		sourceColumn: vehicle_model_key
+		summarizeBy: none
+		lineageTag: 2d5468a4-e566-53f1-904c-7cf8ce640df6
+
+		annotation SummarizationSetBy = User
+
+	/// Customer surrogate key. NULL on wholesale and dealer-trade rows, which have no retail customer.
+	column customer_key
+		dataType: int64
+		isHidden
+		sourceColumn: customer_key
+		summarizeBy: none
+		lineageTag: 3c67c206-3f39-5cae-875b-074229505597
+
+		annotation SummarizationSetBy = User
+
+	/// Role-playing employee key: the selling salesperson.
+	column salesperson_key
+		dataType: int64
+		isHidden
+		sourceColumn: salesperson_key
+		summarizeBy: none
+		lineageTag: 415d7c34-6557-55bf-8aa2-58216a3c4df0
+
+		annotation SummarizationSetBy = User
+
+	/// Role-playing employee key: the desk manager on the deal.
+	column desk_manager_key
+		dataType: int64
+		isHidden
+		sourceColumn: desk_manager_key
+		summarizeBy: none
+		lineageTag: 14b4c573-823f-5f1b-bc98-af33e7e9ac91
+
+		annotation SummarizationSetBy = User
+
+	/// Role-playing employee key: the finance manager on the deal.
+	column finance_manager_key
+		dataType: int64
+		isHidden
+		sourceColumn: finance_manager_key
+		summarizeBy: none
+		lineageTag: 29859c1b-ab96-5d61-8c1d-f9a156e37d04
+
+		annotation SummarizationSetBy = User
+
+	/// Lead source credited with the deal, single-source first-touch. NULL where no source was
+	/// recorded.
+	column lead_source_key
+		dataType: int64
+		isHidden
+		sourceColumn: lead_source_key
+		summarizeBy: none
+		lineageTag: 0b9b3a64-3228-5884-8a51-2da4890b22ef
+
+		annotation SummarizationSetBy = User
+
+	/// New Retail, Used Retail, Certified Retail, Lease, Wholesale or Dealer Trade.
+	column sale_type
+		dataType: string
+		sourceColumn: sale_type
+		summarizeBy: none
+		lineageTag: 51eda24d-6f98-5d63-82c0-fb6bd52140c6
+
+		annotation SummarizationSetBy = User
+
+	/// True for a retail or lease delivery. False for wholesale and dealer trades, which are not retail
+	/// units.
+	column is_retail
+		dataType: boolean
+		sourceColumn: is_retail
+		summarizeBy: none
+		lineageTag: 5214e379-68b9-500e-8894-a894b2795e6b
+
+		annotation SummarizationSetBy = User
+
+	/// Governed new/used split taken from the vehicle. A certified pre-owned unit is Used.
+	column condition_group
+		dataType: string
+		sourceColumn: condition_group
+		summarizeBy: none
+		lineageTag: f72f0dbd-184c-5810-80f9-dbdaf73a49f1
+
+		annotation SummarizationSetBy = User
+
+	/// New, Used or Certified as recorded on the vehicle.
+	column vehicle_condition_type
+		dataType: string
+		sourceColumn: vehicle_condition_type
+		summarizeBy: none
+		lineageTag: 7c139fba-f71a-54f6-ae92-fc49895e3ef9
+
+		annotation SummarizationSetBy = User
+
+	/// Always 1. Additive unit measure over every transaction, retail or not.
+	column unit_count
+		dataType: int64
+		sourceColumn: unit_count
+		summarizeBy: none
+		lineageTag: ce0c5a24-f888-56ee-b355-be333b3f9ed2
+
+		annotation SummarizationSetBy = User
+
+	/// KPI-SLS-001 numerator, and the shared denominator of KPI-GRS-004/005/006 and the KPI-INV-007
+	/// mean. 1 on a retail row, 0 otherwise.
+	column retail_unit_count
+		dataType: int64
+		isHidden
+		sourceColumn: retail_unit_count
+		summarizeBy: none
+		lineageTag: d698f9c2-27e0-5de0-a2ea-db312c4b60e8
+
+		annotation SummarizationSetBy = User
+
+	/// KPI-SLS-002 numerator. 1 on a retail delivery of a new vehicle, 0 otherwise. Includes leases of
+	/// new vehicles.
+	column new_unit_count
+		dataType: int64
+		isHidden
+		sourceColumn: new_unit_count
+		summarizeBy: none
+		lineageTag: c1811a16-672e-5623-80d8-d60bafd866a3
+
+		annotation SummarizationSetBy = User
+
+	/// KPI-SLS-003 numerator. 1 on a retail delivery of a used or certified vehicle, 0 otherwise.
+	/// Includes leases of used vehicles.
+	column used_unit_count
+		dataType: int64
+		isHidden
+		sourceColumn: used_unit_count
+		summarizeBy: none
+		lineageTag: 71ed1471-f72a-5019-8137-847ae9a67326
+
+		annotation SummarizationSetBy = User
+
+	/// Wholesale disposals. Never part of a retail measure; published so wholesale volume can be read
+	/// beside the aged-inventory percentage it moves.
+	column wholesale_unit_count
+		dataType: int64
+		isHidden
+		sourceColumn: wholesale_unit_count
+		summarizeBy: none
+		lineageTag: 4efef287-0aa4-50fe-998d-b204e1ce3e0b
+
+		annotation SummarizationSetBy = User
+
+	/// Dealer trades. Never part of a retail measure.
+	column dealer_trade_unit_count
+		dataType: int64
+		isHidden
+		sourceColumn: dealer_trade_unit_count
+		summarizeBy: none
+		lineageTag: fcda5436-c515-5d33-bca6-0bb50c87706a
+
+		annotation SummarizationSetBy = User
+
+	/// Final selling price of the vehicle.
+	column sale_price
+		dataType: decimal
+		sourceColumn: sale_price
+		summarizeBy: none
+		lineageTag: c893ec07-f924-5871-a83f-c7dbec6b3469
+
+		annotation SummarizationSetBy = User
+
+	/// Manufacturer suggested retail price where one applies, otherwise NULL.
+	column msrp
+		dataType: decimal
+		sourceColumn: msrp
+		summarizeBy: none
+		lineageTag: a038d354-003f-53c0-8f07-a13316b3e26a
+
+		annotation SummarizationSetBy = User
+
+	/// First advertised price.
+	column original_asking_price
+		dataType: decimal
+		sourceColumn: original_asking_price
+		summarizeBy: none
+		lineageTag: 5b25cffc-60ba-50cf-bede-68c931301c63
+
+		annotation SummarizationSetBy = User
+
+	/// Advertised price at the time of sale.
+	column final_asking_price
+		dataType: decimal
+		sourceColumn: final_asking_price
+		summarizeBy: none
+		lineageTag: 35835c27-bde2-5a02-b06a-c51c711e9690
+
+		annotation SummarizationSetBy = User
+
+	/// What the unit cost to acquire.
+	column acquisition_cost
+		dataType: decimal
+		sourceColumn: acquisition_cost
+		summarizeBy: none
+		lineageTag: 0b9a603c-bb77-5fa1-8399-fffd70f71855
+
+		annotation SummarizationSetBy = User
+
+	/// What the unit cost to recondition.
+	column reconditioning_cost
+		dataType: decimal
+		sourceColumn: reconditioning_cost
+		summarizeBy: none
+		lineageTag: 6518714f-9e46-531e-b698-fd24245a3ccf
+
+		annotation SummarizationSetBy = User
+
+	/// Internal pack applied to the deal.
+	column pack_amount
+		dataType: decimal
+		sourceColumn: pack_amount
+		summarizeBy: none
+		lineageTag: f964fd82-d860-5fc7-b4c1-aa9d3aeeb7ba
+
+		annotation SummarizationSetBy = User
+
+	/// Vehicle profit on every transaction: sale_price less acquisition, reconditioning and pack. May
+	/// legitimately be negative.
+	column front_end_gross
+		dataType: decimal
+		sourceColumn: front_end_gross
+		summarizeBy: none
+		lineageTag: 3459f099-fc1e-5e2f-bbcd-5fd410a940fe
+
+		annotation SummarizationSetBy = User
+
+	/// Finance-office profit on every transaction.
+	column back_end_gross
+		dataType: decimal
+		sourceColumn: back_end_gross
+		summarizeBy: none
+		lineageTag: 46e4ed31-cd75-5191-bcd0-6be620346fe5
+
+		annotation SummarizationSetBy = User
+
+	/// front_end_gross + back_end_gross on every transaction. Reconciled to the cent by RECON-
+	/// GROSS-001.
+	column total_gross
+		dataType: decimal
+		sourceColumn: total_gross
+		summarizeBy: none
+		lineageTag: a46b38cc-85b2-5157-82c9-432db99c39bd
+
+		annotation SummarizationSetBy = User
+
+	/// KPI-GRS-001 numerator. Equals front_end_gross on a retail row, 0 otherwise. Negative values are
+	/// legitimate and must stay visible.
+	column retail_front_end_gross
+		dataType: decimal
+		isHidden
+		sourceColumn: retail_front_end_gross
+		summarizeBy: none
+		lineageTag: 7fba13b6-2ace-5853-af8c-7ff54d1b00a1
+
+		annotation SummarizationSetBy = User
+
+	/// KPI-GRS-002 numerator. Equals back_end_gross on a retail row, 0 otherwise.
+	column retail_back_end_gross
+		dataType: decimal
+		isHidden
+		sourceColumn: retail_back_end_gross
+		summarizeBy: none
+		lineageTag: 516ea92b-cda8-53d4-8c84-86dbddf66cbb
+
+		annotation SummarizationSetBy = User
+
+	/// KPI-GRS-003 numerator and the KPI-MKT-003 attributed-gross numerator. Equals total_gross on a
+	/// retail row, 0 otherwise.
+	column retail_total_gross
+		dataType: decimal
+		isHidden
+		sourceColumn: retail_total_gross
+		summarizeBy: none
+		lineageTag: 8ad7186b-7107-5e35-996f-2a82aa47309f
+
+		annotation SummarizationSetBy = User
+
+	/// Allowance granted on the trade-in.
+	column trade_allowance
+		dataType: decimal
+		sourceColumn: trade_allowance
+		summarizeBy: none
+		lineageTag: fa3ba345-9de3-586e-9348-9b5356ed6df5
+
+		annotation SummarizationSetBy = User
+
+	/// Actual cash value of the trade-in.
+	column trade_acv
+		dataType: decimal
+		sourceColumn: trade_acv
+		summarizeBy: none
+		lineageTag: d8d4d364-5281-5473-b628-a67031cc2261
+
+		annotation SummarizationSetBy = User
+
+	/// Cash down payment.
+	column cash_down
+		dataType: decimal
+		sourceColumn: cash_down
+		summarizeBy: none
+		lineageTag: 61b5dbd2-32ab-5a9a-bf68-90314c7ad0c2
+
+		annotation SummarizationSetBy = User
+
+	/// Amount financed.
+	column amount_financed
+		dataType: decimal
+		sourceColumn: amount_financed
+		summarizeBy: none
+		lineageTag: a6ee14e4-17ac-5a92-9ce9-0920004f253f
+
+		annotation SummarizationSetBy = User
+
+	/// Calendar days between acquisition and sale, on every transaction.
+	column days_in_inventory_at_sale
+		dataType: int64
+		sourceColumn: days_in_inventory_at_sale
+		summarizeBy: none
+		lineageTag: 52cbdcff-2c48-5628-aa1f-b5326cdb3329
+
+		annotation SummarizationSetBy = User
+
+	/// KPI-INV-007 median population: days in inventory on a retail row, NULL otherwise, so a non-
+	/// retail row is excluded from the order statistic rather than pulling it towards zero.
+	column retail_days_in_inventory
+		dataType: int64
+		sourceColumn: retail_days_in_inventory
+		summarizeBy: none
+		lineageTag: 3d42b2a5-721b-5c3b-b63d-0590dbf70343
+
+		annotation SummarizationSetBy = User
+
+	/// KPI-INV-007 mean numerator: days in inventory on a retail row, 0 otherwise, so the mean is
+	/// SUM(this) / SUM(retail_unit_count).
+	column retail_days_in_inventory_total
+		dataType: int64
+		isHidden
+		sourceColumn: retail_days_in_inventory_total
+		summarizeBy: none
+		lineageTag: 701548fc-7a63-5827-8ad0-00c88874af6f
+
+		annotation SummarizationSetBy = User
+
+	/// Originating system. Present so no reader mistakes this for real transaction data.
+	column source_system
+		dataType: string
+		sourceColumn: source_system
+		summarizeBy: none
+		lineageTag: 74e12fa3-13a2-5ff0-bfec-7174413641b5
+
+		annotation SummarizationSetBy = User
+
+	partition vw_vehicle_sales = m
+		mode: import
+		source =
+				let
+				    Source = PostgreSQL.Database(ArpiServer, ArpiDatabase),
+				    Data = Source{[Schema = "reporting", Item = "vw_vehicle_sales"]}[Data]
+				in
+				    Data
+
+	annotation ARPI_SourceView = reporting.vw_vehicle_sales
+
+	annotation ARPI_Grain = One row per finalized vehicle transaction.
+
+	annotation ARPI_TableRole = Fact
+
+	annotation PBI_ResultType = Table

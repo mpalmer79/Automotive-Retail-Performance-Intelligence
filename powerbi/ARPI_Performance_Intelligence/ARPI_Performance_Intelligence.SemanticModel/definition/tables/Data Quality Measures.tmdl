@@ -1,0 +1,177 @@
+/// Data-quality measure group. Source tables vw_data_quality_trend,
+/// vw_reconciliation_status and vw_pipeline_run_summary, all of which are deliberately
+/// DISCONNECTED from the star: they describe pipeline runs, not business events, and
+/// relating them to vw_calendar would let a business date filter silently change what a
+/// quality figure means.
+///
+/// This group answers "can these numbers be trusted?", which is not a business KPI but is
+/// a condition on every other page being read at all. It carries no KPI identifier,
+/// because KPI_CATALOG.md governs business measures.
+///
+/// A SKIPPED CHECK IS NOT A PASSING CHECK. Pass Rate divides by checks EVALUATED, and
+/// Evaluation Coverage must be shown beside it: a high pass rate at low coverage proves
+/// very little.
+table 'Data Quality Measures'
+	lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba56001
+
+	/// Hidden placeholder. A measure group needs a table to live on and a table needs a
+	/// column; this one exists for that reason only and is never exposed to a report author.
+	column Placeholder
+		dataType: string
+		isHidden
+		sourceColumn: [Placeholder]
+		summarizeBy: none
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba56002
+
+		annotation SummarizationSetBy = Automatic
+
+	/// Validation checks that were evaluated and passed.
+	measure 'Checks Passed' = SUM ( 'vw_data_quality_trend'[checks_passed] ) + 0
+		formatString: #,0
+		displayFolder: Checks
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba56003
+
+		annotation ARPI_MeasureRole = Supporting
+		annotation ARPI_SourceTable = vw_data_quality_trend
+
+	/// Validation checks that were evaluated and failed. Read beside severity: a failed
+	/// critical check stops a pipeline run, a failed warning does not.
+	measure 'Checks Failed' = SUM ( 'vw_data_quality_trend'[checks_failed] ) + 0
+		formatString: #,0
+		displayFolder: Checks
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba56004
+
+		annotation ARPI_MeasureRole = Supporting
+		annotation ARPI_SourceTable = vw_data_quality_trend
+
+	/// Validation checks that were recorded but never evaluated. A SKIPPED CHECK IS NOT A
+	/// PASSING CHECK: it almost always means the target held no rows, so the check had
+	/// nothing to assert against.
+	measure 'Checks Skipped' = SUM ( 'vw_data_quality_trend'[checks_skipped] ) + 0
+		formatString: #,0
+		displayFolder: Checks
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba56005
+
+		annotation ARPI_MeasureRole = Supporting
+		annotation ARPI_SourceTable = vw_data_quality_trend
+
+	/// Passed checks as a share of EVALUATED checks, not of recorded ones. Must be published
+	/// beside Evaluation Coverage. BLANK when nothing was evaluated.
+	measure 'Pass Rate' =
+			DIVIDE (
+			    SUM ( 'vw_data_quality_trend'[checks_passed] ),
+			    SUM ( 'vw_data_quality_trend'[checks_evaluated] )
+			)
+		formatString: 0.0%
+		displayFolder: Checks
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba56006
+
+		annotation ARPI_MeasureRole = Supporting
+		annotation ARPI_SourceTable = vw_data_quality_trend
+
+	/// Evaluated checks as a share of recorded checks. The control on Pass Rate: a 100 per
+	/// cent pass rate over 10 per cent coverage is not evidence of quality. BLANK when
+	/// nothing was recorded.
+	measure 'Evaluation Coverage' =
+			DIVIDE (
+			    SUM ( 'vw_data_quality_trend'[checks_evaluated] ),
+			    SUM ( 'vw_data_quality_trend'[checks_recorded] )
+			)
+		formatString: 0.0%
+		displayFolder: Checks
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba56007
+
+		annotation ARPI_MeasureRole = Supporting
+		annotation ARPI_SourceTable = vw_data_quality_trend
+
+	/// Critical reconciliations that are not passing. The number an executive page should
+	/// surface if it is ever non-zero, because a critical reconciliation breach means a
+	/// figure elsewhere in the report cannot be relied on.
+	measure 'Critical Reconciliations Failed' =
+			CALCULATE (
+			    COUNTROWS ( 'vw_reconciliation_status' ),
+			    'vw_reconciliation_status'[is_critical] = TRUE (),
+			    'vw_reconciliation_status'[is_passing] = FALSE ()
+			) + 0
+		formatString: #,0
+		displayFolder: Reconciliation
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba56008
+
+		annotation ARPI_MeasureRole = Supporting
+		annotation ARPI_SourceTable = vw_reconciliation_status
+
+	/// Absolute difference between the two sides of a reconciliation, summed over the
+	/// reconciliations in context. Unit-free: some reconciliations compare row counts and
+	/// others compare currency, so this is a magnitude to sort by rather than a total to
+	/// read. Sort descending to surface the worst offenders.
+	measure 'Reconciliation Difference' = SUM ( 'vw_reconciliation_status'[absolute_difference] )
+		formatString: #,0.00
+		displayFolder: Reconciliation
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba56009
+
+		annotation ARPI_MeasureRole = Supporting
+		annotation ARPI_SourceTable = vw_reconciliation_status
+
+	/// Completion timestamp of the most recent pipeline run that succeeded. BLANK when no
+	/// run has ever succeeded, which is the honest answer rather than the timestamp of a
+	/// failed run.
+	measure 'Last Successful Refresh' =
+			CALCULATE (
+			    MAX ( 'vw_pipeline_run_summary'[completed_at] ),
+			    'vw_pipeline_run_summary'[run_status] = "succeeded"
+			)
+		formatString: yyyy-mm-dd hh:nn
+		displayFolder: Pipeline run
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba56010
+
+		annotation ARPI_MeasureRole = Supporting
+		annotation ARPI_SourceTable = vw_pipeline_run_summary
+
+	/// Status of the most recent pipeline run in context. A text measure by design: the
+	/// status is a word, and encoding it as a colour or a symbol would put presentation
+	/// logic inside the model.
+	measure 'Pipeline Status' =
+			VAR LatestRun = MAX ( 'vw_pipeline_run_summary'[pipeline_run_id] )
+			RETURN
+			    CALCULATE (
+			        SELECTEDVALUE ( 'vw_pipeline_run_summary'[run_status] ),
+			        'vw_pipeline_run_summary'[pipeline_run_id] = LatestRun
+			    )
+		displayFolder: Pipeline run
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba56011
+
+		annotation ARPI_MeasureRole = Supporting
+		annotation ARPI_SourceTable = vw_pipeline_run_summary
+
+	/// Wall-clock duration of the most recent pipeline run in context, in minutes. The source
+	/// column is seconds; the conversion happens here, at the final measure boundary.
+	measure 'Pipeline Duration' =
+			VAR LatestRun = MAX ( 'vw_pipeline_run_summary'[pipeline_run_id] )
+			RETURN
+			    CALCULATE (
+			        SUM ( 'vw_pipeline_run_summary'[duration_seconds] ),
+			        'vw_pipeline_run_summary'[pipeline_run_id] = LatestRun
+			    ) / 60
+		formatString: 0.0 "min"
+		displayFolder: Pipeline run
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba56012
+
+		annotation ARPI_MeasureRole = Supporting
+		annotation ARPI_SourceTable = vw_pipeline_run_summary
+
+	/// Source rows rejected during ingestion in the runs in context. A non-zero value is not
+	/// automatically a defect -- ARPI injects controlled defects on purpose -- but it is
+	/// always something to explain rather than to ignore.
+	measure 'Rejected Rows' = SUM ( 'vw_pipeline_run_summary'[rejected_row_count] ) + 0
+		formatString: #,0
+		displayFolder: Pipeline run
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba56013
+
+		annotation ARPI_MeasureRole = Supporting
+		annotation ARPI_SourceTable = vw_pipeline_run_summary
+
+	partition 'Data Quality Measures' = calculated
+		mode: import
+		source = ROW("Placeholder", "")
+
+	annotation ARPI_MeasureGroup = Data Quality

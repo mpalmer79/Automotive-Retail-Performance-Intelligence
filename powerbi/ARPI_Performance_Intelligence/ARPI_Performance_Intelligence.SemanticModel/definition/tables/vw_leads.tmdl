@@ -1,0 +1,361 @@
+/// Grain: one row per CRM lead, duplicates included -- identical to warehouse.fact_lead, with no
+/// aggregation and no filtering. Fact table for the semantic model. Owns the row-level inputs to
+/// KPI-FUN-001, 002, 003, 006, 007 and 008, and the KPI-MKT-001 denominator. Duplicate leads are
+/// not removed from the view; instead every funnel numerator and denominator column is zero on a
+/// duplicate row, so the exclusion is structural and identical across measures, while
+/// duplicate_lead_count keeps the excluded population visible as RECON-LEAD-001 requires.
+/// first_response_seconds is published at row level because KPI-FUN-008 is a median; NULL means
+/// never responded, which is different from zero, and unresponded_lead_count must be shown beside
+/// any response-time figure because both response-time KPIs are blind to ignored leads. Contains no
+/// communication content of any kind. Surrogate keys should be hidden in the semantic model.
+table vw_leads
+	lineageTag: 0eb39b33-3f55-5d3c-92fd-1bf7ce330341
+
+	/// Warehouse surrogate key of the lead. Relationship column for vw_appointments; hide in the
+	/// semantic model.
+	column lead_key
+		dataType: int64
+		isHidden
+		sourceColumn: lead_key
+		summarizeBy: none
+		lineageTag: 6cc1bbbb-a8d3-5a8d-b611-5d7f3470f4fc
+
+		annotation SummarizationSetBy = User
+
+	/// Stable business identifier of the lead.
+	column lead_code
+		dataType: string
+		sourceColumn: lead_code
+		summarizeBy: none
+		lineageTag: 32b73082-51e7-5190-a117-3e5eedc5e0cb
+
+		annotation SummarizationSetBy = User
+
+	/// The date the lead was created. The governed date basis for every funnel KPI on this fact: a lead
+	/// counts in the period it arrived, whatever happens later. Single active relationship to
+	/// vw_calendar.
+	column lead_created_date_key
+		dataType: int64
+		isHidden
+		sourceColumn: lead_created_date_key
+		summarizeBy: none
+		lineageTag: 3bbd55a3-e72a-5b06-9a5c-9ce9491e6a21
+
+		annotation SummarizationSetBy = User
+
+	/// Store surrogate key. Relationship column; hide in the semantic model.
+	column dealership_key
+		dataType: int64
+		isHidden
+		sourceColumn: dealership_key
+		summarizeBy: none
+		lineageTag: 10469fa6-9727-5b70-b19f-4199fdde7166
+
+		annotation SummarizationSetBy = User
+
+	/// Customer surrogate key. NULL for an anonymous lead; no customer record is synthesised to fill
+	/// it.
+	column customer_key
+		dataType: int64
+		isHidden
+		sourceColumn: customer_key
+		summarizeBy: none
+		lineageTag: 2dfdcbc1-5d08-5531-88aa-ca0387902f79
+
+		annotation SummarizationSetBy = User
+
+	/// Model line the lead expressed interest in, or NULL. Relationship column; hide in the semantic
+	/// model.
+	column vehicle_model_key
+		dataType: int64
+		isHidden
+		sourceColumn: vehicle_model_key
+		summarizeBy: none
+		lineageTag: e06b42f8-f2c7-57df-ac57-52dd0cb4f702
+
+		annotation SummarizationSetBy = User
+
+	/// Lead source, single-source first-touch attribution. Relationship column; hide in the semantic
+	/// model.
+	column lead_source_key
+		dataType: int64
+		isHidden
+		sourceColumn: lead_source_key
+		summarizeBy: none
+		lineageTag: c12b0273-4f54-5414-a480-b8b5e4617946
+
+		annotation SummarizationSetBy = User
+
+	/// Campaign credited with the lead, or NULL where none applies. Relationship column; hide in the
+	/// semantic model.
+	column campaign_key
+		dataType: int64
+		isHidden
+		sourceColumn: campaign_key
+		summarizeBy: none
+		lineageTag: dae159ee-0ce7-5afd-b419-fe3d3c8163f9
+
+		annotation SummarizationSetBy = User
+
+	/// Role-playing employee key: the person the lead was assigned to.
+	column assigned_employee_key
+		dataType: int64
+		isHidden
+		sourceColumn: assigned_employee_key
+		summarizeBy: none
+		lineageTag: 29934149-dc4d-52be-a5d7-d8e137397661
+
+		annotation SummarizationSetBy = User
+
+	/// The finalized sale the lead produced, or NULL. Relationship column into vw_vehicle_sales.
+	column sale_key
+		dataType: int64
+		isHidden
+		sourceColumn: sale_key
+		summarizeBy: none
+		lineageTag: e6b61e57-5fd7-5475-87b8-5babccc75c76
+
+		annotation SummarizationSetBy = User
+
+	/// True when two-way contact was established.
+	column is_contacted
+		dataType: boolean
+		sourceColumn: is_contacted
+		summarizeBy: none
+		lineageTag: 0845f618-2eae-5000-bfd7-7842b9de2b94
+
+		annotation SummarizationSetBy = User
+
+	/// True when an appointment was booked. Implies is_contacted.
+	column is_appointment_set
+		dataType: boolean
+		sourceColumn: is_appointment_set
+		summarizeBy: none
+		lineageTag: 2b1cfffe-b7d0-59fe-aef9-b5fb65c0e321
+
+		annotation SummarizationSetBy = User
+
+	/// True when the customer arrived. Implies is_appointment_set.
+	column is_appointment_shown
+		dataType: boolean
+		sourceColumn: is_appointment_shown
+		summarizeBy: none
+		lineageTag: 08d2203b-b39c-5315-b319-901ac2897b38
+
+		annotation SummarizationSetBy = User
+
+	/// True when the lead produced a finalized retail sale. Implies sale_key is populated.
+	column is_sold
+		dataType: boolean
+		sourceColumn: is_sold
+		summarizeBy: none
+		lineageTag: 23a678fc-bb25-5130-add9-bc41ef089d55
+
+		annotation SummarizationSetBy = User
+
+	/// True when the lead duplicates an earlier one. Every funnel measure excludes these.
+	column is_duplicate
+		dataType: boolean
+		sourceColumn: is_duplicate
+		summarizeBy: none
+		lineageTag: edca2022-6417-5118-8519-3e789ceb4148
+
+		annotation SummarizationSetBy = User
+
+	/// Business identifier of the lead this row duplicates, or NULL.
+	column original_lead_code
+		dataType: string
+		sourceColumn: original_lead_code
+		summarizeBy: none
+		lineageTag: d05af4ad-f624-5b0f-b90c-0468c7bb9c54
+
+		annotation SummarizationSetBy = User
+
+	/// Always 1. Counts every lead, duplicates included. Use valid_lead_count for any funnel measure.
+	column lead_count
+		dataType: int64
+		sourceColumn: lead_count
+		summarizeBy: none
+		lineageTag: e60957f2-dd64-55fb-acc7-3b469a372589
+
+		annotation SummarizationSetBy = User
+
+	/// KPI-FUN-001 numerator, and the denominator of KPI-FUN-002 and KPI-FUN-006. 1 on a non-duplicate
+	/// lead, 0 otherwise.
+	column valid_lead_count
+		dataType: int64
+		isHidden
+		sourceColumn: valid_lead_count
+		summarizeBy: none
+		lineageTag: 20efbddb-6274-527c-890e-3efdd8ede31b
+
+		annotation SummarizationSetBy = User
+
+	/// The excluded duplicate population, published so RECON-LEAD-001 can explain the difference
+	/// between raw lead volume and KPI-FUN-001 rather than tolerating it.
+	column duplicate_lead_count
+		dataType: int64
+		isHidden
+		sourceColumn: duplicate_lead_count
+		summarizeBy: none
+		lineageTag: 69eaf9d8-22e8-58a8-9b55-399d51801b5e
+
+		annotation SummarizationSetBy = User
+
+	/// KPI-FUN-002 numerator and the KPI-FUN-003 denominator. Note the denominator of appointment-set
+	/// rate is CONTACTED leads, not all leads.
+	column contacted_lead_count
+		dataType: int64
+		isHidden
+		sourceColumn: contacted_lead_count
+		summarizeBy: none
+		lineageTag: 9e748045-8c52-54e6-9060-59e231e6c324
+
+		annotation SummarizationSetBy = User
+
+	/// KPI-FUN-003 numerator. Can never exceed contacted_lead_count.
+	column appointment_set_lead_count
+		dataType: int64
+		isHidden
+		sourceColumn: appointment_set_lead_count
+		summarizeBy: none
+		lineageTag: fc252bea-1e43-5005-b135-4cfc69171947
+
+		annotation SummarizationSetBy = User
+
+	/// Leads that reached a showroom visit. Published for funnel-chain diagnosis; the governed show
+	/// rate KPI-FUN-004 is computed over APPOINTMENTS, not leads.
+	column appointment_shown_lead_count
+		dataType: int64
+		isHidden
+		sourceColumn: appointment_shown_lead_count
+		summarizeBy: none
+		lineageTag: bb288315-b2c3-5e6e-95df-95285ccc9097
+
+		annotation SummarizationSetBy = User
+
+	/// KPI-FUN-006 numerator. Leads linked to a finalized retail sale.
+	column sold_lead_count
+		dataType: int64
+		isHidden
+		sourceColumn: sold_lead_count
+		summarizeBy: none
+		lineageTag: 19921b1d-cc54-5b09-adf4-d441dd506000
+
+		annotation SummarizationSetBy = User
+
+	/// KPI-FUN-008 median population. Seconds to first outbound response, NULL when the lead was never
+	/// responded to and on a duplicate row. Zero is a valid value: an instant auto-response.
+	column first_response_seconds
+		dataType: int64
+		sourceColumn: first_response_seconds
+		summarizeBy: none
+		lineageTag: 0925c0fa-007b-5f47-a443-af2bc6c6a240
+
+		annotation SummarizationSetBy = User
+
+	/// first_response_seconds expressed in minutes, the unit both response-time KPIs are published in.
+	column first_response_minutes
+		dataType: double
+		isHidden
+		sourceColumn: first_response_minutes
+		summarizeBy: none
+		lineageTag: 4955dfa0-3e37-51b5-afe7-c5bed89b8d73
+
+		annotation SummarizationSetBy = User
+
+	/// KPI-FUN-007 numerator: response seconds on a responded, non-duplicate lead, 0 otherwise.
+	column response_seconds_total
+		dataType: int64
+		isHidden
+		sourceColumn: response_seconds_total
+		summarizeBy: none
+		lineageTag: 386348ec-2815-5dfd-a88f-91799ea92eb9
+
+		annotation SummarizationSetBy = User
+
+	/// KPI-FUN-007 denominator. Never-responded leads are excluded by design.
+	column responded_lead_count
+		dataType: int64
+		isHidden
+		sourceColumn: responded_lead_count
+		summarizeBy: none
+		lineageTag: 3117de5e-0540-5aec-ab13-0d695b73b2b7
+
+		annotation SummarizationSetBy = User
+
+	/// Valid leads that were never responded to. Must be shown beside any response-time figure: both
+	/// response-time KPIs are blind to this population.
+	column unresponded_lead_count
+		dataType: int64
+		isHidden
+		sourceColumn: unresponded_lead_count
+		summarizeBy: none
+		lineageTag: 4ed62b1f-3b56-5f2d-bf63-3fa61a3aa308
+
+		annotation SummarizationSetBy = User
+
+	/// Banded response time -- under 5 minutes, 5-15, 15-60, over 60. The recommended primary visual,
+	/// with the median as the summary card.
+	column response_time_band
+		dataType: string
+		sourceColumn: response_time_band
+		summarizeBy: none
+		sortByColumn: response_time_band_sort_order
+		lineageTag: f5d39868-ddf1-5e3c-aafa-2743cbd270b2
+
+		annotation SummarizationSetBy = User
+
+	/// Calendar days from lead creation to the finalized sale, or NULL.
+	column days_to_sale
+		dataType: int64
+		sourceColumn: days_to_sale
+		summarizeBy: none
+		lineageTag: ace06897-03cc-55e8-9f91-8b697e799c44
+
+		annotation SummarizationSetBy = User
+
+	/// Originating system. Present so no reader mistakes this for real CRM data.
+	column source_system
+		dataType: string
+		sourceColumn: source_system
+		summarizeBy: none
+		lineageTag: 80477632-2044-5b72-a661-888b355be16d
+
+		annotation SummarizationSetBy = User
+
+	/// Hidden sort order for response_time_band. The reporting layer publishes the label without an
+	/// ordering column, so the order is defined once here and set as the sort-by column for
+	/// response_time_band. Values outside the known set sort last.
+	column response_time_band_sort_order =
+			SWITCH (
+			    'vw_leads'[response_time_band],
+			    "Under 5 minutes", 1,
+			    "5-15 minutes", 2,
+			    "15-60 minutes", 3,
+			    "Over 60 minutes", 4,
+			    99
+			)
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		lineageTag: 53c211f6-5ee9-5183-9154-7b7135549a57
+
+		annotation SummarizationSetBy = Automatic
+
+	partition vw_leads = m
+		mode: import
+		source =
+				let
+				    Source = PostgreSQL.Database(ArpiServer, ArpiDatabase),
+				    Data = Source{[Schema = "reporting", Item = "vw_leads"]}[Data]
+				in
+				    Data
+
+	annotation ARPI_SourceView = reporting.vw_leads
+
+	annotation ARPI_Grain = One row per CRM lead, duplicates included.
+
+	annotation ARPI_TableRole = Fact
+
+	annotation PBI_ResultType = Table

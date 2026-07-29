@@ -1,0 +1,276 @@
+/// Grain: one row per pipeline run (audit.pipeline_run). Operational summary satisfying
+/// ARCHITECTURE.md section 21.4: identity, timing, per-layer row counts, validation counts,
+/// rejected record count and reconciliation status. A NULL row count means the layer was never
+/// measured; 0 means it was measured and empty.
+table vw_pipeline_run_summary
+	lineageTag: 800514e8-14e7-5d61-8ea7-ace59c859f26
+
+	/// Run identifier. Join key to reporting.vw_data_quality_summary.
+	column pipeline_run_id
+		dataType: int64
+		sourceColumn: pipeline_run_id
+		summarizeBy: none
+		lineageTag: 1f965361-6a93-57e2-964a-1bfd668f7131
+
+		annotation SummarizationSetBy = User
+
+	/// Externally generated UUID for the run; correlates database rows with log output.
+	column run_uuid
+		dataType: string
+		sourceColumn: run_uuid
+		summarizeBy: none
+		lineageTag: 10a568c2-061b-5546-a6d3-54a6b3ef93b9
+
+		annotation SummarizationSetBy = User
+
+	/// Logical pipeline that executed.
+	column pipeline_name
+		dataType: string
+		sourceColumn: pipeline_name
+		summarizeBy: none
+		lineageTag: 424e5450-2bc7-502a-9d72-63805e05977e
+
+		annotation SummarizationSetBy = User
+
+	/// ARPI configuration profile: development, test or portfolio.
+	column profile_name
+		dataType: string
+		sourceColumn: profile_name
+		summarizeBy: none
+		lineageTag: 6d4aa889-de3e-56e1-bb16-41c215fba1e8
+
+		annotation SummarizationSetBy = User
+
+	/// How the run was invoked, for example cli or ci.
+	column run_mode
+		dataType: string
+		sourceColumn: run_mode
+		summarizeBy: none
+		lineageTag: 3b5f9539-69b8-5709-8039-3fa2792e5478
+
+		annotation SummarizationSetBy = User
+
+	/// Version of the arpi distribution that produced the run.
+	column arpi_version
+		dataType: string
+		sourceColumn: arpi_version
+		summarizeBy: none
+		lineageTag: 100de33a-dc89-5941-800a-74ebce5458ff
+
+		annotation SummarizationSetBy = User
+
+	/// Generator seed. Two runs with the same seed and profile must produce identical data.
+	column random_seed
+		dataType: int64
+		sourceColumn: random_seed
+		summarizeBy: none
+		lineageTag: c8e79e89-eafd-522b-b252-39a0e8d8cca1
+
+		annotation SummarizationSetBy = User
+
+	/// running | succeeded | failed | aborted.
+	column run_status
+		dataType: string
+		sourceColumn: run_status
+		summarizeBy: none
+		lineageTag: c61e0219-7e19-5381-a45d-f8195d7ace1f
+
+		annotation SummarizationSetBy = User
+
+	/// UTC instant the run began.
+	column started_at
+		dataType: dateTime
+		sourceColumn: started_at
+		summarizeBy: none
+		lineageTag: fcb7bb27-70f9-5db7-a012-22b9e578a569
+
+		annotation SummarizationSetBy = User
+
+	/// UTC instant the run finished; NULL while still running.
+	column completed_at
+		dataType: dateTime
+		sourceColumn: completed_at
+		summarizeBy: none
+		lineageTag: 6385f76a-492f-53d2-bb46-bf839706dec6
+
+		annotation SummarizationSetBy = User
+
+	/// Wall-clock run duration in seconds to millisecond precision; NULL while still running.
+	column duration_seconds
+		dataType: double
+		sourceColumn: duration_seconds
+		summarizeBy: none
+		lineageTag: 5aff514d-02f7-5f7d-97da-2f72dfba661b
+
+		annotation SummarizationSetBy = User
+
+	/// Rows read from source files. NULL if never measured.
+	column source_row_count
+		dataType: int64
+		sourceColumn: source_row_count
+		summarizeBy: none
+		lineageTag: be67eac1-cd71-527a-b1a5-c18683b5fa32
+
+		annotation SummarizationSetBy = User
+
+	/// Rows landed in the raw layer. NULL if never measured.
+	column raw_row_count
+		dataType: int64
+		sourceColumn: raw_row_count
+		summarizeBy: none
+		lineageTag: d0423ca5-872d-56b0-a17c-74460f677f71
+
+		annotation SummarizationSetBy = User
+
+	/// Rows visible in the staging layer. NULL if never measured.
+	column staging_row_count
+		dataType: int64
+		sourceColumn: staging_row_count
+		summarizeBy: none
+		lineageTag: 07fdccfa-e521-52fd-8c2b-dd0a4d0e5af6
+
+		annotation SummarizationSetBy = User
+
+	/// Rows present in the warehouse layer after the merge. NULL if never measured.
+	column warehouse_row_count
+		dataType: int64
+		sourceColumn: warehouse_row_count
+		summarizeBy: none
+		lineageTag: 42583d95-81db-5a2f-a0f3-0ff2c51eb2d3
+
+		annotation SummarizationSetBy = User
+
+	/// Rows rejected, as reported by the pipeline. NULL if never measured.
+	column rejected_row_count
+		dataType: int64
+		sourceColumn: rejected_row_count
+		summarizeBy: none
+		lineageTag: f4c523d6-c154-509d-93d6-4939e394e43b
+
+		annotation SummarizationSetBy = User
+
+	/// Number of data-quality checks evaluated during the run.
+	column validation_check_count
+		dataType: int64
+		sourceColumn: validation_check_count
+		summarizeBy: none
+		lineageTag: 32548db2-5ec1-55e1-8c41-b9ec2db0586b
+
+		annotation SummarizationSetBy = User
+
+	/// Checks that passed.
+	column validation_passed_count
+		dataType: int64
+		sourceColumn: validation_passed_count
+		summarizeBy: none
+		lineageTag: 0f9f43a3-aab4-5dcd-8b6b-0a469ff6037a
+
+		annotation SummarizationSetBy = User
+
+	/// Checks that failed at any severity.
+	column validation_failed_count
+		dataType: int64
+		sourceColumn: validation_failed_count
+		summarizeBy: none
+		lineageTag: 562a0fed-3c83-5f3b-86bf-07579d15c717
+
+		annotation SummarizationSetBy = User
+
+	/// Checks skipped, normally because the target object held no rows.
+	column validation_skipped_count
+		dataType: int64
+		sourceColumn: validation_skipped_count
+		summarizeBy: none
+		lineageTag: fce2da1b-061d-5073-8382-1ceb86c836af
+
+		annotation SummarizationSetBy = User
+
+	/// Failed checks with critical severity, counted from audit.validation_result.
+	column critical_failed_check_count
+		dataType: int64
+		sourceColumn: critical_failed_check_count
+		summarizeBy: none
+		lineageTag: a33b35d3-0836-54e7-ad58-d9cda2443bfc
+
+		annotation SummarizationSetBy = User
+
+	/// Critical failure count as recorded on the run row by the pipeline itself. Should equal
+	/// critical_failed_check_count; a mismatch means the pipeline stopped early.
+	column reported_critical_failure_count
+		dataType: int64
+		sourceColumn: reported_critical_failure_count
+		summarizeBy: none
+		lineageTag: 161fa767-efe6-54ed-a390-80c7e4b54a10
+
+		annotation SummarizationSetBy = User
+
+	/// Warning count as recorded on the run row by the pipeline itself.
+	column reported_warning_count
+		dataType: int64
+		sourceColumn: reported_warning_count
+		summarizeBy: none
+		lineageTag: d64f25f5-c000-5d41-8af2-7cbeb8305b95
+
+		annotation SummarizationSetBy = User
+
+	/// Rows actually written to audit.rejected_record for the run.
+	column rejected_record_count
+		dataType: int64
+		sourceColumn: rejected_record_count
+		summarizeBy: none
+		lineageTag: 423ee7bc-dd3f-5dee-8a5b-e3c27433f87c
+
+		annotation SummarizationSetBy = User
+
+	/// Number of reconciliations evaluated during the run.
+	column reconciliation_count
+		dataType: int64
+		sourceColumn: reconciliation_count
+		summarizeBy: none
+		lineageTag: 6d5cb454-5aa1-5f2f-a8fb-584567ff09e9
+
+		annotation SummarizationSetBy = User
+
+	/// Number of reconciliations that failed.
+	column reconciliation_failed_count
+		dataType: int64
+		sourceColumn: reconciliation_failed_count
+		summarizeBy: none
+		lineageTag: 7486e8b3-69dd-534a-a9a1-a519f4eb52b7
+
+		annotation SummarizationSetBy = User
+
+	/// passed | failed | not evaluated. Never claims success when no reconciliation ran.
+	column reconciliation_status
+		dataType: string
+		sourceColumn: reconciliation_status
+		summarizeBy: none
+		lineageTag: 6d6b37b1-0ada-5076-89e0-0606253a88ed
+
+		annotation SummarizationSetBy = User
+
+	/// Free-text operator note captured on the run.
+	column notes
+		dataType: string
+		sourceColumn: notes
+		summarizeBy: none
+		lineageTag: 53fd20ef-5f74-55bb-af1b-e8905a11a155
+
+		annotation SummarizationSetBy = User
+
+	partition vw_pipeline_run_summary = m
+		mode: import
+		source =
+				let
+				    Source = PostgreSQL.Database(ArpiServer, ArpiDatabase),
+				    Data = Source{[Schema = "reporting", Item = "vw_pipeline_run_summary"]}[Data]
+				in
+				    Data
+
+	annotation ARPI_SourceView = reporting.vw_pipeline_run_summary
+
+	annotation ARPI_Grain = One row per pipeline run.
+
+	annotation ARPI_TableRole = Operational
+
+	annotation PBI_ResultType = Table

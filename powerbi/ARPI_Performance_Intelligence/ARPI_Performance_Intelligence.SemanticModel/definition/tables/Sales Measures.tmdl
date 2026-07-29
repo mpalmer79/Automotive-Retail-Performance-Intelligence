@@ -1,0 +1,65 @@
+/// Sales measure group. Volume only: how many vehicles were delivered. Source table
+/// vw_vehicle_sales, date basis sale_date_key (the active calendar relationship). Every
+/// measure here is a plain additive SUM of a pre-filtered numerator column, which is what
+/// makes the new-plus-used identity hold under any filter context.
+table 'Sales Measures'
+	lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba51001
+
+	/// Hidden placeholder. A measure group needs a table to live on and a table needs a
+	/// column; this one exists for that reason only and is never exposed to a report author.
+	column Placeholder
+		dataType: string
+		isHidden
+		sourceColumn: [Placeholder]
+		summarizeBy: none
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba51002
+
+		annotation SummarizationSetBy = Automatic
+
+	/// KPI-SLS-001. Retail and lease deliveries finalized in the period. Wholesale disposals
+	/// and dealer trades are not retail units and are never counted. Returns 0 rather than
+	/// blank in an empty period, because "no cars sold" is a meaningful answer that has to
+	/// appear on a trend line. Denominator of every per-retail-unit gross measure.
+	measure 'Retail Units Sold' = SUM ( 'vw_vehicle_sales'[retail_unit_count] ) + 0
+		formatString: #,0
+		displayFolder: Volume
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba51003
+
+		annotation ARPI_KpiId = KPI-SLS-001
+		annotation ARPI_MeasureRole = KPI
+		annotation ARPI_SourceTable = vw_vehicle_sales
+		annotation ARPI_DateBasis = sale_date_key
+		annotation ARPI_ExecutiveCard = true
+
+	/// KPI-SLS-002. Retail and lease deliveries of NEW vehicles. The split is taken from the
+	/// vehicle's condition, not from sale_type, because a lease is a retail sale type that
+	/// sale_type alone would strand outside both halves of the identity. Structurally 0 for
+	/// the independent used store, which is correct rather than missing.
+	measure 'New Units Sold' = SUM ( 'vw_vehicle_sales'[new_unit_count] ) + 0
+		formatString: #,0
+		displayFolder: Volume
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba51004
+
+		annotation ARPI_KpiId = KPI-SLS-002
+		annotation ARPI_MeasureRole = KPI
+		annotation ARPI_SourceTable = vw_vehicle_sales
+		annotation ARPI_DateBasis = sale_date_key
+
+	/// KPI-SLS-003. Retail and lease deliveries of used and certified pre-owned vehicles. A
+	/// certified unit is a USED unit. New Units Sold + Used Units Sold = Retail Units Sold in
+	/// every filter context; that identity is reconciled per store-day by RECON-UNITS-001.
+	measure 'Used Units Sold' = SUM ( 'vw_vehicle_sales'[used_unit_count] ) + 0
+		formatString: #,0
+		displayFolder: Volume
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba51005
+
+		annotation ARPI_KpiId = KPI-SLS-003
+		annotation ARPI_MeasureRole = KPI
+		annotation ARPI_SourceTable = vw_vehicle_sales
+		annotation ARPI_DateBasis = sale_date_key
+
+	partition 'Sales Measures' = calculated
+		mode: import
+		source = ROW("Placeholder", "")
+
+	annotation ARPI_MeasureGroup = Sales

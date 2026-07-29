@@ -13,8 +13,8 @@ The project is not a production dealership management system, CRM, desking platf
 ## 2. Architecture Status
 
 - **Status:** Approved for implementation
-- **Architecture version:** 1.2
-- **Last reviewed:** 2026-07-28
+- **Architecture version:** 1.3
+- **Last reviewed:** 2026-07-29
 - **Primary owner:** Michael Palmer
 - **Primary audience:** Hiring managers, technical reviewers, dealership operators, BI professionals, and portfolio reviewers
 - **Primary repository:** Public GitHub repository
@@ -1880,6 +1880,19 @@ Exit criteria:
 - Filter behavior is correct
 - No unresolved ambiguous relationships exist
 
+**Status (2026-07-29): in progress, not complete.** Delivery increment `P2.1` has built the semantic model —
+imported reporting views, relationships, the marked date table, measure tables and the core DAX — as a PBIP
+project with the model stored as TMDL ([ADR-0007](docs/architecture-decisions/ADR-0007-power-bi-project-format.md)),
+and it is validated **statically**: the model source is parsed and asserted in continuous integration.
+
+**The exit criteria above are met only after Power BI Desktop open, refresh and save validation passes.**
+That is a **manual gate**, tracked as `P2.1-09` in
+[`docs/requirements/PHASE_2_BACKLOG.md`](docs/requirements/PHASE_2_BACKLOG.md) and **PENDING** at the time of
+writing: Power BI Desktop is a Windows application and does not exist in the environment the model was built
+in, so no total has been reconciled from a refreshed model, no filter behaviour has been observed, and the
+engine has not given its verdict on relationship ambiguity. Static analysis cannot substitute for any of
+those, and continuous integration must not attempt to launch Desktop.
+
 ### Lifecycle Phase 6: Dashboard Development
 
 Deliverables:
@@ -1962,10 +1975,10 @@ is not "done" when `P1.1` ships, because later increments still generate entitie
 | 2 — Data Model | `Phase 0` for `dim_date` and `dim_dealership`; `P1.1`, `P1.2`, `P1.4`, `P1.5` as each further entity's column contract and source-to-target mapping is written | In progress |
 | 3 — Synthetic Data Generator | `Phase 0` (date, dealership); `P1.1` (vehicle model, vehicle, employee, customer, acquisition, sale); `P1.4` (lead source, lead, appointment); `P1.5` (campaign, marketing spend) | In progress |
 | 4 — PostgreSQL Warehouse | `Phase 0` (schemas, audit, first two dimensions, first reporting views); `P1.2` (ingestion, dimensions, first two facts); `P1.3` (validation, reconciliation, KPI logic, reporting views); `P1.4` (funnel facts); `P1.5` (marketing fact, MVP reporting layer) | In progress |
-| 5 — Power BI Semantic Model | No delivery increment is defined. Blocked by **Gate 1** (§28), whose verdict is recorded by `P1.5-04`. | Not started |
-| 6 — Dashboard Development | No delivery increment is defined. Blocked by Gate 1. | Not started |
-| 7 — Findings and Recommendations | No delivery increment is defined. Blocked by Gate 2. | Not started |
-| 8 — Portfolio Packaging | No delivery increment is defined. Blocked by Gate 2. | Not started |
+| 5 — Power BI Semantic Model | `P2.1`. **Gate 1** (§28) is **OPEN**, recorded on 2026-07-29 by `P1.5-04` in [`docs/requirements/GATE_1_READINESS.md`](docs/requirements/GATE_1_READINESS.md). | In progress — the model is built and statically validated; the exit criteria await the manual Power BI Desktop validation `P2.1-09` |
+| 6 — Dashboard Development | `P2.2`. Gate 1 is open; `P2.2` is gated on `P2.1-09` passing rather than on a scope gate. | Not started |
+| 7 — Findings and Recommendations | `P2.3`. Blocked by Gate 2, whose verdict `P2.3-04` records. | Not started |
+| 8 — Portfolio Packaging | `P2.4`. The public case study is blocked by Gate 2; the remaining items are gated on `P2.2` and `P2.3`. | Not started |
 
 #### Delivery increment to lifecycle phase
 
@@ -1977,6 +1990,14 @@ is not "done" when `P1.1` ships, because later increments still generate entitie
 | `P1.3` — validation and KPI logic | Validation suite, gross reconciliation, inventory-age and days-to-sale logic, first reporting views | 4 |
 | `P1.4` — lead funnel | Lead source dimension, lead and appointment generation, funnel facts, funnel reconciliation | 2, 3, 4 |
 | `P1.5` — marketing and MVP readiness | Campaign dimension, marketing spend fact, source-level profitability, MVP reporting layer, Gate 1 verdict | 2, 3, 4 |
+| `P2.1` — Power BI semantic model | PBIP project, TMDL semantic model, twenty imported reporting views, relationships, marked date table, six measure tables, core DAX, SQL baseline and static model validation | 5 |
+| `P2.2` — MVP dashboard pages | The seven unblocked report pages, the five drill-through pages, and the SQL-to-Power-BI reconciliation | 6 |
+| `P2.3` — findings and Gate 2 review | Executive findings memo, SQL evidence queries, recommendations with limitations, Gate 2 verdict | 7 |
+| `P2.4` — portfolio packaging | Screenshots, model diagram, DAX measure catalogue, README refresh, Excel operating report, walkthrough, case study and launch materials | 8 |
+
+The `P2.x` increments are specified in
+[`docs/requirements/PHASE_2_BACKLOG.md`](docs/requirements/PHASE_2_BACKLOG.md). `P2.1` is delivered except for
+its manual Power BI Desktop validation; `P2.2` through `P2.4` are Not started.
 
 `Phase 0` is the baseline delivery increment. It predates this terminology and keeps its historical name;
 it is a delivery increment, not lifecycle Phase 0, and there is no lifecycle Phase 0.
@@ -2207,6 +2228,7 @@ Each record must include:
 | [ADR-0004](docs/architecture-decisions/ADR-0004-validation-category-taxonomy.md) | Validation Category Taxonomy | Accepted |
 | [ADR-0005](docs/architecture-decisions/ADR-0005-synthetic-vin-policy.md) | Synthetic VIN Policy | Accepted |
 | [ADR-0006](docs/architecture-decisions/ADR-0006-scd-type-selection-phase-1.md) | SCD Type Selection for Phase 1 Dimensions | Accepted |
+| [ADR-0007](docs/architecture-decisions/ADR-0007-power-bi-project-format.md) | Power BI Project Format | Accepted |
 
 **ADR-0001 is the naming decision of record.** It fixes the display name *Automotive Retail Performance
 Intelligence*, the short identifier *ARPI*, the Python package `arpi`, the `ARPI_` configuration prefix,
@@ -2221,6 +2243,11 @@ no real VIN data, and expressing no owner relationship.
 **ADR-0003 is the phase-terminology decision of record**, and §27.1 is its normative statement in this
 document. **ADR-0004** fixes the validation-category vocabulary that `audit.validation_result` enforces.
 **ADR-0006** fixes the slowly-changing-dimension type of every Phase 1 dimension.
+
+**ADR-0007 is the Power BI storage decision of record.** It fixes the PBIP project format with the semantic
+model stored as TMDL and the report as a PBIR shell, keeps Import mode and the `arpi_reporter` identity from
+§19.1 and §22.3, records that no `.pbix` is committed during `P2.1` and why, and states that Power BI Desktop
+open, refresh and save validation is a manual gate that continuous integration cannot satisfy.
 
 ### 35.2 Decisions that require an ADR
 

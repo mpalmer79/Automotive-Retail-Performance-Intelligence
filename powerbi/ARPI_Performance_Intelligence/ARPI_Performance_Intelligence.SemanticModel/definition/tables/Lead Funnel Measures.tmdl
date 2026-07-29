@@ -1,0 +1,275 @@
+/// Lead-funnel measure group. Two source tables at two different grains, and two
+/// different date bases, which is the subtlety most likely to be got wrong here.
+///
+/// vw_leads is at lead grain and anchors on lead_created_date_key: a lead counts in the
+/// period it ARRIVED, whatever happened later. vw_appointments is at appointment grain --
+/// one lead can produce several appointments -- and its ACTIVE date role is
+/// scheduled_date_key, so an appointment booked for next month is not in this month's show
+/// denominator. Show-to-Sale Conversion is the exception: it is evaluated on the SHOW date
+/// through USERELATIONSHIP, so the visit and its outcome sit in the same period. A measure
+/// that mixes the two bases produces a plausible number that means nothing.
+///
+/// Four measures must never be published alone. Appointment-Set Rate needs Contact Rate
+/// beside it, because its denominator is contacted leads. Show Rate needs Cancellation
+/// Rate, because the advance-cancellation exclusion is the manipulable part. Both response
+/// -time measures need Unresponded Leads, because both exclude never-responded leads.
+/// Lead-to-Sale Conversion needs a cohort-maturity label, because the most recent months
+/// always look worst.
+table 'Lead Funnel Measures'
+	lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba54001
+
+	/// Hidden placeholder. A measure group needs a table to live on and a table needs a
+	/// column; this one exists for that reason only and is never exposed to a report author.
+	column Placeholder
+		dataType: string
+		isHidden
+		sourceColumn: [Placeholder]
+		summarizeBy: none
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba54002
+
+		annotation SummarizationSetBy = Automatic
+
+	/// KPI-FUN-001. Valid CRM leads received in the period, on the lead-creation date basis.
+	/// Duplicates are excluded by the governed valid_lead_count column rather than by a
+	/// filter, so the excluded population stays visible and countable through Duplicate
+	/// Leads. Returns 0 rather than blank so a quiet day appears on a trend line.
+	measure 'Leads Received' = SUM ( 'vw_leads'[valid_lead_count] ) + 0
+		formatString: #,0
+		displayFolder: Volume
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba54003
+
+		annotation ARPI_KpiId = KPI-FUN-001
+		annotation ARPI_MeasureRole = KPI
+		annotation ARPI_SourceTable = vw_leads
+		annotation ARPI_DateBasis = lead_created_date_key
+
+	/// KPI-FUN-002. Share of valid leads that received a first outbound contact. BLANK when
+	/// no valid lead arrived in the context.
+	measure 'Contact Rate' =
+			DIVIDE (
+			    SUM ( 'vw_leads'[contacted_lead_count] ),
+			    SUM ( 'vw_leads'[valid_lead_count] )
+			)
+		formatString: 0.0%
+		displayFolder: Conversion
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba54004
+
+		annotation ARPI_KpiId = KPI-FUN-002
+		annotation ARPI_MeasureRole = KPI
+		annotation ARPI_SourceTable = vw_leads
+		annotation ARPI_DateBasis = lead_created_date_key
+
+	/// KPI-FUN-003. Share of CONTACTED leads that produced an appointment. The denominator is
+	/// contacted leads, not all leads, so this measure must always be shown beside Contact
+	/// Rate: a store that reaches 20 per cent of its leads can otherwise look better than one
+	/// that reaches 70 per cent. BLANK when nothing was contacted.
+	measure 'Appointment-Set Rate' =
+			DIVIDE (
+			    SUM ( 'vw_leads'[appointment_set_lead_count] ),
+			    SUM ( 'vw_leads'[contacted_lead_count] )
+			)
+		formatString: 0.0%
+		displayFolder: Conversion
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba54005
+
+		annotation ARPI_KpiId = KPI-FUN-003
+		annotation ARPI_MeasureRole = KPI
+		annotation ARPI_SourceTable = vw_leads
+		annotation ARPI_DateBasis = lead_created_date_key
+
+	/// KPI-FUN-004. Share of eligible appointments where the customer arrived, on the
+	/// SCHEDULED-date basis (the active calendar relationship). Advance cancellations are
+	/// excluded from the denominator, which is the manipulable part of this measure:
+	/// reclassifying no-shows as cancellations flatters it. Always publish Cancellation Rate
+	/// beside it. BLANK when no appointment was due.
+	measure 'Show Rate' =
+			DIVIDE (
+			    SUM ( 'vw_appointments'[shown_appointment_count] ),
+			    SUM ( 'vw_appointments'[eligible_appointment_count] )
+			)
+		formatString: 0.0%
+		displayFolder: Appointments
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba54006
+
+		annotation ARPI_KpiId = KPI-FUN-004
+		annotation ARPI_MeasureRole = KPI
+		annotation ARPI_SourceTable = vw_appointments
+		annotation ARPI_DateBasis = scheduled_date_key
+
+	/// KPI-FUN-005. Share of shown appointments that produced a sale, on the SHOW-date basis.
+	/// USERELATIONSHIP switches the calendar onto show_date_key so the visit and its outcome
+	/// fall in the same period; evaluating this on the scheduled date would put a numerator
+	/// and a denominator in different months. Label any visual using it as show-date-based.
+	/// BLANK when nobody showed.
+	measure 'Show-to-Sale Conversion' =
+			CALCULATE (
+			    DIVIDE (
+			        SUM ( 'vw_appointments'[shown_and_sold_appointment_count] ),
+			        SUM ( 'vw_appointments'[shown_appointment_count] )
+			    ),
+			    USERELATIONSHIP ( 'vw_calendar'[date_key], 'vw_appointments'[show_date_key] )
+			)
+		formatString: 0.0%
+		displayFolder: Appointments
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba54007
+
+		annotation ARPI_KpiId = KPI-FUN-005
+		annotation ARPI_MeasureRole = KPI
+		annotation ARPI_SourceTable = vw_appointments
+		annotation ARPI_DateBasis = show_date_key
+		annotation ARPI_UsesRelationship = cal_to_appointments_show_date
+		annotation ARPI_ExecutiveCard = true
+
+	/// KPI-FUN-006. Share of valid leads that resulted in a retail delivery, attributed to
+	/// the lead's CREATION date. That attribution is what makes the most recent months look
+	/// worst: their leads have had less time to convert. Every visual must carry a
+	/// cohort-maturity label. BLANK when no valid lead arrived.
+	measure 'Lead-to-Sale Conversion' =
+			DIVIDE (
+			    SUM ( 'vw_leads'[sold_lead_count] ),
+			    SUM ( 'vw_leads'[valid_lead_count] )
+			)
+		formatString: 0.0%
+		displayFolder: Conversion
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba54008
+
+		annotation ARPI_KpiId = KPI-FUN-006
+		annotation ARPI_MeasureRole = KPI
+		annotation ARPI_SourceTable = vw_leads
+		annotation ARPI_DateBasis = lead_created_date_key
+		annotation ARPI_ExecutiveCard = true
+
+	/// KPI-FUN-007. Mean minutes from lead arrival to first response. EXCLUDES leads that
+	/// were never responded to, so a store that ignores half its leads can report an
+	/// excellent response time; publish Unresponded Leads beside it, always. Seconds are
+	/// converted to minutes at this final boundary only, so the additive numerator stays in
+	/// its source unit. BLANK when no lead was responded to. ARPI publishes no target
+	/// response time, because it holds no benchmark.
+	measure 'Average Response Time' =
+			DIVIDE (
+			    SUM ( 'vw_leads'[response_seconds_total] ),
+			    SUM ( 'vw_leads'[responded_lead_count] )
+			) / 60
+		formatString: 0.0 "min"
+		displayFolder: Responsiveness
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba54009
+
+		annotation ARPI_KpiId = KPI-FUN-007
+		annotation ARPI_MeasureRole = KPI
+		annotation ARPI_SourceTable = vw_leads
+		annotation ARPI_DateBasis = lead_created_date_key
+
+	/// KPI-FUN-008. Median minutes from lead arrival to first response, recomputed with
+	/// MEDIAN over the row-level first_response_seconds column so it recomputes under any
+	/// filter context. Never-responded leads are NULL in that column and are excluded from
+	/// the order statistic, so this measure carries the same caveat as the mean and the same
+	/// obligation to show Unresponded Leads. Seconds are converted to minutes at this final
+	/// boundary only. The recommended primary responsiveness visual is the banded
+	/// distribution (response_time_band) with this median as the summary card.
+	measure 'Median Response Time' = DIVIDE ( MEDIAN ( 'vw_leads'[first_response_seconds] ), 60 )
+		formatString: 0.0 "min"
+		displayFolder: Responsiveness
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba54010
+
+		annotation ARPI_KpiId = KPI-FUN-008
+		annotation ARPI_MeasureRole = KPI
+		annotation ARPI_SourceTable = vw_leads
+		annotation ARPI_DateBasis = lead_created_date_key
+
+	/// Supporting measure. Valid leads that were never responded to. Required beside both
+	/// response-time measures, which exclude this population entirely.
+	measure 'Unresponded Leads' = SUM ( 'vw_leads'[unresponded_lead_count] ) + 0
+		formatString: #,0
+		displayFolder: Responsiveness
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba54011
+
+		annotation ARPI_MeasureRole = Supporting
+		annotation ARPI_SupportsKpiId = KPI-FUN-007
+		annotation ARPI_SourceTable = vw_leads
+		annotation ARPI_DateBasis = lead_created_date_key
+
+	/// Supporting measure. Leads excluded from KPI-FUN-001 as duplicates of an earlier lead.
+	/// Published so the excluded population is countable rather than merely asserted: the
+	/// governed exclusion is a column, not a hidden filter.
+	measure 'Duplicate Leads' = SUM ( 'vw_leads'[duplicate_lead_count] ) + 0
+		formatString: #,0
+		displayFolder: Volume
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba54012
+
+		annotation ARPI_MeasureRole = Supporting
+		annotation ARPI_SupportsKpiId = KPI-FUN-001
+		annotation ARPI_SourceTable = vw_leads
+		annotation ARPI_DateBasis = lead_created_date_key
+
+	/// Supporting measure. Valid leads that resulted in a retail delivery. The KPI-FUN-006
+	/// numerator, published so a conversion rate can be read beside the count behind it.
+	measure 'Sold Leads' = SUM ( 'vw_leads'[sold_lead_count] ) + 0
+		formatString: #,0
+		displayFolder: Conversion
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba54013
+
+		annotation ARPI_MeasureRole = Supporting
+		annotation ARPI_SupportsKpiId = KPI-FUN-006
+		annotation ARPI_SourceTable = vw_leads
+		annotation ARPI_DateBasis = lead_created_date_key
+
+	/// Supporting measure. Appointments due in the period that had the opportunity to show,
+	/// on the scheduled-date basis. The KPI-FUN-004 denominator.
+	measure 'Eligible Appointments' = SUM ( 'vw_appointments'[eligible_appointment_count] ) + 0
+		formatString: #,0
+		displayFolder: Appointments
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba54014
+
+		annotation ARPI_MeasureRole = Supporting
+		annotation ARPI_SupportsKpiId = KPI-FUN-004
+		annotation ARPI_SourceTable = vw_appointments
+		annotation ARPI_DateBasis = scheduled_date_key
+
+	/// Supporting measure. Appointments where the customer arrived, on the scheduled-date
+	/// basis. The KPI-FUN-004 numerator and the KPI-FUN-005 denominator -- note that
+	/// KPI-FUN-005 evaluates it on the show date instead, which is why the two measures can
+	/// legitimately differ for the same month.
+	measure 'Shown Appointments' = SUM ( 'vw_appointments'[shown_appointment_count] ) + 0
+		formatString: #,0
+		displayFolder: Appointments
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba54015
+
+		annotation ARPI_MeasureRole = Supporting
+		annotation ARPI_SupportsKpiId = KPI-FUN-004
+		annotation ARPI_SourceTable = vw_appointments
+		annotation ARPI_DateBasis = scheduled_date_key
+
+	/// Supporting measure. Appointments cancelled before the scheduled time, which are
+	/// excluded from the Show Rate denominator.
+	measure 'Advance Cancellations' = SUM ( 'vw_appointments'[cancelled_in_advance_count] ) + 0
+		formatString: #,0
+		displayFolder: Appointments
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba54016
+
+		annotation ARPI_MeasureRole = Supporting
+		annotation ARPI_SupportsKpiId = KPI-FUN-004
+		annotation ARPI_SourceTable = vw_appointments
+		annotation ARPI_DateBasis = scheduled_date_key
+
+	/// Supporting measure. Advance cancellations as a share of ALL appointments scheduled,
+	/// cancellations included. Required beside Show Rate: it is the control on the exclusion
+	/// that makes Show Rate manipulable. BLANK when nothing was scheduled.
+	measure 'Cancellation Rate' =
+			DIVIDE (
+			    SUM ( 'vw_appointments'[cancelled_in_advance_count] ),
+			    SUM ( 'vw_appointments'[appointment_count] )
+			)
+		formatString: 0.0%
+		displayFolder: Appointments
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba54017
+
+		annotation ARPI_MeasureRole = Supporting
+		annotation ARPI_SupportsKpiId = KPI-FUN-004
+		annotation ARPI_SourceTable = vw_appointments
+		annotation ARPI_DateBasis = scheduled_date_key
+
+	partition 'Lead Funnel Measures' = calculated
+		mode: import
+		source = ROW("Placeholder", "")
+
+	annotation ARPI_MeasureGroup = Lead Funnel

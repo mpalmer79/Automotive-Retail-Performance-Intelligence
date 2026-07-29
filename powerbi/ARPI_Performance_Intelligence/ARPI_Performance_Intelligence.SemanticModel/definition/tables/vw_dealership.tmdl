@@ -1,0 +1,173 @@
+/// Grain: one row per dealership store, restricted to the current SCD Type 2 version
+/// (warehouse.dim_dealership.is_current). Exactly three rows in Phase 0, one per Granite State Auto
+/// Group store. SCD plumbing (expiration_date, is_current, attribute_hash, superseded versions) is
+/// deliberately not exposed so that a report cannot double-count a store. Contains no personal
+/// data.
+table vw_dealership
+	lineageTag: 2c8977bd-525f-5e1b-89b7-80ba60d49c52
+
+	/// Warehouse surrogate key of the current version. Join key for facts that carry the current store
+	/// key.
+	column dealership_key
+		dataType: int64
+		isHidden
+		sourceColumn: dealership_key
+		summarizeBy: none
+		lineageTag: ed1fb45a-2646-5d7d-aa46-5f018c82ca71
+
+		annotation SummarizationSetBy = User
+
+	/// Stable store code from the source system, for example GSA-001.
+	column dealership_code
+		dataType: string
+		sourceColumn: dealership_code
+		summarizeBy: none
+		lineageTag: f5a259ca-4010-55e1-9a4f-f9198f793d0f
+
+		annotation SummarizationSetBy = User
+
+	/// Full store name.
+	column store_name
+		dataType: string
+		sourceColumn: store_name
+		summarizeBy: none
+		lineageTag: 49f3a75e-be45-5850-92ba-eb919203f51f
+
+		annotation SummarizationSetBy = User
+
+	/// Short store name. Preferred label for slicers, chart axes and Excel headers.
+	column store_short_name
+		dataType: string
+		sourceColumn: store_short_name
+		summarizeBy: none
+		lineageTag: f7475c9d-6717-53b1-8a74-aabe0f61575d
+
+		annotation SummarizationSetBy = User
+
+	/// Franchise New and Used, or Independent Used.
+	column store_type
+		dataType: string
+		sourceColumn: store_type
+		summarizeBy: none
+		lineageTag: 13c4b98f-e80f-59e6-9ada-22da45dfd1b2
+
+		annotation SummarizationSetBy = User
+
+	/// Franchise brand, or NULL for an independent used store.
+	column franchise_brand
+		dataType: string
+		sourceColumn: franchise_brand
+		summarizeBy: none
+		lineageTag: 4790c687-6829-5bb1-8c3e-e60bd1b5bb69
+
+		annotation SummarizationSetBy = User
+
+	/// Never-NULL display label: the franchise brand, or the word Independent.
+	column brand_label
+		dataType: string
+		sourceColumn: brand_label
+		summarizeBy: none
+		lineageTag: 09d6cc43-a313-5c52-9634-e8aab6e31205
+
+		annotation SummarizationSetBy = User
+
+	/// True for a franchise new-and-used store. Convenience flag so reports do not compare store_type
+	/// strings.
+	column is_franchise_store
+		dataType: boolean
+		sourceColumn: is_franchise_store
+		summarizeBy: none
+		lineageTag: 0451a647-fdd9-5f7b-a39e-e71fc745664b
+
+		annotation SummarizationSetBy = User
+
+	/// Store city.
+	column city
+		dataType: string
+		sourceColumn: city
+		summarizeBy: none
+		lineageTag: ef57bf9e-ed6b-506d-b89c-12653ee25ba0
+
+		annotation SummarizationSetBy = User
+
+	/// Two-letter state code.
+	column state_code
+		dataType: string
+		sourceColumn: state_code
+		summarizeBy: none
+		lineageTag: 4dc51005-e69c-5dff-a0a5-5e6dbac5048b
+
+		annotation SummarizationSetBy = User
+
+	/// Market region the store competes in.
+	column market_region
+		dataType: string
+		sourceColumn: market_region
+		summarizeBy: none
+		lineageTag: 5162b547-aa9f-5aae-b1ca-d250219c2931
+
+		annotation SummarizationSetBy = User
+
+	/// Readable location, for example Nashua, NH.
+	column location_label
+		dataType: string
+		sourceColumn: location_label
+		summarizeBy: none
+		lineageTag: c9ffe1d3-0cfd-5cc6-a860-2510c31aa27c
+
+		annotation SummarizationSetBy = User
+
+	/// Date the store opened for business.
+	column opened_date
+		dataType: dateTime
+		sourceColumn: opened_date
+		summarizeBy: none
+		lineageTag: 864c8089-0aca-5c24-abd5-310f86170647
+
+		annotation SummarizationSetBy = User
+
+	/// True while the store is trading.
+	column is_active
+		dataType: boolean
+		sourceColumn: is_active
+		summarizeBy: none
+		lineageTag: f901be95-641b-5b37-abd4-5de24f06b775
+
+		annotation SummarizationSetBy = User
+
+	/// Start date of the current attribute version. Exposed so an analyst can see when the store record
+	/// last changed.
+	column version_effective_date
+		dataType: dateTime
+		sourceColumn: version_effective_date
+		summarizeBy: none
+		lineageTag: 7b93a764-5f73-5f3e-9c86-ffd20bb0cd91
+
+		annotation SummarizationSetBy = User
+
+	/// Originating system; arpi_synthetic_generator in Phase 0. Present so no reader mistakes this for
+	/// real dealer data.
+	column source_system
+		dataType: string
+		sourceColumn: source_system
+		summarizeBy: none
+		lineageTag: 8a4730d1-b2ce-5124-879d-c947cc7fec30
+
+		annotation SummarizationSetBy = User
+
+	partition vw_dealership = m
+		mode: import
+		source =
+				let
+				    Source = PostgreSQL.Database(ArpiServer, ArpiDatabase),
+				    Data = Source{[Schema = "reporting", Item = "vw_dealership"]}[Data]
+				in
+				    Data
+
+	annotation ARPI_SourceView = reporting.vw_dealership
+
+	annotation ARPI_Grain = One row per store, current SCD Type 2 version only.
+
+	annotation ARPI_TableRole = Dimension
+
+	annotation PBI_ResultType = Table

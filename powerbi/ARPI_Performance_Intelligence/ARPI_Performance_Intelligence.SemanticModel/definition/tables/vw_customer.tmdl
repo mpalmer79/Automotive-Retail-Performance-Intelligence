@@ -1,0 +1,175 @@
+/// Grain: one row per customer. Dimension table; relates one-to-many to vw_vehicle_sales, vw_leads
+/// and vw_appointments on customer_key, single direction. customer_key is nullable on those facts,
+/// so the model needs a blank-row policy rather than a bidirectional filter. Deliberately
+/// minimised: age is a band, geography is county and market area, and no name, address, postal
+/// code, telephone number, e-mail address, date of birth, credit score or financial identifier
+/// exists anywhere in ARPI. See PRIVACY_AND_ETHICS.md.
+table vw_customer
+	lineageTag: 59df01f8-99fc-5728-9af8-df2eef2f0351
+
+	/// Warehouse surrogate key. Relationship column; hide in the semantic model.
+	column customer_key
+		dataType: int64
+		isHidden
+		sourceColumn: customer_key
+		summarizeBy: none
+		lineageTag: f25b195f-4cf4-50fc-a6a1-e0a1761c4cbc
+
+		annotation SummarizationSetBy = User
+
+	/// Stable, non-identifying customer code. The only customer label ARPI publishes.
+	column customer_code
+		dataType: string
+		sourceColumn: customer_code
+		summarizeBy: none
+		lineageTag: 2fa04ab1-c38c-50f3-8e6c-17473ea935d3
+
+		annotation SummarizationSetBy = User
+
+	/// Non-identifying grouping code for related customers, used for repeat-purchase analysis. Derived
+	/// from no real household.
+	column household_code
+		dataType: string
+		sourceColumn: household_code
+		summarizeBy: none
+		lineageTag: cf6e0a6c-c972-56a5-9ccb-fe5fe9686ab6
+
+		annotation SummarizationSetBy = User
+
+	/// Banded age cohort. The minimised form ARPI publishes; no precise age or date of birth exists.
+	column age_band
+		dataType: string
+		sourceColumn: age_band
+		summarizeBy: none
+		sortByColumn: age_band_sort_order
+		lineageTag: 59fcbc5b-2a66-5858-bf31-36c8687d941b
+
+		annotation SummarizationSetBy = User
+
+	/// County of residence. The finest geography ARPI holds; no street address or postal code exists.
+	column county
+		dataType: string
+		sourceColumn: county
+		summarizeBy: none
+		lineageTag: bceaf5a1-7a29-50dc-ad14-f4ab228ff39c
+
+		annotation SummarizationSetBy = User
+
+	/// Two-letter state code.
+	column state_code
+		dataType: string
+		sourceColumn: state_code
+		summarizeBy: none
+		lineageTag: de318225-f917-5115-aa51-3019694b339f
+
+		annotation SummarizationSetBy = User
+
+	/// Readable county and state, for example Hillsborough, NH.
+	column county_label
+		dataType: string
+		sourceColumn: county_label
+		summarizeBy: none
+		lineageTag: bf184b14-2916-5359-8879-89217780ba0f
+
+		annotation SummarizationSetBy = User
+
+	/// Market area the customer falls in.
+	column market_area
+		dataType: string
+		sourceColumn: market_area
+		summarizeBy: none
+		lineageTag: 80001926-64a6-5878-b9b3-c0d678260b18
+
+		annotation SummarizationSetBy = User
+
+	/// Retail or Business.
+	column customer_type
+		dataType: string
+		sourceColumn: customer_type
+		summarizeBy: none
+		lineageTag: 4f5aea09-11cd-5f85-b739-f32f97abe852
+
+		annotation SummarizationSetBy = User
+
+	/// True for a business buyer. Convenience flag so reports do not compare customer_type strings.
+	column is_business
+		dataType: boolean
+		sourceColumn: is_business
+		summarizeBy: none
+		lineageTag: 25c5a53d-35d6-5dc9-9321-c525f3373ee7
+
+		annotation SummarizationSetBy = User
+
+	/// True when the customer had a prior relationship with the group.
+	column is_prior_customer
+		dataType: boolean
+		sourceColumn: is_prior_customer
+		summarizeBy: none
+		lineageTag: 5ca7e73d-87f9-5ac2-a079-a4ed21738648
+
+		annotation SummarizationSetBy = User
+
+	/// True when the customer is also a service customer.
+	column is_service_customer
+		dataType: boolean
+		sourceColumn: is_service_customer
+		summarizeBy: none
+		lineageTag: 53dc9feb-0d39-508d-8cad-3bad4be561e1
+
+		annotation SummarizationSetBy = User
+
+	/// Date of the first recorded interaction with the group.
+	column first_interaction_date
+		dataType: dateTime
+		sourceColumn: first_interaction_date
+		summarizeBy: none
+		lineageTag: 50b8cc47-dd6a-52b8-b07d-64b6a5f8398b
+
+		annotation SummarizationSetBy = User
+
+	/// Originating system. Present so no reader mistakes this for real customer data.
+	column source_system
+		dataType: string
+		sourceColumn: source_system
+		summarizeBy: none
+		lineageTag: d49ae8ea-852f-5871-8cad-ade890879274
+
+		annotation SummarizationSetBy = User
+
+	/// Hidden sort order for age_band. The reporting layer publishes the label without an ordering
+	/// column, so the order is defined once here and set as the sort-by column for age_band. Values
+	/// outside the known set sort last.
+	column age_band_sort_order =
+			SWITCH (
+			    'vw_customer'[age_band],
+			    "18-24", 1,
+			    "25-34", 2,
+			    "35-44", 3,
+			    "45-54", 4,
+			    "55-64", 5,
+			    "65+", 6,
+			    99
+			)
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		lineageTag: 86547cd7-6b2c-5aa7-a98b-15da14cebd10
+
+		annotation SummarizationSetBy = Automatic
+
+	partition vw_customer = m
+		mode: import
+		source =
+				let
+				    Source = PostgreSQL.Database(ArpiServer, ArpiDatabase),
+				    Data = Source{[Schema = "reporting", Item = "vw_customer"]}[Data]
+				in
+				    Data
+
+	annotation ARPI_SourceView = reporting.vw_customer
+
+	annotation ARPI_Grain = One row per customer.
+
+	annotation ARPI_TableRole = Dimension
+
+	annotation PBI_ResultType = Table

@@ -1,0 +1,154 @@
+/// Grain: one row per dealership, campaign and calendar month -- identical to
+/// warehouse.fact_marketing_spend, with no aggregation and no filtering. Fact table for the
+/// semantic model; owns the spend numerator of KPI-MKT-001 and KPI-MKT-002 and the spend
+/// denominator of KPI-MKT-003. month_date_key always points at the first day of the month, enforced
+/// by a warehouse check constraint, which makes a day-grain cost-per computation structurally
+/// impossible rather than merely discouraged: month is the finest valid grain and the model cannot
+/// express a finer one. Attribution is single-source and first-touch; multi-touch is out of scope.
+/// vendor_reported_leads deliberately differs from KPI-FUN-001 because vendors count differently
+/// and typically count duplicates -- that gap is a finding to report, never a substitution to make.
+/// Surrogate keys should be hidden in the semantic model.
+table vw_marketing_spend
+	lineageTag: 0316c2c8-8591-5525-855f-13b07ce85869
+
+	/// Warehouse surrogate key of the spend row. Hide in the semantic model.
+	column marketing_spend_key
+		dataType: int64
+		isHidden
+		sourceColumn: marketing_spend_key
+		summarizeBy: none
+		lineageTag: 196e4a22-429e-56aa-ab44-96a9e86ea950
+
+		annotation SummarizationSetBy = User
+
+	/// First day of the spend month. The only date key on this fact, and the reason cost-per measures
+	/// cannot be computed below month grain. Active relationship to vw_calendar.
+	column month_date_key
+		dataType: int64
+		isHidden
+		sourceColumn: month_date_key
+		summarizeBy: none
+		lineageTag: 60133923-f8f0-52c6-b94d-64c9ad48156c
+
+		annotation SummarizationSetBy = User
+
+	/// Store surrogate key. Relationship column; hide in the semantic model.
+	column dealership_key
+		dataType: int64
+		isHidden
+		sourceColumn: dealership_key
+		summarizeBy: none
+		lineageTag: 3805e2f1-6571-52ef-af1b-4a85fa08f796
+
+		annotation SummarizationSetBy = User
+
+	/// Campaign the spend belongs to. Relationship column; hide in the semantic model.
+	column campaign_key
+		dataType: int64
+		isHidden
+		sourceColumn: campaign_key
+		summarizeBy: none
+		lineageTag: 6378150d-099c-5899-bc82-730a7f02f35b
+
+		annotation SummarizationSetBy = User
+
+	/// Lead source the campaign feeds. Relationship column; hide in the semantic model.
+	column lead_source_key
+		dataType: int64
+		isHidden
+		sourceColumn: lead_source_key
+		summarizeBy: none
+		lineageTag: 11688d3e-47ed-567a-bdc0-855511c05117
+
+		annotation SummarizationSetBy = User
+
+	/// Marketing spend for the store, campaign and month. Non-negative. Numerator of KPI-MKT-001 and
+	/// KPI-MKT-002; denominator of KPI-MKT-003.
+	column spend_amount
+		dataType: decimal
+		sourceColumn: spend_amount
+		summarizeBy: none
+		lineageTag: 80e2b758-1af7-521f-92b2-29350612c774
+
+		annotation SummarizationSetBy = User
+
+	/// Vendor-reported impressions.
+	column impressions
+		dataType: int64
+		sourceColumn: impressions
+		summarizeBy: none
+		lineageTag: 26df17a8-b770-5a0d-9229-633269c920c0
+
+		annotation SummarizationSetBy = User
+
+	/// Vendor-reported clicks.
+	column clicks
+		dataType: int64
+		sourceColumn: clicks
+		summarizeBy: none
+		lineageTag: adb7d19d-c0da-5b8a-a97a-64d05dbbfc13
+
+		annotation SummarizationSetBy = User
+
+	/// Vendor-reported inbound calls.
+	column calls
+		dataType: int64
+		sourceColumn: calls
+		summarizeBy: none
+		lineageTag: faacffcc-9ba7-5dbe-94a8-bc44dbac28b7
+
+		annotation SummarizationSetBy = User
+
+	/// Vendor-reported form submissions.
+	column form_submissions
+		dataType: int64
+		sourceColumn: form_submissions
+		summarizeBy: none
+		lineageTag: 59537ef4-ec4d-5c70-a7b0-e58cc8a7c034
+
+		annotation SummarizationSetBy = User
+
+	/// Calls plus form submissions, as the vendor counts them.
+	column vendor_reported_responses
+		dataType: int64
+		sourceColumn: vendor_reported_responses
+		summarizeBy: none
+		lineageTag: e257ee7a-9a58-512c-b325-f54a58dd02af
+
+		annotation SummarizationSetBy = User
+
+	/// Leads as the VENDOR counts them. Deliberately differs from KPI-FUN-001 and must never be
+	/// substituted for it; the gap is the finding.
+	column vendor_reported_leads
+		dataType: int64
+		sourceColumn: vendor_reported_leads
+		summarizeBy: none
+		lineageTag: 7bf13a6d-ae8f-5753-8970-cce20198203d
+
+		annotation SummarizationSetBy = User
+
+	/// Originating system. Present so no reader mistakes this for real vendor billing data.
+	column source_system
+		dataType: string
+		sourceColumn: source_system
+		summarizeBy: none
+		lineageTag: 5ed94fec-945d-5037-80a5-06792eb6fcf4
+
+		annotation SummarizationSetBy = User
+
+	partition vw_marketing_spend = m
+		mode: import
+		source =
+				let
+				    Source = PostgreSQL.Database(ArpiServer, ArpiDatabase),
+				    Data = Source{[Schema = "reporting", Item = "vw_marketing_spend"]}[Data]
+				in
+				    Data
+
+	annotation ARPI_SourceView = reporting.vw_marketing_spend
+
+	annotation ARPI_Grain = One row per store x campaign x calendar month.
+
+	annotation ARPI_TableRole = Fact
+
+	annotation PBI_ResultType = Table

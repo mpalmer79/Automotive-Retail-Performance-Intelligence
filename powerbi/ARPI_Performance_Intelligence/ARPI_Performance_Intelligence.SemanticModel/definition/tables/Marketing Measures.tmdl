@@ -1,0 +1,99 @@
+/// Marketing measure group. Source table vw_marketing_performance, imported pre-computed
+/// at store x month x lead source x campaign, because the spend-to-outcome join is a full
+/// outer join rather than a relationship.
+///
+/// Three rules the marketing page must carry.
+///
+/// 1. MONTH IS THE FINEST VALID GRAIN, and the model cannot express a finer one: every
+///    spend row's date key is a month start, so filtering the calendar to any other date
+///    selects no spend at all. That is structural, not a convention.
+/// 2. GROSS RETURN IS THE PRIMARY RETURN MEASURE. Dealership revenue includes the cost of
+///    the vehicle, so a revenue-based return is inflated by roughly an order of magnitude.
+///    attributed_revenue exists for that comparison only and is not published as a
+///    headline.
+/// 3. ATTRIBUTION IS SINGLE-SOURCE AND FIRST-TOUCH. A customer who arrived through three
+///    channels is credited to one. Multi-touch attribution is out of scope and any
+///    campaign comparison must say so.
+///
+/// All three measures return BLANK where spend is undefined rather than zero. Organic,
+/// walk-in and internal sources have no spend row at all, so spend_amount is NULL there;
+/// DIVIDE would coerce that blank numerator to 0 and report a free lead, which is a false
+/// statement about a channel that simply has no cost basis. Each measure therefore tests
+/// ISBLANK on spend before dividing.
+table 'Marketing Measures'
+	lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba55001
+
+	/// Hidden placeholder. A measure group needs a table to live on and a table needs a
+	/// column; this one exists for that reason only and is never exposed to a report author.
+	column Placeholder
+		dataType: string
+		isHidden
+		sourceColumn: [Placeholder]
+		summarizeBy: none
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba55002
+
+		annotation SummarizationSetBy = Automatic
+
+	/// KPI-MKT-001. Marketing spend divided by first-touch attributed leads. BLANK for
+	/// organic, walk-in and internal sources, where cost is UNDEFINED rather than zero.
+	/// BLANK when spend produced no leads at all -- report that case as "spend with zero
+	/// attributed leads", which is a finding, not a gap. Valid at month grain or coarser.
+	measure 'Cost per Lead' =
+			VAR Spend = SUM ( 'vw_marketing_performance'[spend_amount] )
+			VAR AttributedLeads = SUM ( 'vw_marketing_performance'[attributed_leads] )
+			RETURN
+			    IF ( ISBLANK ( Spend ), BLANK (), DIVIDE ( Spend, AttributedLeads ) )
+		formatString: $#,0;($#,0);-
+		displayFolder: Cost
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba55003
+
+		annotation ARPI_KpiId = KPI-MKT-001
+		annotation ARPI_MeasureRole = KPI
+		annotation ARPI_SourceTable = vw_marketing_performance
+		annotation ARPI_DateBasis = month_date_key
+		annotation ARPI_ValidGrain = MonthOrCoarser
+
+	/// KPI-MKT-002. Marketing spend divided by first-touch attributed RETAIL UNITS. BLANK for
+	/// sources with no cost basis, and BLANK when spend produced no attributed sale -- report
+	/// that as "spend with no attributed sales". Valid at month grain or coarser.
+	measure 'Cost per Sale' =
+			VAR Spend = SUM ( 'vw_marketing_performance'[spend_amount] )
+			VAR AttributedUnits = SUM ( 'vw_marketing_performance'[attributed_retail_units] )
+			RETURN
+			    IF ( ISBLANK ( Spend ), BLANK (), DIVIDE ( Spend, AttributedUnits ) )
+		formatString: $#,0;($#,0);-
+		displayFolder: Cost
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba55004
+
+		annotation ARPI_KpiId = KPI-MKT-002
+		annotation ARPI_MeasureRole = KPI
+		annotation ARPI_SourceTable = vw_marketing_performance
+		annotation ARPI_DateBasis = month_date_key
+		annotation ARPI_ValidGrain = MonthOrCoarser
+
+	/// KPI-MKT-003. Attributed total gross divided by marketing spend, expressed as a
+	/// MULTIPLE (3.4x), never as a percentage. The primary return measure for ARPI: a
+	/// revenue-based return would be inflated roughly tenfold because dealership revenue
+	/// includes the cost of the vehicle. BLANK on zero or undefined spend -- never infinity.
+	/// Valid at month grain or coarser, and first-touch attribution must be stated with it.
+	measure 'Gross Return on Advertising Spend' =
+			VAR Spend = SUM ( 'vw_marketing_performance'[spend_amount] )
+			VAR AttributedGross = SUM ( 'vw_marketing_performance'[attributed_total_gross] )
+			RETURN
+			    IF ( ISBLANK ( Spend ), BLANK (), DIVIDE ( AttributedGross, Spend ) )
+		formatString: 0.0"x"
+		displayFolder: Return
+		lineageTag: 0b3ff2ff-6a67-5e2a-b6a1-4d3e2ba55005
+
+		annotation ARPI_KpiId = KPI-MKT-003
+		annotation ARPI_MeasureRole = KPI
+		annotation ARPI_SourceTable = vw_marketing_performance
+		annotation ARPI_DateBasis = month_date_key
+		annotation ARPI_ValidGrain = MonthOrCoarser
+		annotation ARPI_ExecutiveCard = true
+
+	partition 'Marketing Measures' = calculated
+		mode: import
+		source = ROW("Placeholder", "")
+
+	annotation ARPI_MeasureGroup = Marketing

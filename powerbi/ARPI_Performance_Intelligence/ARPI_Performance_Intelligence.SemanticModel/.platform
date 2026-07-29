@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "SemanticModel",
+    "displayName": "ARPI_Performance_Intelligence",
+    "description": "Automotive Retail Performance Intelligence semantic model. Import mode over the PostgreSQL reporting schema; 20 tables, 42 relationships, 29 governed KPI measures."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "fec10121-6933-5717-a619-56f86e61c086"
+  }
+}
