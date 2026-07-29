@@ -95,7 +95,16 @@ def relative_posix(path: Path) -> str:
 
 
 def model_source_files() -> list[Path]:
-    """Return every file the hash covers, sorted by path."""
+    """Return every file the hash covers, sorted by path.
+
+    ``definition.pbism`` and everything under ``definition/`` -- and DELIBERATELY NOT
+    ``.platform``, even though ``.platform`` IS part of what is deployed to Microsoft
+    Fabric. The service owns that file: it assigns a ``logicalId`` and rewrites the
+    display name on first deploy. Hashing it would make every piece of validation
+    evidence permanently stale the moment the model was deployed once, which is the exact
+    failure mode the hash exists to prevent. The asymmetry is intentional and
+    ``tests/unit/test_fabric_tooling.py`` asserts it so that nobody "fixes" it later.
+    """
     files: list[Path] = []
     if PBISM_FILE.is_file():
         files.append(PBISM_FILE)

@@ -89,6 +89,20 @@
       ],
       "description": "Tables the ENGINE reports, not the TMDL."
     },
+    "imported_table_count": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "description": "Imported source tables the ENGINE reports. Expected 20."
+    },
+    "measure_table_count": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "description": "Measure tables the ENGINE reports, identified by the ' Measures' name suffix. Expected 6."
+    },
     "relationship_count": {
       "type": [
         "integer",
