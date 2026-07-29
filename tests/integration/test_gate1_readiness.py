@@ -9,8 +9,8 @@ dimensions documented, KPI formulas documented. "Approved" is defined by ``P1.5-
 **built, enforced by a database constraint, and tested** -- which is what most of this
 file checks. The remaining conditions come from ``P1.5-03`` and ``P1.5-04``: every KPI
 computable, the reporter isolated, the calendar covering every fact, the critical
-reconciliations passing, the fairness context available, and no Power BI artefact built
-before the gate opens.
+reconciliations passing, the fairness context available, and only approved Power BI
+artefacts present now that the gate has opened.
 
 What this file deliberately does NOT do is decide the verdict. A test that asserted
 "Gate 1 is open" would pass by construction the moment someone edited the assertion. The
@@ -305,20 +305,92 @@ def test_the_employee_fairness_context_is_available_from_the_reporting_layer(
     )
 
 
-def test_no_power_bi_artefact_has_been_built(loaded_cursor: Any) -> None:
-    """No Power BI artefact exists, because Gate 1 gates Power BI DEVELOPMENT.
+def test_only_approved_power_bi_artefacts_exist() -> None:
+    """Only the artefacts Gate 1 authorised exist under ``powerbi/``.
 
-    A PBIX or PBIP in the tree would mean the gate was crossed before it was evaluated,
-    which invalidates the review regardless of its verdict. Model documentation is not
-    development: it is the specification the gate produces.
+    HISTORY. Until 2026-07-29 this test was called
+    ``test_no_power_bi_artefact_has_been_built`` and it prohibited **every** Power BI
+    artefact -- ``.pbix``, ``.pbip``, ``.pbit``, ``.tmdl`` and ``.bim`` alike. That was
+    right at the time: Gate 1 gates Power BI development, and an artefact in the tree
+    before the gate had been evaluated would have meant the gate was crossed before it
+    was reviewed, invalidating the review whatever its verdict. Model documentation was
+    exempt because it is the specification the gate produces, not an implementation of
+    it.
+
+    Gate 1 was evaluated on 2026-07-29 and the verdict recorded in
+    ``docs/requirements/GATE_1_READINESS.md`` is **OPEN**. Power BI development is
+    therefore authorised, and the old prohibition would now fail the build for doing
+    exactly what the gate permitted. ``G1-C23`` anticipated this: it says the test is
+    "the thing to update, deliberately and visibly", which is what this is.
+
+    The policy changed from "no artefact may exist" to "only approved artefacts may
+    exist". What stayed prohibited is everything the gate did not authorise:
+
+    * no ``.pbix``, ``.pbit`` or ``.bim`` -- ARPI is a PBIP/TMDL project, and an opaque
+      binary model cannot be reviewed in a diff (delivery increment P2.1);
+    * no report visual content -- report authoring is P2.2 and has not started;
+    * no local Power BI machine state.
+
+    The structure of what *is* approved is asserted in depth by
+    ``scripts/check_powerbi_model.py``; this test asserts only the gate's own boundary,
+    and it is deliberately filesystem-only so it states a policy rather than re-checking
+    the model.
     """
+    document = REPO_ROOT / "docs" / "requirements" / "GATE_1_READINESS.md"
+    text = document.read_text(encoding="utf-8")
+    verdicts = [line for line in text.splitlines() if line.strip() in {"**OPEN**", "**CLOSED**"}]
+    assert verdicts == ["**OPEN**"], (
+        "Power BI development is authorised only while the Gate 1 verdict is a single "
+        f"**OPEN**; docs/requirements/GATE_1_READINESS.md records {verdicts}"
+    )
+
     powerbi = REPO_ROOT / "powerbi"
-    artefacts = [
+    binaries = sorted(
         path.relative_to(REPO_ROOT).as_posix()
-        for pattern in ("**/*.pbix", "**/*.pbip", "**/*.pbit", "**/*.tmdl", "**/*.bim")
+        for pattern in ("**/*.pbix", "**/*.pbit", "**/*.bim")
         for path in powerbi.glob(pattern)
-    ]
-    assert not artefacts, f"Power BI development started before Gate 1 was evaluated: {artefacts}"
+    )
+    assert not binaries, (
+        "ARPI is a PBIP/TMDL project so the model can be reviewed in a diff; these "
+        f"binary artefacts are not approved: {binaries}"
+    )
+
+    project = powerbi / "ARPI_Performance_Intelligence"
+    semantic_model = project / "ARPI_Performance_Intelligence.SemanticModel"
+    report = project / "ARPI_Performance_Intelligence.Report"
+    approved = (
+        project / "ARPI_Performance_Intelligence.pbip",
+        semantic_model / ".platform",
+        semantic_model / "definition.pbism",
+        semantic_model / "definition" / "model.tmdl",
+        semantic_model / "definition" / "database.tmdl",
+        semantic_model / "definition" / "expressions.tmdl",
+        semantic_model / "definition" / "relationships.tmdl",
+        report / ".platform",
+        report / "definition.pbir",
+    )
+    missing = [path.relative_to(REPO_ROOT).as_posix() for path in approved if not path.is_file()]
+    assert not missing, f"the approved PBIP structure is incomplete: {missing}"
+    assert (semantic_model / "definition" / "tables").is_dir(), (
+        "the semantic model declares no tables directory"
+    )
+
+    visual_content = sorted(
+        (report / entry).relative_to(REPO_ROOT).as_posix()
+        for entry in ("definition", "report.json", "pages", "mobileState.json", "bookmarks")
+        if (report / entry).exists()
+    )
+    assert not visual_content, (
+        "report authoring is delivery increment P2.2 and has not started; these exist "
+        f"already: {visual_content}"
+    )
+
+    local_state = sorted(
+        path.relative_to(REPO_ROOT).as_posix()
+        for pattern in ("**/.pbi/localSettings.json", "**/.pbi/cache.abf", "**/*.abf")
+        for path in powerbi.glob(pattern)
+    )
+    assert not local_state, f"local Power BI machine state is tracked: {local_state}"
 
 
 def test_the_readiness_document_exists_and_records_a_verdict() -> None:

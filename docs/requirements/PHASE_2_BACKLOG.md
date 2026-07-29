@@ -363,7 +363,7 @@ preference.
       [`02-relationship-plan.md §5`](../../powerbi/model_documentation/02-relationship-plan.md).
 - [ ] Every measure carries a description that states its KPI identifier, and format strings are set for
       currency, percentage and whole-number measures.
-- [ ] `powerbi/measures/*.dax` holds a reviewable text mirror of each measure group, so the DAX is readable
+- [ ] `powerbi/measures/README.md` records that the DAX lives in the TMDL measure tables and that a second, unexecutable copy was considered and rejected
       in a pull request without a TMDL parser.
 - [ ] **No vanity measure exists** — no measure duplicates another under a different name for the
       convenience of a page.
@@ -374,7 +374,7 @@ preference.
   measure defined outside a measure table.
 - `tests/unit/test_powerbi_model_structure.py` — every ratio measure's DAX contains `DIVIDE` and no bare
   `/` division; every measure has a non-empty description and a format string.
-- `tests/unit/test_powerbi_model_structure.py` — the `.dax` mirrors in `powerbi/measures/` and the TMDL
+- `tests/unit/test_powerbi_model_structure.py` — the measure inventory in the TMDL
   define the same measure set, so the mirror cannot silently drift.
 - **Manual, in `P2.1-09`:** every measure evaluates without error against a refreshed model, and the totals
   match `powerbi/validation/sql_baseline.json`.

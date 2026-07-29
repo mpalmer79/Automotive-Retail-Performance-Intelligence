@@ -1,0 +1,21 @@
+{
+  "schema": "arpi.desktop_validation_results/1",
+  "validated_at": null,
+  "model_source_hash": null,
+  "power_bi_desktop_version": null,
+  "compatibility_level": null,
+  "refresh_result": null,
+  "table_count": null,
+  "imported_table_count": null,
+  "measure_table_count": null,
+  "relationship_count": null,
+  "active_relationship_count": null,
+  "inactive_relationship_count": null,
+  "measure_count": null,
+  "row_counts": null,
+  "passed_checks": [],
+  "failed_checks": [],
+  "sql_to_dax_differences": [],
+  "overall_result": "pending",
+  "notes": "Power BI Desktop has never opened, refreshed or saved this project. The environment that built the model is Ubuntu 24.04 with no Windows, no Power BI Desktop and no Analysis Services, so the open-refresh-save validation could not run there and has not run anywhere else. This file is a placeholder that records that fact honestly; it is NOT a passing result and no CI check may render it as one. scripts/validate_powerbi_model.ps1 overwrites it with a real result. The procedure is docs/powerbi/POWER_BI_DESKTOP_HANDOFF.md."
+}

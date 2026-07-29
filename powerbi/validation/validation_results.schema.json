@@ -1,0 +1,85 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/mpalmer79/Automotive-Retail-Performance-Intelligence/powerbi/validation/validation_results.schema.json",
+  "title": "ARPI Power BI Desktop validation result",
+  "description": "The evidence file scripts/validate_powerbi_model.ps1 writes after connecting to a running Power BI Desktop model, refreshing it, and comparing every governed measure against powerbi/validation/sql_baseline.json. scripts/check_desktop_validation_freshness.py reads it in CI. A result is only believable if model_source_hash still matches the current TMDL source: a model that was validated and then edited has no valid evidence, and CI reports that state as STALE rather than as passed.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "validated_at",
+    "model_source_hash",
+    "overall_result"
+  ],
+  "properties": {
+    "schema": {
+      "const": "arpi.desktop_validation_results/1"
+    },
+    "validated_at": {
+      "type": ["string", "null"],
+      "description": "UTC ISO-8601 instant the validation ran. Null when it has never run."
+    },
+    "model_source_hash": {
+      "type": ["string", "null"],
+      "description": "SHA-256 over every file under ARPI_Performance_Intelligence.SemanticModel/definition/ plus definition.pbism, computed by scripts/check_desktop_validation_freshness.py --print-hash. Null when validation has never run.",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "power_bi_desktop_version": {
+      "type": ["string", "null"],
+      "description": "Product version of the Power BI Desktop instance that was validated."
+    },
+    "compatibility_level": {
+      "type": ["integer", "null"],
+      "description": "Tabular compatibility level reported by the running model."
+    },
+    "refresh_result": {
+      "type": ["string", "null"],
+      "enum": ["succeeded", "failed", "not attempted", null]
+    },
+    "table_count": { "type": ["integer", "null"] },
+    "imported_table_count": { "type": ["integer", "null"] },
+    "measure_table_count": { "type": ["integer", "null"] },
+    "relationship_count": { "type": ["integer", "null"] },
+    "active_relationship_count": { "type": ["integer", "null"] },
+    "inactive_relationship_count": { "type": ["integer", "null"] },
+    "measure_count": { "type": ["integer", "null"] },
+    "row_counts": {
+      "type": ["object", "null"],
+      "description": "Rows loaded per imported table, compared against model_expectations.json.",
+      "additionalProperties": { "type": "integer" }
+    },
+    "passed_checks": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Identifier of every check that passed, for example 'sql-to-dax:store-GSA-001:KPI-GRS-006'."
+    },
+    "failed_checks": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "sql_to_dax_differences": {
+      "type": "array",
+      "description": "Every measure whose DAX value differed from the SQL baseline beyond tolerance. Empty is the only acceptable state for a passed result.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["context_id", "measure_key", "sql_value", "dax_value"],
+        "properties": {
+          "context_id": { "type": "string" },
+          "measure_key": { "type": "string" },
+          "measure_name": { "type": ["string", "null"] },
+          "sql_value": { "type": ["number", "null"] },
+          "dax_value": { "type": ["number", "null"] },
+          "absolute_difference": { "type": ["number", "null"] },
+          "tolerance": { "type": ["number", "null"] }
+        }
+      }
+    },
+    "overall_result": {
+      "type": "string",
+      "enum": ["passed", "failed", "pending"],
+      "description": "'pending' means Power BI Desktop has never opened this model. It is not a pass, and CI must never render it as one."
+    },
+    "notes": { "type": "string" }
+  }
+}

@@ -97,6 +97,7 @@ Contracts are the tier most worth reading closely. They are also the tier a revi
 | [`requirements/PHASE_2_BACKLOG.md`](requirements/PHASE_2_BACKLOG.md) | Task-level breakdown of delivery increments `P2.1` through `P2.4` — semantic model, dashboard pages, findings and the Gate 2 review, portfolio packaging — with the Gate 2 checklist | Contributors picking up work; reviewers checking Gate 2 | Implemented — `P2.1` delivered except its manual Power BI Desktop validation; `P2.2`–`P2.4` Not started |
 | [`requirements/STAKEHOLDER_QUESTIONS.md`](requirements/STAKEHOLDER_QUESTIONS.md) | Persona → business question → KPI → reporting view → report page traceability, including the four questions the MVP cannot answer | Reviewers checking Gate 4; anyone asking what the platform can answer | Implemented |
 | [`requirements/GATE_1_READINESS.md`](requirements/GATE_1_READINESS.md) | The formal Gate 1 evaluation: twenty-three conditions, each with evidence, a test or query, limitations, and a verdict | Anyone deciding whether Power BI work may begin | Implemented — verdict **OPEN** |
+| [`powerbi/POWER_BI_DESKTOP_HANDOFF.md`](powerbi/POWER_BI_DESKTOP_HANDOFF.md) | The single manual checkpoint for delivery increment `P2.1`: open, refresh, save and validate the semantic model in Power BI Desktop, which GitHub Actions cannot do | Whoever runs the Desktop validation | Implemented — the validation itself is **pending** |
 | [`index.md`](index.md) | This page | Everyone | Implemented |
 
 ---
@@ -203,6 +204,7 @@ python scripts/check_secrets.py
 | [`requirements/DOCUMENTATION_BACKLOG.md`](requirements/DOCUMENTATION_BACKLOG.md) | Planning |
 | [`requirements/STAKEHOLDER_QUESTIONS.md`](requirements/STAKEHOLDER_QUESTIONS.md) | Planning |
 | [`requirements/GATE_1_READINESS.md`](requirements/GATE_1_READINESS.md) | Planning |
+| [`powerbi/POWER_BI_DESKTOP_HANDOFF.md`](powerbi/POWER_BI_DESKTOP_HANDOFF.md) | Operations |
 | [`../powerbi/model_documentation/`](../powerbi/model_documentation/) | Design |
 | [`index.md`](index.md) | Planning |
 

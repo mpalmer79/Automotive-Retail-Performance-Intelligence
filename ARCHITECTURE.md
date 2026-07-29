@@ -1620,9 +1620,10 @@ Automotive-Retail-Performance-Intelligence/
 │   └── fixtures/                          [empty]    Shared fixtures arrive with the P1.2 facts
 ├── notebooks/                             [empty]    No notebooks exist yet
 ├── powerbi/
-│   ├── ARPI_Performance_Intelligence.pbix [planned]  (not yet created)
-│   ├── model_documentation/               [empty]    (not yet created)
-│   └── measures/                          [empty]    (not yet created)
+│   ├── ARPI_Performance_Intelligence/     [now]      PBIP project: .pbip, .SemanticModel (TMDL), .Report (shell)
+│   ├── model_documentation/               [now]      Nine documents: the specification and the as-built record
+│   ├── validation/                        [now]      SQL baseline, DAX validation queries, Desktop validation evidence
+│   └── measures/                          [now]      README only; the DAX lives in the TMDL measure tables (ADR-0007)
 ├── excel/
 │   └── ARPI_Operating_Report.xlsx         [planned]  (not yet created)
 └── portfolio/

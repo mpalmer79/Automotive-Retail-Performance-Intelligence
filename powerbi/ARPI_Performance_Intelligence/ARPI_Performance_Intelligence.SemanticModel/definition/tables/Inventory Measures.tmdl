@@ -231,13 +231,21 @@ table 'Inventory Measures'
 	/// SEMI-ADDITIVE: the numerator is a stock, so the ratio is evaluated at the last as-of
 	/// date in context rather than summed across dates. BLANK at a zero selling pace -- never
 	/// infinity, never a large sentinel. State the window on any visual.
+	///
+	/// The anchor date is the last date that HAS a row, found with LASTNONBLANK over
+	/// COUNTROWS, rather than the last date at which the ratio happens to be defined. The
+	/// other seven semi-additive measures use LASTNONBLANKVALUE, which is equivalent for
+	/// them because their inner expression is non-blank whenever a row exists. It is NOT
+	/// equivalent here: this ratio is legitimately blank on a day with no trailing sales, and
+	/// LASTNONBLANKVALUE would silently walk backwards to an earlier day and report a stale
+	/// days supply as if it were current. A blank is the honest answer on such a day.
 	measure 'Dealer Days Supply' =
-			LASTNONBLANKVALUE (
-			    'vw_calendar'[calendar_date],
+			CALCULATE (
 			    DIVIDE (
 			        SUM ( 'vw_days_supply'[active_inventory_units] ),
 			        SUM ( 'vw_days_supply'[average_daily_retail_sales] )
-			    )
+			    ),
+			    LASTNONBLANK ( 'vw_calendar'[calendar_date], COUNTROWS ( 'vw_days_supply' ) )
 			)
 		formatString: 0 "days"
 		displayFolder: Velocity

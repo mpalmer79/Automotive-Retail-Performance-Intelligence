@@ -88,9 +88,12 @@ whose surrounding context is meaningless, and any reordering by the writer produ
 TMDL also expresses DAX as DAX rather than as an escaped JSON string, so a measure is readable — and
 greppable — in the form it was written.
 
-The measure text is additionally mirrored as plain `.dax` files under `powerbi/measures/`, so the DAX can be
-read in a pull request without a TMDL parser, and a static check asserts the mirror and the model define the
-same measure set. A mirror that can drift is worse than no mirror.
+That readability is also why `powerbi/measures/` holds **no** `.dax` files. The directory was reserved, before
+this decision, for a text mirror of every measure — necessary if the model were a binary `.pbix`, and
+redundant once it is TMDL. A mirror would be a second copy of all forty-nine measures, and a second copy is a
+second answer waiting to happen: it is the one a reviewer reads while the TMDL is the one the engine executes,
+and nothing executable can test that the two still agree. One definition, in the file the engine reads.
+`powerbi/measures/README.md` records the reasoning at the path a reader would look for it.
 
 ### How PBIR is handled
 
