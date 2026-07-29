@@ -84,6 +84,16 @@ DIMENSION_SQL_SUBDIR = "03_dimensions"
 #: Glob matching the merge scripts the loader is required to execute.
 MERGE_SQL_GLOB = "*_merge.sql"
 
+#: Directory, relative to the SQL root, holding the fact load scripts.
+FACT_SQL_SUBDIR = "04_facts"
+
+#: Glob matching the fact load scripts the loader executes after the dimension merges.
+#:
+#: Facts resolve surrogate keys by joining the dimensions, so they must run only once
+#: every dimension has been merged. Ordering by filename keeps that deterministic and
+#: reviewable.
+FACT_SQL_GLOB = "*_load.sql"
+
 #: Default SQL root, relative to the directory ARPI is run from.
 DEFAULT_SQL_ROOT = Path("sql")
 
@@ -224,6 +234,26 @@ def discover_merge_sql(sql_root: Path = DEFAULT_SQL_ROOT) -> list[Path]:
     return scripts
 
 
+def discover_fact_sql(sql_root: Path = DEFAULT_SQL_ROOT) -> list[Path]:
+    """Find the fact load scripts, which run after every dimension merge.
+
+    A fact resolves its surrogate keys by joining the dimensions, so running a fact load
+    before the dimensions are merged would resolve nothing. An absent directory is not an
+    error here: the facts are permitted to be unimplemented, whereas a missing dimension
+    merge means the warehouse would be left empty and is refused.
+
+    Args:
+        sql_root: Directory containing the numbered SQL folders.
+
+    Returns:
+        The ``*_load.sql`` files under ``<sql_root>/04_facts``, sorted by name.
+    """
+    directory = Path(sql_root) / FACT_SQL_SUBDIR
+    if not directory.is_dir():
+        return []
+    return sorted(directory.glob(FACT_SQL_GLOB))
+
+
 def rows_for_copy(
     frame: pd.DataFrame,
     *,
@@ -282,6 +312,7 @@ def load_foundation(
     """
     specs = [spec_for(dataset.entity_name) for dataset in datasets]
     merge_scripts = discover_merge_sql(sql_root)
+    fact_scripts = discover_fact_sql(sql_root)
     load_batch_id = uuid.uuid4()
     counts: dict[str, LayerCounts] = {}
     rejections: list[RejectedRecord] = []
@@ -291,7 +322,7 @@ def load_foundation(
             _copy_into_raw(connection, dataset, entity_spec, load_batch_id)
             connection.commit()
 
-        for script in merge_scripts:
+        for script in (*merge_scripts, *fact_scripts):
             _execute_script(connection, script)
         connection.commit()
 
@@ -309,7 +340,7 @@ def load_foundation(
         load_batch_id=load_batch_id,
         raw_row_counts={name: layer.raw for name, layer in counts.items()},
         warehouse_row_counts={name: layer.warehouse for name, layer in counts.items()},
-        executed_sql=tuple(merge_scripts),
+        executed_sql=(*merge_scripts, *fact_scripts),
         layer_counts=counts,
         rejected_records=tuple(rejections),
     )

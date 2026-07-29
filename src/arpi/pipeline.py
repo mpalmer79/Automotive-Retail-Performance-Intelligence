@@ -35,6 +35,11 @@ from arpi.generation.acquisition import (
     generate_acquisition_dataset,
     validate_acquisition_dataset,
 )
+from arpi.generation.appointment import (
+    ENTITY_APPOINTMENT_EVENT,
+    generate_appointment_dataset,
+    validate_appointment_dataset,
+)
 from arpi.generation.calendar import generate_date_dataset
 from arpi.generation.customer import (
     ENTITY_DIM_CUSTOMER,
@@ -47,6 +52,16 @@ from arpi.generation.employee import (
     generate_employee_dataset,
     validate_employee_dataset,
 )
+from arpi.generation.inventory_snapshot import (
+    ENTITY_INVENTORY_SNAPSHOT_EVENT,
+    generate_inventory_snapshot_dataset,
+    validate_inventory_snapshot_dataset,
+)
+from arpi.generation.lead import (
+    ENTITY_LEAD_EVENT,
+    generate_lead_dataset,
+    validate_lead_dataset,
+)
 from arpi.generation.lead_source import (
     ENTITY_DIM_LEAD_SOURCE,
     generate_lead_source_dataset,
@@ -54,8 +69,11 @@ from arpi.generation.lead_source import (
 )
 from arpi.generation.marketing import (
     ENTITY_DIM_MARKETING_CAMPAIGN,
+    ENTITY_MARKETING_SPEND,
     generate_marketing_campaign_dataset,
+    generate_marketing_spend_dataset,
     validate_marketing_campaign_dataset,
+    validate_marketing_spend_dataset,
 )
 from arpi.generation.sale import (
     ENTITY_SALE_EVENT,
@@ -116,6 +134,10 @@ GENERATION_ORDER: tuple[str, ...] = (
     ENTITY_DIM_MARKETING_CAMPAIGN,
     ENTITY_ACQUISITION_EVENT,
     ENTITY_SALE_EVENT,
+    ENTITY_INVENTORY_SNAPSHOT_EVENT,
+    ENTITY_LEAD_EVENT,
+    ENTITY_APPOINTMENT_EVENT,
+    ENTITY_MARKETING_SPEND,
 )
 
 
@@ -311,6 +333,10 @@ def generate_all_datasets(config: ArpiConfig) -> tuple[GeneratedDataset, ...]:
         generate_marketing_campaign_dataset(config),
         generate_acquisition_dataset(config),
         generate_sale_dataset(config),
+        generate_inventory_snapshot_dataset(config),
+        generate_lead_dataset(config),
+        generate_appointment_dataset(config),
+        generate_marketing_spend_dataset(config),
     )
     produced = tuple(dataset.entity_name for dataset in datasets)
     if produced != GENERATION_ORDER:
@@ -353,6 +379,10 @@ def validate_all_datasets(
         validate_marketing_campaign_dataset(by_entity[ENTITY_DIM_MARKETING_CAMPAIGN]),
         validate_acquisition_dataset(by_entity[ENTITY_ACQUISITION_EVENT], config),
         validate_sale_dataset(by_entity[ENTITY_SALE_EVENT], config),
+        validate_inventory_snapshot_dataset(by_entity[ENTITY_INVENTORY_SNAPSHOT_EVENT], config),
+        validate_lead_dataset(by_entity[ENTITY_LEAD_EVENT], config),
+        validate_appointment_dataset(by_entity[ENTITY_APPOINTMENT_EVENT], config),
+        validate_marketing_spend_dataset(by_entity[ENTITY_MARKETING_SPEND], config),
         validate_generation(datasets, config),
     )
     return ensure_registry_coverage(report, entities=tuple(by_entity))

@@ -267,8 +267,13 @@ ENTITY_SPECS: Final[tuple[EntityIngestionSpec, ...]] = (
     ),
     _source_entity("acquisition_event", natural_key=("acquisition_id",)),
     _source_entity("sale_event", natural_key=("sale_id",)),
-    _source_entity("lead", natural_key=("lead_id",)),
-    _source_entity("appointment", natural_key=("appointment_id",)),
+    _source_entity("lead_event", subject="lead", natural_key=("lead_id",)),
+    _source_entity("appointment_event", subject="appointment", natural_key=("appointment_id",)),
+    _source_entity(
+        "inventory_snapshot_event",
+        subject="inventory_snapshot",
+        natural_key=("vehicle_id", "dealership_id", "snapshot_date"),
+    ),
     # The generator in arpi.generation.marketing declares this entity as
     # `marketing_spend_event`, so that -- not the bare `marketing_spend` the SQL objects
     # are stemmed on -- is the name the loader will look the spec up by. The stem is
