@@ -17,9 +17,13 @@ from arpi.pipeline import GENERATION_ORDER, SKIP_REASON_NOT_REQUESTED, run_found
 #: Data-quality results one full run produces, across every entity.
 #:
 #: Pinned rather than derived: the point of the assertion is that a check cannot quietly
-#: stop being emitted. Ten entity suites plus the two cross-entity generation checks,
-#: with one ``DQ-GEN-001`` schema result per entity.
-EXPECTED_CHECK_COUNT = 80
+#: stop being emitted. Fourteen entity suites plus the two cross-entity generation
+#: checks, with one ``DQ-GEN-001`` schema result per entity.
+#:
+#: Raised from 80 when the inventory snapshot, lead, appointment and marketing spend
+#: entities joined the generation order. Deriving this from the registry would defeat the
+#: assertion, so it is updated deliberately whenever the emitted set genuinely changes.
+EXPECTED_CHECK_COUNT = 114
 
 
 @pytest.fixture

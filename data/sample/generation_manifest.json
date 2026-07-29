@@ -66,6 +66,30 @@
       "row_count": 400,
       "column_count": 29,
       "content_digest": "1097c238fa6d34b6091f5289c9bc2c4f5bd3c18801a9df6555ee170ff0d8a5a9"
+    },
+    {
+      "entity": "inventory_snapshot_event",
+      "row_count": 400,
+      "column_count": 15,
+      "content_digest": "c05caea1b9dfaf99604fbf2ba54c052150eafb7faee3320c324b29b558deef29"
+    },
+    {
+      "entity": "lead_event",
+      "row_count": 400,
+      "column_count": 19,
+      "content_digest": "a051837f3655a9169514e977b10cc5a12717543b072a9bff7261eefb9db5350d"
+    },
+    {
+      "entity": "appointment_event",
+      "row_count": 400,
+      "column_count": 20,
+      "content_digest": "c02abe28e87afddf969035a194077d3d0bdc6671e8e17103b775b01ad9617cb6"
+    },
+    {
+      "entity": "marketing_spend_event",
+      "row_count": 212,
+      "column_count": 12,
+      "content_digest": "a459a872e28e45f2a485ad4ef09dc4cbb03ec18193f5edeec1f792a2dfd7842c"
     }
   ],
   "synthetic_data_notice": "SYNTHETIC DATA -- 100% machine generated. Granite State Auto Group and every store, employee role and transaction referenced by this project are fictional. No real customer, employee, dealership or vendor data is present, and no record here describes a real person or a real business.",

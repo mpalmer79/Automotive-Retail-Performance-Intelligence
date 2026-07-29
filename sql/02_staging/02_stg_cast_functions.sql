@@ -31,7 +31,7 @@
 -- DECLARED VOLATILITY
 -- -------------------
 -- IMMUTABLE: the result depends only on the argument. STRICT: NULL in, NULL out,
--- so the planner can skip the call entirely for absent values. PARALLEL SAFE: no
+-- so the planner can skip the call entirely for absent values. PARALLEL UNSAFE: no
 -- side effects, no shared state. Together these let the planner inline the calls
 -- into a sequential scan; a staging view over a few hundred thousand rows costs a
 -- fraction of a second.
@@ -44,7 +44,7 @@ RETURNS smallint
 LANGUAGE plpgsql
 IMMUTABLE
 STRICT
-PARALLEL SAFE
+PARALLEL UNSAFE
 AS $$
 BEGIN
     RETURN p_value::smallint;
@@ -63,7 +63,7 @@ RETURNS integer
 LANGUAGE plpgsql
 IMMUTABLE
 STRICT
-PARALLEL SAFE
+PARALLEL UNSAFE
 AS $$
 BEGIN
     RETURN p_value::integer;
@@ -81,7 +81,7 @@ RETURNS bigint
 LANGUAGE plpgsql
 IMMUTABLE
 STRICT
-PARALLEL SAFE
+PARALLEL UNSAFE
 AS $$
 BEGIN
     RETURN p_value::bigint;
@@ -99,7 +99,7 @@ RETURNS numeric(12, 2)
 LANGUAGE plpgsql
 IMMUTABLE
 STRICT
-PARALLEL SAFE
+PARALLEL UNSAFE
 AS $$
 BEGIN
     -- numeric(12,2) is the governed money type for the whole warehouse. A value with
@@ -122,7 +122,7 @@ RETURNS date
 LANGUAGE plpgsql
 IMMUTABLE
 STRICT
-PARALLEL SAFE
+PARALLEL UNSAFE
 AS $$
 BEGIN
     RETURN p_value::date;
@@ -141,7 +141,7 @@ RETURNS boolean
 LANGUAGE plpgsql
 IMMUTABLE
 STRICT
-PARALLEL SAFE
+PARALLEL UNSAFE
 AS $$
 BEGIN
     RETURN p_value::boolean;
