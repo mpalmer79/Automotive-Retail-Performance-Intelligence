@@ -14,14 +14,18 @@
 # ----
 #   quality             formatting, lint, types, unit and data-quality tests
 #   repository-checks   naming, documentation links, secret safety net,
-#                       Power BI model structure, Power BI Desktop evidence
+#                       Power BI model structure, real-engine validation evidence
 #   integration         PostgreSQL DDL + integration tests against a container
 #
-# The two Power BI checks in `repository-checks` read the PBIP project's TMDL
-# and JSON as text and compare a hash. NEITHER LAUNCHES POWER BI DESKTOP, and
-# nothing in this workflow ever may: Desktop is a Windows application, a refresh
-# needs a loaded PostgreSQL reporting schema, and its result is recorded by hand
-# in `powerbi/validation/desktop_validation_results.json`.
+# The Power BI checks in `repository-checks` read the PBIP project's TMDL and
+# JSON as text and compare a hash. NONE OF THEM LAUNCHES OR CONTACTS A SEMANTIC
+# MODEL ENGINE, and nothing in this workflow ever may. Power BI Desktop is a
+# Windows application; Microsoft Fabric needs a tenant, a workspace and a cloud
+# PostgreSQL database. A refresh needs a loaded `reporting` schema. Both engines'
+# results are produced outside CI and recorded in
+# `powerbi/validation/desktop_validation_results.json` and
+# `powerbi/validation/fabric_validation_results.json`, and ADR-0008 governs what
+# either of them has to prove.
 #
 # `quality` and `repository-checks` are the gate for every change.
 # `integration` is deliberately a separate job so that a PostgreSQL service
@@ -172,13 +176,36 @@ jobs:
       - name: Power BI model structure
         run: python scripts/check_powerbi_model.py
 
-      # Fails when the recorded Power BI Desktop validation is STALE (it
-      # describes a model that has since changed), FAILED or MISSING. PENDING
-      # passes, because Desktop cannot run on a Linux runner and P2.1 is still
-      # in flight -- but it is reported as PENDING, never as passed. THIS STEP
-      # DOES NOT LAUNCH POWER BI DESKTOP; it only compares a hash.
-      - name: Power BI Desktop validation evidence
+      # ADR-0008 accepts TWO real-engine validation paths -- Power BI Desktop
+      # and Microsoft Fabric -- with an identical proof obligation. Each engine
+      # reports one of five states: PASSED, PENDING, STALE, FAILED, MISSING.
+      # STALE and FAILED block on every branch, because a stale pass is more
+      # dangerous than no pass: it reads as validated while describing a model
+      # that no longer exists. PENDING exits zero so a branch can be worked on
+      # before an engine has run -- it is never rendered as a pass.
+      #
+      # NOTHING HERE LAUNCHES OR CONTACTS AN ENGINE. Power BI Desktop is a
+      # Windows application and Microsoft Fabric needs a tenant, a workspace and
+      # a cloud database; a GitHub runner has none of those. These steps read
+      # evidence files and compare a hash, and that is all they can ever do.
+      - name: Real-engine validation evidence (Power BI Desktop)
         run: python scripts/check_desktop_validation_freshness.py
+
+      - name: Real-engine validation evidence (Microsoft Fabric)
+        run: python scripts/check_fabric_validation_freshness.py
+
+      # The gate itself. Either engine passing satisfies it; static validation
+      # alone never does.
+      #
+      # `--require-pass` is DELIBERATELY NOT SET YET. Turning it on before any
+      # passing real-engine evidence exists would break the branch for a
+      # condition nobody can currently clear, which teaches people to bypass the
+      # check rather than to satisfy it. The flag goes on in the same change
+      # that lands the first passing evidence -- see `P2.1-14` in
+      # docs/requirements/PHASE_2_BACKLOG.md. Until then this step reports
+      # PENDING honestly and exits zero.
+      - name: Real-engine validation gate (ADR-0008)
+        run: python scripts/check_real_engine_validation.py
 
   # ---------------------------------------------------------------------------
   # 3. integration — SQL objects and database-backed tests.

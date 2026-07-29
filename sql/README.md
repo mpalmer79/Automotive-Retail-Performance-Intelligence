@@ -198,7 +198,7 @@ Run it a second time to confirm idempotency. The output is a series of
 psql -d arpi_dev -c '\dn'                         # five schemas
 psql -d arpi_dev -c '\dt warehouse.*'             # 8 dimensions + 5 (empty) facts
 psql -d arpi_dev -c '\dv staging.*'               # 3 views per Phase 1 entity
-psql -d arpi_dev -c '\dv reporting.*'             # exactly four views
+psql -d arpi_dev -c '\dv reporting.*'             # exactly twenty-eight views
 psql -d arpi_dev -c 'SELECT count(*) FROM warehouse.dim_date'
 psql -d arpi_dev -c 'SELECT * FROM audit.vw_dq_all ORDER BY check_id'
 psql -d arpi_dev -P pager=off -f sql/07_security/02_role_verification.sql

@@ -263,3 +263,54 @@ ruff check scripts/
 A check that fails for a legitimate file is worse than no check, because people
 learn to ignore it. Prefer a narrow rule with a documented allowlist over a
 broad rule with a suppression comment.
+
+---
+
+## Verifying a cloud database
+
+### `verify_cloud_database.py`
+
+Proves that a **managed PostgreSQL 16** deployment of the ARPI `reporting`
+schema is a faithful copy of the local one, so a cloud semantic-model engine can
+be pointed at it. The procedure around it is
+[`../docs/cloud-database-setup.md`](../docs/cloud-database-setup.md).
+
+Like the two generators above, this is **not** a CI check: it needs `psycopg`
+and a loaded database, and CI has neither and never contacts a hosted one. It is
+run by hand, at the end of a cloud build.
+
+Nine named checks, each with its own failure message: the server is PostgreSQL
+16 or later; **this connection is actually encrypted**, according to the server's
+own `pg_stat_ssl` rather than according to a configuration file; all five schemas
+exist; there are exactly 28 views in `reporting`; the eight dimensions and five
+facts exist and hold rows; all twenty reporting row counts match the
+`development` profile **exactly**; 58 reconciliations are recorded with none
+failing; the run recorded profile `development` at seed `20250701`; and
+`arpi_reporter` holds no privilege on any object in `raw`, `staging`,
+`warehouse` or `audit` — checked object by object and privilege by privilege, and
+listing every offender.
+
+Every row count is an equality rather than a lower bound, because the generator
+is deterministic: a correct cloud load reproduces the local numbers or it is not
+a correct cloud load. The reporter isolation is re-proved against the cloud
+database rather than inherited from the local one, because a managed provider's
+non-superuser bootstrap role changes who owns what, and ownership is the
+mechanism the isolation rests on.
+
+It **never prints a host name, port, user name, database name or password**, in
+normal output or in error output — a connection failure is reported by exception
+type alone. The output is written to be safe to paste into an issue unedited.
+
+Connection settings resolve from `ARPI_DATABASE__*` then `PG*`, the same way
+`generate_sql_baseline.py` and the integration tests resolve them. Reads only;
+it creates nothing and needs no superuser.
+
+```bash
+python scripts/verify_cloud_database.py
+python scripts/verify_cloud_database.py --list-checks
+python scripts/verify_cloud_database.py --checks tls reporter-isolation
+python scripts/verify_cloud_database.py --quiet
+```
+
+Exit `0` when every selected check passes, `1` on any finding, and `2` when the
+check could not be run at all — `psycopg` missing, or no connection.

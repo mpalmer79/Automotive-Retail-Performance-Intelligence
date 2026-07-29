@@ -6,11 +6,18 @@
 How the numbers the model produces will be compared against the numbers the database produces, and what a
 comparison has to cover before it counts as evidence.
 
-**No reconciliation has been performed.** Power BI Desktop has never opened this model, so the DAX side of
-every comparison below is currently empty. The SQL side exists — `powerbi/validation/sql_baseline.json`
-holds the expected value of every reconciled measure across twenty-one filter contexts — and it was generated
-before any model was refreshed, which is the ordering that makes it an expectation rather than a
-transcription. See [08-desktop-validation.md](08-desktop-validation.md); its status is **PENDING**.
+**No reconciliation has been performed.** No Microsoft semantic-model engine has ever loaded this model, so
+the DAX side of every comparison below is currently empty. The SQL side exists —
+`powerbi/validation/sql_baseline.json` holds the expected value of every reconciled measure across
+twenty-one filter contexts — and it was generated before any model was refreshed, which is the ordering that
+makes it an expectation rather than a transcription. See
+[08-desktop-validation.md](08-desktop-validation.md); both engines are **PENDING**.
+
+**The DAX side may come from either accepted engine.** `P2.1-09` accepts a **Power BI Desktop** run or a
+**Microsoft Fabric Service** run, of equal standing, per
+[ADR-0008](../../docs/architecture-decisions/ADR-0008-real-engine-validation-paths.md). This method is
+engine-independent by construction: the queries, the baseline, the contexts, the identities and the
+tolerances are the same either way, and only §2.2 differs between them.
 
 ---
 
@@ -59,20 +66,58 @@ it is a transcription.
 
 ### 2.2 Evaluate the same measures in the model
 
-`powerbi/validation/validation_queries.dax` holds the DAX queries a human runs in Power BI Desktop or DAX
-Studio against the refreshed model. Each query returns one measure across one filter context, in the same
-shape the baseline records, so the comparison is a join rather than an interpretation.
+`powerbi/validation/validation_queries.dax` holds the DAX queries that produce the model's side of the
+comparison. Each query returns one measure across one filter context, in the same shape the baseline records,
+so the comparison is a join rather than an interpretation.
+
+**One file, both engines.** A second copy of the queries, written for the other path, would be a second
+answer waiting to happen — it is the one a reviewer reads while the other is the one that ran, and nothing
+executable could test that the two still agree.
+
+| Engine | How the queries are executed |
+|---|---|
+| **Power BI Desktop** | A human runs them in Desktop or DAX Studio against the refreshed model. |
+| **Microsoft Fabric Service** | The same file is submitted through the **Power BI Execute Queries REST API** against the semantic model deployed to the workspace, and the JSON results are read back. |
 
 The database refreshed must be the **same database the baseline came from**, identified by the provenance in
 §2.1. A baseline generated against one seed and a model refreshed against another will disagree for reasons
-that have nothing to do with the model, and the disagreement will look exactly like a defect.
+that have nothing to do with the model, and the disagreement will look exactly like a defect. On the Fabric
+path this is a live risk rather than a theoretical one, because the cloud instance it refreshes from is a
+different database from the local one the baseline was generated against, and only the recorded profile,
+seed and row counts establish that they hold the same data.
+
+#### 2.2.1 `includeNulls` must be set on the Execute Queries request
+
+**The Execute Queries REST API omits null-valued cells from its response unless `includeNulls` is set.** It
+must be set.
+
+This is not a serialisation detail, it is the difference between two answers this document spends §3.1 and
+identity 5 of §4 distinguishing. The **zero-denominator** context and the **organic-marketing** contexts
+exist precisely to prove that a ratio returns `BLANK()` rather than `0` or an error — a store-month with no
+retail sales, and a lead source with no spend. A serializer that drops nulls turns the correct answer,
+`BLANK()`, into a **missing key**, and a comparison that reads a missing key as "no value recorded" cannot
+tell a correct blank apart from a query that never ran.
+
+The failure is silent and it fails in the wrong direction: the contexts specifically designed to catch a
+`$0` cost per lead for an organic source are the same contexts whose correct results would vanish from the
+response. The Fabric path therefore sets `includeNulls`, and the comparison treats an **absent key as a
+failure to observe**, never as an observed blank.
 
 ### 2.3 Compare, and record
 
-Every comparison is recorded in `powerbi/validation/desktop_validation_results.json` under `measure_results`,
-against `powerbi/validation/validation_results.schema.json`. **Row counts reconcile at tolerance zero.**
-Numeric measures reconcile within the configured `validation.numeric_absolute_tolerance`, which exists for
-floating-point representation and for nothing else.
+Every comparison is recorded against a schema with `additionalProperties: false` — in
+`powerbi/validation/desktop_validation_results.json` against
+`powerbi/validation/validation_results.schema.json` for the Desktop path, or in
+`powerbi/validation/fabric_validation_results.json` against
+`powerbi/validation/fabric_validation_results.schema.json` for the Fabric path. **Row counts reconcile at
+tolerance zero.** Numeric measures reconcile within the configured
+`validation.numeric_absolute_tolerance`, which exists for floating-point representation and for nothing
+else.
+
+The recorded result carries the **model-source hash** and the **engine** that produced it. Both matter: the
+hash says which model was tested, and the engine says which tabular implementation agreed with the baseline.
+A result that named neither would be a number with no argument behind it, which is the objection §2.1 raises
+against an unprovenanced baseline, applied to the other side of the comparison.
 
 A tolerance is not a licence. A difference inside the tolerance that is systematic — the same sign, on the
 same measure, across many contexts — is a finding regardless of its size, because a rounding difference is
@@ -206,6 +251,10 @@ SQL definitions across the tested contexts, and that the identities hold there.
 * **That untested contexts are correct.** Nine context classes is a substantial sample and it is a sample.
 * **That another profile reconciles.** A result against `development` says nothing about `portfolio`. The
   `profile` field in the result exists so this cannot be forgotten.
+* **That the other engine agrees.** A reconciliation is evidence about the engine that produced it. Desktop
+  and the Fabric Service are different implementations, and either one passing closes `P2.1-09` on its own
+  merits rather than by standing in for the other. If both are ever run against the same baseline, a
+  disagreement between them is itself a finding — and one neither can produce alone.
 * **That the model is fast, or usable, or that a visual built on it is honest.** Those are different
   questions with different evidence.
 * **Anything about the eight structurally-agreeing KPIs of §1** beyond that the plumbing works. Where both
@@ -215,19 +264,24 @@ SQL definitions across the tested contexts, and that the identities hold there.
 
 ## 6. Artefacts
 
-Referenced as backticked paths rather than links. All of them exist; what does not exist is a run that used
-them.
+Referenced as backticked paths rather than links. What does not exist is a run that used any of them.
 
 | Artefact | Role |
 |---|---|
 | `powerbi/validation/sql_baseline.json` | The expected value of every reconciled measure, across the twenty-one contexts of §3.0, generated from the database. |
 | `powerbi/validation/sql_baseline_metadata.json` | The baseline's provenance: `development` profile, seed `20250701`, the git commit, the reporting date range 2025-07-01 to 2025-12-31, the row count per view, and 58 reconciliations with 0 failing. It deliberately records **no host, user name or password** — it describes the data it was taken from, not the machine it was taken on. |
-| `powerbi/validation/validation_queries.dax` | The DAX queries a human runs against the refreshed model to produce the other side. |
-| `powerbi/validation/validation_results.schema.json` | The shape of a recorded result, so a hand-recorded one cannot omit a field. See [08-desktop-validation.md §5](08-desktop-validation.md). |
-| `powerbi/validation/desktop_validation_results.json` | Where the comparison is recorded, in `sql_to_dax_differences`, `row_counts`, `passed_checks` and `failed_checks`. Currently a placeholder recording `pending`. |
+| `powerbi/validation/validation_queries.dax` | The DAX queries that produce the other side. Run by hand in Power BI Desktop, or submitted through the Power BI Execute Queries REST API on the Fabric path. One file, both engines. |
+| `powerbi/validation/validation_results.schema.json` | The shape of a recorded **Desktop** result, so a hand-recorded one cannot omit a field. See [08-desktop-validation.md §6](08-desktop-validation.md). |
+| `powerbi/validation/desktop_validation_results.json` | Where the Desktop comparison is recorded, in `sql_to_dax_differences`, `row_counts`, `passed_checks` and `failed_checks`. Currently a placeholder recording `pending`. |
+| `powerbi/validation/fabric_validation_results.schema.json` | The shape of a recorded **Fabric** result. The same obligations, with the engine identification changed and the same prohibition on recording a tenant, workspace, endpoint or credential. |
+| `powerbi/validation/fabric_validation_results.json` | Where the Fabric comparison is recorded. Also a placeholder recording `pending`. |
 | `powerbi/validation/model_expectations.json` | The structural facts the static checker asserts. Not part of this reconciliation, listed so the directory's contents are not surprising. |
 | `scripts/generate_sql_baseline.py` | Generates the baseline. |
-| `scripts/validate_powerbi_model.ps1` | The Windows-side script. Not invoked by CI. |
+| `scripts/validate_powerbi_model.ps1` | The Windows-side script for the Desktop path. Not invoked by CI. |
+| `scripts/deploy_powerbi_fabric.py` | Deploys the committed definition to a Fabric workspace and reads it back to prove the Service stored what the repository contains. |
+| `scripts/validate_powerbi_fabric.py` | The Fabric counterpart of the Windows script: refreshes the deployed model, reads its inventory, and runs the queries above through the Execute Queries REST API with `includeNulls` set. Not invoked by CI. |
+| `docs/powerbi/POWER_BI_DESKTOP_HANDOFF.md` | The Desktop procedure. |
+| `docs/powerbi/FABRIC_SERVICE_HANDOFF.md` | The Fabric procedure, including the Execute Queries request shape and the `includeNulls` requirement of §2.2.1. |
 
 **`reconciliation` is not a validation category** in ADR-0004's vocabulary, and this comparison does not
 introduce one. It reports through the existing framework, the same rule the SQL-side reconciliations follow.
@@ -239,8 +293,9 @@ introduce one. It reports through the existing framework, the same rule the SQL-
 | | |
 |---|---|
 | SQL baseline generated | **Yes** — `powerbi/validation/sql_baseline.json`, twenty-one contexts, `development` profile |
-| Model refreshed | **No** — Power BI Desktop has never opened this model |
-| Measures evaluated | **No** — none of the forty-nine has returned a value |
+| Model refreshed — Power BI Desktop | **No** — Desktop has never opened this model |
+| Model refreshed — Microsoft Fabric Service | **No** — nothing has been deployed to a workspace |
+| Measures evaluated | **No** — none of the forty-nine has returned a value on either engine |
 | Comparison performed | **No** — `sql_to_dax_differences` is empty because nothing has been compared, not because nothing differed |
 | Identities checked | **No** |
 | Gate 2 condition 2, "SQL and Power BI totals reconcile" | **Not met** |
