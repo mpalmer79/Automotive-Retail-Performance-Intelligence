@@ -70,6 +70,7 @@ the project. ADR-0008 fixes that by naming the **capability** rather than the pr
 | **Procedure** | `docs/powerbi/POWER_BI_DESKTOP_HANDOFF.md` | `docs/powerbi/FABRIC_SERVICE_HANDOFF.md` |
 | **Evidence file** | `powerbi/validation/desktop_validation_results.json` | `powerbi/validation/fabric_validation_results.json` |
 | **Schema** | `powerbi/validation/validation_results.schema.json` | `powerbi/validation/fabric_validation_results.schema.json` |
+| **Deployment tooling** | `scripts/validate_powerbi_model.ps1`, run on Windows | `scripts/deploy_powerbi_fabric.py` and `scripts/validate_powerbi_fabric.py`, authenticating by delegated device code |
 | **Backlog items** | None — nothing to build; it needs a machine | `P2.1-11` … `P2.1-14` |
 | **Status** | **PENDING** | **PENDING** |
 
@@ -139,7 +140,11 @@ Four rules govern the states.
 * **One current PASSED result closes the gate.** Requiring both engines would turn an alternative into an
   additional requirement and make the gate harder to reach than it was before ADR-0008, which is the
   opposite of what that record decided. `main` requires **at least one** current PASSED result, and neither
-  engine passing on its own must ever fail CI.
+  engine passing on its own must ever fail CI. That policy is implemented as a `--require-pass` mode on
+  `scripts/check_real_engine_validation.py` and is **deliberately not enabled yet**: enforcing it while both
+  engines are PENDING would break `main` for a condition nobody can currently clear, which teaches people to
+  route around a check rather than satisfy it. It is enabled in the same change that lands the first passing
+  result.
 * **A failed result is recorded, not discarded.** A validation history in which only successes survive is a
   history that proves nothing. A refresh that loads nineteen of twenty tables is a failure, recorded as one
   — there is no partial credit.
@@ -245,12 +250,18 @@ a schema identifier, `validated_at`, `model_source_hash`, and an `overall_result
 not a pass. The counts, row counts, check arrays and `sql_to_dax_differences` carry the same obligations,
 because §3 is the same list.
 
-What differs is engine identification: where the Desktop result records a Desktop product version, the
-Fabric result records what the Service reported about the engine that loaded the model. What must **not**
-differ is the credential boundary. **No tenant identifier, workspace identifier, principal, endpoint,
-token, refresh token, client secret, database password or credential-bearing connection string appears in
-the evidence file** — the same rule `powerbi/validation/sql_baseline_metadata.json` already follows by
-recording the data it was taken from and not the machine it was taken on.
+What differs is engine identification. Where the Desktop result records a Desktop product version, the
+Fabric result records `engine`, the workspace and semantic-model **item GUIDs**, and a
+`retrieved_definition_hash` — the SHA-256 of the definition read back from the Service after deployment,
+which is how "the engine received the committed TMDL and not something adjacent to it" becomes a recorded
+fact rather than an assumption.
+
+**The workspace and item GUIDs are identifiers, not secrets, and are deliberately recorded.** A result that
+did not say where it ran could not be re-run or disputed. The credential boundary is drawn elsewhere and is
+absolute: **no token, refresh token, client secret, database password, endpoint or credential-bearing
+connection string appears in the evidence file**, in a log, or in an error message — the same distinction
+`powerbi/validation/sql_baseline_metadata.json` already draws by recording the data it was taken from and
+not the machine it was taken on.
 
 **The Fabric file is also a placeholder recording `pending`.** Nothing has been deployed to a workspace.
 
@@ -292,7 +303,9 @@ of this directory knows what is being waited on:
 1. **Deploy** the committed `.SemanticModel/definition/` tree to a Fabric workspace through the
    semantic-model definition APIs, **transforming nothing**. The engine receives the repository's TMDL. A
    rejection here is the engine's verdict on the model source, and is recorded as a failure rather than
-   retried until it works.
+   retried until it works. The definition is then **read back** and compared file by file with what was
+   sent; documented service normalisations are normalised away and any other difference fails the deploy,
+   because a service that quietly rewrote a measure would otherwise go unnoticed until a number was wrong.
 2. **Bind the source**: set the Server and Database parameters to the cloud PostgreSQL instance and attach
    the workspace connection holding the `arpi_reporter` credential. The repository holds the connection's
    name and nothing more.
@@ -316,8 +329,9 @@ reviewable, which is why it records against a schema instead of printing a verdi
 
 ## 8. What is in place, and what is not
 
-The supporting artefacts for Path A exist. Path B's are backlog items. What has not happened, on either
-path, is the run.
+The supporting artefacts exist for both paths. **What does not exist is anything for Path B's tooling to
+talk to** — no cloud database, no Fabric tenant, no workspace, no connection — and, on either path, the run.
+Every artefact below is machinery for producing or checking evidence. None of it is evidence.
 
 | Artefact | Present | Role |
 |---|---|---|
@@ -327,15 +341,21 @@ path, is the run.
 | `powerbi/validation/validation_queries.dax` | Yes | The DAX queries. Run by hand on Path A, submitted through the Execute Queries REST API on Path B. **One file, both paths** — a second copy would be a second answer waiting to happen. |
 | `powerbi/validation/validation_results.schema.json` | Yes | The Desktop contract of §6.1. |
 | `powerbi/validation/desktop_validation_results.json` | Yes | **A placeholder recording PENDING.** |
-| `powerbi/validation/fabric_validation_results.schema.json` | — | The Fabric contract of §6.2. Delivered by `P2.1-13`. |
-| `powerbi/validation/fabric_validation_results.json` | — | **A placeholder recording PENDING.** |
+| `powerbi/validation/fabric_validation_results.schema.json` | Yes | The Fabric contract of §6.2. |
+| `powerbi/validation/fabric_validation_results.json` | Yes | **A placeholder recording PENDING.** |
 | `scripts/check_powerbi_model.py` | Yes | Static structural check, run in CI. 9,452 assertions about the left-hand column of §1. |
-| `scripts/check_desktop_validation_freshness.py` | Yes | The state machine of §4 and the hash of §5. |
+| `scripts/check_desktop_validation_freshness.py` | Yes | The Desktop side of the state machine of §4 and the hash of §5. |
+| `scripts/check_fabric_validation_freshness.py` | Yes | The Fabric side of the same. |
+| `scripts/check_real_engine_validation.py` | Yes | The gate itself: reads both engines' evidence and reports the combined verdict. Its `--require-pass` mode is not enabled yet — see §4. |
 | `scripts/generate_sql_baseline.py` | Yes | Regenerates the baseline from a database. |
 | `scripts/validate_powerbi_model.ps1` | Yes | The Windows-side script for Path A. **Not invoked by CI.** |
+| `scripts/deploy_powerbi_fabric.py` | Yes | Sends the committed definition to a workspace and reads it back to prove the Service stored what the repository contains. |
+| `scripts/validate_powerbi_fabric.py` | Yes | Refreshes the deployed model and runs the governed DAX through the Execute Queries REST API. |
+| `scripts/verify_cloud_database.py` | Yes | Proves a cloud database is encrypted, correctly loaded, and correctly privilege-separated — against that database rather than by inference. |
 | `tests/unit/test_powerbi_model_structure.py` | Yes | The static assertions under pytest. |
 | `docs/powerbi/POWER_BI_DESKTOP_HANDOFF.md` | Yes | The Path A procedure. |
-| `docs/powerbi/FABRIC_SERVICE_HANDOFF.md` | — | The Path B procedure. |
+| `docs/powerbi/FABRIC_SERVICE_HANDOFF.md` | Yes | The Path B procedure. |
+| `docs/cloud-database-setup.md` | Yes | How to deploy the database Path B refreshes from. |
 | A cloud PostgreSQL instance, a Fabric tenant, workspace and connection | **No** | Path B's dependencies, none of which live in this repository. `P2.1-11` and `P2.1-12`. |
 | **A real-engine validation run, on either path** | **No** | **This is the gap.** |
 

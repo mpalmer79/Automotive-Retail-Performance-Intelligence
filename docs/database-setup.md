@@ -253,7 +253,7 @@ sudo -u postgres createuser --pwprompt --no-createdb --no-createrole --no-superu
 sudo -u postgres psql -d arpi_dev -c 'GRANT arpi_reporter TO arpi_bi'
 ```
 
-`arpi_bi` can read the four reporting views and **nothing else** — not `raw`, not
+`arpi_bi` can read the twenty-eight reporting views and **nothing else** — not `raw`, not
 `staging`, not `warehouse`, not `audit`. That is the point of the role model, and
 `tests/integration/test_security_roles.py` proves it rather than assuming it.
 
@@ -375,10 +375,10 @@ psql -d arpi_dev
 -- Five schemas
 \dn
 
--- Two dimension tables
+-- Eight dimension tables and five fact tables
 \dt warehouse.*
 
--- Exactly four reporting views, and no sales or inventory view
+-- Exactly twenty-eight reporting views
 \dv reporting.*
 
 -- Row counts
@@ -535,17 +535,25 @@ sudo -u postgres createdb arpi_dev
 
 ## 12. Supabase and managed PostgreSQL
 
-**Status: Deferred. Optional. Nothing in ARPI requires it.**
+**Status: Planned. Optional for everything on this page; required for one thing.**
 
-ARPI runs entirely on a local PostgreSQL server, and the database itself is
-optional. No hosted instance exists, none is provisioned, and no part of the
-project — not the generator, not the tests, not the reporting layer, not CI —
-depends on Supabase, Neon, RDS, Azure Database for PostgreSQL or any other managed
-service. Do not read this section as a description of a deployment. There is none.
+**This page is the LOCAL walkthrough.** Its cloud sibling is
+[`cloud-database-setup.md`](cloud-database-setup.md), which is the authoritative
+procedure for a managed PostgreSQL 16 instance and supersedes the sketch below.
+Read that one if a hosted database is what you actually want.
 
-If you later want a hosted instance so that a Power BI Service report can refresh
-without your laptop being on, the SQL tree is portable and needs no changes. What
-would have to be true first:
+Everything else in ARPI still runs entirely on a local PostgreSQL server, and the
+database itself is optional: the generator, the tests, the reporting layer and CI
+all work without a hosted instance, and **none is provisioned today.** Do not read
+this section as a description of a running deployment. There is none.
+
+What changed, and why this is no longer Deferred: ADR-0008 accepts Microsoft Fabric
+as a real-engine validation path for the semantic model, and a cloud service cannot
+reach `localhost`. Validating the model that way needs a database Fabric can see.
+That is the one thing a hosted instance is now required for.
+
+The constraints below are the summary; `cloud-database-setup.md` works through all
+of them with commands. What has to be true:
 
 - **Superuser.** Managed platforms do not give you one. Step 19 of the sequence
   reassigns object ownership to `arpi_admin`, which requires either a superuser or

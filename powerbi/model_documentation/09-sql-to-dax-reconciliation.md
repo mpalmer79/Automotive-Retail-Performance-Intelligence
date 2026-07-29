@@ -278,6 +278,8 @@ Referenced as backticked paths rather than links. What does not exist is a run t
 | `powerbi/validation/model_expectations.json` | The structural facts the static checker asserts. Not part of this reconciliation, listed so the directory's contents are not surprising. |
 | `scripts/generate_sql_baseline.py` | Generates the baseline. |
 | `scripts/validate_powerbi_model.ps1` | The Windows-side script for the Desktop path. Not invoked by CI. |
+| `scripts/deploy_powerbi_fabric.py` | Deploys the committed definition to a Fabric workspace and reads it back to prove the Service stored what the repository contains. |
+| `scripts/validate_powerbi_fabric.py` | The Fabric counterpart of the Windows script: refreshes the deployed model, reads its inventory, and runs the queries above through the Execute Queries REST API with `includeNulls` set. Not invoked by CI. |
 | `docs/powerbi/POWER_BI_DESKTOP_HANDOFF.md` | The Desktop procedure. |
 | `docs/powerbi/FABRIC_SERVICE_HANDOFF.md` | The Fabric procedure, including the Execute Queries request shape and the `includeNulls` requirement of §2.2.1. |
 

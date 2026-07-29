@@ -79,7 +79,10 @@ definition APIs, refreshed against a **cloud PostgreSQL** `reporting` schema, an
 
 1. **Deploy.** The `.SemanticModel/definition/` tree — the same TMDL files the repository commits, with no
    transformation and no second copy — is posted to a Fabric workspace as a semantic-model definition. The
-   Service accepts it or rejects it, and a rejection is the engine's verdict on the model source.
+   Service accepts it or rejects it, and a rejection is the engine's verdict on the model source. The stored
+   definition is then **read back and compared with what was sent**, so that "the engine received the
+   committed TMDL" is a recorded fact rather than an assumption: documented service normalisations are
+   normalised away, and any other difference fails the deploy.
 2. **Bind the source.** The Server and Database parameters are set to the cloud PostgreSQL instance and a
    workspace connection is bound to the `arpi_reporter` credential. The credential lives in the Fabric
    connection, never in the repository.
@@ -227,7 +230,10 @@ name is how a validation suite stops meaning anything.
   CI.** This is the rule the extra states exist to serve, and it is easy to get wrong in the obvious
   direction. **A project with a green Desktop result and no Fabric result is fully validated**, and a CI job
   that demanded both would have invented a stricter gate than this record sets — turning an alternative into
-  an additional requirement, which is the failure mode of every "we support two ways" policy.
+  an additional requirement, which is the failure mode of every "we support two ways" policy. The
+  `main`-branch rule is also switched on **when the first passing result lands, and not before**: a gate
+  enforced against a condition nobody can currently clear does not raise the standard, it teaches people to
+  route around the check.
 - **A cloud PostgreSQL database becomes a real dependency.** The Desktop path needed only a local instance
   on the operator's machine. The Fabric Service cannot reach `localhost`, so Path B requires the managed
   deployment that `ARCHITECTURE.md` §26.1 records as *deferred*, or a data gateway. That is a genuine new
