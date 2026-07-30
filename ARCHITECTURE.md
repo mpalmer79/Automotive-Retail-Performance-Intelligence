@@ -1638,8 +1638,14 @@ Automotive-Retail-Performance-Intelligence/
 │   └── measures/                          [now]      README only; the DAX lives in the TMDL measure tables (ADR-0007)
 ├── excel/
 │   └── ARPI_Operating_Report.xlsx         [planned]  (not yet created)
-└── portfolio/
-    ├── case-study-copy.md                 [planned]  (not yet created)
+└── portfolio/                             [now]      Next.js website foundation (ADR-0009)
+    ├── README.md                          [now]      How to install, run, test and build the site
+    ├── src/                               [now]      App Router routes, components, generated manifest
+    ├── scripts/                           [now]      generate-project-manifest.ts, the build-time gate
+    ├── tests/                             [now]      Vitest and Playwright suites
+    ├── docs/                              [now]      Design system, motion system, content model,
+    │                                                 accessibility, performance, deployment, visual review
+    ├── case-study-copy.md                 [planned]  (not yet created; the case study is gated by Gate 2)
     ├── resume-bullets.md                  [planned]  (not yet created)
     └── linkedin-launch.md                 [planned]  (not yet created)
 ```
@@ -1803,6 +1809,18 @@ It should contain:
 - Walkthrough link
 
 It must not become a second analytics application.
+
+**Status (2026-07-30).** [ADR-0009](docs/architecture-decisions/ADR-0009-portfolio-ui-foundation-before-gate-2.md)
+distinguishes the **portfolio UI foundation** — design system, application shell, navigation, and informational
+routes over content this repository already evidences — from the **public analytical case study** described
+above. The foundation is permitted before Gate 2 and is **delivered**, as delivery increment item `P2.4-06`:
+a statically rendered Next.js site under `portfolio/` with eight routes, seven of them in the primary
+navigation. The case study itself **remains gated by Gate 2 exactly as written in §28**, and the site ships a
+**locked** `/case-study` shell rather than the case study: it publishes no finding, no recommendation, no
+dashboard screenshot, and no KPI value. It is **not** a second analytics application — it has **no API route,
+no database connection, no query interface, and no charting library**, and it computes no KPI. Every count and
+status it displays is resolved at build time from source-controlled repository files, and the build fails when
+a status contradicts its evidence.
 
 ---
 
@@ -1979,6 +1997,15 @@ Exit criteria:
 - Repository is understandable without verbal explanation
 - Setup and review instructions are complete
 - No secrets or real personal data are present
+
+**Status (2026-07-30): in progress, not complete.** The portfolio **website foundation** is delivered by
+`P2.4-06` — the Next.js site under `portfolio/`, governed by
+[ADR-0009](docs/architecture-decisions/ADR-0009-portfolio-ui-foundation-before-gate-2.md), with its own
+continuous-integration workflow and its own documentation set. **Not delivered:** the dashboard screenshots,
+the model diagram, the generated DAX measure catalogue, the Excel operating report, the walkthrough video, and
+the case-study copy. Delivery increment `P2.4` is therefore in progress, and so is this lifecycle phase.
+Neither the screenshots nor the case-study copy can be produced yet: no report page exists, and Gate 2 is
+closed.
 
 ### 27.1 Lifecycle phases versus delivery increments
 

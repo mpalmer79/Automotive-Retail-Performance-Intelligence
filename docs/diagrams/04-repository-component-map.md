@@ -63,11 +63,16 @@ flowchart LR
         PLAN["Planning<br/>requirements/PHASE_1_BACKLOG"]
     end
 
+    subgraph web["portfolio/ — public website"]
+        PORTMAN["src/generated/project-manifest.json<br/>counts and statuses, resolved at build time"]
+        PORTAPP["Next.js app<br/>8 routes · no API · no database · no chart"]
+        PORTDOC["portfolio/docs/<br/>design system · motion · content model<br/>accessibility · performance · deployment"]
+    end
+
     subgraph future["Deliverable placeholders"]
         NB["notebooks/ — empty"]
         PBIDIR["powerbi/ — planned"]
         XLDIR["excel/ — planned"]
-        PORT["portfolio/ — planned"]
     end
 
     CFGDIR --> CONFIG
@@ -116,6 +121,13 @@ flowchart LR
     DBOBJ -.-> PBIDIR
     DBOBJ -.-> XLDIR
 
+    GOV -.-> PORTMAN
+    CONTRACTS -.-> PORTMAN
+    PLAN -.-> PORTMAN
+    PORTMAN --> PORTAPP
+    PORTDOC -.-> PORTAPP
+    CI --> PORTAPP
+
     classDef input fill:#ede9fe,stroke:#6d28d9,stroke-width:2px,color:#2e1065
     classDef runtime fill:#dbeafe,stroke:#1d4ed8,stroke-width:2px,color:#0b1b3a
     classDef sqlc fill:#ffedd5,stroke:#c2410c,stroke-width:2px,color:#431407
@@ -129,8 +141,9 @@ flowchart LR
     class S00,S01,S02,S03,S05,S07,S08 sqlc
     class RAWDIR,SAMPDIR,MANI,DBOBJ,LOGS artifact
     class TUNIT,TDQ,TINT,SCRIPTS,CI gate
-    class GOV,CONTRACTS,GUIDES,EVIDENCE,PLAN doc
-    class NB,PBIDIR,XLDIR,PORT planned
+    class GOV,CONTRACTS,GUIDES,EVIDENCE,PLAN,PORTAPP,PORTDOC doc
+    class PORTMAN artifact
+    class NB,PBIDIR,XLDIR planned
 ```
 
 ---
@@ -144,12 +157,18 @@ flowchart LR
 | Orange | SQL build scripts in `sql/` |
 | Green | Artifacts produced by a run |
 | Yellow | Quality gates — tests, governance scripts, CI |
-| Light blue | Documentation |
+| Light blue | Documentation, and the website that renders it |
 | Grey, dashed | Placeholder directories for planned deliverables |
 
 Solid arrows are runtime data flow. Dashed arrows are verification, constraint, or planned consumption
 relationships — a test exercising code, a script scanning documents, a contract governing an
 implementation.
+
+**There is deliberately no arrow from the PostgreSQL objects to `portfolio/`.** The website has no database
+connection, no API route, no query interface and no charting library, and it computes no KPI: every number it
+shows is a count of repository artifacts resolved at build time into `project-manifest.json`, and the build
+fails if a status contradicts the evidence it was read from. See
+[`../architecture-decisions/ADR-0009-portfolio-ui-foundation-before-gate-2.md`](../architecture-decisions/ADR-0009-portfolio-ui-foundation-before-gate-2.md).
 
 ---
 
@@ -201,11 +220,16 @@ Several directories are intentionally empty and are labelled as such everywhere 
 | `notebooks/` | No exploratory analysis has been done. There are no facts to explore yet |
 | `powerbi/` | Scope gate 1 blocks Power BI work until fact grains are approved and KPI formulas are written |
 | `excel/` | The operating report needs reporting views over facts that do not exist |
-| `portfolio/` | Packaging follows the analytical system, not the other way round |
 | `sql/04_facts/` | Holds a README explaining the boundary, but no DDL. Facts arrive in Phase 1.2 |
 | `data/external/` | Public enrichment is planned for Phase 1.1 |
 | `docs/findings/` | Findings require analysis, and no analysis has been performed |
 | `tests/fixtures/` | Shared fixtures arrive with the Phase 1 facts; Phase 0 tests build their own inputs |
+
+**`portfolio/` is no longer empty.** It holds the website foundation delivered by `P2.4-06`: a Next.js
+application, its build-time project manifest, its tests, its own continuous-integration workflow, and its own
+documentation set. What is still absent there is the *case study* — the copy, the screenshots, the walkthrough
+and the launch material — because Gate 2 is closed and no report page exists. The `/case-study` route is a
+locked shell.
 
 **`sql/06_indexes/` is not empty.** It contains `00_indexes.sql`, which creates six secondary indexes that
 existing queries actually need and documents, at length, the indexes it deliberately does **not** create.

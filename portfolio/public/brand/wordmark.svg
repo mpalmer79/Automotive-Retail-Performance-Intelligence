@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 48" width="240" height="48">
+  <!--
+    ARPI horizontal wordmark, standalone.
+    Uses a system font stack rather than an embedded face, so the file stays
+    small and no font is redistributed inside an SVG. The in-app lockup
+    (<Wordmark> in src/components/brand/logo.tsx) uses the real display face.
+  -->
+  <title>ARPI - Automotive Retail Performance Intelligence</title>
+  <g transform="translate(4 8)">
+    <g fill="#5fdcee" opacity="0.28">
+      <circle cx="6" cy="6" r="1.15"/><circle cx="16" cy="6" r="1.15"/><circle cx="26" cy="6" r="1.15"/>
+      <circle cx="6" cy="16" r="1.15"/><circle cx="26" cy="16" r="1.15"/>
+      <circle cx="6" cy="26" r="1.15"/><circle cx="16" cy="26" r="1.15"/><circle cx="26" cy="26" r="1.15"/>
+    </g>
+    <g fill="none" stroke="#5fdcee" stroke-width="2.6" stroke-linecap="square" stroke-linejoin="miter">
+      <path d="M6 27 L16 5 L26 27"/><path d="M10.4 18.4 H21.6"/>
+    </g>
+    <circle cx="16" cy="5" r="2.4" fill="#5fdcee"/>
+  </g>
+  <text x="46" y="24" fill="#f2f6fc" font-family="'Space Grotesk',ui-sans-serif,system-ui,sans-serif" font-size="21" font-weight="700" letter-spacing="-0.4">ARPI</text>
+  <text x="46" y="38" fill="#8b99b3" font-family="ui-monospace,'SF Mono',Menlo,monospace" font-size="8.5" letter-spacing="0.6">AUTOMOTIVE RETAIL PERFORMANCE INTELLIGENCE</text>
+</svg>

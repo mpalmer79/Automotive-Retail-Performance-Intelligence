@@ -57,12 +57,24 @@ Three further rules are binding for this catalogue:
 > figure derived independently from the warehouse, and that every ratio returns NULL rather than zero or
 > infinity on an empty denominator.
 >
-> **What is still not built: any Power BI artefact.** No `.pbix`, no `.pbip`, no semantic model, no DAX
-> measure, no report page, no dashboard, and no finding. The *Future DAX ownership* field on each KPI below
-> names the measure group a measure will belong to; it does not describe code that exists.
-> `powerbi/model_documentation/` holds the specification, and Gate 1
-> ([ARCHITECTURE.md §28](ARCHITECTURE.md)) gates the construction. The verdict is recorded in
-> [`docs/requirements/GATE_1_READINESS.md`](docs/requirements/GATE_1_READINESS.md).
+> **The Power BI side: written, never evaluated.** Gate 1 is OPEN — the verdict is recorded in
+> [`docs/requirements/GATE_1_READINESS.md`](docs/requirements/GATE_1_READINESS.md) — and the semantic model
+> has since been built as source-controlled TMDL under
+> [`powerbi/ARPI_Performance_Intelligence/`](powerbi/ARPI_Performance_Intelligence/): 26 tables, 42
+> single-direction relationships, a marked date table, and 49 DAX measures. The *Future DAX ownership* field
+> on each KPI below therefore now names a measure group that exists.
+>
+> **What that does not mean is that any of it has been run.** No Microsoft semantic-model engine has loaded,
+> refreshed or evaluated the model. The 49 measures are validated *statically* — parsed from TMDL and checked
+> against `powerbi/model_documentation/` by `scripts/check_powerbi_model.py` on every push — which is a check
+> that the DAX is well-formed and correctly wired, not a check that it returns the right number. Both
+> real-engine validation paths accepted by
+> [ADR-0008](docs/architecture-decisions/ADR-0008-real-engine-validation-paths.md) are pending, so Lifecycle
+> Phase 5 remains in progress and the SQL figures below are the only ones this repository can currently
+> prove.
+>
+> **Still not built:** no report page, no visual, no bookmark, no dashboard, and no finding. The report
+> project is a PBIR shell. Gate 2 is CLOSED.
 >
 > **Nothing in this repository has produced a dealership finding**, and every figure it can produce
 > describes a fictional group built from synthetic data.

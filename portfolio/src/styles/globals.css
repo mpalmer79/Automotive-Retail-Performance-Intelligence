@@ -1,0 +1,371 @@
+@import 'tailwindcss';
+@import './tokens.css';
+@import './theme.css';
+
+/* ==========================================================================
+   Base layer
+   ========================================================================== */
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    /* Anchor navigation must not land a heading underneath the sticky header. */
+    scroll-padding-top: calc(var(--arpi-size-header) + var(--arpi-space-6));
+    -webkit-text-size-adjust: 100%;
+    color-scheme: dark;
+  }
+
+  /* Smooth scrolling is opt-in per user preference, never forced. */
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
+
+  body {
+    margin: 0;
+    min-height: 100dvh;
+    background-color: var(--arpi-colour-canvas);
+    color: var(--arpi-colour-text-secondary);
+    font-family: var(--arpi-font-sans);
+    font-size: var(--arpi-text-base);
+    line-height: var(--arpi-leading-relaxed);
+    font-feature-settings:
+      'cv05' 1,
+      'cv11' 1,
+      'ss03' 1;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    /* Nothing on this site may scroll the page sideways. Tested at 320px and
+       at 200% zoom. */
+    overflow-x: clip;
+
+    /* `anywhere`, not `break-word`. This site puts schema-qualified identifiers
+       and repository paths inside ordinary prose - strings like
+       `powerbi/ARPI_Performance_Intelligence/...Report/` are a single
+       68-character unbreakable word. `break-word` lets such a word break only
+       after layout has already reserved room for it, so it does NOT reduce the
+       element's min-content width and the container still forces the page wider
+       than the viewport. `anywhere` reduces min-content too, which is the
+       property that actually stops the overflow, and it still breaks only when
+       a word genuinely cannot fit. Found in the first visual-review pass: the
+       Gate 2 evidence text set a 503px floor on a 320px viewport. */
+    overflow-wrap: anywhere;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    margin: 0;
+    color: var(--arpi-colour-text);
+    font-weight: var(--arpi-weight-semibold);
+    letter-spacing: var(--arpi-tracking-tight);
+    line-height: var(--arpi-leading-snug);
+    text-wrap: balance;
+  }
+
+  p {
+    margin: 0;
+    text-wrap: pretty;
+  }
+
+  ul,
+  ol {
+    margin: 0;
+    padding: 0;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  /* Every focusable element gets the same high-contrast ring. The ring is drawn
+     with `outline`, not `box-shadow`, so it survives a clipped ancestor. */
+  :focus-visible {
+    outline: var(--arpi-border-thick) solid var(--arpi-colour-focus);
+    outline-offset: 2px;
+    border-radius: var(--arpi-radius-sm);
+  }
+
+  /* Suppress the ring for pointer interaction only; keyboard always shows it. */
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+    color: inherit;
+    letter-spacing: inherit;
+  }
+
+  button {
+    background: none;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+  }
+
+  svg {
+    display: block;
+  }
+
+  img,
+  svg,
+  video {
+    max-width: 100%;
+  }
+
+  code,
+  kbd,
+  samp,
+  pre {
+    font-family: var(--arpi-font-mono);
+    font-size: 0.925em;
+    font-variant-ligatures: none;
+  }
+
+  hr {
+    border: 0;
+    border-top: var(--arpi-border-hairline) solid var(--arpi-colour-border-subtle);
+    margin: 0;
+  }
+
+  ::selection {
+    background-color: var(--arpi-colour-accent-muted);
+    color: var(--arpi-colour-text);
+  }
+
+  /* A scrollbar that does not fight the palette, where the browser allows it. */
+  * {
+    scrollbar-color: var(--arpi-graphite-600) transparent;
+    scrollbar-width: thin;
+  }
+}
+
+/* ==========================================================================
+   Reduced motion
+   --------------------------------------------------------------------------
+   This block is the site-wide floor. It is deliberately blunt: it kills every
+   CSS transition and animation, including any a future component forgets to
+   guard. Components that need a *different* reduced-motion presentation rather
+   than simply "no movement" - a drawn SVG path that must appear complete, a
+   counter that must show its final value - handle that in JavaScript through
+   `usePrefersReducedMotion()` and `<MotionBoundary>`, because CSS cannot
+   express "show the end state instead".
+
+   Documented in portfolio/docs/MOTION_SYSTEM.md section 9.
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
+    transition-duration: 1ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* An SVG path whose reveal is a dash offset must show as complete rather
+     than as nothing. */
+  [data-arpi-draw] {
+    stroke-dashoffset: 0 !important;
+    stroke-dasharray: none !important;
+  }
+}
+
+/* ==========================================================================
+   Utility classes
+   Reserved for patterns Tailwind cannot express or that appear often enough
+   that repeating the utility chain would hide the intent.
+   ========================================================================== */
+
+@utility eyebrow {
+  font-family: var(--arpi-font-mono);
+  font-size: var(--arpi-text-xs);
+  font-weight: var(--arpi-weight-medium);
+  letter-spacing: var(--arpi-tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--arpi-colour-text-muted);
+}
+
+/* The dimensional-grid motif. A structured dot matrix with a radial mask, used
+   as a section ground. Pure CSS, no image request, no repaint cost. */
+@utility grid-motif {
+  background-image: radial-gradient(
+    circle at 1px 1px,
+    var(--arpi-steel-500) 1px,
+    transparent 0
+  );
+  background-size: 28px 28px;
+  opacity: var(--arpi-opacity-grid);
+}
+
+/* A blueprint rule: a hairline with alignment ticks at each end. */
+@utility rule-marked {
+  position: relative;
+  border-top: var(--arpi-border-hairline) solid var(--arpi-colour-border);
+
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    top: -3px;
+    width: 1px;
+    height: 7px;
+    background-color: var(--arpi-colour-border-strong);
+  }
+
+  &::before {
+    left: 0;
+  }
+
+  &::after {
+    right: 0;
+  }
+}
+
+/* Visually hidden but available to assistive technology. */
+@utility sr-only-focusable {
+  &:not(:focus):not(:focus-within) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border-width: 0;
+  }
+}
+
+/* ==========================================================================
+   Section reveal, in CSS
+   --------------------------------------------------------------------------
+   The site's most common motion - fade and rise once on entering the viewport -
+   is implemented here rather than in JavaScript.
+
+   WHY: this reveal is used on six of the eight routes. Implementing it with the
+   animation library meant that library shipped to all six, roughly 70 kB
+   gzipped, to move an element sixteen pixels. Two declarations and a class
+   toggle do the same thing, and the library now loads only on the three routes
+   with motion that genuinely needs it: the hero's drawn paths, the
+   scrollytelling diagram's width transitions, and the two explorers' node
+   emphasis.
+
+   The class is toggled by `<Reveal>` from a single IntersectionObserver. The
+   reduced-motion block above already neutralises the transition, and the
+   `prefers-reduced-motion` rule at the end of this block removes the transform
+   so the element is never displaced.
+   ========================================================================== */
+
+@utility reveal-hidden {
+  opacity: 0;
+  transform: translate3d(0, var(--arpi-motion-distance-md), 0);
+}
+
+@utility reveal-hidden-child {
+  opacity: 0;
+  transform: translate3d(0, var(--arpi-motion-distance-sm), 0);
+}
+
+@utility reveal-shown {
+  opacity: 1;
+  transform: none;
+}
+
+/* A child of a RevealGroup: hidden until the group is revealed, then shown with a
+   per-index transition delay set inline. One observer drives the whole group, so
+   the stagger reads as a sequence rather than as a function of scroll speed. */
+@utility reveal-item {
+  opacity: 0;
+  transform: translate3d(0, var(--arpi-motion-distance-sm), 0);
+}
+
+[data-arpi-reveal-group].is-revealed .reveal-item {
+  opacity: 1;
+  transform: none;
+}
+
+@utility reveal-transition {
+  transition:
+    opacity var(--arpi-motion-slow) var(--arpi-ease-out),
+    transform var(--arpi-motion-slow) var(--arpi-ease-out);
+  /* Hint the compositor for the duration of the reveal only. A permanent
+     `will-change` on six sections' worth of elements costs memory for no gain
+     once they have arrived, so it is dropped by `reveal-shown`. */
+  will-change: opacity, transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal-hidden,
+  .reveal-hidden-child {
+    /* Opacity still animates to 1 within the 1ms the reduced-motion block
+       allows, so the content appears; the displacement is removed entirely. */
+    transform: none;
+  }
+}
+
+/* Tabular figures for any number that sits in a column or animates. Without
+   this, an incrementing counter reflows on every frame. */
+@utility numeric {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+/* ==========================================================================
+   sr-only, redefined
+   --------------------------------------------------------------------------
+   `@utility` REPLACES Tailwind's built-in `sr-only` rather than layering over
+   it, so the whole declaration set is stated here and nothing is inherited.
+
+   WHY IT IS REDEFINED
+   Tailwind's version sets `white-space: nowrap` on a 1px box. That gives the box
+   a very wide SCROLL extent, and Chromium propagates a descendant's scroll
+   extent up through every `overflow: visible` ancestor - so a page carrying a
+   few long visually-hidden strings (every source link on this site announces a
+   full repository path) reports hundreds of pixels of phantom horizontal
+   overflow. On this site `overflow-x: clip` on the body stops it becoming a
+   scrollbar, but relying on that is fragile and it makes every automated
+   overflow check unusable, because `document.scrollWidth` then lies.
+
+   Found during the first adversarial visual-review pass, where it was initially
+   misread as a real layout defect: several pages measured 523px wide at a 375px
+   viewport while being visually correct.
+
+   WHAT CHANGED, AND WHAT DID NOT
+   `white-space: nowrap` is dropped and the clip is `clip-path` rather than the
+   deprecated `clip`. Everything else is the standard, well-tested
+   visually-hidden recipe: still in the accessibility tree, still read in full,
+   still 1x1 and clipped, still no padding, margin or border to contribute
+   layout. Text is allowed to wrap inside a 1px box, which no one sees and which
+   removes the horizontal extent entirely.
+   ========================================================================== */
+
+@utility sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  border-width: 0;
+  /* Deliberately NOT `white-space: nowrap`. See above. */
+  white-space: normal;
+}

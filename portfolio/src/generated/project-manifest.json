@@ -1,0 +1,629 @@
+{
+  "schema": "arpi.project_manifest/1",
+  "generatedFromCommit": "eb2d33c007ebef6d256b86d626d73c60f8014d7c",
+  "dataProfile": "development",
+  "project": {
+    "name": "Automotive Retail Performance Intelligence",
+    "shortName": "ARPI",
+    "author": "Michael Palmer",
+    "dealershipGroup": "Granite State Auto Group",
+    "repositoryUrl": "https://github.com/mpalmer79/Automotive-Retail-Performance-Intelligence",
+    "licence": "MIT"
+  },
+  "counts": {
+    "dealerships": {
+      "value": 3,
+      "label": "Fictional dealerships",
+      "detail": "Granite State Auto Group stores. All three are invented.",
+      "sources": [
+        {
+          "path": "powerbi/validation/model_expectations.json",
+          "field": "expected_row_counts.vw_dealership"
+        }
+      ]
+    },
+    "dimensions": {
+      "value": 8,
+      "label": "MVP dimensions",
+      "detail": "Conformed dimensions built, constrained and populated.",
+      "sources": [
+        {
+          "path": "sql/03_dimensions/",
+          "field": "dimension DDL scripts"
+        }
+      ]
+    },
+    "facts": {
+      "value": 5,
+      "label": "MVP facts",
+      "detail": "Each with one declared grain enforced by a UNIQUE constraint.",
+      "sources": [
+        {
+          "path": "sql/04_facts/",
+          "field": "fact DDL scripts"
+        }
+      ]
+    },
+    "reportingViews": {
+      "value": 28,
+      "label": "Reporting views",
+      "detail": "The only surface the semantic model is permitted to read.",
+      "sources": [
+        {
+          "path": "powerbi/validation/sql_baseline_metadata.json",
+          "field": "reporting_view_count"
+        },
+        {
+          "path": "sql/05_reporting/",
+          "field": "view scripts"
+        }
+      ]
+    },
+    "governedKpis": {
+      "value": 29,
+      "label": "Governed KPIs",
+      "detail": "Each with a formula, an explicit numerator and denominator, a grain and a null rule.",
+      "sources": [
+        {
+          "path": "KPI_CATALOG.md",
+          "field": "KPI index"
+        },
+        {
+          "path": "powerbi/validation/model_expectations.json",
+          "field": "kpi_measure_count"
+        }
+      ]
+    },
+    "semanticRelationships": {
+      "value": 42,
+      "label": "Semantic relationships",
+      "detail": "All single-direction. No bidirectional filter and no many-to-many.",
+      "sources": [
+        {
+          "path": "powerbi/ARPI_Performance_Intelligence/ARPI_Performance_Intelligence.SemanticModel/definition/relationships.tmdl",
+          "field": "relationship definitions"
+        },
+        {
+          "path": "powerbi/validation/model_expectations.json",
+          "field": "relationship_count"
+        }
+      ]
+    },
+    "daxMeasures": {
+      "value": 49,
+      "label": "DAX measures",
+      "detail": "Written and statically validated. Never evaluated by an engine.",
+      "sources": [
+        {
+          "path": "powerbi/ARPI_Performance_Intelligence/ARPI_Performance_Intelligence.SemanticModel/definition/tables/",
+          "field": "measure definitions in TMDL"
+        },
+        {
+          "path": "powerbi/validation/model_expectations.json",
+          "field": "measure_count"
+        }
+      ]
+    },
+    "semanticTables": {
+      "value": 26,
+      "label": "Semantic model tables",
+      "detail": "Imported reporting views plus measure-only tables.",
+      "sources": [
+        {
+          "path": "powerbi/validation/model_expectations.json",
+          "field": "table_count"
+        }
+      ]
+    },
+    "importedTables": {
+      "value": 20,
+      "label": "Imported tables",
+      "detail": "Import mode over the reporting schema only.",
+      "sources": [
+        {
+          "path": "powerbi/validation/model_expectations.json",
+          "field": "imported_table_count"
+        }
+      ]
+    },
+    "measureTables": {
+      "value": 6,
+      "label": "Measure tables",
+      "detail": "Measure groups kept separate from the data tables.",
+      "sources": [
+        {
+          "path": "powerbi/validation/model_expectations.json",
+          "field": "measure_table_count"
+        }
+      ]
+    },
+    "supportingMeasures": {
+      "value": 20,
+      "label": "Supporting measures",
+      "detail": "Intermediate measures that governed KPIs build on.",
+      "sources": [
+        {
+          "path": "powerbi/validation/model_expectations.json",
+          "field": "supporting_measure_count"
+        }
+      ]
+    },
+    "reconciliations": {
+      "value": 58,
+      "label": "Reconciliations",
+      "detail": "Recorded on every database run. Each proves a number rather than asserting it.",
+      "sources": [
+        {
+          "path": "powerbi/validation/sql_baseline_metadata.json",
+          "field": "reconciliations.total"
+        }
+      ]
+    },
+    "dataQualityChecks": {
+      "value": 114,
+      "label": "Data-quality checks",
+      "detail": "Run in memory before any row is loaded, each with a declared severity.",
+      "sources": [
+        {
+          "path": "powerbi/validation/model_expectations.json",
+          "field": "expected_row_counts.vw_data_quality_summary"
+        }
+      ]
+    },
+    "staticAssertions": {
+      "value": 117,
+      "label": "Model objects statically asserted",
+      "detail": "Every table, relationship and measure parsed from TMDL and checked against the model documentation on every push.",
+      "sources": [
+        {
+          "path": "powerbi/ARPI_Performance_Intelligence/ARPI_Performance_Intelligence.SemanticModel/definition/",
+          "field": "TMDL source"
+        },
+        {
+          "path": "scripts/check_powerbi_model.py",
+          "field": "static validation"
+        }
+      ]
+    },
+    "sqlScripts": {
+      "value": 104,
+      "label": "Ordered SQL scripts",
+      "detail": "Re-runnable, lexically ordered so that build order is file order.",
+      "sources": [
+        {
+          "path": "sql/",
+          "field": "numbered build directories"
+        }
+      ]
+    }
+  },
+  "semanticModel": {
+    "projectName": "ARPI_Performance_Intelligence",
+    "storageMode": "Import",
+    "sourceSchema": "reporting",
+    "databaseIdentity": "arpi_reporter",
+    "markedDateTable": "vw_calendar",
+    "activeRelationships": 32,
+    "inactiveRelationships": 10,
+    "bidirectionalRelationships": 0,
+    "manyToManyRelationships": 0,
+    "staticValidationStatus": "complete",
+    "realEngineStatus": "pending-external",
+    "dashboardPageCount": 0
+  },
+  "engines": [
+    {
+      "id": "desktop",
+      "label": "Power BI Desktop",
+      "overallResult": "pending",
+      "status": "pending-external",
+      "validatedAt": null,
+      "passedCheckCount": 0,
+      "failedCheckCount": 0,
+      "note": "Power BI Desktop has never opened, refreshed or saved this project. The environment that built the model is Ubuntu 24.04 with no Windows, no Power BI Desktop and no Analysis Services, so the open-refresh-save validation could not run there and has not run anywhere else.",
+      "evidencePath": "powerbi/validation/desktop_validation_results.json",
+      "procedurePath": "docs/powerbi/POWER_BI_DESKTOP_HANDOFF.md"
+    },
+    {
+      "id": "fabric",
+      "label": "Microsoft Fabric Service",
+      "overallResult": "pending",
+      "status": "pending-external",
+      "validatedAt": null,
+      "passedCheckCount": 0,
+      "failedCheckCount": 0,
+      "note": "Microsoft Fabric has never deployed, refreshed or queried this semantic model. No Fabric workspace and no cloud PostgreSQL database exist for this project yet, and the environment this file was written in cannot reach api.fabric.microsoft.com at all.",
+      "evidencePath": "powerbi/validation/fabric_validation_results.json",
+      "procedurePath": "docs/powerbi/FABRIC_SERVICE_HANDOFF.md"
+    }
+  ],
+  "lifecyclePhases": [
+    {
+      "number": 1,
+      "name": "Product definition",
+      "status": "complete",
+      "summary": "The business problem, the stakeholder personas, the analytical questions, the approved scope and the first KPI catalogue.",
+      "statusReason": "The architecture is approved, the non-goals are accepted and the core KPIs are defined.",
+      "exitCriteria": [
+        "Architecture approved",
+        "Non-goals accepted",
+        "Core KPIs defined"
+      ]
+    },
+    {
+      "number": 2,
+      "name": "Data model",
+      "status": "complete",
+      "summary": "The source model, the dimensional model, declared fact grains, the data dictionary, source-to-target mappings and data-quality rules.",
+      "statusReason": "Every fact declares one grain, every relationship is documented and the history policy for each dimension is fixed by ADR-0006.",
+      "exitCriteria": [
+        "Every fact has one declared grain",
+        "Every relationship is documented",
+        "Required history handling is defined"
+      ]
+    },
+    {
+      "number": 3,
+      "name": "Synthetic data generator",
+      "status": "complete",
+      "summary": "A configurable, seeded generator with development, test and portfolio profiles, and a distribution-validation report.",
+      "statusReason": "The generator is deterministic - the same profile and seed reproduce byte-identical CSV, each entry carrying a SHA-256 content digest - and the prohibited-PII checks pass.",
+      "exitCriteria": [
+        "Generated records are plausible",
+        "Required relationships are visible but not deterministic",
+        "No prohibited PII exists"
+      ]
+    },
+    {
+      "number": 4,
+      "name": "PostgreSQL warehouse",
+      "status": "complete",
+      "summary": "Schemas, staging views, conformed dimensions, facts at declared grain, reporting views, audit tables, indexes, roles and grants.",
+      "statusReason": "Loads are repeatable, grain tests pass, and 58 reconciliations are recorded on every database run with 0 failing.",
+      "exitCriteria": [
+        "Loads are repeatable",
+        "Grain tests pass",
+        "Reconciliations pass"
+      ]
+    },
+    {
+      "number": 5,
+      "name": "Power BI semantic model",
+      "status": "in-progress",
+      "summary": "Imported reporting views, relationships, a marked date table, measure tables, the core DAX measures and the model documentation.",
+      "statusReason": "The model is built and statically validated, but no Microsoft semantic-model engine has loaded, refreshed or evaluated it. Both ADR-0008 paths are pending, so the exit criteria are not met.",
+      "exitCriteria": [
+        "Core totals reconcile to SQL",
+        "Filter behaviour is correct",
+        "No unresolved ambiguous relationships exist"
+      ]
+    },
+    {
+      "number": 6,
+      "name": "Report pages and dashboards",
+      "status": "blocked",
+      "summary": "The seven unblocked MVP report pages over the governed semantic model.",
+      "statusReason": "No report page, visual or bookmark exists. Authoring pages over a model that has never been loaded would merge page defects and model defects into one change, so this is sequenced behind Lifecycle Phase 5.",
+      "exitCriteria": [
+        "Every page reads only from the governed semantic model",
+        "Page totals reconcile to SQL",
+        "Employee views carry the fairness context"
+      ]
+    },
+    {
+      "number": 7,
+      "name": "Findings and recommendations",
+      "status": "blocked",
+      "summary": "Executive findings drawn from the completed report layer, and the Gate 2 review that evaluates them.",
+      "statusReason": "docs/findings/ is empty and nothing has been analysed. This phase is blocked behind the report layer, and any conclusion drawn now would describe a synthetic dataset rather than a market.",
+      "exitCriteria": [
+        "Findings trace to a governed KPI and a filter context",
+        "Every recommendation states its limitation",
+        "Gate 2 records a written verdict"
+      ]
+    },
+    {
+      "number": 8,
+      "name": "Portfolio packaging",
+      "status": "in-progress",
+      "summary": "Making the work reviewable by someone with limited time, no database and no Power BI licence.",
+      "statusReason": "The portfolio website foundation, its design system and the gated case-study shell are delivered. The screenshots, the model diagram, the generated DAX measure catalogue, the Excel operating report, the walkthrough and the case-study copy are not, and most of them cannot start until the report layer exists.",
+      "exitCriteria": [
+        "Every artefact a reviewer is pointed at exists at the path it is cited by",
+        "Nothing in the packaging claims a capability the repository does not have",
+        "Every screenshot carries the synthetic-data statement"
+      ]
+    }
+  ],
+  "increments": [
+    {
+      "id": "P2.1",
+      "name": "Power BI semantic model",
+      "status": "in-progress",
+      "statusReason": "Built and statically validated. The increment does not meet its exit criteria until the real-engine validation gate passes on one accepted path.",
+      "lifecyclePhase": 5,
+      "blockingGate": null
+    },
+    {
+      "id": "P2.2",
+      "name": "MVP dashboard pages",
+      "status": "blocked",
+      "statusReason": "Not started, and sequenced behind the real-engine validation of the semantic model.",
+      "lifecyclePhase": 6,
+      "blockingGate": "Real-engine validation of the semantic model"
+    },
+    {
+      "id": "P2.3",
+      "name": "Findings, recommendations and the Gate 2 review",
+      "status": "blocked",
+      "statusReason": "Not started, and blocked behind the report layer.",
+      "lifecyclePhase": 7,
+      "blockingGate": "P2.2"
+    },
+    {
+      "id": "P2.4",
+      "name": "Portfolio packaging",
+      "status": "in-progress",
+      "statusReason": "The portfolio website foundation and the gated case-study shell are delivered. The remaining items depend on the report layer and on the Gate 2 verdict.",
+      "lifecyclePhase": 8,
+      "blockingGate": "Gate 2 for the case study only"
+    }
+  ],
+  "gates": [
+    {
+      "id": "gate-1",
+      "name": "Gate 1 - Power BI development may begin",
+      "verdict": "OPEN",
+      "recordedOn": "2026-07-29",
+      "verdictPath": "docs/requirements/GATE_1_READINESS.md",
+      "conditions": [
+        {
+          "ordinal": 1,
+          "condition": "Fact grains are approved",
+          "met": true,
+          "evidence": "Every MVP fact declares one grain, enforced by a UNIQUE constraint and covered by tests/integration/test_schema_objects.py."
+        },
+        {
+          "ordinal": 2,
+          "condition": "Dimensions are documented",
+          "met": true,
+          "evidence": "All eight MVP dimensions are specified in DATA_DICTIONARY.md with a source-to-target mapping each under docs/source-to-target/."
+        },
+        {
+          "ordinal": 3,
+          "condition": "KPI formulas are documented",
+          "met": true,
+          "evidence": "All 29 governed KPIs carry a formula, an explicit numerator and denominator, a grain and a null rule in KPI_CATALOG.md."
+        }
+      ]
+    },
+    {
+      "id": "gate-2",
+      "name": "Gate 2 - the public analytical case study may begin",
+      "verdict": "CLOSED",
+      "recordedOn": null,
+      "verdictPath": null,
+      "conditions": [
+        {
+          "ordinal": 1,
+          "condition": "Core Power BI report pages are complete",
+          "met": false,
+          "evidence": "powerbi/ARPI_Performance_Intelligence/ARPI_Performance_Intelligence.Report/ is a PBIR shell: a .platform file and a definition.pbir pointing at the semantic model. It contains no page, no visual and no bookmark. Delivered by P2.2."
+        },
+        {
+          "ordinal": 2,
+          "condition": "SQL and Power BI totals reconcile",
+          "met": false,
+          "evidence": "The SQL side exists as powerbi/validation/sql_baseline.json. The Power BI side requires a refreshed model, and no engine has refreshed it. Delivered by P2.2-10."
+        },
+        {
+          "ordinal": 3,
+          "condition": "Executive findings are drafted",
+          "met": false,
+          "evidence": "docs/findings/ is empty. Delivered by P2.3."
+        }
+      ]
+    }
+  ],
+  "evidence": [
+    {
+      "id": "deterministic-generation",
+      "label": "Deterministic synthetic generation",
+      "kind": "privacy",
+      "status": "complete",
+      "detail": "The same profile and seed reproduce byte-identical CSV. Seed 20250701 on the development profile, with a SHA-256 content digest per entity in the generation manifest.",
+      "sources": [
+        {
+          "path": "powerbi/validation/sql_baseline_metadata.json",
+          "field": "random_seed"
+        },
+        {
+          "path": "data/sample/generation_manifest.json",
+          "field": "content digests"
+        }
+      ]
+    },
+    {
+      "id": "declared-grains",
+      "label": "Declared fact grains",
+      "kind": "test",
+      "status": "complete",
+      "detail": "Each of the 5 MVP facts declares one grain, enforced by a UNIQUE constraint in DDL and asserted by the integration suite.",
+      "sources": [
+        {
+          "path": "sql/04_facts/",
+          "field": "grain constraints"
+        },
+        {
+          "path": "tests/integration/test_schema_objects.py",
+          "field": "grain assertions"
+        }
+      ]
+    },
+    {
+      "id": "governed-kpi-catalogue",
+      "label": "Governed KPI catalogue",
+      "kind": "static",
+      "status": "complete",
+      "detail": "All 29 KPIs carry a business definition, a formula, an explicit numerator and denominator, a grain, a date basis, inclusion and exclusion rules, a null rule, a source view and an interpretation caution.",
+      "sources": [
+        {
+          "path": "KPI_CATALOG.md",
+          "field": "sections 6 to 34"
+        }
+      ]
+    },
+    {
+      "id": "kpi-independent-derivation",
+      "label": "KPI verification against an independent derivation",
+      "kind": "test",
+      "status": "complete",
+      "detail": "Every KPI computed from the reporting schema is asserted equal to the same figure derived independently from the warehouse, and every ratio is asserted to return NULL rather than zero or infinity on an empty denominator.",
+      "sources": [
+        {
+          "path": "tests/integration/test_kpi_verification.py",
+          "field": "per-KPI assertions"
+        }
+      ]
+    },
+    {
+      "id": "reconciliations",
+      "label": "Reconciliation suite",
+      "kind": "reconciliation",
+      "status": "complete",
+      "detail": "58 reconciliations recorded on every database run, 0 failing. Every critical rule is proven to fail against a deliberately corrupted fixture.",
+      "sources": [
+        {
+          "path": "powerbi/validation/sql_baseline_metadata.json",
+          "field": "reconciliations"
+        },
+        {
+          "path": "sql/08_validation/",
+          "field": "reconciliation SQL"
+        },
+        {
+          "path": "tests/integration/test_reconciliations.py",
+          "field": "negative tests"
+        }
+      ]
+    },
+    {
+      "id": "privacy-safeguards",
+      "label": "Privacy safeguards",
+      "kind": "privacy",
+      "status": "complete",
+      "detail": "The data model prohibits names, street addresses, email addresses, phone numbers, full birth dates, government identifiers and bank information. Age is a band; geography stops at county or market area. No real VIN is linked to a synthetic customer.",
+      "sources": [
+        {
+          "path": "PRIVACY_AND_ETHICS.md",
+          "field": "prohibited attributes"
+        },
+        {
+          "path": "src/arpi/validation/privacy.py",
+          "field": "enforcement"
+        },
+        {
+          "path": "tests/unit/test_privacy.py",
+          "field": "prohibition tests"
+        }
+      ]
+    },
+    {
+      "id": "read-only-reporting-role",
+      "label": "Read-only reporting role",
+      "kind": "test",
+      "status": "complete",
+      "detail": "The reporting identity is provably unable to read the raw, staging, warehouse or audit schemas, asserted end to end rather than described in a grant script.",
+      "sources": [
+        {
+          "path": "sql/07_security/01_grants.sql",
+          "field": "grants"
+        },
+        {
+          "path": "tests/integration/test_reporter_role_end_to_end.py",
+          "field": "negative access tests"
+        }
+      ]
+    },
+    {
+      "id": "static-model-validation",
+      "label": "Static semantic-model validation",
+      "kind": "static",
+      "status": "complete",
+      "detail": "The TMDL source is parsed as text and checked against the model documentation on every push: 26 tables, 42 relationships and 49 measures, with a bidirectional filter, a non-reporting schema or a PII-bearing column failing the build. No engine is launched, so this proves shape and never proves arithmetic.",
+      "sources": [
+        {
+          "path": "scripts/check_powerbi_model.py",
+          "field": "assertions"
+        },
+        {
+          "path": ".github/workflows/ci.yml",
+          "field": "repository-checks job"
+        }
+      ]
+    },
+    {
+      "id": "sql-to-dax-baseline",
+      "label": "SQL-to-DAX baseline",
+      "kind": "reconciliation",
+      "status": "complete",
+      "detail": "The SQL side of every KPI is committed across twenty-one filter contexts, generated from the database rather than typed by hand. It is one half of a reconciliation whose other half needs a refreshed model.",
+      "sources": [
+        {
+          "path": "powerbi/validation/sql_baseline.json",
+          "field": "expected totals"
+        },
+        {
+          "path": "scripts/generate_sql_baseline.py",
+          "field": "generator"
+        }
+      ]
+    },
+    {
+      "id": "real-engine-validation",
+      "label": "Real-engine semantic-model validation",
+      "kind": "real-engine",
+      "status": "pending-external",
+      "detail": "Neither accepted path has run. No Microsoft semantic-model engine has loaded this model, refreshed it, or returned a single number from it, so every measure in it is text that has never produced a value. Static parsing cannot substitute.",
+      "sources": [
+        {
+          "path": "powerbi/validation/desktop_validation_results.json",
+          "field": "overall_result"
+        },
+        {
+          "path": "powerbi/validation/fabric_validation_results.json",
+          "field": "overall_result"
+        },
+        {
+          "path": "docs/architecture-decisions/ADR-0008-real-engine-validation-paths.md",
+          "field": "accepted paths and proof obligation"
+        }
+      ]
+    }
+  ],
+  "caseStudy": {
+    "unlocked": false,
+    "flagEnabled": false,
+    "gate2Open": false,
+    "readinessDocumentExists": false,
+    "requiredContentPresent": false,
+    "requiredScreenshotsPresent": false,
+    "blockingReasons": [
+      "The NEXT_PUBLIC_ARPI_CASE_STUDY_ENABLED build flag is not set to true.",
+      "docs/requirements/GATE_2_READINESS.md does not exist, so no Gate 2 review has been written.",
+      "The recorded Gate 2 verdict is CLOSED. Its three conditions are: complete report pages, reconciled SQL and Power BI totals, and drafted executive findings.",
+      "The case-study content file has not been written. No findings have been drawn.",
+      "No report screenshots exist, because no report page exists to screenshot."
+    ]
+  },
+  "dataset": {
+    "profile": "development",
+    "randomSeed": 20250701,
+    "reportingDateRange": {
+      "first": "2025-07-01",
+      "last": "2025-12-31"
+    },
+    "synthetic": true,
+    "containsPii": false
+  }
+}

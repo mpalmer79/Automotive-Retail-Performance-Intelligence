@@ -1,0 +1,239 @@
+# =============================================================================
+# ARPI portfolio website — continuous integration
+# =============================================================================
+# WHY THIS IS A SEPARATE WORKFLOW
+# -------------------------------
+# `ci.yml` is the gate for the Python package, the SQL layer and the Power BI
+# model. It must stay readable and it must stay fast, and a Node toolchain bolted
+# into it would make a frontend formatting failure look like a data-platform
+# failure in the checks list. Keeping them apart also means this workflow can be
+# skipped entirely on a change that does not touch `portfolio/`, which most
+# changes in this repository do not.
+#
+# NO SECRETS RULE — inherited from ci.yml and equally binding here.
+# This workflow runs to completion on a fork with zero repository secrets
+# configured. It never contacts a database, a cloud account, Power BI Service,
+# Microsoft Fabric, or a deployment provider. It has no `secrets.*` reference and
+# must never acquire one: everything it checks is source-controlled content.
+#
+# NOTHING HERE VALIDATES A SEMANTIC MODEL. That boundary belongs to `ci.yml` and
+# to ADR-0008, and this workflow does not touch it. What it does check is that the
+# website never CLAIMS a validation that has not happened — which is a different
+# assertion, made against the evidence files rather than against an engine.
+#
+# JOBS
+# ----
+#   quality    formatting, lint, types, unit tests, manifest freshness,
+#              production build, secret check, dependency audit
+#   browser    accessibility, end-to-end, content-integrity and design-system
+#              suites against a production build in a real browser, plus the
+#              per-route transfer-size report
+# =============================================================================
+
+name: Frontend
+
+on:
+  push:
+    branches:
+      - '**'
+    paths:
+      - 'portfolio/**'
+      - '.github/workflows/frontend.yml'
+      # The manifest is generated FROM these, so a change to any of them can make
+      # the committed manifest stale and must re-run the check.
+      - 'powerbi/validation/**'
+      - 'powerbi/ARPI_Performance_Intelligence/**'
+      - 'KPI_CATALOG.md'
+      - 'docs/requirements/**'
+      - 'sql/**'
+  pull_request:
+    paths:
+      - 'portfolio/**'
+      - '.github/workflows/frontend.yml'
+      - 'powerbi/validation/**'
+      - 'powerbi/ARPI_Performance_Intelligence/**'
+      - 'KPI_CATALOG.md'
+      - 'docs/requirements/**'
+      - 'sql/**'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NEXT_TELEMETRY_DISABLED: '1'
+  # The case-study gate is exercised in its REAL configuration: flag off. A CI run
+  # that set it to true would be testing a state the repository cannot reach, and
+  # would tell us nothing about the gate.
+  NEXT_PUBLIC_ARPI_CASE_STUDY_ENABLED: 'false'
+  FORCE_COLOR: '1'
+
+defaults:
+  run:
+    working-directory: portfolio
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # 1. quality — the authoritative gate for the frontend source.
+  #    Runs the same commands `npm run verify` runs locally, in the same order,
+  #    so a green local run predicts a green CI run.
+  # ---------------------------------------------------------------------------
+  quality:
+    name: Quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: portfolio/package-lock.json
+
+      # `npm ci` rather than `npm install`: it installs exactly the lockfile and
+      # fails if package.json and the lockfile disagree, which is the behaviour a
+      # CI job wants.
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Report the resolved toolchain
+        run: |
+          node --version
+          npm --version
+          npx --no-install next --version
+          npx --no-install tsc --version
+
+      # Formatting first: the cheapest failure to fix, and it would otherwise add
+      # noise to the lint output.
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type-check
+        run: npm run typecheck
+
+      # THE CONTENT-INTEGRITY GATE.
+      #
+      # Regenerates the project manifest from the repository's own evidence files
+      # and fails if it differs from the committed one. That single command is
+      # what stops the website displaying a count or a status the repository
+      # cannot prove: the generator refuses to emit a manifest whose statuses
+      # contradict their evidence, and this step refuses a manifest that has
+      # drifted from it.
+      #
+      # A failure here is almost never a frontend problem. It means a validation
+      # evidence file, the semantic model, the KPI catalogue or a readiness
+      # document changed, and the site now needs to say something different.
+      - name: Project manifest is current and self-consistent
+        run: npm run manifest:check
+
+      - name: Unit, component and content-integrity tests
+        run: npm run test
+
+      - name: Production build
+        run: npm run build
+
+      # NOTE: the bundle report lives in the `browser` job. It measures the bytes
+      # a visitor actually downloads by loading each route in Chromium, which needs
+      # a browser and a running server - neither of which this job has.
+
+      # The repository's own secret safety net, run over the new tree. Standard
+      # library only, no install needed.
+      - name: Secret safety net
+        working-directory: .
+        run: python3 scripts/check_secrets.py
+
+      # `--omit=dev` scopes the audit to what actually ships to a visitor. A
+      # high-severity advisory in a build-time-only dependency is worth knowing
+      # about but is not a reason to block a documentation site, so the two are
+      # reported separately and only the runtime one fails.
+      - name: Dependency audit (runtime, high and above)
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Dependency audit (development, informational)
+        continue-on-error: true
+        run: npm audit --audit-level=high
+
+  # ---------------------------------------------------------------------------
+  # 2. browser — accessibility, end-to-end, content-integrity, design-system.
+  #    Separate from `quality` so that a browser flake is visually
+  #    distinguishable from a genuine source failure, and so `quality` stays fast.
+  # ---------------------------------------------------------------------------
+  browser:
+    name: Browser suites
+    runs-on: ubuntu-latest
+    needs: quality
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: portfolio/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Chromium only by default. Firefox and WebKit are defined in
+      # playwright.config.ts and are enabled by ARPI_E2E_ALL_BROWSERS; the
+      # reasoning for not running all three on every push is recorded in
+      # portfolio/docs/ACCESSIBILITY.md section 7.
+      - name: Install Chromium for Playwright
+        run: npx playwright install --with-deps chromium
+
+      # The suites run against a PRODUCTION build, started by Playwright's
+      # `webServer`. Not the dev server: dev-mode React adds development-only DOM
+      # attributes, the bundle differs, and an accessibility result from a dev
+      # build does not describe what a visitor receives.
+      - name: Production build
+        run: npm run build
+
+      - name: Accessibility, end-to-end, content-integrity and design-system suites
+        run: npx playwright test --project=chromium
+
+      # Measured against the production build, in the browser that is already
+      # installed for the suites above. Informational; see the note in `quality`.
+      - name: Bundle report
+        continue-on-error: true
+        run: |
+          echo "::group::Transferred bytes per route"
+          npx next start -p 3111 &
+          for _ in $(seq 1 60); do
+            curl -sf -o /dev/null http://127.0.0.1:3111/ && break
+            sleep 1
+          done
+          ARPI_REVIEW_BASE_URL=http://127.0.0.1:3111 npm run bundle
+          echo "::endgroup::"
+
+      - name: Upload the Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: portfolio/playwright-report/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      # Traces are captured on failure only, and are the fastest way to diagnose
+      # one without reproducing it locally.
+      - name: Upload failure traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: portfolio/test-results/
+          if-no-files-found: ignore
+          retention-days: 14

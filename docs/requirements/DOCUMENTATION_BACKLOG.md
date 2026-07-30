@@ -2,8 +2,8 @@
 
 **Project:** Automotive Retail Performance Intelligence (ARPI)
 **Owner:** Michael Palmer
-**Version:** 1.2
-**Last reviewed:** 2026-07-29
+**Version:** 1.3
+**Last reviewed:** 2026-07-30
 **Conventions:** [README.md](README.md)
 
 ---
@@ -62,6 +62,8 @@ being *credible* to a careful reader, and those are marked **High**.
 | `DOC-26` | **Bare `Phase 1.x` prose survives outside the requirements directory.** `DOC-05` defined the terminology and swept `ARCHITECTURE.md`, `PHASE_1_BACKLOG.md`, and `docs/requirements/README.md`. Files owned by other workstreams still say "Phase 1.2" where they mean delivery increment `P1.2`: `KPI_CATALOG.md`, `DATA_DICTIONARY.md`, the root `README.md`, `PRIVACY_AND_ETHICS.md`, `DATA_GENERATION.md`, `docs/index.md`, `docs/diagrams/03-initial-dimensional-model.md`, `docs/diagrams/04-repository-component-map.md`, `docs/source-to-target/README.md`, `sql/README.md`, and `sql/04_facts/README.md`. | Materially lower than `DOC-05` was: the terminology is now defined in `ARCHITECTURE.md` §27.1, so every one of these references resolves unambiguously to a delivery increment for a reader who has read the definition. The residual risk is a reader who has not, meeting "Phase 1.2" beside a document that numbers a different Phase 1. | Sweep each file to `delivery increment P1.2` or to the bare identifier `P1.2` as its owning workstream next edits it. Not worth a dedicated pass. Related: [ADR-0003](../architecture-decisions/ADR-0003-delivery-increment-terminology.md) records that **nothing mechanically enforces this terminology** — `scripts/check_naming.py` has no pattern for it, because a bare `Phase 1.2` is only wrong as a heading, not intrinsically. If drift is observed after the sweep, add a heading-scoped check restricted to `docs/requirements/**`. | **Low** |
 | `DOC-27` | **`DATA_DICTIONARY.md` §9.2 lists eight prohibited `dim_customer` fields; `ARCHITECTURE.md` §11.2 now lists twelve.** §9.2 opens by saying the fields are "named as **Prohibited** in `ARCHITECTURE.md` §11.2" and then reproduces the original eight — name, street address, email, phone, full birth date, SSN, driver's licence, bank information. §11.2 was extended on 2026-07-28 to twelve, adding payment-card information, exact credit score and credit-report fields, protected characteristics, and free-form notes. The four additions appear in §9.2's closing paragraph as things `docs/research.md` §10.2 additionally prohibits, but not in the table. | A reader comparing the two documents finds a table that claims to mirror the architecture and does not. The controls themselves are not weakened — `P1.1-06` and `P1.2-06` name all twelve as acceptance criteria, and the generalised prohibited-column check enforces the full list — but the entity documentation understates what is prohibited. | Update the §9.2 table to the full twelve and keep the "named in §11.2" framing accurate. `DATA_DICTIONARY.md` is not owned by the architecture workstream, so this is recorded rather than fixed here. | **Medium** |
 | ~~`DOC-28`~~ | ~~**`LIMITATIONS.md` §10.1 quotes a four-layer row-count requirement; `ARCHITECTURE.md` §21.4 now states five.** §10.1 says §21.4 "requires every run to produce a source row count, a **staging row count**, a warehouse row count and a **rejected row count**". §21.4 was corrected on 2026-07-28 to name all five layers — `source`, `raw`, `staging`, `warehouse`, `rejected` — because a chain that skips a layer cannot prove where a row was lost, and `audit.pipeline_run_row_count.layer` has always admitted five.~~ | ~~Minor and in the safe direction: the limitation understates the requirement rather than overstating the implementation, so nothing reads as a claim that is not true. It does mean two documents describe the same requirement with different layer counts.~~ | **Resolved 2026-07-29.** [LIMITATIONS.md §10.1](../../LIMITATIONS.md) was rewritten when `DOC-23` closed. It now describes all five layers, states that each term of the chain identity is measured independently, and records the closure rather than the gap. | **Resolved** |
+| ~~`DOC-29`~~ | ~~**No decision record governed public-facing UI work while Gate 2 is closed.** [ARCHITECTURE.md §28](../../ARCHITECTURE.md) Gate 2 says no web case study begins until core report pages are complete, SQL and Power BI totals reconcile, and executive findings are drafted. Nothing distinguished the *presentation layer* from the *analytical case study*, so a website was simultaneously unbuildable and undocumented as such.~~ | ~~A reviewer meeting a polished website beside a closed Gate 2 would have had no document telling them which of the two things it is, and a contributor would have had no way to build one without appearing to breach the gate.~~ | **Resolved 2026-07-30.** [ADR-0009](../architecture-decisions/ADR-0009-portfolio-ui-foundation-before-gate-2.md) is Accepted. It defines four categories and permits exactly one of them before Gate 2 — the portfolio UI foundation — while the public analytical case study, the Power BI dashboard and a second analytics application each remain gated or prohibited as before. Gate 2 itself is **unchanged and still CLOSED**, with all three conditions unmet. The record carries five controls: a five-condition build-time lock on the `/case-study` route in which the environment flag is necessary and never sufficient; the generated manifest as the only source of a count or a status; build-failing assertions that Lifecycle Phase 5 cannot be emitted as complete while both engine paths are pending; the synthetic-data statement in the body of every primary route; and no KPI value on any route. Recorded as backlog item `P2.4-06` in [PHASE_2_BACKLOG.md](PHASE_2_BACKLOG.md). | ~~High~~ **Resolved** |
+| ~~`DOC-30`~~ | ~~**The portfolio deliverable had no documentation of its own.** `portfolio/` was an empty tracked directory. Nothing described a design system, a motion vocabulary, a content model, an accessibility target, a performance budget, a deployment procedure, or a visual-review record, because none existed.~~ | ~~Not misleading while the directory was empty, but it meant the packaging deliverable was the one part of the project with no contract a reviewer could check it against.~~ | **Resolved 2026-07-30.** Eight documents now exist beside the application: `portfolio/README.md` — what the site is, what it deliberately is not, and how to install, run, test and build it — plus `portfolio/docs/DESIGN_SYSTEM.md`, `MOTION_SYSTEM.md`, `CONTENT_MODEL.md`, `ACCESSIBILITY.md`, `PERFORMANCE.md`, `DEPLOYMENT.md` and `VISUAL_REVIEW.md`. They are indexed from [`../index.md`](../index.md) and from the root [README.md](../../README.md). Two claims they are careful about: `DEPLOYMENT.md` documents a procedure, not a deployment — **no preview URL and no production URL exist** — and `CONTENT_MODEL.md` records that no component may hardcode a count or a status, every one coming from the generated manifest. | ~~Medium~~ **Resolved** |
 
 ---
 
@@ -69,10 +71,10 @@ being *credible* to a careful reader, and those are marked **High**.
 
 | Priority | Open | Resolved |
 |---|---:|---:|
-| High | 1 | 4 |
-| Medium | 13 | 1 |
+| High | 1 | 5 |
+| Medium | 13 | 2 |
 | Low | 9 | 0 |
-| **Total** | **23** | **5** |
+| **Total** | **23** | **7** |
 
 **One open High item.** `DOC-04` — the customer dimension — is now *partially* resolved: `P1.1-06` and
 `P1.2-06` exist as first-class backlog items with all twelve prohibited fields named and privacy validation
@@ -112,6 +114,16 @@ the corrected text — they are recorded rather than fixed, because both files b
 one that wrote the requirement: `DOC-15` (the stakeholder-question matrix), `DOC-18` (the data-quality
 trend view), `DOC-23` (the five-layer row-count chain) and `DOC-28` (the four-layer quotation that depended
 on it). Each closure names the object or test that proves it.
+
+**Two items were added and closed on 2026-07-30**, both by the delivery of `P2.4-06`, the portfolio website
+foundation: `DOC-29` (no decision record governed public-facing UI work while Gate 2 is closed — now
+[ADR-0009](../architecture-decisions/ADR-0009-portfolio-ui-foundation-before-gate-2.md)) and `DOC-30` (the
+portfolio deliverable had no documentation of its own — now `portfolio/README.md` and seven documents under
+`portfolio/docs/`). They are recorded here rather than silently, because both are documents this register is
+the register of. **Neither closes anything else.** Gate 2 remains **CLOSED** with all three conditions unmet,
+real-engine validation of the semantic model remains **pending on both accepted ADR-0008 paths**, no dashboard
+page or visual exists, the public case study remains gated behind a locked route, and no preview or production
+deployment of the website exists.
 
 **Items that remain open with an "in progress" note** — `DOC-12`, `DOC-13`, `DOC-21` and `DOC-24` — still
 state exactly what has been verified on disk and what has not. None is closed by assertion.

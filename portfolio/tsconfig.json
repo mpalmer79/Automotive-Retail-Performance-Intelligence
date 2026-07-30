@@ -1,0 +1,53 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["dom", "dom.iterable", "ES2022"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "allowJs": false,
+    "checkJs": false,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "useUnknownInCatchVariables": true,
+    // NOTE on exactOptionalPropertyTypes: deliberately NOT enabled. React's own
+    // prop types, Radix's component props and next/link all declare optional
+    // props as `T | undefined` rather than as truly-absent, so the flag makes
+    // every thin wrapper around them require a conditional spread. That is churn
+    // without a correctness gain in this codebase, where no optional prop
+    // distinguishes "absent" from "explicitly undefined". Every other strict
+    // check, including noUncheckedIndexedAccess, is on.
+    "forceConsistentCasingInFileNames": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    // Build tooling under scripts/ runs through tsx, which resolves an explicit
+    // .ts specifier. Enabling this keeps those imports honest about what they
+    // point at rather than relying on extensionless resolution.
+    "allowImportingTsExtensions": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    "src/generated/*.json",
+    ".next/dev/types/**/*.ts"
+  ],
+  "exclude": ["node_modules", ".next", "playwright-report", "test-results"]
+}
