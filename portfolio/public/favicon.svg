@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!--
+    ARPI favicon. Same geometry as <Monogram> in
+    src/components/brand/logo.tsx: a 3x3 dimensional grid with the "A" formed by
+    the signal path through it. Editable source; documented in
+    portfolio/docs/DESIGN_SYSTEM.md section 8.
+
+    The lattice points are dropped at this size - at 16px they merge into a grey
+    haze and cost legibility for no gain. The path and the apex node survive.
+  -->
+  <rect width="32" height="32" rx="7" fill="#080b11"/>
+  <g fill="none" stroke="#5fdcee" stroke-width="2.9" stroke-linecap="square" stroke-linejoin="miter">
+    <path d="M6.5 26.5 L16 6 L25.5 26.5"/>
+    <path d="M10.6 18.6 H21.4"/>
+  </g>
+  <circle cx="16" cy="6" r="2.6" fill="#5fdcee"/>
+</svg>

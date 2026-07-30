@@ -483,6 +483,25 @@ engineering, SQL, Python, reproducibility discipline, and executive communicatio
 They may **not** conclude anything about **the automotive retail industry**. Every number in ARPI describes
 a fictional business built from a random seed. See [LIMITATIONS.md](LIMITATIONS.md).
 
+### 12.4 The public website
+
+A portfolio website exists under [`portfolio/`](portfolio/), governed by
+[ADR-0009](docs/architecture-decisions/ADR-0009-portfolio-ui-foundation-before-gate-2.md). It is a rendering
+of this repository's own documentation, and it is bound by everything in §12.2. Four properties are worth
+stating explicitly, because they are what make a public site safe to publish at all.
+
+| Property | What it means |
+|---|---|
+| **No record-level data, and no KPI value** | The site displays no row from any table and no figure produced by any measure — not a real one, not an illustrative one, not a placeholder. It presents KPI **definitions** and says so. Every number it does show is a count of repository artefacts, resolved at build time from source-controlled files |
+| **The synthetic-data statement is in the body of every primary route** | Not in the footer only. It appears above the fold and in each page header as well as in the footer, and an end-to-end test asserts its presence route by route. A reader who does not scroll still sees it |
+| **No third-party request, no cookie, no analytics, no tracker** | The site sets no cookie, loads nothing from a third-party origin, and runs no analytics, telemetry, session-recording, advertising or fingerprinting script. There is nothing to consent to because nothing is collected |
+| **Nothing is collected from a visitor** | There is no contact form, no newsletter capture, no comment field, no upload, and no account. The site has no API route, no database connection and no query interface, so a visitor cannot submit data to it even in principle |
+
+The consequence is that the website processes **no personal data of any kind**, including the visitor's own.
+That is a design choice, not an accident of the current build: the routes are statically rendered, and the
+absence of a server surface is what §26.3 of the architecture means when it says the case study must not
+become a second analytics application.
+
 ---
 
 ## 13. Enforcement in code

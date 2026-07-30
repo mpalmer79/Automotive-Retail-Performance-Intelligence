@@ -1,0 +1,347 @@
+/* ==========================================================================
+   ARPI design tokens
+   --------------------------------------------------------------------------
+   The single source of truth for every visual constant on the site. Nothing in
+   src/components or src/app may introduce a raw hex value, a raw pixel radius,
+   a raw shadow, or a raw animation duration. If a value is needed and is not
+   here, it belongs here first.
+
+   Naming: --arpi-<group>-<role>[-<step>]. Groups are colour, text, space,
+   size, radius, border, shadow, blur, opacity, motion, z, layout.
+
+   Documented in portfolio/docs/DESIGN_SYSTEM.md.
+   ========================================================================== */
+
+:root {
+  /* ---------------------------------------------------------------------
+     1. Palette primitives
+     Raw ramps. Components never reference these directly; they reference the
+     semantic tokens in section 2, so that a theme change is one edit here.
+     --------------------------------------------------------------------- */
+
+  /* Obsidian - the page ground. Cool, near-neutral, very slightly blue so it
+     reads as instrument housing rather than as pure black. */
+  --arpi-obsidian-950: #05070b;
+  --arpi-obsidian-900: #080b11;
+  --arpi-obsidian-850: #0b0f16;
+
+  /* Graphite - elevated surfaces. */
+  --arpi-graphite-800: #10151e;
+  --arpi-graphite-750: #141a25;
+  --arpi-graphite-700: #1a212e;
+  --arpi-graphite-600: #232c3c;
+  --arpi-graphite-500: #2f3a4d;
+
+  /* Steel - borders, rules, muted text.
+
+     steel-400 is the faintest colour used for TEXT, so it is pinned to the WCAG
+     AA floor rather than chosen by eye. #64748f, its first value, measured
+     4.26:1 on the canvas and 3.68:1 on `surface-raised` - both below 4.5:1, and
+     axe-core flagged it on all nine routes. #7887a8 measures 5.60:1 on the
+     canvas and 4.84:1 on the lightest surface the site uses, so it passes
+     everywhere text can sit. Anything fainter than this token is decorative
+     only: steel-500 is used for borders and for the grid motif at 5.5% opacity,
+     where the 3:1 non-text threshold applies. */
+  --arpi-steel-500: #47556b;
+  --arpi-steel-400: #7887a8;
+  --arpi-steel-300: #8b99b3;
+  --arpi-steel-200: #b3bfd4;
+  --arpi-steel-100: #d6deea;
+
+  /* Clarity - the highest-contrast text colour. Not pure white; pure white on
+     a near-black ground produces halation at large sizes. */
+  --arpi-clarity: #f2f6fc;
+
+  /* Cyan - the primary signal colour. Used for the active path, the primary
+     action, and the "this is the thing you are looking at" state. */
+  --arpi-cyan-200: #9decf7;
+  --arpi-cyan-300: #5fdcee;
+  --arpi-cyan-400: #22c8e0;
+  --arpi-cyan-500: #06a8c4;
+  --arpi-cyan-600: #067f98;
+  --arpi-cyan-900: #06323d;
+
+  /* Amber - attention and caution. Reserved for pending and blocked, never
+     used decoratively. */
+  --arpi-amber-200: #fcdfa4;
+  --arpi-amber-300: #f7c96a;
+  --arpi-amber-400: #eaab2c;
+  --arpi-amber-500: #c68a12;
+  --arpi-amber-900: #3d2a05;
+
+  /* Violet - semantic-model and relationship accents only. */
+  --arpi-violet-200: #cfc4fb;
+  --arpi-violet-300: #ad9cf6;
+  --arpi-violet-400: #8b74ed;
+  --arpi-violet-500: #6d55d1;
+  --arpi-violet-900: #241a4a;
+
+  /* Emerald - verified pass states only. Never "on brand" decoration. */
+  --arpi-emerald-200: #a6ebc4;
+  --arpi-emerald-300: #63d79b;
+  --arpi-emerald-400: #2fbc78;
+  --arpi-emerald-500: #199760;
+  --arpi-emerald-900: #06301e;
+
+  /* Rose - genuine negative or failed states only. Nothing on this site is
+     currently failed, so this ramp is present for the status vocabulary to be
+     complete rather than because it is in use. */
+  --arpi-rose-200: #f8c0c6;
+  --arpi-rose-300: #f2909c;
+  --arpi-rose-400: #e35d70;
+  --arpi-rose-500: #c23b50;
+  --arpi-rose-900: #3d0d16;
+
+  /* ---------------------------------------------------------------------
+     2. Semantic colour tokens
+     --------------------------------------------------------------------- */
+
+  --arpi-colour-canvas: var(--arpi-obsidian-950);
+  --arpi-colour-canvas-raised: var(--arpi-obsidian-900);
+  --arpi-colour-surface: var(--arpi-graphite-800);
+  --arpi-colour-surface-raised: var(--arpi-graphite-750);
+  --arpi-colour-surface-hover: var(--arpi-graphite-700);
+  --arpi-colour-surface-sunken: var(--arpi-obsidian-850);
+
+  --arpi-colour-border: var(--arpi-graphite-600);
+  --arpi-colour-border-strong: var(--arpi-graphite-500);
+  --arpi-colour-border-subtle: var(--arpi-graphite-700);
+
+  --arpi-colour-text: var(--arpi-clarity);
+  --arpi-colour-text-secondary: var(--arpi-steel-200);
+  --arpi-colour-text-muted: var(--arpi-steel-300);
+  --arpi-colour-text-faint: var(--arpi-steel-400);
+  --arpi-colour-text-inverse: var(--arpi-obsidian-950);
+
+  --arpi-colour-accent: var(--arpi-cyan-300);
+  --arpi-colour-accent-strong: var(--arpi-cyan-400);
+  --arpi-colour-accent-muted: var(--arpi-cyan-600);
+  --arpi-colour-accent-wash: var(--arpi-cyan-900);
+
+  --arpi-colour-model: var(--arpi-violet-300);
+  --arpi-colour-model-wash: var(--arpi-violet-900);
+
+  /* Status vocabulary. Every one of these is paired with an icon and a text
+     label in <StatusBadge>; colour is never the only carrier. */
+  --arpi-colour-verified: var(--arpi-emerald-300);
+  --arpi-colour-verified-wash: var(--arpi-emerald-900);
+  --arpi-colour-pending: var(--arpi-amber-300);
+  --arpi-colour-pending-wash: var(--arpi-amber-900);
+  --arpi-colour-blocked: var(--arpi-amber-200);
+  --arpi-colour-blocked-wash: var(--arpi-amber-900);
+  --arpi-colour-failed: var(--arpi-rose-300);
+  --arpi-colour-failed-wash: var(--arpi-rose-900);
+  --arpi-colour-deferred: var(--arpi-steel-300);
+  --arpi-colour-deferred-wash: var(--arpi-graphite-700);
+
+  --arpi-colour-focus: var(--arpi-cyan-300);
+
+  /* ---------------------------------------------------------------------
+     3. Typography
+     Three families, loaded as variable fonts through next/font with
+     `display: swap` and a matched fallback metric, so no layout shift occurs
+     when they arrive. See src/lib/fonts.ts.
+     --------------------------------------------------------------------- */
+
+  --arpi-font-sans:
+    var(--font-inter), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+    sans-serif;
+  --arpi-font-display:
+    var(--font-space-grotesk), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --arpi-font-mono:
+    var(--font-jetbrains-mono), ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, monospace;
+
+  /* Type scale. Fluid between the 375px and 1440px viewports; every step
+     clamps so an ultrawide display does not produce a headline that spans the
+     screen. */
+  --arpi-text-2xs: 0.6875rem; /* 11px - alignment marks, axis labels */
+  --arpi-text-xs: 0.75rem; /* 12px - eyebrows, code labels, metadata */
+  --arpi-text-sm: 0.8125rem; /* 13px - dense table text */
+  --arpi-text-base: 0.9375rem; /* 15px - UI default */
+  --arpi-text-body: 1.0625rem; /* 17px - reading copy */
+  --arpi-text-lg: clamp(1.125rem, 0.45vw + 1.02rem, 1.25rem);
+  --arpi-text-xl: clamp(1.3125rem, 0.7vw + 1.15rem, 1.5rem);
+  --arpi-text-2xl: clamp(1.5rem, 1.2vw + 1.22rem, 1.9375rem);
+  --arpi-text-3xl: clamp(1.8125rem, 2vw + 1.35rem, 2.625rem);
+  --arpi-text-4xl: clamp(2.125rem, 3.1vw + 1.4rem, 3.5rem);
+  --arpi-text-5xl: clamp(2.5rem, 4.2vw + 1.35rem, 4.25rem);
+
+  --arpi-leading-tight: 1.05;
+  --arpi-leading-snug: 1.2;
+  --arpi-leading-normal: 1.45;
+  --arpi-leading-relaxed: 1.62;
+
+  --arpi-tracking-tighter: -0.03em;
+  --arpi-tracking-tight: -0.018em;
+  --arpi-tracking-normal: 0;
+  --arpi-tracking-wide: 0.02em;
+  --arpi-tracking-eyebrow: 0.16em;
+
+  --arpi-weight-regular: 400;
+  --arpi-weight-medium: 500;
+  --arpi-weight-semibold: 600;
+  --arpi-weight-bold: 700;
+
+  /* ---------------------------------------------------------------------
+     4. Space - a 4px base with a deliberate jump above 4rem so that section
+     rhythm is visibly distinct from component rhythm.
+     --------------------------------------------------------------------- */
+
+  --arpi-space-0: 0;
+  --arpi-space-px: 1px;
+  --arpi-space-1: 0.25rem;
+  --arpi-space-2: 0.5rem;
+  --arpi-space-3: 0.75rem;
+  --arpi-space-4: 1rem;
+  --arpi-space-5: 1.25rem;
+  --arpi-space-6: 1.5rem;
+  --arpi-space-8: 2rem;
+  --arpi-space-10: 2.5rem;
+  --arpi-space-12: 3rem;
+  --arpi-space-16: 4rem;
+  --arpi-space-20: 5rem;
+  --arpi-space-24: 6rem;
+  --arpi-space-32: 8rem;
+  --arpi-space-40: 10rem;
+
+  /* Section rhythm, fluid so mobile is not padded like a desktop. */
+  --arpi-space-section: clamp(3.5rem, 7vw, 7.5rem);
+  --arpi-space-section-tight: clamp(2.5rem, 4.5vw, 4.5rem);
+
+  /* ---------------------------------------------------------------------
+     5. Sizing, radius, border
+     --------------------------------------------------------------------- */
+
+  --arpi-size-touch: 2.75rem; /* 44px - WCAG 2.2 target-size floor */
+  --arpi-size-control: 2.25rem;
+  --arpi-size-control-lg: 2.875rem;
+  --arpi-size-icon: 1rem;
+  --arpi-size-icon-lg: 1.25rem;
+  --arpi-size-header: 4rem;
+
+  --arpi-radius-none: 0;
+  --arpi-radius-xs: 0.125rem;
+  --arpi-radius-sm: 0.25rem;
+  --arpi-radius-md: 0.375rem;
+  --arpi-radius-lg: 0.625rem;
+  --arpi-radius-xl: 0.875rem;
+  --arpi-radius-2xl: 1.25rem;
+  --arpi-radius-pill: 999rem;
+
+  --arpi-border-hairline: 1px;
+  --arpi-border-thick: 2px;
+
+  /* ---------------------------------------------------------------------
+     6. Elevation
+     Dark-theme elevation is carried by a lightening border plus a contained
+     shadow, not by a large soft drop shadow, which on a near-black ground
+     reads as smudge rather than as height.
+     --------------------------------------------------------------------- */
+
+  --arpi-shadow-none: none;
+  --arpi-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.5);
+  --arpi-shadow-md: 0 2px 4px -1px rgb(0 0 0 / 0.55), 0 4px 12px -2px rgb(0 0 0 / 0.4);
+  --arpi-shadow-lg: 0 4px 8px -2px rgb(0 0 0 / 0.6), 0 12px 32px -8px rgb(0 0 0 / 0.5);
+  --arpi-shadow-xl:
+    0 8px 16px -4px rgb(0 0 0 / 0.65), 0 24px 64px -16px rgb(0 0 0 / 0.55);
+  --arpi-shadow-accent:
+    0 0 0 1px var(--arpi-colour-accent-muted), 0 6px 24px -8px rgb(34 200 224 / 0.35);
+
+  /* Inset top highlight. One pixel of light on the top edge of a raised
+     surface, which is how physical instrument panels read. */
+  --arpi-shadow-inset-top: inset 0 1px 0 0 rgb(255 255 255 / 0.045);
+
+  /* ---------------------------------------------------------------------
+     7. Blur and opacity
+     Blur is used in exactly two places on this site - the sticky header and
+     the mobile drawer scrim. Anywhere else is a design defect.
+     --------------------------------------------------------------------- */
+
+  --arpi-blur-header: 14px;
+  --arpi-blur-scrim: 3px;
+
+  --arpi-opacity-disabled: 0.42;
+  --arpi-opacity-scrim: 0.72;
+  --arpi-opacity-grid: 0.055;
+  --arpi-opacity-dim: 0.28;
+
+  /* ---------------------------------------------------------------------
+     8. Motion
+     Full rationale in portfolio/docs/MOTION_SYSTEM.md. Every animated value
+     on the site draws its duration and easing from this list.
+     --------------------------------------------------------------------- */
+
+  /* Duration scale. */
+  --arpi-motion-instant: 80ms;
+  --arpi-motion-fast: 140ms;
+  --arpi-motion-base: 220ms;
+  --arpi-motion-slow: 380ms;
+  --arpi-motion-slower: 620ms;
+  --arpi-motion-deliberate: 900ms;
+  --arpi-motion-ambient: 14s;
+
+  /* Easing scale. */
+  --arpi-ease-standard: cubic-bezier(0.32, 0.72, 0, 1);
+  --arpi-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --arpi-ease-in: cubic-bezier(0.55, 0, 1, 0.45);
+  --arpi-ease-linear: linear;
+
+  /* Distance scale - how far an element travels on a reveal. Kept small: a
+     long travel reads as a slideshow, not as a document. */
+  --arpi-motion-distance-xs: 4px;
+  --arpi-motion-distance-sm: 8px;
+  --arpi-motion-distance-md: 16px;
+  --arpi-motion-distance-lg: 28px;
+
+  /* Stagger between siblings in a revealed group. */
+  --arpi-motion-stagger: 55ms;
+
+  /* ---------------------------------------------------------------------
+     9. Z-index - a closed set. A component may not invent a layer.
+     --------------------------------------------------------------------- */
+
+  --arpi-z-base: 0;
+  --arpi-z-raised: 10;
+  --arpi-z-sticky: 20;
+  --arpi-z-header: 40;
+  --arpi-z-scrim: 50;
+  --arpi-z-drawer: 60;
+  --arpi-z-popover: 70;
+  --arpi-z-dialog: 80;
+  --arpi-z-skiplink: 90;
+
+  /* ---------------------------------------------------------------------
+     10. Layout widths
+     `prose` exists because a 12-column grid does not by itself stop a
+     paragraph reaching 140 characters on a 2560px display.
+     --------------------------------------------------------------------- */
+
+  --arpi-layout-prose: 68ch;
+  --arpi-layout-narrow: 44rem;
+  --arpi-layout-content: 72rem;
+  --arpi-layout-wide: 84rem;
+  --arpi-layout-bleed: 96rem;
+  --arpi-layout-gutter: clamp(1.25rem, 4vw, 3rem);
+  --arpi-layout-columns: 12;
+  --arpi-layout-gap: clamp(1rem, 2vw, 2rem);
+}
+
+/* ==========================================================================
+   Breakpoints
+   --------------------------------------------------------------------------
+   Custom properties cannot be used in a media query, so the breakpoint scale
+   is declared here for documentation and mirrored in theme.css for Tailwind.
+   Any change must be made in both places, and tests/unit/tokens.test.ts
+   asserts they agree.
+
+     xs   375px   small phone
+     sm   640px   large phone
+     md   768px   tablet portrait
+     lg   1024px  tablet landscape / small laptop
+     xl   1280px  laptop
+     2xl  1536px  desktop
+     3xl  1920px  large desktop; content stops widening past this
+
+   The site is also explicitly designed and tested at 320px, which is below
+   `xs` and is handled by the base (unprefixed) styles.
+   ========================================================================== */

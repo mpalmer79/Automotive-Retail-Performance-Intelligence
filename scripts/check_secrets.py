@@ -64,6 +64,16 @@ SKIPPED_DIRECTORY_NAMES: frozenset[str] = frozenset(
         ".ipynb_checkpoints",
         "build",
         "dist",
+        # Frontend build output and caches. Never committed - `portfolio/.gitignore`
+        # excludes all four - but present in a working tree after `npm run build`,
+        # and CI runs this check in the same job as that build. Minified bundles and
+        # source maps contain enough arbitrary text to match a quoted-credential
+        # pattern by coincidence, so scanning them reports failures that are neither
+        # real nor fixable.
+        ".next",
+        ".turbo",
+        "playwright-report",
+        "test-results",
     }
 )
 

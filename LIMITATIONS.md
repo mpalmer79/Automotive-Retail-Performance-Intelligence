@@ -306,6 +306,37 @@ flags off in all three profiles. There is no external source from which a real v
 innocent name. A pipeline ingesting real data would need value-level scanning as well, and this control
 should not be cited as evidence that ARPI performs it.
 
+### 10.3 The portfolio website shows the system, not its results
+
+**The limitation.** A portfolio website exists under `portfolio/`
+([ADR-0009](docs/architecture-decisions/ADR-0009-portfolio-ui-foundation-before-gate-2.md)). It presents the
+architecture, the data model, the governed KPI **definitions**, the governance position and a project status
+derived from source-controlled evidence. It is a presentation layer over this documentation set, and it is
+subject to every limitation in this document.
+
+**What it does not show:**
+
+- **No analytical finding.** Nothing has been analysed, and the site draws no conclusion.
+- **No management recommendation.** None exists to publish.
+- **No dashboard screenshot.** There is no report page to screenshot: no Power BI page, visual or bookmark
+  exists, and real-engine validation of the semantic model is pending on both accepted paths.
+- **No KPI value — real or illustrative.** There is no figure produced by any measure on any route. Not a
+  sample, not a placeholder, not a mock-up. Every number the site displays is a count of repository
+  artefacts, resolved at build time.
+- **No live data, and no way to obtain any.** The site has no API route, no database connection, no query
+  interface and no charting library. It computes no KPI and could not: the `reporting` schema is not
+  reachable from it.
+
+**The `/case-study` route is locked, and that is deliberate.** Gate 2
+([ARCHITECTURE.md §28](ARCHITECTURE.md)) is **CLOSED** — its three conditions, complete report pages,
+reconciled SQL-to-Power BI totals and drafted executive findings, are all unmet — so the public analytical
+case study is gated. The route renders the unmet conditions and the evidence for each rather than a case
+study. **There is also no deployment**: no preview URL and no production URL exist, so the site is not live,
+launched or published.
+
+**What this means for a reviewer.** The website is evidence of the repository's structure, definitions and
+honesty about status. It is not evidence of an analytical result, and it should not be cited as one.
+
 ---
 
 ## 11. `docs/research.md` is a point-in-time market review

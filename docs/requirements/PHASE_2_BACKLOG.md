@@ -1540,9 +1540,9 @@ These seven apply identically to both paths. A run that satisfies six of them ha
 | **Purpose** | Make the work reviewable by someone with limited time, no database, and no Power BI licence. [ARCHITECTURE.md §27](../../ARCHITECTURE.md) Lifecycle Phase 8 requires the repository to be understandable without verbal explanation. |
 | **Dependencies** | `P2.3-04` (for the case study, which Gate 2 governs); `P2.2` for anything showing a page |
 | **Estimated complexity** | **Large** |
-| **Blocking gate** | **Gate 2** for the case study; the remaining items are gated on `P2.2` and `P2.3` rather than on a scope gate |
+| **Blocking gate** | **Gate 2** for the case study; the remaining items are gated on `P2.2` and `P2.3` rather than on a scope gate. [ADR-0009](../architecture-decisions/ADR-0009-portfolio-ui-foundation-before-gate-2.md) records why the website foundation was permitted before Gate 2 while the case study itself stayed gated. |
 | **Architecture references** | §20 (Excel deliverable), §26.2 (Power BI deployment), §26.3 (public case study), §27 Lifecycle Phase 8, §31 (strong portfolio release), §33 |
-| **Status** | **Not started.** `portfolio/` and `excel/` are empty. |
+| **Status** | **In progress.** `P2.4-06` has delivered the portfolio website foundation and its gated case-study shell under `portfolio/`. `excel/` is still empty, and `P2.4-01` through `P2.4-05` are all still **Not started** - most of them cannot start until the report layer exists. The increment is not complete. |
 
 **Acceptance criteria (increment level)**
 
@@ -1720,6 +1720,90 @@ These seven apply identically to both paths. A run that satisfies six of them ha
 **Explicit non-goals**
 
 - No claim of production deployment, real dealership engagement, or measured business impact. There is none.
+
+---
+
+### `P2.4-06` — Portfolio UI foundation and gated case-study shell
+
+> **On this item's identifier.** The change request that produced this item asked for it to be numbered
+> `P2.4-01`. That identifier was already taken, by *Screenshots, model diagram, and DAX measure catalogue*,
+> recorded when this backlog was first written. [README.md §3.1](README.md) makes item identifiers permanent
+> and prohibits reuse and renumbering, and a governed backlog whose numbers move is not a governed backlog.
+> The item is therefore `P2.4-06`. Nothing about its scope changed; only the number it could legally take.
+
+| Field | Value |
+|---|---|
+| **Purpose** | Make the analytical work reviewable by someone with limited time, no database, and no Power BI licence — the audience [ARCHITECTURE.md §27](../../ARCHITECTURE.md) Lifecycle Phase 8 names. Today a reviewer's only options are to clone the repository and read 22,000 lines of Markdown, or to take the README's word for it. This item delivers a public-facing website over content the repository already evidences, and a **locked** shell at `/case-study` that demonstrates Gate 2 rather than describing it. |
+| **Dependencies** | None. It deliberately depends on nothing that is blocked: every number it displays is a count of committed repository artefacts, and every status it displays is read from a committed evidence file. |
+| **Estimated complexity** | **Large** |
+| **Blocking gate** | **None for this item.** [ADR-0009](../architecture-decisions/ADR-0009-portfolio-ui-foundation-before-gate-2.md) records the decision and draws the line: the presentation layer is permitted before Gate 2; the analytical case study is not. Gate 2 continues to gate `P2.4-05` exactly as written. |
+| **Status** | **Delivered.** The website, its design system, seven informational routes and the locked case-study shell exist under `portfolio/`. This does **not** complete `P2.4`, and it does not complete Lifecycle Phase 8. |
+| **Architecture references** | §24 (repository structure), §26.3 (public case study, and the prohibition on a second analytics application), §27 Lifecycle Phase 8, §28 Gate 2, §35 (ADR requirement) |
+
+**Acceptance criteria**
+
+- [x] A production-quality Next.js application exists under `portfolio/`, isolated from the Python and
+      PostgreSQL runtime, with no API route, no database connection, no query interface and no charting
+      library.
+- [x] Seven informational routes exist — overview, architecture, data model, KPI catalogue, governance,
+      status, about — plus a gated case-study route and a non-indexed internal UI lab.
+- [x] **No engineering count or implementation status is hardcoded in a component.** Every one is read from
+      `portfolio/src/generated/project-manifest.json`, which is generated from
+      [`powerbi/validation/model_expectations.json`](../../powerbi/validation/model_expectations.json),
+      [`powerbi/validation/sql_baseline_metadata.json`](../../powerbi/validation/sql_baseline_metadata.json),
+      both engine evidence files, the TMDL source, [`KPI_CATALOG.md`](../../KPI_CATALOG.md), the readiness
+      documents and the `sql/` tree — and which records the source path for every value it emits.
+- [x] The manifest generator **fails the build** when a status contradicts its evidence. In particular it
+      refuses to emit Lifecycle Phase 5 as complete while both real-engine validation paths are pending,
+      refuses to unlock the case study while the Gate 2 verdict is CLOSED, and refuses to describe the
+      semantic model as real-engine validated when no engine has passed.
+- [x] The generator cross-checks the model's own register against the TMDL it describes — tables,
+      relationships, measures, active and inactive counts, the KPI measure map — and fails on any drift.
+- [x] The case-study route is locked, and its lock requires **five** independent conditions: the build flag,
+      the existence of `GATE_2_READINESS.md`, an OPEN verdict in it, the required content files, and the
+      required screenshots. A manually changed environment variable cannot bypass missing repository
+      evidence.
+- [x] **No KPI value appears anywhere on the site**, real or illustrative. The catalogue publishes
+      definitions.
+- [x] The synthetic-data statement appears in the **body** of every primary route, not only in the footer.
+- [x] Interactive explorers for the architecture and the data model, each with a complete non-interactive
+      reading of the same content always present in the DOM.
+- [x] WCAG 2.2 AA: semantic landmarks, one `h1` per page, a skip link, visible focus, keyboard-operable
+      diagrams, no colour-only status, and reduced-motion support that renders each animation's end state
+      rather than merely removing movement.
+- [x] No horizontal scrolling and no clipped content at 320, 375, 768, 1024, 1280, 1440 and 1920 pixels, or
+      at 200% zoom.
+- [x] A documented design system and motion system under `portfolio/docs/`.
+- [x] Original source-controlled visual assets: monogram, wordmark, favicon set, social preview. No
+      manufacturer logo, no dealership logo, no vehicle photography, no fabricated certification badge.
+- [x] A separate frontend CI job that does not destabilise the existing Python, PostgreSQL, documentation or
+      Power BI checks, and that needs no credential of any kind.
+- [x] `python3 scripts/check_secrets.py` passes over the new tree.
+- [x] Nothing in the site claims a capability the repository does not have.
+
+**Tests required**
+
+- `npm run verify` from `portfolio/` — format check, lint, type check, manifest check, unit tests,
+  production build.
+- `npm run test:e2e` from `portfolio/` — end-to-end, accessibility and content-integrity suites.
+- `python3 scripts/check_docs_links.py`, `python3 scripts/check_naming.py`,
+  `python3 scripts/check_secrets.py`.
+- A content-integrity check that fails when the site would state Phase 5 is complete while both engine
+  results are pending, when a displayed count differs from repository evidence, when the case-study route
+  unlocks without evidence, when a Deferred domain is labelled implemented, or when a primary page is missing
+  the synthetic-data statement.
+
+**Explicit non-goals**
+
+- **No second analytics application.** [ARCHITECTURE.md §26.3](../../ARCHITECTURE.md) prohibits it, and the
+  site is built so that it could not become one: it has no route to the database and computes no KPI.
+- **No Power BI dashboard work.** `P2.2` is untouched and remains sequenced behind `P2.1-09`.
+- **No findings and no recommendations.** `P2.3` is untouched.
+- **No production deployment.** A branch preview is permitted and is not indexed; promoting the site to a
+  production domain is a separate decision requiring explicit approval.
+- **No contact form, no analytics script, no third-party tracker, no chatbot, no AI feature and no user
+  account.** None of them serves the reviewability objective, and each would add a runtime dependency to a
+  static document.
 
 ---
 
@@ -1917,8 +2001,8 @@ because CI reporting the state of two engines does not depend on either having b
 | `P2.1` | 15 | 2 | 9 | 4 | 11 | 4 |
 | `P2.2` | 10 | 0 | 9 | 1 | 0 | 10 |
 | `P2.3` | 4 | 1 | 2 | 1 | 0 | 4 |
-| `P2.4` | 5 | 1 | 3 | 1 | 0 | 5 |
-| **Total** | **34** | **4** | **23** | **7** | **11** | **23** |
+| `P2.4` | 6 | 1 | 3 | 2 | 1 | 5 |
+| **Total** | **35** | **4** | **23** | **8** | **12** | **23** |
 
 The four unmet `P2.1` items are `P2.1-09` (the gate), `P2.1-11` (a cloud database), `P2.1-12` (a Fabric
 tenant, workspace and connection) and `P2.1-14` (the Fabric run). Three of the four need something that does
@@ -1929,6 +2013,12 @@ not live in a repository, which is the honest shape of the remaining work.
 path. They are new work, not a re-plan of existing work: the ten original items are unchanged in scope, and
 `P2.1-09` was rewritten rather than renumbered because item identifiers are permanent
 ([README.md §3.1](README.md)).
+
+`P2.4` gained one item — `P2.4-06` — when
+[ADR-0009](../architecture-decisions/ADR-0009-portfolio-ui-foundation-before-gate-2.md) permitted the
+portfolio website foundation to be built before Gate 2 opens. It is numbered `06` rather than `01` because
+`P2.4-01` was already assigned and identifiers are never reused or renumbered
+([README.md §3.1](README.md)); the item itself explains that in full.
 
 **What "Delivered" means in this table.** Eleven `P2.1` items have their acceptance criteria met by
 committed files that a reviewer can open. It does **not** mean `P2.1` is complete, and it particularly does
@@ -1946,7 +2036,10 @@ states per engine. The report is a PBIR shell with no pages.
 
 **What does not exist.** Any dashboard page. Any model that a Microsoft semantic-model engine has loaded,
 refreshed or evaluated — on either accepted path. Any SQL-to-DAX reconciliation result. Any cloud database
-instance. Any Fabric tenant, workspace or connection. Any finding. Any packaged portfolio artefact.
+instance. Any Fabric tenant, workspace or connection. Any finding. Any report screenshot, model diagram, generated DAX measure catalogue, Excel operating
+report, walkthrough video or case-study copy — the five packaging items that depend on the report layer
+or on Gate 2. The portfolio **website foundation** delivered by `P2.4-06` does exist, and it is the only
+packaged artefact that does.
 
 **The distinction that matters most in this table** is between machinery and evidence. `P2.1-13` and
 `P2.1-15` are Delivered and they produce no evidence at all; they are the means of producing it. Counting

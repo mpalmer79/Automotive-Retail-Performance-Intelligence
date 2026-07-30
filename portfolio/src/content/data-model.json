@@ -1,0 +1,613 @@
+{
+  "source": "DATA_DICTIONARY.md",
+  "sourceVersion": "1.0",
+  "lastReviewed": "2026-07-28",
+  "entities": [
+    {
+      "id": "dim_date",
+      "table": "warehouse.dim_date",
+      "reportingView": "reporting.vw_calendar",
+      "label": "Calendar",
+      "kind": "dimension",
+      "grain": "One row per calendar date",
+      "primaryKey": "date_key",
+      "foreignKeys": [],
+      "historyPolicy": "SCD Type 0 - immutable, insert-only",
+      "piiClassification": "Non-personal throughout. A calendar dimension cannot contain personal data.",
+      "analyticalUse": "Provides every date attribute used for period filtering, time intelligence, seasonality analysis, and selling-day normalization across every fact table.",
+      "kpiDomains": ["sales", "gross", "inventory", "funnel", "marketing"],
+      "rowCount": 184,
+      "docPath": "docs/source-to-target/STM-001-dim-date.md",
+      "columnCount": 26
+    },
+    {
+      "id": "dim_dealership",
+      "table": "warehouse.dim_dealership",
+      "reportingView": "reporting.vw_dealership",
+      "label": "Dealership",
+      "kind": "dimension",
+      "grain": "One row per dealership store version (SCD2)",
+      "primaryKey": "dealership_key",
+      "foreignKeys": [],
+      "historyPolicy": "SCD Type 2",
+      "piiClassification": "No personal data. dealership_id is a Synthetic identifier; every other column is Non-personal. Geography stops at city level; contact details are prohibited.",
+      "analyticalUse": "Conformed store dimension enabling every fact to be sliced by store, carrying the store attributes that drive nearly all comparative analysis.",
+      "kpiDomains": ["sales", "gross", "inventory", "funnel", "marketing"],
+      "rowCount": 3,
+      "docPath": "docs/source-to-target/STM-002-dim-dealership.md",
+      "columnCount": 16
+    },
+    {
+      "id": "dim_employee",
+      "table": "warehouse.dim_employee",
+      "reportingView": "reporting.vw_employee",
+      "label": "Employee",
+      "kind": "dimension",
+      "grain": "One row per employee role-assignment version (SCD2)",
+      "primaryKey": "employee_key",
+      "foreignKeys": [
+        { "column": "dealership_key", "references": "warehouse.dim_dealership" }
+      ],
+      "historyPolicy": "SCD Type 2",
+      "piiClassification": "employee_id is a Synthetic identifier; tenure_band is a Minimized personal attribute. Names, contact details, birth dates, and compensation are Prohibited.",
+      "analyticalUse": "Supplies the contextual attributes (tenure, department, store) required before any employee performance figure may be shown.",
+      "kpiDomains": ["sales", "gross", "funnel"],
+      "rowCount": 30,
+      "docPath": "docs/source-to-target/STM-006-dim-employee.md",
+      "columnCount": null
+    },
+    {
+      "id": "dim_customer",
+      "table": "warehouse.dim_customer",
+      "reportingView": "reporting.vw_customer",
+      "label": "Customer",
+      "kind": "dimension",
+      "grain": "One row per synthetic customer",
+      "primaryKey": "customer_key",
+      "foreignKeys": [],
+      "historyPolicy": "SCD Type 1",
+      "piiClassification": "age_band, county, state_code are Minimized personal attribute; customer_id, household_key are Synthetic identifier; else Non-personal. All persons fabricated.",
+      "analyticalUse": "Represents the synthetic buying party on a sale, lead, or appointment, deliberately thin to support repeat-purchase and cohort analysis without profiling individuals.",
+      "kpiDomains": ["sales", "gross", "funnel"],
+      "rowCount": 2500,
+      "docPath": "docs/source-to-target/STM-007-dim-customer.md",
+      "columnCount": null
+    },
+    {
+      "id": "dim_vehicle",
+      "table": "warehouse.dim_vehicle",
+      "reportingView": "reporting.vw_vehicle",
+      "label": "Vehicle",
+      "kind": "dimension",
+      "grain": "One row per unique physical vehicle",
+      "primaryKey": "vehicle_key",
+      "foreignKeys": [
+        { "column": "vehicle_model_key", "references": "warehouse.dim_vehicle_model" }
+      ],
+      "historyPolicy": "SCD Type 1",
+      "piiClassification": "Non-personal throughout, with vehicle_id and synthetic_vin classed as Synthetic identifier. No VIN in ARPI is real or ever linked to owner history.",
+      "analyticalUse": "Describes an individual physical unit of inventory, distinguished from the model dimension; required by every inventory and sale measure.",
+      "kpiDomains": ["sales", "gross", "inventory", "funnel"],
+      "rowCount": 900,
+      "docPath": "docs/source-to-target/STM-005-dim-vehicle.md",
+      "columnCount": null
+    },
+    {
+      "id": "dim_vehicle_model",
+      "table": "warehouse.dim_vehicle_model",
+      "reportingView": "reporting.vw_vehicle_model",
+      "label": "Vehicle model",
+      "kind": "dimension",
+      "grain": "One row per model-year / make / model / trim combination",
+      "primaryKey": "vehicle_model_key",
+      "foreignKeys": [],
+      "historyPolicy": "SCD Type 1",
+      "piiClassification": "Non-personal throughout.",
+      "analyticalUse": "Configuration-level dimension enabling model, trim, and class analysis independent of physical unit counts, underpinning days-supply and model-mix reporting.",
+      "kpiDomains": ["sales", "gross", "inventory"],
+      "rowCount": 120,
+      "docPath": "docs/source-to-target/STM-004-dim-vehicle-model.md",
+      "columnCount": null
+    },
+    {
+      "id": "dim_lead_source",
+      "table": "warehouse.dim_lead_source",
+      "reportingView": "reporting.vw_lead_source",
+      "label": "Lead source",
+      "kind": "dimension",
+      "grain": "One row per normalized lead source",
+      "primaryKey": "lead_source_key",
+      "foreignKeys": [],
+      "historyPolicy": "SCD Type 1",
+      "piiClassification": "Non-personal throughout.",
+      "analyticalUse": "Normalizes CRM lead origin into a governed set of sources so funnel and marketing measures are comparable across stores.",
+      "kpiDomains": ["sales", "funnel", "marketing"],
+      "rowCount": 19,
+      "docPath": "docs/source-to-target/STM-010-dim-lead-source.md",
+      "columnCount": null
+    },
+    {
+      "id": "dim_marketing_campaign",
+      "table": "warehouse.dim_marketing_campaign",
+      "reportingView": "reporting.vw_marketing_campaign",
+      "label": "Marketing campaign",
+      "kind": "dimension",
+      "grain": "One row per campaign",
+      "primaryKey": "campaign_key",
+      "foreignKeys": [
+        { "column": "lead_source_key", "references": "warehouse.dim_lead_source" }
+      ],
+      "historyPolicy": "SCD Type 1 initially",
+      "piiClassification": "Non-personal throughout.",
+      "analyticalUse": "Describes marketing campaigns so that spend, leads, and resulting gross can be attributed to a named initiative rather than only to a channel.",
+      "kpiDomains": ["funnel", "marketing"],
+      "rowCount": 24,
+      "docPath": "docs/source-to-target/STM-013-dim-marketing-campaign.md",
+      "columnCount": null
+    },
+    {
+      "id": "fact_vehicle_sale",
+      "table": "warehouse.fact_vehicle_sale",
+      "reportingView": "reporting.vw_vehicle_sales",
+      "label": "Vehicle sale",
+      "kind": "fact",
+      "grain": "One row per finalized vehicle transaction",
+      "primaryKey": "vehicle_sale_key",
+      "foreignKeys": [
+        { "column": "sale_date_key", "references": "warehouse.dim_date" },
+        { "column": "delivery_date_key", "references": "warehouse.dim_date" },
+        { "column": "dealership_key", "references": "warehouse.dim_dealership" },
+        { "column": "vehicle_key", "references": "warehouse.dim_vehicle" },
+        { "column": "customer_key", "references": "warehouse.dim_customer" },
+        { "column": "salesperson_key", "references": "warehouse.dim_employee" },
+        { "column": "desk_manager_key", "references": "warehouse.dim_employee" },
+        { "column": "finance_manager_key", "references": "warehouse.dim_employee" },
+        { "column": "lead_source_key", "references": "warehouse.dim_lead_source" }
+      ],
+      "historyPolicy": "Insert-only transaction fact",
+      "piiClassification": "Non-personal. customer_key and employee keys are synthetic surrogates.",
+      "analyticalUse": "The central profit fact, carrying the gross components that drive nearly every executive measure in the project.",
+      "kpiDomains": ["sales", "gross", "inventory"],
+      "rowCount": 650,
+      "docPath": "docs/source-to-target/STM-008-fact-vehicle-sale.md",
+      "columnCount": null
+    },
+    {
+      "id": "fact_vehicle_inventory_snapshot",
+      "table": "warehouse.fact_vehicle_inventory_snapshot",
+      "reportingView": "reporting.vw_inventory_snapshots",
+      "label": "Inventory snapshot",
+      "kind": "fact",
+      "grain": "One row per vehicle per dealership per daily snapshot date while active in inventory",
+      "primaryKey": "snapshot_date_key, dealership_key, vehicle_key",
+      "foreignKeys": [
+        { "column": "snapshot_date_key", "references": "warehouse.dim_date" },
+        { "column": "dealership_key", "references": "warehouse.dim_dealership" },
+        { "column": "vehicle_key", "references": "warehouse.dim_vehicle" },
+        { "column": "vehicle_model_key", "references": "warehouse.dim_vehicle_model" }
+      ],
+      "historyPolicy": "Periodic snapshot, insert-only and immutable",
+      "piiClassification": "Non-personal throughout.",
+      "analyticalUse": "Daily photograph of every unit in stock, enabling inventory age, aged-inventory percentage, days supply, and inventory investment measures as of any date.",
+      "kpiDomains": ["inventory"],
+      "rowCount": 45754,
+      "docPath": "docs/source-to-target/STM-009-fact-vehicle-inventory-snapshot.md",
+      "columnCount": null
+    },
+    {
+      "id": "fact_lead",
+      "table": "warehouse.fact_lead",
+      "reportingView": "reporting.vw_leads",
+      "label": "Lead",
+      "kind": "fact",
+      "grain": "One row per unique CRM lead",
+      "primaryKey": "lead_key",
+      "foreignKeys": [
+        { "column": "lead_created_date_key", "references": "warehouse.dim_date" },
+        { "column": "dealership_key", "references": "warehouse.dim_dealership" },
+        { "column": "customer_key", "references": "warehouse.dim_customer" },
+        { "column": "vehicle_key", "references": "warehouse.dim_vehicle" },
+        { "column": "vehicle_model_key", "references": "warehouse.dim_vehicle_model" },
+        { "column": "lead_source_key", "references": "warehouse.dim_lead_source" },
+        { "column": "campaign_key", "references": "warehouse.dim_marketing_campaign" },
+        { "column": "assigned_salesperson_key", "references": "warehouse.dim_employee" },
+        { "column": "assigned_bdc_employee_key", "references": "warehouse.dim_employee" }
+      ],
+      "historyPolicy": "Accumulating snapshot",
+      "piiClassification": "Non-personal, with lead_id and original_lead_id classed as Synthetic identifier.",
+      "analyticalUse": "One row per CRM opportunity, carrying the funnel milestone flags the entire Lead Funnel page rests on.",
+      "kpiDomains": ["funnel", "marketing"],
+      "rowCount": 6000,
+      "docPath": "docs/source-to-target/STM-011-fact-lead.md",
+      "columnCount": null
+    },
+    {
+      "id": "fact_appointment",
+      "table": "warehouse.fact_appointment",
+      "reportingView": "reporting.vw_appointments",
+      "label": "Appointment",
+      "kind": "fact",
+      "grain": "One row per scheduled appointment",
+      "primaryKey": "appointment_key",
+      "foreignKeys": [
+        { "column": "appointment_created_date_key", "references": "warehouse.dim_date" },
+        { "column": "scheduled_date_key", "references": "warehouse.dim_date" },
+        { "column": "show_date_key", "references": "warehouse.dim_date" },
+        { "column": "dealership_key", "references": "warehouse.dim_dealership" },
+        { "column": "lead_key", "references": "warehouse.fact_lead" },
+        { "column": "customer_key", "references": "warehouse.dim_customer" },
+        { "column": "salesperson_key", "references": "warehouse.dim_employee" },
+        { "column": "bdc_employee_key", "references": "warehouse.dim_employee" },
+        { "column": "vehicle_key", "references": "warehouse.dim_vehicle" },
+        { "column": "vehicle_model_key", "references": "warehouse.dim_vehicle_model" }
+      ],
+      "historyPolicy": "Insert-only transaction fact",
+      "piiClassification": "Non-personal throughout.",
+      "analyticalUse": "Isolates showroom appointment outcomes, a different grain from leads, to compute show rate and show-to-sale conversion.",
+      "kpiDomains": ["funnel"],
+      "rowCount": 2111,
+      "docPath": "docs/source-to-target/STM-012-fact-appointment.md",
+      "columnCount": null
+    },
+    {
+      "id": "fact_marketing_spend",
+      "table": "warehouse.fact_marketing_spend",
+      "reportingView": "reporting.vw_marketing_spend",
+      "label": "Marketing spend",
+      "kind": "fact",
+      "grain": "One row per dealership, campaign, and calendar month",
+      "primaryKey": "month_date_key, dealership_key, campaign_key",
+      "foreignKeys": [
+        { "column": "month_date_key", "references": "warehouse.dim_date" },
+        { "column": "dealership_key", "references": "warehouse.dim_dealership" },
+        { "column": "campaign_key", "references": "warehouse.dim_marketing_campaign" },
+        { "column": "lead_source_key", "references": "warehouse.dim_lead_source" }
+      ],
+      "historyPolicy": "Insert-only periodic fact",
+      "piiClassification": "Non-personal throughout.",
+      "analyticalUse": "Monthly marketing investment by store and campaign; the denominator for cost-per-lead and cost-per-sale, and divisor for gross return on advertising spend.",
+      "kpiDomains": ["marketing"],
+      "rowCount": 212,
+      "docPath": "docs/source-to-target/STM-014-fact-marketing-spend.md",
+      "columnCount": null
+    }
+  ],
+  "relationships": [
+    {
+      "from": "vw_vehicle_sales",
+      "fromColumn": "sale_date_key",
+      "to": "vw_calendar",
+      "toColumn": "date_key",
+      "active": true,
+      "cardinality": "many-to-one"
+    },
+    {
+      "from": "vw_vehicle_sales",
+      "fromColumn": "delivery_date_key",
+      "to": "vw_calendar",
+      "toColumn": "date_key",
+      "active": false,
+      "cardinality": "many-to-one"
+    },
+    {
+      "from": "vw_inventory_snapshots",
+      "fromColumn": "snapshot_date_key",
+      "to": "vw_calendar",
+      "toColumn": "date_key",
+      "active": true,
+      "cardinality": "many-to-one"
+    },
+    {
+      "from": "vw_leads",
+      "fromColumn": "lead_created_date_key",
+      "to": "vw_calendar",
+      "toColumn": "date_key",
+      "active": true,
+      "cardinality": "many-to-one"
+    },
+    {
+      "from": "vw_appointments",
+      "fromColumn": "scheduled_date_key",
+      "to": "vw_calendar",
+      "toColumn": "date_key",
+      "active": true,
+      "cardinality": "many-to-one"
+    },
+    {
+      "from": "vw_appointments",
+      "fromColumn": "created_date_key",
+      "to": "vw_calendar",
+      "toColumn": "date_key",
+      "active": false,
+      "cardinality": "many-to-one"
+    },
+    {
+      "from": "vw_appointments",
+      "fromColumn": "show_date_key",
+      "to": "vw_calendar",
+      "toColumn": "date_key",
+      "active": false,
+      "cardinality": "many-to-one"
+    },
+    {
+      "from": "vw_marketing_spend",
+      "fromColumn": "month_date_key",
+      "to": "vw_calendar",
+      "toColumn": "date_key",
+      "active": true,
+      "cardinality": "many-to-one"
+    },
+    {
+      "from": "vw_vehicle_sales",
+      "fromColumn": "dealership_key",
+      "to": "vw_dealership",
+      "toColumn": "dealership_key",
+      "active": true,
+      "cardinality": "many-to-one"
+    },
+    {
+      "from": "vw_inventory_snapshots",
+      "fromColumn": "dealership_key",
+      "to": "vw_dealership",
+      "toColumn": "dealership_key",
+      "active": true,
+      "cardinality": "many-to-one"
+    },
+    {
+      "from": "vw_leads",
+      "fromColumn": "dealership_key",
+      "to": "vw_dealership",
+      "toColumn": "dealership_key",
+      "active": true,
+      "cardinality": "many-to-one"
+    },
+    {
+      "from": "vw_appointments",
+      "fromColumn": "dealership_key",
+      "to": "vw_dealership",
+      "toColumn": "dealership_key",
+      "active": true,
+      "cardinality": "many-to-one"
+    },
+    {
+      "from": "vw_marketing_spend",
+      "fromColumn": "dealership_key",
+      "to": "vw_dealership",
+      "toColumn": "dealership_key",
+      "active": true,
+      "cardinality": "many-to-one"
+    },
+    {
+      "from": "vw_employee",
+      "fromColumn": "dealership_key",
+      "to": "vw_dealership",
+      "toColumn": "dealership_key",
+      "active": false,
+      "cardinality": "many-to-one"
+    },
+    {
+      "from": "vw_vehicle",
+      "fromColumn": "vehicle_model_key",
+      "to": "vw_vehicle_model",
+      "toColumn": "vehicle_model_key",
+      "active": true,
+      "cardinality": "many-to-one"
+    },
+    {
+      "from": "vw_vehicle_sales",
+      "fromColumn": "vehicle_key",
+      "to": "vw_vehicle",
+      "toColumn": "vehicle_key",
+      "active": true,
+      "cardinality": "many-to-one"
+    },
+    {
+      "from": "vw_inventory_snapshots",
+      "fromColumn": "vehicle_key",
+      "to": "vw_vehicle",
+      "toColumn": "vehicle_key",
+      "active": true,
+      "cardinality": "many-to-one"
+    },
+    {
+      "from": "vw_vehicle_sales",
+      "fromColumn": "customer_key",
+      "to": "vw_customer",
+      "toColumn": "customer_key",
+      "active": true,
+      "cardinality": "many-to-one"
+    },
+    {
+      "from": "vw_leads",
+      "fromColumn": "customer_key",
+      "to": "vw_customer",
+      "toColumn": "customer_key",
+      "active": true,
+      "cardinality": "many-to-one"
+    },
+    {
+      "from": "vw_appointments",
+      "fromColumn": "customer_key",
+      "to": "vw_customer",
+      "toColumn": "customer_key",
+      "active": true,
+      "cardinality": "many-to-one"
+    },
+    {
+      "from": "vw_vehicle_sales",
+      "fromColumn": "salesperson_key",
+      "to": "vw_employee",
+      "toColumn": "employee_key",
+      "active": true,
+      "cardinality": "many-to-one"
+    },
+    {
+      "from": "vw_vehicle_sales",
+      "fromColumn": "desk_manager_key",
+      "to": "vw_employee",
+      "toColumn": "employee_key",
+      "active": false,
+      "cardinality": "many-to-one"
+    },
+    {
+      "from": "vw_vehicle_sales",
+      "fromColumn": "finance_manager_key",
+      "to": "vw_employee",
+      "toColumn": "employee_key",
+      "active": false,
+      "cardinality": "many-to-one"
+    },
+    {
+      "from": "vw_leads",
+      "fromColumn": "assigned_employee_key",
+      "to": "vw_employee",
+      "toColumn": "employee_key",
+      "active": true,
+      "cardinality": "many-to-one"
+    },
+    {
+      "from": "vw_appointments",
+      "fromColumn": "salesperson_key",
+      "to": "vw_employee",
+      "toColumn": "employee_key",
+      "active": true,
+      "cardinality": "many-to-one"
+    },
+    {
+      "from": "vw_appointments",
+      "fromColumn": "bdc_employee_key",
+      "to": "vw_employee",
+      "toColumn": "employee_key",
+      "active": false,
+      "cardinality": "many-to-one"
+    },
+    {
+      "from": "vw_leads",
+      "fromColumn": "lead_source_key",
+      "to": "vw_lead_source",
+      "toColumn": "lead_source_key",
+      "active": true,
+      "cardinality": "many-to-one"
+    },
+    {
+      "from": "vw_vehicle_sales",
+      "fromColumn": "lead_source_key",
+      "to": "vw_lead_source",
+      "toColumn": "lead_source_key",
+      "active": true,
+      "cardinality": "many-to-one"
+    },
+    {
+      "from": "vw_marketing_spend",
+      "fromColumn": "lead_source_key",
+      "to": "vw_lead_source",
+      "toColumn": "lead_source_key",
+      "active": true,
+      "cardinality": "many-to-one"
+    },
+    {
+      "from": "vw_leads",
+      "fromColumn": "campaign_key",
+      "to": "vw_marketing_campaign",
+      "toColumn": "campaign_key",
+      "active": true,
+      "cardinality": "many-to-one"
+    },
+    {
+      "from": "vw_marketing_spend",
+      "fromColumn": "campaign_key",
+      "to": "vw_marketing_campaign",
+      "toColumn": "campaign_key",
+      "active": true,
+      "cardinality": "many-to-one"
+    },
+    {
+      "from": "vw_leads",
+      "fromColumn": "sale_key",
+      "to": "vw_vehicle_sales",
+      "toColumn": "sale_key",
+      "active": false,
+      "cardinality": "many-to-one"
+    },
+    {
+      "from": "vw_appointments",
+      "fromColumn": "sale_key",
+      "to": "vw_vehicle_sales",
+      "toColumn": "sale_key",
+      "active": false,
+      "cardinality": "many-to-one"
+    },
+    {
+      "from": "vw_appointments",
+      "fromColumn": "lead_key",
+      "to": "vw_leads",
+      "toColumn": "lead_key",
+      "active": false,
+      "cardinality": "many-to-one"
+    },
+    {
+      "from": "vw_inventory_turn",
+      "fromColumn": "month_date_key",
+      "to": "vw_calendar",
+      "toColumn": "date_key",
+      "active": true,
+      "cardinality": "many-to-one"
+    },
+    {
+      "from": "vw_inventory_turn",
+      "fromColumn": "dealership_key",
+      "to": "vw_dealership",
+      "toColumn": "dealership_key",
+      "active": true,
+      "cardinality": "many-to-one"
+    },
+    {
+      "from": "vw_days_supply",
+      "fromColumn": "as_of_date_key",
+      "to": "vw_calendar",
+      "toColumn": "date_key",
+      "active": true,
+      "cardinality": "many-to-one"
+    },
+    {
+      "from": "vw_days_supply",
+      "fromColumn": "dealership_key",
+      "to": "vw_dealership",
+      "toColumn": "dealership_key",
+      "active": true,
+      "cardinality": "many-to-one"
+    },
+    {
+      "from": "vw_marketing_performance",
+      "fromColumn": "month_date_key",
+      "to": "vw_calendar",
+      "toColumn": "date_key",
+      "active": true,
+      "cardinality": "many-to-one"
+    },
+    {
+      "from": "vw_marketing_performance",
+      "fromColumn": "dealership_key",
+      "to": "vw_dealership",
+      "toColumn": "dealership_key",
+      "active": true,
+      "cardinality": "many-to-one"
+    },
+    {
+      "from": "vw_marketing_performance",
+      "fromColumn": "lead_source_key",
+      "to": "vw_lead_source",
+      "toColumn": "lead_source_key",
+      "active": true,
+      "cardinality": "many-to-one"
+    },
+    {
+      "from": "vw_marketing_performance",
+      "fromColumn": "campaign_key",
+      "to": "vw_marketing_campaign",
+      "toColumn": "campaign_key",
+      "active": true,
+      "cardinality": "many-to-one"
+    }
+  ]
+}

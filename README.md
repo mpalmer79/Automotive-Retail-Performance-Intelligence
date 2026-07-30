@@ -12,6 +12,7 @@ A governed, reproducible analytics platform for a fictional three-store automoti
 * **Lifecycle Phase 1–4 — complete.** All eight MVP dimensions, all five MVP facts, twenty-eight reporting views, and all 29 KPIs in [`KPI_CATALOG.md`](KPI_CATALOG.md) are implemented, computable and tested. Gate 1 is **OPEN** — [`docs/requirements/GATE_1_READINESS.md`](docs/requirements/GATE_1_READINESS.md).
 * **Lifecycle Phase 5 — semantic model built, NOT complete.** A source-controlled Power BI Project exists at [`powerbi/ARPI_Performance_Intelligence/`](powerbi/ARPI_Performance_Intelligence), stored as TMDL: twenty-six tables, forty-two relationships, and all twenty-nine governed KPI measures. **Static validation passes** (9,452 assertions in `scripts/check_powerbi_model.py`). **Real-engine validation is still pending** — no Microsoft semantic-model engine has yet loaded this model, refreshed it, or returned a single number from it, so its DAX is unproven. Phase 5 is not complete until that happens.
 * **No dashboard page or visual exists**, and no analytical finding has been drawn. Both are later phases.
+* **Portfolio website foundation — built, under [`portfolio/`](portfolio/).** A Next.js site that renders this repository's own documentation: architecture, data model, KPI *definitions*, governance, and a project status derived from source-controlled evidence. It contains **no Power BI dashboard page, visual or bookmark**, because none exists; real-engine validation of the semantic model is **still pending on both accepted paths**. **Gate 2 is CLOSED**, all three of its conditions unmet, so the **public analytical case study remains gated** — the site ships a **locked** case-study shell, not the case study. **There is no preview deployment and no production deployment**: the site is not live, launched or published, and the only way to view it today is to build it locally. Governed by [ADR-0009](docs/architecture-decisions/ADR-0009-portfolio-ui-foundation-before-gate-2.md).
 
 See [Current implementation status](#current-implementation-status).
 
@@ -130,6 +131,12 @@ Definitions, formulas, grains, inclusion and exclusion rules, and known limitati
 | **Markdown** / **Mermaid** | Documentation and source-controlled diagrams |
 | **TMDL** | The semantic model's source format — text, diffable, reviewable without a Power BI licence |
 | **DAX** | The twenty-nine governed KPI measures |
+| **Next.js 16** / **React 19** | The portfolio website under `portfolio/` — App Router, statically rendered, no API route |
+| **TypeScript** | Strict-mode types for the website and its build-time manifest generator |
+| **Tailwind CSS v4** | The website's design tokens and styling |
+| **Motion** | The website's documented motion system |
+| **Vitest** | Unit, component, and content-integrity tests for the website |
+| **Playwright** / **axe-core** | Accessibility, end-to-end, content-integrity, and design-system tests for the website |
 
 ### Planned
 
@@ -217,7 +224,11 @@ Automotive-Retail-Performance-Intelligence/
 ├── powerbi/           ARPI_Performance_Intelligence/ PBIP project (TMDL semantic model),
 │                      model_documentation/, validation/ (SQL baseline and engine evidence)
 ├── excel/             Empty — no workbook exists yet
-└── portfolio/         Empty — case study and launch material not written yet
+└── portfolio/         Next.js website foundation: eight routes over the documented
+                       architecture, data model, KPI definitions, governance and status,
+                       plus README.md and docs/ (design system, motion, content model,
+                       accessibility, performance, deployment, visual review).
+                       The case study itself is still not written; its route is a locked shell
 ```
 
 The annotated tree, with an explicit `[now]` / `[empty]` / `[planned]` marker on every entry, is in [`ARCHITECTURE.md` §24](ARCHITECTURE.md).
@@ -260,13 +271,16 @@ Labels are used strictly. **Implemented** means it exists and runs today.
 | **Real-engine validation of the semantic model** | **Pending** | No Microsoft engine has loaded, refreshed or queried this model. Static parsing cannot substitute. This is the only thing between here and a complete Lifecycle Phase 5 |
 | Stakeholder-question traceability matrix | Implemented | [`docs/requirements/STAKEHOLDER_QUESTIONS.md`](docs/requirements/STAKEHOLDER_QUESTIONS.md) |
 | Gate 1 readiness review | Implemented | [`docs/requirements/GATE_1_READINESS.md`](docs/requirements/GATE_1_READINESS.md) |
+| Portfolio website foundation | Implemented | [`portfolio/`](portfolio/) — Next.js 16 App Router, React 19, TypeScript strict mode, Tailwind CSS v4, Motion, lucide-react. Eight routes — `/`, `/architecture`, `/data-model`, `/kpis`, `/governance`, `/status`, `/about`, `/case-study` — seven of them in the primary navigation, plus a non-indexed internal `/ui-lab`. Isolated from the Python and PostgreSQL runtime: no API route, no database connection, no query interface, no charting library, and it computes no KPI. Governed by [ADR-0009](docs/architecture-decisions/ADR-0009-portfolio-ui-foundation-before-gate-2.md). **No preview deployment and no production deployment exist.** |
+| Website evidence generation and its own CI | Implemented | Every engineering count and implementation status the site shows is generated at build time into `portfolio/src/generated/project-manifest.json` by `portfolio/scripts/generate-project-manifest.ts`, from `powerbi/validation/model_expectations.json`, `powerbi/validation/sql_baseline_metadata.json`, both engine evidence files, the TMDL source, `KPI_CATALOG.md`, the readiness documents, and the `sql/` tree. The generator **fails the build** when a status contradicts its evidence. A separate workflow, `.github/workflows/frontend.yml`, runs two jobs — `quality` and `browser` — needs no credential of any kind, and never contacts an engine; `.github/workflows/ci.yml` is unchanged. 110 unit, component, and content-integrity tests and 124 Playwright accessibility, end-to-end, content-integrity, and design-system tests pass, with zero critical or serious axe violations across all nine routes. |
+| Gated case-study shell | Implemented, locked | The `/case-study` route exists as a **locked shell**. Gate 2 is **CLOSED** and all three of its conditions are unmet, so the public analytical case study remains gated; the page shows the unmet conditions instead of findings. Unlocking requires five independent conditions, and the environment flag among them is necessary and never sufficient — [ADR-0009](docs/architecture-decisions/ADR-0009-portfolio-ui-foundation-before-gate-2.md). There is no KPI value anywhere on the site. |
 | NHTSA vPIC public enrichment | Planned | Phase 1.1 |
 | Power BI report pages and dashboards | Planned | Delivery increment `P2.2`, blocked until Lifecycle Phase 5 completes. No page, visual or bookmark exists, and `scripts/check_powerbi_model.py` fails the build if one appears. |
 | Excel operating report | Planned | Post-MVP |
 | Executive findings and recommendations | Planned | Blocked by Gate 2. Nothing has been analysed, and no conclusion drawn from synthetic data would say anything about the industry. |
 | Jupyter notebooks | Planned | Directory exists and is empty |
 | Managed cloud PostgreSQL | Planned | Needed so a cloud semantic-model engine can reach the `reporting` schema. Contract and automation are written; the database itself is not provisioned |
-| Portfolio case study, walkthrough video, launch material | Deferred | Packaging work, after the analytical system is complete |
+| Portfolio case study, walkthrough video, launch material | Deferred | Still outstanding: the case-study copy, the walkthrough video and the launch material. The website foundation that will carry them **is** delivered (`P2.4-06`) — the case study itself is packaging work, after the analytical system is complete, and Gate 2 gates it |
 | Real dealership, customer, or lending data | Out of scope | Permanently excluded |
 | Production DMS or CRM integration, live lender integration | Out of scope | [`ARCHITECTURE.md` §6](ARCHITECTURE.md) |
 | Real-time streaming, Kafka, Airflow, Kubernetes, microservices | Out of scope | Batch refresh is sufficient for the objective |
@@ -302,7 +316,7 @@ It is **not complete**, and the reason is worth stating plainly: **no Microsoft 
 | **P2.1** | Power BI semantic model | Built and statically validated; real-engine validation pending |
 | **P2.2** | MVP dashboard pages | Not started, and blocked until `P2.1` completes |
 | **P2.3** | Findings, recommendations, Gate 2 review | Not started |
-| **P2.4** | Portfolio packaging | Not started |
+| **P2.4** | Portfolio packaging | In progress — website foundation delivered (`P2.4-06`); screenshots, Excel report, walkthrough and case-study copy outstanding |
 
 **Later phases**, aligned to [`ARCHITECTURE.md` §27](ARCHITECTURE.md): the seven unblocked report pages, executive findings and recommendations, the Excel operating report, and portfolio packaging.
 
@@ -392,6 +406,7 @@ Start at the [documentation hub](docs/index.md), which explains the hierarchy an
 | [docs/architecture-decisions/ADR-0001-project-identity.md](docs/architecture-decisions/ADR-0001-project-identity.md) | Project identity and naming convention |
 | [docs/architecture-decisions/ADR-0002-phase-0-technology-baseline.md](docs/architecture-decisions/ADR-0002-phase-0-technology-baseline.md) | Phase 0 technology choices and their trade-offs |
 | [docs/architecture-decisions/ADR-0007-power-bi-project-format.md](docs/architecture-decisions/ADR-0007-power-bi-project-format.md) | Why the semantic model is PBIP and TMDL rather than a binary, and where its validation boundary sits |
+| [docs/architecture-decisions/ADR-0009-portfolio-ui-foundation-before-gate-2.md](docs/architecture-decisions/ADR-0009-portfolio-ui-foundation-before-gate-2.md) | Why the portfolio UI foundation is permitted before Gate 2 while the analytical case study is not, and the five controls that enforce the distinction |
 | [docs/architecture-decisions/](docs/architecture-decisions/) | ADR index, format, and conventions |
 
 ### Contracts
@@ -411,6 +426,8 @@ Start at the [documentation hub](docs/index.md), which explains the hierarchy an
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Development workflow, standards, and quality gates |
 | [SECURITY.md](SECURITY.md) | Secret handling and vulnerability reporting |
 | [powerbi/model_documentation/](powerbi/model_documentation/) | The semantic model as built: tables, relationships, measures, visibility, formats, parameters, validation |
+| [portfolio/README.md](portfolio/README.md) | What the portfolio website is, what it deliberately is not, and how to install, run, test and build it |
+| [portfolio/docs/](portfolio/docs/) | The website's engineering records: [DESIGN_SYSTEM.md](portfolio/docs/DESIGN_SYSTEM.md), [MOTION_SYSTEM.md](portfolio/docs/MOTION_SYSTEM.md), [CONTENT_MODEL.md](portfolio/docs/CONTENT_MODEL.md), [ACCESSIBILITY.md](portfolio/docs/ACCESSIBILITY.md), [PERFORMANCE.md](portfolio/docs/PERFORMANCE.md), [DEPLOYMENT.md](portfolio/docs/DEPLOYMENT.md), [VISUAL_REVIEW.md](portfolio/docs/VISUAL_REVIEW.md) |
 
 ### Evidence and constraints
 

@@ -47,6 +47,7 @@ flowchart TD
 | [`../ARCHITECTURE.md`](../ARCHITECTURE.md) | The binding technical architecture: goals, non-goals, schemas, dimensional model, fact grains, pipeline, security, phases, and scope gates | Technical reviewers, contributors, the author's future self | Implemented — version 1.4, reviewed 2026-07-29 |
 | [`architecture-decisions/ADR-0001-project-identity.md`](architecture-decisions/ADR-0001-project-identity.md) | Fixes the project name, short identifier, package, config prefix, and database roles; retires the former working title and defines enforcement | Anyone touching a name, a path, or a role | Accepted |
 | [`architecture-decisions/ADR-0002-phase-0-technology-baseline.md`](architecture-decisions/ADR-0002-phase-0-technology-baseline.md) | Records the non-obvious Phase 0 engineering choices and their trade-offs | Technical reviewers, contributors | Accepted |
+| [`architecture-decisions/ADR-0009-portfolio-ui-foundation-before-gate-2.md`](architecture-decisions/ADR-0009-portfolio-ui-foundation-before-gate-2.md) | Separates the portfolio UI foundation, which may be built before Gate 2, from the public analytical case study, which may not; records the five controls that enforce the separation | Anyone reviewing the website, or wondering how it coexists with a closed Gate 2 | Accepted |
 | [`architecture-decisions/README.md`](architecture-decisions/README.md) | ADR format, `ADR-NNNN-kebab-title.md` convention, required sections, and the index of current records | Contributors writing a new ADR | Implemented |
 | [`../README.md`](../README.md) | Project entry point: value proposition, status, stack, structure, and how to run it | Everyone, first | Implemented |
 
@@ -73,6 +74,24 @@ Contracts are the tier most worth reading closely. They are also the tier a revi
 | [`../CONTRIBUTING.md`](../CONTRIBUTING.md) | Development workflow, branch and commit conventions, the quality gates, and what CI enforces | Contributors | Implemented |
 | [`../SECURITY.md`](../SECURITY.md) | Secret handling, what must never be committed, and how to report a vulnerability | Contributors, security reviewers | Implemented |
 | [`diagrams/`](diagrams/) | Source-controlled Mermaid diagrams: system context, Phase 0 data flow, the initial dimensional model, and the repository component map | Visual learners; anyone orienting quickly | Implemented |
+
+### Portfolio website
+
+The website under [`../portfolio/`](../portfolio/) is a presentation layer over this documentation set. It has
+no API route, no database connection, no query interface and no charting library, it computes no KPI, and it
+displays no KPI value. It is governed by [`architecture-decisions/ADR-0009-portfolio-ui-foundation-before-gate-2.md`](architecture-decisions/ADR-0009-portfolio-ui-foundation-before-gate-2.md).
+Its own documentation lives beside it, in [`../portfolio/`](../portfolio/) and [`../portfolio/docs/`](../portfolio/docs/).
+
+| Document | Purpose | Audience | Status |
+|---|---|---|---|
+| [`../portfolio/README.md`](../portfolio/README.md) | What the site is, what it deliberately is not, and how to install, run, test and build it | Anyone running the site locally | Implemented |
+| [`../portfolio/docs/DESIGN_SYSTEM.md`](../portfolio/docs/DESIGN_SYSTEM.md) | Design tokens, typography, colour, spacing, elevation, and the component library | Contributors touching the UI | Implemented |
+| [`../portfolio/docs/MOTION_SYSTEM.md`](../portfolio/docs/MOTION_SYSTEM.md) | The motion vocabulary, its durations and easings, and the reduced-motion contract | Contributors adding animation | Implemented |
+| [`../portfolio/docs/CONTENT_MODEL.md`](../portfolio/docs/CONTENT_MODEL.md) | Where every string and every number on the site comes from, and why no component may hardcode one | Reviewers checking that the site cannot overclaim | Implemented |
+| [`../portfolio/docs/ACCESSIBILITY.md`](../portfolio/docs/ACCESSIBILITY.md) | The accessibility target, the automated and manual checks, and the axe results per route | Accessibility reviewers | Implemented |
+| [`../portfolio/docs/PERFORMANCE.md`](../portfolio/docs/PERFORMANCE.md) | The performance budget and how the static build is kept within it | Contributors adding weight to a route | Implemented |
+| [`../portfolio/docs/DEPLOYMENT.md`](../portfolio/docs/DEPLOYMENT.md) | How the site would be built and deployed. **No preview deployment and no production deployment exist yet** | Whoever eventually deploys it | Implemented — the deployment itself is **pending** |
+| [`../portfolio/docs/VISUAL_REVIEW.md`](../portfolio/docs/VISUAL_REVIEW.md) | The route-by-route visual review record | Reviewers checking the UI against its own rules | Implemented |
 
 ---
 
@@ -134,6 +153,26 @@ You want to assess the modelling, the engineering, and whether the documentation
 
 **Worth checking:** all twelve validation `check_id` values in the audit contract appear identically in the Python validation framework and the data dictionary, and **ten of the twelve** also appear in the SQL checks. That consistency is the point of the contracts tier. The two exceptions are `DQ-GEN-001` and `DQ-GEN-002`: both inspect the generator's in-memory output — the declared-versus-actual column schema, and the content digest of the CSV rendering — so there is nothing for SQL to look at. They are Python-only by design, not by omission.
 
+### Reviewer who would rather read the website than the repository — about 10 minutes
+
+You do not want to clone 22,000 lines of Markdown. You want the same claims rendered, in order, in a browser.
+
+**Read this first:** the site is **not deployed**. There is no preview URL and no production URL, so the only
+way to see it today is to build it locally. It also shows **no KPI value, no dashboard screenshot and no
+finding** — it renders definitions, structure and status, and its `/case-study` route is **locked** because
+Gate 2 is closed.
+
+| # | Do this | Minutes | What you get |
+|---|---|---|---|
+| 1 | Follow [`../portfolio/README.md`](../portfolio/README.md) — install, then run the dev server | 3 | The site running locally, with its project manifest generated from repository evidence |
+| 2 | `/` then `/status` | 3 | The honest status in the hero, and then route by route: what exists, what is pending, and what the evidence for each is |
+| 3 | `/architecture` and `/data-model` | 2 | The pipeline layer by layer, and the dimensions, facts and declared grains |
+| 4 | `/kpis` and `/governance` | 2 | Every governed KPI **definition**, searchable — and the gates, the privacy position and the synthetic-data policy |
+| 5 | `/case-study` | 1 | The locked shell, with Gate 2's three unmet conditions and the evidence for each |
+
+**If you only look at one route:** `/status`. It is generated from the same files the README is written
+against, and the build fails if it states something those files contradict.
+
 ### Contributor
 
 You are going to change something. Read in this order and do not skip step 1.
@@ -175,6 +214,7 @@ python scripts/check_secrets.py
 | [`architecture-decisions/ADR-0001-project-identity.md`](architecture-decisions/ADR-0001-project-identity.md) | Governing |
 | [`architecture-decisions/ADR-0002-phase-0-technology-baseline.md`](architecture-decisions/ADR-0002-phase-0-technology-baseline.md) | Governing |
 | [`architecture-decisions/ADR-0008-real-engine-validation-paths.md`](architecture-decisions/ADR-0008-real-engine-validation-paths.md) | Governing |
+| [`architecture-decisions/ADR-0009-portfolio-ui-foundation-before-gate-2.md`](architecture-decisions/ADR-0009-portfolio-ui-foundation-before-gate-2.md) | Governing |
 | [`../DATA_DICTIONARY.md`](../DATA_DICTIONARY.md) | Contracts |
 | [`../KPI_CATALOG.md`](../KPI_CATALOG.md) | Contracts |
 | [`source-to-target/README.md`](source-to-target/README.md) | Contracts |
@@ -207,6 +247,8 @@ python scripts/check_secrets.py
 | [`requirements/GATE_1_READINESS.md`](requirements/GATE_1_READINESS.md) | Planning |
 | [`powerbi/POWER_BI_DESKTOP_HANDOFF.md`](powerbi/POWER_BI_DESKTOP_HANDOFF.md) | Operations |
 | [`../powerbi/model_documentation/`](../powerbi/model_documentation/) | Design |
+| [`../portfolio/README.md`](../portfolio/README.md) | Implementation guides |
+| [`../portfolio/docs/`](../portfolio/docs/) | Implementation guides — seven website engineering records |
 | [`index.md`](index.md) | Planning |
 | [`cloud-database-setup.md`](cloud-database-setup.md) | Implementation guides |
 

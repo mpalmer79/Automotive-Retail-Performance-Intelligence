@@ -1,0 +1,174 @@
+/* ==========================================================================
+   Tailwind v4 theme bridge
+   --------------------------------------------------------------------------
+   Tailwind v4 reads its scales from `@theme`. This file maps the ARPI tokens in
+   tokens.css onto Tailwind's namespaces so that a utility class and a bare CSS
+   declaration resolve to the same value. It introduces no new constants: every
+   right-hand side is a `var(--arpi-*)` reference.
+   ========================================================================== */
+
+@theme {
+  /* Reset Tailwind's default ramps. The palette is closed; an accidental
+     `bg-slate-700` must not compile. */
+  --color-*: initial;
+  --font-*: initial;
+  --text-*: initial;
+  --radius-*: initial;
+  --shadow-*: initial;
+  --breakpoint-*: initial;
+
+  /* --- colour ---------------------------------------------------------- */
+  --color-canvas: var(--arpi-colour-canvas);
+  --color-canvas-raised: var(--arpi-colour-canvas-raised);
+  --color-surface: var(--arpi-colour-surface);
+  --color-surface-raised: var(--arpi-colour-surface-raised);
+  --color-surface-hover: var(--arpi-colour-surface-hover);
+  --color-surface-sunken: var(--arpi-colour-surface-sunken);
+
+  --color-line: var(--arpi-colour-border);
+  --color-line-strong: var(--arpi-colour-border-strong);
+  --color-line-subtle: var(--arpi-colour-border-subtle);
+
+  --color-ink: var(--arpi-colour-text);
+  --color-ink-secondary: var(--arpi-colour-text-secondary);
+  --color-ink-muted: var(--arpi-colour-text-muted);
+  --color-ink-faint: var(--arpi-colour-text-faint);
+  --color-ink-inverse: var(--arpi-colour-text-inverse);
+
+  --color-accent: var(--arpi-colour-accent);
+  --color-accent-strong: var(--arpi-colour-accent-strong);
+  --color-accent-muted: var(--arpi-colour-accent-muted);
+  --color-accent-wash: var(--arpi-colour-accent-wash);
+
+  --color-model: var(--arpi-colour-model);
+  --color-model-wash: var(--arpi-colour-model-wash);
+
+  --color-verified: var(--arpi-colour-verified);
+  --color-verified-wash: var(--arpi-colour-verified-wash);
+  --color-pending: var(--arpi-colour-pending);
+  --color-pending-wash: var(--arpi-colour-pending-wash);
+  --color-blocked: var(--arpi-colour-blocked);
+  --color-blocked-wash: var(--arpi-colour-blocked-wash);
+  --color-failed: var(--arpi-colour-failed);
+  --color-failed-wash: var(--arpi-colour-failed-wash);
+  --color-deferred: var(--arpi-colour-deferred);
+  --color-deferred-wash: var(--arpi-colour-deferred-wash);
+
+  --color-focus: var(--arpi-colour-focus);
+
+  /* --- typography ------------------------------------------------------ */
+  --font-sans: var(--arpi-font-sans);
+  --font-display: var(--arpi-font-display);
+  --font-mono: var(--arpi-font-mono);
+
+  --text-2xs: var(--arpi-text-2xs);
+  --text-xs: var(--arpi-text-xs);
+  --text-sm: var(--arpi-text-sm);
+  --text-base: var(--arpi-text-base);
+  --text-body: var(--arpi-text-body);
+  --text-lg: var(--arpi-text-lg);
+  --text-xl: var(--arpi-text-xl);
+  --text-2xl: var(--arpi-text-2xl);
+  --text-3xl: var(--arpi-text-3xl);
+  --text-4xl: var(--arpi-text-4xl);
+  --text-5xl: var(--arpi-text-5xl);
+
+  --leading-tight: var(--arpi-leading-tight);
+  --leading-snug: var(--arpi-leading-snug);
+  --leading-normal: var(--arpi-leading-normal);
+  --leading-relaxed: var(--arpi-leading-relaxed);
+
+  --tracking-tighter: var(--arpi-tracking-tighter);
+  --tracking-tight: var(--arpi-tracking-tight);
+  --tracking-normal: var(--arpi-tracking-normal);
+  --tracking-wide: var(--arpi-tracking-wide);
+  --tracking-eyebrow: var(--arpi-tracking-eyebrow);
+
+  /* --- spacing --------------------------------------------------------- */
+  --spacing: 0.25rem;
+  --spacing-section: var(--arpi-space-section);
+  --spacing-section-tight: var(--arpi-space-section-tight);
+  --spacing-gutter: var(--arpi-layout-gutter);
+  --spacing-touch: var(--arpi-size-touch);
+  --spacing-header: var(--arpi-size-header);
+
+  /* --- radius ---------------------------------------------------------- */
+  --radius-xs: var(--arpi-radius-xs);
+  --radius-sm: var(--arpi-radius-sm);
+  --radius-md: var(--arpi-radius-md);
+  --radius-lg: var(--arpi-radius-lg);
+  --radius-xl: var(--arpi-radius-xl);
+  --radius-2xl: var(--arpi-radius-2xl);
+  --radius-pill: var(--arpi-radius-pill);
+
+  /* --- elevation ------------------------------------------------------- */
+  --shadow-sm: var(--arpi-shadow-sm);
+  --shadow-md: var(--arpi-shadow-md);
+  --shadow-lg: var(--arpi-shadow-lg);
+  --shadow-xl: var(--arpi-shadow-xl);
+  --shadow-accent: var(--arpi-shadow-accent);
+  --inset-shadow-top: var(--arpi-shadow-inset-top);
+
+  /* --- layout ---------------------------------------------------------- */
+  --container-prose: var(--arpi-layout-prose);
+  --container-narrow: var(--arpi-layout-narrow);
+  --container-content: var(--arpi-layout-content);
+  --container-wide: var(--arpi-layout-wide);
+  /* Named `bleed`, NOT `full`. Tailwind reserves `full` as a static keyword
+     meaning 100% (`max-w-full`, `w-full`), and defining --container-full
+     overrides that utility - which silently widens every element relying on
+     `max-w-full` to 96rem. tests/unit/tokens.test.ts asserts no layout token
+     uses a reserved keyword. */
+  --container-bleed: var(--arpi-layout-bleed);
+
+  /* --- breakpoints ----------------------------------------------------- */
+  /* Mirrors the documented scale in tokens.css section "Breakpoints".
+     tests/unit/tokens.test.ts asserts the two lists agree. */
+  --breakpoint-xs: 375px;
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1536px;
+  --breakpoint-3xl: 1920px;
+
+  /* --- motion ---------------------------------------------------------- */
+  --ease-standard: var(--arpi-ease-standard);
+  --ease-out-expo: var(--arpi-ease-out);
+  --ease-in-expo: var(--arpi-ease-in);
+
+  --animate-draw-in: draw-in var(--arpi-motion-deliberate) var(--arpi-ease-out) forwards;
+  --animate-pulse-signal: pulse-signal var(--arpi-motion-ambient) var(--arpi-ease-linear)
+    infinite;
+  --animate-drift: drift var(--arpi-motion-ambient) var(--arpi-ease-linear) infinite
+    alternate;
+}
+
+/* Keyframes referenced by the --animate-* tokens above. */
+@keyframes draw-in {
+  from {
+    stroke-dashoffset: var(--draw-length, 1000);
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes pulse-signal {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+@keyframes drift {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(0, calc(var(--arpi-motion-distance-sm) * -1), 0);
+  }
+}
