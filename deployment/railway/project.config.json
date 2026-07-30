@@ -1,0 +1,129 @@
+{
+  "specVersion": 1,
+  "project": {
+    "name": "ARPI",
+    "environment": "staging",
+    "productionEnvironment": "production",
+    "createProductionEnvironment": false
+  },
+  "repository": {
+    "slug": "mpalmer79/Automotive-Retail-Performance-Intelligence",
+    "deploymentBranch": "main",
+    "waitForCiChecks": true
+  },
+  "services": {
+    "portfolio": {
+      "name": "arpi-portfolio",
+      "kind": "github",
+      "buildContext": "repository-root",
+      "rootDirectory": null,
+      "railwayConfigFile": "railway.json",
+      "dockerfilePath": "portfolio/Dockerfile.railway",
+      "healthcheckPath": "/status",
+      "healthcheckTimeout": 300,
+      "restartPolicyType": "ON_FAILURE",
+      "restartPolicyMaxRetries": 3,
+      "numReplicas": 1,
+      "publicNetworking": {
+        "required": true,
+        "generateRailwayDomain": true,
+        "targetPort": 3000
+      },
+      "requiresDatabase": false,
+      "requiresVolume": false,
+      "buildArguments": [
+        "RAILWAY_PUBLIC_DOMAIN",
+        "RAILWAY_ENVIRONMENT_NAME",
+        "RAILWAY_ENVIRONMENT",
+        "RAILWAY_GIT_COMMIT_SHA",
+        "NEXT_PUBLIC_ARPI_CASE_STUDY_ENABLED"
+      ]
+    },
+    "postgres": {
+      "name": "Postgres",
+      "kind": "database",
+      "engine": "postgres",
+      "provisionedBy": "railway-database-template",
+      "expectedImagePrefix": "ghcr.io/railwayapp-templates/postgres-ssl",
+      "volume": {
+        "required": true,
+        "mountPath": "/var/lib/postgresql/data"
+      },
+      "ssl": {
+        "required": true,
+        "providedBy": "image",
+        "note": "Railway's postgres-ssl image terminates TLS itself and issues its own certificate; SSL_CERT_DAYS is one of the variables it publishes. The provisioning job additionally asserts the session is encrypted rather than trusting the image."
+      },
+      "tcpProxy": {
+        "required": true,
+        "applicationPort": 5432,
+        "purpose": "External reachability for a future Microsoft Fabric connection. Not used by the website, which has no database connection at all."
+      },
+      "publicNetworking": {
+        "required": false,
+        "generateRailwayDomain": false
+      }
+    },
+    "databaseSetup": {
+      "name": "arpi-database-setup",
+      "kind": "github",
+      "role": "one-time-job",
+      "buildContext": "repository-root",
+      "rootDirectory": null,
+      "dockerfilePath": "deployment/railway/Dockerfile.database-setup",
+      "restartPolicyType": "NEVER",
+      "healthcheckPath": null,
+      "numReplicas": 1,
+      "publicNetworking": {
+        "required": false,
+        "generateRailwayDomain": false
+      },
+      "requiresDatabase": true,
+      "requiresVolume": false,
+      "connectsOverPrivateNetwork": true,
+      "note": "Runs the repository's ordered SQL sequence, creates the login roles, loads the deterministic development profile and verifies the result, then exits. It is not a backend API: it serves no traffic, has no public domain, no health check, and a NEVER restart policy so a completed run is not restarted into a loop."
+    }
+  },
+  "expectedRailwayProvidedVariables": [
+    "RAILWAY_PUBLIC_DOMAIN",
+    "RAILWAY_PRIVATE_DOMAIN",
+    "RAILWAY_TCP_PROXY_DOMAIN",
+    "RAILWAY_TCP_PROXY_PORT",
+    "RAILWAY_PROJECT_ID",
+    "RAILWAY_PROJECT_NAME",
+    "RAILWAY_ENVIRONMENT",
+    "RAILWAY_ENVIRONMENT_ID",
+    "RAILWAY_SERVICE_ID",
+    "RAILWAY_SERVICE_NAME",
+    "RAILWAY_DEPLOYMENT_ID",
+    "RAILWAY_REPLICA_ID",
+    "PORT"
+  ],
+  "expectedPostgresProvidedVariables": [
+    "DATABASE_URL",
+    "DATABASE_PUBLIC_URL",
+    "PGHOST",
+    "PGPORT",
+    "PGDATABASE",
+    "PGUSER",
+    "PGPASSWORD",
+    "POSTGRES_DB",
+    "POSTGRES_USER",
+    "POSTGRES_PASSWORD",
+    "SSL_CERT_DAYS"
+  ],
+  "serviceDependencies": [
+    {
+      "from": "arpi-database-setup",
+      "to": "Postgres",
+      "via": "reference-variables",
+      "reason": "The provisioning job reads the database over the project's private network using reference variables. Nothing is copied."
+    }
+  ],
+  "deliberatelyAbsent": {
+    "backendWebService": "The ARPI architecture has no general-purpose backend. The website is fourteen statically prerendered routes with no runtime data source, so a backend would be a service with nothing to serve.",
+    "websiteDatabaseAccess": "The website holds no database credential, opens no connection, and is not granted a reference to one. Verified by scripts/railway/verify_railway_configuration.ts.",
+    "productionEnvironment": "No production deployment has been approved. The bootstrap tool refuses to create or modify a production environment.",
+    "prEnvironments": "Evaluated and deliberately not enabled; see deployment/railway/README.md section 9."
+  }
+}

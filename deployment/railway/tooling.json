@@ -1,0 +1,45 @@
+{
+  "specVersion": 1,
+  "railwayCli": {
+    "package": "@railway/cli",
+    "version": "5.30.1",
+    "verifiedCommands": [
+      "railway whoami --json",
+      "railway list --json",
+      "railway init --name <name> --json",
+      "railway link --project <id> --environment <name> --service <name> --json",
+      "railway environment list --json",
+      "railway environment new <name> --json",
+      "railway status --json",
+      "railway service list --json",
+      "railway service source connect --repo <owner/repo> --branch <branch> --service <name>",
+      "railway domain list --service <name> --json",
+      "railway domain --service <name> --port <port> --json",
+      "railway tcp-proxy list --service <name> --json",
+      "railway variable list --service <name> --json",
+      "railway volume list --json",
+      "railway deployment list --json",
+      "railway redeploy --service <name> --yes",
+      "railway config plan --json --detailed-exit-code",
+      "railway config apply --json --yes",
+      "railway api <graphql>"
+    ],
+    "note": "Every command above was read from `railway <command> --help` of the pinned version rather than recalled. The CLI is not an npm dependency of this repository; see the //dependencies note in the root package.json for why. scripts/railway/lib/cli.ts resolves it from RAILWAY_CLI_BIN, then a `railway` on PATH whose --version matches, then `npx --yes @railway/cli@<version>`."
+  },
+  "railwaySdk": {
+    "package": "railway",
+    "version": "3.7.0",
+    "purpose": "Provides `railway/iac` for .railway/railway.ts and the `railway-iac-ts` runner the CLI shells out to. Taken as a devDependency because the IaC file imports it and must type-check against it.",
+    "graphVersion": 1
+  },
+  "node": {
+    "version": "22",
+    "note": "Matches portfolio/package.json engines and both existing CI workflows."
+  },
+  "lighthouse": {
+    "package": "lighthouse",
+    "version": "12.8.2",
+    "purpose": "Performance, accessibility, best-practices and SEO audit of the DEPLOYED site. Invoked through npx rather than taken as a dependency, for the same reason as the Railway CLI: it is a tool this repository runs, not a library it links, and it brings a large transitive tree that would sit in a lockfile for the sake of one occasional command.",
+    "chromiumSource": "The Chromium that Playwright already installs for the browser suites. No second browser download."
+  }
+}

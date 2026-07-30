@@ -5,26 +5,57 @@
  * breadcrumb trail and the accessibility test sweep. Adding a route here adds it
  * to all four, and `tests/unit/site.test.ts` asserts none of them can drift.
  */
+import { resolveIsPreview } from './flags'
+import { resolveSiteUrl } from './site-url'
 
 export const SITE_NAME = 'ARPI'
 export const SITE_TITLE = 'Automotive Retail Performance Intelligence'
 export const SITE_AUTHOR = 'Michael Palmer'
 
 /**
- * The canonical origin. `NEXT_PUBLIC_SITE_URL` is set per deployment; a preview
- * deployment sets its own so that canonical tags do not point an unstable
- * preview at a production URL it is not.
+ * The canonical origin, decided once for the whole build.
+ *
+ * Resolution is delegated to `lib/site-url.ts`, which is a pure function and is
+ * tested along every path. On Railway the answer comes from the platform's own
+ * `RAILWAY_PUBLIC_DOMAIN`, so a staging deployment needs no variable typed by a
+ * person; locally it is `http://localhost:3000` and also needs none.
+ *
+ * Read at module scope rather than per request because all fourteen routes are
+ * statically prerendered: there is no request in scope when the sitemap, the
+ * canonical tags or the JSON-LD graph are produced, and deriving them from a
+ * `Host` header instead would make them vary with an attacker-controlled header.
  */
-export const SITE_URL = (
-  process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
-).replace(/\/+$/, '')
+const RESOLVED_SITE_URL = resolveSiteUrl(process.env)
+
+export const SITE_URL = RESOLVED_SITE_URL.url
+
+/** Which input decided {@link SITE_URL}. Read by the deployment verifier. */
+export const SITE_URL_SOURCE = RESOLVED_SITE_URL.source
+
+/** Inputs that were present but unusable. Empty on a correct deployment. */
+export const SITE_URL_WARNINGS = RESOLVED_SITE_URL.warnings
 
 /**
- * Whether this build is an unstable preview. A preview must not be indexed, and
- * `robots.ts` reads this.
+ * Whether this build is an unpublished deployment that must not be indexed.
+ *
+ * Three ways to be true, and the third is the important one:
+ *
+ *   - `VERCEL_ENV === 'preview'`            a Vercel branch preview
+ *   - `NEXT_PUBLIC_ARPI_PREVIEW === 'true'` an explicit local or manual override
+ *   - a Railway environment other than `production`
+ *
+ * The Railway rule is deliberately expressed as "anything that is not
+ * production", not as "the environment named staging". No production deployment
+ * of this site has been approved, so every deployment that currently exists is
+ * an unpublished one, and a rule that had to name each new environment would
+ * fail open the first time somebody added one. Failing closed here costs a
+ * staging deployment nothing: it is not meant to be in a search index.
+ *
+ * Consequences of being true are in `robots.ts` (disallow all crawling),
+ * `metadata.ts` (`noindex`, canonical tags on this deployment's own origin) and
+ * `components/shell/preview-notice.tsx` (a marker a person can see).
  */
-export const IS_PREVIEW =
-  process.env.VERCEL_ENV === 'preview' || process.env.NEXT_PUBLIC_ARPI_PREVIEW === 'true'
+export const IS_PREVIEW = resolveIsPreview(process.env)
 
 export const REPOSITORY_URL =
   'https://github.com/mpalmer79/Automotive-Retail-Performance-Intelligence'

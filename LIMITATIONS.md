@@ -331,8 +331,17 @@ subject to every limitation in this document.
 ([ARCHITECTURE.md §28](ARCHITECTURE.md)) is **CLOSED** — its three conditions, complete report pages,
 reconciled SQL-to-Power BI totals and drafted executive findings, are all unmet — so the public analytical
 case study is gated. The route renders the unmet conditions and the evidence for each rather than a case
-study. **There is also no deployment**: no preview URL and no production URL exist, so the site is not live,
+study. **There is also no deployment**: no staging URL and no production URL exist, so the site is not live,
 launched or published.
+
+**What does exist is the automation to deploy it, and that is a different claim.** The Railway
+configuration — the image, the declarative project definition, the idempotent bootstrap, the database
+provisioning job, the drift verifier and the deployed-site suite — is source-controlled, offline-verified and
+reviewable in [`deployment/railway/README.md`](deployment/railway/README.md). It has **not been run**: it needs
+one Railway API token that nobody has supplied, and it creates resources that cost money nobody has approved.
+So the deployment is a *capability*, not a *fact*, and the distinction matters: everything below the point of
+"a live URL exists" — the health check, the remote smoke suite, the Lighthouse figures, the row counts, the
+proven reporter boundary — is **unrun**, and this document will say so until it is not.
 
 **What this means for a reviewer.** The website is evidence of the repository's structure, definitions and
 honesty about status. It is not evidence of an analytical result, and it should not be cited as one.

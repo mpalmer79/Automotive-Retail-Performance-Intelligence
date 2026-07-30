@@ -53,6 +53,7 @@ import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { CASE_STUDY_FLAG_VARIABLE, isCaseStudyFlagEnabled } from '../src/lib/flags.ts'
 import type {
   DeliveryIncrement,
   EngineValidation,
@@ -143,7 +144,17 @@ function countFilesRecursive(relativeDir: string, suffix: string): number {
 function commitSha(): string {
   // CI provides the SHA; a local run asks git. Both are deterministic for a
   // given checkout, which is what --check needs.
-  const fromEnv = process.env.GITHUB_SHA ?? process.env.VERCEL_GIT_COMMIT_SHA
+  //
+  // `RAILWAY_GIT_COMMIT_SHA` is here because the Railway image is built from an
+  // uploaded build context with no `.git` directory in it, so `git rev-parse`
+  // cannot answer and the platform variable is the only source. It is consumed
+  // through an `ARG` declared in the builder stage of
+  // `portfolio/Dockerfile.railway`; without that declaration Docker would not
+  // expose it and this would silently fall through to `unknown`.
+  const fromEnv =
+    process.env.GITHUB_SHA ??
+    process.env.RAILWAY_GIT_COMMIT_SHA ??
+    process.env.VERCEL_GIT_COMMIT_SHA
   if (fromEnv && /^[0-9a-f]{7,40}$/i.test(fromEnv)) return fromEnv
   try {
     return execFileSync('git', ['rev-parse', 'HEAD'], {
@@ -778,7 +789,13 @@ for (const increment of increments) {
 // cannot conjure a Gate 2 verdict, a findings document, or a screenshot.
 // ---------------------------------------------------------------------------
 
-const flagEnabled = process.env.NEXT_PUBLIC_ARPI_CASE_STUDY_ENABLED === 'true'
+// Parsed through the shared helper rather than compared inline, so that the
+// generator, the website and the deployment verifier cannot disagree about what
+// counts as "on". Missing, empty, malformed and unrecognised all mean false, so
+// a Railway deployment that sets no variable at all resolves to LOCKED.
+const flagEnabled = isCaseStudyFlagEnabled(
+  process.env[CASE_STUDY_FLAG_VARIABLE] as string | undefined
+)
 const requiredCaseStudyContent = ['portfolio/content/case-study.md']
 const requiredCaseStudyScreenshots = 'portfolio/public/case-study/screenshots'
 

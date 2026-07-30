@@ -1,0 +1,30 @@
+{
+  "name": "arpi-deployment-tooling",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Railway deployment tooling for Automotive Retail Performance Intelligence (ARPI). Not the website — that is portfolio/. This package exists because Railway's Infrastructure as Code runner resolves `railway/iac` from the repository root, and because `.railway/railway.ts` is TypeScript that has to type-check against that SDK.",
+  "//dependencies": "The Railway CLI is deliberately NOT a dependency here. It is a tool this repository invokes, not a library it links, and taking it as an npm dependency pulls in `tar@6` — which carries a critical advisory that cannot be overridden, because `tar@7` removed the default export its postinstall imports. The CLI version is pinned instead in deployment/railway/tooling.json and resolved at run time by scripts/railway/lib/cli.ts, which keeps the pin reviewable in a diff without putting a vulnerable transitive dependency in this lockfile. `npm audit` on this package reports zero findings at any level as a result.",
+  "license": "MIT",
+  "author": "Michael Palmer",
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "spec:validate": "tsx scripts/railway/validate_specification.ts",
+    "iac:evaluate": "tsx scripts/railway/evaluate_iac.ts",
+    "bootstrap": "tsx scripts/railway/bootstrap_railway.ts",
+    "bootstrap:dry-run": "tsx scripts/railway/bootstrap_railway.ts --dry-run",
+    "verify:railway": "tsx scripts/railway/verify_railway_configuration.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "verify": "npm run typecheck && npm run test && npm run spec:validate && npm run iac:evaluate"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.1",
+    "railway": "3.7.0",
+    "tsx": "4.23.1",
+    "typescript": "5.9.3",
+    "vitest": "4.1.10"
+  }
+}

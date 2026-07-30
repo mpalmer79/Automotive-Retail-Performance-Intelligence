@@ -1,0 +1,143 @@
+# =============================================================================
+# ARPI database provisioning — one-time Railway job image
+# =============================================================================
+# WHAT THIS IS
+# ------------
+# The image for the `arpi-database-setup` service: a job that builds the ARPI
+# schema in the Railway PostgreSQL database, creates the three-role security
+# model and its two login roles, loads the deterministic `development` profile,
+# and proves the result. Then it exits.
+#
+# It is NOT a backend. It serves no traffic, has no public domain, has no health
+# check, and its restart policy is NEVER — so a completed run is not restarted
+# into a loop, which is how a one-time job quietly becomes a permanent service.
+#
+# WHY A JOB INSIDE RAILWAY, RATHER THAN A GITHUB ACTIONS STEP
+# -----------------------------------------------------------
+# A runner would have to reach PostgreSQL over the public TCP proxy, which means
+# a GitHub workflow holding a live superuser connection URL and the database
+# needing public exposure in order to be built at all. Inside Railway this job
+# reaches the database over the project's PRIVATE network using reference
+# variables the platform resolves at deploy time: no credential leaves Railway,
+# none passes through GitHub, and the public proxy is needed only later, for
+# Microsoft Fabric.
+#
+# WHY THE BUILD CONTEXT IS THE REPOSITORY ROOT
+# --------------------------------------------
+# It runs the repository's own SQL, its own loader and its own verification
+# script. Building a parallel initialiser would mean a second definition of the
+# schema that could disagree with the first — and the whole premise of this
+# project is that there is one source for each fact.
+#
+# NO SECRET IS BUILT IN, AND NONE IS NEEDED.
+# Every credential arrives at RUN time as a Railway reference or a
+# Railway-generated value. There is no `ARG` for a password here and there must
+# never be one: a build argument is recorded in the image's history.
+# =============================================================================
+
+# Same major as the project's `requires-python` and both CI matrix entries. Slim
+# rather than Alpine: psycopg's wheels are built for glibc, and on musl pip would
+# fall back to compiling from source, which needs a toolchain this image should
+# not carry.
+ARG PYTHON_VERSION=3.11-slim-bookworm
+
+
+# -----------------------------------------------------------------------------
+# Stage 1 — deps
+#
+# Python dependencies only, so a change to the SQL tree does not reinstall them.
+# -----------------------------------------------------------------------------
+FROM python:${PYTHON_VERSION} AS deps
+
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+WORKDIR /build
+
+# The package metadata alone. `pyproject.toml` is the single source of dependency
+# truth for this repository, so it is the only sensible cache key.
+COPY pyproject.toml ./
+# `pip install -e` needs the package directory to exist even when resolving only
+# dependencies, and copying the source here would defeat the layer split — so the
+# minimum tree that satisfies the build backend is created instead.
+RUN mkdir -p src/arpi && touch src/arpi/__init__.py README.md
+
+# Installed into a virtual environment rather than the system interpreter so the
+# runtime stage can copy one self-contained directory.
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:${PATH}"
+
+# `[db]` brings psycopg. The `[dev]` extra is deliberately NOT installed: this
+# job runs the loader and the verifier, not the test suite, and ruff, mypy and
+# pytest have no business in a container that touches a database.
+RUN pip install --upgrade pip && pip install ".[db]"
+
+
+# -----------------------------------------------------------------------------
+# Stage 2 — runtime
+# -----------------------------------------------------------------------------
+FROM python:${PYTHON_VERSION} AS runtime
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PATH="/opt/venv/bin:${PATH}"
+
+# `postgresql-client` for `psql`, which executes the ordered SQL sequence — the
+# same 104-file sequence `sql/README.md` defines and `tests/integration/conftest.py`
+# builds. Version 15's client speaks to a 16/18 server perfectly well for what
+# this does; pinning the Debian package to a specific upstream major would mean
+# adding PGDG's apt repository and a signing key to this image for no benefit.
+#
+# `--no-install-recommends` keeps the documentation and the X11 dependencies out.
+RUN apt-get update \
+    && apt-get install --no-install-recommends -y postgresql-client ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Least privilege. The job connects to a database and writes nothing to its own
+# filesystem outside /tmp, so there is nothing it needs root for.
+RUN groupadd --system --gid 1001 arpi \
+    && useradd --system --uid 1001 --gid arpi --create-home --home-dir /home/arpi arpi
+
+WORKDIR /app
+
+COPY --from=deps --chown=arpi:arpi /opt/venv /opt/venv
+
+# --- The repository, copied by name -----------------------------------------
+#
+# Only what the provisioning run reads. The website, the Power BI project, the
+# documentation tree and the test suite are all absent, so a defect in this image
+# cannot reach them and its attack surface does not include them.
+
+# The ordered DDL and DML sequence. `sql/99_local_reset.sql` is inside this tree
+# and DROPs every ARPI schema — the provisioning script never invokes it, and it
+# additionally refuses to run against a database whose name does not begin
+# `arpi_`, which Railway's `railway` database does not.
+COPY --chown=arpi:arpi sql ./sql
+# The generator, the loader and the validation suite.
+COPY --chown=arpi:arpi src ./src
+# Profile definitions. `development` fixes the seed at 20250701 and the reporting
+# window at 2025-07-01..2025-12-31, which is what makes the load reproducible.
+COPY --chown=arpi:arpi config ./config
+# The verification script, and the package metadata the console entry point needs.
+COPY --chown=arpi:arpi scripts/verify_cloud_database.py ./scripts/verify_cloud_database.py
+COPY --chown=arpi:arpi pyproject.toml README.md ./
+# The provisioning sequence itself.
+COPY --chown=arpi:arpi deployment/railway/provision_database.sh ./provision_database.sh
+
+# Re-install so the console script (`arpi`) resolves against the real source
+# tree rather than the placeholder the deps stage created. Dependencies are
+# already present in the virtual environment, so `--no-deps` keeps this to a
+# metadata write rather than a second resolution over the network.
+RUN pip install --no-deps -e . \
+    && chmod +x ./provision_database.sh
+
+USER arpi
+
+# No EXPOSE, no health check, no start command that waits for traffic. A job.
+#
+# `exec` so the script becomes PID 1 and receives Railway's SIGTERM directly. A
+# provisioning run interrupted mid-way is safe to restart — every step is
+# idempotent — but it should still be interrupted cleanly rather than killed.
+CMD ["sh", "-c", "exec ./provision_database.sh"]

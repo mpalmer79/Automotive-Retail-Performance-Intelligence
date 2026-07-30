@@ -6,11 +6,12 @@ import { IS_PREVIEW, ROUTES } from '@/lib/site'
 /**
  * The preview marker.
  *
- * A branch preview of this site is permitted before any production deployment, but
- * only on the condition that it cannot be mistaken for the published site. That
+ * An unpublished deployment of this site - a branch preview, or the Railway
+ * `staging` environment - is permitted before any production deployment, but only
+ * on the condition that it cannot be mistaken for the published site. That
  * condition is satisfied in three places: `robots.ts` disallows all crawling on a
- * preview, `metadata.ts` sets `noindex` and points canonical tags at the preview's
- * own origin, and this component makes the state visible to a person.
+ * preview, `metadata.ts` sets `noindex` and points canonical tags at the
+ * deployment's own origin, and this component makes the state visible to a person.
  *
  * The third matters because the first two are invisible. A screenshot of a preview
  * looks exactly like a screenshot of production, and a screenshot is how a site
@@ -39,12 +40,12 @@ export function PreviewNotice() {
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2 text-xs text-pending">
           <span className="flex items-center gap-2 font-mono tracking-wide uppercase">
             <FlaskConical aria-hidden="true" className="size-3.5 shrink-0" />
-            Unpublished preview
+            Unpublished deployment
           </span>
           <span className="text-ink-secondary">
-            This is a branch preview, not a launched site. Every dataset behind it is
-            synthetic, semantic-model validation on both accepted engine paths is pending,
-            and the{' '}
+            This is an unpublished deployment, not a launched site. Every dataset behind
+            it is synthetic, semantic-model validation on both accepted engine paths is
+            pending, and the{' '}
             <a
               href={ROUTES.caseStudy.href}
               className="underline decoration-dotted underline-offset-2 hover:text-accent"

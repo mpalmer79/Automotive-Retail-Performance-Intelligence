@@ -1,0 +1,147 @@
+# =============================================================================
+# Docker build-context exclusions
+# =============================================================================
+# The Railway image is built with the REPOSITORY ROOT as its context, because
+# the website's build reads evidence files from outside `portfolio/` — see the
+# header of `portfolio/Dockerfile.railway`. That makes this file load-bearing in
+# two ways.
+#
+#   1. SIZE. Without it, every upload sends `.git`, both `node_modules` trees,
+#      `.next`, the Playwright report and the generated data sample. That is the
+#      difference between a context measured in megabytes and one measured in
+#      hundreds.
+#
+#   2. SAFETY. A `.env`, a downloaded CA bundle or a Railway CLI credential cache
+#      in a working tree would otherwise be uploaded to the builder and could be
+#      baked into an image layer. `.gitignore` keeps those out of the repository;
+#      this keeps them out of the build.
+#
+# WHAT THIS FILE DOES NOT DO
+# --------------------------
+# It is not the mechanism that decides which evidence reaches the build. The
+# Dockerfile copies evidence by name, so a path being absent from this file does
+# not put it in the image. This file only makes the upload smaller and safer.
+#
+# Excluding a path here that the Dockerfile copies would fail the build at the
+# `COPY`, and `portfolio/tests/unit/railway-config.test.ts` asserts that no path
+# the manifest generator reads is excluded here — so the two cannot disagree
+# silently.
+# =============================================================================
+
+
+# -----------------------------------------------------------------------------
+# Version control and CI
+# -----------------------------------------------------------------------------
+# `.git` is the single largest thing in the context and the build reads none of
+# it. The consequence is that `git rev-parse` cannot answer inside the builder,
+# which is why the commit SHA arrives as the `RAILWAY_GIT_COMMIT_SHA` build
+# argument instead.
+.git
+.gitattributes
+.github
+
+
+# -----------------------------------------------------------------------------
+# Secrets and local credential material (defence in depth — see note 2 above)
+# -----------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+.pgpass
+*.pgpass
+secrets.yaml
+secrets.yml
+credentials.json
+# Railway CLI state. `railway login` writes a token here; it must never be
+# uploaded to a builder, and it must never end up in an image layer.
+.railway/state.json
+**/.railway/state.json
+.config/railway
+# Power BI Desktop per-user state, which can carry a resolved connection string.
+**/.pbi/localSettings.json
+**/.pbi/*.abf
+
+
+# -----------------------------------------------------------------------------
+# Installed dependencies and build output
+# -----------------------------------------------------------------------------
+# `node_modules` is installed inside the image from the lockfile. Uploading a
+# host copy would be slower and could carry platform-specific binaries built for
+# a different architecture than the builder's.
+node_modules
+**/node_modules
+.next
+**/.next
+.turbo
+**/.turbo
+dist
+build
+*.tsbuildinfo
+
+
+# -----------------------------------------------------------------------------
+# Test artefacts and browser binaries
+# -----------------------------------------------------------------------------
+playwright-report
+**/playwright-report
+test-results
+**/test-results
+review-screenshots
+**/review-screenshots
+.pytest_cache
+.mypy_cache
+.ruff_cache
+htmlcov
+coverage.xml
+.coverage
+.coverage.*
+
+
+# -----------------------------------------------------------------------------
+# Python
+# -----------------------------------------------------------------------------
+# The website build is Node only. The Python package is copied into the separate
+# database-provisioning image (`deployment/railway/Dockerfile.database-setup`),
+# which excludes these same caches.
+__pycache__
+**/__pycache__
+*.py[cod]
+.venv
+venv
+*.egg-info
+
+
+# -----------------------------------------------------------------------------
+# Generated data
+# -----------------------------------------------------------------------------
+# `data/sample/` is deliberately tracked in git — it is what makes the
+# repository reviewable — but the website does not read it, so it stays out of
+# the website's context. The database-setup image has its own ignore rules.
+data/raw
+data/external
+*.dump
+*.backup
+*.sql.gz
+*.pgdump
+
+
+# -----------------------------------------------------------------------------
+# Editor and operating-system metadata
+# -----------------------------------------------------------------------------
+.idea
+.vscode
+*.swp
+*.swo
+*~
+.DS_Store
+._*
+Thumbs.db
+desktop.ini
+
+
+# -----------------------------------------------------------------------------
+# Logs
+# -----------------------------------------------------------------------------
+logs
+*.log
+*.log.*

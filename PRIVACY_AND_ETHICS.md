@@ -357,7 +357,7 @@ network access during generation.**
 
 | Control | Rule |
 |---|---|
-| **Environment variables only** | Database credentials are read from the environment, never from a file in the repository ([ARCHITECTURE.md §22.2](ARCHITECTURE.md)). |
+| **Environment variables only** | Database credentials are read from the environment, never from a file in the repository ([ARCHITECTURE.md §22.2](ARCHITECTURE.md)). On the Railway deployment this is stronger than a convention: every cross-service value is a Railway **reference variable** the platform resolves at deploy time rather than a copied value, and both role passwords are **generated server-side by Railway**, so they never exist in this repository, in a process argument, in a log, or in GitHub. The website is granted no database reference at all. See [`deployment/railway/README.md`](deployment/railway/README.md) section 5. |
 | **`ARPI_DATABASE__PASSWORD` never appears in YAML** | `database.password` is absent from `config/development.yaml`, `config/test.yaml`, and `config/portfolio.yaml`. The value is read only from `ARPI_DATABASE__PASSWORD`, with `PGPASSWORD` as a fallback. |
 | **`.env` is gitignored** | A local `.env` file may hold the password on a developer machine; it is never committed. |
 | **`.env.example` is committed** | Placeholder values only, so a new contributor knows which variables exist without ever seeing a real one ([ARCHITECTURE.md §22.2](ARCHITECTURE.md)). |

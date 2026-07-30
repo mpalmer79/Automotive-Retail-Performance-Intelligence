@@ -157,8 +157,10 @@ You want to assess the modelling, the engineering, and whether the documentation
 
 You do not want to clone 22,000 lines of Markdown. You want the same claims rendered, in order, in a browser.
 
-**Read this first:** the site is **not deployed**. There is no preview URL and no production URL, so the only
-way to see it today is to build it locally. It also shows **no KPI value, no dashboard screenshot and no
+**Read this first:** the site is **not deployed yet**. There is no staging URL and no production URL, so the
+only way to see it today is to build it locally. The Railway deployment is fully automated and reviewable in
+[`../deployment/railway/README.md`](../deployment/railway/README.md) — it has simply not been run, because it
+needs one Railway API token that nobody has supplied. It also shows **no KPI value, no dashboard screenshot and no
 finding** — it renders definitions, structure and status, and its `/case-study` route is **locked** because
 Gate 2 is closed.
 

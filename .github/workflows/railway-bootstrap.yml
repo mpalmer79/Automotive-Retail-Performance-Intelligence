@@ -1,0 +1,424 @@
+# =============================================================================
+# ARPI — Railway bootstrap (manual)
+# =============================================================================
+# THE ONLY WORKFLOW IN THIS REPOSITORY THAT HOLDS A SECRET.
+#
+# `ci.yml` and `frontend.yml` are explicit that they run to completion on a fork
+# with zero secrets configured, and that rule still binds them. This workflow is
+# the deliberate exception: creating a Railway project, creating services and
+# generating a domain are account-level operations, and no amount of design makes
+# them possible without an account credential.
+#
+# So the exception is contained rather than spread:
+#
+#   - `workflow_dispatch` ONLY. It never runs on a push, never on a pull request,
+#     and therefore never on a fork's pull request — which is the path by which a
+#     workflow with a secret becomes a workflow that leaks one.
+#   - ONE secret, `RAILWAY_API_TOKEN`. Not a database URL, not a host, not a
+#     password, not a domain. Railway either provides or can reference every one
+#     of those itself, and duplicating them here would create a second copy of a
+#     credential with its own rotation problem.
+#   - The secret is passed only as an ENVIRONMENT variable to the step that needs
+#     it, never as a command-line argument, and the tools it runs refuse a
+#     credential passed as one.
+#   - The `apply` job is gated on a GitHub environment, so a human approves before
+#     anything is created or paid for.
+#
+# WHAT THIS WORKFLOW IS NOT FOR
+# -----------------------------
+# Routine deployment. After bootstrap, Railway's GitHub integration deploys
+# `main` on its own, waiting for this repository's CI checks first. There is
+# exactly one routine deployment owner and it is not this file — running a second
+# unconditional deploy from CI on every commit would make it impossible to say
+# which system deployed what.
+# =============================================================================
+
+name: Railway bootstrap
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'dry-run reports the plan and changes nothing. apply converges the project.'
+        required: true
+        default: dry-run
+        type: choice
+        options:
+          - dry-run
+          - apply
+      verify_only:
+        description: 'Skip bootstrap and only verify the live configuration against the repository.'
+        required: false
+        default: false
+        type: boolean
+
+# One bootstrap at a time. Two concurrent applies against the same project is a
+# race with a live database on one side of it, so a queued run waits rather than
+# being cancelled: cancelling mid-apply is the worse of the two outcomes.
+concurrency:
+  group: railway-bootstrap
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '22'
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # 1. validate — everything that can be checked WITHOUT a credential.
+  #
+  #    Runs first and gates the rest. Every failure it can produce is one that
+  #    would otherwise be discovered part-way through mutating a live project.
+  #    It needs no secret, so it also runs identically on a fork.
+  # ---------------------------------------------------------------------------
+  validate:
+    name: Validate specification and declaration
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install the deployment tooling
+        run: npm ci
+
+      - name: Type-check the tooling
+        run: npm run typecheck
+
+      # The specification is the single source for every service name, health-check
+      # path and required variable key. This asserts it is internally consistent,
+      # agrees with railway.json, targets a non-production environment, and
+      # contains no credential.
+      - name: Validate the deployment specification
+        run: npm run spec:validate
+
+      # Compiles .railway/railway.ts through the Railway SDK's own runner and
+      # asserts the resulting resource graph is the one the specification
+      # describes: references where references are required, server-side
+      # generators where passwords are required, and no literal credential
+      # anywhere. Offline, no credential.
+      - name: Evaluate the Railway declaration
+        run: npm run iac:evaluate
+
+      # Redaction, spec guards, graph assertions, tolerant CLI parsing, and the
+      # bootstrap tool's own behaviour against a fake Railway CLI.
+      - name: Deployment tooling tests
+        run: npm test
+
+      - name: Secret safety net
+        run: python3 scripts/check_secrets.py
+
+  # ---------------------------------------------------------------------------
+  # 2. dry-run — the plan, with no credential-bearing value revealed.
+  #
+  #    Needs the token, because a plan is a diff against the live project. Makes
+  #    no mutation: the tool's own tests assert that by reading which commands it
+  #    invoked.
+  # ---------------------------------------------------------------------------
+  dry-run:
+    name: Bootstrap dry run
+    needs: validate
+    runs-on: ubuntu-latest
+    # A GitHub environment even for the dry run, because it is the first step that
+    # handles the account token. Reviewers, wait timers and branch restrictions are
+    # configured on the environment rather than in this file.
+    environment: railway-staging
+    outputs:
+      plan: ${{ steps.plan.outputs.summary }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install the deployment tooling
+        run: npm ci
+
+      - name: Install the pinned Railway CLI
+        run: |
+          version="$(node -e "process.stdout.write(require('./deployment/railway/tooling.json').railwayCli.version)")"
+          echo "Installing @railway/cli@${version} (pinned in deployment/railway/tooling.json)"
+          npm install -g "@railway/cli@${version}"
+          railway --version
+
+      - name: Bootstrap dry run
+        id: plan
+        env:
+          # The ONE secret, passed as an environment variable to the one step that
+          # needs it. The tool reads it from here and refuses it as an argument.
+          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+        run: |
+          set -o pipefail
+          npm run bootstrap:dry-run -- --json > dry-run.json
+          # Values are redacted by the tool, and `--show-values` is never passed.
+          node -e "
+            const r = require('./dry-run.json');
+            const rows = r.steps.map(s => '| ' + s.name + ' | ' + s.status + ' | ' + String(s.detail).replace(/\|/g, '\\\\|') + ' |').join('\n');
+            process.stdout.write('| step | status | detail |\n| --- | --- | --- |\n' + rows + '\n');
+          " >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the dry-run result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: railway-dry-run
+          path: dry-run.json
+          if-no-files-found: warn
+          retention-days: 14
+
+  # ---------------------------------------------------------------------------
+  # 3. apply — the only job that changes anything.
+  #
+  #    Gated on `mode == 'apply'` AND on a GitHub environment, so it takes a
+  #    deliberate choice plus whatever approval the environment requires. It can
+  #    create paid resources: a PostgreSQL service and its persistent volume.
+  # ---------------------------------------------------------------------------
+  apply:
+    name: Bootstrap apply
+    needs: [validate, dry-run]
+    if: inputs.mode == 'apply' && inputs.verify_only != true
+    runs-on: ubuntu-latest
+    environment: railway-staging
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install the deployment tooling
+        run: npm ci
+
+      - name: Install the pinned Railway CLI
+        run: |
+          version="$(node -e "process.stdout.write(require('./deployment/railway/tooling.json').railwayCli.version)")"
+          npm install -g "@railway/cli@${version}"
+          railway --version
+
+      # Converges the project, generates the public domain if absent, triggers the
+      # first deployment, polls it, and health-checks the public URL. Idempotent:
+      # a second run of this job creates nothing.
+      - name: Bootstrap apply
+        id: apply
+        env:
+          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+        run: |
+          set -o pipefail
+          npm run bootstrap -- --json > bootstrap.json
+
+      - name: Publish the non-secret outputs
+        if: always()
+        run: |
+          if [ ! -f bootstrap.json ]; then
+            echo "The bootstrap step produced no result document." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          node -e "
+            const r = require('./bootstrap.json');
+            const o = r.outputs || {};
+            const lines = Object.entries(o).map(([k, v]) => '| ' + k + ' | ' + String(v) + ' |');
+            process.stdout.write('## Railway staging\n\n| output | value |\n| --- | --- |\n' + lines.join('\n') + '\n');
+          " >> "$GITHUB_STEP_SUMMARY"
+
+      # `publicUrl` is carried forward so the verification job does not have to
+      # re-derive it. It is not a secret.
+      - name: Export the public URL
+        id: url
+        if: always()
+        run: |
+          if [ -f bootstrap.json ]; then
+            url="$(node -e "process.stdout.write(String((require('./bootstrap.json').outputs||{}).publicUrl||''))")"
+            echo "public_url=${url}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload the bootstrap result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: railway-bootstrap
+          path: bootstrap.json
+          if-no-files-found: warn
+          retention-days: 14
+
+    outputs:
+      public_url: ${{ steps.url.outputs.public_url }}
+
+  # ---------------------------------------------------------------------------
+  # 4. verify — read the live configuration back and compare it to the repository.
+  #
+  #    Runs after an apply, and can also be run on its own with `verify_only`.
+  #    Reads variable KEYS and reference expressions, never resolved values.
+  # ---------------------------------------------------------------------------
+  verify:
+    name: Verify live configuration
+    needs: [validate, apply]
+    # `always()` so a failed apply is still followed by a report of what the live
+    # project actually looks like, which is usually the fastest diagnosis. Skipped
+    # only when the apply job itself was skipped and this is not a verify-only run.
+    if: always() && needs.validate.result == 'success' && (inputs.verify_only == true || needs.apply.result == 'success')
+    runs-on: ubuntu-latest
+    environment: railway-staging
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install the deployment tooling
+        run: npm ci
+
+      - name: Install the pinned Railway CLI
+        run: |
+          version="$(node -e "process.stdout.write(require('./deployment/railway/tooling.json').railwayCli.version)")"
+          npm install -g "@railway/cli@${version}"
+
+      - name: Verify the live Railway configuration
+        id: verify
+        env:
+          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+        run: |
+          set -o pipefail
+          npm run verify:railway -- --json > verification.json
+
+      - name: Publish the verification result
+        if: always()
+        run: |
+          if [ ! -f verification.json ]; then
+            echo "The verification step produced no result document." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          node -e "
+            const r = require('./verification.json');
+            const rows = r.steps.map(s => '| ' + s.name + ' | ' + s.status + ' | ' + String(s.detail).replace(/\|/g, '\\\\|') + ' |').join('\n');
+            process.stdout.write('## Configuration verification\n\n| check | status | detail |\n| --- | --- | --- |\n' + rows + '\n');
+          " >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Export the public URL
+        id: url
+        if: always()
+        run: |
+          if [ -f verification.json ]; then
+            url="$(node -e "process.stdout.write(String((require('./verification.json').outputs||{}).publicUrl||''))")"
+            echo "public_url=${url}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload the verification result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: railway-verification
+          path: verification.json
+          if-no-files-found: warn
+          retention-days: 14
+
+    outputs:
+      public_url: ${{ steps.url.outputs.public_url }}
+
+  # ---------------------------------------------------------------------------
+  # 5. deployed-site — test the thing a visitor receives.
+  #
+  #    Needs NO Railway credential: it takes a public URL and makes public
+  #    requests, so it is deliberately not in an environment and holds no secret.
+  # ---------------------------------------------------------------------------
+  deployed-site:
+    name: Deployed-site checks
+    needs: verify
+    if: always() && needs.verify.result == 'success' && needs.verify.outputs.public_url != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: portfolio/package-lock.json
+
+      - name: Install the website's dependencies
+        working-directory: portfolio
+        run: npm ci
+
+      - name: Install Chromium for Playwright
+        working-directory: portfolio
+        run: npx playwright install --with-deps chromium
+
+      # Canonical URLs on the Railway domain, no localhost in metadata, security
+      # headers surviving the platform router, the case study still locked, both
+      # engine paths still pending, no third-party request, no exposed credential,
+      # mobile navigation, reduced motion. All questions a local server cannot
+      # answer.
+      - name: Remote smoke suite
+        working-directory: portfolio
+        env:
+          ARPI_REMOTE_BASE_URL: ${{ needs.verify.outputs.public_url }}
+        run: npx playwright test --config playwright.remote.config.ts
+
+      # Recorded, not gated. A performance score measures a network and a runner
+      # as much as a site, and a job that fails on 0.89 teaches people to lower the
+      # threshold rather than to fix anything. Accessibility IS gated, because it
+      # is a property of the markup and this project asserts it elsewhere too.
+      - name: Lighthouse audit
+        continue-on-error: true
+        env:
+          ARPI_REMOTE_BASE_URL: ${{ needs.verify.outputs.public_url }}
+          CHROME_PATH: ''
+        run: npx tsx scripts/railway/audit_deployed_site.ts --min-accessibility 0.95
+
+      - name: Publish the Lighthouse summary
+        if: always()
+        run: |
+          if [ ! -f lighthouse/summary.json ]; then
+            echo "No Lighthouse summary was produced." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          node -e "
+            const r = require('./lighthouse/summary.json');
+            let out = '## Lighthouse (' + r.target + ')\n\n';
+            for (const route of r.routes) {
+              out += '### ' + route.route + '\n\n| category | score |\n| --- | --- |\n';
+              for (const [k, v] of Object.entries(route.scores)) {
+                out += '| ' + k + ' | ' + (v === null ? 'n/a' : v.toFixed(2)) + ' |\n';
+              }
+              out += '\n| metric | value |\n| --- | --- |\n';
+              for (const [k, v] of Object.entries(route.metrics)) {
+                out += '| ' + k + ' | ' + (v.display || 'n/a') + ' |\n';
+              }
+              out += '\n';
+            }
+            process.stdout.write(out);
+          " >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the deployed-site artefacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployed-site-checks
+          path: |
+            portfolio/playwright-report-remote/
+            lighthouse/summary.json
+          if-no-files-found: ignore
+          retention-days: 14

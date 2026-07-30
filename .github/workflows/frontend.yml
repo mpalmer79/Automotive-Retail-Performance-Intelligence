@@ -28,6 +28,13 @@
 #   browser    accessibility, end-to-end, content-integrity and design-system
 #              suites against a production build in a real browser, plus the
 #              per-route transfer-size report
+#   railway-image
+#              builds the Railway deployment image with the repository root as
+#              its context, runs it with an injected PORT, and asserts the
+#              runtime contract and the served site. Catches the failures that
+#              exist only inside a container: a missing evidence COPY, an
+#              over-broad .dockerignore rule, a standalone layout change, or a
+#              runtime image with no static assets
 # =============================================================================
 
 name: Frontend
@@ -45,7 +52,16 @@ on:
       - 'powerbi/ARPI_Performance_Intelligence/**'
       - 'KPI_CATALOG.md'
       - 'docs/requirements/**'
+      - 'docs/findings/**'
       - 'sql/**'
+      # The Railway deployment configuration. `tests/unit/railway-config.test.ts`
+      # reads all four and asserts they agree with the manifest generator's own
+      # read set, so a change to any of them can fail the frontend suite — and
+      # must therefore run it.
+      - 'railway.json'
+      - '.dockerignore'
+      - 'deployment/railway/**'
+      - '.railway/**'
   pull_request:
     paths:
       - 'portfolio/**'
@@ -54,7 +70,12 @@ on:
       - 'powerbi/ARPI_Performance_Intelligence/**'
       - 'KPI_CATALOG.md'
       - 'docs/requirements/**'
+      - 'docs/findings/**'
       - 'sql/**'
+      - 'railway.json'
+      - '.dockerignore'
+      - 'deployment/railway/**'
+      - '.railway/**'
   workflow_dispatch:
 
 concurrency:
@@ -237,3 +258,126 @@ jobs:
           path: portfolio/test-results/
           if-no-files-found: ignore
           retention-days: 14
+
+  # ---------------------------------------------------------------------------
+  # 3. railway-image — build the deployment artefact, in CI, on every change.
+  #
+  #    WHY THIS BELONGS IN THE FRONTEND WORKFLOW
+  #    The Railway image is how the website is actually served. Everything above
+  #    tests the source; this tests the thing that gets deployed, and it catches a
+  #    class of failure the other two jobs structurally cannot:
+  #
+  #      - an evidence file the Dockerfile forgot to COPY, which fails
+  #        `manifest:check` inside the container and nowhere else
+  #      - a `.dockerignore` rule that excludes something the build needs
+  #      - a standalone-output layout change that leaves no server.js to copy
+  #      - a runtime image missing `public/` or `.next/static`, which produces a
+  #        site that boots, passes a health check, and has no styling
+  #
+  #    Discovering any of those from a failed Railway deployment means discovering
+  #    it after the fact, on the platform, with a red deployment in the history.
+  #
+  #    NO SECRETS. It builds and runs a container locally and makes plain HTTP
+  #    requests to it. The build arguments are the same non-secret Railway metadata
+  #    the platform would pass.
+  # ---------------------------------------------------------------------------
+  railway-image:
+    name: Railway image
+    runs-on: ubuntu-latest
+    # Deliberately NOT `needs: quality`. An image that cannot build is worth
+    # knowing about at the same time as a lint failure, not after it.
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      # Repository ROOT as the context, matching what Railway does and what
+      # portfolio/Dockerfile.railway requires. The website's build regenerates its
+      # manifest from evidence outside portfolio/ and cannot complete without it.
+      - name: Build the Railway image
+        working-directory: .
+        run: |
+          docker build \
+            --file portfolio/Dockerfile.railway \
+            --tag arpi-portfolio:ci \
+            --build-arg RAILWAY_PUBLIC_DOMAIN=127.0.0.1:8412 \
+            --build-arg RAILWAY_ENVIRONMENT_NAME=staging \
+            --build-arg RAILWAY_GIT_COMMIT_SHA="${GITHUB_SHA}" \
+            .
+
+      # `PORT` is injected, exactly as Railway injects it, so a container that
+      # ignored it would fail here rather than failing a health check on the
+      # platform.
+      - name: Start the container on an injected PORT
+        working-directory: .
+        run: |
+          docker run -d --name arpi-ci -e PORT=8412 -p 8412:8412 arpi-portfolio:ci
+          for _ in $(seq 1 60); do
+            curl -sf -o /dev/null http://127.0.0.1:8412/status && break
+            sleep 2
+          done
+          curl -sf -o /dev/null http://127.0.0.1:8412/status
+
+      - name: Assert the runtime contract
+        working-directory: .
+        run: |
+          set -euo pipefail
+          echo "::group::user, environment and PID 1"
+          # Non-root, production, bound to every interface.
+          docker exec arpi-ci sh -c 'id -u | grep -qv "^0$"'
+          docker exec arpi-ci sh -c '[ "$NODE_ENV" = production ]'
+          docker exec arpi-ci sh -c '[ "$HOSTNAME" = 0.0.0.0 ]'
+          # `exec` in the CMD means node is PID 1 and receives Railway's SIGTERM.
+          docker exec arpi-ci sh -c 'tr "\0" " " < /proc/1/cmdline | grep -q server'
+          echo "::endgroup::"
+
+          echo "::group::the image carries nothing it should not"
+          for path in /app/tests /app/sql /app/powerbi /app/docs /app/.git; do
+            if docker exec arpi-ci sh -c "[ -e $path ]"; then
+              echo "::error title=Runtime image::${path} is present in the runtime image."
+              exit 1
+            fi
+          done
+          for dependency in typescript vitest eslint prettier tsx tailwindcss; do
+            if docker exec arpi-ci sh -c "[ -e /app/node_modules/${dependency} ]"; then
+              echo "::error title=Runtime image::development dependency ${dependency} shipped."
+              exit 1
+            fi
+          done
+          echo "::endgroup::"
+
+      - name: Assert the served site is complete and honest
+        working-directory: .
+        run: |
+          set -euo pipefail
+          base=http://127.0.0.1:8412
+          for path in / /architecture /data-model /kpis /governance /status /about /case-study \
+                      /robots.txt /sitemap.xml /manifest.webmanifest /favicon.svg /social-preview.png; do
+            code="$(curl -s -o /dev/null -w '%{http_code}' "${base}${path}")"
+            if [ "$code" != "200" ]; then
+              echo "::error title=Served site::${path} returned ${code}"
+              exit 1
+            fi
+          done
+
+          # The canonical origin came from RAILWAY_PUBLIC_DOMAIN, not from a
+          # localhost fallback. This is the assertion that would have caught a
+          # build that never received the build argument.
+          curl -s "${base}/sitemap.xml" | grep -q '127.0.0.1:8412'
+
+          # The security headers are properties of the application, not of a host
+          # config file, so they must be present behind `next start`.
+          curl -sI "${base}/" | grep -qi 'x-content-type-options: nosniff'
+          curl -sI "${base}/ui-lab" | grep -qi 'x-robots-tag'
+
+          # The gate is still closed on the artefact that would be deployed.
+          curl -s "${base}/case-study" | grep -q 'Case study in progress'
+
+      - name: Container logs
+        if: always()
+        working-directory: .
+        run: docker logs arpi-ci 2>&1 | tail -50 || true
+
+      - name: Stop the container
+        if: always()
+        working-directory: .
+        run: docker rm -f arpi-ci || true
