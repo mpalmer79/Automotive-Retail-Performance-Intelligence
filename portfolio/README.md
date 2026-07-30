@@ -233,6 +233,34 @@ and to ADR-0008. What this workflow checks is that the website never _claims_ a
 validation that has not happened, which is a different assertion made against the
 evidence files rather than against an engine.
 
+### Dependency overrides
+
+`package.json` carries four `overrides`. Each exists to close a high-severity
+advisory that no forward version of a direct dependency fixes, and each is a patch
+or minor bump within the same major line rather than a fork or a pin backwards.
+
+| Override                    | From                    | Advisory it closes                                                                                                                          |
+| --------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `postcss` → `8.5.25`        | `next` bundles `8.4.31` | XSS via unescaped `</style>` in stringify output; path traversal and arbitrary `.map` disclosure via attacker-controlled `sourceMappingURL` |
+| `sharp` → `0.35.3`          | `next` pins `0.34.5`    | four inherited libvips CVEs                                                                                                                 |
+| `brace-expansion` → `5.0.8` | ESLint's plugin tree    | ReDoS                                                                                                                                       |
+| `minimatch` → `10.2.6`      | ESLint's plugin tree    | ReDoS                                                                                                                                       |
+
+npm's own remedy for the first two is `next@9.3.3` — a six-year downgrade — and for
+the last two `eslint@10`, which this project cannot take because `eslint-plugin-react`
+does not support it yet. An override is the honest fix: it patches the vulnerable
+package rather than pretending the advisory is acceptable.
+
+Neither of the first two is reachable in this site as built — the CSS pipeline
+processes only source-controlled stylesheets, and `sharp` is Next's image-optimisation
+dependency which this site never invokes, having no `next/image` usage and no raster
+pipeline. They are fixed anyway, because "not reachable today" is a property of the
+current code rather than of the dependency, and the audit gate is not something to
+argue with.
+
+`npm audit` reports **0 vulnerabilities** at every severity, with and without
+`--omit=dev`.
+
 ---
 
 ## 10. Licence
