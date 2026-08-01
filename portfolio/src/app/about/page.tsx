@@ -11,6 +11,7 @@ import { Eyebrow, Heading, Text } from '@/components/ui/typography'
 import { counts, manifest } from '@/lib/manifest'
 import { pageMetadata } from '@/lib/metadata'
 import { REPOSITORY_URL, ROUTES } from '@/lib/site'
+import { Canvas } from '@/components/shell/field'
 
 export const metadata: Metadata = pageMetadata('about')
 
@@ -55,7 +56,7 @@ export const metadata: Metadata = pageMetadata('about')
  */
 export default function AboutPage() {
   return (
-    <>
+    <Canvas>
       <PageHeader
         eyebrow="About"
         title="Twenty-five years in dealerships, then the technical work to model them properly"
@@ -318,7 +319,7 @@ export default function AboutPage() {
           </div>
         </Container>
       </Section>
-    </>
+    </Canvas>
   )
 }
 

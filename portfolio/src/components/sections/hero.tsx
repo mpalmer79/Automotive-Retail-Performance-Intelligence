@@ -46,13 +46,105 @@ import { TrustLine } from '@/components/ui/trust-line'
 import { Eyebrow, Heading, Text } from '@/components/ui/typography'
 import { GovernedSignal } from '@/components/visuals/governed-signal'
 import { REPOSITORY_URL, ROUTES } from '@/lib/site'
+import { cx } from '@/lib/utils'
+
+/**
+ * The hero's identity block: eyebrow and headline.
+ *
+ * Exported separately so a layout can place it without the rest. Layout B puts
+ * it in an editorial panel beside the product; layout A keeps it spanning the
+ * canvas above a two-column row.
+ */
+export function HeroIdentity({ className }: { className?: string }) {
+  return (
+    <div className={cx('flex flex-col gap-5', className)}>
+      <Eyebrow tone="accent" rule>
+        Automotive retail performance intelligence
+      </Eyebrow>
+      <Heading level={1} size="hero" className="max-w-5xl text-balance">
+        Dealership intelligence built by someone who has run the dealership.
+      </Heading>
+    </div>
+  )
+}
+
+/**
+ * The hero's editorial block: supporting copy, two actions, one trust line.
+ *
+ * THE ORDER IS THE POINT
+ * ----------------------
+ * Copy, then actions, then the trust line. The disclosure comes AFTER the two
+ * ways in, not before them. An earlier build put a bordered validation caveat
+ * and a ruled synthetic-data paragraph above the buttons, which is how the
+ * first call to action ended up roughly 1,050px down a phone screen: the page
+ * asked the reader to accept two risk disclosures before it offered them
+ * anything to do. The disclosure is still on the first screen and still one
+ * line; it simply is not the thing standing between the headline and the
+ * button.
+ */
+export function HeroEditorial({ className }: { className?: string }) {
+  return (
+    <div className={cx('flex flex-col gap-6', className)}>
+      <Text size="body" tone="secondary" className="max-w-prose">
+        More than 25 years of automotive retail experience, joined to PostgreSQL, Python,
+        governed KPIs and Power BI architecture. Sales, gross, inventory, leads and
+        marketing each get one definition, and every number on this site links to the file
+        that proves it.
+      </Text>
+
+      {/* Two actions, and only two. The primary opens the product surface
+          further down the page, because a visitor who has read this far wants to
+          see the thing rather than read more about it. The secondary goes to the
+          source, because a reviewer who believes none of this wants the
+          repository and should not have to hunt for it. */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <LinkButton
+          href="#operating-view"
+          variant="primary"
+          size="lg"
+          iconAfter={<ArrowRight />}
+        >
+          Explore the platform
+        </LinkButton>
+        <LinkButton
+          href={REPOSITORY_URL}
+          variant="secondary"
+          size="lg"
+          external
+          iconBefore={<FolderGit2 />}
+        >
+          View engineering evidence
+        </LinkButton>
+      </div>
+
+      <TrustLine variant="hero" href={ROUTES.governance.href} className="mt-1" />
+    </div>
+  )
+}
+
+/**
+ * The signature visual.
+ *
+ * Renders a portrait composition below `sm` and a landscape one above, rather
+ * than one diagram scaled to both. See the comment at the top of
+ * `governed-signal.tsx`: the first attempt let the landscape one bleed off the
+ * right edge on a phone, which produced 85px of real horizontal page scroll at
+ * 375px.
+ */
+export function HeroProduct({ className }: { className?: string }) {
+  return (
+    <div className={className}>
+      <GovernedSignal />
+    </div>
+  )
+}
 
 export function Hero() {
   return (
     <Section
       rhythm="none"
       tone="cinematic"
-      className="overflow-hidden pt-10 pb-section-tight sm:pt-14"
+      className="overflow-clip pt-12 pb-section-tight sm:pt-16"
     >
       {/* The dimensional-grid ground. Decorative, pointer-transparent, and
           removed from the accessibility tree. */}
@@ -63,70 +155,20 @@ export function Hero() {
 
       <Container width="wide">
         {/*
-          The headline spans the page, and the two-column row sits under it.
+        The headline spans the canvas, and the two-column row sits under it.
 
-          The first attempt put the headline inside a five-column text block
-          beside the visual, which at 1440px gave a ten-word sentence a 460px
-          measure: six lines of 76px type filling the whole left half, with the
-          diagram pushed into the dead space beside it. Giving the sentence the
-          full width lets it set in three balanced lines at a size that still
-          reads as a headline, and gives the visual a column worth having.
-        */}
-        <div className="flex flex-col gap-5">
-          <Eyebrow tone="accent" rule>
-            Automotive retail analytics
-          </Eyebrow>
-          <Heading level={1} size="hero" className="max-w-5xl text-balance">
-            Dealership intelligence built by someone who has run the dealership.
-          </Heading>
-        </div>
+        The first attempt put the headline inside a five-column text block beside
+        the visual, which at 1440px gave a ten-word sentence a 460px measure: six
+        lines of 76px type filling the whole left half, with the diagram pushed
+        into the dead space beside it. Giving the sentence the full width lets it
+        set in three balanced lines at a size that still reads as a headline, and
+        gives the visual a column worth having.
+      */}
+        <HeroIdentity />
 
         <div className="mt-10 grid grid-cols-1 items-start gap-10 lg:mt-12 lg:grid-cols-12 lg:gap-12">
-          <div className="flex flex-col gap-6 lg:col-span-5">
-            <Text size="body" tone="secondary" className="max-w-prose">
-              More than 25 years of automotive retail experience, joined to PostgreSQL,
-              Python, governed KPIs and Power BI architecture. Sales, gross, inventory,
-              leads and marketing each get one definition, and every number on this site
-              links to the file that proves it.
-            </Text>
-
-            {/* Two actions. The primary opens the product surface further down
-                the page, because a visitor who has read this far wants to see
-                the thing rather than read more about it. The secondary goes to
-                the source, because a reviewer who believes none of this wants
-                the repository and should not have to hunt for it. */}
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <LinkButton
-                href="#operating-view"
-                variant="primary"
-                size="lg"
-                iconAfter={<ArrowRight />}
-              >
-                Explore the platform
-              </LinkButton>
-              <LinkButton
-                href={REPOSITORY_URL}
-                variant="secondary"
-                size="lg"
-                external
-                iconBefore={<FolderGit2 />}
-              >
-                View engineering evidence
-              </LinkButton>
-            </div>
-
-            <TrustLine variant="hero" href={ROUTES.governance.href} className="mt-1" />
-          </div>
-
-          {/* The signature visual.
-              It renders a portrait composition below `sm` and a landscape one
-              above, rather than one diagram scaled to both. See the comment at
-              the top of `governed-signal.tsx`: the first attempt let the
-              landscape one bleed off the right edge on a phone, which produced
-              85px of real horizontal page scroll at 375px. */}
-          <div className="lg:col-span-7">
-            <GovernedSignal />
-          </div>
+          <HeroEditorial className="lg:col-span-5" />
+          <HeroProduct className="lg:col-span-7" />
         </div>
       </Container>
     </Section>

@@ -9,6 +9,34 @@
    Naming: --arpi-<group>-<role>[-<step>]. Groups are colour, text, space,
    size, radius, border, shadow, blur, opacity, motion, z, layout.
 
+   THE VISUAL DIRECTION
+   --------------------------------------------------------------------------
+   The site is a white floating canvas over a blue geometric field. A white
+   header opens the page, a full-page blue gradient carries the background, one
+   dominant white panel holds the content, and a white footer closes the field.
+
+   This replaced an obsidian near-black theme. The inversion is expressed almost
+   entirely in this file: the semantic names below did not change, so components
+   that ask for `canvas`, `surface`, `ink` or `border` moved with the palette
+   rather than being rewritten. What is new is the FIELD group, which had no
+   equivalent in a dark theme because there was nothing for a panel to float on.
+
+   EVERY COLOUR PAIRING HERE IS MEASURED, NOT CHOSEN BY EYE
+   --------------------------------------------------------------------------
+   The starting values for this palette failed in four places, and all four are
+   the kind of failure that looks fine in a screenshot:
+
+     ink-muted   #6E7A83  measured 4.40:1 on white. Below the 4.5:1 floor.
+     ink-faint   #87939B  measured 3.15:1. Not usable for text at all.
+     accent      #087FA4  measured 4.58:1 on pure white but 4.37:1 on the soft
+                          canvas, so it passed on one surface and failed on the
+                          next one down.
+     cyan        #0C92BC  measured 3.59:1. Decorative only.
+
+   Each is corrected below and the corrected value is asserted by
+   tests/unit/tokens.test.ts against every surface it can sit on, so the next
+   change to either a colour or a ground is caught by the same test.
+
    Documented in portfolio/docs/DESIGN_SYSTEM.md.
    ========================================================================== */
 
@@ -19,160 +47,190 @@
      semantic tokens in section 2, so that a theme change is one edit here.
      --------------------------------------------------------------------- */
 
-  /* Obsidian - the page ground. Cool, near-neutral, very slightly blue so it
-     reads as instrument housing rather than as pure black.
+  /* Field blue - the page background, and nothing else.
 
-     975 is the cinematic step, and it exists for exactly one job: the hero and
-     the closing section sit on it so that the page's two most composed moments
-     are visibly deeper than the document around them. It is two points darker
-     than the canvas, which is enough for the eye to read a band boundary
-     without a border and not enough to read as a different theme. */
-  --arpi-obsidian-975: #03050a;
-  --arpi-obsidian-950: #05070b;
-  --arpi-obsidian-900: #080b11;
-  --arpi-obsidian-850: #0b0f16;
+     A vertical gradient from a bright sky at the top to a deep navy at the
+     bottom. The top step is the one that was tuned: at #4FA9D3 the white canvas
+     edge measured 2.64:1 against it, so the site's core visual idea - a white
+     panel clearly separated from the field it floats on - was the weakest
+     boundary on the page. #3C96C4 measures 3.31:1 and clears the non-text
+     threshold while still reading as a bright sky rather than as a mid blue. */
+  --arpi-field-400: #3c96c4;
+  --arpi-field-500: #2e7bb2;
+  --arpi-field-600: #245c97;
+  --arpi-field-700: #1d4d84;
+  --arpi-field-800: #173b6e;
 
-  /* Graphite - elevated surfaces. */
-  --arpi-graphite-800: #10151e;
-  --arpi-graphite-750: #141a25;
-  --arpi-graphite-700: #1a212e;
-  --arpi-graphite-600: #232c3c;
-  --arpi-graphite-500: #2f3a4d;
+  /* White canvas ramp - the surfaces content sits on. Cool rather than neutral,
+     so a white panel over a blue field does not read as warm by comparison. */
+  --arpi-canvas-pure: #ffffff;
+  --arpi-canvas-soft: #f7fafc;
+  --arpi-canvas-cool: #edf3f7;
+  --arpi-canvas-wash: #e3f2f8;
 
-  /* Steel - borders, rules, muted text.
+  /* Ink - text on white. Charcoal, never pure black: #000 on white produces a
+     harder edge than the eye reads as comfortable at body sizes.
 
-     steel-400 is the faintest colour used for TEXT, so it is pinned to the WCAG
-     AA floor rather than chosen by eye. #64748f, its first value, measured
-     4.26:1 on the canvas and 3.68:1 on `surface-raised` - both below 4.5:1, and
-     axe-core flagged it on all nine routes. #7887a8 measures 5.60:1 on the
-     canvas and 4.84:1 on the lightest surface the site uses, so it passes
-     everywhere text can sit. Anything fainter than this token is decorative
-     only: steel-500 is used for borders and for the grid motif at 5.5% opacity,
-     where the 3:1 non-text threshold applies. */
-  --arpi-steel-500: #47556b;
-  --arpi-steel-400: #7887a8;
-  --arpi-steel-300: #8b99b3;
-  --arpi-steel-200: #b3bfd4;
-  --arpi-steel-100: #d6deea;
+     ink-400 is the faintest colour used for TEXT and is pinned to a
+     measurement. Its starting value #6E7A83 measured 4.40:1 on pure white and
+     4.20:1 on the soft canvas - below the floor on both. #5C6A74 measures
+     5.57:1 and 5.32:1, so it passes on every surface text can sit on. */
+  --arpi-ink-900: #16202a;
+  --arpi-ink-800: #232e38;
+  --arpi-ink-600: #48565f;
+  --arpi-ink-400: #5c6a74;
 
-  /* Clarity - the highest-contrast text colour. Not pure white; pure white on
-     a near-black ground produces halation at large sizes. */
-  --arpi-clarity: #f2f6fc;
+  /* Slate - hairlines, rules and decorative marks. NEVER text.
 
-  /* Cyan - the primary signal colour. Used for the active path, the primary
-     action, and the "this is the thing you are looking at" state. */
-  --arpi-cyan-200: #9decf7;
-  --arpi-cyan-300: #5fdcee;
-  --arpi-cyan-400: #22c8e0;
-  --arpi-cyan-500: #06a8c4;
-  --arpi-cyan-600: #067f98;
-  --arpi-cyan-900: #06323d;
+     Both steps sit below 3:1 on white by design. They draw dividers and the
+     background motif, neither of which is text and neither of which identifies
+     a control or its state, so WCAG 1.4.11 does not apply to them. A test
+     asserts that no component uses these two as a text colour, because the
+     distinction is only safe if it is enforced. */
+  --arpi-slate-400: #93a0a9;
+  --arpi-slate-200: #d3dee6;
+  --arpi-slate-100: #e6edf2;
 
-  /* Amber - attention and caution. Reserved for pending and blocked, never
-     used decoratively. */
-  --arpi-amber-200: #fcdfa4;
-  --arpi-amber-300: #f7c96a;
-  --arpi-amber-400: #eaab2c;
-  --arpi-amber-500: #c68a12;
-  --arpi-amber-900: #3d2a05;
+  /* Teal - the primary signal colour. The active path, the primary action, the
+     "this is the thing you are looking at" state.
 
-  /* Violet - semantic-model and relationship accents only. */
-  --arpi-violet-200: #cfc4fb;
-  --arpi-violet-300: #ad9cf6;
-  --arpi-violet-400: #8b74ed;
-  --arpi-violet-500: #6d55d1;
-  --arpi-violet-900: #241a4a;
+     teal-600 is the text-and-link step and is measured on all four white
+     surfaces. teal-400 is the decorative step: it measures 3.59:1, which is a
+     mark, a rule or a large numeral, never body text. */
+  --arpi-teal-700: #086076;
+  --arpi-teal-600: #0a6c8b;
+  --arpi-teal-500: #00688f;
+  --arpi-teal-400: #0c92bc;
+  --arpi-teal-100: #e3f2f8;
 
-  /* Emerald - verified pass states only. Never "on brand" decoration. */
-  --arpi-emerald-200: #a6ebc4;
-  --arpi-emerald-300: #63d79b;
-  --arpi-emerald-400: #2fbc78;
-  --arpi-emerald-500: #199760;
-  --arpi-emerald-900: #06301e;
+  /* Link blue. Distinct from teal so a link inside a teal-accented section is
+     still identifiable as a link. */
+  --arpi-link-600: #135f8a;
 
-  /* Rose - genuine negative or failed states only. Nothing on this site is
-     currently failed, so this ramp is present for the status vocabulary to be
-     complete rather than because it is in use. */
-  --arpi-rose-200: #f8c0c6;
-  --arpi-rose-300: #f2909c;
-  --arpi-rose-400: #e35d70;
-  --arpi-rose-500: #c23b50;
-  --arpi-rose-900: #3d0d16;
+  /* Status ramps. Every one is measured as text on all four white surfaces, and
+     every one is paired with an icon and a text label in <StatusBadge> - colour
+     is never the only carrier. */
+  --arpi-emerald-600: #0f7a46;
+  --arpi-emerald-100: #e2f4ea;
+  --arpi-amber-700: #8a5a06;
+  --arpi-amber-100: #fbf0da;
+  --arpi-rose-600: #b3253c;
+  --arpi-rose-100: #fbe6ea;
+  --arpi-violet-600: #5b45b8;
+  --arpi-violet-100: #ece8fa;
+
+  /* Inverse text - white and near-white, for the deep-blue panels only. Which
+     steps of the field these are legible on is not a matter of judgement:
+
+       white     on field-400  3.31:1   FAILS
+       white     on field-500  4.57:1   passes
+       white     on field-600  6.88:1   passes
+       inverse-2 on field-500  4.04:1   FAILS
+       inverse-3 on field-600  4.78:1   passes
+
+     So text on blue is confined to `colour-field-deep` and below, and the
+     bright top of the gradient carries no text at any size. */
+  --arpi-inverse-100: #ffffff;
+  --arpi-inverse-200: #e7f3f8;
+  --arpi-inverse-300: #c3dbe7;
 
   /* ---------------------------------------------------------------------
      2. Semantic colour tokens
      --------------------------------------------------------------------- */
 
-  /* The four section grounds. A page moves between them rather than between
-     bordered boxes, which is what lets the redesign carry section hierarchy
-     without drawing a rule under every heading.
+  /* The blue field. Four stops, consumed by the one gradient declaration in
+     globals.css. Nothing else may reference these. */
+  --arpi-colour-field-top: var(--arpi-field-400);
+  --arpi-colour-field-upper: var(--arpi-field-500);
+  --arpi-colour-field-lower: var(--arpi-field-600);
+  --arpi-colour-field-bottom: var(--arpi-field-800);
 
-       canvas-deep   cinematic  hero and closing
-       canvas        editorial  narrative and reading
-       canvas-raised panel      the product frame's surround
-       surface-sunken evidence  technical and evidence bands
+  /* A deep blue panel that may carry white text. The only blue surface that
+     may. */
+  --arpi-colour-field-deep: var(--arpi-field-700);
+  --arpi-colour-field-deepest: var(--arpi-field-800);
+
+  /* The four section grounds, now expressed in white rather than in black.
+
+     A page moves between them rather than between bordered boxes, which is what
+     lets the design carry section hierarchy inside ONE connected canvas instead
+     of putting every subsection in another card.
+
+       canvas         pure     the master canvas and its reading sections
+       canvas-raised  pure     a surface that must read as lifted off the canvas
+       surface-sunken cool     evidence and technical bands, recessed
+       surface        soft     a panel inside the canvas
 
      Documented in portfolio/docs/DESIGN_SYSTEM.md section 3. */
-  --arpi-colour-canvas-deep: var(--arpi-obsidian-975);
-  --arpi-colour-canvas: var(--arpi-obsidian-950);
-  --arpi-colour-canvas-raised: var(--arpi-obsidian-900);
-  --arpi-colour-surface: var(--arpi-graphite-800);
-  --arpi-colour-surface-raised: var(--arpi-graphite-750);
-  --arpi-colour-surface-hover: var(--arpi-graphite-700);
-  --arpi-colour-surface-sunken: var(--arpi-obsidian-850);
+  --arpi-colour-canvas-deep: var(--arpi-canvas-cool);
+  --arpi-colour-canvas: var(--arpi-canvas-pure);
+  --arpi-colour-canvas-raised: var(--arpi-canvas-pure);
+  --arpi-colour-surface: var(--arpi-canvas-soft);
+  --arpi-colour-surface-raised: var(--arpi-canvas-pure);
+  --arpi-colour-surface-hover: var(--arpi-canvas-cool);
+  --arpi-colour-surface-sunken: var(--arpi-canvas-cool);
 
-  --arpi-colour-border: var(--arpi-graphite-600);
-  --arpi-colour-border-strong: var(--arpi-graphite-500);
-  --arpi-colour-border-subtle: var(--arpi-graphite-700);
+  --arpi-colour-border: var(--arpi-slate-200);
+  --arpi-colour-border-strong: var(--arpi-slate-400);
+  --arpi-colour-border-subtle: var(--arpi-slate-100);
 
-  --arpi-colour-text: var(--arpi-clarity);
-  --arpi-colour-text-secondary: var(--arpi-steel-200);
-  --arpi-colour-text-muted: var(--arpi-steel-300);
-  --arpi-colour-text-faint: var(--arpi-steel-400);
-  --arpi-colour-text-inverse: var(--arpi-obsidian-950);
+  --arpi-colour-text: var(--arpi-ink-900);
+  --arpi-colour-text-secondary: var(--arpi-ink-800);
+  --arpi-colour-text-muted: var(--arpi-ink-600);
+  --arpi-colour-text-faint: var(--arpi-ink-400);
+  --arpi-colour-text-inverse: var(--arpi-inverse-100);
+  --arpi-colour-text-inverse-muted: var(--arpi-inverse-300);
 
-  --arpi-colour-accent: var(--arpi-cyan-300);
-  --arpi-colour-accent-strong: var(--arpi-cyan-400);
-  --arpi-colour-accent-muted: var(--arpi-cyan-600);
-  --arpi-colour-accent-wash: var(--arpi-cyan-900);
+  --arpi-colour-accent: var(--arpi-teal-600);
+  --arpi-colour-accent-strong: var(--arpi-teal-700);
+  --arpi-colour-accent-muted: var(--arpi-teal-500);
+  --arpi-colour-accent-mark: var(--arpi-teal-400);
+  --arpi-colour-accent-wash: var(--arpi-teal-100);
+  --arpi-colour-link: var(--arpi-link-600);
 
-  --arpi-colour-model: var(--arpi-violet-300);
-  --arpi-colour-model-wash: var(--arpi-violet-900);
+  --arpi-colour-model: var(--arpi-violet-600);
+  --arpi-colour-model-wash: var(--arpi-violet-100);
 
-  /* Status vocabulary. Every one of these is paired with an icon and a text
-     label in <StatusBadge>; colour is never the only carrier. */
-  --arpi-colour-verified: var(--arpi-emerald-300);
-  --arpi-colour-verified-wash: var(--arpi-emerald-900);
-  --arpi-colour-pending: var(--arpi-amber-300);
-  --arpi-colour-pending-wash: var(--arpi-amber-900);
-  --arpi-colour-blocked: var(--arpi-amber-200);
-  --arpi-colour-blocked-wash: var(--arpi-amber-900);
-  --arpi-colour-failed: var(--arpi-rose-300);
-  --arpi-colour-failed-wash: var(--arpi-rose-900);
-  --arpi-colour-deferred: var(--arpi-steel-300);
-  --arpi-colour-deferred-wash: var(--arpi-graphite-700);
+  /* Status vocabulary. */
+  --arpi-colour-verified: var(--arpi-emerald-600);
+  --arpi-colour-verified-wash: var(--arpi-emerald-100);
+  --arpi-colour-pending: var(--arpi-amber-700);
+  --arpi-colour-pending-wash: var(--arpi-amber-100);
+  --arpi-colour-blocked: var(--arpi-amber-700);
+  --arpi-colour-blocked-wash: var(--arpi-amber-100);
+  --arpi-colour-failed: var(--arpi-rose-600);
+  --arpi-colour-failed-wash: var(--arpi-rose-100);
+  --arpi-colour-deferred: var(--arpi-ink-400);
+  --arpi-colour-deferred-wash: var(--arpi-canvas-cool);
 
-  --arpi-colour-focus: var(--arpi-cyan-300);
+  --arpi-colour-focus: var(--arpi-teal-500);
 
   /* ---------------------------------------------------------------------
      3. Typography
      Three families, loaded as variable fonts through next/font with
      `display: swap` and a matched fallback metric, so no layout shift occurs
      when they arrive. See src/lib/fonts.ts.
+
+     The display family is a SERIF. That is the single largest change to the
+     page voice: the reference direction pairs a traditional brand register with
+     clean modern interface text, and a second sans could not carry the first
+     half of that. Space Grotesk was removed rather than kept alongside it -
+     the direction permits one serif, one sans and one mono, and a display sans
+     plus a body sans is two sans families.
      --------------------------------------------------------------------- */
 
   --arpi-font-sans:
     var(--font-inter), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
     sans-serif;
   --arpi-font-display:
-    var(--font-space-grotesk), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+    var(--font-source-serif), ui-serif, Georgia, 'Times New Roman', serif;
   --arpi-font-mono:
     var(--font-jetbrains-mono), ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, monospace;
 
   /* Type scale. Fluid between the 375px and 1440px viewports; every step
      clamps so an ultrawide display does not produce a headline that spans the
      screen. */
-  --arpi-text-2xs: 0.6875rem; /* 11px - alignment marks, axis labels */
+  --arpi-text-2xs: 0.6875rem; /* 11px - alignment marks, axis labels. NEVER body */
   --arpi-text-xs: 0.75rem; /* 12px - eyebrows, code labels, metadata */
   --arpi-text-sm: 0.8125rem; /* 13px - dense table text */
   --arpi-text-base: 0.9375rem; /* 15px - UI default */
@@ -184,14 +242,9 @@
   --arpi-text-4xl: clamp(2.125rem, 3.1vw + 1.4rem, 3.5rem);
   --arpi-text-5xl: clamp(2.5rem, 4.2vw + 1.35rem, 4.25rem);
 
-  /* The hero headline, and only the hero headline.
-
-     Smaller at both ends than --arpi-text-5xl, which is deliberate and was
-     measured rather than guessed. The redesigned headline is a longer sentence
-     than the one it replaces: at 320px it has to reach the first screen's
-     supporting copy, and at 1440px it sets across the full container in three
-     balanced lines. The 5xl step put it at six lines in a half-width column and
-     at four across the full one. */
+  /* The hero headline, and only the hero headline. Ranges from 34px at 320px to
+     60px at 1440px, which sits inside the 34-42 / 48-68 band the direction
+     asks for at each end. */
   --arpi-text-hero: clamp(2.125rem, 3vw + 1.2rem, 3.75rem);
 
   /* Editorial numerals: the four engineering proof figures, and nothing else.
@@ -250,7 +303,12 @@
   --arpi-size-control-lg: 2.875rem;
   --arpi-size-icon: 1rem;
   --arpi-size-icon-lg: 1.25rem;
-  --arpi-size-header: 4rem;
+
+  /* The header: 60px on a phone, 68px from the medium breakpoint up. Both sit
+     inside the 58-64 / 64-72 bands the direction asks for, and the value is a
+     single clamp rather than a breakpoint jump so the sticky offset and the
+     drawer's top edge never disagree mid-transition. */
+  --arpi-size-header: clamp(3.75rem, 1.2vw + 3.45rem, 4.25rem);
 
   --arpi-radius-none: 0;
   --arpi-radius-xs: 0.125rem;
@@ -259,6 +317,11 @@
   --arpi-radius-lg: 0.625rem;
   --arpi-radius-xl: 0.875rem;
   --arpi-radius-2xl: 1.25rem;
+
+  /* The master canvas. 18px on a phone, 28px on a desktop - the direction asks
+     for 16-22 and 20-30. One token, fluid, so the corner never steps. */
+  --arpi-radius-canvas: clamp(1.125rem, 0.9vw + 0.9rem, 1.75rem);
+
   /* The product frame, and only the product frame. One radius that appears
      nowhere else is what makes the Operating View read as a piece of software
      inside the page rather than as another card. */
@@ -270,23 +333,32 @@
 
   /* ---------------------------------------------------------------------
      6. Elevation
-     Dark-theme elevation is carried by a lightening border plus a contained
-     shadow, not by a large soft drop shadow, which on a near-black ground
-     reads as smudge rather than as height.
+     --------------------------------------------------------------------------
+     Light-theme elevation is the inverse of the dark theme's problem. On a
+     near-black ground a large soft shadow reads as smudge, so the old system
+     carried height with a lightening border. On a blue field a shadow reads
+     correctly again, so the canvas uses a real one - but a restrained one. The
+     direction asks for a panel that is clearly separated from the field without
+     a heavy drop shadow or a glow.
      --------------------------------------------------------------------- */
 
   --arpi-shadow-none: none;
-  --arpi-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.5);
-  --arpi-shadow-md: 0 2px 4px -1px rgb(0 0 0 / 0.55), 0 4px 12px -2px rgb(0 0 0 / 0.4);
-  --arpi-shadow-lg: 0 4px 8px -2px rgb(0 0 0 / 0.6), 0 12px 32px -8px rgb(0 0 0 / 0.5);
-  --arpi-shadow-xl:
-    0 8px 16px -4px rgb(0 0 0 / 0.65), 0 24px 64px -16px rgb(0 0 0 / 0.55);
-  --arpi-shadow-accent:
-    0 0 0 1px var(--arpi-colour-accent-muted), 0 6px 24px -8px rgb(34 200 224 / 0.35);
+  --arpi-shadow-sm: 0 1px 2px 0 rgb(16 42 71 / 0.06);
+  --arpi-shadow-md: 0 1px 3px 0 rgb(16 42 71 / 0.08), 0 4px 12px -2px rgb(16 42 71 / 0.06);
+  --arpi-shadow-lg:
+    0 2px 6px -1px rgb(16 42 71 / 0.09), 0 12px 28px -6px rgb(16 42 71 / 0.1);
 
-  /* Inset top highlight. One pixel of light on the top edge of a raised
-     surface, which is how physical instrument panels read. */
-  --arpi-shadow-inset-top: inset 0 1px 0 0 rgb(255 255 255 / 0.045);
+  /* The master canvas, and only the master canvas. */
+  --arpi-shadow-canvas:
+    0 1px 2px 0 rgb(10 32 58 / 0.07), 0 12px 32px -8px rgb(10 32 58 / 0.14),
+    0 40px 72px -32px rgb(10 32 58 / 0.16);
+  --arpi-shadow-xl: var(--arpi-shadow-canvas);
+  --arpi-shadow-accent:
+    0 0 0 1px var(--arpi-colour-accent-muted), 0 6px 18px -8px rgb(10 108 139 / 0.35);
+
+  /* Retained so the token name still resolves for any consumer, but neutral:
+     an inset top highlight is a dark-theme device and reads as a seam on white. */
+  --arpi-shadow-inset-top: none;
 
   /* ---------------------------------------------------------------------
      7. Blur and opacity
@@ -299,7 +371,11 @@
 
   --arpi-opacity-disabled: 0.42;
   --arpi-opacity-scrim: 0.72;
-  --arpi-opacity-grid: 0.055;
+  /* The background motif. Higher than the dark theme's 0.055 because a white
+     line on blue at that opacity is invisible; measured against the field so
+     the motif reads as structure without competing with the canvas. */
+  --arpi-opacity-motif: 0.14;
+  --arpi-opacity-motif-strong: 0.22;
   --arpi-opacity-dim: 0.28;
 
   /* ---------------------------------------------------------------------
@@ -319,9 +395,7 @@
 
   /* The hero's signature sequence: one signal travelling from the source
      systems, through the governed layers, to the analytical domains. It runs
-     once on load and stops. 2.6s is long enough for the eye to follow the path
-     and short enough that a visitor who scrolls immediately has still seen it
-     finish. Nothing else on the site uses this duration. */
+     once on load and stops. */
   --arpi-motion-signal: 2600ms;
 
   /* Easing scale. */
@@ -344,6 +418,7 @@
      9. Z-index - a closed set. A component may not invent a layer.
      --------------------------------------------------------------------- */
 
+  --arpi-z-field: -1;
   --arpi-z-base: 0;
   --arpi-z-raised: 10;
   --arpi-z-sticky: 20;
@@ -368,6 +443,18 @@
   --arpi-layout-gutter: clamp(1.25rem, 4vw, 3rem);
   --arpi-layout-columns: 12;
   --arpi-layout-gap: clamp(1rem, 2vw, 2rem);
+
+  /* The master canvas: the width of the white panel that floats on the field.
+     The direction asks for roughly 1180-1320px; 82rem is 1312px. */
+  --arpi-layout-canvas: 82rem;
+
+  /* How far the canvas sits from the viewport edge. 12px on a phone and 40px on
+     a desktop, so the blue field stays visible down both sides at every width
+     without the panel becoming a narrow column on a small screen. */
+  --arpi-layout-canvas-inset: clamp(0.75rem, 2.4vw, 2.5rem);
+
+  /* Interior padding of the canvas. */
+  --arpi-layout-canvas-pad: clamp(1.375rem, 3.2vw, 4rem);
 }
 
 /* ==========================================================================

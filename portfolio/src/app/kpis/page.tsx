@@ -10,12 +10,13 @@ import { PageHeader } from '@/components/ui/page-header'
 import { Heading, Text } from '@/components/ui/typography'
 import { counts } from '@/lib/manifest'
 import { pageMetadata } from '@/lib/metadata'
+import { Canvas } from '@/components/shell/field'
 
 export const metadata: Metadata = pageMetadata('kpis')
 
 export default function KpisPage() {
   return (
-    <>
+    <Canvas>
       <PageHeader
         eyebrow="KPI catalogue"
         title="A ratio without both sides is not a KPI, it is a rumour"
@@ -89,7 +90,7 @@ export default function KpisPage() {
           </Suspense>
         </Container>
       </Section>
-    </>
+    </Canvas>
   )
 }
 

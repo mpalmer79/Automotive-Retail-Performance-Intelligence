@@ -46,7 +46,15 @@ export function SiteFooter() {
   const gate2 = manifest.gates.find((g) => g.id === 'gate-2')
 
   return (
-    <footer className="mt-auto border-t border-line-subtle bg-canvas-deep">
+    /*
+     * White, full-bleed, and it is what closes the blue field.
+     *
+     * The direction asks for a footer that ends the background rather than
+     * floating on it, so this and the header are the only two regions that span
+     * the viewport edge to edge. `mt-auto` keeps it at the bottom of a short
+     * route without the field stretching behind it.
+     */
+    <footer className="mt-auto border-t border-line bg-canvas">
       <Container width="wide" className="py-14 sm:py-16">
         <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-12 lg:gap-8">
           <div className="flex flex-col gap-4 lg:col-span-4">

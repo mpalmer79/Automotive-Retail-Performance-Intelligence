@@ -26,6 +26,11 @@
   --color-surface-hover: var(--arpi-colour-surface-hover);
   --color-surface-sunken: var(--arpi-colour-surface-sunken);
 
+  /* The blue field. `field-deep` is the only blue surface that may carry white
+     text; see the measurements in tokens.css section 1. */
+  --color-field-deep: var(--arpi-colour-field-deep);
+  --color-field-deepest: var(--arpi-colour-field-deepest);
+
   --color-line: var(--arpi-colour-border);
   --color-line-strong: var(--arpi-colour-border-strong);
   --color-line-subtle: var(--arpi-colour-border-subtle);
@@ -35,11 +40,14 @@
   --color-ink-muted: var(--arpi-colour-text-muted);
   --color-ink-faint: var(--arpi-colour-text-faint);
   --color-ink-inverse: var(--arpi-colour-text-inverse);
+  --color-ink-inverse-muted: var(--arpi-colour-text-inverse-muted);
 
   --color-accent: var(--arpi-colour-accent);
   --color-accent-strong: var(--arpi-colour-accent-strong);
   --color-accent-muted: var(--arpi-colour-accent-muted);
+  --color-accent-mark: var(--arpi-colour-accent-mark);
   --color-accent-wash: var(--arpi-colour-accent-wash);
+  --color-link: var(--arpi-colour-link);
 
   --color-model: var(--arpi-colour-model);
   --color-model-wash: var(--arpi-colour-model-wash);
@@ -102,6 +110,7 @@
   --radius-lg: var(--arpi-radius-lg);
   --radius-xl: var(--arpi-radius-xl);
   --radius-2xl: var(--arpi-radius-2xl);
+  --radius-canvas: var(--arpi-radius-canvas);
   --radius-frame: var(--arpi-radius-frame);
   --radius-pill: var(--arpi-radius-pill);
 
@@ -110,6 +119,7 @@
   --shadow-md: var(--arpi-shadow-md);
   --shadow-lg: var(--arpi-shadow-lg);
   --shadow-xl: var(--arpi-shadow-xl);
+  --shadow-canvas: var(--arpi-shadow-canvas);
   --shadow-accent: var(--arpi-shadow-accent);
   --inset-shadow-top: var(--arpi-shadow-inset-top);
 
@@ -124,6 +134,10 @@
      `max-w-full` to 96rem. tests/unit/tokens.test.ts asserts no layout token
      uses a reserved keyword. */
   --container-bleed: var(--arpi-layout-bleed);
+  /* The floating white master canvas. */
+  --container-canvas: var(--arpi-layout-canvas);
+  --spacing-canvas-inset: var(--arpi-layout-canvas-inset);
+  --spacing-canvas-pad: var(--arpi-layout-canvas-pad);
 
   /* --- breakpoints ----------------------------------------------------- */
   /* Mirrors the documented scale in tokens.css section "Breakpoints".

@@ -58,11 +58,11 @@ export function Container({
 /* -------------------------------------------------------------------------- */
 
 /**
- * The four section grounds.
+ * The section grounds.
  *
  * WHY A GROUND AND NOT A BORDER
  * -----------------------------
- * Every section on the previous build carried `bordered`, which drew the same
+ * Every section on an earlier build carried `bordered`, which drew the same
  * hairline rule between all nine homepage sections and every section on six
  * other routes. A rule repeated that many times stops separating anything: the
  * page reads as one list of equal blocks, which was finding A-03 in
@@ -70,21 +70,36 @@ export function Container({
  *
  * A ground is a shift in the surface the section sits on. It costs no ink, it
  * survives greyscale, it works at 200 percent zoom, and the eye reads it as
- * "somewhere else" rather than as "next item". The four are ordered by depth
- * and a page is expected to move between them, not to stay on one.
+ * "somewhere else" rather than as "next item".
  *
- *   cinematic  deepest.  The hero and the closing section. Two per page at most.
+ * WHAT THE FLOATING-CANVAS DIRECTION CHANGED
+ * ------------------------------------------
+ * Every section now sits INSIDE a white `<Canvas>` rather than spanning the
+ * viewport. That makes `canvas` correctly empty - a section with no ground of
+ * its own inherits the panel's white - and it is why the four grounds are
+ * shades of white rather than shades of black.
+ *
+ * It also added `deep`, which had no equivalent before. On a dark theme there
+ * was no such thing as a section that inverts; on this one the blue field is
+ * the site's second surface, and a closing panel that takes its colour is the
+ * one place the field comes forward into the content rather than sitting behind
+ * it. It is the ONLY tone that carries white text, and `field-deep` is the only
+ * blue measured to support it: 8.58:1. See tokens.css section 1.
+ *
+ *   cinematic  open.     The hero. The cleanest white on the page.
  *   canvas     default.  Editorial narrative, reading copy.
- *   panel      raised.   The surround for a product frame or an interactive
- *                        surface, so the frame has something to sit against.
+ *   panel      soft.     The surround for a product frame, so the frame has
+ *                        something to sit against.
  *   evidence   sunken.   Technical and evidence bands. Reads as recessed
  *                        instrumentation rather than as content.
+ *   deep       inverted. The closing panel, and nothing else.
  */
 const SECTION_TONE = {
-  cinematic: 'bg-canvas-deep',
+  cinematic: '',
   canvas: '',
-  panel: 'bg-canvas-raised',
-  evidence: 'bg-surface-sunken/60',
+  panel: 'bg-surface',
+  evidence: 'bg-surface-sunken',
+  deep: 'bg-field-deep text-ink-inverse',
 } as const
 
 export type SectionTone = keyof typeof SECTION_TONE

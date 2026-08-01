@@ -13,6 +13,7 @@ import { CodeLabel, Eyebrow, Heading, Text } from '@/components/ui/typography'
 import { gate, counts } from '@/lib/manifest'
 import { pageMetadata } from '@/lib/metadata'
 import { SYNTHETIC_DATA_STATEMENT } from '@/lib/site'
+import { Canvas } from '@/components/shell/field'
 
 export const metadata: Metadata = pageMetadata('governance')
 
@@ -34,7 +35,7 @@ export default function GovernancePage() {
   const gate2 = gate('gate-2')
 
   return (
-    <>
+    <Canvas>
       <PageHeader
         eyebrow="Governance and privacy"
         title="The constraints are the design, not a disclaimer at the end of it"
@@ -316,7 +317,7 @@ export default function GovernancePage() {
           </div>
         </Container>
       </Section>
-    </>
+    </Canvas>
   )
 }
 

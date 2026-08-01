@@ -17,7 +17,32 @@
     /* Anchor navigation must not land a heading underneath the sticky header. */
     scroll-padding-top: calc(var(--arpi-size-header) + var(--arpi-space-6));
     -webkit-text-size-adjust: 100%;
-    color-scheme: dark;
+    color-scheme: light;
+
+    /* The blue field.
+       -----------------------------------------------------------------
+       Declared on <html> rather than on <body> so it covers the viewport when
+       the document is shorter than one screen and when the page is
+       rubber-band scrolled past either end. `background-attachment: fixed` is
+       deliberately NOT used: on iOS it forces the whole gradient into a
+       separate composited layer that is repainted on every scroll frame, which
+       is one of the few ways a pure-CSS background can cost real performance.
+
+       Four stops, from tokens.css. The top stop is the tuned one - see the
+       measurement note there. */
+    background-color: var(--arpi-colour-field-lower);
+    background-image: linear-gradient(
+      180deg,
+      var(--arpi-colour-field-top) 0%,
+      var(--arpi-colour-field-upper) 26%,
+      var(--arpi-colour-field-lower) 58%,
+      var(--arpi-colour-field-bottom) 100%
+    );
+    background-repeat: no-repeat;
+    /* The gradient spans the viewport and holds, rather than stretching over a
+       17,000px page - which would make the whole document read as one flat
+       mid-blue. */
+    background-size: 100% 100vh;
   }
 
   /* Smooth scrolling is opt-in per user preference, never forced. */
@@ -30,7 +55,8 @@
   body {
     margin: 0;
     min-height: 100dvh;
-    background-color: var(--arpi-colour-canvas);
+    /* Transparent: the field is on <html>. A background here would cover it. */
+    background-color: transparent;
     color: var(--arpi-colour-text-secondary);
     font-family: var(--arpi-font-sans);
     font-size: var(--arpi-text-base);
@@ -143,13 +169,13 @@
   }
 
   ::selection {
-    background-color: var(--arpi-colour-accent-muted);
+    background-color: var(--arpi-colour-accent-wash);
     color: var(--arpi-colour-text);
   }
 
   /* A scrollbar that does not fight the palette, where the browser allows it. */
   * {
-    scrollbar-color: var(--arpi-graphite-600) transparent;
+    scrollbar-color: var(--arpi-slate-400) transparent;
     scrollbar-width: thin;
   }
 }
@@ -213,17 +239,49 @@
   color: var(--arpi-colour-text-muted);
 }
 
-/* The dimensional-grid motif. A structured dot matrix with a radial mask, used
-   as a section ground. Pure CSS, no image request, no repaint cost. */
+/* An eyebrow on a deep blue ground. The muted ink above measures 1.6:1 there. */
+@utility eyebrow-inverse {
+  font-family: var(--arpi-font-mono);
+  font-size: var(--arpi-text-xs);
+  font-weight: var(--arpi-weight-medium);
+  letter-spacing: var(--arpi-tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--arpi-colour-text-inverse-muted);
+}
+
+/* The dimensional-grid motif. A structured dot matrix used as a section ground
+   INSIDE the white canvas. Pure CSS, no image request, no repaint cost.
+   The blue field's own geometry is authored SVG; see <FieldMotif>. */
 @utility grid-motif {
   background-image: radial-gradient(
     circle at 1px 1px,
-    var(--arpi-steel-500) 1px,
+    var(--arpi-slate-400) 1px,
     transparent 0
   );
   background-size: 28px 28px;
-  opacity: var(--arpi-opacity-grid);
+  opacity: 0.4;
 }
+
+/* ==========================================================================
+   The master canvas
+   --------------------------------------------------------------------------
+   The dominant white panel that floats on the blue field. This is the core
+   visual idea of the design, so it is one utility used by every route rather
+   than a set of classes each page assembles for itself.
+
+   `overflow: clip` rather than `hidden`: `hidden` establishes a scroll
+   container, which makes `position: sticky` stop working for any descendant -
+   and the KPI catalogue's filter row is sticky. `clip` gives the same corner
+   masking with no scroll container.
+   ========================================================================== */
+
+@utility canvas-panel {
+  background-color: var(--arpi-colour-canvas);
+  border-radius: var(--arpi-radius-canvas);
+  box-shadow: var(--arpi-shadow-canvas);
+  overflow: clip;
+}
+
 
 /* A blueprint rule: a hairline with alignment ticks at each end. */
 @utility rule-marked {

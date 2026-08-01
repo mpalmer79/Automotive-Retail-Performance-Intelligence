@@ -7,6 +7,7 @@ import { PageHeader } from '@/components/ui/page-header'
 import { SourceLink } from '@/components/ui/data-card'
 import { pageMetadata } from '@/lib/metadata'
 import { counts } from '@/lib/manifest'
+import { Canvas } from '@/components/shell/field'
 
 export const metadata: Metadata = pageMetadata('architecture')
 
@@ -20,7 +21,7 @@ export const metadata: Metadata = pageMetadata('architecture')
  */
 export default function ArchitecturePage() {
   return (
-    <>
+    <Canvas>
       <PageHeader
         eyebrow="Architecture"
         title="A layered batch pipeline, with every layer answerable"
@@ -75,7 +76,7 @@ export default function ArchitecturePage() {
           </div>
         </Container>
       </Section>
-    </>
+    </Canvas>
   )
 }
 
