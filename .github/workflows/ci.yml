@@ -15,6 +15,8 @@
 #   quality             formatting, lint, types, unit and data-quality tests
 #   repository-checks   naming, documentation links, secret safety net,
 #                       Power BI model structure, real-engine validation evidence
+#   deployment-tooling  Railway deployment specification, IaC declaration and the
+#                       tooling's own tests — all offline, no credential
 #   integration         PostgreSQL DDL + integration tests against a container
 #
 # The Power BI checks in `repository-checks` read the PBIP project's TMDL and
@@ -206,6 +208,63 @@ jobs:
       # PENDING honestly and exits zero.
       - name: Real-engine validation gate (ADR-0008)
         run: python scripts/check_real_engine_validation.py
+
+
+  # ---------------------------------------------------------------------------
+  # 4. deployment-tooling — the Railway deployment, checked without Railway.
+  #
+  #    NO CREDENTIAL, NO NETWORK, AND THEREFORE NO EXCEPTION TO THE NO-SECRETS
+  #    RULE. Everything here is a statement about source-controlled files:
+  #
+  #      * the deployment specification is internally consistent, agrees with
+  #        railway.json, targets a non-production environment, and contains no
+  #        credential
+  #      * `.railway/railway.ts` compiles, through the Railway SDK's own runner,
+  #        into the resource graph the specification describes — with references
+  #        where references are required, server-side generators where passwords
+  #        are required, and no literal credential anywhere
+  #      * the tooling's own tests pass, including the bootstrap tool's behaviour
+  #        against a fake Railway CLI: that a dry run issues no mutating command,
+  #        that a converged project is not re-created, and that the token never
+  #        reaches a command line
+  #
+  #    The one thing needing a credential — reading the LIVE project — lives in
+  #    `railway-bootstrap.yml`, which is `workflow_dispatch` only.
+  # ---------------------------------------------------------------------------
+  deployment-tooling:
+    name: Deployment tooling
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install the deployment tooling
+        run: npm ci
+
+      - name: Type-check
+        run: npm run typecheck
+
+      # No runtime dependencies exist in this package — every one is development
+      # tooling that never ships — so both audits are run and both must be clean.
+      - name: Dependency audit
+        run: npm audit --audit-level=high
+
+      - name: Validate the deployment specification
+        run: npm run spec:validate
+
+      - name: Evaluate the Railway declaration
+        run: npm run iac:evaluate
+
+      - name: Deployment tooling tests
+        run: npm test
 
   # ---------------------------------------------------------------------------
   # 3. integration — SQL objects and database-backed tests.

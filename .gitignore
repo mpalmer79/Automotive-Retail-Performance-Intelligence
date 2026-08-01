@@ -37,6 +37,43 @@ credentials.json
 
 
 # -----------------------------------------------------------------------------
+# Railway deployment state and generated output
+# -----------------------------------------------------------------------------
+# NOTE THE SHAPE OF THIS SECTION. `.railway/` is NOT ignored, and must not be:
+# `.railway/railway.ts` is the source-controlled Infrastructure as Code
+# declaration and is the whole point of the directory. Only the CLI's own local
+# state is excluded — that file records the linked project and environment for
+# whoever ran `railway link`, and `railway login` can write a token beside it.
+#
+# The same applies to `deployment/railway/`: every file in it is deliberately
+# tracked. Ignoring a deployment configuration directory to be safe would make
+# the deployment unreviewable, which is the opposite of safe.
+.railway/state.json
+.railway/*.local.json
+.config/railway/
+
+# Machine-readable results the bootstrap, verification and audit tools write into
+# the working directory when run by hand or by the workflow. Non-secret by
+# construction — every one passes through the redactor — but they are outputs of a
+# run against one account, not repository content.
+/bootstrap.json
+/dry-run.json
+/verification.json
+/lighthouse/
+/portfolio/playwright-report-remote/
+
+
+# -----------------------------------------------------------------------------
+# Installed Node dependencies
+# -----------------------------------------------------------------------------
+# `portfolio/.gitignore` already covers the website's tree. This covers the
+# repository root, which now carries a package.json for the Railway deployment
+# tooling. The lockfiles at both levels are tracked.
+/node_modules/
+node_modules/
+
+
+# -----------------------------------------------------------------------------
 # Python virtual environments
 # -----------------------------------------------------------------------------
 .venv/

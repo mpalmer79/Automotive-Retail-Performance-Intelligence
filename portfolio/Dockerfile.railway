@@ -1,0 +1,273 @@
+# =============================================================================
+# ARPI portfolio website — Railway image
+# =============================================================================
+# NO `# syntax=` DIRECTIVE, ON PURPOSE. Pinning an external Dockerfile frontend
+# makes every build depend on pulling `docker/dockerfile` from a registry before
+# it can even parse this file. Nothing here needs a feature the builder's own
+# frontend lacks — no cache mounts, no heredocs, no `COPY --link` — so the
+# directive would buy nothing and add a network dependency to the parse step.
+# =============================================================================
+# THE BUILD CONTEXT IS THE REPOSITORY ROOT, NOT `portfolio/`.
+# ----------------------------------------------------------
+# This is the single most important fact about this file, and the reason the
+# Railway service must NOT have its root directory set to `/portfolio`.
+#
+# `portfolio/scripts/generate-project-manifest.ts` generates every engineering
+# count and every project status the website displays, and it reads them from
+# evidence files that live OUTSIDE `portfolio/`: the Power BI validation results,
+# the semantic model's TMDL, the KPI catalogue, the readiness documents and the
+# SQL tree. `npm run build` runs `manifest:check` first, which regenerates the
+# manifest from those files and fails if it differs from the committed one.
+#
+# So an isolated `portfolio/` context does not merely lose a nice-to-have: the
+# build cannot complete in it, and if it somehow did, the site would be free to
+# display numbers no longer backed by anything. Keeping the root as the context
+# is what makes the deployed site's claims falsifiable.
+#
+# WHY THIS FILE AND NOT A SHARED `Dockerfile`
+# ------------------------------------------
+# It is named `Dockerfile.railway` and referenced explicitly from `railway.json`
+# so that no other tool picks it up by convention. The repository has no other
+# container build, and a bare `Dockerfile` at either the root or in `portfolio/`
+# would be a magnet for one — at which point a change made for a local
+# development container would silently change what Railway deploys.
+#
+# STAGES
+# ------
+#   deps     dependency installation only, so a source-only change reuses it
+#   builder  evidence + source, manifest freshness gate, production build
+#   runtime  the standalone server, its traced dependencies, and nothing else
+#
+# WHAT NEVER REACHES THE RUNTIME IMAGE
+# ------------------------------------
+# Tests, Playwright and its browsers, the SQL tree, the Power BI project, the
+# Python package, development dependencies, the repository's documentation, the
+# lockfiles, and `.git`. The runtime stage starts from a clean base and copies
+# three things in by name, which is a much stronger guarantee than deleting
+# things from a fat image afterwards.
+#
+# NO SECRET IS BUILT IN, AND NONE IS NEEDED.
+# The website has no database connection, no API key and no authentication
+# provider. The only build arguments are Railway-provided, non-secret metadata.
+# =============================================================================
+
+# Pinned to a minor, on the same major as CI (`setup-node: '22'`) and as
+# `engines.node` in package.json. The patch floats so a security patch is picked
+# up without a commit; the minor does not, so a Node minor upgrade is a reviewed
+# change rather than something that happens on a Tuesday.
+#
+# Alpine because the runtime does nothing that needs glibc: it serves prebuilt
+# HTML, CSS and JavaScript from a Node process. Note that Alpine's `adduser` is
+# busybox's, not Debian's — see the runtime stage.
+ARG NODE_VERSION=22.23-alpine
+
+
+# -----------------------------------------------------------------------------
+# Stage 1 — deps
+#
+# Only the two dependency manifests are copied, so this layer is invalidated by a
+# dependency change and by nothing else. Editing a React component does not
+# reinstall node_modules.
+# -----------------------------------------------------------------------------
+FROM node:${NODE_VERSION} AS deps
+
+WORKDIR /build/portfolio
+
+# `npm ci` requires both files and fails if they disagree, which is the
+# behaviour a reproducible build wants. Paths are relative to the repository
+# root, because that is the context.
+COPY portfolio/package.json portfolio/package-lock.json ./
+
+# `--include=dev` is explicit rather than implied: the build needs TypeScript,
+# `tsx` for the manifest generator, and Tailwind's PostCSS plugin. None of them
+# reach the runtime image.
+#
+# `npm cache clean` rather than a cache mount: Railway builds this from an
+# uploaded context and a BuildKit cache mount is not guaranteed to be warm, so
+# the deterministic thing is to not depend on one.
+RUN npm ci --include=dev && npm cache clean --force
+
+
+# -----------------------------------------------------------------------------
+# Stage 2 — builder
+# -----------------------------------------------------------------------------
+FROM node:${NODE_VERSION} AS builder
+
+WORKDIR /build
+
+# --- Build arguments -------------------------------------------------------
+#
+# Declared in THIS stage because this is the stage that consumes them. A Railway
+# service variable is not automatically visible to a Dockerfile build; it becomes
+# visible only where an `ARG` of the same name is declared.
+#
+# Both are Railway-provided and non-secret. Neither is required: the build
+# succeeds without them, it just records less.
+
+# The deployment's own hostname, e.g. `arpi-portfolio-staging.up.railway.app`.
+# Consumed by `src/lib/site-url.ts` to produce canonical URLs, the sitemap,
+# robots.txt and the Open Graph URLs. Absent, the build falls back to
+# `http://localhost:3000` — which is why `scripts/railway/bootstrap_railway.ts`
+# generates the domain BEFORE it triggers the first deployment.
+ARG RAILWAY_PUBLIC_DOMAIN
+ENV RAILWAY_PUBLIC_DOMAIN=${RAILWAY_PUBLIC_DOMAIN}
+
+# The environment name. Anything other than `production` marks the build as an
+# unpublished deployment: `noindex`, `robots.txt` disallowing everything, and a
+# visible banner. See `src/lib/flags.ts`.
+ARG RAILWAY_ENVIRONMENT_NAME
+ENV RAILWAY_ENVIRONMENT_NAME=${RAILWAY_ENVIRONMENT_NAME}
+ARG RAILWAY_ENVIRONMENT
+ENV RAILWAY_ENVIRONMENT=${RAILWAY_ENVIRONMENT}
+
+# Recorded in the generated manifest as `generatedFromCommit`. There is no `.git`
+# in the build context, so this variable is the only way the built site can name
+# the commit it was built from.
+ARG RAILWAY_GIT_COMMIT_SHA
+ENV RAILWAY_GIT_COMMIT_SHA=${RAILWAY_GIT_COMMIT_SHA}
+
+# The case-study gate's build flag. Deliberately defaulted to `false` HERE rather
+# than left unset, so the image is explicit about the gate being closed even when
+# Railway passes nothing. It is one of five conditions and cannot unlock anything
+# on its own; see `src/lib/flags.ts` and ADR-0009.
+ARG NEXT_PUBLIC_ARPI_CASE_STUDY_ENABLED=false
+ENV NEXT_PUBLIC_ARPI_CASE_STUDY_ENABLED=${NEXT_PUBLIC_ARPI_CASE_STUDY_ENABLED}
+
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=production
+
+# --- Dependencies ----------------------------------------------------------
+COPY --from=deps /build/portfolio/node_modules ./portfolio/node_modules
+
+# --- Repository evidence, copied by name -----------------------------------
+#
+# EVERY PATH BELOW IS READ BY `portfolio/scripts/generate-project-manifest.ts`.
+# The list is asserted complete by `portfolio/tests/unit/railway-config.test.ts`,
+# which walks the generator's own read set and fails if this file omits one of
+# them — so a new evidence source cannot be added to the generator and forgotten
+# here, which would fail the build inside a container and nowhere else.
+#
+# Copied by name rather than by copying the whole repository: the repository also
+# contains the Python package, the generated data sample, the documentation tree
+# and 104 SQL scripts' worth of history, none of which the website reads.
+
+# Semantic-model shape, SQL baseline metadata, and both real-engine results.
+COPY powerbi/validation ./powerbi/validation
+# The PBIP semantic model and report, parsed as text for table, relationship,
+# measure and report-page counts.
+COPY powerbi/ARPI_Performance_Intelligence ./powerbi/ARPI_Performance_Intelligence
+# Governed KPI definitions.
+COPY KPI_CATALOG.md ./KPI_CATALOG.md
+# Increment statuses and both gate verdicts. `GATE_2_READINESS.md` does not exist
+# yet, and its absence is what keeps Gate 2 closed — the directory is copied
+# whole so that its appearance is picked up without editing this file.
+COPY docs/requirements ./docs/requirements
+# Counted, not read: an empty `docs/findings/` is the evidence that no analytical
+# finding has been drawn. Created empty because git does not track empty
+# directories, and the generator treats "absent" and "empty" identically.
+RUN mkdir -p ./docs/findings
+# Script and DDL counts across the nine numbered build directories.
+COPY sql ./sql
+
+# --- Website source --------------------------------------------------------
+COPY portfolio ./portfolio
+
+WORKDIR /build/portfolio
+
+# THE CONTENT-INTEGRITY GATE, run inside the image that will be deployed.
+#
+# This is the same command CI runs. Running it here as well is not redundant: CI
+# proves the committed manifest matches the repository, and this proves the
+# manifest matches the evidence *that was actually copied into this build*. A
+# missing `COPY` above fails here rather than shipping a site whose numbers came
+# from a partially populated context.
+RUN npm run manifest:check
+
+# `next build` — types are checked as part of it (`ignoreBuildErrors: false`).
+RUN npm run build
+
+# Prove the layout the runtime stage is about to copy.
+#
+# `.next/standalone` is FLAT — `server.js` at its top level — because
+# `outputFileTracingRoot` in next.config.ts pins the tracing root to
+# `portfolio/`. Were it inferred instead, a manifest above this directory would
+# nest the output under `standalone/portfolio/` and the runtime stage would copy
+# a directory with no `server.js` in it.
+#
+# Asserted here rather than left to fail later: failing here names the problem,
+# failing in the runtime stage produces an opaque `COPY --from` error, and
+# failing at neither produces a site that boots with no styling and no favicon.
+RUN test -f .next/standalone/server.js \
+    && test -d .next/standalone/node_modules \
+    && test -d .next/static \
+    && test -d public
+
+
+# -----------------------------------------------------------------------------
+# Stage 3 — runtime
+#
+# A clean base. Nothing from `deps` or `builder` arrives except the three
+# directories named below.
+# -----------------------------------------------------------------------------
+FROM node:${NODE_VERSION} AS runtime
+
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Bind to every interface. Railway routes to the container over its own network,
+# so a server listening on 127.0.0.1 is unreachable and the health check fails
+# with a connection refusal that looks like a crash.
+ENV HOSTNAME=0.0.0.0
+
+# A default for `docker run` and for a local reproduction. Railway injects its
+# own `PORT` at runtime and that value wins, which is why the start command reads
+# the variable instead of hard-coding a port.
+ENV PORT=3000
+
+WORKDIR /app
+
+# --- Least privilege -------------------------------------------------------
+#
+# The `node` base image already ships an unprivileged `node` user (uid 1000). A
+# dedicated one is created anyway so the ownership below is explicit and does not
+# depend on a base-image detail, and so the numeric id is stated in this file
+# where a reviewer can see it.
+#
+# busybox syntax, because this is Alpine: `-S` is a system account, `-D` skips
+# password assignment, `-G` names the group. Debian's long forms
+# (`--system --ingroup`) are silently unavailable here and would fail the build.
+RUN addgroup -S -g 1001 arpi \
+    && adduser -S -D -u 1001 -G arpi arpi
+
+# `--chown` on each COPY rather than a `chown -R` afterwards: it avoids
+# duplicating every file into a second layer, and it means no step in this image
+# ever runs as root over application files.
+
+# The traced server, its `.next` server bundle, its `package.json`, and the
+# `node_modules` subset Next resolved as reachable — everything the standalone
+# output contains, which lands with `server.js` at `/app/server.js`.
+COPY --from=builder --chown=arpi:arpi /build/portfolio/.next/standalone ./
+
+# Fingerprinted CSS and JavaScript. Not included in standalone output.
+COPY --from=builder --chown=arpi:arpi /build/portfolio/.next/static ./.next/static
+
+# Favicons, the web manifest's icons, the Open Graph image and the brand SVGs.
+COPY --from=builder --chown=arpi:arpi /build/portfolio/public ./public
+
+USER arpi
+
+# Documentation only. Railway assigns the external port itself; nothing here may
+# assume one.
+EXPOSE 3000
+
+# `sh -c` is required, and only for `${PORT}` expansion: the exec form does not
+# expand a variable, so `CMD ["node", "server.js", "-p", "${PORT}"]` would pass
+# the literal string. `exec` replaces the shell so that node becomes PID 1 and
+# receives Railway's SIGTERM directly — without it the shell holds PID 1, ignores
+# the signal, and every deployment ends in a kill after the grace period instead
+# of a clean shutdown.
+#
+# `HOSTNAME` and `PORT` are read by the standalone server from the environment;
+# they are passed explicitly as well so the effective values are visible in
+# `docker inspect` and in a process list.
+CMD ["sh", "-c", "exec node server.js"]

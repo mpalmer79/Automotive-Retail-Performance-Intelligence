@@ -166,15 +166,15 @@ portfolio/
 
 ## 7. Documentation
 
-| Document                                  | What it settles                                                                                             |
-| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| [DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md) | The closed palette, the token contract, the type scale, the component inventory, and why Radix was removed  |
-| [MOTION_SYSTEM.md](docs/MOTION_SYSTEM.md) | Duration, easing, distance and stagger scales; the reduced-motion substitution table; why the reveal is CSS |
-| [CONTENT_MODEL.md](docs/CONTENT_MODEL.md) | The manifest-as-single-source contract, and the five-condition case-study gate                              |
-| [ACCESSIBILITY.md](docs/ACCESSIBILITY.md) | The WCAG 2.2 AA position, the axe results, the keyboard model, the viewport matrix                          |
-| [PERFORMANCE.md](docs/PERFORMANCE.md)     | Measured per-route transfer, the font budget, and the prefetch trade                                        |
-| [DEPLOYMENT.md](docs/DEPLOYMENT.md)       | Vercel configuration, the two permitted public environment variables, preview behaviour, rollback           |
-| [VISUAL_REVIEW.md](docs/VISUAL_REVIEW.md) | The adversarial review record: what was asked, what was found, what was fixed                               |
+| Document                                  | What it settles                                                                                                                       |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| [DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md) | The closed palette, the token contract, the type scale, the component inventory, and why Radix was removed                            |
+| [MOTION_SYSTEM.md](docs/MOTION_SYSTEM.md) | Duration, easing, distance and stagger scales; the reduced-motion substitution table; why the reveal is CSS                           |
+| [CONTENT_MODEL.md](docs/CONTENT_MODEL.md) | The manifest-as-single-source contract, and the five-condition case-study gate                                                        |
+| [ACCESSIBILITY.md](docs/ACCESSIBILITY.md) | The WCAG 2.2 AA position, the axe results, the keyboard model, the viewport matrix                                                    |
+| [PERFORMANCE.md](docs/PERFORMANCE.md)     | Measured per-route transfer, the font budget, and the prefetch trade                                                                  |
+| [DEPLOYMENT.md](docs/DEPLOYMENT.md)       | Railway configuration, why the staging deployment needs **no** variable typed by a person, unpublished-deployment behaviour, rollback |
+| [VISUAL_REVIEW.md](docs/VISUAL_REVIEW.md) | The adversarial review record: what was asked, what was found, what was fixed                                                         |
 
 ---
 
@@ -212,9 +212,17 @@ Stated here because they are easier to keep than to restore.
 
 - The workflow that tests this directory has no `secrets.*` reference and runs to
   completion on a fork with zero secrets configured.
-- Exactly two public environment variables are permitted: `NEXT_PUBLIC_SITE_URL` and
-  `NEXT_PUBLIC_ARPI_CASE_STUDY_ENABLED`. The manifest generator scans its own output
-  for secret patterns before writing it.
+- **The Railway staging deployment requires no environment variable typed by a
+  person.** The canonical origin comes from the platform's own
+  `RAILWAY_PUBLIC_DOMAIN` through [`src/lib/site-url.ts`](src/lib/site-url.ts), and
+  the case-study flag defaults to locked when absent.
+  `NEXT_PUBLIC_ARPI_CASE_STUDY_ENABLED` is set to `false` automatically so the
+  closed gate is visible rather than merely implied; `NEXT_PUBLIC_SITE_URL` is
+  **deprecated** and retained only so an existing Vercel deployment keeps working.
+  No secret may ever be placed in a `NEXT_PUBLIC_*` variable, and this site needs
+  none at all — it has no database connection, no API key and no third-party
+  service. The manifest generator scans its own output for secret patterns before
+  writing it.
 
 ---
 
