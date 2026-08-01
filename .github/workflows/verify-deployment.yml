@@ -1,0 +1,151 @@
+# =============================================================================
+# Verify the live deployment, from infrastructure that can reach it.
+#
+# WHY THIS WORKFLOW EXISTS SEPARATELY
+# -----------------------------------
+# `ci.yml` and `frontend.yml` are deliberately offline. CI has no reason to be
+# on the internet, and a suite that reaches a live host would make every build
+# depend on a platform nobody in this repository controls.
+#
+# But that left one question permanently unanswerable: does the deployed site
+# actually serve what the repository says it serves? Every live field in
+# `deployment/evidence/portfolio_deployment.json` read UNVERIFIED, and the
+# environments the project is developed in are denied the deployment host, so
+# the gap could not close from a developer machine either.
+#
+# This workflow closes it the only acceptable way: it runs the remote suite from
+# a GitHub-hosted runner and records what came back. A person's report that the
+# site loads is not admissible here, and neither is a green run of any other
+# suite -- both were available before this workflow existed, and neither is
+# evidence about the artefact a visitor receives.
+#
+# NO SECRET IS USED, AND NONE IS NEEDED. The only input is a public URL. This
+# workflow reads a public website; it holds no Railway token, touches no
+# database, and can provision nothing.
+# =============================================================================
+
+name: Verify deployment
+
+on:
+  # The intended way to run it: manually, against whichever URL is being checked.
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "Public URL of the deployment to verify"
+        required: true
+        default: "https://arpi.up.railway.app"
+        type: string
+
+  # Also on a pull request that changes the deployment evidence, the remote suite
+  # or this workflow -- the three things whose correctness cannot be judged
+  # without running against the live site. Deliberately narrow: an ordinary
+  # change must not reach out to a deployment.
+  pull_request:
+    paths:
+      - ".github/workflows/verify-deployment.yml"
+      - "deployment/evidence/**"
+      - "portfolio/tests/remote/**"
+      - "portfolio/playwright.remote.config.ts"
+      - "scripts/record_deployment_evidence.py"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  remote-suite:
+    name: Remote suite against the deployment
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    env:
+      # `inputs.base_url` is absent on a pull_request trigger, so the default is
+      # named once here rather than repeated at every use.
+      ARPI_REMOTE_BASE_URL: ${{ inputs.base_url || 'https://arpi.up.railway.app' }}
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: portfolio/package-lock.json
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install the website's dependencies
+        working-directory: portfolio
+        run: npm ci
+
+      - name: Install Chromium for Playwright
+        working-directory: portfolio
+        run: npx playwright install --with-deps chromium
+
+      # Reported before the suite runs, so a run against the wrong host is
+      # obvious in the log rather than discovered in the evidence afterwards.
+      - name: Report the target
+        run: echo "Verifying ${ARPI_REMOTE_BASE_URL}"
+
+      # `continue-on-error` so that a failing deployment still produces evidence.
+      # A red suite is a finding worth recording precisely, not a reason to end
+      # the job with nothing written; the recorder below fails the workflow if the
+      # run was not clean.
+      - name: Run the remote suite against the deployment
+        id: remote
+        continue-on-error: true
+        working-directory: portfolio
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: remote-report.json
+        run: |
+          npx playwright test \
+            --config playwright.remote.config.ts \
+            --reporter=json,html,list
+
+      # Every field this writes comes from a response or from the JSON report
+      # above. A field it could not obtain keeps UNVERIFIED; nothing is inferred
+      # from the suite's overall verdict.
+      - name: Record what the run observed
+        run: |
+          python scripts/record_deployment_evidence.py \
+            --base-url "${ARPI_REMOTE_BASE_URL}" \
+            --report portfolio/remote-report.json \
+            --run-url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+
+      # Printed between markers so the recorded evidence can be read straight
+      # from the job log, without downloading an artifact.
+      - name: Print the recorded evidence
+        if: always()
+        run: |
+          echo "----- ARPI-DEPLOYMENT-EVIDENCE-BEGIN -----"
+          cat deployment/evidence/portfolio_deployment.json
+          echo "----- ARPI-DEPLOYMENT-EVIDENCE-END -----"
+
+      - name: Upload the evidence and the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-verification
+          path: |
+            deployment/evidence/portfolio_deployment.json
+            portfolio/remote-report.json
+            portfolio/playwright-report-remote/
+          retention-days: 30
+
+      # The recorder already failed the job on an incomplete verification. This
+      # step makes a red SUITE fail it too, so a deployment that regressed cannot
+      # be recorded as verified merely because the recorder wrote a file.
+      - name: Fail if the suite did not pass
+        if: steps.remote.outcome != 'success'
+        run: |
+          echo "The remote suite did not pass. The evidence file records the real"
+          echo "result; do not edit it by hand to make this green."
+          exit 1
