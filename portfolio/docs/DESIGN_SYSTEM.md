@@ -256,11 +256,11 @@ To regenerate it, fetch the latin `src` URL from the Google Fonts CSS API for
 from fontTools.ttLib import TTFont
 from fontTools.varLib.instancer import instantiateVariableFont
 
-font = TTFont('SourceSerif4-latin.woff2')
+font = TTFont("SourceSerif4-latin.woff2")
 font.flavor = None
-instantiateVariableFont(font, {'opsz': 32, 'wght': (400, 700)}, inplace=True)
-font.flavor = 'woff2'
-font.save('src/fonts/SourceSerif4-Variable-latin.woff2')
+instantiateVariableFont(font, {"opsz": 32, "wght": (400, 700)}, inplace=True)
+font.flavor = "woff2"
+font.save("src/fonts/SourceSerif4-Variable-latin.woff2")
 ```
 
 This is recorded so the file can be reproduced rather than being an artefact nobody can
