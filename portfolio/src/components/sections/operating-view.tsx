@@ -370,10 +370,19 @@ export function OperatingView() {
 /* Internals                                                                   */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * One labelled field in the panel.
+ *
+ * The label is an `h3`, not an `h4`. The section's own heading is the `h2`, so
+ * an `h4` here skips a level - which the accessibility sweep on `/` caught, and
+ * which is a real defect rather than a cosmetic one: a screen-reader user
+ * navigating by heading gets told a level is missing and cannot tell whether
+ * content was skipped.
+ */
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-2.5">
-      <h4 className="eyebrow text-2xs">{label}</h4>
+      <h3 className="eyebrow text-2xs">{label}</h3>
       {children}
     </div>
   )

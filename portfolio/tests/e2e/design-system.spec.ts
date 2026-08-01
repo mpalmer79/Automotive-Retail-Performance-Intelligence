@@ -220,17 +220,28 @@ test.describe('the reduced-motion floor is real', () => {
     expect(undrawn, 'a drawn path is still hidden under reduced motion').toEqual([])
   })
 
-  test('the counters show their final values immediately', async ({ page }) => {
+  test('the proof figures show their final values on the first paint', async ({
+    page,
+  }) => {
+    // This used to check that the count-up animation rendered its END state
+    // under reduced motion. The count-up is gone: at four figures set as large
+    // as these, the animation drew the eye to the movement rather than to the
+    // size, and it delayed the one thing the section exists for.
+    //
+    // The obligation survives its implementation. A number is content, and it
+    // must be correct on the first paint for every visitor, not after an
+    // animation - so this now asserts the stronger property, which is that no
+    // scroll, no wait and no motion preference is required to read it.
     await page.goto('/')
-    const strip = page.locator('#engineering-counts')
-    await strip.scrollIntoViewIfNeeded()
-    // No wait: the value must be correct on the first paint, not after an
-    // animation that reduced motion was supposed to have removed.
-    const text = (await strip.innerText()).replace(/\s+/g, ' ')
+    const proof = page.locator('#proof')
+    const text = (await proof.innerText()).replace(/\s+/g, ' ')
+    expect(text).toMatch(/\b28\b/)
     expect(text).toMatch(/\b29\b/)
     expect(text).toMatch(/\b42\b/)
     expect(text).toMatch(/\b49\b/)
-    expect(text).not.toMatch(/\b0\s+Governed KPIs/)
+    expect(text, 'a figure rendered as its animation start value').not.toMatch(
+      /\b0\s+(Governed KPIs|Reporting views|DAX measures)/
+    )
   })
 
   test('every route renders the same visible text as it does with motion on', async ({

@@ -19,7 +19,7 @@ import {
   semanticModel,
 } from '@/lib/manifest'
 import { pageMetadata } from '@/lib/metadata'
-import { formatCount, formatTimestamp } from '@/lib/utils'
+import { cx, formatCount, formatTimestamp } from '@/lib/utils'
 
 export const metadata: Metadata = pageMetadata('status')
 
@@ -528,6 +528,22 @@ export default function StatusPage() {
 /* Internals                                                                   */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * One of the four states that get conflated.
+ *
+ * THE SURFACE IS THE POINT, AND IT WAS WRONG
+ * ------------------------------------------
+ * All four rendered on the same bordered surface, so "static source validation"
+ * and "real-engine validation" looked equally settled at a glance - on the page
+ * whose entire job is to keep them apart. That was finding C-05.
+ *
+ * The card now takes its surface from its status. A `complete` state gets a
+ * solid ground and a full-strength border; anything unproven gets a dashed
+ * border and a recessed ground, which reads as an outline of something rather
+ * than as a thing. The distinction survives greyscale, because it is a border
+ * style and a fill rather than a hue, and it is carried by the badge's icon and
+ * word as well.
+ */
 function DistinctionCard({
   ordinal,
   title,
@@ -543,13 +559,28 @@ function DistinctionCard({
   detail: string
   path: string
 }) {
+  const settled = status === 'complete'
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-line bg-canvas/60 p-4">
+    <div
+      className={cx(
+        'flex flex-col gap-3 rounded-lg p-4',
+        settled
+          ? 'border border-line-strong bg-surface-raised'
+          : 'border border-dashed border-line-strong bg-canvas/40'
+      )}
+    >
       <div className="flex items-center justify-between gap-2">
         <span className="font-mono text-2xs text-ink-faint">{ordinal}</span>
         <StatusBadge status={status} label={statusLabel} size="sm" />
       </div>
-      <h3 className="text-base leading-snug font-semibold text-ink">{title}</h3>
+      <h3
+        className={cx(
+          'text-base leading-snug font-semibold',
+          settled ? 'text-ink' : 'text-ink-secondary'
+        )}
+      >
+        {title}
+      </h3>
       <p className="text-xs leading-relaxed text-ink-muted">{detail}</p>
       <div className="mt-auto pt-1">
         <SourceLink path={path} />

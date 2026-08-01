@@ -54,8 +54,12 @@ describe('the route map', () => {
     ])
   })
 
-  it('puts seven routes in the primary navigation and excludes the case study', () => {
-    expect(PRIMARY_NAV).toHaveLength(7)
+  it('puts five content destinations in the header and excludes the case study', () => {
+    // Five, not seven: Architecture, Data Model and Governance are grouped under
+    // "Platform". The full navigation contract is covered in
+    // tests/unit/site.test.ts; this is the component suite's own check that the
+    // list it renders from has not quietly grown.
+    expect(PRIMARY_NAV).toHaveLength(5)
     expect(PRIMARY_NAV.map((r) => r.href)).not.toContain('/case-study')
     expect(PRIMARY_NAV.map((r) => r.href)).not.toContain('/ui-lab')
   })

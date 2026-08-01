@@ -37,8 +37,12 @@ export const metadata: Metadata = pageMetadata('home')
  *   credibility strip     seven counts became four, inside chapter 5
  *   pipeline walkthrough  eight scrolling stages became five, in chapter 4
  *   domain cards          six expandable cards became the product frame, ch. 3
- *   evidence ledger       moved to /status, which is the page for it
- *   lifecycle summary     moved to /status, one line remains in chapter 6
+ *   evidence ledger       deleted. /status already carried the full ledger, and
+ *                         the home page's copy of it was a second rendering of
+ *                         the same manifest records
+ *   lifecycle summary     deleted, for the same reason. /status has all eight
+ *                         phases; chapter 6 states the one fact a home-page
+ *                         reader needs, which is that the case study is locked
  *   author perspective    merged into chapter 2, which is where the argument is
  *   business problem      merged into chapter 2, ditto
  *

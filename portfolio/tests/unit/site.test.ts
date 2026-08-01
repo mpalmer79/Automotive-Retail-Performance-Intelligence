@@ -19,12 +19,16 @@ import { pageMetadata, rootMetadata, structuredData } from '../../src/lib/metada
 import {
   ALL_ROUTES,
   INDEXABLE_ROUTES,
+  MAX_PRIMARY_NAV_ITEMS,
+  NAVIGABLE_ROUTES,
+  PLATFORM_NAV,
   PRIMARY_NAV,
   REPOSITORY_URL,
   ROUTES,
   SITE_URL,
   SYNTHETIC_DATA_SHORT,
   SYNTHETIC_DATA_STATEMENT,
+  isNavItemCurrent,
   repoFileUrl,
   routeByHref,
 } from '../../src/lib/site.ts'
@@ -95,10 +99,11 @@ describe('the eight primary routes exist and the lab is not one of them', () => 
     )
   })
 
-  it('puts seven routes in the primary navigation', () => {
-    // The case study is deliberately absent: it is locked, and a locked route in
-    // the primary navigation reads as a broken link rather than as a boundary.
-    expect(PRIMARY_NAV.map((route) => route.href)).toEqual(
+  it("keeps seven routes reachable from the site's own navigation", () => {
+    // The case study is deliberately absent from this list: it is locked, and it
+    // is reached from the footer, the status page and the home page's closing
+    // section rather than from a navigation surface.
+    expect(NAVIGABLE_ROUTES.map((route) => route.href)).toEqual(
       PRIMARY.filter((href) => href !== '/case-study')
     )
   })
@@ -143,13 +148,127 @@ describe('the end-to-end route list agrees with the route map', () => {
     )
   })
 
-  it('agrees on which routes are in the primary navigation, and on their labels', async () => {
+  it('agrees on which routes the site navigates to, and on their labels', async () => {
     const { PRIMARY_ROUTES } = await import('../e2e/routes.ts')
     for (const route of PRIMARY_ROUTES) {
       const declared = routeByHref(route.path)
       expect(declared, `${route.path} is not in the route map`).toBeDefined()
       expect(declared?.inPrimaryNav).toBe(route.inNav)
       if (route.navLabel !== undefined) expect(declared?.navLabel).toBe(route.navLabel)
+    }
+  })
+
+  it('agrees on the header navigation labels', async () => {
+    const { HEADER_NAV } = await import('../e2e/routes.ts')
+    expect(HEADER_NAV.map((item) => [item.label, item.path])).toEqual(
+      PRIMARY_NAV.map((item) => [item.label, item.href])
+    )
+  })
+})
+
+/* -------------------------------------------------------------------------- */
+/* The primary navigation                                                      */
+/* -------------------------------------------------------------------------- */
+
+describe('the primary navigation stays inside its budget', () => {
+  /**
+   * The ceiling is the design decision, not an implementation detail. Seven
+   * top-level destinations of equal weight is a table of contents rather than
+   * navigation, and the whole point of grouping Architecture, Data Model and
+   * Governance under "Platform" was to get under it. A sixth item arriving
+   * without a decision is exactly what this stops.
+   */
+  it('offers no more than the agreed number of content destinations', () => {
+    expect(PRIMARY_NAV.length).toBeLessThanOrEqual(MAX_PRIMARY_NAV_ITEMS)
+  })
+
+  it('offers exactly Overview, Platform, KPIs, Status and About', () => {
+    expect(PRIMARY_NAV.map((item) => item.label)).toEqual([
+      'Overview',
+      'Platform',
+      'KPIs',
+      'Status',
+      'About',
+    ])
+  })
+
+  it('never puts the locked case study in the header', () => {
+    expect(PRIMARY_NAV.map((item) => item.href)).not.toContain(ROUTES.caseStudy.href)
+    for (const item of PRIMARY_NAV) {
+      expect(item.matches).not.toContain(ROUTES.caseStudy.href)
+    }
+  })
+
+  it('never puts the internal lab in the header', () => {
+    expect(PRIMARY_NAV.map((item) => item.href)).not.toContain(ROUTES.uiLab.href)
+  })
+
+  it('points every navigation item and every match at a real route', () => {
+    for (const item of [...PRIMARY_NAV, ...PLATFORM_NAV]) {
+      expect(routeByHref(item.href), item.href).toBeDefined()
+      for (const match of item.matches) {
+        expect(routeByHref(match), `${item.label} matches ${match}`).toBeDefined()
+      }
+    }
+  })
+
+  it('gives every navigation item a purpose line for the mobile drawer', () => {
+    for (const item of [...PRIMARY_NAV, ...PLATFORM_NAV]) {
+      expect(item.purpose.length, item.label).toBeGreaterThan(20)
+    }
+  })
+
+  it('marks exactly one item current for every navigable route', () => {
+    for (const route of NAVIGABLE_ROUTES) {
+      const current = PRIMARY_NAV.filter((item) => isNavItemCurrent(item, route.href))
+      expect(
+        current,
+        `${route.href} matches ${String(current.length)} items`
+      ).toHaveLength(1)
+    }
+  })
+
+  it('marks Platform current on all three of its pages, and nowhere else', () => {
+    const platform = PRIMARY_NAV.find((item) => item.label === 'Platform')
+    expect(platform).toBeDefined()
+    for (const href of ['/architecture', '/data-model', '/governance']) {
+      expect(isNavItemCurrent(platform!, href), href).toBe(true)
+    }
+    for (const href of ['/', '/kpis', '/status', '/about', '/case-study']) {
+      expect(isNavItemCurrent(platform!, href), href).toBe(false)
+    }
+  })
+
+  it('matches on an exact pathname, never on a prefix', () => {
+    const status = PRIMARY_NAV.find((item) => item.label === 'Status')!
+    // A prefix rule would light this up for a route that does not exist yet, and
+    // that class of defect only appears once the route is added.
+    expect(isNavItemCurrent(status, '/status-report')).toBe(false)
+    expect(isNavItemCurrent(status, '/status')).toBe(true)
+  })
+})
+
+describe('the platform sub-navigation is what makes the grouping honest', () => {
+  it('links exactly the three pages Platform covers', () => {
+    expect(PLATFORM_NAV.map((item) => item.href)).toEqual([
+      ROUTES.architecture.href,
+      ROUTES.dataModel.href,
+      ROUTES.governance.href,
+    ])
+  })
+
+  it('covers exactly what the Platform item claims to match', () => {
+    const platform = PRIMARY_NAV.find((item) => item.label === 'Platform')!
+    expect([...platform.matches].sort()).toEqual(
+      PLATFORM_NAV.map((item) => item.href).sort()
+    )
+  })
+
+  it('keeps every one of them indexable and in the sitemap', () => {
+    // Grouping three destinations under one navigation item must not remove any
+    // of them from a search index. The grouping is a navigation decision.
+    for (const item of PLATFORM_NAV) {
+      expect(routeByHref(item.href)?.indexable, item.href).toBe(true)
     }
   })
 })

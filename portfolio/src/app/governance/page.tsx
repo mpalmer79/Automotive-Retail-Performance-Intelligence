@@ -46,6 +46,7 @@ export default function GovernancePage() {
             <SourceLink path="SECURITY.md" field="secret handling" />
           </>
         }
+        platformNav
         suppressTrustLine
       />
 
