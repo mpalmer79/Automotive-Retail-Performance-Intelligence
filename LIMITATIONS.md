@@ -608,8 +608,12 @@ evidence in the useful sense:
 | A health route the platform probes | Any access to the `reporting` schema |
 
 `deployment/railway/project.config.json` declares `services.portfolio.requiresDatabase = false` and lists
-website database access under `deliberatelyAbsent`; `scripts/railway/verify_railway_configuration.ts` checks
-it. So the site being up demonstrates that a static build is served correctly. It demonstrates nothing about
+website database access under `deliberatelyAbsent`; `scripts/railway/verify_railway_configuration.ts` fails
+if a `DATABASE_*`, `PG*` or password variable ever appears on the website service. The whole deployment —
+what is automated, what deliberately is not, and the one credential handoff no automation removes — is
+reviewable in [`deployment/railway/README.md`](deployment/railway/README.md).
+
+So the site being up demonstrates that a static build is served correctly. It demonstrates nothing about
 PostgreSQL and nothing about a semantic model, and any document that cites it as evidence for either is a
 defect worth reporting.
 
@@ -754,7 +758,7 @@ An engine has run: **No**. `ADR-0008-real-engine-validation-paths` accepts eithe
 | `reporting.vw_pipeline_run_summary`, `vw_data_quality_summary` | Operational reporting views |
 | Fourteen generators, one per entity in `GENERATION_ORDER` | Generators |
 | 114 data-quality checks across fourteen `DQ-*` families on a `development` run | Validation checks |
-| 30 loader reconciliations and 28 SQL reconciliations, recorded on every database run | Reconciliations |
+| 30 loader reconciliations and 28 SQL reconciliations, recorded on every database run | Reconciliations. **Every critical one has been observed failing against a deliberately corrupted fixture**, so the suite is known to detect the thing it exists to detect rather than merely passing |
 | `KPI-SLS-001`…`003`, `KPI-GRS-001`…`006`, `KPI-INV-001`…`009`, `KPI-FUN-001`…`008`, `KPI-MKT-001`…`003` | All 29 MVP KPIs, computable from `reporting` and tested against an independent warehouse derivation |
 | The PBIP project, its TMDL semantic model and its DAX measures | Semantic-model **source**, statically checked and never executed (4.1) |
 | `powerbi/model_documentation/` | The semantic-model specification — documentation, not a model |
