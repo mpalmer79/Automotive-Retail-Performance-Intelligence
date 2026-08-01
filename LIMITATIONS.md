@@ -813,8 +813,7 @@ and report it.
 
 ## 11. Exit criteria
 
-Every condition below names a file, a count or a recorded result. None is satisfied by an opinion, and the
-`Met` column is computed from the same evidence the rest of this document reads.
+Every condition below names a file, a count or a recorded result. None is satisfied by an opinion.
 
 <!-- ARPI:CAPABILITIES:BEGIN exit-criteria -->
 | Exit criterion | Evidence required | Met |
@@ -830,7 +829,7 @@ Every condition below names a file, a count or a recorded result. None is satisf
 | Production-source integration | a vendor extract landed through `raw` with its licence recorded. No such source is in scope, so this is stated to be denied rather than pursued | no |
 | Benchmark comparison eligibility | a licensed, citable source of real dealership performance data at dealership grain. None exists for this project, so no comparison is admissible | no |
 
-The `Met` column is computed from the same evidence the rest of this document reads. Two rows can never become `yes` by doing work: the last two describe sources this project has no access to, and they are listed so that their absence is a recorded decision rather than an oversight.
+`Met` is computed, not asserted. A row reads `yes` only when the evidence named beside it exists in the repository.
 <!-- ARPI:CAPABILITIES:END exit-criteria -->
 
 **Two of those rows can never become `yes` by doing work.** Production-source integration and benchmark

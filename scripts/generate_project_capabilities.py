@@ -438,10 +438,8 @@ def _exit_criteria_block(evidence: DerivedEvidence, _declared: dict[str, Any]) -
                 for name, condition, met in criteria
             ),
             "",
-            "The `Met` column is computed from the same evidence the rest of this document "
-            "reads. Two rows can never become `yes` by doing work: the last two describe "
-            "sources this project has no access to, and they are listed so that their absence "
-            "is a recorded decision rather than an oversight.",
+            "`Met` is computed, not asserted. A row reads `yes` only when the evidence named "
+            "beside it exists in the repository.",
             "",
         ]
     )
