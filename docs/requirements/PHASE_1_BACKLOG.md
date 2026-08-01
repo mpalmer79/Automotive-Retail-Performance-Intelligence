@@ -869,7 +869,7 @@ until that test is deliberately and visibly changed.
 - [ ] All 29 KPI formulas in [KPI_CATALOG.md](../../KPI_CATALOG.md) are computable from the reporting layer, and every status is updated from `Planned` to reflect reality.
 - [ ] The Gate 1 checklist in section 1 of this document is updated with evidence and a dated verdict.
 - [ ] A fairness review confirms that every contextual metric [ARCHITECTURE.md §23](../../ARCHITECTURE.md) requires — lead volume received, lead-source mix, store traffic, tenure, new-versus-used mix, inventory availability, manager involvement — is **available from the reporting layer** before the Employee Performance page is designed.
-- [ ] [LIMITATIONS.md §13](../../LIMITATIONS.md) is updated so the Implemented list matches reality exactly.
+- [ ] [LIMITATIONS.md §10](../../LIMITATIONS.md) is updated so the Implemented list matches reality exactly.
 - [ ] The measure-group plan is drafted against [ARCHITECTURE.md §19.3](../../ARCHITECTURE.md), mapping each KPI to its group.
 - [ ] **A written Gate 1 verdict is recorded** — open or closed, with the specific unmet conditions named if closed.
 
@@ -945,7 +945,7 @@ A backlog item is Done only when **all** of the following hold:
 - [ ] [DATA_DICTIONARY.md](../../DATA_DICTIONARY.md) is updated, including the entity's implementation status.
 - [ ] [KPI_CATALOG.md](../../KPI_CATALOG.md) statuses are updated for any KPI the item makes computable.
 - [ ] A source-to-target mapping exists in [docs/source-to-target/](../source-to-target/README.md) for any new target object.
-- [ ] [LIMITATIONS.md §13](../../LIMITATIONS.md) is updated so the Implemented list stays exact.
+- [ ] [LIMITATIONS.md §10](../../LIMITATIONS.md) is updated so the Implemented list stays exact.
 - [ ] `data/sample/` is regenerated and committed **if** the change alters generated output, and the affected `content_digest` values change only as intended.
 - [ ] **Adding this entity did not change any other entity's `content_digest`**, proving the per-entity sub-seed contract still holds.
 - [ ] No prohibited field, secret, or real identifier has entered the repository.

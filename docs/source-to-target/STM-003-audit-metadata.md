@@ -120,7 +120,7 @@ one value per attempt. `logical_run_key` groups equivalent attempts and is delib
 `source` (by `src/arpi/pipeline.py`) and `raw`, `staging`, `warehouse` plus `rejected` (by
 `src/arpi/ingestion/loader.py`). [ARCHITECTURE.md §21.4](../../ARCHITECTURE.md) is therefore satisfied, and
 the chain identity `raw = staging accepted + rejected invalid + deduplicated` is measured term by term
-rather than derived — see [LIMITATIONS.md §10.1](../../LIMITATIONS.md), which records the closed gap.
+rather than derived — see [LIMITATIONS.md §9.1](../../LIMITATIONS.md), which records the closed gap.
 
 Phase 0 recorded only three of the five, which is what `DOC-23` registered; this paragraph described that
 state and is corrected here. Because every layer but `source` is written by the loader, a run that skips

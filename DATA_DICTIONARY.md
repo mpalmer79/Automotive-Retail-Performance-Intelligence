@@ -1112,7 +1112,7 @@ recovered and were not invented. See [LIMITATIONS.md](LIMITATIONS.md).
 - **Phase 0 records three of the five layers.** `source` is recorded by `src/arpi/pipeline.py`; `raw` and
   `warehouse` are recorded by `src/arpi/ingestion/loader.py`. **No `staging` or `rejected` row count is
   recorded by any code path**, so [ARCHITECTURE.md §21.4](ARCHITECTURE.md), which requires both, is not yet
-  satisfied. This is a registered gap — see [LIMITATIONS.md §10.1](LIMITATIONS.md) and
+  satisfied. This is a registered gap — see [LIMITATIONS.md §9.1](LIMITATIONS.md) and
   [docs/requirements/DOCUMENTATION_BACKLOG.md](docs/requirements/DOCUMENTATION_BACKLOG.md).
 - Because the `raw` and `warehouse` counts are written only by the database loader, a run that skips the
   optional database load records the `source` layer alone.

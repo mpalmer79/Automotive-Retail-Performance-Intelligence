@@ -65,7 +65,7 @@ All figures come from one evaluation performed on 2026-07-29:
 | **Evidence** | `fact_vehicle_sale` 650 · `fact_vehicle_inventory_snapshot` 45,754 · `fact_lead` 6,000 · `fact_appointment` 2,111 · `fact_marketing_spend` 212. |
 | **Test or SQL query** | `tests/integration/test_gate1_readiness.py::test_every_mvp_fact_exists_and_holds_rows` |
 | **Result** | **Pass** |
-| **Limitation** | Every row is synthetic and generated from a fixed seed. Volumes at `development` scale are small enough that per-model-line statistics are small-sample; see [LIMITATIONS.md §2](../../LIMITATIONS.md). |
+| **Limitation** | Every row is synthetic and generated from a fixed seed. Volumes at `development` scale are small enough that per-model-line statistics are small-sample; see [LIMITATIONS.md §3.1](../../LIMITATIONS.md). |
 | **Verdict** | **Met** |
 
 ### G1-C03 — Every fact grain is enforced by a database constraint
@@ -219,7 +219,7 @@ All figures come from one evaluation performed on 2026-07-29:
 | **Evidence** | Every column of every reporting view passed through the project's own privacy tripwire — the same rules the generators are held to. No name, contact detail, precise age, precise geography, pay, credit or communication-content field appears. Customer age is a band; geography is county and market area; employee tenure is a band and no hire date, termination date or pay field is exposed. |
 | **Test or SQL query** | `tests/integration/test_reporter_role_end_to_end.py::test_reporting_views_expose_no_prohibited_field` |
 | **Result** | **Pass** |
-| **Limitation** | **The tripwire inspects names, not values** ([LIMITATIONS.md §10.2](../../LIMITATIONS.md)). A prohibited value under an innocent name would pass. One documented exception is carried in the test with its justification: `vw_pipeline_run_summary.notes`, which is machine-written operational text about a load and describes no person. Inventory-age columns were previously flagged as personal age and are now handled by `arpi.constants.APPROVED_ASSET_AGE_COLUMNS`, an explicit allowlist with a written reason per entry. |
+| **Limitation** | **The tripwire inspects names, not values** ([LIMITATIONS.md §7.1](../../LIMITATIONS.md)). A prohibited value under an innocent name would pass. One documented exception is carried in the test with its justification: `vw_pipeline_run_summary.notes`, which is machine-written operational text about a load and describes no person. Inventory-age columns were previously flagged as personal age and are now handled by `arpi.constants.APPROVED_ASSET_AGE_COLUMNS`, an explicit allowlist with a written reason per entry. |
 | **Verdict** | **Met** |
 
 ### G1-C16 — Critical reconciliations pass
@@ -297,7 +297,7 @@ All figures come from one evaluation performed on 2026-07-29:
 |---|---|
 | **Condition ID** | `G1-C22` |
 | **Requirement** | Definition of Done: no document claims anything exists that does not, and no document understates what does. |
-| **Evidence** | Statuses corrected in this change across [DATA_DICTIONARY.md](../../DATA_DICTIONARY.md) (eleven entities and twelve check families moved from `Planned` to `Implemented`; the Part C banner rewritten), [KPI_CATALOG.md](../../KPI_CATALOG.md) (all 29 KPI statuses, the section 3 banner, the SQL-ownership fields and the whole reconciliation register), [LIMITATIONS.md](../../LIMITATIONS.md) (§1, §10, §10.1 and §13), [README.md](../../README.md) (status line, implementation table, roadmap) and [PHASE_1_BACKLOG.md](PHASE_1_BACKLOG.md). `scripts/check_docs_links.py` passes with 819 relative links resolved. |
+| **Evidence** | Statuses corrected in this change across [DATA_DICTIONARY.md](../../DATA_DICTIONARY.md) (eleven entities and twelve check families moved from `Planned` to `Implemented`; the Part C banner rewritten), [KPI_CATALOG.md](../../KPI_CATALOG.md) (all 29 KPI statuses, the section 3 banner, the SQL-ownership fields and the whole reconciliation register), [LIMITATIONS.md](../../LIMITATIONS.md) (§1, §4, §9.1 and §10), [README.md](../../README.md) (status line, implementation table, roadmap) and [PHASE_1_BACKLOG.md](PHASE_1_BACKLOG.md). `scripts/check_docs_links.py` passes with 819 relative links resolved. |
 | **Test or SQL query** | `python scripts/check_docs_links.py`; `python scripts/check_naming.py`; `python scripts/check_secrets.py` |
 | **Result** | **Pass** |
 | **Limitation** | Status accuracy is checked by review and by link resolution, not by a test that compares every document sentence with the database. `tests/integration/test_schema_objects.py` and `tests/integration/test_reporting_layer_completeness.py` pin the object inventory to `arpi.constants`, which is the strongest automated guard the project has; prose remains reviewable rather than testable. |
@@ -340,7 +340,7 @@ outstanding.
 |---|---|---|---|
 | 1 | [DATA_DICTIONARY.md](../../DATA_DICTIONARY.md) documents six dimensions at attribute level with indicative types; the binding column contract for those six is the DDL. | A reader wanting exact types for `dim_vehicle` must read `sql/03_dimensions/03_dim_vehicle.sql`. The database comments are complete either way. | `DOC-22` in [DOCUMENTATION_BACKLOG.md](DOCUMENTATION_BACKLOG.md) |
 | 2 | `RECON-FUNNEL-CHAIN` is informational, not critical. | A funnel-chain breach does not fail a run. It is a finding to explain. | [KPI_CATALOG.md §36](../../KPI_CATALOG.md) |
-| 3 | The privacy tripwire inspects column names, not values. | A prohibited value under an innocent name would not be caught. ARPI generates no such value, but the control does not prove that. | [LIMITATIONS.md §10.2](../../LIMITATIONS.md) |
+| 3 | The privacy tripwire inspects column names, not values. | A prohibited value under an innocent name would not be caught. ARPI generates no such value, but the control does not prove that. | [LIMITATIONS.md §7.1](../../LIMITATIONS.md) |
 | 4 | Employee fairness context is *available*, not *enforced on a visual*. | A future Employee Performance page could still rank on volume alone. | This document, `G1-C18`; `SQ-08` in [STAKEHOLDER_QUESTIONS.md](STAKEHOLDER_QUESTIONS.md) |
 | 5 | Four Deferred facts block four stakeholder questions. | F&I product analysis, service-to-sales, target attainment and customer retention cannot be reported. Two of the nine planned report pages are blocked. | [STAKEHOLDER_QUESTIONS.md §6](STAKEHOLDER_QUESTIONS.md) |
 | 6 | New-vehicle front gross excludes manufacturer incentives, holdback and floorplan credits. | ARPI new-vehicle gross is systematically understated relative to how a real store reports it. A modelling boundary, not a finding. | [KPI_CATALOG.md](../../KPI_CATALOG.md) `KPI-GRS-001` |

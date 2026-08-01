@@ -260,7 +260,7 @@ and are visible through the staging view, but those layers are not part of this 
 > it does not account for rejected records. The loader records row counts for the `source`, `raw` and
 > `warehouse` layers only; **`staging` and `rejected` row counts are not recorded at all**, so
 > [ARCHITECTURE.md §21.4](../../ARCHITECTURE.md) is not yet satisfied. See
-> [LIMITATIONS.md §10.1](../../LIMITATIONS.md).
+> [LIMITATIONS.md §9.1](../../LIMITATIONS.md).
 
 > **The right-hand `count(*)` is unfiltered.** `warehouse.dim_dealership` currently holds exactly one
 > version per store, so total rows and current rows are both 3 and the comparison balances. As soon as any

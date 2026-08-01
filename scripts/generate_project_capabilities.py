@@ -40,6 +40,7 @@ from project_capabilities import (
     DerivedEvidence,
     derive_evidence,
     load_declared,
+    load_review,
 )
 
 BEGIN = "<!-- ARPI:CAPABILITIES:BEGIN {name} -->"
@@ -132,10 +133,328 @@ def _warehouse_block(evidence: DerivedEvidence, _declared: dict[str, Any]) -> st
     )
 
 
+def _review_metadata_block(_evidence: DerivedEvidence, _declared: dict[str, Any]) -> str:
+    """The reviewed-on header, generated so it cannot be the stalest line in the document.
+
+    Reads ``load_review()`` directly rather than taking it as a parameter, because every
+    generator shares one signature and only this one needs the block. The declared file is
+    the single place a human edits it.
+    """
+    review = load_review()
+    reviewed = review.get("last_reviewed", "UNVERIFIED")
+    commit = review.get("last_verified_commit", "UNVERIFIED")
+    version = review.get("register_version", "UNVERIFIED")
+    return "\n".join(
+        [
+            "",
+            f"**Register version:** {version}  ",
+            f"**Last reviewed:** {reviewed}  ",
+            f"**Last verified at commit:** `{commit}`",
+            "",
+            "This header is generated from `config/project_capabilities.json`. A review date "
+            "typed into a document is the first thing to go stale, and a limitations register "
+            "with a stale header has already lost the argument.",
+            "",
+        ]
+    )
+
+
+def _state(value: bool, yes: str, no: str) -> str:
+    return yes if value else no
+
+
+def _current_state_block(evidence: DerivedEvidence, declared: dict[str, Any]) -> str:
+    """Everything a reader needs in order to know where the project actually is.
+
+    One table, read from source on every run. UNVERIFIED appears wherever this repository's
+    automation could not obtain the fact; it is never rendered as a pass and never guessed.
+    """
+    phases = declared.get("lifecycle_phases", {})
+    gates = declared.get("gates", {})
+    deliverables = declared.get("deliverables", {})
+    deployment = evidence.deployment
+    analytical = deployment.analytical
+
+    portfolio = "; ".join(
+        f"{environment.environment} live at {environment.public_url}"
+        for environment in deployment.environments
+        if environment.is_recorded
+    )
+
+    rows = [
+        ("Warehouse dimensions", str(evidence.dimension_merge_scripts), "`sql/03_dimensions/`"),
+        ("Warehouse facts", str(evidence.fact_ddl_scripts), "`sql/04_facts/`"),
+        ("Reporting views", str(evidence.reporting_views), "`sql/05_reporting/`"),
+        (
+            "Governed KPIs",
+            str(evidence.governed_kpis),
+            "`powerbi/validation/model_expectations.json`",
+        ),
+        (
+            "PBIP source",
+            _state(evidence.pbip_project_files > 0, "present", "absent"),
+            f"{evidence.pbip_project_files} project file(s)",
+        ),
+        ("TMDL files", str(evidence.tmdl_files), "`…SemanticModel/definition/`"),
+        ("Semantic tables", str(evidence.semantic_tables), "`…/definition/tables/`"),
+        ("Relationships", str(evidence.relationships), "`…/definition/relationships.tmdl`"),
+        ("DAX measures", str(evidence.measures), "declared in TMDL, never evaluated"),
+        (
+            "Static model validation",
+            _state(evidence.static_model_validation, "enforced in CI", "ABSENT"),
+            "`scripts/check_powerbi_model.py`",
+        ),
+        (
+            "Desktop validation",
+            _state(evidence.desktop.has_run, "recorded", "pending"),
+            f"`validated_at` is {_json_ish(evidence.desktop.validated_at)}",
+        ),
+        (
+            "Fabric validation",
+            _state(evidence.fabric.has_run, "recorded", "pending"),
+            f"`validated_at` is {_json_ish(evidence.fabric.validated_at)}",
+        ),
+        ("Report pages", str(evidence.report_pages), "PBIR shell"),
+        ("Report visuals", str(evidence.report_visuals), "PBIR shell"),
+        ("Analytical findings", str(evidence.analytical_findings), "`docs/findings/`"),
+        (
+            "Portfolio deployment",
+            portfolio or "none recorded",
+            "health verification is "
+            + _state(deployment.portfolio_is_live_verified, "recorded", "UNVERIFIED"),
+        ),
+        (
+            "PostgreSQL deployment",
+            analytical.postgresql_instance,
+            "independent of the website; a live site proves nothing here",
+        ),
+        (
+            "Database provisioning",
+            analytical.schema_deployment,
+            f"job `arpi-database-setup`, last run {analytical.provisioning_job_last_run}",
+        ),
+        (
+            "Gate 1",
+            str(gates.get("gate_1", "unknown")).upper(),
+            "`docs/requirements/GATE_1_READINESS.md`",
+        ),
+        (
+            "Gate 2",
+            str(gates.get("gate_2", "unknown")).upper(),
+            "; ".join(evidence.gate_2_conditions_unmet) or "conditions are a human verdict",
+        ),
+        (
+            "Case study",
+            str(deliverables.get("case_study", "unknown")),
+            "gated behind Gate 2",
+        ),
+        (
+            "Lifecycle Phase 5 (semantic model)",
+            str(phases.get("5_semantic_model", "unknown")),
+            "blocked on real-engine validation",
+        ),
+        (
+            "Lifecycle Phase 8 (case study)",
+            str(phases.get("8_case_study", "unknown")),
+            "blocked on Gate 2",
+        ),
+    ]
+
+    return "\n".join(
+        [
+            "",
+            "| Item | State | Evidence |",
+            "|---|---|---|",
+            *(f"| {item} | {state} | {source} |" for item, state, source in rows),
+            "",
+            "Every row is read from the repository or from a declared status the repository "
+            "does not refute. `UNVERIFIED` means this project's own automation did not obtain "
+            "the fact, which is not the same as the fact being false.",
+            "",
+        ]
+    )
+
+
+def _deployment_block(evidence: DerivedEvidence, _declared: dict[str, Any]) -> str:
+    """Three deployments, held apart.
+
+    A live website is the easiest thing in this project to over-read. It is a set of
+    prerendered routes with no database connection, so its health check proves that a
+    static site is served and nothing whatever about PostgreSQL or a semantic model.
+    """
+    deployment = evidence.deployment
+    analytical = deployment.analytical
+    lines = [
+        "",
+        "**1. Portfolio presentation deployment.** A Next.js site of prerendered routes.",
+        "",
+        "| Field | Value |",
+        "|---|---|",
+    ]
+
+    if deployment.environments:
+        for environment in deployment.environments:
+            lines.extend(
+                [
+                    f"| Environment | {environment.environment} |",
+                    f"| Service name | `{environment.service_name}` |",
+                    f"| Public URL | {environment.public_url} |",
+                    f"| Health route | `{environment.health_path}` |",
+                    f"| Deployment commit | {environment.commit_sha} |",
+                    f"| Deployment timestamp | {environment.deployed_at} |",
+                    f"| Health verification | {environment.health_verified_at} |",
+                    f"| Remote smoke test | {environment.remote_smoke_test} |",
+                    f"| Security headers | {environment.security_headers} |",
+                    "| Database connection | "
+                    + _state(environment.connects_to_database, "**PRESENT**", "none")
+                    + " |",
+                ]
+            )
+    else:
+        lines.append("| Environment | none recorded |")
+
+    lines.extend(
+        [
+            f"| Production environment | {deployment.production_environment} |",
+            "",
+            "**2. Analytical-platform deployment.** PostgreSQL and everything the warehouse "
+            "needs in order to be running rather than defined. Nothing here follows from the "
+            "website being live.",
+            "",
+            "| Field | State |",
+            "|---|---|",
+            f"| PostgreSQL instance | {analytical.postgresql_instance} |",
+            f"| Schema deployment | {analytical.schema_deployment} |",
+            f"| Data load | {analytical.data_load} |",
+            f"| Role verification | {analytical.role_verification} |",
+            f"| Migration verification | {analytical.migration_verification} |",
+            f"| Backup and restoration | {analytical.backup_and_restore} |",
+            f"| Scheduled execution | {analytical.scheduled_execution} |",
+            f"| Provisioning job last run | {analytical.provisioning_job_last_run} |",
+            f"| Verifier last run | {analytical.verifier_last_run} |",
+            "",
+            "**3. Semantic-model deployment.** An engine that has loaded, refreshed and "
+            "evaluated the model. Its evidence is the validation files, not this register.",
+            "",
+            "| Field | State |",
+            "|---|---|",
+            f"| Power BI Desktop | {_state(evidence.desktop.has_run, 'recorded', 'pending')} |",
+            f"| Microsoft Fabric | {_state(evidence.fabric.has_run, 'recorded', 'pending')} |",
+            f"| Refresh | {_state(evidence.any_engine_has_run, 'recorded', 'never performed')} |",
+            "| DAX evaluation | "
+            + _state(evidence.any_engine_has_run, "recorded", "never performed")
+            + " |",
+            "| SQL-to-DAX reconciliation | "
+            + _state(evidence.any_engine_has_run, "recorded", "SQL side only")
+            + " |",
+            "| Evidence freshness | desktop `validated_at` "
+            f"{_json_ish(evidence.desktop.validated_at)}, fabric `validated_at` "
+            f"{_json_ish(evidence.fabric.validated_at)} |",
+            "",
+            "**These are three statuses, not one.** A reader who takes the first table as "
+            "evidence for the second or the third has been misled, and any document that "
+            "invites that reading is a defect worth reporting.",
+            "",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def _exit_criteria_block(evidence: DerivedEvidence, _declared: dict[str, Any]) -> str:
+    """What has to be *observed* before each blocked item moves.
+
+    Every condition below names a file, a count or a recorded result. None of them is
+    satisfied by an opinion, and the ``Met`` column is computed rather than asserted.
+    """
+    analytical = evidence.deployment.analytical
+    criteria = [
+        (
+            "Real-engine validation",
+            "`desktop_validation_results.json` or `fabric_validation_results.json` carries a "
+            "non-null `validated_at` and a `model_source_hash` matching the committed TMDL",
+            evidence.any_engine_has_run,
+        ),
+        (
+            "Lifecycle Phase 5 complete",
+            "real-engine validation above, plus `sql_to_dax_differences` empty in the same file",
+            evidence.any_engine_has_run,
+        ),
+        (
+            "Dashboard development may begin",
+            "real-engine validation above. Report pages are not authored before the model that "
+            "feeds them has returned a number",
+            evidence.any_engine_has_run,
+        ),
+        (
+            "SQL-to-DAX reconciliation",
+            "every measure in `powerbi/validation/sql_baseline.json` matched by an engine-"
+            "evaluated value, with the differences recorded",
+            evidence.any_engine_has_run,
+        ),
+        (
+            "Gate 2 open",
+            "report pages greater than zero, SQL-to-DAX reconciliation recorded, and a written "
+            "verdict in `docs/requirements/GATE_2_READINESS.md`",
+            evidence.report_pages > 0 and evidence.any_engine_has_run,
+        ),
+        (
+            "Case study unlocked",
+            "Gate 2 open, `analytical_findings` greater than zero, and the build flag set",
+            bool(evidence.analytical_findings) and evidence.report_pages > 0,
+        ),
+        (
+            "PostgreSQL production readiness",
+            "`postgresql_instance`, `schema_deployment` and `data_load` all recorded as "
+            "verified in the deployment evidence, with `verifier_last_run` set",
+            evidence.analytical_platform_is_running,
+        ),
+        (
+            "Backup-and-restore evidence",
+            "a recorded restoration into an empty database, with the row counts compared "
+            "against the source",
+            analytical.backup_and_restore not in ("not-implemented", "UNVERIFIED"),
+        ),
+        (
+            "Production-source integration",
+            "a vendor extract landed through `raw` with its licence recorded. No such source "
+            "is in scope, so this is stated to be denied rather than pursued",
+            False,
+        ),
+        (
+            "Benchmark comparison eligibility",
+            "a licensed, citable source of real dealership performance data at dealership "
+            "grain. None exists for this project, so no comparison is admissible",
+            False,
+        ),
+    ]
+
+    return "\n".join(
+        [
+            "",
+            "| Exit criterion | Evidence required | Met |",
+            "|---|---|:--:|",
+            *(
+                f"| {name} | {condition} | {_state(met, 'yes', 'no')} |"
+                for name, condition, met in criteria
+            ),
+            "",
+            "The `Met` column is computed from the same evidence the rest of this document "
+            "reads. Two rows can never become `yes` by doing work: the last two describe "
+            "sources this project has no access to, and they are listed so that their absence "
+            "is a recorded decision rather than an oversight.",
+            "",
+        ]
+    )
+
+
 #: Which block goes where. A document may carry more than one.
 GENERATORS = {
     "semantic-model": _semantic_model_block,
     "warehouse": _warehouse_block,
+    "review-metadata": _review_metadata_block,
+    "current-state": _current_state_block,
+    "deployment": _deployment_block,
+    "exit-criteria": _exit_criteria_block,
 }
 
 

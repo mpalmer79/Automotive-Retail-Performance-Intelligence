@@ -237,7 +237,7 @@ right-hand side is a query against PostgreSQL.
 > it does not account for rejected records. The loader records row counts for the `source`, `raw` and
 > `warehouse` layers only; **`staging` and `rejected` row counts are not recorded at all**, so
 > [ARCHITECTURE.md §21.4](../../ARCHITECTURE.md) is not yet satisfied. See
-> [LIMITATIONS.md §10.1](../../LIMITATIONS.md).
+> [LIMITATIONS.md §9.1](../../LIMITATIONS.md).
 
 Expected row counts by profile:
 

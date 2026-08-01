@@ -25,6 +25,12 @@ SCRIPTS = REPO_ROOT / "scripts"
 if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
+from deployment_evidence import (  # noqa: E402  (path set above)
+    AnalyticalPlatformEvidence,
+    DeployedEnvironment,
+    DeploymentEvidence,
+    read_deployment_evidence,
+)
 from generate_project_capabilities import (  # noqa: E402  (path set above)
     GENERATORS,
     render,
@@ -35,10 +41,12 @@ from project_capabilities import (  # noqa: E402  (path set above)
     EngineEvidence,
     build_capabilities,
     check_declarations,
+    check_review_metadata,
     check_website_agreement,
     derive_evidence,
     find_stale_claims,
     load_declared,
+    load_review,
 )
 
 PENDING = EngineEvidence(
@@ -62,7 +70,41 @@ def evidence() -> DerivedEvidence:
     return derive_evidence()
 
 
-def _fake(**overrides: int | bool | EngineEvidence) -> DerivedEvidence:
+STAGING = DeployedEnvironment(
+    environment="staging",
+    service_name="arpi-portfolio",
+    public_url="https://example.invalid",
+    health_path="/status",
+    commit_sha="UNVERIFIED",
+    deployed_at="UNVERIFIED",
+    health_verified_at="UNVERIFIED",
+    remote_smoke_test="UNVERIFIED",
+    security_headers="UNVERIFIED",
+    connects_to_database=False,
+)
+
+DECLARED_ONLY = AnalyticalPlatformEvidence(
+    postgresql_instance="declared",
+    schema_deployment="declared",
+    data_load="declared",
+    role_verification="declared",
+    migration_verification="declared",
+    backup_and_restore="not-implemented",
+    scheduled_execution="not-implemented",
+    provisioning_job_last_run="UNVERIFIED",
+    verifier_last_run="UNVERIFIED",
+)
+
+DEPLOYED = DeploymentEvidence(
+    exists=True,
+    path="deployment/evidence/portfolio_deployment.json",
+    environments=(STAGING,),
+    production_environment="not-created",
+    analytical=DECLARED_ONLY,
+)
+
+
+def _fake(**overrides: object) -> DerivedEvidence:
     """A derived-evidence value with everything present, then selectively overridden."""
     base = DerivedEvidence(
         pbip_project_files=2,
@@ -70,7 +112,11 @@ def _fake(**overrides: int | bool | EngineEvidence) -> DerivedEvidence:
         semantic_tables=26,
         relationships=42,
         measures=49,
+        governed_kpis=29,
         report_pages=0,
+        report_visuals=0,
+        analytical_findings=0,
+        static_model_validation=True,
         fact_ddl_scripts=5,
         fact_load_scripts=5,
         dimension_merge_scripts=8,
@@ -81,6 +127,8 @@ def _fake(**overrides: int | bool | EngineEvidence) -> DerivedEvidence:
         fabric=PENDING,
         railway_website_config=True,
         railway_database_job_config=True,
+        deployment=DEPLOYED,
+        fabric_is_an_accepted_validation_path=True,
     )
     return replace(base, **overrides)  # type: ignore[arg-type]
 
@@ -413,4 +461,346 @@ def test_the_declared_file_records_no_counts() -> None:
     assert _numbers(declared) == [], (
         "config/project_capabilities.json declares a numeric value. Counts are derived "
         "from the repository; declaring one creates a second copy that can go stale."
+    )
+
+
+# --------------------------------------------------------------------------------------
+# The three deployments, held apart
+#
+# A live website is the easiest claim in this project to over-read. Everything below
+# exists to make the over-reading a build failure rather than a matter of wording.
+# --------------------------------------------------------------------------------------
+
+
+def test_the_repository_records_a_portfolio_deployment(evidence: DerivedEvidence) -> None:
+    """The correction this register was extended for: the site is deployed, and said it was not."""
+    assert evidence.deployment.exists, "the deployment evidence file is missing"
+    assert evidence.deployment.portfolio_is_recorded
+
+
+def test_a_recorded_deployment_is_not_a_verified_one(evidence: DerivedEvidence) -> None:
+    """A URL is a statement. A health verification is an observation.
+
+    Both are honest; only the second may ever be rendered as proof that the site answers,
+    and this repository cannot obtain it -- CI has no reason to be online and the
+    environments the project is built in are denied the deployment host.
+    """
+    assert evidence.deployment.portfolio_is_recorded
+    assert evidence.deployment.portfolio_is_live_verified is False
+
+
+def test_a_live_website_is_not_a_running_warehouse(evidence: DerivedEvidence) -> None:
+    """The distinction the whole of section 8 exists to preserve."""
+    assert evidence.deployment.portfolio_is_recorded
+    assert evidence.analytical_platform_is_running is False
+
+
+def test_the_website_holds_no_database_connection(evidence: DerivedEvidence) -> None:
+    assert evidence.deployment.portfolio_connects_to_database is False
+
+
+def test_asserting_a_deployment_without_evidence_fails() -> None:
+    empty = DeploymentEvidence(
+        exists=True,
+        path="deployment/evidence/portfolio_deployment.json",
+        environments=(),
+        production_environment="not-created",
+        analytical=DECLARED_ONLY,
+    )
+    found = check_declarations(
+        {"deployment": {"portfolio_website": "deployed"}}, _fake(deployment=empty)
+    )
+    assert [c.rule for c in found] == ["deployment-status-needs-evidence"]
+
+
+def test_denying_a_deployment_the_evidence_records_fails() -> None:
+    """Tightening runs in both directions: a pessimistic claim is a contradiction too."""
+    found = check_declarations({"deployment": {"portfolio_website": "not-deployed"}}, _fake())
+    assert [c.rule for c in found] == ["deployment-status-must-not-deny-its-evidence"]
+
+
+def test_the_database_may_not_inherit_the_website_status() -> None:
+    """The failure mode this separation exists for."""
+    found = check_declarations(
+        {"deployment": {"portfolio_website": "deployed", "railway_postgresql": "deployed"}},
+        _fake(),
+    )
+    assert [c.rule for c in found] == ["database-deployment-needs-its-own-evidence"]
+
+
+def test_a_database_status_is_accepted_once_its_own_evidence_supports_it() -> None:
+    running = replace(
+        DEPLOYED,
+        analytical=replace(
+            DECLARED_ONLY,
+            postgresql_instance="verified",
+            schema_deployment="verified",
+            data_load="verified",
+            verifier_last_run="2026-08-01T00:00:00Z",
+        ),
+    )
+    found = check_declarations(
+        {"deployment": {"railway_postgresql": "deployed"}}, _fake(deployment=running)
+    )
+    assert found == [], "\n".join(c.render() for c in found)
+
+
+def test_a_website_holding_a_database_connection_fails() -> None:
+    """The architecture's boundary, checked rather than asserted."""
+    connected = replace(DEPLOYED, environments=(replace(STAGING, connects_to_database=True),))
+    found = check_declarations({"deployment": {}}, _fake(deployment=connected))
+    assert [c.rule for c in found] == ["the-website-holds-no-database-connection"]
+
+
+def test_a_missing_evidence_file_fails_rather_than_passing_silently() -> None:
+    absent = DeploymentEvidence(
+        exists=False,
+        path="deployment/evidence/portfolio_deployment.json",
+        environments=(),
+        production_environment="not-created",
+        analytical=DECLARED_ONLY,
+    )
+    found = check_declarations(
+        {"deployment": {"portfolio_website": "deployed"}}, _fake(deployment=absent)
+    )
+    assert [c.rule for c in found] == ["deployment-status-needs-an-evidence-file"]
+
+
+def test_an_unknown_deployment_state_asserts_nothing() -> None:
+    """UNVERIFIED is not a claim, so it needs no evidence and must not fail the build."""
+    unknown = replace(
+        DEPLOYED,
+        analytical=replace(DECLARED_ONLY, postgresql_instance="UNVERIFIED"),
+    )
+    found = check_declarations(
+        {"deployment": {"railway_postgresql": "UNVERIFIED"}}, _fake(deployment=unknown)
+    )
+    assert found == [], "\n".join(c.render() for c in found)
+
+
+# --------------------------------------------------------------------------------------
+# Status claims the corrected documents used to carry
+# --------------------------------------------------------------------------------------
+
+
+def test_denying_the_deployment_in_prose_is_caught(tmp_path: Path) -> None:
+    document = tmp_path / "stale.md"
+    document.write_text("There is no staging URL and no production URL.\n", encoding="utf-8")
+    found = find_stale_claims(_fake(), [document])
+    assert [c.rule for c in found] == ["portfolio-deployment-exists"]
+
+
+def test_calling_the_semantic_model_planned_is_caught(tmp_path: Path) -> None:
+    document = tmp_path / "stale.md"
+    document.write_text("The semantic model is only planned.\n", encoding="utf-8")
+    found = find_stale_claims(_fake(), [document])
+    assert [c.rule for c in found] == ["semantic-model-is-not-merely-planned"]
+
+
+def test_claiming_a_dashboard_while_the_report_is_empty_is_caught(tmp_path: Path) -> None:
+    document = tmp_path / "stale.md"
+    document.write_text("A dashboard exists.\n", encoding="utf-8")
+    found = find_stale_claims(_fake(), [document])
+    assert [c.rule for c in found] == ["no-dashboard-exists"]
+
+
+def test_a_dashboard_claim_is_permitted_once_pages_exist(tmp_path: Path) -> None:
+    document = tmp_path / "fine.md"
+    document.write_text("A dashboard exists.\n", encoding="utf-8")
+    assert find_stale_claims(_fake(report_pages=7, report_visuals=30), [document]) == []
+
+
+def test_claiming_the_case_study_is_available_is_caught(tmp_path: Path) -> None:
+    document = tmp_path / "stale.md"
+    document.write_text("The case study is available.\n", encoding="utf-8")
+    found = find_stale_claims(_fake(), [document])
+    assert [c.rule for c in found] == ["case-study-remains-locked"]
+
+
+def test_claiming_a_pass_while_both_engines_are_pending_is_caught(tmp_path: Path) -> None:
+    document = tmp_path / "stale.md"
+    document.write_text("Real-engine validation has passed.\n", encoding="utf-8")
+    found = find_stale_claims(_fake(), [document])
+    assert [c.rule for c in found] == ["real-engine-validation-is-pending"]
+
+
+def test_a_hand_edited_engine_block_is_caught(tmp_path: Path) -> None:
+    """The generated block says No. Editing it to Yes must not survive."""
+    document = tmp_path / "stale.md"
+    document.write_text("An engine has run: **Yes**\n", encoding="utf-8")
+    found = find_stale_claims(_fake(), [document])
+    assert [c.rule for c in found] == ["real-engine-validation-is-pending"]
+
+
+def test_claiming_the_warehouse_is_running_is_caught(tmp_path: Path) -> None:
+    document = tmp_path / "stale.md"
+    document.write_text("PostgreSQL is deployed.\n", encoding="utf-8")
+    found = find_stale_claims(_fake(), [document])
+    assert [c.rule for c in found] == ["website-deployment-is-not-platform-deployment"]
+
+
+def test_excluding_fabric_without_qualification_is_caught(tmp_path: Path) -> None:
+    """Fabric as a data platform is out of scope; the Fabric Service is a required path."""
+    document = tmp_path / "stale.md"
+    document.write_text("- Microsoft Fabric\n", encoding="utf-8")
+    found = find_stale_claims(_fake(), [document])
+    assert [c.rule for c in found] == ["fabric-is-an-accepted-validation-path"]
+
+
+def test_the_qualified_fabric_exclusion_is_permitted(tmp_path: Path) -> None:
+    document = tmp_path / "fine.md"
+    document.write_text("- Microsoft Fabric as a data platform\n", encoding="utf-8")
+    assert find_stale_claims(_fake(), [document]) == []
+
+
+def test_the_fabric_rule_retires_itself_if_the_path_is_withdrawn(tmp_path: Path) -> None:
+    """A semantic check, not a banned phrase.
+
+    If ADR-0008 were ever superseded and the Service stopped being an accepted path, the
+    unqualified exclusion would become true again and must stop failing the build.
+    """
+    document = tmp_path / "fine.md"
+    document.write_text("- Microsoft Fabric\n", encoding="utf-8")
+    assert find_stale_claims(_fake(fabric_is_an_accepted_validation_path=False), [document]) == []
+
+
+def test_narrative_rules_do_not_search_source_code(tmp_path: Path) -> None:
+    """Code branches; it does not assert.
+
+    `platform-story.tsx` says the model is unproven "until an engine has loaded it", and
+    the case-study route renders unlocked copy inside `if (caseStudy.unlocked)`. Both are
+    correct, and the gate that keeps them honest is the end-to-end suite, not a regex.
+    """
+    source = tmp_path / "component.tsx"
+    source.write_text("const copy = 'The case study is available.'\n", encoding="utf-8")
+    assert find_stale_claims(_fake(), [source]) == []
+
+
+def test_the_case_study_may_not_overtake_its_gate() -> None:
+    found = check_declarations(
+        {"gates": {"gate_2": "closed"}, "deliverables": {"case_study": "unlocked"}}, _fake()
+    )
+    assert "case-study-follows-gate-2" in [c.rule for c in found]
+
+
+# --------------------------------------------------------------------------------------
+# Review metadata
+# --------------------------------------------------------------------------------------
+
+
+def test_the_declared_review_metadata_is_usable() -> None:
+    problems = check_review_metadata(load_review())
+    assert problems == [], "\n".join(c.render() for c in problems)
+
+
+def test_a_missing_review_date_fails() -> None:
+    found = check_review_metadata({"last_verified_commit": "abc1234"})
+    assert [c.rule for c in found] == ["review-metadata-is-required"]
+
+
+def test_an_unparseable_review_date_fails() -> None:
+    found = check_review_metadata(
+        {"last_reviewed": "last Tuesday", "last_verified_commit": "abc1234"}
+    )
+    assert [c.rule for c in found] == ["review-date-must-parse"]
+
+
+def test_a_review_date_in_the_future_fails() -> None:
+    found = check_review_metadata(
+        {"last_reviewed": "2999-01-01", "last_verified_commit": "abc1234"}
+    )
+    assert [c.rule for c in found] == ["review-date-must-not-be-in-the-future"]
+
+
+def test_a_review_commit_that_is_not_a_commit_fails() -> None:
+    found = check_review_metadata({"last_reviewed": "2026-08-01", "last_verified_commit": "HEAD"})
+    assert [c.rule for c in found] == ["review-commit-must-be-a-commit"]
+
+
+def test_the_review_header_is_generated_not_typed() -> None:
+    """The document's own review date must come from the register, or it goes stale too."""
+    review = load_review()
+    block = GENERATORS["review-metadata"](_fake(), load_declared())
+    assert review["last_reviewed"] in block
+    assert review["last_verified_commit"] in block
+
+
+# --------------------------------------------------------------------------------------
+# The new generated blocks
+# --------------------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("name", ["current-state", "deployment", "exit-criteria"])
+def test_every_new_block_is_rendered_into_a_document(name: str) -> None:
+    from generate_project_capabilities import documents_with_blocks
+
+    carried = "".join(path.read_text(encoding="utf-8") for path in documents_with_blocks())
+    assert f"ARPI:CAPABILITIES:BEGIN {name}" in carried
+
+
+@pytest.mark.parametrize("name", sorted(GENERATORS))
+def test_regenerating_any_block_is_idempotent(name: str) -> None:
+    evidence, declared = derive_evidence(), load_declared()
+    source = (
+        f"before\n<!-- ARPI:CAPABILITIES:BEGIN {name} -->\n"
+        f"<!-- ARPI:CAPABILITIES:END {name} -->\nafter\n"
+    )
+    once, _ = render(source, evidence, declared)
+    twice, _ = render(once, evidence, declared)
+    assert once == twice
+    assert once.startswith("before\n") and once.endswith("after\n")
+
+
+def test_the_current_state_block_reports_the_gates_and_the_deployment() -> None:
+    block = GENERATORS["current-state"](_fake(), load_declared())
+    assert "Gate 1" in block and "Gate 2" in block
+    assert "Report pages | 0" in block
+    assert "Portfolio deployment" in block
+    assert "PostgreSQL deployment | declared" in block
+
+
+def test_the_current_state_block_never_guesses() -> None:
+    """A fact this repository could not obtain is rendered UNVERIFIED, never as a pass."""
+    block = GENERATORS["current-state"](_fake(), load_declared())
+    assert "UNVERIFIED" in block
+
+
+def test_the_deployment_block_keeps_the_three_deployments_apart() -> None:
+    block = GENERATORS["deployment"](_fake(), load_declared())
+    assert "Portfolio presentation deployment" in block
+    assert "Analytical-platform deployment" in block
+    assert "Semantic-model deployment" in block
+    assert "These are three statuses, not one" in block
+    assert "| Database connection | none |" in block
+
+
+def test_the_exit_criteria_block_computes_rather_than_asserts() -> None:
+    block = GENERATORS["exit-criteria"](_fake(), load_declared())
+    assert "Real-engine validation" in block
+    assert "Gate 2 open" in block
+    assert "Case study unlocked" in block
+    assert "| yes |" not in block, (
+        "nothing is met while both engines are pending and the report has no pages"
+    )
+
+
+def test_an_exit_criterion_flips_only_when_its_evidence_appears() -> None:
+    met = GENERATORS["exit-criteria"](_fake(fabric=PASSED), load_declared())
+    assert "| yes |" in met, "real-engine validation must read as met once an engine has run"
+
+
+def test_the_register_records_the_deployment_and_the_review() -> None:
+    register = build_capabilities()
+    assert register["derived"]["portfolio_deployment_recorded"] is True
+    assert register["derived"]["analytical_platform_is_running"] is False
+    assert register["review"]["last_reviewed"]
+
+
+def test_the_evidence_file_on_disk_parses_into_the_register() -> None:
+    """The register reads the committed file, not a fixture."""
+    record = read_deployment_evidence()
+    assert record.exists
+    assert record.environment("staging") is not None
+    assert record.environment("production") is None, (
+        "no production environment has been created; recording one would be a claim"
     )

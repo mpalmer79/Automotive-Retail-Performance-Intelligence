@@ -46,11 +46,20 @@ interpreter with nothing installed.
 
 from __future__ import annotations
 
+import datetime as dt
 import json
 import re
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from deployment_evidence import (
+    DeploymentEvidence,
+    read_deployment_evidence,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -65,6 +74,18 @@ DESKTOP_EVIDENCE = REPO_ROOT / "powerbi" / "validation" / "desktop_validation_re
 FABRIC_EVIDENCE = REPO_ROOT / "powerbi" / "validation" / "fabric_validation_results.json"
 
 WEBSITE_MANIFEST = REPO_ROOT / "portfolio" / "src" / "generated" / "project-manifest.json"
+
+#: ADR-0008 is the record that made Microsoft Fabric an accepted real-engine validation
+#: path. Fabric as a *data platform* -- a lakehouse, a warehouse item, a replacement for
+#: PostgreSQL -- remains a non-goal, and the two are not the same claim. The distinction is
+#: derived from the record rather than declared, so a superseded ADR retires it.
+ADR_REAL_ENGINE_PATHS = (
+    REPO_ROOT / "docs" / "architecture-decisions" / "ADR-0008-real-engine-validation-paths.md"
+)
+
+#: Documents whose header review metadata is generated from the declared register. Listed
+#: here so a document that stops carrying the block is a failure rather than a silence.
+REVIEWED_DOCUMENTS = ("LIMITATIONS.md",)
 
 #: `audit.pipeline_run_row_count.layer` admits exactly these. DOC-23 closed the gap
 #: between what the CHECK allowed and what the pipeline wrote.
@@ -113,7 +134,11 @@ class DerivedEvidence:
     semantic_tables: int
     relationships: int
     measures: int
+    governed_kpis: int
     report_pages: int
+    report_visuals: int
+    analytical_findings: int
+    static_model_validation: bool
     fact_ddl_scripts: int
     fact_load_scripts: int
     dimension_merge_scripts: int
@@ -124,6 +149,8 @@ class DerivedEvidence:
     fabric: EngineEvidence
     railway_website_config: bool
     railway_database_job_config: bool
+    deployment: DeploymentEvidence
+    fabric_is_an_accepted_validation_path: bool
 
     @property
     def semantic_model_source_exists(self) -> bool:
@@ -137,6 +164,33 @@ class DerivedEvidence:
         ADR-0008 accepts either path, so one is enough -- but only one that really ran.
         """
         return self.desktop.has_run or self.fabric.has_run
+
+    @property
+    def gate_2_conditions_unmet(self) -> tuple[str, ...]:
+        """Gate 2's conditions that the repository refutes, in ARCHITECTURE.md order.
+
+        Derived rather than declared, so a document cannot describe the gate as clearable
+        while the evidence says otherwise. Empty does NOT mean the gate is open: the third
+        condition -- drafted executive findings -- is a human judgement recorded in
+        ``docs/requirements/GATE_2_READINESS.md``, and no derivation may substitute for it.
+        """
+        unmet: list[str] = []
+        if self.report_pages == 0:
+            unmet.append("the PBIR report defines zero pages")
+        if not self.any_engine_has_run:
+            unmet.append(
+                "no engine has refreshed the model, so no Power BI total exists to reconcile"
+            )
+        return tuple(unmet)
+
+    @property
+    def analytical_platform_is_running(self) -> bool:
+        """Whether a PostgreSQL deployment has been provisioned, deployed and loaded.
+
+        Read from the deployment evidence and entirely independent of the website. A live
+        portfolio moves this not at all, which is the reason it is a separate property.
+        """
+        return self.deployment.analytical.is_running
 
 
 def _count_files(directory: Path, suffix: str) -> int:
@@ -197,6 +251,33 @@ def _count_report_pages() -> int:
     return sum(1 for path in pages.rglob("page.json") if path.is_file())
 
 
+def _count_report_visuals() -> int:
+    """Visual containers in the PBIR report.
+
+    Counted separately from pages because a page could be added with nothing on it, and
+    "a dashboard exists" would then be one file away from looking true.
+    """
+    definition = REPORT_DIR / "definition"
+    if not definition.is_dir():
+        return 0
+    return sum(1 for path in definition.rglob("visual.json") if path.is_file())
+
+
+def _count_analytical_findings() -> int:
+    """Written findings. ``.gitkeep`` is not a finding."""
+    findings = REPO_ROOT / "docs" / "findings"
+    if not findings.is_dir():
+        return 0
+    return sum(1 for path in findings.rglob("*.md") if path.is_file())
+
+
+def _governed_kpi_count() -> int:
+    """The governed KPI count, from the model expectations the static checker reads."""
+    expectations = _read_json(REPO_ROOT / "powerbi" / "validation" / "model_expectations.json")
+    value = expectations.get("kpi_measure_count")
+    return value if isinstance(value, int) else 0
+
+
 def _count_audit_layers_recorded() -> int:
     """How many of the five layers the loader and pipeline actually record.
 
@@ -234,7 +315,11 @@ def derive_evidence() -> DerivedEvidence:
         semantic_tables=_count_files(MODEL_DEFINITION_DIR / "tables", ".tmdl"),
         relationships=_count_relationships(),
         measures=_count_measures(),
+        governed_kpis=_governed_kpi_count(),
         report_pages=_count_report_pages(),
+        report_visuals=_count_report_visuals(),
+        analytical_findings=_count_analytical_findings(),
+        static_model_validation=(REPO_ROOT / "scripts" / "check_powerbi_model.py").is_file(),
         fact_ddl_scripts=sum(1 for p in fact_scripts if "_load" not in p.name),
         fact_load_scripts=sum(1 for p in fact_scripts if p.name.endswith("_load.sql")),
         dimension_merge_scripts=sum(1 for p in dimension_scripts if p.name.endswith("_merge.sql")),
@@ -251,13 +336,34 @@ def derive_evidence() -> DerivedEvidence:
         railway_database_job_config=(
             REPO_ROOT / "deployment" / "railway" / "Dockerfile.database-setup"
         ).is_file(),
+        deployment=read_deployment_evidence(),
+        fabric_is_an_accepted_validation_path=_fabric_is_an_accepted_path(),
     )
+
+
+def _fabric_is_an_accepted_path() -> bool:
+    """Whether ADR-0008 still names Microsoft Fabric as a real-engine validation path.
+
+    Read from the record rather than declared. If ADR-0008 is ever superseded and Fabric
+    stops being an accepted path, the rules guarded by this retire themselves instead of
+    forbidding a statement that has become true again.
+    """
+    if not ADR_REAL_ENGINE_PATHS.is_file():
+        return False
+    text = ADR_REAL_ENGINE_PATHS.read_text(encoding="utf-8")
+    return "Microsoft Fabric Service" in text and FABRIC_EVIDENCE.is_file()
 
 
 def load_declared() -> dict[str, Any]:
     """The human-declared status. Judgement, never counts."""
     declared = _read_json(DECLARED_PATH).get("declared")
     return declared if isinstance(declared, dict) else {}
+
+
+def load_review() -> dict[str, Any]:
+    """The declared review metadata: when this register was last verified, and against what."""
+    review = _read_json(DECLARED_PATH).get("review")
+    return review if isinstance(review, dict) else {}
 
 
 # --------------------------------------------------------------------------------------
@@ -294,6 +400,17 @@ class ClaimRule:
         because: The evidence, rendered for the failure message.
         exempt: Paths permitted to quote the claim -- this module, the checker, and any
             document that records the correction as history rather than asserting it.
+        markdown_only: Restrict the search to ``.md`` files.
+
+            A narrative rule reads prose for an assertion. Source code does not assert; it
+            branches. ``platform-story.tsx`` says the model is unproven "until an engine has
+            loaded it", the manifest generator writes one string when a validation has
+            passed and another when it has not, and the case-study route renders unlocked
+            copy inside ``if (caseStudy.unlocked)``. Every one of those is correct, and a
+            regular expression cannot tell them from a claim. What keeps the code honest is
+            the gate itself -- ``portfolio/tests/e2e/case-study-gate.spec.ts`` asserts the
+            unlocked copy never reaches a rendered page -- so policing it here would add no
+            safety and would push authors toward contorted phrasing.
     """
 
     rule: str
@@ -301,6 +418,7 @@ class ClaimRule:
     forbidden_when: Any
     because: Any
     exempt: tuple[str, ...] = ()
+    markdown_only: bool = False
 
 
 #: Files that quote stale claims in order to record that they WERE stale. Excluding them
@@ -309,9 +427,17 @@ class ClaimRule:
 _ALWAYS_EXEMPT: tuple[str, ...] = (
     "scripts/project_capabilities.py",
     "scripts/check_project_capabilities.py",
+    "scripts/deployment_evidence.py",
     "tests/unit/test_project_capabilities.py",
+    "tests/unit/test_deployment_evidence.py",
     "docs/reviews/",
     "config/project_capabilities.json",
+    # A preserved point-in-time artefact, in the same category as docs/reviews/. Its value
+    # is precisely that it was not edited after it was written: LIMITATIONS.md section 11
+    # states that it is not maintained and must be read as the rationale for the
+    # architecture rather than a claim about today. Rewriting its non-goal list to track a
+    # later ADR would destroy the only thing it is good for.
+    "docs/research.md",
 )
 
 
@@ -359,6 +485,136 @@ CLAIM_RULES: tuple[ClaimRule, ...] = (
         forbidden_when=lambda e: e.fact_load_scripts > 0,
         because=lambda _e: "the referenced SQL objects are implemented",
     ),
+    # -- The register's second generation. Every rule below guards a statement that was
+    # -- true when written and became false without anything failing.
+    ClaimRule(
+        rule="portfolio-deployment-exists",
+        pattern=re.compile(
+            r"[Nn]o staging deployment and no production deployment"
+            r"|[Nn]o preview deployment and no production deployment"
+            r"|[Nn]o preview URL and no production URL exist"
+            r"|[Nn]o staging URL and no production URL"
+            r"|[Tt]here is also \*\*no deployment\*\*"
+            r"|the site is \*\*not deployed yet\*\*"
+            r"|the site is not live, launched or published",
+            re.MULTILINE,
+        ),
+        forbidden_when=lambda e: e.deployment.portfolio_is_recorded,
+        because=lambda e: (
+            f"{e.deployment.path} records a portfolio deployment: "
+            + "; ".join(
+                f"{environment.environment} at {environment.public_url}"
+                for environment in e.deployment.environments
+                if environment.is_recorded
+            )
+        ),
+        markdown_only=True,
+    ),
+    ClaimRule(
+        rule="semantic-model-material-exists",
+        pattern=re.compile(
+            r"[Aa]s of today \*\*none of it exists yet\*\*"
+            r"|no semantic-model material exists"
+            r"|[Nn]o TMDL (file )?exists",
+            re.MULTILINE,
+        ),
+        forbidden_when=lambda e: e.semantic_model_source_exists,
+        because=lambda e: (
+            f"{e.tmdl_files} TMDL files, {e.semantic_tables} semantic tables and "
+            f"{e.measures} DAX measures are committed"
+        ),
+        markdown_only=True,
+    ),
+    ClaimRule(
+        rule="semantic-model-is-not-merely-planned",
+        pattern=re.compile(
+            r"Power BI semantic model, measure groups"
+            r"|[Tt]he semantic model (is|remains) (only |merely )?planned"
+            r"|semantic model \| Planned",
+            re.MULTILINE,
+        ),
+        forbidden_when=lambda e: e.semantic_model_source_exists,
+        because=lambda e: (
+            f"the model source is committed: {e.tmdl_files} TMDL files and {e.measures} "
+            "measures. Only its real-engine validation is pending"
+        ),
+        markdown_only=True,
+    ),
+    ClaimRule(
+        rule="fabric-is-an-accepted-validation-path",
+        pattern=re.compile(
+            # An unqualified exclusion in a non-goal list. The qualified forms -- "Microsoft
+            # Fabric as a data platform", "as a lakehouse" -- are the accurate statements
+            # and are deliberately not matched.
+            r"^\s*[-*] Microsoft Fabric\s*$|Databricks, Microsoft Fabric,",
+            re.MULTILINE,
+        ),
+        forbidden_when=lambda e: e.fabric_is_an_accepted_validation_path,
+        because=lambda _e: (
+            "ADR-0008 accepts the Microsoft Fabric Service as one of two equal real-engine "
+            "validation paths. Fabric as a DATA PLATFORM remains a non-goal; say which"
+        ),
+        markdown_only=True,
+    ),
+    ClaimRule(
+        rule="no-dashboard-exists",
+        pattern=re.compile(
+            r"[Tt]he dashboard is (built|complete|finished|live|available)"
+            r"|[Aa] dashboard (exists|has been built)"
+            r"|[Tt]he (Power BI )?report pages are complete",
+            re.MULTILINE,
+        ),
+        forbidden_when=lambda e: e.report_pages == 0,
+        because=lambda _e: "the PBIR report defines zero pages",
+        markdown_only=True,
+    ),
+    ClaimRule(
+        rule="case-study-remains-locked",
+        pattern=re.compile(
+            r"[Tt]he case study is (available|published|unlocked|open)"
+            r"|[Tt]he `?/case-study`? route is (open|unlocked|available)",
+            re.MULTILINE,
+        ),
+        # Guarded by Gate 2's own derivable conditions, not by the declaration. A document
+        # cannot describe the case study as available while the evidence refutes the gate.
+        forbidden_when=lambda e: bool(e.gate_2_conditions_unmet),
+        because=lambda e: "Gate 2 is unmet: " + "; ".join(e.gate_2_conditions_unmet),
+        markdown_only=True,
+    ),
+    ClaimRule(
+        rule="real-engine-validation-is-pending",
+        pattern=re.compile(
+            r"[Rr]eal-engine validation (has )?passed"
+            r"|[Rr]eal-engine validation is complete"
+            r"|[Tt]he model has been validated by an engine"
+            # Guards the generated semantic-model block against a hand edit.
+            r"|An engine has run: \*\*Yes\*\*",
+            re.MULTILINE,
+        ),
+        forbidden_when=lambda e: not e.any_engine_has_run,
+        because=lambda e: (
+            f"desktop validated_at={e.desktop.validated_at!r} and "
+            f"fabric validated_at={e.fabric.validated_at!r}; ADR-0008 requires one real run"
+        ),
+        markdown_only=True,
+    ),
+    ClaimRule(
+        rule="website-deployment-is-not-platform-deployment",
+        pattern=re.compile(
+            r"the (warehouse|database|analytical platform) is (deployed|live|running)"
+            r"|PostgreSQL is (deployed|live|running|provisioned)"
+            r"|the reporting schema is (deployed|live|reachable)",
+            re.MULTILINE,
+        ),
+        forbidden_when=lambda e: not e.analytical_platform_is_running,
+        because=lambda e: (
+            f"{e.deployment.path} records the analytical platform as "
+            f"postgresql_instance={e.deployment.analytical.postgresql_instance!r}, "
+            f"schema_deployment={e.deployment.analytical.schema_deployment!r}. A live "
+            "portfolio is not a running warehouse"
+        ),
+        markdown_only=True,
+    ),
 )
 
 
@@ -383,6 +639,8 @@ def find_stale_claims(evidence: DerivedEvidence, files: list[Path]) -> list[Cont
             continue
         exempt = _ALWAYS_EXEMPT + rule.exempt
         for path in files:
+            if rule.markdown_only and path.suffix != ".md":
+                continue
             relative = _relative(path)
             if any(relative.startswith(prefix) for prefix in exempt):
                 continue
@@ -483,6 +741,177 @@ def check_declarations(declared: dict[str, Any], evidence: DerivedEvidence) -> l
                 )
             )
 
+    # The case study is downstream of Gate 2 and may not overtake it. Declaring it
+    # anything but locked while the gate's own conditions are unmet is the exact move
+    # this register exists to refuse.
+    if deliverables.get("case_study") not in (None, "locked") and gates.get("gate_2") != "open":
+        found.append(
+            Contradiction(
+                rule="case-study-follows-gate-2",
+                claim=f"deliverables.case_study = {deliverables.get('case_study')!r}",
+                evidence=(
+                    f"gates.gate_2 = {gates.get('gate_2')!r}"
+                    + (
+                        "; " + "; ".join(evidence.gate_2_conditions_unmet)
+                        if evidence.gate_2_conditions_unmet
+                        else ""
+                    )
+                ),
+                location=DECLARED_PATH.relative_to(REPO_ROOT).as_posix(),
+            )
+        )
+
+    found.extend(_check_deployment_declarations(declared, evidence))
+    return found
+
+
+#: Declared deployment states that assert something exists and therefore need evidence.
+_ASSERTED_DEPLOYMENT_STATES = frozenset({"deployed", "live", "running", "provisioned"})
+
+
+def _check_deployment_declarations(
+    declared: dict[str, Any], evidence: DerivedEvidence
+) -> list[Contradiction]:
+    """Hold each of the three deployments to its own evidence.
+
+    A deployment status is the easiest claim in this repository to assert and the hardest
+    to check, because the thing it describes is not in the repository. The rules here fail
+    a status asserted without its evidence source, in both directions -- an optimistic
+    declaration the evidence cannot support, and a pessimistic one the evidence refutes --
+    and they never let the website's status stand in for the database's.
+    """
+    found: list[Contradiction] = []
+    deployment = declared.get("deployment", {})
+    location = DECLARED_PATH.relative_to(REPO_ROOT).as_posix()
+    record = evidence.deployment
+
+    if not record.exists:
+        found.append(
+            Contradiction(
+                rule="deployment-status-needs-an-evidence-file",
+                claim=f"a deployment block is declared with {len(deployment)} entries",
+                evidence=f"{record.path} does not exist, so no status here can be checked",
+                location=location,
+            )
+        )
+        return found
+
+    website = deployment.get("portfolio_website")
+    if website in _ASSERTED_DEPLOYMENT_STATES and not record.portfolio_is_recorded:
+        found.append(
+            Contradiction(
+                rule="deployment-status-needs-evidence",
+                claim=f"deployment.portfolio_website = {website!r}",
+                evidence=(
+                    f"{record.path} records no environment with both a public URL and a "
+                    "service name"
+                ),
+                location=location,
+            )
+        )
+    if website == "not-deployed" and record.portfolio_is_recorded:
+        found.append(
+            Contradiction(
+                rule="deployment-status-must-not-deny-its-evidence",
+                claim="deployment.portfolio_website = 'not-deployed'",
+                evidence=f"{record.path} records a public URL for a deployed environment",
+                location=location,
+            )
+        )
+
+    # The whole point of the separation: PostgreSQL may not inherit the website's status.
+    database = deployment.get("railway_postgresql")
+    if database in _ASSERTED_DEPLOYMENT_STATES and not record.analytical.is_running:
+        found.append(
+            Contradiction(
+                rule="database-deployment-needs-its-own-evidence",
+                claim=f"deployment.railway_postgresql = {database!r}",
+                evidence=(
+                    f"{record.path} records postgresql_instance="
+                    f"{record.analytical.postgresql_instance!r}, schema_deployment="
+                    f"{record.analytical.schema_deployment!r}, data_load="
+                    f"{record.analytical.data_load!r}. A deployed website is not one of these"
+                ),
+                location=location,
+            )
+        )
+
+    # A portfolio deployment that held a database credential would break the boundary the
+    # architecture is built on, and the register would be the last place to notice.
+    if record.portfolio_connects_to_database:
+        found.append(
+            Contradiction(
+                rule="the-website-holds-no-database-connection",
+                claim="a portfolio environment records connects_to_database other than false",
+                evidence=(
+                    "deployment/railway/project.config.json declares "
+                    "services.portfolio.requiresDatabase = false and lists "
+                    "websiteDatabaseAccess under deliberatelyAbsent"
+                ),
+                location=record.path,
+            )
+        )
+
+    return found
+
+
+def check_review_metadata(review: dict[str, Any]) -> list[Contradiction]:
+    """Reject review metadata that cannot be true.
+
+    The document header used to carry its own review date and version, typed by hand, and
+    it went stale for the same reason every other hand-typed status did. The header is now
+    generated from this block, so the two cannot disagree -- which leaves only the block
+    itself to check: that the date parses, that it is not in the future, and that the
+    commit it names looks like a commit.
+    """
+    found: list[Contradiction] = []
+    location = DECLARED_PATH.relative_to(REPO_ROOT).as_posix()
+
+    raw_date = review.get("last_reviewed")
+    if not isinstance(raw_date, str):
+        found.append(
+            Contradiction(
+                rule="review-metadata-is-required",
+                claim=f"review.last_reviewed = {raw_date!r}",
+                evidence="the generated document header has no date to render",
+                location=location,
+            )
+        )
+    else:
+        try:
+            reviewed = dt.date.fromisoformat(raw_date)
+        except ValueError:
+            found.append(
+                Contradiction(
+                    rule="review-date-must-parse",
+                    claim=f"review.last_reviewed = {raw_date!r}",
+                    evidence="it is not an ISO-8601 date",
+                    location=location,
+                )
+            )
+        else:
+            today = dt.datetime.now(tz=dt.UTC).date()
+            if reviewed > today:
+                found.append(
+                    Contradiction(
+                        rule="review-date-must-not-be-in-the-future",
+                        claim=f"review.last_reviewed = {raw_date}",
+                        evidence=f"today is {today.isoformat()}",
+                        location=location,
+                    )
+                )
+
+    commit = review.get("last_verified_commit")
+    if not isinstance(commit, str) or not re.fullmatch(r"[0-9a-f]{7,40}", commit):
+        found.append(
+            Contradiction(
+                rule="review-commit-must-be-a-commit",
+                claim=f"review.last_verified_commit = {commit!r}",
+                evidence="a limitation's evidence is bound to the commit it was read from",
+                location=location,
+            )
+        )
+
     return found
 
 
@@ -546,5 +975,14 @@ def build_capabilities() -> dict[str, Any]:
             "real_engine_has_run": evidence.any_engine_has_run,
             "desktop_validated_at": evidence.desktop.validated_at,
             "fabric_validated_at": evidence.fabric.validated_at,
+            "fabric_is_an_accepted_validation_path": (
+                evidence.fabric_is_an_accepted_validation_path
+            ),
+            "gate_2_conditions_unmet": list(evidence.gate_2_conditions_unmet),
+            "portfolio_deployment_recorded": evidence.deployment.portfolio_is_recorded,
+            "portfolio_deployment_live_verified": evidence.deployment.portfolio_is_live_verified,
+            "portfolio_connects_to_database": evidence.deployment.portfolio_connects_to_database,
+            "analytical_platform_is_running": evidence.analytical_platform_is_running,
         },
+        "review": load_review(),
     }

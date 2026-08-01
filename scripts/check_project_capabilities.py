@@ -1,16 +1,22 @@
 #!/usr/bin/env python3
 """Fail when an implementation-status claim disagrees with the repository.
 
-Three checks, run over every tracked text file:
+Five checks, run over every tracked text file:
 
   1. DECLARED vs DERIVED  -- a declared status the evidence refutes, such as an engine
-     validation marked passed while its evidence file records no run.
+     validation marked passed while its evidence file records no run, or a deployment
+     asserted without an evidence record to support it.
   2. PROSE vs DERIVED     -- a documented claim the evidence refutes, such as "no
      semantic model exists" beside thirty TMDL files.
   3. WEBSITE vs REGISTER  -- the published counts and the derived counts must agree.
+  4. REVIEW METADATA      -- the register's own review date and verified commit must be
+     well-formed, because a stale limitations register is the failure it exists to prevent.
+  5. DEPLOYMENT EVIDENCE  -- the evidence file must record identifiers and never a
+     credential.
 
 Every rule only ever tightens a claim toward the evidence. None can open a gate, mark a
-validation passed, or promote a phase because a file appeared.
+validation passed, promote a phase, or turn a live website into a running database
+because a file appeared.
 
 Usage:
     python scripts/check_project_capabilities.py            # check
@@ -30,15 +36,18 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from deployment_evidence import find_secret_fields
 from project_capabilities import (
     REPO_ROOT,
     Contradiction,
     build_capabilities,
     check_declarations,
+    check_review_metadata,
     check_website_agreement,
     derive_evidence,
     find_stale_claims,
     load_declared,
+    load_review,
 )
 
 #: Extensions worth searching. A claim in a binary or a lockfile is not prose.
@@ -117,10 +126,14 @@ def main() -> int:
     print(f"  report pages     : {evidence.report_pages}")
     print(f"  audit layers     : {evidence.audit_layers_recorded}")
     print(f"  real engine run  : {evidence.any_engine_has_run}")
+    print(f"  portfolio deployed : {evidence.deployment.portfolio_is_recorded}")
+    print(f"  live verified      : {evidence.deployment.portfolio_is_live_verified}")
+    print(f"  warehouse running  : {evidence.analytical_platform_is_running}")
 
     declaration_problems = check_declarations(declared, evidence)
     prose_problems = find_stale_claims(evidence, files)
     website_problems = check_website_agreement(evidence)
+    review_problems = check_review_metadata(load_review())
 
     if declaration_problems:
         _report("Declared status contradicted by evidence", declaration_problems)
@@ -128,8 +141,26 @@ def main() -> int:
         _report("Documented claims contradicted by evidence", prose_problems)
     if website_problems:
         _report("Website manifest disagrees with the register", website_problems)
+    if review_problems:
+        _report("Register review metadata is unusable", review_problems)
 
-    total = len(declaration_problems) + len(prose_problems) + len(website_problems)
+    secret_fields = find_secret_fields()
+    if secret_fields:
+        print(
+            f"\nDeployment evidence carries {len(secret_fields)} field(s) that would hold a "
+            "credential:",
+            file=sys.stderr,
+        )
+        for finding in secret_fields:
+            print(f"  {finding}", file=sys.stderr)
+
+    total = (
+        len(declaration_problems)
+        + len(prose_problems)
+        + len(website_problems)
+        + len(review_problems)
+        + len(secret_fields)
+    )
     if total:
         print(
             f"\nFAILED: {total} capability contradiction(s).\n"

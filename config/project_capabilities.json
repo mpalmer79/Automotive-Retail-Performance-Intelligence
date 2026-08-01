@@ -57,10 +57,39 @@
     },
 
     "deployment": {
+      "_comment": [
+        "THREE DEPLOYMENTS, NOT ONE. The portfolio website, the analytical platform and the",
+        "semantic model are separate claims with separate evidence, and a status here is",
+        "checked against deployment/evidence/portfolio_deployment.json rather than believed.",
+        "Asserting 'deployed' without an evidence record fails the check, and so does denying",
+        "a deployment the evidence records.",
+        "",
+        "'declared' means the resource is described in source-controlled configuration and",
+        "has never been created. It is not a weaker form of 'deployed'."
+      ],
       "portfolio_website": "deployed",
+      "portfolio_production_environment": "not-created",
       "railway_postgresql": "declared",
-      "database_provisioning_job": "declared"
+      "database_provisioning_job": "declared",
+      "backup_and_restore": "not-implemented",
+      "scheduled_execution": "not-implemented"
     }
+  },
+
+  "review": {
+    "_comment": [
+      "The review metadata LIMITATIONS.md renders in its header. It lives here rather than in",
+      "the document because a hand-typed review date is the first thing to go stale, and a",
+      "limitations register whose own header is stale has already lost the argument. The",
+      "header is a generated block, so the two cannot disagree.",
+      "",
+      "last_verified_commit is the commit the register's evidence was last read at, and it is",
+      "what a limitation's 'last verified' means: not when somebody looked, but which state",
+      "of the repository the finding describes."
+    ],
+    "last_reviewed": "2026-08-01",
+    "last_verified_commit": "b6032da",
+    "register_version": "2.0"
   },
 
   "documentation_claims": {

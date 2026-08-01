@@ -171,7 +171,7 @@ indistinguishable, and the shape is the diagnostic.
 tripwire is a schema control, and the reason it is sufficient here is that ARPI's data is machine
 generated from a declared contract: there is no external source that could smuggle a value in under an
 innocent name. It would not be sufficient for a pipeline ingesting real data. Recorded in
-[LIMITATIONS.md §10.2](LIMITATIONS.md).
+[LIMITATIONS.md §7.1](LIMITATIONS.md).
 
 ### 3.1.6 Synthetic VIN policy
 
