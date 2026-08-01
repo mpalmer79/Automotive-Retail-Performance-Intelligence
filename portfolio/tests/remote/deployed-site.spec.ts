@@ -132,13 +132,30 @@ test.describe('every route is reachable', () => {
     })
     await gotoRendered(page, '/')
     expect(failures).toEqual([])
-    // And it took effect: the body has the site's dark background rather than the
-    // browser default.
-    const background = await page.evaluate(
-      () => getComputedStyle(document.body).backgroundColor
+
+    // And it took effect. This reads the ROOT element, not the body: the field is a
+    // gradient on `<html>`, and `<body>` is deliberately transparent so that it
+    // cannot paint over it. `globals.css` says exactly that, and
+    // `tests/e2e/visual-system.spec.ts` asserts the same alpha of 0.
+    //
+    // This check used to read `<body>` and require a NON-transparent colour. That
+    // was right before the design inversion and has been wrong since: it fails on a
+    // correctly-styled deployment. Nothing caught it, because until now nothing
+    // could run this suite against the deployment at all.
+    const { root, body } = await page.evaluate(() => ({
+      root: getComputedStyle(document.documentElement).backgroundImage,
+      body: getComputedStyle(document.body).backgroundColor,
+    }))
+    expect(
+      root,
+      'the field is not a gradient, so the stylesheet did not take effect'
+    ).toContain('linear-gradient')
+    expect(root, 'an unresolved custom property reached the field').not.toContain(
+      '--arpi'
     )
-    expect(background).not.toBe('rgba(0, 0, 0, 0)')
-    expect(background).not.toBe('rgb(255, 255, 255)')
+    expect(body, '<body> has a background and would cover the field').toBe(
+      'rgba(0, 0, 0, 0)'
+    )
   })
 })
 
@@ -553,14 +570,29 @@ test.describe('behaviour on the deployed site', () => {
       await gotoRendered(page, '/')
       const text = (await page.locator('main').innerText()).replace(/\s+/g, ' ')
       expect(text.length).toBeGreaterThan(500)
-      const hidden = await page
-        .locator('[data-arpi-reveal]')
-        .evaluateAll(
-          (elements) =>
-            elements.filter((element) => Number(getComputedStyle(element).opacity) === 0)
-              .length
-        )
-      expect(hidden, 'revealed sections stayed invisible under reduced motion').toBe(0)
+
+      // ONLY elements at or above the fold, which is the same rule
+      // `tests/e2e/reduced-motion.spec.ts` applies. Reveals are triggered by
+      // intersection, so a section below the fold that has not been scrolled to is
+      // *correctly* still at `opacity: 0`; counting those measures how long the page
+      // is, not whether the site honours the preference.
+      //
+      // Without this filter the check counted 18 below-fold sections on the
+      // deployment and reported a working site as broken. Nothing caught it earlier
+      // because this suite had never run against anything: there was no deployment
+      // to point it at until now.
+      const hidden = await page.evaluate(() =>
+        [...document.querySelectorAll('[data-arpi-reveal]')]
+          .filter((element) => element.getBoundingClientRect().top <= window.innerHeight)
+          .filter((element) => Number(getComputedStyle(element).opacity) === 0)
+          .map(
+            (element) =>
+              `${element.tagName.toLowerCase()}.${element.className.split(' ')[0] ?? ''}`
+          )
+      )
+      expect(hidden, 'revealed sections stayed invisible under reduced motion').toEqual(
+        []
+      )
     } finally {
       await context.close()
     }
