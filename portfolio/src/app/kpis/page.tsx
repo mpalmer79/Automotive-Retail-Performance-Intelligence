@@ -78,7 +78,7 @@ export default function KpisPage() {
         </Container>
       </Section>
 
-      <Section rhythm="none" bordered className="pt-section-tight pb-section">
+      <Section rhythm="none" tone="panel" className="pt-section-tight pb-section">
         <Container width="wide">
           {/* `useSearchParams` in the catalogue requires a Suspense boundary so
               the shell can be prerendered while the filter state resolves on the

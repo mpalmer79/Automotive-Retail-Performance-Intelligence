@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { LinkButton } from '@/components/ui/button'
 import { Container, Section } from '@/components/ui/layout'
 import { Eyebrow, Heading, Text } from '@/components/ui/typography'
-import { PRIMARY_NAV, ROUTES } from '@/lib/site'
+import { NAVIGABLE_ROUTES, ROUTES } from '@/lib/site'
 
 export const metadata: Metadata = {
   title: 'Page not found',
@@ -32,7 +32,9 @@ export default function NotFound() {
       <Container width="content">
         <div className="flex flex-col gap-8">
           <div className="flex flex-col gap-5">
-            <Eyebrow tone="accent">Error 404</Eyebrow>
+            <Eyebrow tone="accent" rule>
+              Error 404
+            </Eyebrow>
             <Heading level={1}>Page not found</Heading>
             <Text size="body" className="max-w-prose">
               There is no page at this address. That is usually a stale link rather than a
@@ -46,7 +48,7 @@ export default function NotFound() {
               Every page on this site
             </h2>
             <ul className="flex flex-col divide-y divide-line-subtle">
-              {PRIMARY_NAV.map((route) => (
+              {NAVIGABLE_ROUTES.map((route) => (
                 <li key={route.href}>
                   <Link
                     href={route.href}

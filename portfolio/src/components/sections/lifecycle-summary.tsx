@@ -20,7 +20,7 @@ import { cx } from '@/lib/utils'
 
 export function LifecycleSummary() {
   return (
-    <Section id="project-status" bordered>
+    <Section id="lifecycle" tone="canvas">
       <Container width="wide">
         <Reveal className="mb-10 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
           <div className="flex max-w-prose flex-col gap-5">

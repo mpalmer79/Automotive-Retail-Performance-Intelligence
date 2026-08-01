@@ -132,7 +132,7 @@ export default function StatusPage() {
       </Section>
 
       {/* 2. The two real-engine paths, in detail. */}
-      <Section bordered>
+      <Section tone="evidence">
         <Container width="wide">
           <Reveal className="mb-10 flex max-w-prose flex-col gap-5">
             <Eyebrow>Real-engine validation</Eyebrow>
@@ -236,7 +236,7 @@ export default function StatusPage() {
       </Section>
 
       {/* 3. Lifecycle phases. */}
-      <Section bordered>
+      <Section tone="canvas">
         <Container width="wide">
           <Reveal className="mb-10 flex max-w-prose flex-col gap-5">
             <Eyebrow>Lifecycle phases</Eyebrow>
@@ -310,7 +310,7 @@ export default function StatusPage() {
       </Section>
 
       {/* 4. Delivery increments. */}
-      <Section bordered>
+      <Section tone="panel">
         <Container width="wide">
           <Reveal className="mb-10 flex max-w-prose flex-col gap-5">
             <Eyebrow>Delivery increments</Eyebrow>
@@ -362,7 +362,7 @@ export default function StatusPage() {
       </Section>
 
       {/* 5. Gates. */}
-      <Section bordered>
+      <Section tone="canvas">
         <Container width="wide">
           <Reveal className="mb-10 flex max-w-prose flex-col gap-5">
             <Eyebrow>Scope gates</Eyebrow>
@@ -444,7 +444,7 @@ export default function StatusPage() {
       </Section>
 
       {/* 6. The evidence ledger, in full. */}
-      <Section bordered>
+      <Section tone="evidence">
         <Container width="wide">
           <Reveal className="mb-10 flex max-w-prose flex-col gap-5">
             <Eyebrow>Evidence ledger</Eyebrow>
@@ -466,7 +466,7 @@ export default function StatusPage() {
       </Section>
 
       {/* 7. The dataset this describes. */}
-      <Section bordered>
+      <Section tone="canvas">
         <Container width="wide">
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
             <div className="flex flex-col gap-5 lg:col-span-5">

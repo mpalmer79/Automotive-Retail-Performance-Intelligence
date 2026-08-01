@@ -26,7 +26,7 @@ export const metadata: Metadata = pageMetadata('governance')
  * block work rather than describing an intention to.
  *
  * The synthetic-data statement gets the top of the page - not a footer, not a
- * modal, not small print. `suppressSyntheticNotice` on the header is set because
+ * modal, not small print. `suppressTrustLine` on the header is set because
  * the body states it more prominently immediately below.
  */
 export default function GovernancePage() {
@@ -46,7 +46,7 @@ export default function GovernancePage() {
             <SourceLink path="SECURITY.md" field="secret handling" />
           </>
         }
-        suppressSyntheticNotice
+        suppressTrustLine
       />
 
       {/* 1. The synthetic-data statement, in full, at the top. */}
@@ -82,7 +82,7 @@ export default function GovernancePage() {
       </Section>
 
       {/* 2. The interactive trust framework. */}
-      <Section bordered>
+      <Section tone="evidence">
         <Container width="wide">
           <Reveal className="mb-10 flex max-w-prose flex-col gap-5">
             <Eyebrow>The trust framework</Eyebrow>
@@ -98,7 +98,7 @@ export default function GovernancePage() {
       </Section>
 
       {/* 3. What is prohibited by construction. */}
-      <Section bordered>
+      <Section tone="canvas">
         <Container width="wide">
           <Reveal className="mb-10 flex max-w-prose flex-col gap-5">
             <Eyebrow>Prohibited by construction</Eyebrow>
@@ -144,7 +144,7 @@ export default function GovernancePage() {
       </Section>
 
       {/* 4. Fairness and interpretation limits. */}
-      <Section bordered>
+      <Section tone="panel">
         <Container width="wide">
           <div className="grid grid-cols-1 gap-10 lg:grid-cols-12 lg:gap-14">
             <Reveal className="flex flex-col gap-5 lg:col-span-5">
@@ -193,7 +193,7 @@ export default function GovernancePage() {
       </Section>
 
       {/* 5. The gate system. */}
-      <Section bordered>
+      <Section tone="canvas">
         <Container width="wide">
           <Reveal className="mb-10 flex max-w-prose flex-col gap-5">
             <Eyebrow>The gate system</Eyebrow>
@@ -275,7 +275,7 @@ export default function GovernancePage() {
       </Section>
 
       {/* 6. Secret handling. */}
-      <Section bordered>
+      <Section tone="evidence">
         <Container width="wide">
           <div className="grid grid-cols-1 gap-10 lg:grid-cols-12 lg:gap-14">
             <Reveal className="flex flex-col gap-5 lg:col-span-5">

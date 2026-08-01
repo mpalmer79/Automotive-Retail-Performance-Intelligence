@@ -70,12 +70,25 @@ export function repoFileUrl(path: string): string {
 
 export interface RouteDefinition {
   readonly href: string
-  /** Short label for primary navigation. */
+  /**
+   * The route's own short label.
+   *
+   * NOT the primary-navigation label, which is a separate decision made in
+   * {@link PRIMARY_NAV}. `/architecture` is labelled "Architecture" here, in the
+   * footer and in its breadcrumb, and is reached from a primary navigation item
+   * labelled "Platform" that also covers the data model and governance. A route
+   * and a navigation entry are different things and conflating them is what
+   * produced seven top-level destinations.
+   */
   readonly navLabel: string
   /** Full page title, used in <title> and breadcrumbs. */
   readonly title: string
   readonly description: string
-  /** Whether the route appears in primary navigation. */
+  /**
+   * Whether the route is reachable from the site's own navigation surfaces at
+   * all - the header, the platform sub-navigation, or the footer's primary
+   * list. Governs the footer list and the test sweep, not the header.
+   */
   readonly inPrimaryNav: boolean
   /** Whether search engines may index it. */
   readonly indexable: boolean
@@ -89,7 +102,7 @@ export const ROUTES = {
     navLabel: 'Overview',
     title: 'Automotive Retail Performance Intelligence',
     description:
-      'One governed view of dealership performance. A synthetic, reproducible automotive retail analytics platform built on PostgreSQL and a source-controlled Power BI semantic model.',
+      'Dealership intelligence built by someone who has run the dealership. ARPI joins more than 25 years of automotive retail experience to PostgreSQL, Python, governed KPIs and Power BI architecture, giving sales, gross, inventory, leads and marketing one definition each. Synthetic data throughout.',
     inPrimaryNav: true,
     indexable: true,
     priority: 1,
@@ -149,7 +162,7 @@ export const ROUTES = {
     navLabel: 'About',
     title: 'About the author',
     description:
-      'Michael Palmer: more than 25 years in automotive retail, and the technical work behind ARPI. Why a project like this needs someone who has worked the floor.',
+      'Michael Palmer: more than 25 years in automotive retail sales, finance, dealership management, CRM, DMS and inventory, then computer science retraining and the SQL, Python and semantic modelling behind ARPI. Six design decisions that came from the floor rather than from a dataset.',
     inPrimaryNav: true,
     indexable: true,
     priority: 0.7,
@@ -181,10 +194,132 @@ export type RouteKey = keyof typeof ROUTES
 /** Every route, in navigation and sitemap order. */
 export const ALL_ROUTES: readonly RouteDefinition[] = Object.values(ROUTES)
 
-/** Routes that appear in the primary navigation, in order. */
-export const PRIMARY_NAV: readonly RouteDefinition[] = ALL_ROUTES.filter(
+/** Routes reachable from the site's own navigation surfaces, in order. */
+export const NAVIGABLE_ROUTES: readonly RouteDefinition[] = ALL_ROUTES.filter(
   (route) => route.inPrimaryNav
 )
+
+/* -------------------------------------------------------------------------- */
+/* Navigation                                                                  */
+/* -------------------------------------------------------------------------- */
+
+export interface NavItem {
+  readonly href: string
+  readonly label: string
+  /**
+   * The pathnames this item is the current one for.
+   *
+   * An explicit list rather than a prefix test. "Platform" is current on three
+   * unrelated paths, and a prefix rule cannot express that; a prefix rule also
+   * silently marks `/status` current for a future `/status-report`, which is the
+   * kind of bug that only shows up after the route exists.
+   */
+  readonly matches: readonly string[]
+  /** One line of purpose, shown in the mobile drawer. */
+  readonly purpose: string
+}
+
+/**
+ * THE PRIMARY NAVIGATION: five content destinations, plus GitHub.
+ *
+ * Down from seven. What changed and why, recorded in
+ * EXPERIENCE_REDESIGN_V2.md section 3.1:
+ *
+ *   Architecture, Data Model and Governance  →  one item, "Platform"
+ *
+ *     Three peers competing for one click, of which Governance was the least
+ *     likely first destination and Data Model the least self-explanatory.
+ *     "Platform" points at `/architecture` and every one of the three renders
+ *     `<PlatformNav>`, which links all three with `aria-current`. Both routes
+ *     stay directly addressable, indexable and linked from the footer.
+ *
+ *     A disclosure menu in the header was rejected: it buys nothing over two
+ *     links and costs a focus trap, an escape handler and a hover ambiguity. A
+ *     new `/platform` overview route was rejected: its only content would be
+ *     links to two better pages.
+ *
+ *   Case Study  →  out of the header entirely
+ *
+ *     It was the only bordered, filled control in the header, which made the
+ *     emptiest page on the site its most prominent destination. It is still
+ *     visible - the footer, the status page and the home page's closing section
+ *     all carry it, all of them saying "locked" in words.
+ *
+ * The count is asserted by `tests/unit/site.test.ts` and by the content
+ * integrity suite, so a sixth item cannot arrive without a decision.
+ */
+export const PRIMARY_NAV: readonly NavItem[] = [
+  {
+    href: ROUTES.home.href,
+    label: 'Overview',
+    matches: ['/'],
+    purpose: 'What ARPI is, who built it, and what it proves',
+  },
+  {
+    href: ROUTES.architecture.href,
+    label: 'Platform',
+    matches: [ROUTES.architecture.href, ROUTES.dataModel.href, ROUTES.governance.href],
+    purpose: 'Architecture, the data model, and how it is governed',
+  },
+  {
+    href: ROUTES.kpis.href,
+    label: 'KPIs',
+    matches: [ROUTES.kpis.href],
+    purpose: 'Every governed metric definition',
+  },
+  {
+    href: ROUTES.status.href,
+    label: 'Status',
+    matches: [ROUTES.status.href],
+    purpose: 'What is finished, what is pending, what is blocked',
+  },
+  {
+    href: ROUTES.about.href,
+    label: 'About',
+    matches: [ROUTES.about.href],
+    purpose: 'Twenty-five years in dealerships, then the engineering',
+  },
+]
+
+/**
+ * The ceiling on primary navigation, stated as a constant so the test that
+ * enforces it reads as a rule rather than as a magic number.
+ */
+export const MAX_PRIMARY_NAV_ITEMS = 5
+
+/**
+ * The platform sub-navigation.
+ *
+ * Rendered by `/architecture`, `/data-model` and `/governance`, which is what
+ * makes "Platform" a real destination group rather than a relabelled link to one
+ * page. Ordered as a reader would take them: how the data moves, what it becomes,
+ * and the rules that hold it.
+ */
+export const PLATFORM_NAV: readonly NavItem[] = [
+  {
+    href: ROUTES.architecture.href,
+    label: 'Architecture',
+    matches: [ROUTES.architecture.href],
+    purpose: 'How data travels from source systems to governed layers',
+  },
+  {
+    href: ROUTES.dataModel.href,
+    label: 'Data model',
+    matches: [ROUTES.dataModel.href],
+    purpose: 'Facts, dimensions, declared grains and history policies',
+  },
+  {
+    href: ROUTES.governance.href,
+    label: 'Governance',
+    matches: [ROUTES.governance.href],
+    purpose: 'Synthetic data, privacy, metric governance and the gates',
+  },
+]
+
+/** Whether a navigation item is the current one for a pathname. */
+export function isNavItemCurrent(item: NavItem, pathname: string): boolean {
+  return item.matches.includes(pathname)
+}
 
 /** Routes a search engine may index. */
 export const INDEXABLE_ROUTES: readonly RouteDefinition[] = ALL_ROUTES.filter(

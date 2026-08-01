@@ -1,22 +1,32 @@
 'use client'
 
 /**
- * The site header: wordmark, primary navigation, the case-study state, and the
- * mobile drawer.
+ * The site header.
  *
- * Client, because the active-route indicator needs the pathname and the drawer
- * needs state. Everything inside it that could be static is - the wordmark is an
- * inline SVG, the links are `next/link`, and no data is fetched.
+ * Five content destinations, a GitHub action, and a menu button below the large
+ * breakpoint. That is the whole surface.
  *
- * Accessibility decisions worth naming:
- *   - The active link is marked `aria-current="page"`, not merely coloured.
- *   - The drawer traps focus, closes on Escape, closes on route change, locks
- *     the body scroll and returns focus to the trigger.
- *   - The desktop navigation is not hidden with `display: none` on mobile and
- *     then duplicated - it is one list, rendered once, moved by CSS - so there
- *     is no set of links that exists in the DOM but cannot be reached.
+ * WHAT THE REDESIGN REMOVED, AND WHY
+ * ----------------------------------
+ *   - Two primary destinations. Architecture, Data Model and Governance are now
+ *     reached through one item, "Platform", and are linked to each other by
+ *     `<PlatformNav>` on all three pages. Both routes stay directly addressable.
+ *   - The bordered amber "Case Study LOCKED" control. It was the only filled,
+ *     bordered element in a header of plain links, which made the emptiest page
+ *     on the site its loudest destination. The case study is still visible in
+ *     the footer, on the status page and in the home page's closing section, and
+ *     it still says "locked" in words.
+ *
+ * ACCESSIBILITY DECISIONS WORTH NAMING
+ * ------------------------------------
+ *   - The current item is marked `aria-current="page"`, not merely coloured, and
+ *     "Platform" is current on all three of its pages.
+ *   - The drawer traps focus, closes on Escape, closes on route change, closes
+ *     on a scrim click, locks the body scroll and returns focus to the trigger.
+ *   - Desktop and mobile navigation are ONE list rendered once and moved by CSS,
+ *     so there is no set of links that exists in the DOM but cannot be reached.
  */
-import { FolderGit2, Lock, Menu, X } from 'lucide-react'
+import { FolderGit2, Menu, X } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useCallback, useState } from 'react'
@@ -24,8 +34,7 @@ import { useCallback, useState } from 'react'
 import { Wordmark } from '@/components/brand/logo'
 import { IconButton } from '@/components/ui/button'
 import { useEscapeKey, useFocusTrap, useScrollLock } from '@/lib/hooks'
-import { caseStudyUnlocked } from '@/lib/manifest'
-import { PRIMARY_NAV, REPOSITORY_URL, ROUTES } from '@/lib/site'
+import { PLATFORM_NAV, PRIMARY_NAV, REPOSITORY_URL, isNavItemCurrent } from '@/lib/site'
 import { cx } from '@/lib/utils'
 
 export function SiteHeader() {
@@ -55,10 +64,9 @@ export function SiteHeader() {
   const drawerRef = useFocusTrap<HTMLDivElement>(drawerOpen)
 
   useScrollLock(drawerOpen)
-  useEscapeKey(drawerOpen, () => setDrawerOpen(false))
-
-  const isActive = (href: string) =>
-    href === '/' ? pathname === '/' : pathname.startsWith(href)
+  useEscapeKey(drawerOpen, () => {
+    setDrawerOpen(false)
+  })
 
   return (
     /*
@@ -83,7 +91,7 @@ export function SiteHeader() {
           'supports-[backdrop-filter]:bg-canvas/70'
         )}
       >
-        <div className="mx-auto flex h-header w-full max-w-full items-center gap-4 px-gutter">
+        <div className="mx-auto flex h-header w-full max-w-bleed items-center gap-4 px-gutter">
           <Link
             href="/"
             className="shrink-0 rounded-md"
@@ -92,38 +100,40 @@ export function SiteHeader() {
             <Wordmark />
           </Link>
 
-          {/* Desktop navigation */}
+          {/* Desktop navigation. Five items, evenly weighted, with room around
+              them - where seven pushed against the GitHub icon and read as a
+              table of contents that had run out of space. */}
           <nav aria-label="Primary" className="ml-auto hidden lg:block">
-            <ul className="flex items-center gap-0.5">
-              {PRIMARY_NAV.map((route) => (
-                <li key={route.href}>
-                  <Link
-                    href={route.href}
-                    aria-current={isActive(route.href) ? 'page' : undefined}
-                    className={cx(
-                      'relative flex min-h-touch items-center rounded-md px-3 text-base font-medium',
-                      'transition-colors duration-(--arpi-motion-fast)',
-                      isActive(route.href)
-                        ? 'text-ink'
-                        : 'text-ink-muted hover:text-ink-secondary',
-                      // The active indicator: a short rule under the label. Present
-                      // in addition to the colour change, so it survives greyscale.
-                      'after:absolute after:inset-x-3 after:bottom-1.5 after:h-px after:rounded-full',
-                      'after:transition-colors after:duration-(--arpi-motion-base)',
-                      isActive(route.href) ? 'after:bg-accent' : 'after:bg-transparent'
-                    )}
-                  >
-                    {route.navLabel}
-                  </Link>
-                </li>
-              ))}
-              <li className="ml-2">
-                <CaseStudyNavLink active={isActive(ROUTES.caseStudy.href)} />
-              </li>
+            <ul className="flex items-center gap-1">
+              {PRIMARY_NAV.map((item) => {
+                const current = isNavItemCurrent(item, pathname)
+                return (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      aria-current={current ? 'page' : undefined}
+                      className={cx(
+                        'relative flex min-h-touch items-center rounded-md px-3.5 text-base font-medium',
+                        'transition-colors duration-(--arpi-motion-fast)',
+                        current ? 'text-ink' : 'text-ink-muted hover:text-ink-secondary',
+                        // The active indicator: a short rule under the label,
+                        // present in addition to the colour change so it survives
+                        // greyscale. One indicator - not a pill, not a fill, not
+                        // a border.
+                        'after:absolute after:inset-x-3.5 after:bottom-1.5 after:h-px after:rounded-pill',
+                        'after:transition-colors after:duration-(--arpi-motion-base)',
+                        current ? 'after:bg-accent' : 'after:bg-transparent'
+                      )}
+                    >
+                      {item.label}
+                    </Link>
+                  </li>
+                )
+              })}
             </ul>
           </nav>
 
-          <div className="ml-auto flex items-center gap-1 lg:ml-3">
+          <div className="ml-auto flex items-center gap-1 lg:ml-4">
             <a
               href={REPOSITORY_URL}
               target="_blank"
@@ -144,7 +154,9 @@ export function SiteHeader() {
               label={drawerOpen ? 'Close navigation menu' : 'Open navigation menu'}
               aria-expanded={drawerOpen}
               aria-controls="mobile-navigation"
-              onClick={() => setDrawerOpen(!drawerOpen)}
+              onClick={() => {
+                setDrawerOpen(!drawerOpen)
+              }}
               className="lg:hidden"
             >
               {drawerOpen ? <X strokeWidth={2} /> : <Menu strokeWidth={2} />}
@@ -171,7 +183,9 @@ export function SiteHeader() {
                  tests/e2e/design-system.spec.ts. */}
           <div
             aria-hidden="true"
-            onClick={() => setDrawerOpen(false)}
+            onClick={() => {
+              setDrawerOpen(false)
+            }}
             className={cx(
               'fixed top-header right-0 bottom-0 left-0 z-(--arpi-z-scrim) lg:hidden',
               'bg-canvas/72 backdrop-blur-[4px]'
@@ -188,41 +202,67 @@ export function SiteHeader() {
           >
             <nav aria-label="Primary" className="px-gutter py-4">
               <ul className="flex flex-col">
-                {PRIMARY_NAV.map((route) => (
-                  <li
-                    key={route.href}
-                    className="border-b border-line-subtle last:border-0"
-                  >
-                    <Link
-                      href={route.href}
-                      aria-current={isActive(route.href) ? 'page' : undefined}
-                      className={cx(
-                        'flex min-h-touch flex-col justify-center gap-0.5 py-3',
-                        isActive(route.href) ? 'text-accent' : 'text-ink'
-                      )}
+                {PRIMARY_NAV.map((item) => {
+                  const current = isNavItemCurrent(item, pathname)
+                  return (
+                    <li
+                      key={item.href}
+                      className="border-b border-line-subtle last:border-0"
                     >
-                      <span className="flex items-center gap-2 text-lg font-semibold">
-                        {isActive(route.href) ? (
-                          <span
-                            aria-hidden="true"
-                            className="inline-block h-4 w-0.5 rounded-full bg-accent"
-                          />
-                        ) : null}
-                        {route.navLabel}
-                      </span>
-                      <span className="text-xs leading-normal text-ink-faint">
-                        {shortPurpose(route.href)}
-                      </span>
-                    </Link>
-                  </li>
-                ))}
+                      <Link
+                        href={item.href}
+                        aria-current={current ? 'page' : undefined}
+                        className={cx(
+                          'flex min-h-touch flex-col justify-center gap-0.5 py-3.5',
+                          current ? 'text-accent' : 'text-ink'
+                        )}
+                      >
+                        <span className="flex items-center gap-2 text-lg font-semibold">
+                          {current ? (
+                            <span
+                              aria-hidden="true"
+                              className="inline-block h-4 w-0.5 rounded-pill bg-accent"
+                            />
+                          ) : null}
+                          {item.label}
+                        </span>
+                        <span className="text-xs leading-normal text-ink-faint">
+                          {item.purpose}
+                        </span>
+                      </Link>
+                    </li>
+                  )
+                })}
               </ul>
 
-              <div className="mt-4 border-t border-line pt-4">
-                <CaseStudyNavLink
-                  active={isActive(ROUTES.caseStudy.href)}
-                  variant="block"
-                />
+              {/* The platform group, expanded.
+                  On a phone there is room to show the three pages behind
+                  "Platform" rather than making a visitor land on Architecture and
+                  then discover a sub-navigation. On a desktop that job belongs to
+                  `<PlatformNav>`, which is on the page itself. */}
+              <div className="mt-5 flex flex-col gap-1 border-t border-line pt-4">
+                <p className="eyebrow text-2xs">Inside the platform</p>
+                <ul className="flex flex-col">
+                  {PLATFORM_NAV.map((item) => {
+                    const current = isNavItemCurrent(item, pathname)
+                    return (
+                      <li key={item.href}>
+                        <Link
+                          href={item.href}
+                          aria-current={current ? 'page' : undefined}
+                          className={cx(
+                            'flex min-h-touch items-center text-base',
+                            current
+                              ? 'font-semibold text-accent'
+                              : 'text-ink-secondary hover:text-ink'
+                          )}
+                        >
+                          {item.label}
+                        </Link>
+                      </li>
+                    )
+                  })}
+                </ul>
               </div>
             </nav>
           </div>
@@ -230,74 +270,4 @@ export function SiteHeader() {
       ) : null}
     </>
   )
-}
-
-/**
- * The case-study entry.
- *
- * Rendered as a visually distinct locked item while Gate 2 is closed, and it
- * says "Locked" rather than "Coming soon". The lock is stated in the accessible
- * name too, so the padlock icon is not the only signal.
- */
-function CaseStudyNavLink({
-  active,
-  variant = 'inline',
-}: {
-  active: boolean
-  variant?: 'inline' | 'block'
-}) {
-  const locked = !caseStudyUnlocked
-  return (
-    <Link
-      href={ROUTES.caseStudy.href}
-      aria-current={active ? 'page' : undefined}
-      className={cx(
-        'inline-flex min-h-touch items-center gap-2 rounded-lg border px-3 text-base font-medium',
-        'transition-colors duration-(--arpi-motion-fast)',
-        variant === 'block' && 'w-full',
-        locked
-          ? 'border-pending/35 bg-pending-wash/50 text-pending hover:border-pending/60'
-          : 'border-accent-muted bg-accent-wash text-accent hover:border-accent',
-        active && 'ring-1 ring-inset ring-current'
-      )}
-    >
-      {locked ? (
-        <Lock aria-hidden="true" className="size-3.5 shrink-0" strokeWidth={2.25} />
-      ) : null}
-      Case Study
-      {locked ? (
-        <>
-          <span
-            aria-hidden="true"
-            className="rounded-pill border border-current/35 px-1.5 py-0.5 font-mono text-2xs leading-none"
-          >
-            LOCKED
-          </span>
-          <span className="sr-only"> - locked, Gate 2 is closed</span>
-        </>
-      ) : null}
-    </Link>
-  )
-}
-
-/** A one-line purpose per route, for the mobile drawer's secondary line. */
-function shortPurpose(href: string): string {
-  switch (href) {
-    case '/':
-      return 'What the project is and why it exists'
-    case '/architecture':
-      return 'The pipeline, layer by layer'
-    case '/data-model':
-      return 'Dimensions, facts and declared grains'
-    case '/kpis':
-      return 'Every governed metric definition'
-    case '/governance':
-      return 'Synthetic data, privacy and scope gates'
-    case '/status':
-      return 'What is finished and what is not'
-    case '/about':
-      return 'The author and the domain experience'
-    default:
-      return ''
-  }
 }

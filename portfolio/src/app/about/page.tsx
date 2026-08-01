@@ -50,7 +50,7 @@ export default function AboutPage() {
         }
       />
 
-      <Section rhythm="none" bordered className="pt-section-tight">
+      <Section rhythm="none" className="pt-section-tight">
         <Container width="wide">
           <div className="grid grid-cols-1 gap-12 lg:grid-cols-12 lg:gap-16">
             {/* The narrative */}

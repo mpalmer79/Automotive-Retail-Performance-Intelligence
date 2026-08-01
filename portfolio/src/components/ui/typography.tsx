@@ -21,7 +21,12 @@ import { cx } from '@/lib/utils'
 /* -------------------------------------------------------------------------- */
 
 const HEADING_SIZE = {
-  hero: 'font-display text-5xl font-bold leading-tight tracking-tighter',
+  /**
+   * The home page's h1, and nothing else. Its own type step rather than the 5xl
+   * one, because the redesigned headline is a longer sentence than the one it
+   * replaced and has to fit a 320px screen without becoming five lines.
+   */
+  hero: 'font-display text-hero font-bold leading-tight tracking-tighter',
   display: 'font-display text-4xl font-semibold leading-tight tracking-tighter',
   h2: 'font-display text-3xl font-semibold leading-snug tracking-tight',
   h3: 'text-2xl font-semibold leading-snug tracking-tight',
@@ -136,29 +141,42 @@ export function Eyebrow({
   children,
   className,
   tone = 'muted',
+  rule = false,
 }: {
   children: ReactNode
   className?: string
   tone?: 'muted' | 'accent'
+  /**
+   * Draw the short rule before the label.
+   *
+   * Opt-in, and it was not. Every eyebrow on the site carried the rule, which at
+   * nine homepage sections plus every page header made it a tic rather than a
+   * mark - finding D-01. It now belongs to the two components that open a major
+   * block, `SectionHeader` and `PageHeader`, and an eyebrow inside a panel or a
+   * card is a plain label.
+   */
+  rule?: boolean
 }) {
   return (
     <p
       className={cx(
         'eyebrow',
         tone === 'accent' && 'text-accent',
-        'flex items-center gap-2',
+        rule && 'flex items-center gap-2.5',
         className
       )}
     >
-      {/* A short rule before the label. Decorative, and hidden from the
-          accessibility tree so a screen reader hears only the words. */}
-      <span
-        aria-hidden="true"
-        className={cx(
-          'inline-block h-px w-6 shrink-0',
-          tone === 'accent' ? 'bg-accent-muted' : 'bg-line-strong'
-        )}
-      />
+      {rule ? (
+        // Decorative, and hidden from the accessibility tree so a screen reader
+        // hears only the words.
+        <span
+          aria-hidden="true"
+          className={cx(
+            'inline-block h-px w-6 shrink-0',
+            tone === 'accent' ? 'bg-accent' : 'bg-line-strong'
+          )}
+        />
+      ) : null}
       {children}
     </p>
   )

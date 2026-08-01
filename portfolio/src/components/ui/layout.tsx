@@ -57,6 +57,38 @@ export function Container({
 /* Section                                                                     */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * The four section grounds.
+ *
+ * WHY A GROUND AND NOT A BORDER
+ * -----------------------------
+ * Every section on the previous build carried `bordered`, which drew the same
+ * hairline rule between all nine homepage sections and every section on six
+ * other routes. A rule repeated that many times stops separating anything: the
+ * page reads as one list of equal blocks, which was finding A-03 in
+ * EXPERIENCE_REDESIGN_V2.md.
+ *
+ * A ground is a shift in the surface the section sits on. It costs no ink, it
+ * survives greyscale, it works at 200 percent zoom, and the eye reads it as
+ * "somewhere else" rather than as "next item". The four are ordered by depth
+ * and a page is expected to move between them, not to stay on one.
+ *
+ *   cinematic  deepest.  The hero and the closing section. Two per page at most.
+ *   canvas     default.  Editorial narrative, reading copy.
+ *   panel      raised.   The surround for a product frame or an interactive
+ *                        surface, so the frame has something to sit against.
+ *   evidence   sunken.   Technical and evidence bands. Reads as recessed
+ *                        instrumentation rather than as content.
+ */
+const SECTION_TONE = {
+  cinematic: 'bg-canvas-deep',
+  canvas: '',
+  panel: 'bg-canvas-raised',
+  evidence: 'bg-surface-sunken/60',
+} as const
+
+export type SectionTone = keyof typeof SECTION_TONE
+
 export interface SectionProps {
   children: ReactNode
   /** Rendered as the section's accessible name via aria-labelledby. */
@@ -64,8 +96,17 @@ export interface SectionProps {
   className?: string
   /** `tight` for a subsection, `default` for a page section. */
   rhythm?: 'tight' | 'default' | 'none'
-  /** A hairline top border, for a hard section boundary. */
-  bordered?: boolean
+  /** The ground the section sits on. See {@link SECTION_TONE}. */
+  tone?: SectionTone
+  /**
+   * A hairline top border.
+   *
+   * Reserved for a boundary between two sections on the SAME ground, where
+   * there is no surface change for the eye to read. Using it between two
+   * different grounds double-marks the boundary and is the pattern this
+   * redesign removed.
+   */
+  divider?: boolean
   as?: ElementType
 }
 
@@ -75,13 +116,14 @@ const RHYTHM = {
   default: 'py-section',
 } as const
 
-/** Vertical rhythm and the optional section boundary rule. */
+/** Vertical rhythm and the section's ground. */
 export function Section({
   children,
   id,
   className,
   rhythm = 'default',
-  bordered = false,
+  tone = 'canvas',
+  divider = false,
   as: Tag = 'section',
 }: SectionProps) {
   return (
@@ -90,12 +132,96 @@ export function Section({
       className={cx(
         'relative',
         RHYTHM[rhythm],
-        bordered && 'border-t border-line-subtle',
+        SECTION_TONE[tone],
+        divider && 'border-t border-line-subtle',
         className
       )}
     >
       {children}
     </Tag>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+/* SectionHeader                                                               */
+/* -------------------------------------------------------------------------- */
+
+export interface SectionHeaderProps {
+  /** The small tracked label above the heading. */
+  eyebrow: string
+  /** The section heading. Always an h2 in page flow. */
+  title: ReactNode
+  /** One paragraph. If a section needs two, it is two sections. */
+  lede?: ReactNode
+  /** A single control on the opposite side at wide widths. */
+  action?: ReactNode
+  /** `wide` puts the lede beside the heading rather than under it. */
+  layout?: 'stacked' | 'wide'
+  id?: string
+  className?: string
+}
+
+/**
+ * The opening of a section.
+ *
+ * Extracted because the previous build assembled this by hand in nine places
+ * with five different gap values and three different maximum widths, which is
+ * why no two sections opened the same way. One component means the rhythm above
+ * a heading is a property of the design system rather than of whoever wrote the
+ * section.
+ *
+ * `lede` is capped at the prose measure in both layouts. `action` is allowed
+ * exactly one control: a section that offers two next steps has not decided
+ * what it is for.
+ */
+export function SectionHeader({
+  eyebrow,
+  title,
+  lede,
+  action,
+  layout = 'stacked',
+  id,
+  className,
+}: SectionHeaderProps) {
+  const heading = (
+    <div className={cx('flex flex-col gap-5', layout === 'wide' && 'lg:max-w-2xl')}>
+      <p className="eyebrow flex items-center gap-2.5">
+        <span aria-hidden="true" className="inline-block h-px w-6 shrink-0 bg-accent" />
+        {eyebrow}
+      </p>
+      <h2 id={id} className="font-display text-3xl font-semibold tracking-tight text-ink">
+        {title}
+      </h2>
+    </div>
+  )
+
+  if (layout === 'wide') {
+    return (
+      <div
+        className={cx(
+          'flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between lg:gap-16',
+          className
+        )}
+      >
+        {heading}
+        {lede ? (
+          <p className="max-w-prose text-body leading-relaxed text-ink-muted lg:max-w-md">
+            {lede}
+          </p>
+        ) : null}
+        {action}
+      </div>
+    )
+  }
+
+  return (
+    <div className={cx('flex flex-col gap-5', className)}>
+      {heading}
+      {lede ? (
+        <p className="max-w-prose text-body leading-relaxed text-ink-secondary">{lede}</p>
+      ) : null}
+      {action ? <div className="pt-1">{action}</div> : null}
+    </div>
   )
 }
 

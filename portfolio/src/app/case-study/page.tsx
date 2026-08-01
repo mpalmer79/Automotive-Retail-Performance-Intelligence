@@ -165,7 +165,7 @@ export default function CaseStudyPage() {
       </Section>
 
       {/* What is complete, and what remains. Two columns, both concrete. */}
-      <Section bordered>
+      <Section tone="panel">
         <Container width="wide">
           <Reveal className="mb-10 flex max-w-prose flex-col gap-5">
             <Eyebrow>Where the work actually is</Eyebrow>
@@ -266,7 +266,7 @@ export default function CaseStudyPage() {
       </Section>
 
       {/* Why the gate exists at all. */}
-      <Section bordered>
+      <Section tone="canvas">
         <Container width="wide">
           <div className="grid grid-cols-1 gap-10 lg:grid-cols-12 lg:gap-14">
             <Reveal className="flex flex-col gap-5 lg:col-span-5">
@@ -348,7 +348,7 @@ export default function CaseStudyPage() {
       </Section>
 
       {/* The tasteful preview: architecture and model elements only. */}
-      <Section bordered>
+      <Section tone="evidence">
         <Container width="wide">
           <Reveal className="mb-10 flex max-w-prose flex-col gap-5">
             <Eyebrow>What the case study will be built on</Eyebrow>

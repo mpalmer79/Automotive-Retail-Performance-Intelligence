@@ -20,7 +20,14 @@
      --------------------------------------------------------------------- */
 
   /* Obsidian - the page ground. Cool, near-neutral, very slightly blue so it
-     reads as instrument housing rather than as pure black. */
+     reads as instrument housing rather than as pure black.
+
+     975 is the cinematic step, and it exists for exactly one job: the hero and
+     the closing section sit on it so that the page's two most composed moments
+     are visibly deeper than the document around them. It is two points darker
+     than the canvas, which is enough for the eye to read a band boundary
+     without a border and not enough to read as a different theme. */
+  --arpi-obsidian-975: #03050a;
   --arpi-obsidian-950: #05070b;
   --arpi-obsidian-900: #080b11;
   --arpi-obsidian-850: #0b0f16;
@@ -96,6 +103,17 @@
      2. Semantic colour tokens
      --------------------------------------------------------------------- */
 
+  /* The four section grounds. A page moves between them rather than between
+     bordered boxes, which is what lets the redesign carry section hierarchy
+     without drawing a rule under every heading.
+
+       canvas-deep   cinematic  hero and closing
+       canvas        editorial  narrative and reading
+       canvas-raised panel      the product frame's surround
+       surface-sunken evidence  technical and evidence bands
+
+     Documented in portfolio/docs/DESIGN_SYSTEM.md section 3. */
+  --arpi-colour-canvas-deep: var(--arpi-obsidian-975);
   --arpi-colour-canvas: var(--arpi-obsidian-950);
   --arpi-colour-canvas-raised: var(--arpi-obsidian-900);
   --arpi-colour-surface: var(--arpi-graphite-800);
@@ -166,6 +184,21 @@
   --arpi-text-4xl: clamp(2.125rem, 3.1vw + 1.4rem, 3.5rem);
   --arpi-text-5xl: clamp(2.5rem, 4.2vw + 1.35rem, 4.25rem);
 
+  /* The hero headline, and only the hero headline.
+
+     Smaller at both ends than --arpi-text-5xl, which is deliberate and was
+     measured rather than guessed. The redesigned headline is a longer sentence
+     than the one it replaces: at 320px it has to reach the first screen's
+     supporting copy, and at 1440px it sets across the full container in three
+     balanced lines. The 5xl step put it at six lines in a half-width column and
+     at four across the full one. */
+  --arpi-text-hero: clamp(2.125rem, 3vw + 1.2rem, 3.75rem);
+
+  /* Editorial numerals: the four engineering proof figures, and nothing else.
+     Deliberately larger than any heading on the site, because the argument of
+     that section is the size of the numbers. */
+  --arpi-text-numeral: clamp(3rem, 4.6vw + 1.4rem, 5rem);
+
   --arpi-leading-tight: 1.05;
   --arpi-leading-snug: 1.2;
   --arpi-leading-normal: 1.45;
@@ -226,6 +259,10 @@
   --arpi-radius-lg: 0.625rem;
   --arpi-radius-xl: 0.875rem;
   --arpi-radius-2xl: 1.25rem;
+  /* The product frame, and only the product frame. One radius that appears
+     nowhere else is what makes the Operating View read as a piece of software
+     inside the page rather than as another card. */
+  --arpi-radius-frame: 1.75rem;
   --arpi-radius-pill: 999rem;
 
   --arpi-border-hairline: 1px;
@@ -279,6 +316,13 @@
   --arpi-motion-slower: 620ms;
   --arpi-motion-deliberate: 900ms;
   --arpi-motion-ambient: 14s;
+
+  /* The hero's signature sequence: one signal travelling from the source
+     systems, through the governed layers, to the analytical domains. It runs
+     once on load and stops. 2.6s is long enough for the eye to follow the path
+     and short enough that a visitor who scrolls immediately has still seen it
+     finish. Nothing else on the site uses this duration. */
+  --arpi-motion-signal: 2600ms;
 
   /* Easing scale. */
   --arpi-ease-standard: cubic-bezier(0.32, 0.72, 0, 1);

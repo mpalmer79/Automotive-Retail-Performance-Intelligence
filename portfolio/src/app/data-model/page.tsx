@@ -21,6 +21,7 @@ export default function DataModelPage() {
         title="Every fact declares one grain, and the database enforces it"
         lede={`${String(counts.dimensions.value)} conformed dimensions and ${String(counts.facts.value)} facts. Each fact's grain is declared in the data dictionary, enforced by a UNIQUE constraint in DDL, and asserted by the integration suite - so it is a property of the database rather than a promise in a document.`}
         supporting={`Above the warehouse, the semantic model imports ${String(counts.importedTables.value)} reporting views and joins them with ${String(counts.semanticRelationships.value)} relationships, ${String(semanticModel.activeRelationships)} active and ${String(semanticModel.inactiveRelationships)} inactive. All are single-direction: there is no bidirectional filter and no many-to-many relationship in the model, and the static check fails the build if one appears.`}
+        platformNav
         meta={
           <>
             <StatusBadge status="complete" label="Warehouse built and tested" size="sm" />
@@ -63,7 +64,7 @@ export default function DataModelPage() {
         </Container>
       </Section>
 
-      <Section rhythm="none" bordered className="pt-section-tight pb-section">
+      <Section rhythm="none" tone="panel" className="pt-section-tight pb-section">
         <Container width="full">
           <DataModelExplorer />
         </Container>
