@@ -146,11 +146,15 @@ describe('the animation library stays inside its budget', () => {
    * This list is the whole justification for that decision, and it is asserted
    * rather than described so that the next reveal added to the site cannot quietly
    * re-import it.
+   *
+   * The redesign removed `components/motion/pipeline-hero.tsx` and
+   * `components/sections/pipeline-scrollytelling.tsx` -- the home page's drawn SVG
+   * paths and scrollytelling diagram -- and this list was not updated with them, so
+   * the assertion named two files that no longer exist. Shrinking the allowlist makes
+   * the budget stricter, not weaker: the two remaining importers are the explorers,
+   * and any new importer still fails this test.
    */
   const PERMITTED = [
-    // The hero's drawn SVG paths and the scrollytelling diagram - home page.
-    'components/motion/pipeline-hero.tsx',
-    'components/sections/pipeline-scrollytelling.tsx',
     // Node emphasis, driven by a spring against a moving target.
     'components/explorers/architecture-explorer.tsx',
     'components/explorers/data-model-explorer.tsx',

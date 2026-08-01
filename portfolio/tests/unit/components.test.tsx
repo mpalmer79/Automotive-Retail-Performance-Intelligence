@@ -25,6 +25,7 @@ import { STATUS_PRESENTATION, statusPresentation } from '@/lib/manifest'
 import {
   ALL_ROUTES,
   INDEXABLE_ROUTES,
+  MAX_PRIMARY_NAV_ITEMS,
   PRIMARY_NAV,
   ROUTES,
   repoFileUrl,
@@ -54,8 +55,14 @@ describe('the route map', () => {
     ])
   })
 
-  it('puts seven routes in the primary navigation and excludes the case study', () => {
-    expect(PRIMARY_NAV).toHaveLength(7)
+  it('holds the primary navigation at its declared ceiling and excludes the case study', () => {
+    // MAX_PRIMARY_NAV_ITEMS is declared in lib/site.ts as "the ceiling on primary
+    // navigation, stated as a constant so the test that enforces it reads as a rule
+    // rather than as a magic number" -- but nothing asserted it, so this test kept
+    // requiring the seven items that predated the Platform grouping. Asserting the
+    // constant is what that comment intended, and it means a sixth item cannot arrive
+    // without changing the declared rule.
+    expect(PRIMARY_NAV).toHaveLength(MAX_PRIMARY_NAV_ITEMS)
     expect(PRIMARY_NAV.map((r) => r.href)).not.toContain('/case-study')
     expect(PRIMARY_NAV.map((r) => r.href)).not.toContain('/ui-lab')
   })

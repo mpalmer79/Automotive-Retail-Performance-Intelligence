@@ -95,12 +95,48 @@ describe('the eight primary routes exist and the lab is not one of them', () => 
     )
   })
 
-  it('puts seven routes in the primary navigation', () => {
-    // The case study is deliberately absent: it is locked, and a locked route in
-    // the primary navigation reads as a broken link rather than as a boundary.
-    expect(PRIMARY_NAV.map((route) => route.href)).toEqual(
-      PRIMARY.filter((href) => href !== '/case-study')
+  it('puts five destinations in the primary navigation', () => {
+    // Down from seven, by the decision recorded above PRIMARY_NAV in lib/site.ts:
+    // Architecture, Data Model and Governance collapse into one "Platform" item
+    // pointing at /architecture, and every one of those three renders <PlatformNav>.
+    //
+    // The case study is deliberately absent for a different reason: it is locked, and
+    // a locked route in the primary navigation reads as a broken link rather than as
+    // a boundary.
+    //
+    // This asserts the header's five hrefs literally rather than deriving them from
+    // PRIMARY. Deriving them is what let this assertion go stale: it described the
+    // navigation as "every primary route except the case study", which stopped being
+    // true when the grouping landed.
+    expect(PRIMARY_NAV.map((route) => route.href)).toEqual([
+      '/',
+      '/architecture',
+      '/kpis',
+      '/status',
+      '/about',
+    ])
+  })
+
+  it('keeps every grouped route reachable from the navigation it was folded into', () => {
+    // Collapsing three items into one is only acceptable while the two routes that
+    // lost their own header entry stay reachable. The "Platform" item claims them
+    // through `matches`, which is what drives aria-current on those pages.
+    const platform = PRIMARY_NAV.find((route) => route.href === '/architecture')
+    expect(platform).toBeDefined()
+    expect(platform?.matches).toContain('/data-model')
+    expect(platform?.matches).toContain('/governance')
+  })
+
+  it('leaves no primary route unreachable from either the header or the footer', () => {
+    // The footer renders PRIMARY_NAV, so a route that is in neither a header item's
+    // href nor its `matches` is reachable only by typing the URL.
+    const reachable = new Set(
+      PRIMARY_NAV.flatMap((route) => [route.href, ...route.matches])
     )
+    const unreachable = PRIMARY.filter(
+      (href) => href !== '/case-study' && !reachable.has(href)
+    )
+    expect(unreachable).toEqual([])
   })
 
   it('keeps the UI lab out of navigation and out of the index', () => {
