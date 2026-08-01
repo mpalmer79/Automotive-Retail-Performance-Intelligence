@@ -95,7 +95,21 @@ FROM python:${PYTHON_VERSION} AS runtime
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    UV_LINK_MODE=copy \
+    UV_COMPILE_BYTECODE=1 \
     PATH="/opt/venv/bin:${PATH}"
+
+# `uv` again, because the runtime stage installs the project itself. A uv-created
+# virtual environment deliberately contains NO `pip`, so a bare `pip install` here
+# silently falls through to the system interpreter at /usr/local/bin: the console
+# script lands outside the venv and cannot import its dependencies. That is a real
+# failure this image had until the `database-setup-image` CI job was added and
+# caught it on its first run:
+#
+#     + arpi --version
+#     File "/usr/local/bin/arpi", line 5, in <module>
+#     ModuleNotFoundError: No module named 'yaml'
+COPY --from=ghcr.io/astral-sh/uv:0.12.1 /uv /usr/local/bin/uv
 
 # `postgresql-client` for `psql`, which executes the ordered SQL sequence — the
 # same 104-file sequence `sql/README.md` defines and `tests/integration/conftest.py`
@@ -141,12 +155,19 @@ COPY --chown=arpi:arpi pyproject.toml uv.lock README.md ./
 # The provisioning sequence itself.
 COPY --chown=arpi:arpi deployment/railway/provision_database.sh ./provision_database.sh
 
-# Re-install so the console script (`arpi`) resolves against the real source
-# tree rather than the placeholder the deps stage created. Dependencies are
-# already present in the virtual environment, so `--no-deps` keeps this to a
-# metadata write rather than a second resolution over the network.
-RUN pip install --no-deps -e . \
+# Re-install so the console script (`arpi`) resolves against the real source tree
+# rather than the placeholder the deps stage created. `--no-deps` keeps this to a
+# metadata write rather than a second resolution over the network, and
+# `--python /opt/venv/bin/python` names the target explicitly so this can never
+# again install into the system interpreter.
+RUN uv pip install --python /opt/venv/bin/python --no-deps -e . \
     && chmod +x ./provision_database.sh
+
+# The entry point must be the one inside the virtual environment. Asserted at BUILD
+# time as well as in CI, so an image that could not run is never produced at all.
+RUN test "$(command -v arpi)" = "/opt/venv/bin/arpi" \
+    && arpi --version \
+    && python -c "import pandas, psycopg, pydantic, yaml"
 
 USER arpi
 
