@@ -311,6 +311,10 @@ export default defineRailway((ctx, project) => {
         'deployment/railway/Dockerfile.database-setup',
         'deployment/railway/provision_database.sh',
         'pyproject.toml',
+        // The image installs `uv sync --frozen`, so a lock change genuinely changes
+        // what this job runs. Without this pattern a dependency update would ship to
+        // Railway only on the next unrelated `src/arpi/**` commit.
+        'uv.lock',
       ],
     },
     deploy: {

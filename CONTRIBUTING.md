@@ -24,12 +24,31 @@ Requires Python 3.11 or 3.12 and, for the database layer, PostgreSQL 16.
 git clone https://github.com/mpalmer79/Automotive-Retail-Performance-Intelligence.git
 cd Automotive-Retail-Performance-Intelligence
 
+# Install uv once: https://docs.astral.sh/uv/getting-started/installation/
+uv sync --frozen --all-extras
+```
+
+`uv sync --frozen` installs exactly what `uv.lock` records and refuses to resolve
+anything, so a fresh clone reproduces the environment CI tested rather than
+whatever the index is serving today. It creates `.venv/` for you; prefix commands
+with `uv run`, or activate it as usual.
+
+<details>
+<summary>Without uv</summary>
+
+```bash
 python3.11 -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
-
 pip install --upgrade pip
 pip install -e ".[dev,db]"
 ```
+
+This resolves the declared ranges instead of the lock, so it can produce a
+different dependency graph from CI. Use it only if you cannot install uv, and
+re-check anything surprising against `uv sync --frozen` before concluding it is a
+real defect.
+
+</details>
 
 Copy the environment template and fill in your local values:
 
@@ -152,6 +171,92 @@ The repository-control scripts are documented in
 [scripts/README.md](scripts/README.md).
 
 ---
+
+## 4a. Dependencies
+
+`pyproject.toml` declares the **supported ranges**. `uv.lock` records the
+**reviewed resolution** of those ranges, and it is what CI, a clean clone and the
+Railway database-provisioning image all install. Both are committed and both are
+reviewed; the lock diff is part of the pull request, not a build artefact.
+
+### Why the lock exists
+
+`DQ-EMP-003` evaluated `Timestamp("9999-12-31") + Timedelta(days=1)`, which is
+outside pandas' nanosecond range. On pandas 3.0 it silently widened; on pandas
+2.2 — a version `pandas>=2.2` explicitly admits — it raised `OutOfBoundsDatetime`
+and took a gating validator down with it. CI was green because it happened to
+resolve 3.0. The defect was real the whole time and nothing in the repository
+recorded which resolution had been tested.
+
+### Adding a dependency
+
+1. Add it to the right table in `pyproject.toml` with a lower bound that is
+   honest — a bound is a claim the `floor` CI job will test.
+2. `uv lock`
+3. `uv sync --frozen --all-extras`
+4. Run the local verification in section 4.
+5. Commit `pyproject.toml` and `uv.lock` together. A lock without its declaration
+   fails `uv lock --check` in CI, and so does a declaration without its lock.
+
+### Updating one dependency
+
+```bash
+uv lock --upgrade-package pandas
+uv sync --frozen --all-extras
+```
+
+### Refreshing everything
+
+```bash
+uv lock --upgrade
+uv sync --frozen --all-extras
+```
+
+Do this deliberately and on its own branch. A refresh that arrives inside an
+unrelated change makes both impossible to review.
+
+### Inspecting what changed
+
+```bash
+git diff uv.lock                       # every version that moved
+uv tree                                # the resolved graph
+```
+
+Read the diff. A lock refresh is a code change with no code in it, and "CI is
+green" is the beginning of reviewing one rather than the end.
+
+### A security update
+
+Same as updating one dependency, but state the advisory in the pull request and
+say whether ARPI actually reaches the vulnerable path. If the fix needs a version
+above a declared floor, raise the floor in `pyproject.toml` in the same commit —
+leaving the floor behind means the `floor` job still tests the vulnerable version.
+
+### Trying a new Python version
+
+`requires-python` is the floor and the CI matrix is the tested set. To evaluate a
+new interpreter, add it to the matrix in `.github/workflows/ci.yml` first. The
+lock is universal and resolves for every interpreter in the declared range, so it
+usually needs no change.
+
+### How Railway consumes the lock
+
+`deployment/railway/Dockerfile.database-setup` installs with
+`uv sync --frozen --no-dev --extra db`, so the provisioning job runs the same
+graph CI tested. `uv.lock` is in that service's watch patterns
+(`.railway/railway.ts`), so a dependency change rebuilds the job. It is
+deliberately **not** in the website service's watch patterns in `railway.json`:
+that image contains no Python, and a Python dependency change must not rebuild
+the frontend.
+
+The `database-setup-image` CI job builds the image and asserts that the versions
+inside it match the lock, so this cannot drift silently.
+
+### What is deliberately not automated
+
+There is no scheduled job that opens dependency-update pull requests and no
+auto-merge for them. A lock refresh changes what every environment runs, and
+this project's whole premise is that such a change is reviewed by a person.
 
 ## 5. Scope and architecture boundaries
 

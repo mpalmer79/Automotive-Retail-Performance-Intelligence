@@ -55,23 +55,36 @@ ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
 
 WORKDIR /build
 
-# The package metadata alone. `pyproject.toml` is the single source of dependency
-# truth for this repository, so it is the only sensible cache key.
-COPY pyproject.toml ./
-# `pip install -e` needs the package directory to exist even when resolving only
-# dependencies, and copying the source here would defeat the layer split — so the
-# minimum tree that satisfies the build backend is created instead.
+# `uv`, copied from its own published image rather than installed with pip, so the
+# resolver that builds this environment is itself pinned rather than whatever the
+# index served today.
+COPY --from=ghcr.io/astral-sh/uv:0.12.1 /uv /usr/local/bin/uv
+
+# The package metadata AND the lock. Before this, the image resolved `pyproject.toml`
+# independently, so Railway could install a different dependency graph from the one
+# CI tested — the failure mode being that a provisioning run reaches a database with
+# code no test ever exercised. `uv.lock` is the reviewed resolution and is now the
+# cache key alongside the declaration it resolves.
+COPY pyproject.toml uv.lock ./
+# The build backend needs the package directory to exist even when only dependencies
+# are being installed, and copying the real source here would defeat the layer split
+# — so the minimum tree that satisfies it is created instead.
 RUN mkdir -p src/arpi && touch src/arpi/__init__.py README.md
 
-# Installed into a virtual environment rather than the system interpreter so the
-# runtime stage can copy one self-contained directory.
-RUN python -m venv /opt/venv
-ENV PATH="/opt/venv/bin:${PATH}"
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
+    UV_LINK_MODE=copy \
+    UV_COMPILE_BYTECODE=1
 
-# `[db]` brings psycopg. The `[dev]` extra is deliberately NOT installed: this
-# job runs the loader and the verifier, not the test suite, and ruff, mypy and
-# pytest have no business in a container that touches a database.
-RUN pip install --upgrade pip && pip install ".[db]"
+# `--frozen` installs the lock exactly and refuses to resolve. `--no-dev` leaves the
+# development extra out: this job runs the loader and the verifier, not the test
+# suite, and ruff, mypy and pytest have no business in a container that touches a
+# database. `--no-install-project` installs only the dependencies, because the
+# project itself is installed in the runtime stage against the real source tree.
+#
+# `--extra db` brings psycopg.
+RUN uv sync --frozen --no-dev --no-install-project --extra db
+
+ENV PATH="/opt/venv/bin:${PATH}"
 
 
 # -----------------------------------------------------------------------------
@@ -82,7 +95,21 @@ FROM python:${PYTHON_VERSION} AS runtime
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    UV_LINK_MODE=copy \
+    UV_COMPILE_BYTECODE=1 \
     PATH="/opt/venv/bin:${PATH}"
+
+# `uv` again, because the runtime stage installs the project itself. A uv-created
+# virtual environment deliberately contains NO `pip`, so a bare `pip install` here
+# silently falls through to the system interpreter at /usr/local/bin: the console
+# script lands outside the venv and cannot import its dependencies. That is a real
+# failure this image had until the `database-setup-image` CI job was added and
+# caught it on its first run:
+#
+#     + arpi --version
+#     File "/usr/local/bin/arpi", line 5, in <module>
+#     ModuleNotFoundError: No module named 'yaml'
+COPY --from=ghcr.io/astral-sh/uv:0.12.1 /uv /usr/local/bin/uv
 
 # `postgresql-client` for `psql`, which executes the ordered SQL sequence — the
 # same 104-file sequence `sql/README.md` defines and `tests/integration/conftest.py`
@@ -122,16 +149,25 @@ COPY --chown=arpi:arpi src ./src
 COPY --chown=arpi:arpi config ./config
 # The verification script, and the package metadata the console entry point needs.
 COPY --chown=arpi:arpi scripts/verify_cloud_database.py ./scripts/verify_cloud_database.py
-COPY --chown=arpi:arpi pyproject.toml README.md ./
+# `uv.lock` travels with the metadata so the image records exactly which resolution
+# built it, and so Railway's watch paths can rebuild this job when the lock changes.
+COPY --chown=arpi:arpi pyproject.toml uv.lock README.md ./
 # The provisioning sequence itself.
 COPY --chown=arpi:arpi deployment/railway/provision_database.sh ./provision_database.sh
 
-# Re-install so the console script (`arpi`) resolves against the real source
-# tree rather than the placeholder the deps stage created. Dependencies are
-# already present in the virtual environment, so `--no-deps` keeps this to a
-# metadata write rather than a second resolution over the network.
-RUN pip install --no-deps -e . \
+# Re-install so the console script (`arpi`) resolves against the real source tree
+# rather than the placeholder the deps stage created. `--no-deps` keeps this to a
+# metadata write rather than a second resolution over the network, and
+# `--python /opt/venv/bin/python` names the target explicitly so this can never
+# again install into the system interpreter.
+RUN uv pip install --python /opt/venv/bin/python --no-deps -e . \
     && chmod +x ./provision_database.sh
+
+# The entry point must be the one inside the virtual environment. Asserted at BUILD
+# time as well as in CI, so an image that could not run is never produced at all.
+RUN test "$(command -v arpi)" = "/opt/venv/bin/arpi" \
+    && arpi --version \
+    && python -c "import pandas, psycopg, pydantic, yaml"
 
 USER arpi
 
