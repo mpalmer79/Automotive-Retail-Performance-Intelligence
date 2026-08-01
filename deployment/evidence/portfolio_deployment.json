@@ -21,12 +21,20 @@
     "scripts/check_secrets.py scans the file like any other.",
     "",
     "UNVERIFIED is a first-class value, and it is not a synonym for false. It means the",
-    "fact was not obtained by this repository's own automation. Every field below that",
-    "requires reaching the live site is UNVERIFIED because the environments this project",
-    "is developed and built in deny egress to the deployment host: CI has no reason to be",
-    "online, and the agent environments answer 403 to CONNECT arpi.up.railway.app:443",
-    "(recorded in docs/reviews/ENGINEERING_HARDENING_PROGRAM.md section 1.1). A field is",
-    "filled in when a run produces it, never because a person believes it."
+    "fact was not obtained by this repository's own automation.",
+    "",
+    "THE RULE, NOT THE CURRENT STATE. A field that needs a request to the live site is",
+    "filled ONLY by a run of .github/workflows/verify-deployment.yml, which reaches the",
+    "host from a GitHub-hosted runner; where no run has produced one, it reads UNVERIFIED.",
+    "Neither CI nor the environments this project is developed in may reach the host: CI",
+    "has no reason to be online, and the agent environments answer 403 to CONNECT",
+    "arpi.up.railway.app:443 (docs/reviews/ENGINEERING_HARDENING_PROGRAM.md section 1.1).",
+    "A field is filled in when a run produces it, never because a person believes it.",
+    "",
+    "This paragraph states the rule rather than which fields happen to be filled today.",
+    "The sentence it replaces asserted that every such field WAS UNVERIFIED, and became",
+    "false the moment the first verification landed - a stale claim inside the very file",
+    "that exists to hold claims to their evidence."
   ],
   "portfolio": {
     "_comment": [
