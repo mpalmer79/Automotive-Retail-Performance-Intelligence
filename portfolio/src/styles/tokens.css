@@ -344,7 +344,8 @@
 
   --arpi-shadow-none: none;
   --arpi-shadow-sm: 0 1px 2px 0 rgb(16 42 71 / 0.06);
-  --arpi-shadow-md: 0 1px 3px 0 rgb(16 42 71 / 0.08), 0 4px 12px -2px rgb(16 42 71 / 0.06);
+  --arpi-shadow-md:
+    0 1px 3px 0 rgb(16 42 71 / 0.08), 0 4px 12px -2px rgb(16 42 71 / 0.06);
   --arpi-shadow-lg:
     0 2px 6px -1px rgb(16 42 71 / 0.09), 0 12px 28px -6px rgb(16 42 71 / 0.1);
 

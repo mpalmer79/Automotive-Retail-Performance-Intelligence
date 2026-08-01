@@ -57,7 +57,7 @@ export const metadata: Metadata = pageMetadata('home')
  * All six chapters sit inside a single `<Canvas>`. That is the selected layout
  * direction - "Floating Intelligence Canvas" - and it was chosen over two
  * alternatives that split the page into multiple floating panels. The scoring
- * is in portfolio/docs/EXPERIENCE_REDESIGN_V2.md section 8.
+ * is in portfolio/docs/EXPERIENCE_REDESIGN_V2.md section 9.
  *
  * The short version: splitting the hero into two panels (direction B) took the
  * headline's measure from 1,150px to 520px and set a ten-word sentence in five

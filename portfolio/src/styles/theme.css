@@ -26,9 +26,11 @@
   --color-surface-hover: var(--arpi-colour-surface-hover);
   --color-surface-sunken: var(--arpi-colour-surface-sunken);
 
-  /* The blue field. `field-deep` is the only blue surface that may carry white
-     text; see the measurements in tokens.css section 1. */
-  --color-field-deep: var(--arpi-colour-field-deep);
+  /* The blue field. Only `field-deepest` is bound as a utility, because only
+     the mobile drawer's scrim uses one - everything else consumes the field
+     through the gradient in globals.css. The `field-deep` token stays declared
+     in tokens.css with its measured text contrast, so a future inverted panel
+     has a ground that is already known to work rather than one chosen by eye. */
   --color-field-deepest: var(--arpi-colour-field-deepest);
 
   --color-line: var(--arpi-colour-border);

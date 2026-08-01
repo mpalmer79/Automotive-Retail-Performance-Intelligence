@@ -144,20 +144,30 @@ the site cannot quietly re-import it.
 
 ## 5. Fonts
 
-**100.9 kB across three faces**, latin subsets of the variable fonts:
+**113.0 kB across three faces**, latin subsets of the variable fonts:
 
 | File                                 | Bytes  | Preloaded |
 | ------------------------------------ | ------ | --------- |
 | `Inter-Variable-latin.woff2`         | 48,256 | yes       |
+| `SourceSerif4-Variable-latin.woff2`  | 36,000 | yes       |
 | `JetBrainsMono-Variable-latin.woff2` | 31,432 | **no**    |
-| `SpaceGrotesk-Variable-latin.woff2`  | 22,288 | yes       |
 
-Three decisions here.
+Up 13,712 bytes from the previous set. Source Serif 4 replaced Space Grotesk as the
+display face, and a serif at a usable weight range costs more than the display sans it
+replaced. The as-served figure including compression is 114.3 kB.
+
+Four decisions here.
 
 **Variable fonts, one file each.** Inter at 400–700 as three static weights would
 be roughly 1.6× this and would need three requests.
 
 **Latin subset only.** The site is English; the full Inter file is over 300 kB.
+
+**Source Serif 4 is instanced, not shipped whole.** Its latin subset carries an `opsz`
+axis and a 200–900 weight range and weighs 122 kB. Pinning `opsz` at 32 and clamping
+`wght` to 400–700 takes it to 36 kB, which is 70% off for two axis values the site never
+uses. The regeneration command is in
+[DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) section 4.1.
 
 **JetBrains Mono is not preloaded.** It appears below the fold on most routes, and
 a third preloaded face competes for bandwidth with the two that render the

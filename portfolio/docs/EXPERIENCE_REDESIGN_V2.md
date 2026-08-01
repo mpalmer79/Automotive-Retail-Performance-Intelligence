@@ -613,3 +613,343 @@ not rewritten: it is accessible, keyboard-operable and covered by tests, and
 rewriting it was a larger change than this redesign could carry safely. The
 route summary and the platform sub-navigation improve its first screen; the
 staged-disclosure work remains open.
+
+---
+
+# Part two: the floating-canvas visual direction
+
+Sections 1 to 8 record the structural redesign, which shipped in #14 and #15.
+That work decided what the site says, how many chapters it has, and what each
+route is for. Everything in it is retained.
+
+This part records a change to how it looks. The engineering, accessibility,
+governance, testing and release requirements are unchanged, and none of the
+truth controls moved.
+
+## 9. Layout selection
+
+### 9.1 What was built
+
+Three complete compositions, all carrying identical content and identical truth
+controls, differing only in composition, hierarchy and how much of the blue
+field stays visible. They were built as `/proto/a`, `/proto/b` and `/proto/c`,
+excluded from the sitemap, disallowed in `robots.txt` and marked
+`noindex, nofollow`, and all three were deleted once the decision was made.
+
+|       | Direction                    | Structure                                                                              |
+| ----- | ---------------------------- | -------------------------------------------------------------------------------------- |
+| **A** | Floating Intelligence Canvas | One connected white canvas holding all six chapters                                    |
+| **B** | Split Operating Gateway      | Editorial panel and product panel, vertically offset, then a wide panel                |
+| **C** | Layered Data Pavilion        | Hero canvas, two smaller floating modules overlapping its lower edge, then a wide body |
+
+### 9.2 What was measured
+
+Every candidate was measured at eight viewports for three things that cannot be
+judged from a screenshot: where the primary call to action lands, how long the
+page is, and whether anything scrolls sideways.
+
+**Primary call to action, distance from the top of the document (px):**
+
+| Viewport   |   A |   B |   C |
+| ---------- | --: | --: | --: |
+| 1440 x 900 | 543 | 653 | 543 |
+| 1280 x 800 | 534 | 632 | 534 |
+| 1024 x 768 | 566 | 681 | 566 |
+| 768 x 1024 | 450 | 418 | 450 |
+| 430 x 932  | 516 | 500 | 516 |
+| 390 x 844  | 579 | 563 | 579 |
+| 375 x 812  | 607 | 591 | 607 |
+| 320 x 700  | 670 | 674 | 670 |
+
+All three put it inside the first screen at every viewport, and none scrolled
+horizontally anywhere. That is the floor, not a differentiator: it is what the
+direction requires, and a candidate failing it would have been discarded rather
+than scored.
+
+**Total page height (px):**
+
+| Viewport   |          A |      B |          C |
+| ---------- | ---------: | -----: | ---------: |
+| 1440 x 900 |  **7,183** |  7,311 |     10,202 |
+| 1280 x 800 |  **7,118** |  7,247 |     10,515 |
+| 1024 x 768 |  **7,757** |  7,871 | **15,371** |
+| 768 x 1024 |  **8,973** |  9,023 |      9,010 |
+| 390 x 844  | **12,764** | 12,806 |     12,788 |
+| 320 x 700  | **14,284** | 14,346 |     14,308 |
+
+The 1024px column is the one that decided C. Its floating modules take effect at
+the `lg` breakpoint, and a chapter written for a full-width canvas reflowed into
+a five-column module makes the page **twice as long** as the same content in one
+canvas. Two visible consequences at that width: the engineering-proof numeral,
+which is the largest type on the site, wrapped and clipped; and the
+domain-judgement section header set "The problem, and the difference" in four
+stacked lines.
+
+### 9.3 Scoring
+
+1 to 10, higher is better.
+
+| Criterion                   |       A |       B |       C |
+| --------------------------- | ------: | ------: | ------: |
+| Five-second comprehension   |       9 |       7 |       8 |
+| Visual confidence           |       9 |       8 |       7 |
+| Mobile usability            |       9 |       8 |       8 |
+| Hero clarity                |       9 |       6 |       9 |
+| Product visibility          |       8 |       6 |       8 |
+| Michael's differentiation   |       9 |       8 |       7 |
+| Technical credibility       |       9 |       8 |       7 |
+| Content density             |       8 |       7 |       6 |
+| Section hierarchy           |       9 |       8 |       6 |
+| Navigation simplicity       |       9 |       9 |       9 |
+| Accessibility               |       9 |       9 |       8 |
+| Performance                 |       9 |       9 |       7 |
+| Originality                 |       7 |       9 |       8 |
+| Portfolio impact            |       8 |       9 |       7 |
+| Resemblance without copying |       9 |       7 |       7 |
+| **Total**                   | **130** | **118** | **112** |
+
+### 9.4 Why A won
+
+**B is the more striking screenshot and the worse page.** It scores highest on
+originality and ties highest on portfolio impact, and if the decision were made
+from one 1440px image it would win. Splitting the hero into two panels takes the
+headline's measure from roughly 1,150px to roughly 520px, and a ten-word
+sentence that sets in two balanced lines across the canvas sets in **five** in a
+half-width panel. That is the same failure recorded in the hero's own source
+comment from the previous pass, reintroduced by the composition. Its product
+panel is also the smaller half of the split, so the signature visual - the one
+element that shows this is a product rather than an essay - renders at roughly
+60% of the size it gets in A, and its labels stop being readable at 1024px.
+
+**C fails on a breakpoint rather than on taste.** The overlap reads well at
+1440px. At 1024px it produces a 15,371px page, clipped display type and a
+four-line section header. A layout whose worst viewport is the most common
+laptop width is not a complete system.
+
+**A is the direction the brief actually describes**: content contained primarily
+inside one connected white canvas, with subtle internal divisions instead of
+many separate cards. It is the shortest page at every viewport, it gives the
+headline and the product visual each a column worth having, and it has no
+breakpoint at which it degrades.
+
+A's weakest score is originality, at 7, and that is accepted rather than
+disputed: it is the closest structural reading of the reference, which is what
+it was asked to be. The distinctiveness is carried by the background motif, the
+serif display face and the product frame rather than by the panel arrangement.
+
+### 9.5 What was not run on all three
+
+The comparison ran on composition metrics and desktop and mobile screenshots.
+Reduced motion, 200% zoom, axe and Lighthouse were **not** run against the two
+losing candidates. All four are pass/fail conditions rather than
+differentiators, all four are properties of the shared visual system rather than
+of the arrangement, and all four are verified against the shipped design in
+section 11. Running them three times would have measured the same system three
+times.
+
+## 10. The visual system
+
+### 10.1 The blue field
+
+A four-stop vertical gradient declared on `<html>`, not `<body>`, so it covers
+the viewport when a document is shorter than one screen and when the page is
+rubber-band scrolled past either end. `<body>` is transparent as a consequence,
+which is why both build-staleness guards now probe the root element.
+
+`background-attachment: fixed` is deliberately not used: on iOS it forces the
+gradient into a separate composited layer repainted on every scroll frame, which
+is one of the few ways a pure-CSS background can cost real performance.
+
+The top stop is the only value that was tuned rather than taken from the brief.
+At the suggested `#4FA9D3` the white canvas edge measured **2.64:1** against it,
+which made the core visual idea of the design - a white panel clearly separated
+from the field it floats on - the weakest boundary on the page. `#3C96C4`
+measures 3.31:1 and still reads as a bright sky.
+
+### 10.2 The geometric motif
+
+One authored inline SVG, roughly 3 kB of markup, no request and no script. It
+draws warehouse table outlines with a header bar and rows, hexagonal model
+nodes, dashed relationship paths, column ticks and a pipeline trace that passes
+behind the canvas. Two densities: the marginal detail group is hidden below the
+`md` breakpoint, because at 375px the margins a desktop composition fills are
+where the canvas already sits.
+
+**It does not move.** The direction permits small geometry drift and it is not
+taken. The element is `position: fixed`, so it is on screen on every route for
+the whole visit; an animation there is not a moment, it is a permanent repaint
+on every page the site has, which is the continuous CPU cost the same direction
+rules out. There is therefore no reduced-motion variant, because there is no
+motion to reduce.
+
+### 10.3 Colour
+
+Four of the brief's starting values failed WCAG 2.2 AA, and every one of them
+failed in a way a screenshot does not show.
+
+| Token       | Suggested |                      Measured | Shipped           |         Now |
+| ----------- | --------- | ----------------------------: | ----------------- | ----------: |
+| `ink-muted` | `#6E7A83` |               4.40:1 on white | `#5C6A74`         |      5.57:1 |
+| `ink-faint` | `#87939B` |               3.15:1 on white | not used for text |         n/a |
+| accent      | `#087FA4` | 4.58:1 pure / **4.37:1 soft** | `#0A6C8B`         | 5.95 / 5.67 |
+| field top   | `#4FA9D3` |         2.64:1 vs canvas edge | `#3C96C4`         |      3.31:1 |
+
+The accent is the one worth naming. It **passed on pure white and failed on the
+next surface down**, which is why every text token is now asserted against all
+four white grounds rather than against the lightest one. A colour is not
+accessible on its own, only on a ground.
+
+The slate ramp sits below 3:1 on white by design: it draws hairlines and the
+motif, neither of which is text and neither of which identifies a control or its
+state, so WCAG 1.4.11 does not apply. That distinction is only safe if enforced,
+so a test asserts no `--color-ink-*` token binds to it.
+
+Text on blue is confined to `field-deep` and below. White on the top gradient
+stop measures 3.31:1 and the brief's secondary inverse measures 2.92:1, so the
+bright end of the field carries no text at any size.
+
+### 10.4 Typography
+
+Two families plus the retained monospace. Source Serif 4 replaces Space Grotesk
+as the display face: the direction permits one serif, one sans and one mono, and
+a display sans beside a body sans is two sans families.
+
+The committed file is not the one Google serves. The full latin subset carries
+`wght` 200-900 and `opsz` 8-60 and weighs 122 kB, which is more than the other
+two families together. Instanced with `opsz` pinned at 32 and `wght` clamped to
+400-700 it is **36 kB**. Total shipped font weight moves from 101,976 to 115,688
+bytes.
+
+| File                                 |  Bytes | Preloaded |
+| ------------------------------------ | -----: | --------- |
+| `Inter-Variable-latin.woff2`         | 48,256 | yes       |
+| `SourceSerif4-Variable-latin.woff2`  | 36,000 | yes       |
+| `JetBrainsMono-Variable-latin.woff2` | 31,432 | no        |
+
+### 10.5 The shell
+
+**Header.** Solid white, 60px on a phone and 68px from `md` up, with a hairline
+bottom border. The backdrop blur is removed: translucency over a blue field
+makes the white header pale blue and scroll-dependent, which the direction rules
+out as glassmorphism. The drawer scrim is now the deepest field blue rather than
+the canvas, because on a light theme a white scrim is the same value as the
+content it is meant to push back.
+
+**Canvas.** One utility, `canvas-panel`, used by every route. `overflow: clip`
+rather than `hidden`, because `hidden` establishes a scroll container and would
+break the KPI catalogue's sticky filter row. The inset from the viewport edge is
+a token, so the field is visible down both sides by the same amount on every
+route: 12px at 320px, 40px on a desktop.
+
+**Footer.** White and full-bleed. It and the header are the only two regions
+that span the viewport edge to edge, and the footer is what closes the field.
+
+**No inverted section tone.** A deep-blue closing panel was built and removed:
+the page already ends the way the brief describes, with the canvas stopping at
+its rounded corners, the field showing through the gap below it and the white
+footer closing the field. A blue band inside the canvas put three surface
+changes into the last 800px and made a field-coloured panel compete with the
+field itself. The colour is still measured and recorded, so a future inverted
+panel has a ground already known to work.
+
+## 11. Quality
+
+### 11.1 Tests
+
+| Suite                                                  |         Result |
+| ------------------------------------------------------ | -------------: |
+| Unit and component (vitest)                            | **384 passed** |
+| Browser, accessibility, content integrity (Playwright) | **212 passed** |
+
+Four tests changed, and none was deleted for being inconvenient.
+
+**The token contrast block** named the obsidian ramp, which no longer exists. It
+now asserts every ink, accent, link and status colour against all four white
+grounds, every inverse against the two blues that may carry text, and the canvas
+edge against all four gradient stops. Two new tests enforce that the decorative
+slate ramp is never bound to a text token.
+
+**The reflow check** measured the field's decorative SVG. A
+`preserveAspectRatio="slice"` drawing extends past the viewport at any aspect
+ratio but its own, exactly as a `background-size: cover` image does. It now
+skips `aria-hidden` subtrees - narrower than skipping SVGs, which would exempt
+the two explorer diagrams, and narrower than skipping clipped containers, which
+would exempt genuinely truncated content.
+
+**The hero locator** was `main > section:first-of-type`, which the canvas
+wrappers broke. It broke _silently_: the neighbouring "no status badges in the
+hero" assertion passed by finding no elements at all. Both tests now use `#hero`
+and assert it exists first.
+
+**The header blur assertion is inverted, not removed.** Absence of a backdrop
+filter is now the thing under test, because translucency is what a future change
+would plausibly add back.
+
+### 11.2 Defects found
+
+| #    | Found by          | Defect                                                                                                                                                                                                                                                                                                          |
+| ---- | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| V-01 | browser console   | Hydration mismatch on **every** revealed element. `useState(() => typeof IntersectionObserver === 'undefined')` is true on the server and false on the client, so the server rendered `reveal-shown` and the client `reveal-hidden` - seventeen mismatches on the home page. Pre-existing, not introduced here. |
+| V-02 | contrast script   | Four palette values below the AA floor, before any of them reached a page                                                                                                                                                                                                                                       |
+| V-03 | Playwright        | The field motif read as horizontal overflow at seven viewports                                                                                                                                                                                                                                                  |
+| V-04 | screenshot script | The same defect as V-03, in a second copy of the same detector that had drifted from the first                                                                                                                                                                                                                  |
+| V-05 | bundle script     | Both staleness guards probed `<body>`, which the field made transparent                                                                                                                                                                                                                                         |
+| V-06 | 1024px screenshot | Direction C clipped display type and quadrupled its own page length                                                                                                                                                                                                                                             |
+
+V-01 is the one worth the space. It was invisible in every screenshot and every
+test, the page looked correct, and the only symptom was that the class the
+observer toggled was not the class on the element.
+
+### 11.3 Lighthouse
+
+Local production build, desktop preset, all eight routes.
+
+| Route           | Perf | A11y | Best practices | SEO |  LCP | CLS |
+| --------------- | ---: | ---: | -------------: | --: | ---: | --: |
+| `/`             |  100 |  100 |            100 | 100 | 0.7s |   0 |
+| `/architecture` |  100 |  100 |            100 | 100 | 0.7s |   0 |
+| `/data-model`   |  100 |  100 |            100 | 100 | 0.7s |   0 |
+| `/kpis`         |  100 |  100 |            100 | 100 | 0.7s |   0 |
+| `/governance`   |  100 |  100 |            100 | 100 | 0.7s |   0 |
+| `/status`       |  100 |  100 |            100 | 100 | 0.7s |   0 |
+| `/about`        |  100 |  100 |            100 | 100 | 0.7s |   0 |
+| `/case-study`   |  100 |  100 |            100 | 100 | 0.6s |   0 |
+
+### 11.4 Accessibility
+
+axe-core reports zero critical and zero serious violations across all nine
+routes at desktop and mobile widths. No horizontal overflow at any of the seven
+viewports, at 200% zoom, or under reduced motion.
+
+### 11.5 Bundle
+
+JavaScript is unchanged: the field is CSS and one inline SVG, and both new shell
+components are server components.
+
+| Route           |       JS |     CSS |    Fonts |    Total |
+| --------------- | -------: | ------: | -------: | -------: |
+| `/`             | 187.6 kB | 12.7 kB | 114.3 kB | 348.5 kB |
+| `/architecture` | 215.0 kB | 12.7 kB | 114.3 kB | 369.0 kB |
+| `/about`        | 160.8 kB | 12.7 kB | 114.3 kB | 312.0 kB |
+
+## 12. Remaining limitations
+
+**Live production verification is still blocked.** This session's egress policy
+does not permit reaching `arpi.up.railway.app`, so every figure above is from a
+production build of this commit served locally - the artefact Railway builds
+from the same Dockerfile. Unverified against the deployment: Lighthouse on the
+live origin, the remote Playwright suite, canonical metadata, `robots.txt`,
+`sitemap.xml`, security headers as served, and the `/status` health check after
+deploy.
+
+**The social preview still depicts the wordmark** (finding C-08), and it is now
+also the wrong palette: it was authored for the obsidian theme. Regenerating it
+is a separate change.
+
+**`/architecture` is still the longest route on a phone** (finding C-01). The
+canvas does not change that; its explorer was not rewritten.
+
+**No visual-regression baselines are committed.** Unchanged decision, recorded
+in `portfolio/docs/VISUAL_REVIEW.md`: the review set is captured to a gitignored
+directory and attached to the pull request, because a baseline set nobody
+re-approves becomes a rubber stamp.

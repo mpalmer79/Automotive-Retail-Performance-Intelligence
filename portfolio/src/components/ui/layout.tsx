@@ -79,12 +79,18 @@ export function Container({
  * its own inherits the panel's white - and it is why the four grounds are
  * shades of white rather than shades of black.
  *
- * It also added `deep`, which had no equivalent before. On a dark theme there
- * was no such thing as a section that inverts; on this one the blue field is
- * the site's second surface, and a closing panel that takes its colour is the
- * one place the field comes forward into the content rather than sitting behind
- * it. It is the ONLY tone that carries white text, and `field-deep` is the only
- * blue measured to support it: 8.58:1. See tokens.css section 1.
+ * THERE IS NO INVERTED TONE
+ * -------------------------
+ * A deep-blue closing panel was built and then removed. The page already ends
+ * the way the direction asks: the canvas stops with its rounded corners, the
+ * blue field shows through the gap below it, and the white footer closes the
+ * field. Adding a blue band inside the canvas put three surface changes into
+ * the last 800px of the page and made the field-coloured panel compete with the
+ * field itself.
+ *
+ * The colour is still measured - `--arpi-inverse-*` on `--arpi-field-700` is
+ * asserted in tests/unit/tokens.test.ts - so the constraint is recorded for
+ * whatever wants it next. What is not kept is a tone nothing renders.
  *
  *   cinematic  open.     The hero. The cleanest white on the page.
  *   canvas     default.  Editorial narrative, reading copy.
@@ -92,14 +98,12 @@ export function Container({
  *                        something to sit against.
  *   evidence   sunken.   Technical and evidence bands. Reads as recessed
  *                        instrumentation rather than as content.
- *   deep       inverted. The closing panel, and nothing else.
  */
 const SECTION_TONE = {
   cinematic: '',
   canvas: '',
   panel: 'bg-surface',
   evidence: 'bg-surface-sunken',
-  deep: 'bg-field-deep text-ink-inverse',
 } as const
 
 export type SectionTone = keyof typeof SECTION_TONE

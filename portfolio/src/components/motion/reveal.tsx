@@ -37,6 +37,25 @@
  *      that forces those elements visible. A document must survive its own
  *      JavaScript failing.
  *
+ *   3. A hydration mismatch on every revealed element. Both components used to
+ *      initialise their state with
+ *      `useState(() => typeof IntersectionObserver === 'undefined')`, as a
+ *      fallback for an environment without the observer. That expression is
+ *      TRUE on the server and FALSE in the browser, so the server rendered
+ *      `reveal-shown` and the client's first render produced `reveal-hidden` -
+ *      seventeen mismatches on the home page alone. React kept the server's
+ *      markup, which meant the class the observer later toggled was not the
+ *      class on the element. It was invisible in every screenshot and every
+ *      test, and the page looked correct.
+ *
+ *      The fallback is deleted rather than moved into the effect. It was
+ *      unreachable: `IntersectionObserver` has shipped in every browser since
+ *      2019, and this site already requires `overflow: clip`, `text-wrap:
+ *      balance` and `:focus-visible`, all of which are newer. The test runner
+ *      does not need it either - `tests/setup.ts` stubs the observer with an
+ *      immediate-firing implementation. The real degradation case is JavaScript
+ *      not running at all, and that is point 2's job.
+ *
  * REDUCED MOTION
  * --------------
  * Handled entirely in CSS. The site-wide `prefers-reduced-motion` block collapses
@@ -80,24 +99,6 @@ export function Reveal({
   const [shown, setShown] = useState(false)
 
   useEffect(() => {
-    // An environment with no IntersectionObserver - an older browser, a test
-    // runner - gets the content immediately rather than never.
-    //
-    // THIS CHECK BELONGS IN THE EFFECT, NOT IN THE INITIAL STATE.
-    // It used to be the `useState` initialiser. `IntersectionObserver` is
-    // undefined on the server and defined in the browser, so the server
-    // rendered `reveal-shown` and the client's first render produced
-    // `reveal-hidden` - a hydration mismatch on every revealed element, which
-    // was seventeen of them on the home page alone. React logged it and kept
-    // the server's markup, which meant the class the observer later toggled was
-    // not the class actually on the element. An effect runs after hydration has
-    // committed, so both renders now agree on `reveal-hidden` and the fallback
-    // still fires everywhere it is needed.
-    if (typeof IntersectionObserver === 'undefined') {
-      setShown(true)
-      return
-    }
-
     const element = ref.current
     if (!element) return
 
@@ -160,12 +161,6 @@ export function RevealGroup({
   const [shown, setShown] = useState(false)
 
   useEffect(() => {
-    // In the effect, not the initial state. See the note in `Reveal`.
-    if (typeof IntersectionObserver === 'undefined') {
-      setShown(true)
-      return
-    }
-
     const element = ref.current
     if (!element) return
 
