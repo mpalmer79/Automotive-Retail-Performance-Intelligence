@@ -512,6 +512,24 @@ file is deliberately absent rather than present and disabled.
 These run in `ci.yml`'s `deployment-tooling` job. They need no secret, so they run
 on a fork.
 
+### What is recorded, and what is proven
+
+[`../evidence/portfolio_deployment.json`](../evidence/portfolio_deployment.json)
+is the non-secret deployment record, read by the capability register in `ci.yml`'s
+repository-checks job. It keeps the website, the analytical platform and the
+semantic model as **three separate statuses**, because a reachable website is not
+a running database and nothing may let one stand in for the other.
+
+Every field needing a request to the live site reads `UNVERIFIED`: CI has no
+reason to be online, and the environments this project is developed in are denied
+the deployment host. `UNVERIFIED` is not `false`. It is never rendered as a pass,
+and filling one in from belief rather than a run is a defect.
+
+That file may hold **identifiers only** — a public URL, a service name, an
+environment, a commit. `scripts/deployment_evidence.py` fails the build if a key
+in it names a token, a password, a credential or a database URL, or if a value
+looks like a connection string or a private host.
+
 ### Against the live project
 
 ```bash

@@ -1,0 +1,93 @@
+{
+  "schema": "arpi.deployment_evidence/1",
+
+  "_comment": [
+    "NON-SECRET DEPLOYMENT EVIDENCE. Three deployments are recorded separately because",
+    "they are three different claims, and collapsing them is how a live website comes to",
+    "be read as a running analytical platform:",
+    "",
+    "  portfolio             a Next.js site of prerendered routes, with NO database",
+    "                        connection. Being live proves the site is reachable.",
+    "  analytical_platform   PostgreSQL, the schema, the load, the roles, the migrations,",
+    "                        the backups. Being live proves the warehouse runs.",
+    "  semantic_model        Power BI Desktop or Microsoft Fabric loading and evaluating",
+    "                        the model. Not recorded here: powerbi/validation/*.json is",
+    "                        its evidence, and duplicating it would create a second copy",
+    "                        able to disagree with the first.",
+    "",
+    "WHAT MAY NEVER APPEAR IN THIS FILE: a token, a password, a database URL, a",
+    "credential-bearing connection string, a Railway internal secret, or a private host.",
+    "A public URL, a service name, an environment name and a commit SHA are identifiers,",
+    "not secrets. tests/unit/test_deployment_evidence.py asserts this, and",
+    "scripts/check_secrets.py scans the file like any other.",
+    "",
+    "UNVERIFIED is a first-class value, and it is not a synonym for false. It means the",
+    "fact was not obtained by this repository's own automation. Every field below that",
+    "requires reaching the live site is UNVERIFIED because the environments this project",
+    "is developed and built in deny egress to the deployment host: CI has no reason to be",
+    "online, and the agent environments answer 403 to CONNECT arpi.up.railway.app:443",
+    "(recorded in docs/reviews/ENGINEERING_HARDENING_PROGRAM.md section 1.1). A field is",
+    "filled in when a run produces it, never because a person believes it."
+  ],
+
+  "portfolio": {
+    "_comment": [
+      "The Railway service defined by deployment/railway/project.config.json services.portfolio.",
+      "requiresDatabase is false there and the site holds no credential, which is what",
+      "connects_to_database records. That one is derived from source rather than observed,",
+      "so it is asserted rather than UNVERIFIED."
+    ],
+
+    "environments": [
+      {
+        "environment": "staging",
+        "service_name": "arpi-portfolio",
+        "public_url": "https://arpi.up.railway.app",
+        "health_path": "/status",
+        "deployment_branch": "main",
+        "commit_sha": "UNVERIFIED",
+        "deployed_at": "UNVERIFIED",
+        "health_verified_at": "UNVERIFIED",
+        "remote_smoke_test": "UNVERIFIED",
+        "security_headers": "UNVERIFIED",
+        "connects_to_database": false
+      }
+    ],
+
+    "production_environment": "not-created",
+
+    "connects_to_database_evidence": [
+      "deployment/railway/project.config.json services.portfolio.requiresDatabase = false",
+      "deployment/railway/project.config.json deliberatelyAbsent.websiteDatabaseAccess",
+      "scripts/railway/verify_railway_configuration.ts"
+    ],
+
+    "remote_suite": "portfolio/tests/remote/deployed-site.spec.ts",
+    "remote_suite_last_run": "UNVERIFIED"
+  },
+
+  "analytical_platform": {
+    "_comment": [
+      "PostgreSQL and everything the warehouse needs in order to be running rather than",
+      "merely defined. Every value here is independent of the portfolio deployment: the",
+      "website being live moves none of them.",
+      "",
+      "'declared' means the resource is described in source-controlled configuration and",
+      "has not been observed to exist. It is weaker than UNVERIFIED, which means a check",
+      "exists and did not run; nothing has been provisioned at all."
+    ],
+
+    "postgresql_instance": "declared",
+    "schema_deployment": "declared",
+    "data_load": "declared",
+    "role_verification": "declared",
+    "migration_verification": "declared",
+    "backup_and_restore": "not-implemented",
+    "scheduled_execution": "not-implemented",
+
+    "provisioning_job": "arpi-database-setup",
+    "provisioning_job_last_run": "UNVERIFIED",
+    "verifier": "scripts/verify_cloud_database.py",
+    "verifier_last_run": "UNVERIFIED"
+  }
+}

@@ -3,11 +3,19 @@
 Configuration for deploying this site, and the boundaries the deployment is held
 to.
 
-**No production deployment has been made, and none should be made without explicit
-approval.** The deployment target is Railway's **`staging`** environment, which is
-`noindex` with crawling disallowed — see [section 5](#5-environment-behaviour).
-Production promotion is a separate, deliberate act described in
+**The site is deployed to Railway's `staging` environment**, which is `noindex`
+with crawling disallowed — see [section 5](#5-environment-behaviour). **No
+production deployment has been made, and none should be made without explicit
+approval;** production promotion is a separate, deliberate act described in
 [`deployment/railway/README.md`](../../deployment/railway/README.md) section 7.
+
+**Being deployed is a narrow claim.** This site holds no database credential and
+opens no connection (see [section 1](#1-target)), so it being reachable says
+nothing about PostgreSQL or about the semantic model. The three statuses are
+recorded separately in
+[`deployment/evidence/portfolio_deployment.json`](../../deployment/evidence/portfolio_deployment.json),
+where every field this repository's own automation could not obtain reads
+`UNVERIFIED` rather than a guess.
 
 ---
 

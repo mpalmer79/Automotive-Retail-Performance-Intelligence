@@ -90,7 +90,7 @@ Its own documentation lives beside it, in [`../portfolio/`](../portfolio/) and [
 | [`../portfolio/docs/CONTENT_MODEL.md`](../portfolio/docs/CONTENT_MODEL.md) | Where every string and every number on the site comes from, and why no component may hardcode one | Reviewers checking that the site cannot overclaim | Implemented |
 | [`../portfolio/docs/ACCESSIBILITY.md`](../portfolio/docs/ACCESSIBILITY.md) | The accessibility target, the automated and manual checks, and the axe results per route | Accessibility reviewers | Implemented |
 | [`../portfolio/docs/PERFORMANCE.md`](../portfolio/docs/PERFORMANCE.md) | The performance budget and how the static build is kept within it | Contributors adding weight to a route | Implemented |
-| [`../portfolio/docs/DEPLOYMENT.md`](../portfolio/docs/DEPLOYMENT.md) | How the site would be built and deployed. **No preview deployment and no production deployment exist yet** | Whoever eventually deploys it | Implemented — the deployment itself is **pending** |
+| [`../portfolio/docs/DEPLOYMENT.md`](../portfolio/docs/DEPLOYMENT.md) | How the site is built and deployed. **Deployed to Railway `staging`; no production environment exists** | Whoever operates the deployment | Implemented — live verification is **UNVERIFIED** from CI |
 | [`../portfolio/docs/VISUAL_REVIEW.md`](../portfolio/docs/VISUAL_REVIEW.md) | The route-by-route visual review record | Reviewers checking the UI against its own rules | Implemented |
 
 ---
@@ -157,16 +157,19 @@ You want to assess the modelling, the engineering, and whether the documentation
 
 You do not want to clone 22,000 lines of Markdown. You want the same claims rendered, in order, in a browser.
 
-**Read this first:** the site is **not deployed yet**. There is no staging URL and no production URL, so the
-only way to see it today is to build it locally. The Railway deployment is fully automated and reviewable in
-[`../deployment/railway/README.md`](../deployment/railway/README.md) — it has simply not been run, because it
-needs one Railway API token that nobody has supplied. It also shows **no KPI value, no dashboard screenshot and no
-finding** — it renders definitions, structure and status, and its `/case-study` route is **locked** because
-Gate 2 is closed.
+**Read this first:** the site is deployed to Railway's `staging` environment at
+[`https://arpi.up.railway.app`](https://arpi.up.railway.app), from the configuration reviewable in
+[`../deployment/railway/README.md`](../deployment/railway/README.md); no production environment exists. **A
+reachable website is not a running analytical platform.** The site has no database connection, so it is
+evidence that a static build is served and nothing more: PostgreSQL is still **declared and unprovisioned**,
+and no engine has run the semantic model. The three statuses are held apart in
+[`../deployment/evidence/portfolio_deployment.json`](../deployment/evidence/portfolio_deployment.json). The
+site also shows **no KPI value, no dashboard screenshot and no finding** — it renders definitions, structure
+and status, and its `/case-study` route is **locked** because Gate 2 is closed.
 
 | # | Do this | Minutes | What you get |
 |---|---|---|---|
-| 1 | Follow [`../portfolio/README.md`](../portfolio/README.md) — install, then run the dev server | 3 | The site running locally, with its project manifest generated from repository evidence |
+| 1 | Open [`https://arpi.up.railway.app`](https://arpi.up.railway.app), or follow [`../portfolio/README.md`](../portfolio/README.md) to run it locally | 1 | The deployed site, or a local build with its project manifest generated from repository evidence |
 | 2 | `/` then `/status` | 3 | The honest status in the hero, and then route by route: what exists, what is pending, and what the evidence for each is |
 | 3 | `/architecture` and `/data-model` | 2 | The pipeline layer by layer, and the dimensions, facts and declared grains |
 | 4 | `/kpis` and `/governance` | 2 | Every governed KPI **definition**, searchable — and the gates, the privacy position and the synthetic-data policy |

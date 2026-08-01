@@ -121,9 +121,11 @@ The following are explicitly excluded from the core project:
 - Kafka
 - Airflow
 - Databricks
-- Microsoft Fabric
+- Microsoft Fabric **as a data platform** — a lakehouse, a warehouse item, a dataflow, or any replacement for the PostgreSQL warehouse
 - A second complete dashboard in Tableau
 - A second complete dashboard in React or Next.js
+
+**The Fabric exclusion is narrower than it reads, and the distinction is load-bearing.** ARPI's warehouse is PostgreSQL and stays PostgreSQL; no analytical storage or transformation moves into Fabric. But the **Fabric Service** is one of the two accepted real-engine validation paths for the semantic model under [ADR-0008](docs/architecture-decisions/ADR-0008-real-engine-validation-paths.md), of equal standing with Power BI Desktop, and it is the path this project can reach without Windows. Deploying the committed TMDL to a Fabric workspace, refreshing it against the `reporting` schema and evaluating the governed DAX is **in scope**. Building analytics *in* Fabric is not. An unqualified exclusion fails `scripts/check_project_capabilities.py`, because this list went on excluding Fabric outright after ADR-0008 had made it a required path, and nothing failed.
 
 A public case-study page may be added after the analytical system is complete, but it must not duplicate the Power BI report.
 

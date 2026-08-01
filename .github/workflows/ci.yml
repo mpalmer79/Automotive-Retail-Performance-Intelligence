@@ -372,7 +372,19 @@ jobs:
       # DOCUMENTED prose against DERIVED evidence read from the repository, in both
       # directions. Every rule only ever tightens a claim toward the evidence: none can
       # open a gate, pass a validation or promote a phase because a file appeared.
-      - name: Capability consistency
+      #
+      # It also holds the THREE DEPLOYMENTS apart -- the portfolio website, the
+      # analytical platform, and the semantic model -- against
+      # deployment/evidence/portfolio_deployment.json. That file records identifiers
+      # only, never a credential, and this step fails when a key in it names a token, a
+      # password or a database URL. It equally fails a deployment status asserted
+      # without an evidence record, and a document that denies a deployment the evidence
+      # records: the website went live while three governing documents still said no
+      # deployment existed, and nothing caught it.
+      #
+      # NOTHING HERE CONTACTS THE DEPLOYMENT. CI has no reason to be online, so every
+      # live field reads UNVERIFIED and is never rendered as a pass.
+      - name: Capability and deployment-evidence consistency
         run: python scripts/check_project_capabilities.py
 
       # Regenerates the marked capability blocks in memory and compares. A count that
