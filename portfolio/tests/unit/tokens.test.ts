@@ -250,14 +250,30 @@ describe('sr-only is redefined without a horizontal scroll extent', () => {
   })
 })
 
-describe('the faintest text colour clears the WCAG AA floor', () => {
+describe('every text colour clears the WCAG AA floor on every ground', () => {
   /**
-   * `--arpi-steel-400` is the faintest colour used for text, so it is pinned to a
-   * measurement rather than chosen by eye. Its first value, #64748f, measured
-   * 4.26:1 on the canvas and axe-core flagged it on all nine routes.
+   * The palette is measured, not chosen by eye.
    *
-   * The ratio is computed here rather than asserted as a literal, so that a
-   * future change to either the token or the ground is caught by the same test.
+   * This is the check that caught four separate failures in the floating-canvas
+   * direction's own starting values, every one of which looked correct in a
+   * screenshot:
+   *
+   *   ink-muted  #6E7A83  4.40:1 on white          below the 4.5:1 floor
+   *   ink-faint  #87939B  3.15:1 on white          not usable for text at all
+   *   accent     #087FA4  4.58:1 on PURE white but 4.37:1 on the soft canvas,
+   *                                                so it passed on one surface
+   *                                                and failed on the next
+   *   field-top  #4FA9D3  2.64:1 against the white panel edge, making the core
+   *                                                visual idea of the design the
+   *                                                weakest boundary on the page
+   *
+   * The third is the one worth naming: a colour is not "accessible" on its own,
+   * only on a ground. Checking the accent against `#FFFFFF` and stopping would
+   * have shipped it. Every text token below is therefore checked against EVERY
+   * surface it can sit on, not against the lightest one.
+   *
+   * The ratios are computed here rather than asserted as literals, so a future
+   * change to either a colour or a ground is caught by the same test.
    */
   function channel(value: number): number {
     const c = value / 255
@@ -285,13 +301,18 @@ describe('the faintest text colour clears the WCAG AA floor', () => {
     return value ?? ''
   }
 
-  /** The lightest ground any text sits on, and the darkest. */
-  const grounds = ['--arpi-obsidian-950', '--arpi-graphite-750']
+  /** Every white surface that can carry text. */
+  const whiteGrounds = [
+    '--arpi-canvas-pure',
+    '--arpi-canvas-soft',
+    '--arpi-canvas-cool',
+    '--arpi-canvas-wash',
+  ]
 
-  it.each(['--arpi-steel-400', '--arpi-steel-300', '--arpi-steel-200', '--arpi-clarity'])(
-    '%s reaches 4.5:1 on every surface text can sit on',
+  it.each(['--arpi-ink-900', '--arpi-ink-800', '--arpi-ink-600', '--arpi-ink-400'])(
+    '%s reaches 4.5:1 on every white surface',
     (name) => {
-      for (const ground of grounds) {
+      for (const ground of whiteGrounds) {
         expect(
           ratio(token(name), token(ground)),
           `${name} on ${ground}`
@@ -301,18 +322,89 @@ describe('the faintest text colour clears the WCAG AA floor', () => {
   )
 
   it.each([
-    '--arpi-cyan-300',
-    '--arpi-amber-300',
-    '--arpi-violet-300',
-    '--arpi-emerald-300',
-    '--arpi-rose-300',
-  ])('%s reaches 4.5:1 as status and accent text', (name) => {
-    for (const ground of grounds) {
+    '--arpi-teal-700',
+    '--arpi-teal-600',
+    '--arpi-teal-500',
+    '--arpi-link-600',
+    '--arpi-emerald-600',
+    '--arpi-amber-700',
+    '--arpi-rose-600',
+    '--arpi-violet-600',
+  ])('%s reaches 4.5:1 as status, accent and link text', (name) => {
+    for (const ground of whiteGrounds) {
       expect(
         ratio(token(name), token(ground)),
         `${name} on ${ground}`
       ).toBeGreaterThanOrEqual(4.5)
     }
+  })
+
+  /**
+   * The blue field is a gradient, and white text is legible on only part of it.
+   * `field-deep` is the one blue surface the design permits text on, so it is
+   * the one that has to be measured.
+   */
+  it.each(['--arpi-inverse-100', '--arpi-inverse-200', '--arpi-inverse-300'])(
+    '%s reaches 4.5:1 on the deep field, the only blue that carries text',
+    (name) => {
+      for (const ground of ['--arpi-field-700', '--arpi-field-800']) {
+        expect(
+          ratio(token(name), token(ground)),
+          `${name} on ${ground}`
+        ).toBeGreaterThanOrEqual(4.5)
+      }
+    }
+  )
+
+  /**
+   * The white canvas floating on the blue field is the design. If its edge does
+   * not separate from the field behind it, there is no design.
+   *
+   * 3:1 is the non-text threshold. The top gradient stop is the binding one -
+   * it is the lightest blue on the page and the panel's top corners sit against
+   * it - and it is why the direction's suggested #4FA9D3 is not the value
+   * shipped.
+   */
+  it('separates the white canvas from every stop of the blue field at 3:1', () => {
+    for (const stop of [
+      '--arpi-field-400',
+      '--arpi-field-500',
+      '--arpi-field-600',
+      '--arpi-field-800',
+    ]) {
+      expect(
+        ratio(token('--arpi-canvas-pure'), token(stop)),
+        `canvas edge on ${stop}`
+      ).toBeGreaterThanOrEqual(3)
+    }
+  })
+})
+
+describe('the decorative slate ramp is never used as a text colour', () => {
+  /**
+   * `--arpi-slate-400` and `--arpi-slate-200` sit below 3:1 on white BY DESIGN.
+   * They draw hairlines, dividers and the background motif - none of which is
+   * text, and none of which identifies a control or its state, so WCAG 1.4.11
+   * does not apply to them.
+   *
+   * That distinction is only safe if it is enforced. A `text-*` utility built on
+   * either would be a real contrast failure that no unit test of the palette
+   * would catch, because the palette is correct: the misuse is at the call site.
+   *
+   * The ink ramp is what text uses. This asserts nothing binds the slate ramp to
+   * a text utility in the theme bridge.
+   */
+  it('binds no --color-ink-* token to the slate ramp', () => {
+    const offenders = [...themeDeclarations.entries()]
+      .filter(([name]) => name.startsWith('--color-ink'))
+      .filter(([, value]) => /slate/.test(value))
+      .map(([name, value]) => `${name}: ${value}`)
+
+    expect(offenders).toEqual([])
+  })
+
+  it('resolves --arpi-colour-text-faint to the ink ramp, not the slate ramp', () => {
+    expect(tokenDeclarations.get('--arpi-colour-text-faint')).toContain('--arpi-ink-')
   })
 })
 

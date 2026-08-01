@@ -108,11 +108,34 @@ test.describe('token references resolve to real values', () => {
     expect(duration, 'the button has no transition duration').not.toBe('0s')
   })
 
-  test('the header backdrop blur is applied', async ({ page }) => {
+  test('the header is opaque white, with no backdrop blur', async ({ page }) => {
+    /**
+     * The inverse of what this test asserted before, and deliberately so.
+     *
+     * The header used to be `bg-canvas/85` over a 14px backdrop blur, which on a
+     * near-black page read as depth. Over a blue field it reads as a smear: the
+     * gradient shows through, so the white header the whole composition rests on
+     * is actually pale blue, and it changes colour as the visitor scrolls. The
+     * floating-canvas direction rules out glassmorphism for exactly this reason.
+     *
+     * Asserting the absence is worth a test rather than just deleting the old
+     * one. Translucency is the kind of thing that gets added back by anyone who
+     * thinks a sticky header should feel "modern", and it would quietly undo the
+     * separation between the white shell and the blue field that the design
+     * depends on.
+     */
     await page.goto('/')
-    const filter = await page.$eval('header', (el) => getComputedStyle(el).backdropFilter)
-    expect(filter, 'the header has no backdrop blur').toContain('blur')
-    expect(filter).not.toContain('--arpi')
+    const header = await page.$eval('header', (el) => {
+      const style = getComputedStyle(el)
+      return { filter: style.backdropFilter, background: style.backgroundColor }
+    })
+
+    expect(header.filter, 'the header has a backdrop blur').toBe('none')
+    // Fully opaque: rgb(), or rgba() with an alpha of exactly 1.
+    expect(header.background, 'the header is translucent').toMatch(
+      /^rgba?\((?:\d+,\s*){2}\d+(?:,\s*1)?\)$/
+    )
+    expect(header.background).not.toContain('--arpi')
   })
 
   test('no computed style anywhere contains an unresolved token name', async ({

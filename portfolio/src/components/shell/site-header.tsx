@@ -84,11 +84,25 @@ export function SiteHeader() {
      * meant to, and the only symptom was that clicking outside it did nothing.
      */
     <>
+      {/*
+       * Solid white, not translucent.
+       *
+       * The previous header was `bg-canvas/85` over a backdrop blur, which on a
+       * near-black page read as depth. Over a blue field it reads as a smear:
+       * the gradient shows through the bar, so the "white header" that the whole
+       * composition rests on is actually pale blue, and it changes colour as the
+       * visitor scrolls. The direction rules out glassmorphism for this reason.
+       *
+       * Removing the blur has a second effect worth naming: `backdrop-filter`
+       * makes an element the containing block for its `position: fixed`
+       * descendants, which is the bug the scrim comment below describes. That
+       * hazard is now gone at the source, though the scrim stays a sibling
+       * because the structure is correct on its own merits.
+       */}
       <header
         className={cx(
           'sticky top-0 z-(--arpi-z-header) w-full',
-          'border-b border-line-subtle bg-canvas/85 backdrop-blur-[14px]',
-          'supports-[backdrop-filter]:bg-canvas/70'
+          'border-b border-line bg-canvas'
         )}
       >
         <div className="mx-auto flex h-header w-full max-w-bleed items-center gap-4 px-gutter">
@@ -175,12 +189,16 @@ export function SiteHeader() {
                  the scrim was unclickable and the drawer could only be closed with
                  Escape or the button.
               2. The tint and the blur use literal modifiers, not
-                 `bg-canvas/(--arpi-opacity-scrim)`. A CSS variable in a colour
-                 opacity modifier produced an invalid `color-mix()` and the whole
-                 background-color declaration was dropped, leaving the scrim fully
-                 transparent. 72% matches --arpi-opacity-scrim and 4px matches
-                 --arpi-blur-scrim; both are asserted in
-                 tests/e2e/design-system.spec.ts. */}
+                 `bg-field-deepest/(--arpi-opacity-scrim)`. A CSS variable in a
+                 colour opacity modifier produced an invalid `color-mix()` and the
+                 whole background-color declaration was dropped, leaving the scrim
+                 fully transparent. 72% matches --arpi-opacity-scrim and 4px
+                 matches --arpi-blur-scrim; both are asserted in
+                 tests/e2e/design-system.spec.ts.
+              3. The tint is the deepest FIELD blue, not the canvas. A scrim's
+                 job is to push the page back behind the drawer, and on a light
+                 theme a white scrim cannot: it is the same value as the content
+                 it is meant to recede. */}
           <div
             aria-hidden="true"
             onClick={() => {
@@ -188,7 +206,7 @@ export function SiteHeader() {
             }}
             className={cx(
               'fixed top-header right-0 bottom-0 left-0 z-(--arpi-z-scrim) lg:hidden',
-              'bg-canvas/72 backdrop-blur-[4px]'
+              'bg-field-deepest/72 backdrop-blur-[4px]'
             )}
           />
           <div

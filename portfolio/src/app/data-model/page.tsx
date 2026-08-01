@@ -10,12 +10,13 @@ import { Heading, Text } from '@/components/ui/typography'
 import { dataModelContent } from '@/lib/content'
 import { counts, semanticModel } from '@/lib/manifest'
 import { pageMetadata } from '@/lib/metadata'
+import { Canvas } from '@/components/shell/field'
 
 export const metadata: Metadata = pageMetadata('dataModel')
 
 export default function DataModelPage() {
   return (
-    <>
+    <Canvas>
       <PageHeader
         eyebrow="Data model"
         title="Every fact declares one grain, and the database enforces it"
@@ -69,6 +70,6 @@ export default function DataModelPage() {
           <DataModelExplorer />
         </Container>
       </Section>
-    </>
+    </Canvas>
   )
 }

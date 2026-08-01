@@ -37,6 +37,25 @@
  *      that forces those elements visible. A document must survive its own
  *      JavaScript failing.
  *
+ *   3. A hydration mismatch on every revealed element. Both components used to
+ *      initialise their state with
+ *      `useState(() => typeof IntersectionObserver === 'undefined')`, as a
+ *      fallback for an environment without the observer. That expression is
+ *      TRUE on the server and FALSE in the browser, so the server rendered
+ *      `reveal-shown` and the client's first render produced `reveal-hidden` -
+ *      seventeen mismatches on the home page alone. React kept the server's
+ *      markup, which meant the class the observer later toggled was not the
+ *      class on the element. It was invisible in every screenshot and every
+ *      test, and the page looked correct.
+ *
+ *      The fallback is deleted rather than moved into the effect. It was
+ *      unreachable: `IntersectionObserver` has shipped in every browser since
+ *      2019, and this site already requires `overflow: clip`, `text-wrap:
+ *      balance` and `:focus-visible`, all of which are newer. The test runner
+ *      does not need it either - `tests/setup.ts` stubs the observer with an
+ *      immediate-firing implementation. The real degradation case is JavaScript
+ *      not running at all, and that is point 2's job.
+ *
  * REDUCED MOTION
  * --------------
  * Handled entirely in CSS. The site-wide `prefers-reduced-motion` block collapses
@@ -77,13 +96,11 @@ export function Reveal({
   delayMs?: number
 }) {
   const ref = useRef<HTMLElement | null>(null)
-  // An environment with no IntersectionObserver - an older browser, a test runner
-  // - gets the content immediately rather than never.
-  const [shown, setShown] = useState(() => typeof IntersectionObserver === 'undefined')
+  const [shown, setShown] = useState(false)
 
   useEffect(() => {
     const element = ref.current
-    if (!element || typeof IntersectionObserver === 'undefined') return
+    if (!element) return
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -141,11 +158,11 @@ export function RevealGroup({
   staggerMs?: number
 }) {
   const ref = useRef<HTMLElement | null>(null)
-  const [shown, setShown] = useState(() => typeof IntersectionObserver === 'undefined')
+  const [shown, setShown] = useState(false)
 
   useEffect(() => {
     const element = ref.current
-    if (!element || typeof IntersectionObserver === 'undefined') return
+    if (!element) return
 
     const observer = new IntersectionObserver(
       (entries) => {

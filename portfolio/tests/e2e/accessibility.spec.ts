@@ -308,6 +308,27 @@ test.describe('reflow and target size', () => {
             const box = element.getBoundingClientRect()
             if (box.width === 0 || box.height === 0) continue
             if (box.right <= limit + 1) continue
+
+            // Decoration is not content, and WCAG 1.4.10 is about content.
+            //
+            // The blue field's motif is an SVG using `preserveAspectRatio=
+            // "xMidYMid slice"` inside a fixed, clipped container. `slice` means
+            // that at any aspect ratio other than the viewBox's own, the drawing
+            // scales to COVER and its edges fall outside the viewport - which is
+            // what "cover" means, and is the same behaviour as a CSS
+            // `background-size: cover` image. Such a shape has a bounding box
+            // past the viewport edge while being invisible, unreachable, and
+            // incapable of widening the page.
+            //
+            // `aria-hidden` is the right predicate rather than "is it an SVG" or
+            // "is it inside a clipping ancestor". The first would exempt the two
+            // explorer diagrams, which ARE content. The second would exempt any
+            // genuinely truncated element, which is the defect this check exists
+            // to find. An author who marks a subtree `aria-hidden` has declared
+            // it carries no information, and that declaration is already
+            // load-bearing for screen-reader users.
+            if (element.closest('[aria-hidden="true"]')) continue
+
             // Content inside a scroll container is reachable, which is what
             // WCAG 1.4.10 is about.
             let ancestor = element.parentElement

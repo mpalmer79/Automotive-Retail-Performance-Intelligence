@@ -14,6 +14,7 @@ import { CaseStudyPreview } from '@/components/sections/case-study-preview'
 import { caseStudy, counts, gate, increments, semanticModel } from '@/lib/manifest'
 import { pageMetadata } from '@/lib/metadata'
 import { ROUTES } from '@/lib/site'
+import { Canvas } from '@/components/shell/field'
 
 export const metadata: Metadata = pageMetadata('caseStudy')
 
@@ -79,7 +80,7 @@ export default function CaseStudyPage() {
   }
 
   return (
-    <>
+    <Canvas>
       <PageHeader
         eyebrow="Case study"
         title="Case study in progress"
@@ -370,6 +371,6 @@ export default function CaseStudyPage() {
           </p>
         </Container>
       </Section>
-    </>
+    </Canvas>
   )
 }

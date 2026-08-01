@@ -184,17 +184,24 @@ function printTable(title: string, rows: RouteReport[]): void {
  * get believed.
  *
  * The check is the same one `capture-review-screenshots.ts` makes, for the same
- * reason: no default stylesheet produces the canvas token's colour.
+ * reason: no default stylesheet produces a blue gradient.
+ *
+ * It reads <html>, not <body>. The floating-canvas direction puts the field on
+ * the root element so it covers the viewport when a document is shorter than one
+ * screen and when the page is rubber-band scrolled past either end, which means
+ * <body> is deliberately transparent - and a guard that kept checking <body>
+ * would report every current build as stale.
  */
 async function assertCurrentBuild(page: Page): Promise<void> {
   await page.goto(`${BASE}/`, { waitUntil: 'load' })
-  const background = await page.evaluate(
-    () => getComputedStyle(document.body).backgroundColor
+  const field = await page.evaluate(
+    () => getComputedStyle(document.documentElement).backgroundImage
   )
-  if (background !== 'rgb(5, 7, 11)') {
+  if (!field.includes('linear-gradient')) {
     throw new Error(
-      `${BASE} is serving a stale build: body background is ${background}, not the ` +
-        'canvas token. Restart the server against the current build before measuring.'
+      `${BASE} is serving a stale build: the root background-image is ${field}, not ` +
+        'the blue field gradient. Restart the server against the current build ' +
+        'before measuring.'
     )
   }
 }

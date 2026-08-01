@@ -58,11 +58,11 @@ export function Container({
 /* -------------------------------------------------------------------------- */
 
 /**
- * The four section grounds.
+ * The section grounds.
  *
  * WHY A GROUND AND NOT A BORDER
  * -----------------------------
- * Every section on the previous build carried `bordered`, which drew the same
+ * Every section on an earlier build carried `bordered`, which drew the same
  * hairline rule between all nine homepage sections and every section on six
  * other routes. A rule repeated that many times stops separating anything: the
  * page reads as one list of equal blocks, which was finding A-03 in
@@ -70,21 +70,40 @@ export function Container({
  *
  * A ground is a shift in the surface the section sits on. It costs no ink, it
  * survives greyscale, it works at 200 percent zoom, and the eye reads it as
- * "somewhere else" rather than as "next item". The four are ordered by depth
- * and a page is expected to move between them, not to stay on one.
+ * "somewhere else" rather than as "next item".
  *
- *   cinematic  deepest.  The hero and the closing section. Two per page at most.
+ * WHAT THE FLOATING-CANVAS DIRECTION CHANGED
+ * ------------------------------------------
+ * Every section now sits INSIDE a white `<Canvas>` rather than spanning the
+ * viewport. That makes `canvas` correctly empty - a section with no ground of
+ * its own inherits the panel's white - and it is why the four grounds are
+ * shades of white rather than shades of black.
+ *
+ * THERE IS NO INVERTED TONE
+ * -------------------------
+ * A deep-blue closing panel was built and then removed. The page already ends
+ * the way the direction asks: the canvas stops with its rounded corners, the
+ * blue field shows through the gap below it, and the white footer closes the
+ * field. Adding a blue band inside the canvas put three surface changes into
+ * the last 800px of the page and made the field-coloured panel compete with the
+ * field itself.
+ *
+ * The colour is still measured - `--arpi-inverse-*` on `--arpi-field-700` is
+ * asserted in tests/unit/tokens.test.ts - so the constraint is recorded for
+ * whatever wants it next. What is not kept is a tone nothing renders.
+ *
+ *   cinematic  open.     The hero. The cleanest white on the page.
  *   canvas     default.  Editorial narrative, reading copy.
- *   panel      raised.   The surround for a product frame or an interactive
- *                        surface, so the frame has something to sit against.
+ *   panel      soft.     The surround for a product frame, so the frame has
+ *                        something to sit against.
  *   evidence   sunken.   Technical and evidence bands. Reads as recessed
  *                        instrumentation rather than as content.
  */
 const SECTION_TONE = {
-  cinematic: 'bg-canvas-deep',
+  cinematic: '',
   canvas: '',
-  panel: 'bg-canvas-raised',
-  evidence: 'bg-surface-sunken/60',
+  panel: 'bg-surface',
+  evidence: 'bg-surface-sunken',
 } as const
 
 export type SectionTone = keyof typeof SECTION_TONE

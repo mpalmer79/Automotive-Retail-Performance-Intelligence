@@ -20,6 +20,7 @@ import {
 } from '@/lib/manifest'
 import { pageMetadata } from '@/lib/metadata'
 import { cx, formatCount, formatTimestamp } from '@/lib/utils'
+import { Canvas } from '@/components/shell/field'
 
 export const metadata: Metadata = pageMetadata('status')
 
@@ -46,7 +47,7 @@ export default function StatusPage() {
   const gate2 = gate('gate-2')
 
   return (
-    <>
+    <Canvas>
       <PageHeader
         eyebrow="Project status"
         title="What is finished, what is not, and what is waiting on something outside this repository"
@@ -520,7 +521,7 @@ export default function StatusPage() {
           </div>
         </Container>
       </Section>
-    </>
+    </Canvas>
   )
 }
 

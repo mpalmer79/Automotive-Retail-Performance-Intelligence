@@ -537,16 +537,25 @@ test.describe('the hero stays a hero', () => {
     await page.setViewportSize({ width: 1440, height: 900 })
     await gotoRendered(page, '/')
 
-    // Buttons and button-styled links inside the first section, which is the
-    // hero. The previous build's hero carried two of these plus two status
-    // badges, a bordered caveat panel and a three-item legend.
-    const heroActions = page.locator('main > section:first-of-type a[class*="min-h-11"]')
-    await expect(heroActions).toHaveCount(2)
+    // Buttons and button-styled links inside the hero. An earlier build's hero
+    // carried two of these plus two status badges, a bordered caveat panel and
+    // a three-item legend.
+    //
+    // Located by `#hero`, NOT by `main > section:first-of-type`. The structural
+    // path stopped matching when the floating canvas put two wrapper elements
+    // between <main> and the section - and it failed silently in the sibling
+    // test below, where a locator resolving to nothing makes "there are no
+    // status badges here" pass by finding no elements at all. Both tests now
+    // assert the hero exists before asserting anything about its contents.
+    const hero = page.locator('#hero')
+    await expect(hero).toHaveCount(1)
+    await expect(hero.locator('a[class*="min-h-11"]')).toHaveCount(2)
   })
 
   test('renders no status badge in the hero', async ({ page }) => {
     await gotoRendered(page, '/')
-    const hero = page.locator('main > section:first-of-type')
+    const hero = page.locator('#hero')
+    await expect(hero).toHaveCount(1)
     // `data-status` is what StatusBadge stamps. A hero that opens with two
     // badges is reporting its own risk before it has said what it is.
     await expect(hero.locator('[data-status]')).toHaveCount(0)

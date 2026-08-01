@@ -22,9 +22,16 @@ That belief is won or lost in the first two seconds, before a word is read, so t
 surface has to look like an instrument rather than like marketing.
 
 The reference point is **technical instrumentation** — an aircraft panel, a
-laboratory readout, an engineering drawing. Deep near-black grounds, hairline rules with
-alignment ticks, monospaced identifiers, a single signal colour used sparingly, and
-generous space. Precision, not excitement.
+laboratory readout, an engineering drawing. Hairline rules with alignment ticks,
+monospaced identifiers, a single signal colour used sparingly, and generous space.
+Precision, not excitement.
+
+**The surface that carries it is a white canvas floating on a blue field.** A white
+header opens the page, a full-page blue gradient carries the background, one dominant
+white panel holds the content, and a white footer closes the field. This replaced an
+obsidian near-black theme; the register did not change, the ground did. The full record
+of that change, including the three candidate layouts and why one was chosen, is in
+[EXPERIENCE_REDESIGN_V2.md](EXPERIENCE_REDESIGN_V2.md) part two.
 
 What that rules out, explicitly:
 
@@ -122,28 +129,40 @@ suite exists specifically to catch this class of defect.
 
 Ramps, never referenced directly by a component.
 
-| Ramp     | Role                             | Steps                                                                     |
-| -------- | -------------------------------- | ------------------------------------------------------------------------- |
-| Obsidian | the page ground                  | `950 #05070b`, `900 #080b11`, `850 #0b0f16`                               |
-| Graphite | elevated surfaces, borders       | `800 #10151e` … `500 #2f3a4d`                                             |
-| Steel    | rules, muted text                | `500 #47556b`, `400 #7887a8`, `300 #8b99b3`, `200 #b3bfd4`, `100 #d6deea` |
-| Clarity  | highest-contrast text            | `#f2f6fc`                                                                 |
-| Cyan     | the signal colour                | `200 #9decf7` … `900 #06323d`                                             |
-| Amber    | attention, pending, blocked      | `200 #fcdfa4` … `900 #3d2a05`                                             |
-| Violet   | semantic model and relationships | `200 #cfc4fb` … `900 #241a4a`                                             |
-| Emerald  | verified pass states             | `200 #a6ebc4` … `900 #06301e`                                             |
-| Rose     | genuine failure                  | `200 #f8c0c6` … `900 #3d0d16`                                             |
+| Ramp    | Role                                | Steps                                                                     |
+| ------- | ----------------------------------- | ------------------------------------------------------------------------- |
+| Field   | the page background, nothing else   | `400 #3c96c4`, `500 #2e7bb2`, `600 #245c97`, `700 #1d4d84`, `800 #173b6e` |
+| Canvas  | the white surfaces content sits on  | `pure #ffffff`, `soft #f7fafc`, `cool #edf3f7`, `wash #e3f2f8`            |
+| Ink     | text on white                       | `900 #16202a`, `800 #232e38`, `600 #48565f`, `400 #5c6a74`                |
+| Slate   | hairlines and the motif, never text | `400 #93a0a9`, `200 #d3dee6`, `100 #e6edf2`                               |
+| Teal    | the signal colour                   | `700 #086076`, `600 #0a6c8b`, `500 #00688f`, `400 #0c92bc`, `100 #e3f2f8` |
+| Link    | links, distinct from teal           | `600 #135f8a`                                                             |
+| Inverse | text on the deep blues only         | `100 #ffffff`, `200 #e7f3f8`, `300 #c3dbe7`                               |
+| Amber   | attention, pending, blocked         | `700 #8a5a06`, `100 #fbf0da`                                              |
+| Violet  | semantic model and relationships    | `600 #5b45b8`, `100 #ece8fa`                                              |
+| Emerald | verified pass states                | `600 #0f7a46`, `100 #e2f4ea`                                              |
+| Rose    | genuine failure                     | `600 #b3253c`, `100 #fbe6ea`                                              |
 
-The ground is not pure black and the text is not pure white. `#05070b` is very slightly
-blue so it reads as instrument housing rather than as void, and `#f2f6fc` avoids the
-halation pure white produces at display sizes on a near-black ground.
+The text is not pure black. `#16202a` is very slightly blue so it reads as ink rather
+than as a hard edge, which pure black produces against white at body sizes.
 
-**`steel-400` is pinned to a measurement, not chosen by eye.** Its first value,
-`#64748f`, measured 4.26:1 on the canvas and 3.68:1 on `surface-raised` — both below the
-4.5:1 floor — and axe-core flagged it on all nine routes. `#7887a8` measures 5.60:1 on
-the canvas and 4.84:1 on the lightest surface the site uses, so it passes everywhere text
-can sit. Anything fainter is decorative only: `steel-500` appears in borders and in the
-grid motif at 5.5% opacity, where the 3:1 non-text threshold applies.
+**Every pairing here is measured, and four of the direction's starting values failed.**
+`ink-muted` at `#6E7A83` measured 4.40:1 on white; `ink-faint` at `#87939B` measured
+3.15:1 and is not usable for text at all; the accent at `#087FA4` measured 4.58:1 on
+**pure** white and 4.37:1 on the soft canvas, so it passed on one surface and failed on
+the next one down; and the field's top stop at `#4FA9D3` left the white canvas edge at
+2.64:1 against it. Each is corrected, and `tests/unit/tokens.test.ts` asserts every text
+token against **all four** white grounds rather than against the lightest one — because a
+colour is not accessible on its own, only on a ground.
+
+**The slate ramp sits below 3:1 on white by design.** It draws hairlines, dividers and
+the background motif, none of which is text and none of which identifies a control or its
+state, so WCAG 1.4.11 does not apply to it. That distinction is only safe if enforced, so
+a test asserts no `--color-ink-*` token binds to it.
+
+**Text on blue is confined to `field-deep` and below.** White on the top gradient stop
+measures 3.31:1 and the secondary inverse measures 2.92:1, so the bright end of the field
+carries no text at any size.
 
 ### 3.2 Semantic tokens
 
@@ -211,14 +230,41 @@ Each file is the **latin subset only** of the family's variable font. Byte sizes
 All three are **SIL Open Font License 1.1**, which permits embedding, subsetting and
 redistribution:
 
-| Family         | Author           | Source                                          |
-| -------------- | ---------------- | ----------------------------------------------- |
-| Inter          | Rasmus Andersson | https://github.com/rsms/inter                   |
-| Space Grotesk  | Florian Karsten  | https://github.com/floriankarsten/space-grotesk |
-| JetBrains Mono | JetBrains s.r.o. | https://github.com/JetBrains/JetBrainsMono      |
+| Family         | Author             | Source                                      |
+| -------------- | ------------------ | ------------------------------------------- |
+| Inter          | Rasmus Andersson   | https://github.com/rsms/inter               |
+| Source Serif 4 | Frank Griesshammer | https://github.com/adobe-fonts/source-serif |
+| JetBrains Mono | JetBrains s.r.o.   | https://github.com/JetBrains/JetBrainsMono  |
 
 `next/font/local` emits a metric-matched fallback face, so the swap produces no layout
 shift.
+
+**The display face is a serif, and it replaced a second sans.** Space Grotesk was removed
+rather than kept alongside Source Serif 4: the visual direction permits one serif, one sans
+and one mono, and a display sans beside a body sans is two sans families.
+
+**The committed Source Serif 4 file is not the one Google serves.** The full latin subset
+carries two axes, `wght` 200–900 and `opsz` 8–60, and weighs 122 kB — more than the other
+two families together. It is instanced before being committed: `opsz` pinned at 32, the
+display-oriented end of the axis, and `wght` clamped to the 400–700 the site uses. That is
+36 kB.
+
+To regenerate it, fetch the latin `src` URL from the Google Fonts CSS API for
+`Source+Serif+4:opsz,wght@8..60,400..700`, then:
+
+```python
+from fontTools.ttLib import TTFont
+from fontTools.varLib.instancer import instantiateVariableFont
+
+font = TTFont("SourceSerif4-latin.woff2")
+font.flavor = None
+instantiateVariableFont(font, {"opsz": 32, "wght": (400, 700)}, inplace=True)
+font.flavor = "woff2"
+font.save("src/fonts/SourceSerif4-Variable-latin.woff2")
+```
+
+This is recorded so the file can be reproduced rather than being an artefact nobody can
+rebuild.
 
 ### 4.2 Scale
 
@@ -322,10 +368,12 @@ xs 375   sm 640   md 768   lg 1024   xl 1280   2xl 1536   3xl 1920
 The site is also explicitly designed and tested at **320px**, which is below `xs` and is
 handled by the base unprefixed styles.
 
-**Elevation on a dark ground is a lightening border plus a contained shadow, not a large
-soft drop shadow.** A big soft shadow on near-black reads as a smudge. Each raised
-surface also carries `--arpi-shadow-inset-top` — one pixel of light on the top edge —
-which is how a physical instrument panel catches light.
+**Elevation is a restrained shadow, and the master canvas has its own.** This is the
+inverse of the dark theme's problem: on near-black a large soft shadow read as a smudge,
+so elevation was carried by a lightening border. On a blue field a shadow reads correctly
+again, so `--arpi-shadow-canvas` is a real three-layer shadow — but a restrained one, and
+it is used by the floating panel and by nothing else. `--arpi-shadow-inset-top` is now
+`none`: a one-pixel top highlight is a dark-theme device and reads as a seam on white.
 
 **Blur is used in exactly two places**: the sticky header and the mobile drawer scrim.
 Anywhere else is a design defect. One consequence is load-bearing and was found in

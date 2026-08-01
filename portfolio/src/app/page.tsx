@@ -6,6 +6,7 @@ import { FinalCta } from '@/components/sections/final-cta'
 import { Hero } from '@/components/sections/hero'
 import { OperatingView } from '@/components/sections/operating-view'
 import { PlatformStory } from '@/components/sections/platform-story'
+import { Canvas } from '@/components/shell/field'
 import { pageMetadata } from '@/lib/metadata'
 
 export const metadata: Metadata = pageMetadata('home')
@@ -50,16 +51,31 @@ export const metadata: Metadata = pageMetadata('home')
  * and the proof section holds a disclosure. The other four, including the hero
  * and its signature visual, are server-rendered with no client JavaScript at
  * all. Bundle accounting is in portfolio/docs/PERFORMANCE.md section 4.
+ *
+ * ONE CANVAS, NOT SIX PANELS
+ * --------------------------
+ * All six chapters sit inside a single `<Canvas>`. That is the selected layout
+ * direction - "Floating Intelligence Canvas" - and it was chosen over two
+ * alternatives that split the page into multiple floating panels. The scoring
+ * is in portfolio/docs/EXPERIENCE_REDESIGN_V2.md section 9.
+ *
+ * The short version: splitting the hero into two panels (direction B) took the
+ * headline's measure from 1,150px to 520px and set a ten-word sentence in five
+ * lines, and floating the proof and judgement chapters as separate modules
+ * (direction C) made the page 3,000px longer on a desktop and 7,600px longer at
+ * 1024px, because a chapter written for a full-width canvas reflows badly into
+ * a five-column module. The one-canvas reading is also the one the direction
+ * actually asks for: subtle internal divisions instead of many separate cards.
  */
 export default function HomePage() {
   return (
-    <>
+    <Canvas>
       <Hero />
       <DomainJudgement />
       <OperatingView />
       <PlatformStory />
       <EngineeringProof />
       <FinalCta />
-    </>
+    </Canvas>
   )
 }

@@ -83,6 +83,18 @@ async function horizontalOverflow(page: Page): Promise<number> {
       if (box.width === 0 || box.height === 0) continue
       if (box.right <= limit + 1) continue
 
+      // Decoration is not content. The blue field's motif is an SVG using
+      // `preserveAspectRatio="xMidYMid slice"`, so at any aspect ratio but its
+      // own it scales to COVER and its edges fall outside the viewport - the
+      // same behaviour as a `background-size: cover` image, and the reason this
+      // reported 80px at 1440px and 435px at 768px while the page was correct.
+      //
+      // Kept identical to the copy in tests/e2e/accessibility.spec.ts. The two
+      // detectors are the same algorithm and have to stay in step: this one
+      // drifted from that one by exactly this rule, and the result was a report
+      // that contradicted a green suite.
+      if (element.closest('[aria-hidden="true"]')) continue
+
       let ancestor = element.parentElement
       let insideScroller = false
       while (ancestor && ancestor !== document.body) {
@@ -254,9 +266,14 @@ async function captureInteractionStates(browser: Browser): Promise<void> {
  * a DOM probe to establish that the layout was fine and the server was stale, which
  * is exactly the kind of time this check exists to save.
  *
- * The assertion is the cheapest one that cannot pass by accident: the body's
- * computed background must be the canvas token's colour. No default stylesheet
- * produces `rgb(5, 7, 11)`.
+ * The assertion is the cheapest one that cannot pass by accident: the root
+ * element's computed background must be the blue field's gradient. No default
+ * stylesheet produces a `linear-gradient`.
+ *
+ * It reads <html>, not <body>. The floating-canvas direction puts the field on
+ * the root element so it covers the viewport when a document is shorter than one
+ * screen, which means <body> is deliberately transparent - a guard that kept
+ * checking <body> would reject every current build.
  *
  * A rule count is deliberately NOT used as a second signal. Tailwind v4 emits its
  * whole output inside four `@layer` blocks, so `document.styleSheets` reports a
@@ -268,16 +285,16 @@ async function assertStyled(browser: Browser): Promise<void> {
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 } })
   const page = await context.newPage()
   await page.goto(`${BASE}/`, { waitUntil: 'load' })
-  const background = await page.evaluate(
-    () => getComputedStyle(document.body).backgroundColor
+  const field = await page.evaluate(
+    () => getComputedStyle(document.documentElement).backgroundImage
   )
   await context.close()
 
-  if (background !== 'rgb(5, 7, 11)') {
+  if (!field.includes('linear-gradient')) {
     throw new Error(
       [
-        `The page at ${BASE} is unstyled: the body background computes to`,
-        `${background}, not the canvas token's rgb(5, 7, 11).`,
+        `The page at ${BASE} is unstyled: the root background-image computes to`,
+        `${field}, not the blue field's linear-gradient.`,
         '',
         'This is almost always a server started before the current build. Restart it:',
         '',
