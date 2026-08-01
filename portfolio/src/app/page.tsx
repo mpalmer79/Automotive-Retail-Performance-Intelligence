@@ -1,52 +1,60 @@
 import type { Metadata } from 'next'
 
-import { AuthorPerspective } from '@/components/sections/author-perspective'
-import { BusinessProblem } from '@/components/sections/business-problem'
-import { CredibilityStrip } from '@/components/sections/credibility-strip'
-import { DomainCards } from '@/components/sections/domain-cards'
-import { EvidenceLedger } from '@/components/sections/evidence-ledger'
+import { DomainJudgement } from '@/components/sections/domain-judgement'
+import { EngineeringProof } from '@/components/sections/engineering-proof'
 import { FinalCta } from '@/components/sections/final-cta'
 import { Hero } from '@/components/sections/hero'
-import { LifecycleSummary } from '@/components/sections/lifecycle-summary'
-import { PipelineScrollytelling } from '@/components/sections/pipeline-scrollytelling'
+import { OperatingView } from '@/components/sections/operating-view'
+import { PlatformStory } from '@/components/sections/platform-story'
 import { pageMetadata } from '@/lib/metadata'
 
 export const metadata: Metadata = pageMetadata('home')
 
 /**
- * The home page: nine sections, in a deliberate reading order.
+ * The home page: six chapters, each with a different job and a different ground.
  *
- *   1  Hero                    what this is, its status, and the two next steps
- *   2  Credibility strip       the source-backed engineering counts
- *   3  Business problem        why a governed model is the answer
- *   4  Pipeline walkthrough    how it is built, stage by stage
- *   5  Analytical domains      what it measures
- *   6  Evidence ledger         what is proven, and what is not
- *   7  Lifecycle summary       where the project actually stands
- *   8  Author perspective      why this author, specifically
- *   9  Final call to action    where to go next
+ *   1  Hero               cinematic  what it is, who built it, two ways in
+ *   2  Domain judgement   editorial  the problem, and why these answers differ
+ *   3  Operating view     product    the signature surface: six domains
+ *   4  Platform story     editorial  five stages, generate to serve
+ *   5  Engineering proof  evidence   four counts, each linked to its source
+ *   6  Closing            cinematic  two actions, and what is not finished
  *
- * Sections 2 to 9 all sit inside `<Section bordered>`, so the page carries a
- * visible boundary rule between each one. The rhythm is uniform on purpose: an
- * editorial page where every section has its own spacing reads as a series of
- * unrelated pages.
+ * WHAT CHANGED, AND WHY
+ * ---------------------
+ * Nine sections became six. The nine shared one container, one vertical rhythm,
+ * one hairline rule and one reveal, so a reader had no signal about which of
+ * them mattered - the page was 11.8 desktop screens and 23.4 phone screens of
+ * undifferentiated blocks (finding A-03).
  *
- * Four of the nine are client components (credibility strip, pipeline
- * walkthrough, domain cards, and the hero's inline diagram). The other five are
- * server-rendered with no client JavaScript at all. The bundle accounting is in
- * portfolio/docs/PERFORMANCE.md section 4.
+ * The six alternate between four grounds, which is what carries the hierarchy
+ * now that the borders are gone. Cinematic opens and closes the page; the two
+ * editorial chapters are the reading; the product frame is the peak; the
+ * evidence band is recessed instrumentation.
+ *
+ * Removed, and where each went:
+ *
+ *   credibility strip     seven counts became four, inside chapter 5
+ *   pipeline walkthrough  eight scrolling stages became five, in chapter 4
+ *   domain cards          six expandable cards became the product frame, ch. 3
+ *   evidence ledger       moved to /status, which is the page for it
+ *   lifecycle summary     moved to /status, one line remains in chapter 6
+ *   author perspective    merged into chapter 2, which is where the argument is
+ *   business problem      merged into chapter 2, ditto
+ *
+ * Two of the six are client components: the operating view holds a selection,
+ * and the proof section holds a disclosure. The other four, including the hero
+ * and its signature visual, are server-rendered with no client JavaScript at
+ * all. Bundle accounting is in portfolio/docs/PERFORMANCE.md section 4.
  */
 export default function HomePage() {
   return (
     <>
       <Hero />
-      <CredibilityStrip />
-      <BusinessProblem />
-      <PipelineScrollytelling />
-      <DomainCards />
-      <EvidenceLedger />
-      <LifecycleSummary />
-      <AuthorPerspective />
+      <DomainJudgement />
+      <OperatingView />
+      <PlatformStory />
+      <EngineeringProof />
       <FinalCta />
     </>
   )

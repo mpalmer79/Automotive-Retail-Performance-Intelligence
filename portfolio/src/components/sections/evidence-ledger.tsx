@@ -29,7 +29,7 @@ const KIND_LABEL: Record<string, string> = {
 
 export function EvidenceLedger() {
   return (
-    <Section id="evidence" bordered>
+    <Section id="evidence" tone="evidence">
       <Container width="wide">
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-12 lg:gap-14">
           <Reveal className="lg:col-span-4">

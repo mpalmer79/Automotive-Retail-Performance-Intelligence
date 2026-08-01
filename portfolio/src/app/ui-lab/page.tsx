@@ -355,7 +355,7 @@ function Lab({
   bordered?: boolean
 }) {
   return (
-    <Section rhythm="tight" bordered={bordered}>
+    <Section rhythm="tight" divider={bordered}>
       <Container width="wide">
         <Stack gap={6}>
           <Heading level={2} size="h3">

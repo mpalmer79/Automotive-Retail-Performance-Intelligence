@@ -18,6 +18,7 @@
   --breakpoint-*: initial;
 
   /* --- colour ---------------------------------------------------------- */
+  --color-canvas-deep: var(--arpi-colour-canvas-deep);
   --color-canvas: var(--arpi-colour-canvas);
   --color-canvas-raised: var(--arpi-colour-canvas-raised);
   --color-surface: var(--arpi-colour-surface);
@@ -72,6 +73,8 @@
   --text-3xl: var(--arpi-text-3xl);
   --text-4xl: var(--arpi-text-4xl);
   --text-5xl: var(--arpi-text-5xl);
+  --text-hero: var(--arpi-text-hero);
+  --text-numeral: var(--arpi-text-numeral);
 
   --leading-tight: var(--arpi-leading-tight);
   --leading-snug: var(--arpi-leading-snug);
@@ -99,6 +102,7 @@
   --radius-lg: var(--arpi-radius-lg);
   --radius-xl: var(--arpi-radius-xl);
   --radius-2xl: var(--arpi-radius-2xl);
+  --radius-frame: var(--arpi-radius-frame);
   --radius-pill: var(--arpi-radius-pill);
 
   /* --- elevation ------------------------------------------------------- */
@@ -137,11 +141,21 @@
   --ease-out-expo: var(--arpi-ease-out);
   --ease-in-expo: var(--arpi-ease-in);
 
+  /* Three animations, each with a narrative job, each running a finite number
+     of times. There is no ambient token here on purpose: an animation with no
+     end and no meaning is decoration that costs a repaint forever.
+
+     `draw-in`      a path drawing itself, for the signature visual's structure
+     `signal-run`   a signal travelling that path, once
+     `wake`         a layer arriving as the signal reaches it, once
+
+     The two removed in this redesign were `pulse-signal` and `drift`: both
+     looped indefinitely, neither was referenced by any component, and both were
+     recorded as finding D-05 in EXPERIENCE_REDESIGN_V2.md. */
   --animate-draw-in: draw-in var(--arpi-motion-deliberate) var(--arpi-ease-out) forwards;
-  --animate-pulse-signal: pulse-signal var(--arpi-motion-ambient) var(--arpi-ease-linear)
-    infinite;
-  --animate-drift: drift var(--arpi-motion-ambient) var(--arpi-ease-linear) infinite
-    alternate;
+  --animate-signal-run: signal-run var(--arpi-motion-signal) var(--arpi-ease-linear) 1
+    forwards;
+  --animate-wake: wake var(--arpi-motion-slow) var(--arpi-ease-out) 1 both;
 }
 
 /* Keyframes referenced by the --animate-* tokens above. */
@@ -154,21 +168,36 @@
   }
 }
 
-@keyframes pulse-signal {
-  0%,
-  100% {
-    opacity: 0.25;
+/* A dash travelling the length of a path. `stroke-dasharray` is set by the
+   component to "dash gap" where the gap is the path's own length, so exactly one
+   dash exists and it moves from the start to the end and stops. */
+@keyframes signal-run {
+  from {
+    stroke-dashoffset: var(--signal-length, 600);
+    opacity: 0;
   }
-  50% {
-    opacity: 0.9;
+  8% {
+    opacity: 1;
+  }
+  88% {
+    opacity: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+    opacity: 0;
   }
 }
 
-@keyframes drift {
+/* A layer arriving. Opacity and a two-pixel rise, nothing more: the element is
+   readable at every frame, so a reader who arrives mid-animation has lost
+   nothing. */
+@keyframes wake {
   from {
-    transform: translate3d(0, 0, 0);
+    opacity: 0.25;
+    transform: translate3d(0, 2px, 0);
   }
   to {
-    transform: translate3d(0, calc(var(--arpi-motion-distance-sm) * -1), 0);
+    opacity: 1;
+    transform: none;
   }
 }

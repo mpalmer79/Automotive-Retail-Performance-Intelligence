@@ -12,15 +12,15 @@ verdict and no count.
 
 ## 1. Baseline
 
-| | |
-| --- | --- |
-| Live URL | `https://arpi.up.railway.app` |
-| `main` at audit | `04a7984f8fdb321f9ce2560577266fe21df9c86a` |
-| Manifest commit | `ba3818e645b6e7b830cf046227e1b9f2e4bac6fc` |
-| Framework | Next.js 16.2.12, App Router, all routes statically prerendered |
-| Styling | Tailwind v4 with a closed token bridge, three local variable fonts |
-| Animation | `motion` 12.43 on three routes, CSS reveal everywhere else |
-| Deployment | Railway, Docker from the repository root, health check `/status` |
+|                 |                                                                    |
+| --------------- | ------------------------------------------------------------------ |
+| Live URL        | `https://arpi.up.railway.app`                                      |
+| `main` at audit | `04a7984f8fdb321f9ce2560577266fe21df9c86a`                         |
+| Manifest commit | `ba3818e645b6e7b830cf046227e1b9f2e4bac6fc`                         |
+| Framework       | Next.js 16.2.12, App Router, all routes statically prerendered     |
+| Styling         | Tailwind v4 with a closed token bridge, three local variable fonts |
+| Animation       | `motion` 12.43 on three routes, CSS reveal everywhere else         |
+| Deployment      | Railway, Docker from the repository root, health check `/status`   |
 
 ### 1.1 How the baseline was measured
 
@@ -43,18 +43,18 @@ consequences for live verification are recorded in section 8.
 
 Nine public routes plus an internal lab.
 
-| Route | Purpose as built | In primary nav |
-| --- | --- | --- |
-| `/` | Nine sections of narrative | Yes |
-| `/architecture` | Interactive pipeline explorer | Yes |
-| `/data-model` | Entity and relationship explorer | Yes |
-| `/kpis` | Filterable KPI catalogue | Yes |
-| `/governance` | Trust framework and gates | Yes |
-| `/status` | Lifecycle, increments, gates, evidence | Yes |
-| `/about` | Author narrative | Yes |
-| `/case-study` | Locked by Gate 2 | No, but a header control |
-| `/ui-lab` | Internal design-system reference | No, `noindex` |
-| `/not-found` | 404 | n/a |
+| Route           | Purpose as built                       | In primary nav           |
+| --------------- | -------------------------------------- | ------------------------ |
+| `/`             | Nine sections of narrative             | Yes                      |
+| `/architecture` | Interactive pipeline explorer          | Yes                      |
+| `/data-model`   | Entity and relationship explorer       | Yes                      |
+| `/kpis`         | Filterable KPI catalogue               | Yes                      |
+| `/governance`   | Trust framework and gates              | Yes                      |
+| `/status`       | Lifecycle, increments, gates, evidence | Yes                      |
+| `/about`        | Author narrative                       | Yes                      |
+| `/case-study`   | Locked by Gate 2                       | No, but a header control |
+| `/ui-lab`       | Internal design-system reference       | No, `noindex`            |
+| `/not-found`    | 404                                    | n/a                      |
 
 ### 1.3 Navigation inventory
 
@@ -111,33 +111,33 @@ radius, one border colour, one section rhythm.
 
 ### 1.7 Motion inventory
 
-| Motion | Where | Implementation |
-| --- | --- | --- |
-| Section reveal, fade and rise 16px | 6 routes, ~40 elements | CSS + IntersectionObserver |
-| Staggered group reveal, 55ms | 5 groups | CSS transition delay |
-| Count-up | 7 numbers on `/` | rAF |
-| Hero path draw and node entrance | `/` | `motion` |
-| Stage width transition | `/` scrollytelling | `motion` |
-| Node emphasis | `/architecture`, `/data-model` | `motion` |
-| Hover lift 1px, pointer gradient | interactive cards | CSS + rAF |
+| Motion                             | Where                          | Implementation             |
+| ---------------------------------- | ------------------------------ | -------------------------- |
+| Section reveal, fade and rise 16px | 6 routes, ~40 elements         | CSS + IntersectionObserver |
+| Staggered group reveal, 55ms       | 5 groups                       | CSS transition delay       |
+| Count-up                           | 7 numbers on `/`               | rAF                        |
+| Hero path draw and node entrance   | `/`                            | `motion`                   |
+| Stage width transition             | `/` scrollytelling             | `motion`                   |
+| Node emphasis                      | `/architecture`, `/data-model` | `motion`                   |
+| Hover lift 1px, pointer gradient   | interactive cards              | CSS + rAF                  |
 
-Every single one is a *decoration* except the hero path draw. Nothing in the
+Every single one is a _decoration_ except the hero path draw. Nothing in the
 motion system explains the platform.
 
 ### 1.8 Measured page lengths
 
 Full-page screenshot heights of the audited build.
 
-| Route | 1440px | screens @900 | 375px | screens @844 |
-| --- | ---: | ---: | ---: | ---: |
-| `/` | 10,580 | **11.8** | 19,710 | **23.4** |
-| `/architecture` | 10,631 | 11.8 | 17,588 | 20.8 |
-| `/status` | 10,461 | 11.6 | 17,343 | 20.5 |
-| `/data-model` | 7,823 | 8.7 | 15,631 | 18.5 |
-| `/kpis` | 7,223 | 8.0 | 12,850 | 15.2 |
-| `/governance` | 6,607 | 7.3 | 10,760 | 12.7 |
-| `/case-study` | 5,040 | 5.6 | 8,410 | 10.0 |
-| `/about` | 4,427 | 4.9 | 7,681 | 9.1 |
+| Route           | 1440px | screens @900 |  375px | screens @844 |
+| --------------- | -----: | -----------: | -----: | -----------: |
+| `/`             | 10,580 |     **11.8** | 19,710 |     **23.4** |
+| `/architecture` | 10,631 |         11.8 | 17,588 |         20.8 |
+| `/status`       | 10,461 |         11.6 | 17,343 |         20.5 |
+| `/data-model`   |  7,823 |          8.7 | 15,631 |         18.5 |
+| `/kpis`         |  7,223 |          8.0 | 12,850 |         15.2 |
+| `/governance`   |  6,607 |          7.3 | 10,760 |         12.7 |
+| `/case-study`   |  5,040 |          5.6 |  8,410 |         10.0 |
+| `/about`        |  4,427 |          4.9 |  7,681 |          9.1 |
 
 At 320px the homepage is 21,969px tall: **twenty-six phone screens**.
 
@@ -145,28 +145,28 @@ At 320px the homepage is 21,969px tall: **twenty-six phone screens**.
 
 Route cost alone:
 
-| Route | HTML | JS | CSS | Fonts | Total |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| `/` | 38.1 kB | 230.3 kB | 12.3 kB | 100.9 kB | 382.9 kB |
-| `/data-model` | 21.9 kB | 226.0 kB | 12.3 kB | 100.9 kB | 362.4 kB |
+| Route           |    HTML |       JS |     CSS |    Fonts |    Total |
+| --------------- | ------: | -------: | ------: | -------: | -------: |
+| `/`             | 38.1 kB | 230.3 kB | 12.3 kB | 100.9 kB | 382.9 kB |
+| `/data-model`   | 21.9 kB | 226.0 kB | 12.3 kB | 100.9 kB | 362.4 kB |
 | `/architecture` | 23.9 kB | 215.1 kB | 12.3 kB | 100.9 kB | 353.5 kB |
-| `/kpis` | 14.9 kB | 186.5 kB | 12.3 kB | 100.9 kB | 315.9 kB |
-| `/status` | 35.0 kB | 166.1 kB | 12.3 kB | 100.9 kB | 315.5 kB |
-| `/governance` | 25.3 kB | 172.4 kB | 12.3 kB | 100.9 kB | 312.2 kB |
-| `/case-study` | 23.8 kB | 166.1 kB | 12.3 kB | 100.9 kB | 304.3 kB |
-| `/about` | 21.2 kB | 166.1 kB | 12.3 kB | 100.9 kB | 301.8 kB |
+| `/kpis`         | 14.9 kB | 186.5 kB | 12.3 kB | 100.9 kB | 315.9 kB |
+| `/status`       | 35.0 kB | 166.1 kB | 12.3 kB | 100.9 kB | 315.5 kB |
+| `/governance`   | 25.3 kB | 172.4 kB | 12.3 kB | 100.9 kB | 312.2 kB |
+| `/case-study`   | 23.8 kB | 166.1 kB | 12.3 kB | 100.9 kB | 304.3 kB |
+| `/about`        | 21.2 kB | 166.1 kB | 12.3 kB | 100.9 kB | 301.8 kB |
 
 With navigation prefetch every route settles at 303.2 kB of JavaScript, because
 the header prefetches all seven primary destinations.
 
 ### 1.10 Lighthouse, desktop preset, local production build of `/`
 
-| Category | Score |
-| --- | ---: |
-| Performance | 100 |
-| Accessibility | 100 |
-| Best practices | 96 |
-| SEO | 100 |
+| Category       | Score |
+| -------------- | ----: |
+| Performance    |   100 |
+| Accessibility  |   100 |
+| Best practices |    96 |
+| SEO            |   100 |
 
 FCP 0.3s, LCP 0.7s, CLS 0, TBT 10ms, Speed Index 0.4s.
 
@@ -219,7 +219,7 @@ only disclosure.** At 390x844 a visitor sees eyebrow, headline, a five-line
 paragraph, then a bordered panel of two status badges and a four-line caveat.
 The first call to action is roughly 1,050px down; the signature visual is
 roughly 1,400px down. A recruiter on a phone leaves before reaching either.
-*Evidence: `home-375.png`, first viewport.*
+_Evidence: `home-375.png`, first viewport._
 
 **A-02 The strongest differentiator is invisible until section 8 of 9.** "More
 than 25 years in automotive retail combined with the ability to build the
@@ -259,13 +259,13 @@ relationships, 49 measures) are diluted by three that do not.
 `<rect> attribute width: Expected length, "undefined"` from the scrollytelling
 diagram's `motion.rect`, which animates `width` as a style property while it is
 also declared as an attribute. Lighthouse `errors-in-console` scores 0.
-*Source: `src/components/sections/pipeline-scrollytelling.tsx:396`.*
+_Source: `src/components/sections/pipeline-scrollytelling.tsx:396`._
 
 **B-05 Six interactive cards fail WCAG 2.5.3 Label in Name.** The domain cards
 carry `aria-label="Sales analytical domain"` while displaying "3 GOVERNED KPIS
 / Sales / SQL complete / ...". Voice-control users cannot activate them by
 reading what they see. Lighthouse `label-content-name-mismatch` scores 0.
-*Source: `src/components/sections/domain-cards.tsx`.*
+_Source: `src/components/sections/domain-cards.tsx`._
 
 **B-06 23 bordered panels on one page.** Four consecutive card-dominated
 sections (business problem, domains, lifecycle, author). The repetition reads as
@@ -357,14 +357,14 @@ locked; it stops being the loudest thing on the site.
 
 ### 3.2 Homepage: six chapters
 
-| # | Chapter | Section mode | Job |
-| --- | --- | --- | --- |
-| 1 | Hero | Cinematic | What this is, who built it, two ways in |
-| 2 | The dealership problem and the person solving it | Editorial | Three question-to-decision chapters, and why Michael's answers differ |
-| 3 | The ARPI Operating View | Product frame | The signature moment: six domains as a product surface |
-| 4 | How the platform is built | Technical evidence | Five stages, generate to serve |
-| 5 | The engineering proof | Editorial numerals | Four counts, each linked to the file that proves it |
-| 6 | Where to go next | Closing | Two actions, and the honest state |
+| #   | Chapter                                          | Section mode       | Job                                                                   |
+| --- | ------------------------------------------------ | ------------------ | --------------------------------------------------------------------- |
+| 1   | Hero                                             | Cinematic          | What this is, who built it, two ways in                               |
+| 2   | The dealership problem and the person solving it | Editorial          | Three question-to-decision chapters, and why Michael's answers differ |
+| 3   | The ARPI Operating View                          | Product frame      | The signature moment: six domains as a product surface                |
+| 4   | How the platform is built                        | Technical evidence | Five stages, generate to serve                                        |
+| 5   | The engineering proof                            | Editorial numerals | Four counts, each linked to the file that proves it                   |
+| 6   | Where to go next                                 | Closing            | Two actions, and the honest state                                     |
 
 Removed from the homepage: the seven-count credibility strip (reduced to four
 and merged into chapter 5), the eight-stage scrollytelling diagram (compressed

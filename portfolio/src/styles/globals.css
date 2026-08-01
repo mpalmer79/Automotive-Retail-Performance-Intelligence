@@ -186,6 +186,16 @@
     stroke-dashoffset: 0 !important;
     stroke-dasharray: none !important;
   }
+
+  /* The travelling signal in the signature visual is the one element on the
+     site whose entire content IS its movement: a dash with no journey is a
+     stray mark on a diagram. It is removed rather than frozen, and the paths it
+     travels stay drawn, so the composition still reads as source systems
+     flowing into a governed model - which is the meaning the motion carries.
+     `display: none` rather than `opacity: 0` so nothing is composited at all. */
+  [data-arpi-signal] {
+    display: none !important;
+  }
 }
 
 /* ==========================================================================

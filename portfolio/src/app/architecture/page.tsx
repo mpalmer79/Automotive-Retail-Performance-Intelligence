@@ -26,6 +26,7 @@ export default function ArchitecturePage() {
         title="A layered batch pipeline, with every layer answerable"
         lede="Synthetic source data is generated deterministically from a seeded configuration profile, validated in memory, written to CSV with a content-digest manifest, and loaded into PostgreSQL, where it passes through raw, staging, warehouse and reporting. Every run records its outcome in an audit schema."
         supporting="Above the database sits a Power BI semantic model stored as TMDL - text, diffable, reviewable without a licence. It reads the reporting schema and nothing else. Two accepted paths exist to validate it on a real engine, and neither has run."
+        platformNav
         meta={
           <>
             <StatusBadge
@@ -44,13 +45,13 @@ export default function ArchitecturePage() {
         }
       />
 
-      <Section rhythm="tight" bordered>
+      <Section rhythm="tight" tone="panel">
         <Container width="full">
           <ArchitectureExplorer />
         </Container>
       </Section>
 
-      <Section rhythm="tight" bordered>
+      <Section rhythm="tight" tone="evidence">
         <Container width="wide">
           <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
             <ScaleFigure
