@@ -50,8 +50,12 @@ dev = [
     "pytest-cov>=5",
     "ruff>=0.6",
     "mypy>=1.10",
-    "types-PyYAML",
-    "pandas-stubs",
+    # Lower bounds on the stub packages are not cosmetic. Without them a
+    # lowest-direct resolution -- which the `floor` CI job performs deliberately --
+    # selects `types-PyYAML==0.1.0`, a 2016 placeholder that types nothing. A floor
+    # the project cannot actually be used at is not a supported floor.
+    "types-PyYAML>=6.0",
+    "pandas-stubs>=2.2",
 ]
 
 [project.urls]

@@ -83,41 +83,57 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-          cache: pip
-          # pyproject.toml is the single source of dependency truth, so it is
-          # the only sensible cache key for this project.
-          cache-dependency-path: pyproject.toml
 
-      - name: Install the package with development and database extras
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[dev,db]"
+      # `pyproject.toml` remains the declaration of SUPPORTED RANGES. `uv.lock` is
+      # the REVIEWED RESOLUTION of those ranges, and it is what CI, a developer and
+      # the Railway provisioning image all install. The distinction matters: the
+      # ranges say what the project claims to work with, the lock says what was
+      # actually tested.
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      # Fails when `uv.lock` no longer satisfies `pyproject.toml` -- for instance
+      # when a dependency was added or a bound changed without relocking. It does
+      # NOT regenerate the lock: a CI job that silently relocks defeats the point of
+      # having one, because the resolution nobody reviewed is the one that ships.
+      - name: Verify the lock is current
+        run: uv lock --check
+
+      # `--frozen` installs the lock exactly and refuses to resolve anything. A
+      # network hiccup or a newly published version cannot change what this job runs.
+      - name: Install from the frozen lock
+        run: uv sync --frozen --all-extras
 
       - name: Report the resolved toolchain
         run: |
-          python --version
-          ruff --version
-          mypy --version
-          pytest --version
+          uv --version
+          uv run python --version
+          uv run ruff --version
+          uv run mypy --version
+          uv run pytest --version
+          uv run python -c "import pandas, pydantic; print('pandas', pandas.__version__, 'pydantic', pydantic.__version__)"
 
       # Formatting first: a formatting failure is the cheapest to fix and would
       # otherwise create noise in the lint output.
       - name: Check formatting (ruff format)
-        run: ruff format --check .
+        run: uv run ruff format --check .
 
       # `--output-format=github` turns findings into inline annotations on the
       # pull-request diff.
       - name: Lint (ruff check)
-        run: ruff check --output-format=github .
+        run: uv run ruff check --output-format=github .
 
       - name: Type-check (mypy)
-        run: mypy src tests
+        run: uv run mypy src tests
 
       # Integration tests are excluded here; they need PostgreSQL and run in the
       # dedicated job below.
       - name: Run unit and data-quality tests with coverage
         run: |
-          pytest -m "not integration" \
+          uv run pytest -m "not integration" \
             --cov=arpi \
             --cov-report=term-missing \
             --cov-report=xml
@@ -138,7 +154,7 @@ jobs:
       # orders nobody has seen fail.
       - name: Run the logging-sensitive modules in the order that used to fail
         run: |
-          pytest -p no:randomly --no-cov -q \
+          uv run pytest -p no:randomly --no-cov -q \
             tests/unit/test_logging_config.py \
             tests/unit/test_cli.py \
             tests/unit/test_ingestion.py \
@@ -146,7 +162,7 @@ jobs:
 
       - name: Run the same modules in the reverse order
         run: |
-          pytest -p no:randomly --no-cov -q \
+          uv run pytest -p no:randomly --no-cov -q \
             tests/unit/test_logging_isolation.py \
             tests/unit/test_ingestion.py \
             tests/unit/test_cli.py \
@@ -162,6 +178,139 @@ jobs:
           path: coverage.xml
           if-no-files-found: warn
           retention-days: 14
+
+  # ---------------------------------------------------------------------------
+  # 1b. floor — the project at the MINIMUM dependency versions it claims to support.
+  #
+  #     `pyproject.toml` declares ranges such as `pandas>=2.2`. The lock pins the
+  #     top of those ranges, so without this job the lower bound is an untested
+  #     assertion: CI would prove the project works with one resolution and claim
+  #     it works with an interval.
+  #
+  #     That gap was not hypothetical. `DQ-EMP-003` evaluated
+  #     `Timestamp("9999-12-31") + Timedelta(days=1)`, which raises
+  #     `OutOfBoundsDatetime` on pandas 2.2 and silently widens on pandas 3.0. CI
+  #     was green on 3.0 while a supported floor crashed a gating validator. This
+  #     job is what makes `>=2.2` mean something.
+  #
+  #     One job, one interpreter, no coverage, non-integration only -- a couple of
+  #     minutes, rather than doubling the matrix.
+  # ---------------------------------------------------------------------------
+  floor:
+    name: Minimum supported dependencies
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      # The declared floor of `requires-python`. Resolving lowest-direct on a newer
+      # interpreter would silently raise the floor, because old releases have no
+      # wheels for it.
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: pyproject.toml
+
+      # `lowest-direct` pins the DIRECT dependencies to their declared minimums and
+      # lets transitives resolve normally. Full `lowest` would also drag every
+      # transitive to its floor, which tests the ecosystem's history rather than
+      # this project's declaration.
+      #
+      # Deliberately NOT `--frozen`: the whole point is to resolve something other
+      # than the lock.
+      - name: Install the declared minimum versions
+        run: uv sync --resolution lowest-direct --all-extras
+
+      # pandas 2.2 emits a DeprecationWarning at import asking for pyarrow, and
+      # `filterwarnings = ["error"]` turns it into a collection error. Installing
+      # what pandas asks for keeps this job's warning strictness identical to the
+      # main gate -- the alternative, relaxing `filterwarnings` here, would mean the
+      # floor job tested less than the job it is meant to backstop. pyarrow is not
+      # an ARPI dependency and is not in the lock.
+      - name: Satisfy pandas 2.2's pyarrow deprecation notice
+        run: uv pip install pyarrow
+
+      - name: Report the resolved floor
+        run: |
+          uv run python --version
+          uv run python -c "import pandas, pydantic; print('pandas', pandas.__version__, 'pydantic', pydantic.__version__)"
+
+      # Lint and types are deliberately absent: ruff 0.6 and mypy 1.10 disagree
+      # with current versions about formatting and inference, and pinning the source
+      # to satisfy both would mean writing to the older tool. Behaviour is what the
+      # floor has to preserve, so behaviour is what is asserted.
+      - name: Run unit and data-quality tests at the floor
+        run: uv run pytest -m "not integration" -q --no-cov
+
+  # ---------------------------------------------------------------------------
+  # 1c. database-setup-image — the Railway provisioning image actually builds.
+  #
+  #     `frontend.yml` builds `portfolio/Dockerfile.railway`, the WEBSITE image.
+  #     Nothing built `deployment/railway/Dockerfile.database-setup`, so a change to
+  #     the image that loads the database was only discovered by deploying it.
+  #
+  #     That matters more now that the image installs `uv sync --frozen`: the whole
+  #     point of the lock is that Railway and CI install the same graph, and an
+  #     assertion nobody executes is not evidence.
+  #
+  #     Build only. Running it needs a PostgreSQL superuser and Railway reference
+  #     variables, and the NO SECRETS RULE at the top of this file keeps that out of
+  #     CI. The integration job already proves the SQL sequence against a container.
+  # ---------------------------------------------------------------------------
+  database-setup-image:
+    name: Railway database-setup image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      # Repository root as the context, matching the Dockerfile's own header and
+      # what Railway does.
+      - name: Build the provisioning image
+        run: |
+          docker build \
+            --file deployment/railway/Dockerfile.database-setup \
+            --tag arpi-database-setup:ci \
+            .
+
+      # A build that succeeds and produces an image the entry point cannot run is
+      # not a passing build. These are the four things `provision_database.sh`
+      # depends on.
+      - name: Assert the image contract
+        run: |
+          docker run --rm --entrypoint sh arpi-database-setup:ci -c '
+            set -eux
+            arpi --version
+            python -c "import pandas, psycopg, pydantic, yaml"
+            psql --version
+            test -f uv.lock
+            test -x ./provision_database.sh
+          '
+
+      # The reason the image was changed at all: it must install what the lock says,
+      # not whatever the index served at build time.
+      - name: Assert the image installed the locked versions
+        run: |
+          locked=$(python - <<'PY'
+          import re, pathlib
+          text = pathlib.Path("uv.lock").read_text()
+          found = dict(re.findall(r'\[\[package\]\]\nname = "([^"]+)"\nversion = "([^"]+)"', text))
+          print(found["pandas"], found["psycopg"], found["pydantic"])
+          PY
+          )
+          built=$(docker run --rm --entrypoint python arpi-database-setup:ci -c \
+            'import pandas, psycopg, pydantic; print(pandas.__version__, psycopg.__version__, pydantic.__version__)')
+          echo "lock:  $locked"
+          echo "image: $built"
+          test "$locked" = "$built"
 
   # ---------------------------------------------------------------------------
   # 2. repository-checks — repository hygiene, not code correctness.
@@ -376,14 +525,19 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: pip
-          cache-dependency-path: pyproject.toml
 
-      - name: Install the package with the database extra
+      - name: Install uv
         if: steps.guard.outputs.run == 'true'
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[dev,db]"
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      # Same frozen lock as the quality job, so an integration failure can never be
+      # explained by the two jobs having resolved different dependency graphs.
+      - name: Install from the frozen lock
+        if: steps.guard.outputs.run == 'true'
+        run: uv sync --frozen --all-extras
 
       - name: Ensure the psql client is available
         if: steps.guard.outputs.run == 'true'
@@ -439,7 +593,7 @@ jobs:
       # reason that has nothing to do with the database.
       - name: Run integration tests
         if: steps.guard.outputs.run == 'true'
-        run: pytest -m integration -v --no-cov
+        run: uv run pytest -m integration -v --no-cov
 
       - name: Report a skipped run
         if: steps.guard.outputs.run != 'true'
