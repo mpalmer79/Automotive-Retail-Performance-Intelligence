@@ -693,8 +693,52 @@ test.describe('public copy carries no em dash', () => {
     for (const route of PRIMARY_ROUTES) {
       await gotoRendered(page, route.path)
       const text = await bodyText(page)
-      const offenders = text.split(/(?<=—)|(?=—)/).filter((part) => part.includes('—'))
-      expect(offenders, `${route.path} contains an em dash`).toEqual([])
+      expect(text.includes('\u2014'), `${route.path} contains an em dash`).toBe(false)
+    }
+  })
+
+  test('including content that only exists after an interaction', async ({ page }) => {
+    /*
+     * The first version of this rule passed while an em dash was still being
+     * rendered, because `bodyText` only ever sees a route's default state and
+     * the offending glyph was inside the data-model explorer's relationship
+     * list, which does not exist until an entity is selected.
+     *
+     * A content rule that only checks what loads by default has a hole in it
+     * exactly where the interesting content is. This opens the three
+     * interactive surfaces on the site and checks each one.
+     */
+    // The explorer's entities are SVG groups with `role="option"`, not buttons.
+    // The first version of this test looked for a button, timed out, and
+    // reported a failure that looked like a detection - which is its own small
+    // lesson: a content check that cannot reach the content fails loudly, and
+    // that is the correct behaviour, but only if the failure is read properly.
+    await gotoRendered(page, '/data-model')
+    const entity = page.getByRole('option', { name: /vehicle sale/i }).first()
+    await expect(entity, 'no selectable entity found in the explorer').toBeVisible()
+    await entity.click()
+    await expect(entity).toHaveAttribute('aria-selected', 'true')
+    expect(
+      (await page.locator('main').innerText()).includes('\u2014'),
+      'the data-model explorer renders an em dash once an entity is selected'
+    ).toBe(false)
+
+    await gotoRendered(page, '/architecture')
+    const node = page.getByRole('option').first()
+    if ((await node.count()) > 0) {
+      await node.click()
+      expect((await page.locator('main').innerText()).includes('\u2014')).toBe(false)
+    }
+
+    await gotoRendered(page, '/')
+    await page.getByRole('button', { name: /see all engineering evidence/i }).click()
+    const tabs = await page
+      .getByRole('tablist', { name: /analytical domain/i })
+      .getByRole('tab')
+      .all()
+    for (const tab of tabs) {
+      await tab.click()
+      expect((await page.locator('main').innerText()).includes('\u2014')).toBe(false)
     }
   })
 })

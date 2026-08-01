@@ -652,11 +652,23 @@ function EntityDetail({ entity }: { entity: ModelEntity }) {
                 key={`${rel.from}.${rel.fromColumn}-${rel.to}.${rel.toColumn}-${String(index)}`}
                 className="flex items-baseline gap-1.5 break-all"
               >
-                <span className={rel.active ? 'text-accent' : 'text-ink-faint'}>
-                  {rel.active ? '—' : '- -'}
-                </span>
+                {/* A solid rule for an active relationship, a dashed one for an
+                    inactive relationship. Drawn as a bordered span rather than
+                    set as an em dash and a pair of hyphens: the glyph version
+                    was a decorative mark doing semantic work, it read as
+                    punctuation to a screen reader, and it was the one em dash
+                    left in rendered content on the site. The word "(inactive)"
+                    below carries the meaning either way. */}
+                <span
+                  aria-hidden="true"
+                  className={
+                    rel.active
+                      ? 'mt-1.5 inline-block w-4 shrink-0 border-t border-accent'
+                      : 'mt-1.5 inline-block w-4 shrink-0 border-t border-dashed border-ink-faint'
+                  }
+                />
                 <span>
-                  {rel.from}.{rel.fromColumn} → {rel.to}.{rel.toColumn}
+                  {rel.from}.{rel.fromColumn} to {rel.to}.{rel.toColumn}
                 </span>
                 {!rel.active ? <span className="text-ink-faint">(inactive)</span> : null}
               </li>
