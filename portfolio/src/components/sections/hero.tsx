@@ -142,6 +142,14 @@ export function HeroProduct({ className }: { className?: string }) {
 export function Hero() {
   return (
     <Section
+      // A stable hook for the content-integrity suite. It used to find the hero
+      // with `main > section:first-of-type`, which stopped matching the moment
+      // the floating canvas put two wrapper elements between them - and stopped
+      // matching SILENTLY: a locator that resolves to nothing makes a
+      // "there are no status badges here" assertion pass by finding no
+      // elements at all. An id is a contract; a structural path is a guess
+      // about markup that the next layout change invalidates.
+      id="hero"
       rhythm="none"
       tone="cinematic"
       className="overflow-clip pt-12 pb-section-tight sm:pt-16"

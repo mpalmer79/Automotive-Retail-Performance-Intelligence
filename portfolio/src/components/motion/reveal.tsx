@@ -77,13 +77,29 @@ export function Reveal({
   delayMs?: number
 }) {
   const ref = useRef<HTMLElement | null>(null)
-  // An environment with no IntersectionObserver - an older browser, a test runner
-  // - gets the content immediately rather than never.
-  const [shown, setShown] = useState(() => typeof IntersectionObserver === 'undefined')
+  const [shown, setShown] = useState(false)
 
   useEffect(() => {
+    // An environment with no IntersectionObserver - an older browser, a test
+    // runner - gets the content immediately rather than never.
+    //
+    // THIS CHECK BELONGS IN THE EFFECT, NOT IN THE INITIAL STATE.
+    // It used to be the `useState` initialiser. `IntersectionObserver` is
+    // undefined on the server and defined in the browser, so the server
+    // rendered `reveal-shown` and the client's first render produced
+    // `reveal-hidden` - a hydration mismatch on every revealed element, which
+    // was seventeen of them on the home page alone. React logged it and kept
+    // the server's markup, which meant the class the observer later toggled was
+    // not the class actually on the element. An effect runs after hydration has
+    // committed, so both renders now agree on `reveal-hidden` and the fallback
+    // still fires everywhere it is needed.
+    if (typeof IntersectionObserver === 'undefined') {
+      setShown(true)
+      return
+    }
+
     const element = ref.current
-    if (!element || typeof IntersectionObserver === 'undefined') return
+    if (!element) return
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -141,11 +157,17 @@ export function RevealGroup({
   staggerMs?: number
 }) {
   const ref = useRef<HTMLElement | null>(null)
-  const [shown, setShown] = useState(() => typeof IntersectionObserver === 'undefined')
+  const [shown, setShown] = useState(false)
 
   useEffect(() => {
+    // In the effect, not the initial state. See the note in `Reveal`.
+    if (typeof IntersectionObserver === 'undefined') {
+      setShown(true)
+      return
+    }
+
     const element = ref.current
-    if (!element || typeof IntersectionObserver === 'undefined') return
+    if (!element) return
 
     const observer = new IntersectionObserver(
       (entries) => {

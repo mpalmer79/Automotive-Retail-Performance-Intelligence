@@ -113,8 +113,13 @@ export function FieldMotif() {
             <use href="#arpi-hex" x="-34" y="86" width="200" height="232" />
             <use href="#arpi-table" x="58" y="470" width="150" height="120" />
 
-            {/* Right margin: the serving side. */}
-            <use href="#arpi-hex" x="1298" y="384" width="176" height="204" />
+            {/* Right margin: the serving side.
+                `x` is chosen so the shape's right edge lands ON the viewBox
+                edge rather than past it: 1264 + 176 = 1440. Geometry that
+                overhangs the viewBox is invisible - it is clipped - but it
+                still has a bounding box, and the accessibility suite's reflow
+                check measures bounding boxes. */}
+            <use href="#arpi-hex" x="1264" y="384" width="176" height="204" />
             <use href="#arpi-table" x="1236" y="86" width="150" height="120" />
 
             {/* The pipeline trace: source systems on the left, through the
@@ -122,7 +127,7 @@ export function FieldMotif() {
                 passes behind the canvas, which is the point - the page sits on
                 top of the platform rather than beside it. */}
             <path
-              d="M-20 742C220 742 268 610 470 610s286 150 520 150 320-118 480-118"
+              d="M-20 742C220 742 268 610 470 610s286 150 520 150 300-118 450-118"
               fill="none"
               stroke="currentColor"
               strokeWidth="1.5"

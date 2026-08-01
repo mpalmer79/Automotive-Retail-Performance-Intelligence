@@ -27,9 +27,7 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: '*',
         allow: '/',
-        // `/proto/` is the layout-selection prototype set. TEMPORARY: those
-        // routes and this entry are both removed once a direction is chosen.
-        disallow: [ROUTES.uiLab.href, '/proto/'],
+        disallow: [ROUTES.uiLab.href],
       },
     ],
     sitemap: `${SITE_URL}/sitemap.xml`,
