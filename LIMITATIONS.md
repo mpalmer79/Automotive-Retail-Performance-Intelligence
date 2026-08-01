@@ -7,7 +7,7 @@
 <!-- ARPI:CAPABILITIES:BEGIN review-metadata -->
 **Register version:** 2.0  
 **Last reviewed:** 2026-08-01  
-**Last verified at commit:** `b6032da`
+**Last verified at commit:** `32b52ce`
 
 This header is generated from `config/project_capabilities.json`. A review date typed into a document is the first thing to go stale, and a limitations register with a stale header has already lost the argument.
 <!-- ARPI:CAPABILITIES:END review-metadata -->
@@ -74,7 +74,7 @@ the source it describes.
 | Report pages | 0 | PBIR shell |
 | Report visuals | 0 | PBIR shell |
 | Analytical findings | 0 | `docs/findings/` |
-| Portfolio deployment | staging live at https://arpi.up.railway.app | health verification is UNVERIFIED |
+| Portfolio deployment | staging live at https://arpi.up.railway.app | health verification is recorded |
 | PostgreSQL deployment | declared | independent of the website; a live site proves nothing here |
 | Database provisioning | declared | job `arpi-database-setup`, last run UNVERIFIED |
 | Gate 1 | OPEN | `docs/requirements/GATE_1_READINESS.md` |
@@ -383,17 +383,31 @@ reproduce this exactly*, not for *this is current*.
 | **Exit condition** | A migration rehearsed against a restored copy of a provisioned database, which depends on 5.1 and 5.2 |
 | **Owner** | Finding 9, [`docs/reviews/ENGINEERING_HARDENING_PROGRAM.md`](docs/reviews/ENGINEERING_HARDENING_PROGRAM.md) |
 
-### 5.5 The live deployment has never been verified by this project's own automation
+### 5.5 The live deployment is verified point-in-time, not continuously
+
+**This was an open gap and is now closed.** It stays in this section rather than moving to
+section 9 because what replaced it is a weaker property than it looks, and the weaker property is
+itself an operational maturity gap.
 
 | Field | Value |
 |---|---|
 | **Classification** | Operational maturity gap |
-| **Current status** | The portfolio deployment is **recorded** — environment, service, public URL and health route. Its health verification, remote smoke result and security-header result are all **UNVERIFIED**. |
-| **Impact** | This repository can state that a deployment exists and cannot itself demonstrate that it answers. Anyone treating the recorded URL as verified uptime has over-read it. |
-| **Current mitigation** | `portfolio/tests/remote/deployed-site.spec.ts` is written and ready; it needs an environment permitted to reach the host. `UNVERIFIED` is a first-class value in the evidence file precisely so this is visible rather than absent. |
-| **Evidence** | `deployment/evidence/portfolio_deployment.json` → `portfolio.environments[].health_verified_at` |
-| **Exit condition** | The remote suite run against the deployment, with its result and timestamp recorded. CI has no reason to be online and the environments this project is built in answer 403 to that host, so this closes from an operator's machine or a network-permitted job, not from `ci.yml`. |
+| **Current status** | The deployment has been verified: homepage and `/status` answered `200`, and the remote suite passed 81 assertions with 0 failures against `https://arpi.up.railway.app`. **The verification is a snapshot.** Nothing re-runs it, so it describes one commit at one moment. |
+| **Impact** | The recorded result ages silently. A deployment that regressed an hour after the run would still read as verified here, and no check would notice. Treat the evidence as "this was true at `verified_at`", never as "this is true". |
+| **Current mitigation** | `verified_at` and the deployed `commit_sha` are both recorded, so a reader can see how old the result is and whether it describes the commit currently on `main`. The workflow is `workflow_dispatch`, so re-running it is one click. |
+| **Evidence** | `deployment/evidence/portfolio_deployment.json` → `portfolio.verification` |
+| **Exit condition** | A scheduled or post-deploy run of `.github/workflows/verify-deployment.yml`, so the evidence refreshes without a person remembering. Deliberately not added yet: a scheduled job that reaches a live host on a timer is a commitment to keeping it green, and nobody has taken that on. |
 | **Owner** | `DOC-31`, [DOCUMENTATION_BACKLOG.md](docs/requirements/DOCUMENTATION_BACKLOG.md) |
+
+**What closing it took, and what it found.** Neither CI nor the environments this project is
+developed in may reach the deployment host, so the check runs from a GitHub-hosted runner via
+`.github/workflows/verify-deployment.yml`, and `scripts/record_deployment_evidence.py` writes down
+what came back. The first run failed — not on the deployment, but on two assertions in the remote
+suite that contradicted the shipped design. One required the `<body>` background to be opaque after
+the design had deliberately made it transparent; the other counted below-fold reveals that are
+correctly still hidden. Both reproduced against a local build of the same commit. They had been
+wrong for as long as the suite had existed, and nothing caught them because the suite had never run
+against anything.
 
 ### 5.6 No Power BI Service dependency, and therefore no shareable report link
 
@@ -533,11 +547,11 @@ live, and it is not.
 | Service name | `arpi-portfolio` |
 | Public URL | https://arpi.up.railway.app |
 | Health route | `/status` |
-| Deployment commit | UNVERIFIED |
+| Deployment commit | b90e3244a9b0db2f9ee1ccfc9f6d85e93959e806 |
 | Deployment timestamp | UNVERIFIED |
-| Health verification | UNVERIFIED |
-| Remote smoke test | UNVERIFIED |
-| Security headers | UNVERIFIED |
+| Health verification | 2026-08-01T20:31:00+00:00 |
+| Remote smoke test | 81 passed, 0 failed, 1 skipped, 0 flaky |
+| Security headers | passed (1) |
 | Database connection | none |
 | Production environment | not-created |
 
@@ -617,16 +631,28 @@ So the site being up demonstrates that a static build is served correctly. It de
 PostgreSQL and nothing about a semantic model, and any document that cites it as evidence for either is a
 defect worth reporting.
 
-### 8.3 What this repository cannot verify about its own deployment
+### 8.3 How the deployment is verified, and what is still `UNVERIFIED`
 
-Every field requiring a request to the live site is `UNVERIFIED`: the deployment commit, the deployment
-timestamp, the health verification, the remote smoke result and the security headers. CI has no reason to be
-online, and the environments this project is developed in answer `403` to `CONNECT` for that host — recorded
-in [`docs/reviews/ENGINEERING_HARDENING_PROGRAM.md`](docs/reviews/ENGINEERING_HARDENING_PROGRAM.md) §1.1.
+Neither CI nor the environments this project is developed in may reach the deployment host: CI has no reason
+to be online, and the agent environments answer `403` to `CONNECT` for that host, recorded in
+[`docs/reviews/ENGINEERING_HARDENING_PROGRAM.md`](docs/reviews/ENGINEERING_HARDENING_PROGRAM.md) §1.1. The
+verification therefore runs from a GitHub-hosted runner, through
+[`.github/workflows/verify-deployment.yml`](.github/workflows/verify-deployment.yml), and
+`scripts/record_deployment_evidence.py` writes down what came back.
+
+**Verified, by that run:** the deployed commit, the health check, the remote smoke result and the security
+headers, along with all twelve required checks. Each is bound to the specific assertion that proves it, so a
+check whose test was skipped or failed reads `UNVERIFIED` rather than inheriting the suite's overall verdict.
+
+**Still `UNVERIFIED`:** `deployed_at`, because Railway's deployment timestamp is not exposed on the site and
+this repository holds no Railway credential to ask for it; and everything under `analytical_platform`, which
+no website run can move.
 
 `UNVERIFIED` means *this project's automation did not obtain the fact*. It does not mean the fact is false,
 and it is never rendered as a pass. Filling one of those fields in because someone believes it would convert
-a recorded gap into a fabricated observation, which is worse than the gap.
+a recorded gap into a fabricated observation, which is worse than the gap — and that holds no less now that
+most of them are filled. **A recorded verification is also a snapshot** (5.5): it describes one commit at one
+moment, and nothing re-runs it.
 
 ---
 

@@ -93,23 +93,59 @@ def test_no_production_environment_is_claimed(document: dict[str, Any]) -> None:
 # --------------------------------------------------------------------------------------
 
 
-def test_live_fields_are_unverified_rather_than_guessed() -> None:
-    """Neither CI nor the environments this project is built in may reach the host.
+def test_a_filled_live_field_is_backed_by_a_run(document: dict[str, Any]) -> None:
+    """The invariant, stated so it holds whether or not a verification has happened.
 
-    Filling these in from belief would convert a recorded gap into a fabricated
-    observation, which is the worse of the two failures by a wide margin.
+    These fields were `UNVERIFIED` while nothing could reach the deployment host, and
+    they are now filled because `.github/workflows/verify-deployment.yml` ran the
+    remote suite from infrastructure that can. What must never happen is the third
+    state: a filled field with no run behind it. That is a fabricated observation,
+    and it is worse than the gap it would replace.
     """
     staging = read_deployment_evidence().environment("staging")
     assert staging is not None
-    assert staging.health_verified_at == UNVERIFIED
-    assert staging.remote_smoke_test == UNVERIFIED
-    assert staging.security_headers == UNVERIFIED
+    verification = document["portfolio"].get("verification", {})
+
+    live_fields = (staging.health_verified_at, staging.remote_smoke_test, staging.security_headers)
+    if any(field != UNVERIFIED for field in live_fields):
+        assert verification.get("workflow_run", UNVERIFIED) != UNVERIFIED, (
+            "a live field is filled in with no workflow run recorded behind it"
+        )
+        assert verification.get("verified_at", UNVERIFIED) != UNVERIFIED
 
 
-def test_a_recorded_deployment_is_not_a_verified_one() -> None:
+def test_the_health_timestamp_comes_from_the_recorded_run(document: dict[str, Any]) -> None:
+    """One run, one timestamp. Two would mean one of them was carried over."""
+    staging = read_deployment_evidence().environment("staging")
+    assert staging is not None
+    verification = document["portfolio"].get("verification", {})
+    if staging.health_verified_at != UNVERIFIED:
+        assert staging.health_verified_at == verification.get("verified_at")
+
+
+def test_a_green_suite_leaves_no_check_unverified(document: dict[str, Any]) -> None:
+    """`suite_green` and a per-check `UNVERIFIED` cannot both be true.
+
+    A check reads `UNVERIFIED` when its test did not run. If any did not run, the
+    suite did not fully verify the deployment, whatever its exit code said.
+    """
+    verification = document["portfolio"].get("verification", {})
+    checks: dict[str, str] = verification.get("checks", {})
+    unverified = sorted(name for name, value in checks.items() if value == UNVERIFIED)
+    if verification.get("suite_green"):
+        assert unverified == [], f"suite_green is true while {unverified} did not run"
+
+
+def test_the_deployment_is_recorded_and_now_also_verified() -> None:
+    """Recorded and verified are different properties, and both are asserted.
+
+    `is_recorded` needs a URL and a service. `is_live_verified` needs a timestamp
+    from an actual health check. The second used to be false; the distinction it
+    draws survives it becoming true.
+    """
     record = read_deployment_evidence()
     assert record.portfolio_is_recorded is True
-    assert record.portfolio_is_live_verified is False
+    assert record.portfolio_is_live_verified is True
 
 
 def test_unverified_does_not_count_as_running() -> None:
