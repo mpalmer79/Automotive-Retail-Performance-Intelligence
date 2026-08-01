@@ -9,6 +9,32 @@ measurement, that is said plainly.
 
 ---
 
+> **Experience redesign, version 2.** This document describes the site as it
+> stands after the redesign recorded in `portfolio/docs/EXPERIENCE_REDESIGN_V2.md`.
+
+**Three defects the redesign introduced were caught by the checks in this
+document before they shipped**, which is the argument for having them:
+
+- the Operating View's field labels were `h4` directly under the section's `h2`,
+  skipping `h3`. Caught by the heading-hierarchy sweep on `/`.
+- `/governance` was the one platform route not rendering the platform
+  sub-navigation. Caught by a new browser test, not by looking at it.
+- the 44px target-size check named the previous hero's calls to action, so it had
+  been passing against controls that no longer existed. Repointed.
+
+**Two accessibility improvements over the previous build:**
+
+- The six analytical domains were expandable cards carrying an `aria-label` that
+  did not contain their visible text, failing WCAG 2.5.3 Label in Name for a
+  voice-control user. They are now a real tab set whose accessible name is the
+  visible label, with a roving tabindex, arrow keys, `Home`, `End` and wrap at
+  both ends.
+- The signature visual renders two compositions, portrait below `sm` and
+  landscape above. Both are `aria-hidden` and the accessible equivalent is a
+  single visually-hidden paragraph outside them, so a viewport change cannot
+  change what a screen reader is told and the description is never announced
+  twice.
+
 ## 1. What is verified automatically
 
 `tests/e2e/accessibility.spec.ts` runs `axe-core` via `@axe-core/playwright`

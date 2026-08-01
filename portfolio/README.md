@@ -112,21 +112,40 @@ they are not on by default is in
 
 Eight indexable routes, plus one that is not.
 
-| Route           | What it is for                                                                                       |
-| --------------- | ---------------------------------------------------------------------------------------------------- |
-| `/`             | The argument: the business problem, the pipeline, the six domains, the evidence ledger               |
-| `/architecture` | Interactive explorer of the pipeline, from seeded generation to the semantic model                   |
-| `/data-model`   | The 8 conformed dimensions and 5 facts, with declared grains, keys, history policy and privacy class |
-| `/kpis`         | All 29 governed KPIs and 5 deferred ones, searchable and filterable                                  |
-| `/governance`   | Synthetic-only data, no PII by construction, lineage, reconciliation, scope gates                    |
-| `/status`       | Every lifecycle phase, delivery increment, gate and engine path, from the manifest                   |
-| `/about`        | The author, and why this project needs someone who has worked a dealership floor                     |
-| `/case-study`   | The gated case study. Currently renders a locked state and its blocking reasons                      |
-| `/ui-lab`       | Internal design-system reference. `noindex`, disallowed in `robots.txt`, not in navigation           |
+| Route           | What it is for                                                                                               |
+| --------------- | ------------------------------------------------------------------------------------------------------------ |
+| `/`             | Six chapters: the hero, the dealership problem, the Operating View, the platform story, the proof, the close |
+| `/architecture` | Interactive explorer of the pipeline, from seeded generation to the semantic model                           |
+| `/data-model`   | The 8 conformed dimensions and 5 facts, with declared grains, keys, history policy and privacy class         |
+| `/kpis`         | All 29 governed KPIs and 5 deferred ones, searchable and filterable                                          |
+| `/governance`   | Synthetic-only data, no PII by construction, lineage, reconciliation, scope gates                            |
+| `/status`       | Every lifecycle phase, delivery increment, gate and engine path, from the manifest                           |
+| `/about`        | The author, and why this project needs someone who has worked a dealership floor                             |
+| `/case-study`   | The gated case study. Currently renders a locked state and its blocking reasons                              |
+| `/ui-lab`       | Internal design-system reference. `noindex`, disallowed in `robots.txt`, not in navigation                   |
 
-Route metadata — titles, descriptions, indexability, sitemap priority — is declared once
+Route metadata (titles, descriptions, indexability, sitemap priority) is declared once
 in [`src/lib/site.ts`](src/lib/site.ts) and consumed by the navigation, the sitemap, the
 breadcrumbs and the accessibility sweep, so none of the four can drift from the others.
+
+### Navigation is a separate decision from the route map
+
+The header carries **five** content destinations plus GitHub, not eight:
+
+`Overview` · `Platform` · `KPIs` · `Status` · `About`
+
+`Platform` points at `/architecture` and is the current item on `/data-model` and
+`/governance` too; all three render a shared `PlatformNav` that links them with
+`aria-current`, so both routes stay directly addressable, indexable and one click
+away. The locked case study is in the footer, on `/status` and in the home page's
+closing section rather than in the header, where it had been the only bordered
+control and therefore the site's loudest destination.
+
+`PRIMARY_NAV` and `MAX_PRIMARY_NAV_ITEMS` in `src/lib/site.ts` hold this, and
+`tests/unit/site.test.ts` fails if a sixth item arrives without a decision. The
+rejected alternatives (a header disclosure menu, a `/platform` overview route)
+are recorded above `PRIMARY_NAV` and in
+[`docs/EXPERIENCE_REDESIGN_V2.md`](docs/EXPERIENCE_REDESIGN_V2.md) section 3.1.
 
 ---
 
@@ -166,15 +185,16 @@ portfolio/
 
 ## 7. Documentation
 
-| Document                                  | What it settles                                                                                                                       |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| [DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md) | The closed palette, the token contract, the type scale, the component inventory, and why Radix was removed                            |
-| [MOTION_SYSTEM.md](docs/MOTION_SYSTEM.md) | Duration, easing, distance and stagger scales; the reduced-motion substitution table; why the reveal is CSS                           |
-| [CONTENT_MODEL.md](docs/CONTENT_MODEL.md) | The manifest-as-single-source contract, and the five-condition case-study gate                                                        |
-| [ACCESSIBILITY.md](docs/ACCESSIBILITY.md) | The WCAG 2.2 AA position, the axe results, the keyboard model, the viewport matrix                                                    |
-| [PERFORMANCE.md](docs/PERFORMANCE.md)     | Measured per-route transfer, the font budget, and the prefetch trade                                                                  |
-| [DEPLOYMENT.md](docs/DEPLOYMENT.md)       | Railway configuration, why the staging deployment needs **no** variable typed by a person, unpublished-deployment behaviour, rollback |
-| [VISUAL_REVIEW.md](docs/VISUAL_REVIEW.md) | The adversarial review record: what was asked, what was found, what was fixed                                                         |
+| Document                                                    | What it settles                                                                                                                                                        |
+| ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md)                   | The closed palette, the token contract, the type scale, the component inventory, and why Radix was removed                                                             |
+| [MOTION_SYSTEM.md](docs/MOTION_SYSTEM.md)                   | Duration, easing, distance and stagger scales; the reduced-motion substitution table; why the reveal is CSS                                                            |
+| [CONTENT_MODEL.md](docs/CONTENT_MODEL.md)                   | The manifest-as-single-source contract, and the five-condition case-study gate                                                                                         |
+| [ACCESSIBILITY.md](docs/ACCESSIBILITY.md)                   | The WCAG 2.2 AA position, the axe results, the keyboard model, the viewport matrix                                                                                     |
+| [PERFORMANCE.md](docs/PERFORMANCE.md)                       | Measured per-route transfer, the font budget, and the prefetch trade                                                                                                   |
+| [DEPLOYMENT.md](docs/DEPLOYMENT.md)                         | Railway configuration, why the staging deployment needs **no** variable typed by a person, unpublished-deployment behaviour, rollback                                  |
+| [VISUAL_REVIEW.md](docs/VISUAL_REVIEW.md)                   | The adversarial review record: what was asked, what was found, what was fixed                                                                                          |
+| [EXPERIENCE_REDESIGN_V2.md](docs/EXPERIENCE_REDESIGN_V2.md) | The experience redesign: the measured baseline, the severity-ranked findings, the decisions and their rejected alternatives, three adversarial passes, and the results |
 
 ---
 

@@ -13,6 +13,16 @@ list is in section 3.
 
 ---
 
+> **Superseded in part.** This document records the review of the build that the
+> experience redesign replaced. The equivalent for the current site is
+> `portfolio/docs/EXPERIENCE_REDESIGN_V2.md` sections 4 to 6, which carry three
+> further adversarial passes. The METHOD below is unchanged and is still the one
+> used: same script, same viewports, same overflow check, and still no committed
+> screenshot baselines, for the reason given in section 1.
+>
+> The method earned its keep again: the overflow check caught 85px of real
+> horizontal scroll at 375px in the redesigned hero, before it reached a commit.
+
 ## 1. Method
 
 Captured by `npm run review:screenshots` against `next build && next start`.

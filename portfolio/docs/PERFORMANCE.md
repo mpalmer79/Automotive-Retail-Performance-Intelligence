@@ -8,6 +8,28 @@ route makes. Nothing here is estimated.
 
 ---
 
+> **Experience redesign, version 2.** This document describes the system as it
+> stands after the redesign recorded in `portfolio/docs/EXPERIENCE_REDESIGN_V2.md`.
+> That document holds the baseline it replaced, the severity-ranked findings, the
+> decisions and their rejected alternatives, three adversarial review passes and
+> the measured results. Where a rule below reads as unusually specific, the reason
+> is almost always a finding recorded there.
+
+**Measured after the redesign**, against a production build served locally,
+because this environment cannot reach the deployment (see section 10):
+
+| Route           | JS before |     JS after |       change |
+| --------------- | --------: | -----------: | -----------: |
+| `/`             |  230.3 kB | **187.6 kB** | **-42.7 kB** |
+| `/status`       |  166.1 kB |     160.8 kB |      -5.3 kB |
+| `/about`        |  166.1 kB |     160.8 kB |      -5.3 kB |
+| `/architecture` |  215.1 kB |     215.0 kB |      -0.1 kB |
+| `/data-model`   |  226.0 kB |     226.8 kB |      +0.8 kB |
+
+Lighthouse, desktop preset, five routes: 100 / 100 / 100 / 100 on every one.
+Best practices on `/` was 96 before; the four points were the console error
+described in MOTION_SYSTEM.md.
+
 ## 1. How the measurement works, and two ways it was wrong first
 
 `scripts/report-bundle.ts` drives a real browser. It did not start that way, and
