@@ -357,6 +357,29 @@ jobs:
       - name: Power BI model structure
         run: python scripts/check_powerbi_model.py
 
+      # Implementation status lived only in prose, in several documents written at
+      # different times, and prose does not fail a build when it goes stale. It went
+      # stale in ten places: documents denying that the semantic model source existed
+      # while thirty TMDL files sat beside them, and denying that any DAX had been
+      # written while forty-nine measures were declared. These two steps make that class
+      # of drift a build failure.
+      #
+      # This comment paraphrases those claims rather than quoting them, because the
+      # check searches every tracked text file including this one -- which is a fair
+      # demonstration that it works.
+      #
+      # The check compares DECLARED status (config/project_capabilities.json) and
+      # DOCUMENTED prose against DERIVED evidence read from the repository, in both
+      # directions. Every rule only ever tightens a claim toward the evidence: none can
+      # open a gate, pass a validation or promote a phase because a file appeared.
+      - name: Capability consistency
+        run: python scripts/check_project_capabilities.py
+
+      # Regenerates the marked capability blocks in memory and compares. A count that
+      # moved without the documents being regenerated fails here rather than shipping.
+      - name: Generated capability blocks are current
+        run: python scripts/generate_project_capabilities.py --check
+
       # ADR-0008 accepts TWO real-engine validation paths -- Power BI Desktop
       # and Microsoft Fabric -- with an identical proof obligation. Each engine
       # reports one of five states: PASSED, PENDING, STALE, FAILED, MISSING.

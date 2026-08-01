@@ -7,6 +7,26 @@
 
 ---
 
+<!-- ARPI:CAPABILITIES:BEGIN semantic-model -->
+| Artefact | Count | What it means |
+|---|---:|---|
+| PBIP project files | 2 | The project and its semantic-model definition exist in source control. |
+| TMDL files | 30 | The model is stored as readable text, not a binary. |
+| Semantic tables | 26 | Imported reporting views plus measure-only tables. |
+| Relationships | 42 | Declared in TMDL and statically checked. |
+| DAX measures | 49 | Written and statically checked. **Never evaluated by an engine.** |
+| Report pages | 0 | The report is a PBIR shell. A dashboard does not exist. |
+
+**Source exists; runtime is unproven.** Every figure above is read from the repository, and every one of them describes *source*. Static parsing is not execution.
+
+| Real-engine path | Declared | Evidence |
+|---|---|---|
+| Power BI Desktop | pending | `validated_at` is null |
+| Microsoft Fabric | pending | `validated_at` is null |
+
+An engine has run: **No**. `ADR-0008-real-engine-validation-paths` accepts either path and requires one of them before Lifecycle Phase 5 can complete. (This block is generated into documents at several depths, so it names the record rather than linking to it: one relative link cannot resolve from all of them.)
+<!-- ARPI:CAPABILITIES:END semantic-model -->
+
 ## 1. What this directory is, and what it is not
 
 This directory is both the **specification** for the ARPI semantic model and the **as-built record** of it.

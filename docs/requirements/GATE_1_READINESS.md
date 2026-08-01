@@ -125,7 +125,7 @@ All figures come from one evaluation performed on 2026-07-29:
 | **Evidence** | All 29 resolve. Each is additionally computed from `reporting` and compared against an independent derivation from `warehouse` written from the catalogue's numerator and denominator text. 87 assertions pass. |
 | **Test or SQL query** | `tests/integration/test_kpi_verification.py` (87 tests) |
 | **Result** | **Pass** |
-| **Limitation** | "Computable" means the SQL side exists and is correct. **No DAX measure exists**, and no KPI has been computed inside a semantic model. Two KPIs — `KPI-INV-008` and `KPI-INV-009` — are pre-computed in SQL because they combine two facts across two different date columns over one window; a semantic model imports those values rather than recomputing them. |
+| **Limitation** | "Computable" means the SQL side exists and is correct. **At the time this gate was assessed no DAX measure existed.** Forty-nine measures have since been written in TMDL, but no KPI has been computed inside a semantic model: static parsing is not execution, and both real-engine paths remain pending under ADR-0008. Two KPIs — `KPI-INV-008` and `KPI-INV-009` — are pre-computed in SQL because they combine two facts across two different date columns over one window; a semantic model imports those values rather than recomputing them. |
 | **Verdict** | **Met** |
 
 ### G1-C08 — Every ratio returns NULL on a zero denominator

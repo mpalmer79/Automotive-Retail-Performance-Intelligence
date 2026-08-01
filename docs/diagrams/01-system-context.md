@@ -118,9 +118,11 @@ log file — it is queryable history in the database.
 `reporting` schema, and the `arpi_reporter` role has read access to nothing else. That constraint is
 enforced in `sql/07_security/`, not merely stated here.
 
-**The right-hand column is entirely planned.** No semantic model, no report page, no workbook, no memo, and
-no case study exists. Four reporting views exist today — calendar, dealership, pipeline run summary, and
-data quality summary — and nothing consumes them yet.
+**The right-hand column is partly built and entirely unproven.** The semantic model *source* exists: a PBIP
+project holding twenty-six tables, forty-two relationships and forty-nine measures in TMDL. No engine has
+executed it. No report page, no workbook, no memo and no case study exists, and the report is a PBIR shell
+with zero pages. Twenty-eight reporting views exist today, and the semantic model is the only thing
+declared to consume them.
 
 ---
 
