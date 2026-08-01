@@ -1025,9 +1025,9 @@ once the lead is closed the row is final.
 | **Entity name** | `audit.pipeline_run` |
 | **Layer** | Audit |
 | **Purpose** | The parent record for every pipeline execution. Every validation result, row count, reconciliation, and rejected record hangs off this table, so that any figure in the warehouse can be traced back to the run that produced it. |
-| **Declared grain** | **One row per pipeline execution.** |
+| **Declared grain** | **One row per pipeline execution _attempt_.** Two executions with identical inputs are two attempts and produce two rows, sharing one `logical_run_key`. See [ADR-0010](docs/architecture-decisions/ADR-0010-execution-identity-and-logical-run-key.md). |
 | **Primary key** | `pipeline_run_id` (`bigserial`) |
-| **Natural / source key** | `run_uuid` (unique) |
+| **Natural / source key** | `run_uuid` (unique) — execution identity |
 | **Foreign keys** | None (parent) |
 | **Implementation status** | **Implemented** |
 
@@ -1036,7 +1036,8 @@ once the lead is closed the row is final.
 | Column | Type | Null | Allowed values / domain | Description | Synthetic generation source | PII class |
 |---|---|---|---|---|---|---|
 | `pipeline_run_id` | `bigserial` PK | no | ≥ 1 | Database-assigned run identifier. | Database sequence. | Non-personal |
-| `run_uuid` | `uuid` UNIQUE | no | UUID | Application-assigned run identifier. Lets the Python side reference a run before the database row is visible, and makes runs correlatable across logs. | Generated at run start. | Non-personal |
+| `run_uuid` | `uuid` UNIQUE | no | UUIDv4 | **Execution identity.** Identifies **one execution attempt**, random and never reused. Lets the Python side reference a run before the database row is visible, and makes runs correlatable across logs. Two runs with identical inputs get *different* values — that is what keeps both attempts in the history. | Generated at run start (`build_execution_uuid`). | Non-personal |
+| `logical_run_key` | `uuid` | no | UUIDv5 | **Logical-run identity.** A deterministic fingerprint of `(pipeline_name, profile_name, random_seed, reporting start, reporting end)`. Every execution asked to do the same thing shares it, so it is deliberately **not unique** here. Group by it to compare attempts. Never an upsert conflict target. `arpi_version` is deliberately excluded, so a run can be compared across an upgrade. | Derived at run start (`build_logical_run_key`). | Non-personal |
 | `pipeline_name` | `text` | no | Free text | Which pipeline ran. | Supplied by the caller. | Non-personal |
 | `profile_name` | `text` | no | `development` \| `test` \| `portfolio` | Configuration profile in force. | From configuration. | Non-personal |
 | `run_mode` | `text` | no | Free text | Execution mode, for example a full rebuild or a validation-only run ([ARCHITECTURE.md §17.2](ARCHITECTURE.md)). | Supplied by the caller. | Non-personal |
@@ -1058,16 +1059,27 @@ once the lead is closed the row is final.
 
 - `completed_at >= started_at` when both are present.
 - `status = 'running'` implies `completed_at IS NULL`.
-- `run_uuid` is unique.
+- `run_uuid` is unique. It identifies one attempt.
+- `logical_run_key` is **not** unique. A unique constraint on it would reintroduce the collapsed-history defect ADR-0010 corrects.
 - A run with `critical_failure_count > 0` must not end with `status = 'succeeded'`.
 
 ### 19.3 PII classification / history policy
 
-`Non-personal` throughout. **Upsert on `run_uuid`**: the run is tracked in memory for the whole execution
-and written once, at the end of the database load, already carrying its terminal `status` and
-`completed_at`. Because `run_uuid` is derived deterministically from the run parameters, a rerun with the
-same parameters updates that row in place rather than creating a second one. Distinct runs are never
-purged, so prior run history is preserved ([ARCHITECTURE.md §17.3](ARCHITECTURE.md)).
+`Non-personal` throughout. **Insert-only**: the run is tracked in memory for the whole execution and
+written once, at the end of the database load, already carrying its terminal `status` and `completed_at`.
+Every execution inserts its own row. A rerun, a retry after a failure, and a rerun under a newer ARPI
+version each add a row rather than overwriting one, so `completed_at - started_at`, `arpi_version` and
+`run_mode` always describe exactly one attempt. Rows are never updated by a later attempt and never purged
+([ARCHITECTURE.md §17.3](ARCHITECTURE.md), [ADR-0010](docs/architecture-decisions/ADR-0010-execution-identity-and-logical-run-key.md)).
+
+Warehouse idempotency does not depend on this table. It is carried by deterministic generated source data,
+natural and source keys, surrogate-key resolution, the dimension merges, attribute hashes and unique grain
+constraints — so a rerun still produces no duplicate warehouse row while the audit layer records that it
+happened twice.
+
+**Historical limitation.** Rows written before ADR-0010 may each represent several collapsed attempts. The
+migration backfills their `logical_run_key` correctly, but the attempts that were overwritten cannot be
+recovered and were not invented. See [LIMITATIONS.md](LIMITATIONS.md).
 
 ---
 
@@ -1375,11 +1387,13 @@ runs' rows are never touched. See [STM-003 §8.1](docs/source-to-target/STM-003-
 
 ### 22.3 PII classification / history policy
 
-`Non-personal`. **Replace-on-rerun**: the loader issues
-`DELETE FROM audit.reconciliation_result WHERE pipeline_run_id = %s` before re-inserting, so a rerun of the
-same logical run describes its latest execution rather than accumulating duplicates. The `run_uuid` is
-derived deterministically from the run parameters, so a rerun *is* the same logical run; other runs' rows
-are never touched. See [STM-003 §8.1](docs/source-to-target/STM-003-audit-metadata.md).
+`Non-personal`. **Insert-only, scoped to the attempt.** Every execution attempt owns a distinct
+`pipeline_run_id`, so a rerun's reconciliation results are recorded alongside — never on top of — the
+previous attempt's. `audit.fn_record_all_reconciliations` still deletes by `pipeline_run_id` before
+inserting, which now guards only one case: the same function being called twice *within* a single
+execution, which must restate its verdicts rather than double them. Rows belonging to any other run,
+including an earlier attempt at the same logical run, are never touched.
+See [STM-003 §8.1](docs/source-to-target/STM-003-audit-metadata.md).
 
 ---
 

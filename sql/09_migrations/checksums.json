@@ -1,0 +1,7 @@
+{
+  "_comment": "SHA-256 of every released forward migration. A migration that has reached main is immutable: editing it changes its checksum and fails tests/integration/test_migrations.py. Fix a released migration with a NEW migration.",
+  "migrations": {
+    "0000_migration_history": "2e86691a7cbf1f398b019d0fb712b026b37fc20b2ba9bec1fe04cc021acd1df4",
+    "0001_add_logical_run_key": "0f7bfc8e3c0c1794be166c0a3fc4610bedc77bd4c47d9d9e05c5fd44c1228d9e"
+  }
+}

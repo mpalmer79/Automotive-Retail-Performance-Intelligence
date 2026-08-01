@@ -57,7 +57,7 @@ COMMENT ON VIEW reporting.vw_data_quality_summary IS
 
 COMMENT ON COLUMN reporting.vw_data_quality_summary.validation_result_id IS 'Identifier of the individual check evaluation.';
 COMMENT ON COLUMN reporting.vw_data_quality_summary.pipeline_run_id IS 'Run the check was evaluated in. Join key to reporting.vw_pipeline_run_summary.';
-COMMENT ON COLUMN reporting.vw_data_quality_summary.run_uuid IS 'UUID of the run; correlates with log output.';
+COMMENT ON COLUMN reporting.vw_data_quality_summary.run_uuid IS 'Execution identity: one value per pipeline execution attempt; correlates with log output. See ADR-0010.';
 COMMENT ON COLUMN reporting.vw_data_quality_summary.pipeline_name IS 'Logical pipeline that executed the check.';
 COMMENT ON COLUMN reporting.vw_data_quality_summary.profile_name IS 'ARPI configuration profile the run used.';
 COMMENT ON COLUMN reporting.vw_data_quality_summary.run_status IS 'Overall status of the run the check belongs to.';

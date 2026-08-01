@@ -24,6 +24,7 @@
 CREATE TABLE IF NOT EXISTS audit.pipeline_run (
     pipeline_run_id         bigserial       NOT NULL,
     run_uuid                uuid            NOT NULL,
+    logical_run_key         uuid            NOT NULL,
     pipeline_name           text            NOT NULL,
     profile_name            text            NOT NULL,
     run_mode                text            NOT NULL,
@@ -47,11 +48,26 @@ CREATE TABLE IF NOT EXISTS audit.pipeline_run (
         CHECK (completed_at IS NULL OR completed_at >= started_at)
 );
 
+-- ix_pipeline_run_logical_run_key is created by sql/09_migrations/0001_add_logical_run_key.sql,
+-- not here, and deliberately so. On an UPGRADE path this file is a no-op -- the table already
+-- exists, so CREATE TABLE IF NOT EXISTS adds nothing and logical_run_key is still absent until
+-- the migration runs. An index on that column at this point in the sequence would fail with
+-- "column does not exist" and abort the whole deployment. The migration owns the column on the
+-- upgrade path, so it owns the index on both paths.
+
 COMMENT ON TABLE audit.pipeline_run IS
-    'Grain: one row per ARPI pipeline execution. Root of the audit layer; every other audit table '
-    'references it. A run is inserted with status = running and updated to succeeded/failed/aborted.';
+    'Grain: one row per ARPI pipeline execution ATTEMPT. Root of the audit layer; every other audit '
+    'table references it. Each attempt inserts its own row: two equivalent executions produce two '
+    'rows sharing one logical_run_key, and a failed attempt followed by a successful retry leaves '
+    'both visible. Rows are never reused or overwritten by a later attempt. See ADR-0010.';
 COMMENT ON COLUMN audit.pipeline_run.pipeline_run_id IS 'Surrogate key. Referenced by every child audit table.';
-COMMENT ON COLUMN audit.pipeline_run.run_uuid IS 'Externally generated UUID for the run; unique, used to correlate logs with database rows.';
+COMMENT ON COLUMN audit.pipeline_run.run_uuid IS
+    'EXECUTION IDENTITY. A random UUID generated once at the start of ONE execution attempt and never '
+    'reused. Unique. Used to correlate log lines with database rows. Two runs with identical inputs '
+    'get different values -- that is what keeps both attempts in the history.';
+-- The COMMENT on logical_run_key is set by sql/09_migrations/0001_add_logical_run_key.sql,
+-- for the same reason as the index above: on an upgrade path the column does not exist yet
+-- when this file runs, and COMMENT ON a missing column is an error, not a no-op.
 COMMENT ON COLUMN audit.pipeline_run.pipeline_name IS 'Logical pipeline that executed, for example run-foundation.';
 COMMENT ON COLUMN audit.pipeline_run.profile_name IS 'ARPI configuration profile: development, test or portfolio.';
 COMMENT ON COLUMN audit.pipeline_run.run_mode IS 'How the run was invoked, for example cli, ci or manual.';

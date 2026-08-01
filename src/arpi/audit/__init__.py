@@ -7,7 +7,8 @@ from arpi.audit.run import (
     PipelineRun,
     ReconciliationResult,
     RowCount,
-    build_run_uuid,
+    build_execution_uuid,
+    build_logical_run_key,
 )
 
 __all__ = [
@@ -15,5 +16,6 @@ __all__ = [
     "PipelineRun",
     "ReconciliationResult",
     "RowCount",
-    "build_run_uuid",
+    "build_execution_uuid",
+    "build_logical_run_key",
 ]

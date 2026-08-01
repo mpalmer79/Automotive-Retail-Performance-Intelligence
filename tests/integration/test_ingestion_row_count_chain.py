@@ -536,7 +536,13 @@ def test_a_rejected_payload_never_carries_a_prohibited_value(loaded: Any, observ
 def test_rerunning_the_same_load_does_not_duplicate_the_audit_trail(
     chain_config: ArpiConfig, defective_dataset: Any, observer: Any
 ) -> None:
-    """A second identical run replaces its own child rows rather than appending them."""
+    """A second identical run records its own rejections without disturbing the first's.
+
+    Before ADR-0010 both executions shared one ``audit.pipeline_run`` row and the loader
+    deleted the first attempt's rejected records before writing the second's, so this
+    asserted that the total stayed flat. Each attempt now owns its rows: the total
+    doubles, and each half is attributable to the execution that produced it.
+    """
 
     def run_once() -> None:
         run = PipelineRun.start(chain_config, pipeline_name="phase1_ingestion_chain")
@@ -559,7 +565,17 @@ def test_rerunning_the_same_load_does_not_duplicate_the_audit_trail(
     )
 
     assert first == EXPECTED_REJECTED_INVALID + EXPECTED_DEDUPLICATED
-    assert second == first, "a rerun must replace its rejected records, not accumulate them"
+    assert second == first * 2, (
+        "each execution attempt must keep the rejected records it produced; collapsing "
+        "them onto one audit row is the defect ADR-0010 corrects"
+    )
+    attempts = _scalar(
+        observer,
+        "SELECT count(DISTINCT pipeline_run_id) FROM audit.rejected_record "
+        "WHERE source_entity = %s",
+        (ENTITY,),
+    )
+    assert attempts == 2, "the rejections must be attributable to two distinct attempts"
     # The second load lands a second raw batch, so raw grows while staging does not.
     assert _scalar(observer, "SELECT count(*) FROM raw.vehicle_model_load") == EXPECTED_RAW * 2
     assert _scalar(observer, "SELECT count(*) FROM staging.stg_vehicle_model") == EXPECTED_STAGING

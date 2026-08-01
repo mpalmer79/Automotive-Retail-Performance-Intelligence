@@ -79,7 +79,7 @@ COMMENT ON VIEW reporting.vw_data_quality_trend IS
     'Power BI see data-quality evidence without reaching the audit schema.';
 
 COMMENT ON COLUMN reporting.vw_data_quality_trend.pipeline_run_id IS 'Identifier of the pipeline run. Relationship column into vw_pipeline_run_summary.';
-COMMENT ON COLUMN reporting.vw_data_quality_trend.run_uuid IS 'Deterministic run identifier, derived from the run parameters. Two runs with identical parameters share it.';
+COMMENT ON COLUMN reporting.vw_data_quality_trend.run_uuid IS 'Execution identity: one value per pipeline execution attempt, random and never reused. Two runs with identical parameters have DIFFERENT run_uuids and share a logical_run_key instead. See ADR-0010.';
 COMMENT ON COLUMN reporting.vw_data_quality_trend.pipeline_name IS 'Logical pipeline the run executed.';
 COMMENT ON COLUMN reporting.vw_data_quality_trend.profile_name IS 'Configuration profile: development, test or portfolio. Never compare quality across profiles without saying so; they generate different volumes.';
 COMMENT ON COLUMN reporting.vw_data_quality_trend.run_started_at IS 'When the run started, with time zone.';

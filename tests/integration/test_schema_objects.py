@@ -81,6 +81,7 @@ EXPECTED_TABLES = {
     ("audit", "pipeline_run_row_count"),
     ("audit", "reconciliation_result"),
     ("audit", "rejected_record"),
+    ("audit", "schema_migration"),
     ("audit", "validation_result"),
     *(("raw", name) for name in RAW_ENTITIES),
     *(("warehouse", name) for name in DIMENSION_TABLES),

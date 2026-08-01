@@ -1068,7 +1068,23 @@ Requirements:
 - Load batches must have unique identifiers.
 - Staging tables may be truncated and reloaded.
 - Warehouse merges must use source identifiers and effective-date logic.
-- Audit records must preserve prior run history.
+- Audit records must preserve prior run history, **including repeated executions of the same logical run**.
+
+**Idempotency is a warehouse property, not an audit property.** It is carried by deterministic source
+generation, natural and source keys, surrogate-key resolution, the dimension merges, attribute hashes,
+load batches and unique grain constraints. It must never be implemented by reusing an audit row.
+
+Accordingly, `audit.pipeline_run` records **one row per execution attempt**:
+
+- `run_uuid` is *execution identity* — a random UUIDv4 generated once per attempt and never reused, so
+  `started_at`, `completed_at`, `arpi_version`, `run_mode` and `status` always describe exactly one
+  execution;
+- `logical_run_key` is *logical-run identity* — a deterministic UUIDv5 over the pipeline name, profile,
+  seed and reporting window, shared by every equivalent attempt and deliberately not unique.
+
+A retry creates a new row. A failure followed by a success leaves two rows. Two successes with identical
+inputs leave two rows with different `run_uuid`s and one `logical_run_key`. See
+[ADR-0010](docs/architecture-decisions/ADR-0010-execution-identity-and-logical-run-key.md).
 
 ### 17.4 Failure behavior
 
