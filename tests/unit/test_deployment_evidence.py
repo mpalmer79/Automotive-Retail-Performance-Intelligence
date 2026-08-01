@@ -93,6 +93,33 @@ def test_no_production_environment_is_claimed(document: dict[str, Any]) -> None:
 # --------------------------------------------------------------------------------------
 
 
+def test_the_header_comment_makes_no_claim_about_which_fields_are_filled(
+    document: dict[str, Any],
+) -> None:
+    """The blind spot that caught this file out, closed.
+
+    The header used to say "Every field below that requires reaching the live site is
+    UNVERIFIED". True when written, false the moment the first verification landed - a
+    stale claim inside the file whose whole purpose is to hold claims to their evidence.
+
+    Nothing caught it: the register's prose rules search Markdown only, so a claim inside
+    a JSON comment was never scanned. The fix was not to update the sentence but to stop
+    the comment asserting a state at all, and this test keeps it that way. A comment that
+    describes the RULE cannot go stale; one that describes today's values always can.
+    """
+    header = " ".join(document["_comment"]).lower()
+    for phrase in (
+        "every field below that requires reaching the live site is unverified",
+        "every field below is unverified",
+        "all of these are unverified",
+    ):
+        assert phrase not in header, (
+            f"the header comment asserts {phrase!r}, which is a statement about the "
+            "current values rather than the rule, and goes stale the moment a run fills "
+            "one in. State the rule instead."
+        )
+
+
 def test_a_filled_live_field_is_backed_by_a_run(document: dict[str, Any]) -> None:
     """The invariant, stated so it holds whether or not a verification has happened.
 
