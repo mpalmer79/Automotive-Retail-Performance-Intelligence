@@ -122,6 +122,36 @@ jobs:
             --cov-report=term-missing \
             --cov-report=xml
 
+      # The step above already runs the whole non-integration suite in ONE process,
+      # which is what makes cross-test state leakage visible at all. It is not
+      # sufficient on its own: it fixes ONE order, so a leak that only matters in a
+      # different order stays hidden.
+      #
+      # `configure_logging` sets the level and `propagate = False` on the process-global
+      # `arpi` logger. Before `tests/conftest.py` grew `_isolated_logging`, that state
+      # survived the test that caused it, and a later `caplog` assertion saw an empty
+      # `caplog.text`. The same test passed alone and failed after `test_cli.py`.
+      #
+      # These two runs pin that down: the first is the order that actually failed, the
+      # second is its reverse. Both are deterministic and cost a few seconds, so neither
+      # needs a random-order plugin -- which would trade reproducibility for coverage of
+      # orders nobody has seen fail.
+      - name: Run the logging-sensitive modules in the order that used to fail
+        run: |
+          pytest -p no:randomly --no-cov -q \
+            tests/unit/test_logging_config.py \
+            tests/unit/test_cli.py \
+            tests/unit/test_ingestion.py \
+            tests/unit/test_logging_isolation.py
+
+      - name: Run the same modules in the reverse order
+        run: |
+          pytest -p no:randomly --no-cov -q \
+            tests/unit/test_logging_isolation.py \
+            tests/unit/test_ingestion.py \
+            tests/unit/test_cli.py \
+            tests/unit/test_logging_config.py
+
       - name: Upload the coverage report
         # Upload even when the tests failed; the partial report is often the
         # fastest way to see what regressed.

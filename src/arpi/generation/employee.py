@@ -41,7 +41,7 @@ is_current`` holds for everyone.
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import TYPE_CHECKING, Any, Final
 
 import pandas as pd
@@ -1330,6 +1330,45 @@ def _check_one_current_row(frame: pd.DataFrame) -> CheckResult:
     )
 
 
+#: How many offending employee identifiers a failed continuity check names before it
+#: summarises the rest. Enough to start debugging, short enough to stay readable in a log
+#: line and in ``audit.validation_result.failure_detail``.
+_MAX_REPORTED_EMPLOYEES: Final = 5
+
+
+def _as_date(value: Any) -> date | None:
+    """Convert one date-like cell to a Python :class:`datetime.date`.
+
+    SCD Type 2 continuity has to do day arithmetic, and the open-ended sentinel is
+    ``9999-12-31``. ``pandas.Timedelta`` is nanosecond-based and the nanosecond range ends
+    at 2262-04-11, so ``pandas.Timestamp("9999-12-31") + pandas.Timedelta(days=1)`` is
+    unrepresentable. Whether it raises ``OutOfBoundsDatetime`` or silently widens depends
+    on the installed pandas version, which is not a property a gating validator may
+    depend on.
+
+    Python's ``date`` covers years 1 through 9999 and ``datetime.timedelta`` arithmetic on
+    it is exact, so the whole check is done in Python types. This function is the single
+    boundary where that conversion happens.
+
+    Args:
+        value: A ``pandas.Timestamp``, ``datetime``, ``date``, ``NaT`` or ``None``.
+
+    Returns:
+        The corresponding :class:`datetime.date`, or ``None`` when the cell holds no
+        usable date. ``None`` is a *data* problem for the caller to report as a failed
+        check, not an error to raise.
+    """
+    if value is None or value is pd.NaT:
+        return None
+    if isinstance(value, pd.Timestamp):
+        return value.date()
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    return None
+
+
 def _check_non_overlapping_versions(frame: pd.DataFrame) -> CheckResult:
     """``DQ-EMP-003`` -- version ranges per employee are contiguous and non-overlapping."""
     base = _base_result(
@@ -1338,21 +1377,42 @@ def _check_non_overlapping_versions(frame: pd.DataFrame) -> CheckResult:
         CHECK_CATEGORY_BUSINESS_RULE,
     )
     ordered = frame.sort_values(["employee_id", "effective_date"])
-    one_day = pd.Timedelta(days=1)
+    one_day = timedelta(days=1)
     offending = 0
-    for _, versions in ordered.groupby("employee_id", sort=True):
-        expirations = versions["expiration_date"].tolist()
-        effectives = versions["effective_date"].tolist()
-        offending += sum(
-            1
-            for index in range(1, len(effectives))
-            if expirations[index - 1] + one_day != effectives[index]
-        )
+    offending_employees: list[str] = []
+    for employee_id, versions in ordered.groupby("employee_id", sort=True):
+        expirations = [_as_date(value) for value in versions["expiration_date"].tolist()]
+        effectives = [_as_date(value) for value in versions["effective_date"].tolist()]
+        broken = 0
+        for index in range(1, len(effectives)):
+            previous_expiration = expirations[index - 1]
+            following_effective = effectives[index]
+            if previous_expiration is None or following_effective is None:
+                broken += 1
+                continue
+            # An open-ended row is by definition the last version a person has. One
+            # followed by another version is invalid history, and the sentinel is the
+            # signal -- so it is compared, never used in arithmetic. `SENTINEL + one_day`
+            # is unrepresentable in pandas' nanosecond resolution, and evaluating it
+            # raised OutOfBoundsDatetime rather than reporting the invalid data.
+            if previous_expiration == SENTINEL_EXPIRATION_DATE:
+                broken += 1
+                continue
+            if previous_expiration + one_day != following_effective:
+                broken += 1
+        if broken:
+            offending += broken
+            offending_employees.append(str(employee_id))
     if offending == 0:
         return base
+    named = ", ".join(offending_employees[:_MAX_REPORTED_EMPLOYEES])
+    if len(offending_employees) > _MAX_REPORTED_EMPLOYEES:
+        named += f", and {len(offending_employees) - _MAX_REPORTED_EMPLOYEES} more"
     return base.failed(
         f"{offending} adjacent version pair(s) are not contiguous: the previous version's "
-        "expiration_date must be exactly one day before the next version's effective_date.",
+        "expiration_date must be exactly one day before the next version's effective_date, "
+        f"and only the last version may carry the {SENTINEL_EXPIRATION_DATE.isoformat()} "
+        f"sentinel. Affected employee_id(s): {named}.",
         observed_value=float(offending),
         failed_record_count=offending,
     )

@@ -451,3 +451,169 @@ def test_the_gating_suite_fails_on_an_out_of_domain_enumeration(
     frame.loc[frame.index[0], "job_role"] = "Lot Porter"
     results = _results(_tampered(employee_dataset, frame), test_config)
     assert results["DQ-EMP-009"].is_failure
+
+
+# --------------------------------------------------------------------------------------
+# The year-9999 sentinel and DQ-EMP-003
+# --------------------------------------------------------------------------------------
+#
+# `expiration_date` carries a 9999-12-31 sentinel on the current row. `pandas.Timedelta`
+# is nanosecond-based and the nanosecond range ends at 2262-04-11, so
+# `Timestamp("9999-12-31") + Timedelta(days=1)` is unrepresentable. DQ-EMP-003 used to do
+# exactly that while walking adjacent versions, and whether it raised
+# `OutOfBoundsDatetime` or silently widened depended on the installed pandas version:
+#
+#   pandas 2.2.3  -> OutOfBoundsDatetime: Cannot cast 9999-12-31 00:00:00 to unit='ns'
+#   pandas 3.0.5  -> 10000-01-01 00:00:00
+#
+# A gating validator crashing on invalid input is worse than one reporting it, and a
+# gating validator whose behaviour depends on an unpinned transitive version is worse
+# still. The check now compares the sentinel instead of doing arithmetic on it.
+
+
+def _employee_with_two_versions(
+    employee_dataset: GeneratedDataset,
+) -> tuple[pd.DataFrame, str]:
+    """Return the frame and an employee_id that genuinely has more than one version."""
+    frame = employee_dataset.frame.copy()
+    counts = frame.groupby("employee_id").size()
+    multi = counts[counts > 1]
+    assert not multi.empty, "the fixture must contain at least one multi-version employee"
+    return frame, str(multi.index[0])
+
+
+def test_an_open_ended_row_followed_by_another_version_fails_rather_than_raising(
+    employee_dataset: GeneratedDataset, test_config: ArpiConfig
+) -> None:
+    """The exact shape that used to raise OutOfBoundsDatetime.
+
+    An earlier version carrying the open-ended sentinel is invalid history: only the last
+    version may be open-ended. It must come back as a failed check, deterministically,
+    with the offending employee named -- not as an exception from inside pandas.
+    """
+    frame, employee_id = _employee_with_two_versions(employee_dataset)
+    rows = frame.index[frame["employee_id"] == employee_id]
+    # Give the FIRST of this person's versions the open-ended sentinel, so a later
+    # version follows a row that has no end.
+    frame.loc[rows[0], "expiration_date"] = pd.Timestamp(SENTINEL_EXPIRATION_DATE)
+
+    results = _results(_tampered(employee_dataset, frame), test_config)
+
+    outcome = results["DQ-EMP-003"]
+    assert outcome.is_failure
+    assert employee_id in (outcome.message or ""), (
+        "a continuity failure must name the employee it is about"
+    )
+
+
+def test_the_whole_suite_still_runs_when_one_employee_has_invalid_history(
+    employee_dataset: GeneratedDataset, test_config: ArpiConfig
+) -> None:
+    """One invalid record must not stop the other checks from being evaluated.
+
+    A validator that raises takes the rest of the gating suite down with it, so the run
+    reports one exception instead of a full set of results.
+    """
+    frame, employee_id = _employee_with_two_versions(employee_dataset)
+    rows = frame.index[frame["employee_id"] == employee_id]
+    frame.loc[rows[0], "expiration_date"] = pd.Timestamp(SENTINEL_EXPIRATION_DATE)
+
+    results = _results(_tampered(employee_dataset, frame), test_config)
+
+    assert set(results) == set(EMPLOYEE_CHECK_IDS), (
+        "every registered employee check must still produce a result"
+    )
+    assert results["DQ-EMP-005"].is_failure is False, (
+        "an unrelated privacy check must be unaffected by invalid history"
+    )
+
+
+def test_several_employees_with_invalid_history_are_all_counted(
+    employee_dataset: GeneratedDataset, test_config: ArpiConfig
+) -> None:
+    """The result is structured: a count, not merely a boolean."""
+    frame = employee_dataset.frame.copy()
+    counts = frame.groupby("employee_id").size()
+    multi = [str(value) for value in counts[counts > 1].index[:2]]
+    assert len(multi) == 2, "this test needs two multi-version employees"
+    for employee_id in multi:
+        rows = frame.index[frame["employee_id"] == employee_id]
+        frame.loc[rows[0], "expiration_date"] = pd.Timestamp(SENTINEL_EXPIRATION_DATE)
+
+    outcome = _results(_tampered(employee_dataset, frame), test_config)["DQ-EMP-003"]
+
+    assert outcome.is_failure
+    assert outcome.failed_record_count >= 2
+    for employee_id in multi:
+        assert employee_id in (outcome.message or "")
+
+
+def test_a_valid_open_ended_current_row_still_passes(
+    employee_dataset: GeneratedDataset, test_config: ArpiConfig
+) -> None:
+    """The generated dataset is full of sentinels and must remain valid.
+
+    The correction must not turn "open-ended" into "invalid": the sentinel is only a
+    failure when a later version follows it.
+    """
+    results = _results(employee_dataset, test_config)
+    assert results["DQ-EMP-003"].is_failure is False
+    assert results["DQ-EMP-002"].is_failure is False
+
+    current = employee_dataset.frame[employee_dataset.frame["is_current"]]
+    assert (current["expiration_date"] == pd.Timestamp(SENTINEL_EXPIRATION_DATE)).all()
+
+
+def test_a_closed_version_boundary_is_still_checked_exactly(
+    employee_dataset: GeneratedDataset, test_config: ArpiConfig
+) -> None:
+    """Ordinary contiguity is unchanged: one day off is still a failure.
+
+    Guards the opposite error from the sentinel fix -- converting to Python dates must not
+    make the day comparison looser.
+    """
+    frame, employee_id = _employee_with_two_versions(employee_dataset)
+    rows = frame.index[frame["employee_id"] == employee_id]
+    frame.loc[rows[0], "expiration_date"] = frame.loc[rows[0], "expiration_date"] - pd.Timedelta(
+        days=1
+    )
+
+    outcome = _results(_tampered(employee_dataset, frame), test_config)["DQ-EMP-003"]
+
+    assert outcome.is_failure
+    assert employee_id in (outcome.message or "")
+
+
+def test_the_continuity_check_is_deterministic(
+    employee_dataset: GeneratedDataset, test_config: ArpiConfig
+) -> None:
+    """Two evaluations of the same invalid frame produce the same result."""
+    frame, employee_id = _employee_with_two_versions(employee_dataset)
+    rows = frame.index[frame["employee_id"] == employee_id]
+    frame.loc[rows[0], "expiration_date"] = pd.Timestamp(SENTINEL_EXPIRATION_DATE)
+    tampered = _tampered(employee_dataset, frame)
+
+    first = _results(tampered, test_config)["DQ-EMP-003"]
+    second = _results(tampered, test_config)["DQ-EMP-003"]
+
+    assert first.message == second.message
+    assert first.failed_record_count == second.failed_record_count
+    assert first.observed_value == second.observed_value
+
+
+def test_a_missing_expiration_date_is_reported_rather_than_raising(
+    employee_dataset: GeneratedDataset, test_config: ArpiConfig
+) -> None:
+    """An unusable date is invalid data, not a crash.
+
+    NaT reaching date arithmetic is the other way this check could raise. It is a data
+    problem, so it comes back as a failed check.
+    """
+    frame, employee_id = _employee_with_two_versions(employee_dataset)
+    rows = frame.index[frame["employee_id"] == employee_id]
+    frame.loc[rows[0], "expiration_date"] = pd.NaT
+
+    outcome = _results(_tampered(employee_dataset, frame), test_config)["DQ-EMP-003"]
+
+    assert outcome.is_failure
+    assert employee_id in (outcome.message or "")
