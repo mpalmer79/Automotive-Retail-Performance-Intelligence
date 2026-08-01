@@ -478,15 +478,28 @@ def test_the_repository_records_a_portfolio_deployment(evidence: DerivedEvidence
     assert evidence.deployment.portfolio_is_recorded
 
 
-def test_a_recorded_deployment_is_not_a_verified_one(evidence: DerivedEvidence) -> None:
+def test_recorded_and_verified_stay_separate_properties(evidence: DerivedEvidence) -> None:
     """A URL is a statement. A health verification is an observation.
 
-    Both are honest; only the second may ever be rendered as proof that the site answers,
-    and this repository cannot obtain it -- CI has no reason to be online and the
-    environments the project is built in are denied the deployment host.
+    `is_live_verified` was false for as long as nothing could reach the deployment host,
+    and is true now that `.github/workflows/verify-deployment.yml` runs the remote suite
+    from infrastructure that can. The distinction survives the change: verification still
+    requires a timestamp from a real health check, so a URL alone can never satisfy it.
     """
     assert evidence.deployment.portfolio_is_recorded
-    assert evidence.deployment.portfolio_is_live_verified is False
+    assert evidence.deployment.portfolio_is_live_verified
+
+    # The property is not a synonym for "a URL is present": stripping the timestamp must
+    # take it back to false, or it would be proving nothing.
+    stripped = replace(
+        evidence.deployment,
+        environments=tuple(
+            replace(environment, health_verified_at="UNVERIFIED")
+            for environment in evidence.deployment.environments
+        ),
+    )
+    assert stripped.portfolio_is_recorded
+    assert stripped.portfolio_is_live_verified is False
 
 
 def test_a_live_website_is_not_a_running_warehouse(evidence: DerivedEvidence) -> None:

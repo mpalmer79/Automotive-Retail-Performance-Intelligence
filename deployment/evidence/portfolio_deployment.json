@@ -1,6 +1,5 @@
 {
   "schema": "arpi.deployment_evidence/1",
-
   "_comment": [
     "NON-SECRET DEPLOYMENT EVIDENCE. Three deployments are recorded separately because",
     "they are three different claims, and collapsing them is how a live website comes to",
@@ -29,7 +28,6 @@
     "(recorded in docs/reviews/ENGINEERING_HARDENING_PROGRAM.md section 1.1). A field is",
     "filled in when a run produces it, never because a person believes it."
   ],
-
   "portfolio": {
     "_comment": [
       "The Railway service defined by deployment/railway/project.config.json services.portfolio.",
@@ -37,7 +35,6 @@
       "connects_to_database records. That one is derived from source rather than observed,",
       "so it is asserted rather than UNVERIFIED."
     ],
-
     "environments": [
       {
         "environment": "staging",
@@ -45,27 +42,53 @@
         "public_url": "https://arpi.up.railway.app",
         "health_path": "/status",
         "deployment_branch": "main",
-        "commit_sha": "UNVERIFIED",
+        "commit_sha": "b90e3244a9b0db2f9ee1ccfc9f6d85e93959e806",
         "deployed_at": "UNVERIFIED",
-        "health_verified_at": "UNVERIFIED",
-        "remote_smoke_test": "UNVERIFIED",
-        "security_headers": "UNVERIFIED",
+        "health_verified_at": "2026-08-01T20:31:00+00:00",
+        "remote_smoke_test": "81 passed, 0 failed, 1 skipped, 0 flaky",
+        "security_headers": "passed (1)",
         "connects_to_database": false
       }
     ],
-
     "production_environment": "not-created",
-
     "connects_to_database_evidence": [
       "deployment/railway/project.config.json services.portfolio.requiresDatabase = false",
       "deployment/railway/project.config.json deliberatelyAbsent.websiteDatabaseAccess",
       "scripts/railway/verify_railway_configuration.ts"
     ],
-
     "remote_suite": "portfolio/tests/remote/deployed-site.spec.ts",
-    "remote_suite_last_run": "UNVERIFIED"
+    "remote_suite_last_run": "2026-08-01T20:31:00+00:00",
+    "verification": {
+      "_comment": [
+        "Written by scripts/record_deployment_evidence.py from a run of",
+        "portfolio/tests/remote/deployed-site.spec.ts against the deployment.",
+        "Each check names the assertion that proves it; a check whose test did not",
+        "run reads UNVERIFIED rather than inheriting the suite's overall verdict.",
+        "",
+        "POINT IN TIME, NOT CONTINUOUS. This records one run against one commit. It",
+        "goes stale the moment either changes, and nothing here re-runs on a schedule.",
+        "Re-run the Verify deployment workflow to refresh it."
+      ],
+      "homepage_http_ok": true,
+      "verified_at": "2026-08-01T20:31:00+00:00",
+      "workflow_run": "https://github.com/mpalmer79/Automotive-Retail-Performance-Intelligence/actions/runs/30717032559",
+      "suite_green": true,
+      "checks": {
+        "routes_reachable": "passed (8)",
+        "status_route": "passed (1)",
+        "machine_readable_routes": "passed (1)",
+        "canonical_metadata": "passed (8)",
+        "sitemap": "passed (1)",
+        "case_study_locked": "passed (1)",
+        "security_headers": "passed (1)",
+        "no_localhost_url": "passed (1)",
+        "no_database_connection": "passed (1)",
+        "no_console_error": "passed (1)",
+        "mobile_navigation": "passed (1)",
+        "reduced_motion": "passed (1)"
+      }
+    }
   },
-
   "analytical_platform": {
     "_comment": [
       "PostgreSQL and everything the warehouse needs in order to be running rather than",
@@ -76,7 +99,6 @@
       "has not been observed to exist. It is weaker than UNVERIFIED, which means a check",
       "exists and did not run; nothing has been provisioned at all."
     ],
-
     "postgresql_instance": "declared",
     "schema_deployment": "declared",
     "data_load": "declared",
@@ -84,7 +106,6 @@
     "migration_verification": "declared",
     "backup_and_restore": "not-implemented",
     "scheduled_execution": "not-implemented",
-
     "provisioning_job": "arpi-database-setup",
     "provisioning_job_last_run": "UNVERIFIED",
     "verifier": "scripts/verify_cloud_database.py",
