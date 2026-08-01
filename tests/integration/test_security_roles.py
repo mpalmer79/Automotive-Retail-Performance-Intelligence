@@ -234,10 +234,11 @@ def test_loader_can_record_a_validation_result(as_loader: Any) -> None:
     as_loader.execute(
         """
         INSERT INTO audit.pipeline_run (
-            run_uuid, pipeline_name, profile_name, run_mode, random_seed,
+            run_uuid, logical_run_key, pipeline_name, profile_name, run_mode, random_seed,
             arpi_version, started_at, status
         )
-        VALUES (gen_random_uuid(), 'run-foundation', 'test', 'cli', 1, '0.1.0', now(), 'running')
+        VALUES (gen_random_uuid(), gen_random_uuid(), 'run-foundation', 'test', 'cli', 1,
+                '0.1.0', now(), 'running')
         RETURNING pipeline_run_id
         """
     )

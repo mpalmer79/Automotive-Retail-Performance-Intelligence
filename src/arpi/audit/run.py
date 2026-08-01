@@ -23,8 +23,12 @@ from arpi.validation.results import CheckResult, ValidationReport
 if TYPE_CHECKING:  # pragma: no cover - import cycle guard for type checking only
     from arpi.config import ArpiConfig
 
-#: Fixed UUIDv5 namespace for ARPI pipeline runs. Never change this value: it would
+#: Fixed UUIDv5 namespace for ARPI logical runs. Never change this value: it would
 #: renumber every historical run.
+#:
+#: This namespace was originally used to derive ``run_uuid`` itself. It now derives
+#: :func:`build_logical_run_key`, over the identical payload, so that every historical
+#: row's identifier is reproduced exactly in the column that now carries those semantics.
 RUN_UUID_NAMESPACE = uuid.UUID("6d0c1f2a-6f8f-5b2e-9a1f-2b7d4c8e0a31")
 
 STATUS_RUNNING = "running"
@@ -39,21 +43,27 @@ LAYER_WAREHOUSE = "warehouse"
 LAYER_REJECTED = "rejected"
 
 
-def build_run_uuid(
+def build_logical_run_key(
     pipeline_name: str,
     profile: str,
     random_seed: int,
     start_date: date,
     end_date: date,
 ) -> uuid.UUID:
-    """Derive the deterministic ``run_uuid`` for a pipeline run.
+    """Derive the deterministic ``logical_run_key`` for a pipeline run.
 
-    A UUIDv5 over ``(pipeline_name, profile, random_seed, start_date, end_date)`` is used
-    instead of a random UUIDv4 so that **re-running the same pipeline with the same
-    inputs produces the same run identifier**. That makes the load idempotent -- a rerun
-    updates the existing ``audit.pipeline_run`` row rather than accumulating duplicates --
-    and it makes audit rows reproducible in tests and in code review. Changing any input
-    changes the identifier.
+    A UUIDv5 over ``(pipeline_name, profile, random_seed, start_date, end_date)``, so that
+    **every execution asked to do the same thing shares one value**. It answers "which
+    attempts are equivalent?" and nothing else.
+
+    It is deliberately *not* unique in ``audit.pipeline_run``, is not the primary key, is
+    not an upsert conflict target, and is never used to overwrite an earlier execution.
+    Execution identity is :attr:`PipelineRun.run_uuid`, which is random per attempt. See
+    ``docs/architecture-decisions/ADR-0010-execution-identity-and-logical-run-key.md``.
+
+    ``arpi_version`` is deliberately excluded from the payload: upgrading ARPI does not
+    change what a run was asked to do, and including it would make "compare this run
+    before and after the upgrade" inexpressible.
 
     Args:
         pipeline_name: Logical pipeline name, e.g. ``"phase0_foundation"``.
@@ -77,12 +87,30 @@ def build_run_uuid(
     return uuid.uuid5(RUN_UUID_NAMESPACE, payload)
 
 
+def build_execution_uuid() -> uuid.UUID:
+    """Generate the identity of one pipeline **execution attempt**.
+
+    A random UUIDv4, generated once at run start and never reused. Two executions with
+    identical inputs get different values, which is what keeps both attempts visible in
+    ``audit.pipeline_run``.
+
+    Returns:
+        A fresh random UUIDv4.
+    """
+    return uuid.uuid4()
+
+
 @dataclass(slots=True)
 class PipelineRun:
     """Mirrors one row of ``audit.pipeline_run``.
 
     Attributes:
-        run_uuid: Deterministic identifier from :func:`build_run_uuid`.
+        run_uuid: Identity of **this execution attempt**, from
+            :func:`build_execution_uuid`. Random and unique per execution; two runs with
+            identical inputs get different values so both attempts stay visible.
+        logical_run_key: Deterministic fingerprint of the run's inputs, from
+            :func:`build_logical_run_key`. Shared by every equivalent execution, and
+            therefore *not* unique in ``audit.pipeline_run``.
         pipeline_name: Logical pipeline name.
         profile_name: Active configuration profile.
         run_mode: How the run was invoked, e.g. ``"cli"`` or ``"library"``.
@@ -97,6 +125,7 @@ class PipelineRun:
     """
 
     run_uuid: uuid.UUID
+    logical_run_key: uuid.UUID
     pipeline_name: str
     profile_name: str
     run_mode: str
@@ -113,7 +142,10 @@ class PipelineRun:
     def start(
         cls, config: ArpiConfig, *, pipeline_name: str, run_mode: str = "library"
     ) -> PipelineRun:
-        """Open a new run for the given configuration.
+        """Open a new execution for the given configuration.
+
+        A fresh execution identity is generated here, so calling this twice with the same
+        configuration opens two distinct attempts that share one ``logical_run_key``.
 
         Args:
             config: Resolved configuration.
@@ -124,7 +156,8 @@ class PipelineRun:
             A :class:`PipelineRun` in the ``running`` state.
         """
         return cls(
-            run_uuid=build_run_uuid(
+            run_uuid=build_execution_uuid(),
+            logical_run_key=build_logical_run_key(
                 pipeline_name,
                 config.profile,
                 config.random_seed,
@@ -163,6 +196,7 @@ class PipelineRun:
         """Render this run as an ``audit.pipeline_run`` row (minus the serial key)."""
         return {
             "run_uuid": str(self.run_uuid),
+            "logical_run_key": str(self.logical_run_key),
             "pipeline_name": self.pipeline_name,
             "profile_name": self.profile_name,
             "run_mode": self.run_mode,

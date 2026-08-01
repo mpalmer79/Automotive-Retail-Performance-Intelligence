@@ -1,4 +1,4 @@
-"""Deterministic run identifiers and in-memory audit recording."""
+"""Execution identity, logical-run identity and in-memory audit recording."""
 
 from __future__ import annotations
 
@@ -18,7 +18,8 @@ from arpi.audit.run import (
     PipelineRun,
     ReconciliationResult,
     RowCount,
-    build_run_uuid,
+    build_execution_uuid,
+    build_logical_run_key,
 )
 from arpi.config import ArpiConfig
 from arpi.constants import ARPI_VERSION, PIPELINE_NAME_FOUNDATION
@@ -36,11 +37,18 @@ def _run(config: ArpiConfig) -> PipelineRun:
     return PipelineRun.start(config, pipeline_name=PIPELINE_NAME_FOUNDATION, run_mode="test")
 
 
-def test_run_uuid_is_deterministic() -> None:
+def test_logical_run_key_is_deterministic() -> None:
     args = ("phase0_foundation", "test", 424242, date(2025, 1, 1), date(2025, 2, 28))
-    assert build_run_uuid(*args) == build_run_uuid(*args)
-    assert isinstance(build_run_uuid(*args), uuid.UUID)
-    assert build_run_uuid(*args).version == 5
+    assert build_logical_run_key(*args) == build_logical_run_key(*args)
+    assert isinstance(build_logical_run_key(*args), uuid.UUID)
+    assert build_logical_run_key(*args).version == 5
+
+
+def test_execution_uuid_is_unique_per_call() -> None:
+    """Execution identity is per attempt, so two calls must never agree."""
+    values = {build_execution_uuid() for _ in range(100)}
+    assert len(values) == 100
+    assert all(value.version == 4 for value in values)
 
 
 @pytest.mark.parametrize(
@@ -53,11 +61,11 @@ def test_run_uuid_is_deterministic() -> None:
         ("phase0_foundation", "test", 424242, date(2025, 1, 1), date(2025, 3, 1)),
     ],
 )
-def test_run_uuid_changes_with_every_input(changed: tuple[object, ...]) -> None:
-    baseline = build_run_uuid(
+def test_logical_run_key_changes_with_every_input(changed: tuple[object, ...]) -> None:
+    baseline = build_logical_run_key(
         "phase0_foundation", "test", 424242, date(2025, 1, 1), date(2025, 2, 28)
     )
-    assert build_run_uuid(*changed) != baseline  # type: ignore[arg-type]
+    assert build_logical_run_key(*changed) != baseline  # type: ignore[arg-type]
 
 
 def test_run_starts_in_the_running_state(test_config: ArpiConfig) -> None:
@@ -69,8 +77,23 @@ def test_run_starts_in_the_running_state(test_config: ArpiConfig) -> None:
     assert run.random_seed == 424242
 
 
-def test_run_uuid_is_reproducible_across_runs(test_config: ArpiConfig) -> None:
-    assert _run(test_config).run_uuid == _run(test_config).run_uuid
+def test_two_executions_of_one_logical_run_stay_distinguishable(test_config: ArpiConfig) -> None:
+    """The central guarantee of ADR-0010, at the object level.
+
+    Before the correction both attributes were one deterministic value, so a rerun
+    overwrote the earlier attempt's audit row. Execution identity must differ and
+    logical identity must agree.
+    """
+    first, second = _run(test_config), _run(test_config)
+    assert first.run_uuid != second.run_uuid
+    assert first.logical_run_key == second.logical_run_key
+
+
+def test_the_audit_row_carries_both_identities(test_config: ArpiConfig) -> None:
+    row = _run(test_config).as_audit_row()
+    assert row["run_uuid"] != row["logical_run_key"]
+    assert uuid.UUID(row["run_uuid"]).version == 4
+    assert uuid.UUID(row["logical_run_key"]).version == 5
 
 
 def test_finish_sets_status_and_completion(test_config: ArpiConfig) -> None:
@@ -90,6 +113,7 @@ def test_run_audit_row_shape(test_config: ArpiConfig) -> None:
     row = _run(test_config).as_audit_row()
     assert set(row) == {
         "run_uuid",
+        "logical_run_key",
         "pipeline_name",
         "profile_name",
         "run_mode",

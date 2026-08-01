@@ -90,7 +90,7 @@ COMMENT ON VIEW reporting.vw_reconciliation_status IS
 
 COMMENT ON COLUMN reporting.vw_reconciliation_status.reconciliation_result_id IS 'Identifier of the recorded result.';
 COMMENT ON COLUMN reporting.vw_reconciliation_status.pipeline_run_id IS 'The run the result belongs to. Relationship column into vw_pipeline_run_summary.';
-COMMENT ON COLUMN reporting.vw_reconciliation_status.run_uuid IS 'Deterministic run identifier derived from the run parameters.';
+COMMENT ON COLUMN reporting.vw_reconciliation_status.run_uuid IS 'Execution identity: one value per pipeline execution attempt, random and never reused. See ADR-0010.';
 COMMENT ON COLUMN reporting.vw_reconciliation_status.pipeline_name IS 'Logical pipeline the run executed.';
 COMMENT ON COLUMN reporting.vw_reconciliation_status.profile_name IS 'Configuration profile: development, test or portfolio.';
 COMMENT ON COLUMN reporting.vw_reconciliation_status.run_started_at IS 'When the run started, with time zone.';

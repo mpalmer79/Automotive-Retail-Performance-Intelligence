@@ -94,7 +94,7 @@ COMMENT ON VIEW reporting.vw_pipeline_run_summary IS
     'it was measured and empty.';
 
 COMMENT ON COLUMN reporting.vw_pipeline_run_summary.pipeline_run_id IS 'Run identifier. Join key to reporting.vw_data_quality_summary.';
-COMMENT ON COLUMN reporting.vw_pipeline_run_summary.run_uuid IS 'Externally generated UUID for the run; correlates database rows with log output.';
+COMMENT ON COLUMN reporting.vw_pipeline_run_summary.run_uuid IS 'Execution identity: a random UUID generated once per execution attempt and never reused; correlates database rows with log output. Equivalent reruns are grouped by audit.pipeline_run.logical_run_key, not by this column. See ADR-0010.';
 COMMENT ON COLUMN reporting.vw_pipeline_run_summary.pipeline_name IS 'Logical pipeline that executed.';
 COMMENT ON COLUMN reporting.vw_pipeline_run_summary.profile_name IS 'ARPI configuration profile: development, test or portfolio.';
 COMMENT ON COLUMN reporting.vw_pipeline_run_summary.run_mode IS 'How the run was invoked, for example cli or ci.';

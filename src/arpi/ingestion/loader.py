@@ -115,17 +115,6 @@ SCD_TYPE_2_ENTITIES: Final[frozenset[str]] = frozenset(
 )
 """Entities whose warehouse table keeps Type 2 history, so only current rows reconcile."""
 
-#: Column identifying which rows of each audit child table this loader owns.
-#:
-#: A rerun replaces the loader's own rows, but the SQL data-quality scripts append rows
-#: for the same run under warehouse-qualified target names. Scoping the delete by these
-#: columns keeps the two layers from deleting each other's results.
-AUDIT_CHILD_SCOPE: dict[str, str] = {
-    "validation_result": "target_object",
-    "reconciliation_result": "reconciliation_id",
-    "rejected_record": "source_entity",
-}
-
 #: Audit child tables written row by row, in insertion order.
 AUDIT_APPEND_TABLES: Final[tuple[str, ...]] = (
     "validation_result",
@@ -790,41 +779,28 @@ def _insert_audit_rows(connection: Any, recorder: AuditRecorder) -> int:
     rows = recorder.to_rows()
     run_row = rows["pipeline_run"][0]
     with connection.cursor() as cursor:
+        # A plain INSERT, deliberately. `run_uuid` identifies one execution attempt and is
+        # freshly generated per run, so there is nothing to conflict with: two equivalent
+        # executions produce two rows sharing one `logical_run_key`. The previous
+        # `ON CONFLICT (run_uuid) DO UPDATE` collapsed them, which overwrote the earlier
+        # attempt's completion time, hid failed attempts behind a later success, and left
+        # `arpi_version` describing a version that had not produced the row's final state.
+        # See ADR-0010.
         cursor.execute(
             _insert_statement("pipeline_run", tuple(run_row.keys()))
-            + sql.SQL(
-                " ON CONFLICT (run_uuid) DO UPDATE SET "
-                "completed_at = EXCLUDED.completed_at, status = EXCLUDED.status, "
-                "critical_failure_count = EXCLUDED.critical_failure_count, "
-                "warning_count = EXCLUDED.warning_count, notes = EXCLUDED.notes "
-                "RETURNING pipeline_run_id"
-            ),
+            + sql.SQL(" RETURNING pipeline_run_id"),
             tuple(run_row.values()),
         )
         result = cursor.fetchone()
         pipeline_run_id = int(result[0])
 
-        # A rerun with the same parameters is the same logical run executed again, not a
-        # new one: the run_uuid is derived from those parameters. Its child rows are
-        # therefore replaced rather than appended, so the audit trail describes the most
-        # recent execution instead of accumulating duplicates. Other runs are untouched,
-        # preserving prior run history as the architecture requires.
-        for table, scope_column in AUDIT_CHILD_SCOPE.items():
-            owned = sorted({str(row[scope_column]) for row in rows[table]})
-            if owned:
-                cursor.execute(
-                    _delete_children_statement(table, scope_column),
-                    (pipeline_run_id, owned),
-                )
-
+        # Child rows are appended, never replaced. Each execution owns a distinct
+        # `pipeline_run_id`, so no child row of a previous attempt can collide with this
+        # one, and every attempt keeps the evidence it actually produced.
         for row in rows["pipeline_run_row_count"]:
             payload = {"pipeline_run_id": pipeline_run_id, **row}
             cursor.execute(
-                _insert_statement("pipeline_run_row_count", tuple(payload.keys()))
-                + sql.SQL(
-                    " ON CONFLICT (pipeline_run_id, entity_name, layer) DO UPDATE SET "
-                    "row_count = EXCLUDED.row_count, recorded_at = EXCLUDED.recorded_at"
-                ),
+                _insert_statement("pipeline_run_row_count", tuple(payload.keys())),
                 tuple(payload.values()),
             )
 
@@ -836,24 +812,6 @@ def _insert_audit_rows(connection: Any, recorder: AuditRecorder) -> int:
                 )
     _LOGGER.info("Recorded audit rows for pipeline_run_id %s.", pipeline_run_id)
     return pipeline_run_id
-
-
-def _delete_children_statement(table: str, scope_column: str) -> sql.Composed:
-    """Build a parameterised ``DELETE`` scoped to the rows this loader owns.
-
-    The delete is restricted to the values the loader is about to write. The SQL
-    validation scripts append rows for the same run under warehouse-qualified target
-    names such as ``warehouse.dim_date``, whereas the loader writes generator-side names
-    such as ``dim_date``. Deleting the whole run's children would silently discard
-    results an operator had recorded from the SQL layer.
-    """
-    return sql.SQL("DELETE FROM {}.{} WHERE pipeline_run_id = {} AND {} = ANY({})").format(
-        sql.Identifier(SCHEMA_AUDIT),
-        sql.Identifier(table),
-        sql.Placeholder(),
-        sql.Identifier(scope_column),
-        sql.Placeholder(),
-    )
 
 
 def _insert_statement(table: str, columns: tuple[str, ...]) -> sql.Composed:

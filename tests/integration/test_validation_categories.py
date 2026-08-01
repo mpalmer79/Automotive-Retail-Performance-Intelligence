@@ -35,10 +35,11 @@ def _insert_run(cursor: Any) -> int:
     cursor.execute(
         """
         INSERT INTO audit.pipeline_run (
-            run_uuid, pipeline_name, profile_name, run_mode, random_seed,
+            run_uuid, logical_run_key, pipeline_name, profile_name, run_mode, random_seed,
             arpi_version, started_at, status
         )
-        VALUES (gen_random_uuid(), 'phase0_foundation', 'test', 'cli', 20240101, '0.1.0',
+        VALUES (gen_random_uuid(), gen_random_uuid(), 'phase0_foundation', 'test', 'cli',
+                20240101, '0.1.0',
                 now(), 'running')
         RETURNING pipeline_run_id
         """

@@ -271,6 +271,33 @@ The staging-to-warehouse half was closed for the eight dimensions by the loader 
 covered in Python. Before that, a fact load that silently dropped rows on an unresolved surrogate key would
 have looked exactly like a correct one.
 
+### 10.1a Audit rows written before ADR-0010 may hide collapsed execution attempts
+
+**Corrected going forward; not recoverable backwards.** Until
+[ADR-0010](docs/architecture-decisions/ADR-0010-execution-identity-and-logical-run-key.md),
+`audit.pipeline_run.run_uuid` was derived deterministically from the run's parameters and the loader
+upserted on it. Every execution with identical inputs therefore reused one row.
+
+The consequences were real, not theoretical:
+
+- `started_at` survived from the first attempt while `completed_at` was overwritten by the last, so the
+  recorded duration spanned two executions and described neither;
+- `arpi_version` and `run_mode` kept the first attempt's values, so a row could name a version that had not
+  produced the state it described;
+- a failed attempt followed by a successful retry left one `succeeded` row with the failure erased;
+- child row counts, validation results and rejected records were deleted and reinserted, so they could not
+  be attributed to the attempt that produced them.
+
+Every execution now inserts its own row, and `logical_run_key` groups equivalent attempts without
+collapsing them.
+
+**The limitation that remains:** rows written *before* the correction may each stand for several attempts
+that were overwritten. The migration backfills their `logical_run_key` correctly — it is the value those
+rows already carried — but the overwritten attempts are gone. They were not reconstructed and no
+placeholder row was invented for them, because there is no evidence from which to do either honestly. Any
+analysis of execution history across that boundary should treat pre-correction rows as "at least one
+attempt", not "exactly one".
+
 ### 10.2 The privacy tripwire inspects schemas, not values
 
 **The limitation.** `src/arpi/validation/privacy.py` enforces the prohibited-field register

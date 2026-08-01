@@ -263,11 +263,22 @@ def test_pipeline_run_reaches_a_terminal_status(
     assert duration is not None, "the reporting view must expose a duration for a finished run"
 
 
-def test_rerunning_is_idempotent(loadable_config: ArpiConfig, committed_connection: Any) -> None:
-    """Running twice leaves the warehouse and the audit trail unchanged.
+def test_rerunning_is_idempotent_in_the_warehouse(
+    loadable_config: ArpiConfig, committed_connection: Any
+) -> None:
+    """A rerun creates no duplicate warehouse row, and records that it happened.
 
     ARCHITECTURE.md section 17.3 requires a rerun with the same source data to avoid
-    creating duplicate warehouse rows.
+    creating duplicate warehouse rows. It does **not** require the audit trail to stay
+    frozen, and before ADR-0010 this test asserted that it did -- which is precisely how
+    the collapsed-history defect stayed invisible.
+
+    The two halves of the assertion are the point:
+
+    * every ``warehouse.*`` count is unchanged, so idempotency is carried by the merge
+      logic, natural keys and attribute hashes rather than by audit-row reuse;
+    * every ``audit.*`` count grows, because a second execution genuinely happened and an
+      audit trail that hides it is not an audit trail.
     """
     run_foundation(loadable_config, load_database=True)
     first = _snapshot(committed_connection)
@@ -275,7 +286,83 @@ def test_rerunning_is_idempotent(loadable_config: ArpiConfig, committed_connecti
     run_foundation(loadable_config, load_database=True)
     second = _snapshot(committed_connection)
 
-    assert first == second, f"a rerun changed persisted state: {first} then {second}"
+    warehouse_first = {k: v for k, v in first.items() if k.startswith("warehouse.")}
+    warehouse_second = {k: v for k, v in second.items() if k.startswith("warehouse.")}
+    assert warehouse_first == warehouse_second, (
+        f"a rerun duplicated warehouse rows: {warehouse_first} then {warehouse_second}"
+    )
+    assert warehouse_first, "the snapshot must actually cover the warehouse"
+
+    assert second["audit.pipeline_run"] == first["audit.pipeline_run"] + 1, (
+        "the second execution must be recorded as its own attempt"
+    )
+    for table in ("audit.pipeline_run_row_count", "audit.validation_result"):
+        assert second[table] > first[table], (
+            f"{table} must keep the second attempt's evidence, not overwrite the first's"
+        )
+
+
+def test_two_executions_share_a_logical_run_key_and_differ_in_execution_identity(
+    loadable_config: ArpiConfig, committed_connection: Any
+) -> None:
+    """The ADR-0010 guarantee, proven against PostgreSQL.
+
+    Before the correction this produced ONE row whose ``started_at`` came from the first
+    attempt and whose ``completed_at`` came from the second, so the recorded duration
+    belonged to neither.
+    """
+    run_foundation(loadable_config, load_database=True)
+    run_foundation(loadable_config, load_database=True)
+
+    with committed_connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT run_uuid, logical_run_key, started_at, completed_at, arpi_version "
+            "FROM audit.pipeline_run ORDER BY pipeline_run_id"
+        )
+        rows = cursor.fetchall()
+
+    assert len(rows) == 2, f"two executions must leave two rows, found {len(rows)}"
+    first, second = rows
+
+    assert first[0] != second[0], "each execution attempt needs its own run_uuid"
+    assert first[1] == second[1], "equivalent executions must share one logical_run_key"
+
+    # Each row's own window, not a window spanning both attempts.
+    for run_uuid, _key, started_at, completed_at, _version in rows:
+        assert completed_at is not None, f"{run_uuid} never recorded a completion"
+        assert completed_at >= started_at
+    assert second[2] >= first[3], (
+        "the second attempt must start no earlier than the first one finished; a start "
+        "timestamp surviving from an overwritten attempt is the original defect"
+    )
+
+
+def test_child_audit_rows_belong_to_the_attempt_that_produced_them(
+    loadable_config: ArpiConfig, committed_connection: Any
+) -> None:
+    """Row counts and validation results keep correct lineage across two attempts."""
+    run_foundation(loadable_config, load_database=True)
+    run_foundation(loadable_config, load_database=True)
+
+    with committed_connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT r.pipeline_run_id,
+                   (SELECT count(*) FROM audit.pipeline_run_row_count c
+                     WHERE c.pipeline_run_id = r.pipeline_run_id),
+                   (SELECT count(*) FROM audit.validation_result v
+                     WHERE v.pipeline_run_id = r.pipeline_run_id)
+            FROM audit.pipeline_run r
+            ORDER BY r.pipeline_run_id
+            """
+        )
+        rows = cursor.fetchall()
+
+    assert len(rows) == 2
+    for pipeline_run_id, row_counts, validations in rows:
+        assert row_counts > 0, f"run {pipeline_run_id} lost its row counts to another attempt"
+        assert validations > 0, f"run {pipeline_run_id} lost its validation results"
+    assert rows[0][1] == rows[1][1], "both attempts did the same work, so counts must match"
 
 
 def test_reconciliations_are_recorded(

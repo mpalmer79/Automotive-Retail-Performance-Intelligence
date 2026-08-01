@@ -313,10 +313,11 @@ def _insert_pipeline_run(cur: Any, *, status: str = "running") -> int:
     cur.execute(
         """
         INSERT INTO audit.pipeline_run (
-            run_uuid, pipeline_name, profile_name, run_mode, random_seed,
+            run_uuid, logical_run_key, pipeline_name, profile_name, run_mode, random_seed,
             arpi_version, started_at, status
         )
-        VALUES (gen_random_uuid(), 'run-foundation', 'test', 'cli', 424242, '0.1.0', now(), %s)
+        VALUES (gen_random_uuid(), gen_random_uuid(), 'run-foundation', 'test', 'cli',
+                424242, '0.1.0', now(), %s)
         RETURNING pipeline_run_id
         """,
         (status,),
@@ -346,10 +347,11 @@ def test_pipeline_run_rejects_completion_before_start(cursor: Any) -> None:
         cursor.execute(
             """
             INSERT INTO audit.pipeline_run (
-                run_uuid, pipeline_name, profile_name, run_mode, random_seed,
+                run_uuid, logical_run_key, pipeline_name, profile_name, run_mode, random_seed,
                 arpi_version, started_at, completed_at, status
             )
-            VALUES (gen_random_uuid(), 'run-foundation', 'test', 'cli', 1, '0.1.0',
+            VALUES (gen_random_uuid(), gen_random_uuid(), 'run-foundation', 'test', 'cli',
+                    1, '0.1.0',
                     now(), now() - interval '1 hour', 'succeeded')
             """
         )
@@ -360,10 +362,11 @@ def test_pipeline_run_uuid_is_unique(cursor: Any) -> None:
     run_uuid = cursor.fetchone()[0]
     statement = """
         INSERT INTO audit.pipeline_run (
-            run_uuid, pipeline_name, profile_name, run_mode, random_seed,
+            run_uuid, logical_run_key, pipeline_name, profile_name, run_mode, random_seed,
             arpi_version, started_at, status
         )
-        VALUES (%s, 'run-foundation', 'test', 'cli', 1, '0.1.0', now(), 'running')
+        VALUES (%s, gen_random_uuid(), 'run-foundation', 'test', 'cli', 1, '0.1.0',
+                now(), 'running')
     """
     cursor.execute(statement, (run_uuid,))
     with pytest.raises(errors.UniqueViolation):

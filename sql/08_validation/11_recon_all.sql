@@ -15,15 +15,19 @@
 --     WHERE status = 'failed'
 --     ORDER BY reconciliation_id;
 --
--- WHY THE RECORDER REPLACES RATHER THAN APPENDS
--- ---------------------------------------------
--- A run's run_uuid is derived from its parameters, so re-running the pipeline with
--- the same parameters is the SAME logical run executed again, not a new one. The
--- Python loader already replaces its own child audit rows on that basis. This
--- function does the same for the rows it owns, scoped by reconciliation_id, so the
--- audit trail describes the most recent execution instead of accumulating a
--- duplicate set on every rerun. Rows written by the loader carry different
--- identifiers and are never touched; rows of other runs are never touched.
+-- WHY THE RECORDER STILL REPLACES ITS OWN ROWS
+-- --------------------------------------------
+-- Since ADR-0010 every execution attempt owns a distinct pipeline_run_id, so this
+-- function can no longer collide with a PREVIOUS run: a rerun is a new row and
+-- starts with no reconciliation results at all. Re-running the pipeline therefore
+-- accumulates history rather than overwriting it, which is the point of that ADR.
+--
+-- The delete is retained because it is scoped to p_pipeline_run_id and guards the
+-- one case that remains: calling this function twice WITHIN a single execution, for
+-- instance when an operator re-executes the SQL layer against a run that is still
+-- open. That must restate the verdicts, not double them. Rows written by the loader
+-- carry different identifiers and are never touched; rows of other runs -- which now
+-- includes every earlier attempt at the same logical run -- are never touched.
 --
 -- WITHOUT THIS, RECONCILIATIONS WOULD NOT BE RECORDED AT ALL
 -- ---------------------------------------------------------
