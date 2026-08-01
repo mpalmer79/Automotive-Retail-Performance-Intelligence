@@ -9,6 +9,31 @@ Motion that does none of those things is removed, not tuned.
 
 ---
 
+> **Experience redesign, version 2.** This document describes the system as it
+> stands after the redesign recorded in `portfolio/docs/EXPERIENCE_REDESIGN_V2.md`.
+> That document holds the baseline it replaced, the severity-ranked findings, the
+> decisions and their rejected alternatives, three adversarial review passes and
+> the measured results. Where a rule below reads as unusually specific, the reason
+> is almost always a finding recorded there.
+
+**The home page no longer loads the animation library.** Both of its former
+entries are gone: the hero's drawn diagram is now a server component whose motion
+is CSS on SVG attributes, and the scrollytelling walkthrough was replaced by a
+five-stage section with no JavaScript animation. That removed 42.7 kB of route
+JavaScript from the site's most-visited page, and it removed the defect the
+scrollytelling diagram carried - it animated `width` on an element that also
+declared `width` as an attribute, throwing `Expected length, "undefined"` eight
+times per render.
+
+**Two ambient animations were deleted.** `pulse-signal` and `drift` both looped
+indefinitely, neither was referenced by any component, and neither had a
+narrative role. Every animation on the site now runs a finite number of times.
+
+**The signature motion.** One signal travels from the source systems, through the
+governed layers, to the analytical domains, once, and stops. Under reduced motion
+it is removed rather than frozen: a dash that does not travel is a stray mark on
+a diagram, and the paths it travels stay drawn, so the composition still reads.
+
 ## 1. The four rules
 
 **1. Motion must carry information.** If the animation could be deleted and the reader

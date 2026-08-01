@@ -60,9 +60,32 @@ test.describe('honest status language reaches the screen', () => {
     await gotoRendered(page, '/')
     const text = await bodyText(page)
     if (!realEnginePassed) {
+      // The home page states it in the trust line and again in the platform
+      // story and the proof section. It no longer carries the full paragraph:
+      // the hero's bordered caveat panel was one of seven disclosures on the
+      // page, which is what made a finished warehouse read as an apology
+      // (finding A-04). The paragraph now lives on the two pages whose subject
+      // it is, and the test below asserts it is still there.
       expect(text).toMatch(/real-engine validation pending/i)
-      expect(text).toMatch(/no Microsoft semantic-model engine has yet loaded it/i)
+      expect(text).toMatch(/never been evaluated by an engine|no engine has evaluated/i)
     }
+  })
+
+  test('the full explanation still exists, on the pages whose subject it is', async ({
+    page,
+  }) => {
+    if (realEnginePassed) test.skip()
+    // Reducing repetition must not reduce what the site actually says. Both of
+    // these pages carry the whole argument at full length.
+    await gotoRendered(page, '/status')
+    expect(await bodyText(page)).toMatch(
+      /loads the model, refreshes it against PostgreSQL/i
+    )
+
+    await gotoRendered(page, '/kpis')
+    expect(await bodyText(page)).toMatch(
+      /has never been evaluated by a Microsoft engine/i
+    )
   })
 
   test('the Phase 5 card never renders a Complete badge while both engines are pending', async ({
@@ -282,27 +305,51 @@ test.describe('deferred domains are never labelled implemented', () => {
 })
 
 test.describe('every displayed count matches the manifest', () => {
-  test('the credibility strip renders the seven source-backed figures', async ({
+  test('the proof section renders its four figures, and the drawer the rest', async ({
     page,
   }) => {
+    // Replaces the same check against the seven-figure credibility strip. The
+    // strip is gone - four headline numerals plus a drawer - but the obligation
+    // is unchanged and now covers twelve counts rather than seven: every value a
+    // visitor can reach must equal the manifest, which is generated from
+    // repository evidence.
     await gotoRendered(page, '/')
-    const strip = page.locator('#engineering-counts')
-    await strip.scrollIntoViewIfNeeded()
-    // Give the counters time to finish incrementing.
-    await page.waitForTimeout(1400)
-    const text = (await strip.innerText()).replace(/\s+/g, ' ')
+    const proof = page.locator('#proof')
+    await proof.scrollIntoViewIfNeeded()
 
-    for (const key of [
-      'dealerships',
-      'dimensions',
-      'facts',
+    const headline = [
       'reportingViews',
       'governedKpis',
       'semanticRelationships',
       'daxMeasures',
-    ] as const) {
+    ] as const
+    const secondary = [
+      'sqlScripts',
+      'dataQualityChecks',
+      'reconciliations',
+      'dimensions',
+      'facts',
+      'semanticTables',
+      'supportingMeasures',
+      'staticAssertions',
+    ] as const
+
+    // No wait for an animation: these are static text on first paint, which is
+    // the property that replaced the count-up.
+    let text = (await proof.innerText()).replace(/\s+/g, ' ')
+    for (const key of headline) {
       const count = manifest.counts[key]
       expect(text, `${key} label missing`).toContain(count.label)
+      expect(text, `${key} value ${String(count.value)} missing`).toMatch(
+        new RegExp(`\\b${String(count.value)}\\b`)
+      )
+    }
+
+    await page.getByRole('button', { name: /see all engineering evidence/i }).click()
+    text = (await proof.innerText()).replace(/\s+/g, ' ')
+    for (const key of secondary) {
+      const count = manifest.counts[key]
+      expect(text, `${key} label missing from the drawer`).toContain(count.label)
       expect(text, `${key} value ${String(count.value)} missing`).toMatch(
         new RegExp(`\\b${String(count.value)}\\b`)
       )
@@ -469,5 +516,286 @@ test.describe('the site is not a second analytics application', () => {
         page.locator('[class*="recharts"], [class*="highcharts"], .apexcharts-canvas')
       ).toHaveCount(0)
     }
+  })
+})
+
+/* -------------------------------------------------------------------------- */
+/* The redesign's own content rules                                            */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * These are the rules the experience redesign introduced, and each one exists
+ * because the previous build broke it. They are here rather than in the unit
+ * suite because every one of them is a statement about the RENDERED page: how
+ * many controls a visitor sees, what reaches the first screen, what a route
+ * carries. None of them can be checked from the source.
+ *
+ * Recorded in portfolio/docs/EXPERIENCE_REDESIGN_V2.md sections 2 and 3.
+ */
+test.describe('the hero stays a hero', () => {
+  test('offers exactly two calls to action, and no more', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await gotoRendered(page, '/')
+
+    // Buttons and button-styled links inside the first section, which is the
+    // hero. The previous build's hero carried two of these plus two status
+    // badges, a bordered caveat panel and a three-item legend.
+    const heroActions = page.locator('main > section:first-of-type a[class*="min-h-11"]')
+    await expect(heroActions).toHaveCount(2)
+  })
+
+  test('renders no status badge in the hero', async ({ page }) => {
+    await gotoRendered(page, '/')
+    const hero = page.locator('main > section:first-of-type')
+    // `data-status` is what StatusBadge stamps. A hero that opens with two
+    // badges is reporting its own risk before it has said what it is.
+    await expect(hero.locator('[data-status]')).toHaveCount(0)
+  })
+
+  test('puts the headline, the explanation, both actions and the trust line on the first phone screen', async ({
+    page,
+  }) => {
+    // The single worst thing about the previous build: at this viewport a
+    // visitor saw a headline, a paragraph and two risk disclosures, with the
+    // first call to action roughly 1,050px down. Finding A-01.
+    await page.setViewportSize({ width: 390, height: 844 })
+    await gotoRendered(page, '/')
+
+    const fold = 844
+    for (const [name, locator] of [
+      ['the headline', page.getByRole('heading', { level: 1 })],
+      ['the primary action', page.getByRole('link', { name: /explore the platform/i })],
+      [
+        'the secondary action',
+        page.getByRole('link', { name: /view engineering evidence/i }).first(),
+      ],
+    ] as const) {
+      const box = await locator.first().boundingBox()
+      expect(box, `${name} is not rendered`).not.toBeNull()
+      expect(box!.y, `${name} starts below the first screen`).toBeLessThan(fold)
+    }
+  })
+
+  test('names Michael Palmer’s dealership experience above the fold on a desktop', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await gotoRendered(page, '/')
+    const aboveFold = await page.evaluate(() => {
+      const texts: string[] = []
+      for (const element of document.querySelectorAll('main h1, main p')) {
+        const box = element.getBoundingClientRect()
+        if (box.top < window.innerHeight && box.bottom > 0) {
+          texts.push(element.textContent ?? '')
+        }
+      }
+      return texts.join(' ')
+    })
+    // The differentiator, not a generic platform claim. In the previous build
+    // this first appeared roughly 7,900px down the page.
+    expect(aboveFold).toMatch(/run the dealership/i)
+    expect(aboveFold).toMatch(/25 years/i)
+  })
+})
+
+test.describe('the engineering proof shows the strongest four counts', () => {
+  test('sets exactly four figures as headline numerals', async ({ page }) => {
+    await gotoRendered(page, '/')
+    await mainText(page)
+    // The previous build showed seven at equal weight, three of which described
+    // the size of a fictional dealer group. Finding B-03.
+    const numerals = page.locator('#proof .text-numeral')
+    await expect(numerals).toHaveCount(4)
+  })
+
+  test('shows the four agreed figures and none of the secondary ones by default', async ({
+    page,
+  }) => {
+    await gotoRendered(page, '/')
+    const proof = page.locator('#proof')
+    const numerals = await proof.locator('.text-numeral').allInnerTexts()
+    expect(numerals.map((value) => value.trim())).toEqual([
+      String(manifest.counts.reportingViews.value),
+      String(manifest.counts.governedKpis.value),
+      String(manifest.counts.semanticRelationships.value),
+      String(manifest.counts.daxMeasures.value),
+    ])
+    // The rest are behind a disclosure, closed by default and out of the DOM.
+    await expect(page.locator('#secondary-counts')).toHaveCount(0)
+  })
+
+  test('opens the evidence drawer on activation, and only then', async ({ page }) => {
+    await gotoRendered(page, '/')
+    const trigger = page.getByRole('button', { name: /see all engineering evidence/i })
+    await expect(trigger).toHaveAttribute('aria-expanded', 'false')
+    await trigger.click()
+    await expect(page.locator('#secondary-counts')).toBeVisible()
+    await expect(
+      page.getByRole('button', { name: /hide the rest of the evidence/i })
+    ).toHaveAttribute('aria-expanded', 'true')
+  })
+})
+
+test.describe('every route carries exactly one trust line', () => {
+  test('states the synthetic data, the fictional group and the validation state', async ({
+    page,
+  }) => {
+    for (const route of PRIMARY_ROUTES) {
+      await gotoRendered(page, route.path)
+      const main = await mainText(page)
+      expect(main, `${route.path} does not state the data is synthetic`).toMatch(
+        /synthetic/i
+      )
+      expect(main, `${route.path} does not say the group is fictional`).toMatch(
+        /fictional/i
+      )
+    }
+  })
+
+  test('names the real-engine validation state on every route but the one that is the disclosure', async ({
+    page,
+  }) => {
+    if (manifest.semanticModel.realEngineStatus === 'complete') test.skip()
+    for (const route of PRIMARY_ROUTES) {
+      // `/governance` suppresses the trust line because its whole body IS the
+      // disclosure, at full length.
+      if (route.path === '/governance') continue
+      await gotoRendered(page, route.path)
+      const main = await mainText(page)
+      expect(main, `${route.path}`).toMatch(/real-engine validation/i)
+    }
+  })
+
+  test('never states it more than twice in the page body', async ({ page }) => {
+    // Once in the header's trust line, and at most once more where a page's own
+    // subject requires it. The previous home page said it seven times, which is
+    // what made a finished warehouse read as an apology. Finding A-04.
+    for (const route of PRIMARY_ROUTES) {
+      await gotoRendered(page, route.path)
+      const main = await mainText(page)
+      const occurrences = (main.match(/Granite State Auto Group is fictional/gi) ?? [])
+        .length
+      expect(occurrences, `${route.path} repeats the disclosure`).toBeLessThanOrEqual(2)
+    }
+  })
+})
+
+test.describe('public copy carries no em dash', () => {
+  /**
+   * A house rule, and one worth enforcing mechanically: an em dash in public
+   * copy is the single most reliable tell of text that was not read aloud before
+   * it was published. The site uses a spaced hyphen or a full stop instead.
+   *
+   * Scoped to what a visitor reads. Source paths and identifiers are exempt by
+   * construction because none of them can contain one.
+   */
+  test('on every route', async ({ page }) => {
+    for (const route of PRIMARY_ROUTES) {
+      await gotoRendered(page, route.path)
+      const text = await bodyText(page)
+      expect(text.includes('\u2014'), `${route.path} contains an em dash`).toBe(false)
+    }
+  })
+
+  test('including content that only exists after an interaction', async ({ page }) => {
+    /*
+     * The first version of this rule passed while an em dash was still being
+     * rendered, because `bodyText` only ever sees a route's default state and
+     * the offending glyph was inside the data-model explorer's relationship
+     * list, which does not exist until an entity is selected.
+     *
+     * A content rule that only checks what loads by default has a hole in it
+     * exactly where the interesting content is. This opens the three
+     * interactive surfaces on the site and checks each one.
+     */
+    // The explorer's entities are SVG groups with `role="option"`, not buttons.
+    // The first version of this test looked for a button, timed out, and
+    // reported a failure that looked like a detection - which is its own small
+    // lesson: a content check that cannot reach the content fails loudly, and
+    // that is the correct behaviour, but only if the failure is read properly.
+    await gotoRendered(page, '/data-model')
+    const entity = page.getByRole('option', { name: /vehicle sale/i }).first()
+    await expect(entity, 'no selectable entity found in the explorer').toBeVisible()
+    await entity.click()
+    await expect(entity).toHaveAttribute('aria-selected', 'true')
+    expect(
+      (await page.locator('main').innerText()).includes('\u2014'),
+      'the data-model explorer renders an em dash once an entity is selected'
+    ).toBe(false)
+
+    await gotoRendered(page, '/architecture')
+    const node = page.getByRole('option').first()
+    if ((await node.count()) > 0) {
+      await node.click()
+      expect((await page.locator('main').innerText()).includes('\u2014')).toBe(false)
+    }
+
+    await gotoRendered(page, '/')
+    await page.getByRole('button', { name: /see all engineering evidence/i }).click()
+    const tabs = await page
+      .getByRole('tablist', { name: /analytical domain/i })
+      .getByRole('tab')
+      .all()
+    for (const tab of tabs) {
+      await tab.click()
+      expect((await page.locator('main').innerText()).includes('\u2014')).toBe(false)
+    }
+  })
+})
+
+test.describe('the operating view is a product surface, not a dashboard', () => {
+  test('offers six domains as real tabs', async ({ page }) => {
+    await gotoRendered(page, '/')
+    const tablist = page.getByRole('tablist', { name: /analytical domain/i })
+    await expect(tablist).toBeVisible()
+    await expect(tablist.getByRole('tab')).toHaveCount(6)
+    // Exactly one selected, always.
+    await expect(tablist.locator('[aria-selected="true"]')).toHaveCount(1)
+  })
+
+  test('changes the panel when a domain is chosen, by click and by arrow key', async ({
+    page,
+  }) => {
+    await gotoRendered(page, '/')
+    const tablist = page.getByRole('tablist', { name: /analytical domain/i })
+    const panel = page.getByRole('tabpanel')
+
+    await tablist.getByRole('tab', { name: /inventory/i }).click()
+    await expect(panel).toContainText(/financially risky|lot turning/i)
+
+    // Arrow keys move the selection, and focus follows it.
+    await page.keyboard.press('ArrowRight')
+    await expect(tablist.locator('[aria-selected="true"]')).not.toContainText(
+      /^Inventory/
+    )
+    await expect(tablist.locator('[aria-selected="true"]')).toHaveCount(1)
+
+    await page.keyboard.press('Home')
+    await expect(tablist.getByRole('tab', { name: /sales/i })).toHaveAttribute(
+      'aria-selected',
+      'true'
+    )
+  })
+
+  test('shows no value in any domain', async ({ page }) => {
+    await gotoRendered(page, '/')
+    const tablist = page.getByRole('tablist', { name: /analytical domain/i })
+    const tabs = await tablist.getByRole('tab').all()
+
+    for (const tab of tabs) {
+      await tab.click()
+      const panel = await page.getByRole('tabpanel').innerText()
+      // No currency, no percentage, no thousands-separated figure. A KPI
+      // identifier such as KPI-GRS-001 is not a value and is allowed.
+      expect(panel, 'a currency value appeared').not.toMatch(/[$£€]\s?\d/)
+      expect(panel, 'a percentage appeared').not.toMatch(/\b\d+(\.\d+)?\s?%/)
+      expect(panel, 'a formatted figure appeared').not.toMatch(/\b\d{1,3},\d{3}\b/)
+    }
+  })
+
+  test('states that no engine has evaluated the measures it shows', async ({ page }) => {
+    await gotoRendered(page, '/')
+    const frame = page.locator('#operating-view')
+    await expect(frame).toContainText(/no engine has evaluated these measures/i)
   })
 })

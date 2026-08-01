@@ -84,19 +84,19 @@ export default function UiLabPage() {
       <Lab title="Typography" bordered>
         <Stack gap={6}>
           <Heading level={2} size="hero">
-            Hero — display, 5xl
+            Hero - display, 5xl
           </Heading>
           <Heading level={2} size="display">
-            Display — display, 4xl
+            Display - display, 4xl
           </Heading>
           <Heading level={2} size="h2">
-            Heading 2 — display, 3xl
+            Heading 2 - display, 3xl
           </Heading>
           <Heading level={3} size="h3">
-            Heading 3 — sans, 2xl
+            Heading 3 - sans, 2xl
           </Heading>
           <Heading level={4} size="h4">
-            Heading 4 — sans, xl
+            Heading 4 - sans, xl
           </Heading>
           <Text size="body">
             Body copy at 17px with relaxed leading, capped at 68 characters by the Prose
@@ -113,7 +113,7 @@ export default function UiLabPage() {
           <Text size="xs" tone="faint">
             Extra small at 12px, faint. Captions and provenance.
           </Text>
-          <Eyebrow>Eyebrow — mono, uppercase, tracked out</Eyebrow>
+          <Eyebrow>Eyebrow - mono, uppercase, tracked out</Eyebrow>
           <Cluster>
             <CodeLabel>reporting.vw_vehicle_sales</CodeLabel>
             <CodeLabel tone="accent">KPI-GRS-006</CodeLabel>

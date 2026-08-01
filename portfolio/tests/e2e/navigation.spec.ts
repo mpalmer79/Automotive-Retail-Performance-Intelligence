@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 
 import { gotoRendered } from './helpers'
-import { PRIMARY_ROUTES } from './routes'
+import { HEADER_NAV, PLATFORM_ROUTES, PRIMARY_ROUTES } from './routes'
 
 /**
  * Navigation, metadata and the 404.
@@ -13,30 +13,36 @@ import { PRIMARY_ROUTES } from './routes'
  */
 
 test.describe('primary navigation', () => {
-  test('offers exactly the seven primary routes plus a distinct case-study entry', async ({
-    page,
-  }) => {
+  test('offers exactly five content destinations and nothing else', async ({ page }) => {
     await page.goto('/')
     const nav = page.getByRole('navigation', { name: 'Primary' })
-    const links = nav.getByRole('link')
-    // Seven primary labels plus the case study.
-    await expect(links).toHaveCount(8)
+    // Five, not seven. Architecture, the data model and governance are grouped
+    // under "Platform"; the locked case study is out of the header entirely.
+    await expect(nav.getByRole('link')).toHaveCount(HEADER_NAV.length)
 
-    for (const route of PRIMARY_ROUTES.filter((r) => r.inNav)) {
-      await expect(nav.getByRole('link', { name: route.navLabel! })).toHaveAttribute(
+    for (const item of HEADER_NAV) {
+      await expect(nav.getByRole('link', { name: item.label })).toHaveAttribute(
         'href',
-        route.path
+        item.path
       )
     }
   })
 
-  test('marks the case-study entry as locked, in text and not only with an icon', async ({
+  test('keeps the locked case study out of the header', async ({ page }) => {
+    await page.goto('/')
+    const nav = page.getByRole('navigation', { name: 'Primary' })
+    await expect(nav.getByRole('link', { name: /case study/i })).toHaveCount(0)
+  })
+
+  test('still offers the case study, saying locked in words, in the footer', async ({
     page,
   }) => {
-    await page.goto('/')
+    await gotoRendered(page, '/')
     const caseStudy = page
-      .getByRole('navigation', { name: 'Primary' })
+      .locator('footer')
       .getByRole('link', { name: /case study/i })
+      .first()
+    await expect(caseStudy).toHaveAttribute('href', '/case-study')
     await expect(caseStudy).toHaveAccessibleName(/locked/i)
     await expect(caseStudy).toHaveAccessibleName(/gate 2 is closed/i)
   })
@@ -47,30 +53,94 @@ test.describe('primary navigation', () => {
     await expect(nav).not.toContainText(/complete/i)
   })
 
-  test('marks the current route with aria-current on every page', async ({ page }) => {
-    for (const route of PRIMARY_ROUTES.filter((r) => r.inNav)) {
-      await page.goto(route.path)
-      const current = page
-        .getByRole('navigation', { name: 'Primary' })
-        .locator('[aria-current="page"]')
-      await expect(current).toHaveCount(1)
-      await expect(current).toHaveText(route.navLabel!)
+  test('marks exactly one item current on every navigable route', async ({ page }) => {
+    for (const item of HEADER_NAV) {
+      for (const path of item.currentOn) {
+        await gotoRendered(page, path)
+        const current = page
+          .locator('header')
+          .getByRole('navigation', { name: 'Primary' })
+          .locator('[aria-current="page"]')
+        await expect(current, `${path} should mark ${item.label}`).toHaveCount(1)
+        await expect(current).toHaveText(item.label)
+      }
     }
   })
 
-  test('navigates between every pair of adjacent routes without a full reload', async ({
+  test('navigates between every header destination without a full reload', async ({
     page,
   }) => {
     await page.goto('/')
-    const inNav = PRIMARY_ROUTES.filter((r) => r.inNav)
-    for (const route of inNav.slice(1)) {
+    for (const item of HEADER_NAV.slice(1)) {
       await page
+        .locator('header')
         .getByRole('navigation', { name: 'Primary' })
-        .getByRole('link', { name: route.navLabel! })
+        .getByRole('link', { name: item.label })
         .click()
-      await expect(page).toHaveURL(new RegExp(`${route.path.replace('/', '\\/')}$`))
-      await expect(page.getByRole('heading', { level: 1 })).toContainText(route.heading)
+      await expect(page).toHaveURL(new RegExp(`${item.path.replace('/', '\\/')}$`))
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
     }
+  })
+})
+
+test.describe('the platform sub-navigation', () => {
+  /**
+   * The whole justification for a five-item header: a visitor who arrives at
+   * Architecture from "Platform" must be able to see, without scrolling, that
+   * the data model and the governance rules belong with it. If this navigation
+   * is missing from any of the three, two routes have been hidden rather than
+   * grouped.
+   */
+  test('appears on all three platform routes and links all three', async ({ page }) => {
+    for (const route of PLATFORM_ROUTES) {
+      await gotoRendered(page, route.path)
+      const nav = page.getByRole('navigation', { name: 'Platform' })
+      await expect(nav, `${route.path} has no platform navigation`).toBeVisible()
+      for (const sibling of PLATFORM_ROUTES) {
+        await expect(nav.getByRole('link', { name: sibling.label })).toHaveAttribute(
+          'href',
+          sibling.path
+        )
+      }
+    }
+  })
+
+  test('marks its own page current, and only its own', async ({ page }) => {
+    for (const route of PLATFORM_ROUTES) {
+      await gotoRendered(page, route.path)
+      const current = page
+        .getByRole('navigation', { name: 'Platform' })
+        .locator('[aria-current="page"]')
+      await expect(current).toHaveCount(1)
+      await expect(current).toContainText(route.label)
+    }
+  })
+
+  test('does not appear on a route outside the platform group', async ({ page }) => {
+    for (const path of ['/', '/kpis', '/status', '/about']) {
+      await gotoRendered(page, path)
+      await expect(page.getByRole('navigation', { name: 'Platform' }), path).toHaveCount(
+        0
+      )
+    }
+  })
+
+  test('reaches the data model and governance in one click from Platform', async ({
+    page,
+  }) => {
+    await gotoRendered(page, '/')
+    await page
+      .locator('header')
+      .getByRole('navigation', { name: 'Primary' })
+      .getByRole('link', { name: 'Platform' })
+      .click()
+    await expect(page).toHaveURL(/\/architecture$/)
+
+    await page
+      .getByRole('navigation', { name: 'Platform' })
+      .getByRole('link', { name: 'Data model' })
+      .click()
+    await expect(page).toHaveURL(/\/data-model$/)
   })
 })
 
@@ -93,9 +163,18 @@ test.describe('mobile navigation', () => {
       page.getByRole('button', { name: /close navigation menu/i })
     ).toHaveAttribute('aria-expanded', 'true')
 
-    for (const route of PRIMARY_ROUTES.filter((r) => r.inNav)) {
+    for (const item of HEADER_NAV) {
       await expect(
-        drawer.getByRole('link', { name: new RegExp(route.navLabel!) })
+        drawer.getByRole('link', { name: new RegExp(item.label) })
+      ).toBeVisible()
+    }
+
+    // And the three platform pages, expanded. On a phone there is room to show
+    // them rather than making a visitor land on Architecture and then discover a
+    // sub-navigation, so no route is more than one tap away.
+    for (const route of PLATFORM_ROUTES) {
+      await expect(
+        drawer.getByRole('link', { name: route.label, exact: true })
       ).toBeVisible()
     }
   })
@@ -116,13 +195,13 @@ test.describe('mobile navigation', () => {
   })
 
   test('closes when the scrim is clicked', async ({ page }) => {
-    // A taller viewport than the rest of this group uses. At 375x812 the eight
-    // drawer rows plus their secondary lines fill the entire area below the
-    // header, so no scrim is exposed and there is nothing to click - the close
-    // button and Escape are the only ways out at that height, and both are
-    // covered elsewhere. This viewport leaves the scrim visible so the behaviour
-    // can actually be exercised.
-    await page.setViewportSize({ width: 375, height: 1100 })
+    // A taller viewport than the rest of this group uses. The drawer's rows plus
+    // their secondary lines and the expanded platform group fill the entire area
+    // below the header at 375x812, so no scrim is exposed and there is nothing to
+    // click - the close button and Escape are the only ways out at that height,
+    // and both are covered elsewhere. This viewport leaves the scrim visible so
+    // the behaviour can actually be exercised.
+    await page.setViewportSize({ width: 375, height: 1400 })
     await gotoRendered(page, '/about')
     await page.getByRole('button', { name: /open navigation menu/i }).click()
 

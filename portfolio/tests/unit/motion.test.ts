@@ -146,11 +146,23 @@ describe('the animation library stays inside its budget', () => {
    * This list is the whole justification for that decision, and it is asserted
    * rather than described so that the next reveal added to the site cannot quietly
    * re-import it.
+   *
+   * THE HOME PAGE IS NO LONGER ON IT.
+   *
+   * The redesign removed both of its entries. The hero's drawn diagram is now
+   * `components/visuals/governed-signal.tsx`, a server component whose motion is
+   * CSS on SVG attributes, and the scrollytelling walkthrough was replaced by a
+   * five-stage section with no JavaScript animation at all. That took 42.7 kB of
+   * route JavaScript off the site's most-visited page, and it removed the class
+   * of defect the scrollytelling diagram had - animating `width` on an element
+   * that also declared `width` as an attribute, which threw a console error
+   * eight times per render.
+   *
+   * The two explorers keep it, and only they: their node emphasis is a spring
+   * against a target that moves while the animation runs, which a CSS transition
+   * cannot express because it restarts on every change.
    */
   const PERMITTED = [
-    // The hero's drawn SVG paths and the scrollytelling diagram - home page.
-    'components/motion/pipeline-hero.tsx',
-    'components/sections/pipeline-scrollytelling.tsx',
     // Node emphasis, driven by a spring against a moving target.
     'components/explorers/architecture-explorer.tsx',
     'components/explorers/data-model-explorer.tsx',
@@ -163,6 +175,17 @@ describe('the animation library stays inside its budget', () => {
   it('is not imported by the CSS reveal', () => {
     const reveal = readFileSync(join(SRC, 'components/motion/reveal.tsx'), 'utf8')
     expect(reveal).not.toMatch(/from 'motion/)
+  })
+
+  it('is not imported by the signature visual, which is a server component', () => {
+    const signal = readFileSync(
+      join(SRC, 'components/visuals/governed-signal.tsx'),
+      'utf8'
+    )
+    expect(signal).not.toMatch(/from 'motion/)
+    // And it is a server component, which is the property that makes the hero
+    // cost nothing. A 'use client' directive here would be a silent regression.
+    expect(signal).not.toMatch(/^'use client'/m)
   })
 
   it('is not imported by the motion boundary or the animated count', () => {

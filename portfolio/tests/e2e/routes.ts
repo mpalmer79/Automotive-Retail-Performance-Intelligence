@@ -20,7 +20,7 @@ export interface RouteUnderTest {
 export const PRIMARY_ROUTES: readonly RouteUnderTest[] = [
   {
     path: '/',
-    heading: 'One governed view of dealership performance',
+    heading: 'Dealership intelligence built by someone who has run the dealership',
     inNav: true,
     navLabel: 'Overview',
   },
@@ -56,6 +56,44 @@ export const PRIMARY_ROUTES: readonly RouteUnderTest[] = [
     navLabel: 'About',
   },
   { path: '/case-study', heading: 'Case study in progress', inNav: false },
+]
+
+/**
+ * The HEADER navigation, which is a different list from the routes above.
+ *
+ * Five items for seven navigable routes: "Platform" points at `/architecture`
+ * and is the current item on `/data-model` and `/governance` too, both of which
+ * are reached from the platform sub-navigation on the page. `tests/unit/site.test.ts`
+ * asserts this list agrees with `PRIMARY_NAV`, so the two cannot drift.
+ *
+ * The case study is deliberately not here. It was a bordered control in the
+ * header and is now in the footer, on the status page and in the home page's
+ * closing section.
+ */
+export interface HeaderNavItem {
+  readonly label: string
+  readonly path: string
+  /** Pathnames on which this item must carry `aria-current="page"`. */
+  readonly currentOn: readonly string[]
+}
+
+export const HEADER_NAV: readonly HeaderNavItem[] = [
+  { label: 'Overview', path: '/', currentOn: ['/'] },
+  {
+    label: 'Platform',
+    path: '/architecture',
+    currentOn: ['/architecture', '/data-model', '/governance'],
+  },
+  { label: 'KPIs', path: '/kpis', currentOn: ['/kpis'] },
+  { label: 'Status', path: '/status', currentOn: ['/status'] },
+  { label: 'About', path: '/about', currentOn: ['/about'] },
+]
+
+/** The three routes that render the platform sub-navigation. */
+export const PLATFORM_ROUTES: readonly { label: string; path: string }[] = [
+  { label: 'Architecture', path: '/architecture' },
+  { label: 'Data model', path: '/data-model' },
+  { label: 'Governance', path: '/governance' },
 ]
 
 /** Every route the accessibility sweep covers, including the internal lab. */

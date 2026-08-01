@@ -8,6 +8,13 @@ lint rule, a unit test or a browser assertion, and where it is enforced is named
 
 ---
 
+> **Experience redesign, version 2.** This document describes the system as it
+> stands after the redesign recorded in `portfolio/docs/EXPERIENCE_REDESIGN_V2.md`.
+> That document holds the baseline it replaced, the severity-ranked findings, the
+> decisions and their rejected alternatives, three adversarial review passes and
+> the measured results. Where a rule below reads as unusually specific, the reason
+> is almost always a finding recorded there.
+
 ## 1. The register
 
 The site has one job: make a stranger believe that the numbers behind it are governed.
@@ -259,6 +266,40 @@ reaching 140 characters on a 2560px display, so the `<Prose>` component caps mea
 independently of the grid.
 
 ---
+
+## 4a. Section grounds
+
+The redesign's central structural change, and the reason `Section` no longer
+takes a `bordered` prop.
+
+Every section on the previous build carried the same hairline top rule. Nine of
+them on the home page, and every section on six other routes. A rule repeated
+that many times separates nothing: the page reads as one list of equal blocks,
+which was finding A-03.
+
+A ground is a shift in the surface a section sits on. It costs no ink, it
+survives greyscale, it works at 200 percent zoom, and the eye reads it as
+"somewhere else" rather than as "next item".
+
+| Ground      | Token                    | Job                                                      |
+| ----------- | ------------------------ | -------------------------------------------------------- |
+| `cinematic` | `--color-canvas-deep`    | The hero and the closing section. Two per page at most.  |
+| `canvas`    | default                  | Editorial narrative, reading copy.                       |
+| `panel`     | `--color-canvas-raised`  | The surround for a product frame or interactive surface. |
+| `evidence`  | `--color-surface-sunken` | Technical and evidence bands. Recessed instrumentation.  |
+
+Rules:
+
+- A page is expected to move between grounds, not to stay on one.
+- No two adjacent sections share a ground.
+- `divider` is reserved for a boundary between two sections on the SAME ground,
+  where there is no surface change for the eye to read. Using it between two
+  different grounds double-marks the boundary.
+
+`--arpi-radius-frame` (1.75rem) belongs to exactly one component, the Operating
+View's product frame, and appears nowhere else. One radius that is used once is
+what makes a surface read as a piece of software inside the page rather than as
+another card.
 
 ## 5. Space, layout and elevation
 

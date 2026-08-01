@@ -1,6 +1,7 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 
+import { gotoRendered } from './helpers'
 import { ALL_TESTED_ROUTES, PRIMARY_ROUTES, VIEWPORTS } from './routes'
 
 /**
@@ -362,8 +363,8 @@ test.describe('reflow and target size', () => {
     // The hero's two calls to action and the navigation trigger are the controls
     // a visitor must be able to hit on a phone.
     const controls: { role: 'link' | 'button'; name: RegExp }[] = [
-      { role: 'link', name: /explore the architecture/i },
-      { role: 'link', name: /view the repository/i },
+      { role: 'link', name: /explore the platform/i },
+      { role: 'link', name: /view engineering evidence/i },
       { role: 'button', name: /open navigation menu/i },
     ]
     for (const control of controls) {
@@ -393,20 +394,45 @@ test.describe('no hover-only or tooltip-only information', () => {
     await expect(chips).toHaveCount(8)
   })
 
-  test('the domain cards reveal their detail on click, not on hover', async ({
-    page,
-  }) => {
-    await page.goto('/')
-    const card = page.getByRole('button', { name: /Sales analytical domain/i })
-    await card.scrollIntoViewIfNeeded()
-    // Hovering must not open it.
-    await card.hover()
+  test('the operating view changes domain on click, not on hover', async ({ page }) => {
+    // Replaces the same check against the six expandable domain cards this
+    // section used to carry. The cards are gone; the rail that replaced them has
+    // the identical obligation, and it is the more important one because the
+    // rail IS the home page's product surface.
+    await gotoRendered(page, '/')
+    const tablist = page.getByRole('tablist', { name: /analytical domain/i })
+    const inventory = tablist.getByRole('tab', { name: /inventory/i })
+    await inventory.scrollIntoViewIfNeeded()
+
+    // Hovering must not select it. A hover-only selector is unreachable on
+    // touch and invisible to a keyboard.
+    await inventory.hover()
     await page.waitForTimeout(250)
-    await expect(page.getByRole('heading', { name: /Governed KPIs/i })).toHaveCount(0)
+    await expect(inventory).toHaveAttribute('aria-selected', 'false')
+
     // Clicking must.
-    await card.click()
-    await expect(
-      page.getByRole('heading', { name: /Governed KPIs/i }).first()
-    ).toBeVisible()
+    await inventory.click()
+    await expect(inventory).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('tabpanel')).toContainText(
+      /lot turning|financially risky/i
+    )
+  })
+
+  test('the operating view is fully operable from the keyboard', async ({ page }) => {
+    await gotoRendered(page, '/')
+    const tablist = page.getByRole('tablist', { name: /analytical domain/i })
+    // Roving tabindex: exactly one tab is in the tab order at a time, which is
+    // what stops a six-item rail costing a keyboard user six tab stops.
+    await expect(tablist.locator('[role="tab"][tabindex="0"]')).toHaveCount(1)
+
+    await tablist.locator('[role="tab"][tabindex="0"]').focus()
+    await page.keyboard.press('End')
+    await expect(tablist.getByRole('tab').last()).toHaveAttribute('aria-selected', 'true')
+    // And the selection wraps rather than dead-ending at the last item.
+    await page.keyboard.press('ArrowRight')
+    await expect(tablist.getByRole('tab').first()).toHaveAttribute(
+      'aria-selected',
+      'true'
+    )
   })
 })

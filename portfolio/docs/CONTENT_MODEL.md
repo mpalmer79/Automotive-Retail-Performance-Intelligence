@@ -4,6 +4,31 @@ How the website knows what is true, and why it cannot say anything else.
 
 ---
 
+> **Experience redesign, version 2.** This document describes the site as it
+> stands after the redesign recorded in `portfolio/docs/EXPERIENCE_REDESIGN_V2.md`.
+
+**One disclosure per route, not seven.** The previous build stated its trust
+position seven separate times on the home page alone. Every one was true;
+together they made a finished warehouse, a governed KPI catalogue and a
+source-controlled semantic model read as an apology (finding A-04).
+
+`TrustLine` is now the single shape that disclosure takes. It carries the
+synthetic-data statement, the fictional dealer group, and the real-engine
+validation state - and that last clause is DERIVED from the manifest rather than
+authored, so the sentence cannot outlive the fact and cannot be made to say
+"validated" early by editing a string.
+
+The full explanation was not removed, only relocated: `/status` and `/kpis` both
+carry it at length, and `tests/e2e/content-integrity.spec.ts` asserts it is still
+there. Reducing repetition must not reduce what the site actually says.
+
+**New content rules, enforced in the browser.** The hero carries exactly two
+calls to action and no status badge; the headline, both actions and the trust
+line reach the first 390x844 screen; the differentiator is above the fold on a
+desktop; the proof section shows exactly four figures; no route repeats the
+disclosure more than twice; no public copy contains an em dash; the Operating
+View shows no value in any domain.
+
 ## 1. The problem this solves
 
 A portfolio site is the easiest place in a project to tell a small lie. Not a deliberate

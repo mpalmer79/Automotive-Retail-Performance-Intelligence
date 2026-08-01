@@ -400,12 +400,216 @@ emphasis genuinely tracks state.
 
 ## 4. Review pass 1: structural
 
-Recorded after the implementation reached a complete homepage and header.
+Run against a production build of the redesign at seven viewports, with the
+overflow check in `scripts/capture-review-screenshots.ts` on.
+
+### 4.1 Measured page lengths, before and after
+
+| Route           | 1440px before |     after | change | 375px before |      after | change |
+| --------------- | ------------: | --------: | -----: | -----------: | ---------: | -----: |
+| `/`             |        10,580 | **7,109** |   -33% |       19,710 | **12,612** |   -36% |
+| `/status`       |        10,461 |    10,295 |    -2% |       17,343 |     17,271 |    -0% |
+| `/architecture` |        10,631 |    10,543 |    -1% |       17,588 |     17,635 |    +0% |
+| `/data-model`   |         7,823 |     7,736 |    -1% |       15,631 |     15,679 |    +0% |
+| `/kpis`         |         7,223 |     7,062 |    -2% |       12,850 |     12,784 |    -1% |
+| `/governance`   |         6,607 |     6,464 |    -2% |       10,760 |     10,683 |    -1% |
+| `/about`        |         4,427 | **4,267** |    -4% |        7,681 |      7,614 |    -1% |
+| `/case-study`   |         5,040 |     4,877 |    -3% |        8,410 |      8,322 |    -1% |
+
+The home page is 7.9 desktop screens where it was 11.8, and 14.9 phone screens
+where it was 23.4. The technical routes barely moved, which is correct: their
+length is their content, and the redesign changed how that content is banded
+rather than how much of it there is.
+
+`/architecture` and `/data-model` are 47px and 48px TALLER on a phone. That is
+the platform sub-navigation, and it is the cost of the navigation change rather
+than an oversight: two routes gained a control so that five header items could
+replace seven. It is recorded because a redesign that reports only the numbers
+that moved its way is not reporting.
+
+### 4.2 Findings
+
+**S-01 Resolved: the first mobile screen.** At 390x844 the headline, the
+supporting paragraph, both calls to action and the trust line now all sit above
+the fold. Asserted by a browser test rather than by a screenshot, so it cannot
+regress silently.
+
+**S-02 Resolved: section differentiation.** Six chapters across four grounds,
+alternating. No two adjacent sections on the home page share a ground.
+
+**S-03 Resolved: card repetition.** Bordered panels on the home page: 23 before,
+9 after, and no more than two consecutive card-dominated sections.
+
+**S-04 Found and fixed during the pass: horizontal overflow.** The hero's first
+mobile treatment let the landscape diagram bleed off the right edge, producing
+85px of real horizontal scroll at 375px and 140px at 320px. Rebuilt as two
+compositions with one accessible description outside both.
+
+**S-05 Found and fixed: the source labels.** The landscape composition's inbound
+curves were drawn straight through the six source labels. The sources are chips
+now and the curves start at their right edge.
+
+**S-06 Found and fixed: hero proportions.** The headline first sat inside a
+five-column block beside the visual, which at 1440px gave a ten-word sentence a
+460px measure: six lines of 76px type filling the left half. The headline now
+spans the container and sets in two lines, and the visual has a seven-column
+column worth having.
 
 ## 5. Review pass 2: visual craft
 
+**C-01 Resolved: the signature visual is legible.** The first version used an
+880-unit viewBox in a 760px column, putting every label at roughly 8px. Rebuilt
+at 760 units so the scale sits near 1 and a 12-unit label renders at close to
+12px.
+
+**C-02 Resolved: the trust line reads as a line.** Three sentences separated by
+word spaces wrapped into what looked like a list of fragments, four ragged rows
+deep at 375px. Separators now lead their clause and do not wrap away from it, so
+a line never ends on a lone dot.
+
+**C-03 Resolved: eyebrow discipline.** The decorative rule is opt-in and belongs
+to the two components that open a major block. An eyebrow inside a panel or a
+card is a plain label.
+
+**C-04 Resolved: the product frame reads as software.** One radius
+(`--arpi-radius-frame`), one outer shadow and one chrome bar, none of which
+appear anywhere else on the site.
+
+**C-05 Accepted, not fixed: source-link path wrapping.** A long repository path
+under a proof numeral can break mid-token, because `overflow-wrap: anywhere` is
+what stops a 68-character identifier setting the page's minimum width. The
+alternative is horizontal overflow at 320px. The break is untidy; the overflow
+would be a WCAG 1.4.10 failure. Keeping the break is the right trade and is
+recorded here rather than left to be rediscovered.
+
+**C-06 Accepted: the wide section header at three items.** Heading, lede and
+action across one row is tight on the platform story at 1280px. It holds, and
+the alternative stacks the action under a full-width lede, which reads as a
+second call to action rather than as a section control.
+
 ## 6. Review pass 3: visitor comprehension
+
+Read as each of the eight visitors named in the brief, against the twenty
+questions.
+
+| #   | Question                                          | Verdict                                                                                         |
+| --- | ------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| 1   | Can a visitor explain ARPI after five seconds?    | Yes. Headline names the domain and the differentiator; the eyebrow names the field.             |
+| 2   | Is the dealership experience visible immediately? | Yes, in the h1, and asserted above the fold by test.                                            |
+| 3   | Does it feel like a real product?                 | The Operating View is the moment that carries this.                                             |
+| 4   | Does it feel honest?                              | Yes, and more so: one trust line per route reads as a statement, where seven read as anxiety.   |
+| 5   | Does it feel unfinished?                          | No. The unfinished parts are stated as boundaries, at the end.                                  |
+| 6   | Does status dominate?                             | No. Status is one nav item and one closing panel.                                               |
+| 7   | Is the signature visual memorable?                | Yes. It is the only composition of its kind on the site.                                        |
+| 8   | Too many cards?                                   | 9 on the home page, from 23.                                                                    |
+| 9   | Too many borders?                                 | Grounds carry section boundaries; borders are reserved for data, controls, evidence and status. |
+| 10  | Is the page too long?                             | 7.9 desktop screens for six chapters.                                                           |
+| 11  | Any redundant section?                            | No. Two were deleted for duplicating `/status`.                                                 |
+| 12  | Does mobile feel designed?                        | Yes. The portrait signature composition is the clearest evidence.                               |
+| 13  | Does any motion distract?                         | No loop remains. Every animation runs a finite number of times.                                 |
+| 14  | Is technical depth easy to reach?                 | Platform, then a sub-navigation linking all three.                                              |
+| 15  | Does the home page earn continued scrolling?      | The hero ends on an action into the product surface.                                            |
+| 16  | Does the final CTA have a purpose?                | Two concrete destinations, plus the locked case study.                                          |
+| 17  | Would a hiring manager see the differentiator?    | It is the headline.                                                                             |
+| 18  | Would an engineer trust the evidence?             | Every count links to the file that generates it.                                                |
+| 19  | Does anything resemble a template?                | The product frame and the signature visual are both original to this project.                   |
+| 20  | Does anything imply a completed case study?       | No. Asserted by the gate tests and the content-integrity suite.                                 |
+
+**Keyboard-only visitor.** The Operating View is a real tab set with a roving
+tabindex, arrow keys, Home and End, and wrap at both ends. The drawer traps
+focus, returns it, and closes on Escape and on a scrim click.
+
+**Reduced-motion visitor.** Every animation collapses to 1ms. The travelling
+signal is removed rather than frozen, because a dash that does not travel is a
+stray mark on a diagram; the paths it travels stay drawn, so the composition
+still reads. Asserted by `tests/e2e/reduced-motion.spec.ts`, which compares the
+rendered text of every route at both motion preferences word for word.
 
 ## 7. Results
 
+### 7.1 Lighthouse, desktop preset, local production build
+
+| Route           | Performance | Accessibility | Best practices | SEO |  LCP | CLS |
+| --------------- | ----------: | ------------: | -------------: | --: | ---: | --: |
+| `/`             |         100 |           100 |        **100** | 100 | 0.7s |   0 |
+| `/architecture` |         100 |           100 |            100 | 100 | 0.7s |   0 |
+| `/kpis`         |         100 |           100 |            100 | 100 | 0.7s |   0 |
+| `/status`       |         100 |           100 |            100 | 100 | 0.6s |   0 |
+| `/about`        |         100 |           100 |            100 | 100 | 0.6s |   0 |
+
+Best practices on `/` was 96 at baseline. The four points were the console error
+from the scrollytelling diagram's animated `width` (B-04); it now scores 100
+with zero console errors and zero label-name mismatches.
+
+### 7.2 Bundles, cold load, compressed
+
+| Route           | JS before |     JS after |       change | HTML before |   after |
+| --------------- | --------: | -----------: | -----------: | ----------: | ------: |
+| `/`             |  230.3 kB | **187.6 kB** | **-42.7 kB** |     38.1 kB | 28.5 kB |
+| `/data-model`   |  226.0 kB |     226.8 kB |      +0.8 kB |     21.9 kB | 22.2 kB |
+| `/architecture` |  215.1 kB |     215.0 kB |      -0.1 kB |     23.9 kB | 24.2 kB |
+| `/status`       |  166.1 kB |     160.8 kB |      -5.3 kB |     35.0 kB | 35.5 kB |
+| `/about`        |  166.1 kB |     160.8 kB |      -5.3 kB |     21.2 kB | 21.4 kB |
+
+The home page's saving is the animation library leaving it. The 5.3 kB off the
+server-rendered routes is the shared chunk shrinking for the same reason.
+
+### 7.3 Tests
+
+| Suite                                                  | Result     |
+| ------------------------------------------------------ | ---------- |
+| Unit and component (vitest)                            | 375 passed |
+| Browser, accessibility, content integrity (Playwright) | 211 passed |
+| Baseline for comparison                                | 189 passed |
+
+Twenty-two tests added. Five rewritten against the components that replaced the
+ones they described; none deleted for being inconvenient.
+
+### 7.4 Defects found by this work
+
+| ID   | Defect                                                 | Found by                               |
+| ---- | ------------------------------------------------------ | -------------------------------------- |
+| B-04 | Console error, 8x per home-page render                 | Lighthouse baseline audit              |
+| B-05 | Six cards failing WCAG 2.5.3 Label in Name             | Lighthouse baseline audit              |
+| S-04 | 85px horizontal scroll at 375px                        | Overflow check during capture          |
+| S-05 | Inbound curves drawn through source labels             | Visual review pass 1                   |
+| S-06 | Six-line headline in a half-width column               | Visual review pass 1                   |
+| R-01 | `/governance` missing the platform sub-navigation      | New navigation browser test            |
+| R-02 | h2 to h4 heading skip in the Operating View            | Existing heading sweep, on new markup  |
+| R-03 | Target-size check naming controls that no longer exist | Existing check, after the hero changed |
+
 ## 8. Remaining limitations
+
+These are real and are not worked around.
+
+**The live deployment was never reached.** This session's egress policy answers
+`403` to `CONNECT arpi.up.railway.app:443`, recorded in the proxy's own failure
+log. Every measurement in this document was taken against a production build of
+the same commit served locally, which is the artefact Railway builds from the
+same Dockerfile. The following remain unverified against the deployment and need
+someone who can reach the host:
+
+- Lighthouse against the live origin
+- the remote Playwright suite (`playwright.remote.config.ts`)
+- canonical metadata, `robots.txt` and `sitemap.xml` as served
+- security headers as served
+- the `/status` health check after deploy
+
+Nothing about the change makes any of these likely to differ: the canonical
+origin is resolved from `RAILWAY_PUBLIC_DOMAIN` by a pure function with full
+test coverage, the security headers are set in `next.config.ts` and unchanged,
+and the health-check path is unchanged.
+
+**The social preview still depicts the wordmark rather than the product**
+(finding C-08). The signature visual now exists to be drawn from; regenerating
+`public/social-preview.svg` and its raster is a separate change.
+
+**Navigation prefetch still costs every visitor the shared bundle** (finding
+C-09). Unchanged by this work, and a deliberate trade recorded in
+`portfolio/docs/PERFORMANCE.md`.
+
+**`/architecture` is still 17,635px at 375px** (finding C-01). Its explorer was
+not rewritten: it is accessible, keyboard-operable and covered by tests, and
+rewriting it was a larger change than this redesign could carry safely. The
+route summary and the platform sub-navigation improve its first screen; the
+staged-disclosure work remains open.
