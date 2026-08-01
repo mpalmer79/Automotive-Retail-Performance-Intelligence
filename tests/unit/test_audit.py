@@ -210,3 +210,27 @@ def test_to_rows_shape(test_config: ArpiConfig) -> None:
     assert len(rows["validation_result"]) == 1
     assert len(rows["reconciliation_result"]) == 1
     assert rows["rejected_record"] == []
+
+
+def test_recording_the_same_entity_and_layer_twice_is_rejected(test_config: ArpiConfig) -> None:
+    """A duplicate row count is a caller defect and must fail where it is made.
+
+    Since ADR-0010 each execution owns its own ``pipeline_run_id``, so the loader inserts
+    row counts instead of upserting them. Without this guard a duplicate would surface as
+    a primary-key violation from inside the loader, far from the call that caused it.
+    """
+    recorder = AuditRecorder(run=_run(test_config))
+    recorder.record_row_count("dim_date", LAYER_SOURCE, 184)
+
+    with pytest.raises(ValidationError, match="already recorded"):
+        recorder.record_row_count("dim_date", LAYER_SOURCE, 190)
+
+
+def test_the_same_entity_may_record_different_layers(test_config: ArpiConfig) -> None:
+    """The guard is on the pair, not on the entity: five layers per entity is the norm."""
+    recorder = AuditRecorder(run=_run(test_config))
+    recorder.record_row_count("dim_date", LAYER_SOURCE, 184)
+    recorder.record_row_count("dim_date", LAYER_RAW, 184)
+    recorder.record_row_count("dim_date", LAYER_WAREHOUSE, 184)
+
+    assert len(recorder.row_counts) == 3

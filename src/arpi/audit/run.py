@@ -337,7 +337,8 @@ class AuditRecorder:
             The recorded :class:`RowCount`.
 
         Raises:
-            ValidationError: If ``layer`` is not a contract layer or the count is negative.
+            ValidationError: If ``layer`` is not a contract layer, the count is negative,
+                or this ``(entity_name, layer)`` was already recorded for this run.
         """
         if layer not in AUDIT_LAYERS:
             raise ValidationError(
@@ -347,6 +348,21 @@ class AuditRecorder:
         if row_count < 0:
             raise ValidationError(
                 f"row_count must be non-negative, got {row_count}.", field="row_count"
+            )
+        # `audit.pipeline_run_row_count` is keyed on (pipeline_run_id, entity_name, layer),
+        # and since ADR-0010 each execution owns its own pipeline_run_id -- so the loader
+        # inserts these rows rather than upserting them. Recording the same entity and
+        # layer twice within one run would therefore surface as a primary-key violation
+        # from deep inside the loader, long after the mistake. It is a caller defect, so it
+        # is rejected here, where the caller can see which pair was duplicated.
+        if any(
+            existing.entity_name == entity_name and existing.layer == layer
+            for existing in self.row_counts
+        ):
+            raise ValidationError(
+                f"row count for ({entity_name!r}, {layer!r}) was already recorded for this "
+                "run. Each entity records each layer exactly once per execution.",
+                field="entity_name",
             )
         record = RowCount(entity_name=entity_name, layer=layer, row_count=row_count)
         self.row_counts.append(record)
