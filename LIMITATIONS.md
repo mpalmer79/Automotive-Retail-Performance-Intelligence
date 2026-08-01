@@ -16,7 +16,10 @@ transactions, and it therefore produces no finding about the automotive retail i
 review date the analytical warehouse is complete and the reporting layer above it is built: all eight MVP
 dimensions, all five MVP facts, twenty-eight reporting views, and all 29 KPIs in
 [KPI_CATALOG.md](KPI_CATALOG.md) computable and tested against an independent derivation. **No dashboard
-has been built, no semantic model exists, and no finding has been produced.** Every number the platform can
+has been built, no semantic model has been validated by a real engine, and no finding has been
+produced.** The semantic model *source* exists -- a PBIP project with the model in TMDL -- and it has been
+statically checked against its specification, but no engine has ever loaded it, refreshed it or evaluated
+one of its measures, so nothing it would report has been demonstrated. Every number the platform can
 produce describes a fictional group built from synthetic data, and every KPI definition is ARPI's own. There are no industry benchmarks anywhere in this project, because ARPI has no
 access to real performance data, so nothing here can tell you whether a number is good. What this
 repository legitimately demonstrates is **method** — dimensional modelling, KPI governance, reproducible
@@ -233,10 +236,15 @@ purpose.
 
 **What does not exist:**
 
-- **No Power BI file, no semantic model, no DAX measure, no report page, no dashboard, no screenshot.**
-  `powerbi/model_documentation/` holds the specification; Gate 1 gates the construction, and
-  `tests/integration/test_gate1_readiness.py` fails the build if a `.pbix`, `.pbip`, `.tmdl` or `.bim` file
-  appears.
+- **No engine has ever run the semantic model, no report page, no dashboard, no screenshot.**
+  What exists is *source*: a PBIP project, the model in TMDL, and its measures written in DAX. It is
+  checked statically -- every table, relationship and measure parsed and compared against
+  `powerbi/model_documentation/` -- and static parsing is not execution. Neither Power BI Desktop nor
+  Microsoft Fabric has loaded the model, refreshed it, or evaluated a measure, so no number in it has been
+  produced by the engine that would produce it in use. Both real-engine paths are **pending** under
+  [ADR-0008](docs/architecture-decisions/ADR-0008-real-engine-validation-paths.md), and
+  `powerbi/validation/desktop_validation_results.json` and `fabric_validation_results.json` both record a
+  null `validated_at`. The report is a PBIR shell with **zero pages**.
 - **No Excel operating report.**
 - **No findings, no recommendations, no executive memo, no case study, no walkthrough video.** The platform
   can compute numbers; nobody has drawn a conclusion from one, and no conclusion drawn from synthetic data
@@ -432,6 +440,42 @@ rather than an oversight.
 Status values are exactly four: **Implemented**, **Planned**, **Deferred**, **Out of scope**.
 
 ### 13.1 Implemented
+
+The tables below are **generated from the repository** by
+`scripts/generate_project_capabilities.py` and verified in continuous integration. Nothing in them is
+typed by hand, so no count here can drift from the source it describes -- which is precisely how the
+statements corrected in this document went stale.
+
+<!-- ARPI:CAPABILITIES:BEGIN warehouse -->
+| Layer | Count | Status |
+|---|---:|---|
+| Dimension merge scripts | 8 | Implemented and exercised by the integration suite. |
+| Fact DDL scripts | 5 | Implemented. |
+| Fact load scripts | 5 | Implemented. Facts are **not** merely planned. |
+| Reporting views | 28 | The only surface the semantic model may read. |
+| Audit row-count layers recorded | 5 of 5 | `source`, `raw`, `staging`, `warehouse`, `rejected`. |
+| Forward migrations | 2 | Ordered, immutable once released, recorded in `audit.schema_migration`. |
+<!-- ARPI:CAPABILITIES:END warehouse -->
+
+<!-- ARPI:CAPABILITIES:BEGIN semantic-model -->
+| Artefact | Count | What it means |
+|---|---:|---|
+| PBIP project files | 2 | The project and its semantic-model definition exist in source control. |
+| TMDL files | 30 | The model is stored as readable text, not a binary. |
+| Semantic tables | 26 | Imported reporting views plus measure-only tables. |
+| Relationships | 42 | Declared in TMDL and statically checked. |
+| DAX measures | 49 | Written and statically checked. **Never evaluated by an engine.** |
+| Report pages | 0 | The report is a PBIR shell. A dashboard does not exist. |
+
+**Source exists; runtime is unproven.** Every figure above is read from the repository, and every one of them describes *source*. Static parsing is not execution.
+
+| Real-engine path | Declared | Evidence |
+|---|---|---|
+| Power BI Desktop | pending | `validated_at` is null |
+| Microsoft Fabric | pending | `validated_at` is null |
+
+An engine has run: **No**. `ADR-0008-real-engine-validation-paths` accepts either path and requires one of them before Lifecycle Phase 5 can complete. (This block is generated into documents at several depths, so it names the record rather than linking to it: one relative link cannot resolve from all of them.)
+<!-- ARPI:CAPABILITIES:END semantic-model -->
 
 | Item | Kind |
 |---|---|

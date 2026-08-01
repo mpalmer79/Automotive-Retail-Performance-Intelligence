@@ -1,0 +1,78 @@
+{
+  "schema": "arpi.project_capabilities/1",
+
+  "_comment": [
+    "DECLARED STATUS ONLY. Nothing here is a count, and nothing here restates a fact that",
+    "can be read from source. Counts, file existence and evidence results are DERIVED by",
+    "scripts/project_capabilities.py, which reads the repository. Recording a count here",
+    "would create a second copy able to disagree with the first, which is the drift this",
+    "register exists to stop.",
+    "",
+    "What belongs here is the judgement a human makes and a script cannot: whether a phase",
+    "is complete, whether a gate is open, whether a feature is deferred. Every one of these",
+    "is checked against derived evidence, and a declaration the evidence contradicts fails",
+    "scripts/check_project_capabilities.py.",
+    "",
+    "JSON rather than YAML because the repository-checks CI job runs on a bare interpreter",
+    "with nothing installed, and PyYAML is not in the standard library. The config/*.yaml",
+    "profiles are read by the application, which has its dependencies."
+  ],
+
+  "declared": {
+    "lifecycle_phases": {
+      "_comment": "ARCHITECTURE.md section 27. complete | in-progress | not-started.",
+      "1_requirements": "complete",
+      "2_architecture": "complete",
+      "3_data_generation": "complete",
+      "4_warehouse_and_reporting": "complete",
+      "5_semantic_model": "in-progress",
+      "6_dashboard": "not-started",
+      "7_findings": "not-started",
+      "8_case_study": "not-started"
+    },
+
+    "gates": {
+      "_comment": "Verdicts are parsed from the readiness documents; these declare the intent.",
+      "gate_1": "open",
+      "gate_2": "closed"
+    },
+
+    "real_engine_validation": {
+      "_comment": [
+        "ADR-0008 accepts either path. 'pending' until an engine has actually executed the",
+        "model; 'passed' requires a non-null validated_at AND a model_source_hash matching",
+        "the current TMDL. Declaring 'passed' without both fails the check."
+      ],
+      "desktop": "pending",
+      "fabric": "pending"
+    },
+
+    "deliverables": {
+      "_comment": "What a reader would look for and not find. Checked against derived counts.",
+      "power_bi_report_pages": "not-started",
+      "dashboard": "not-started",
+      "analytical_findings": "not-started",
+      "case_study": "locked",
+      "excel_operating_report": "deferred"
+    },
+
+    "deployment": {
+      "portfolio_website": "deployed",
+      "railway_postgresql": "declared",
+      "database_provisioning_job": "declared"
+    }
+  },
+
+  "documentation_claims": {
+    "_comment": [
+      "Prose statements that were true once and are contradicted by the repository now.",
+      "Each entry names a claim that must NOT appear, the derived fact that refutes it, and",
+      "the files that carried it. scripts/check_project_capabilities.py greps for the",
+      "patterns and fails when one reappears.",
+      "",
+      "These are semantic checks, not a banned-phrase list: each is guarded by the evidence",
+      "that makes it false, so if the evidence ever goes away the check retires itself",
+      "rather than forbidding a statement that has become true again."
+    ]
+  }
+}

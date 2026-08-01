@@ -370,13 +370,17 @@ needs one, so the smallest safe forward-migration mechanism is introduced with i
 
 | PR | Branch | Status |
 | --- | --- | --- |
-| 1 | `claude/arpi-execution-identity-hardening` | See §13 |
-| 2 | `claude/arpi-validator-and-test-hermeticity` | See §13 |
-| 3 | `claude/arpi-capability-register` | See §13 |
-| 4 | `claude/arpi-reproducible-python-builds` | See §13 |
-| 5 | `claude/arpi-production-hardening` | Blocked in part by §1.1 |
-| 6 | `claude/arpi-targeted-module-decomposition` | See §13 |
-| 7 | `claude/arpi-runtime-validation-completion` | Blocked by §1.1 |
+| 1 | `claude/arpi-execution-identity-hardening` | **Merged** (#16) |
+| 2 | `claude/arpi-validator-and-test-hermeticity` | **Merged** (#18) |
+| 3 | `claude/arpi-capability-register` | Open |
+| 4 | `claude/arpi-reproducible-python-builds` | **Merged** (#19) |
+| 5 | `claude/arpi-production-hardening` | **Blocked** by §1.1 — the live site is unreachable, so no claim about the deployed CSP or headers can be verified |
+| 6 | `claude/arpi-targeted-module-decomposition` | Not started |
+| 7 | `claude/arpi-runtime-validation-completion` | **Blocked** by §1.1 — Railway and Fabric are unreachable |
+
+PR 4 was taken before PR 3 because it closes the cause of finding 2 rather than a
+symptom: the sentinel defect was invisible precisely because nothing recorded which
+dependency resolution had been tested.
 
 ---
 
@@ -387,3 +391,29 @@ Updated as each pull request lands.
 | PR | Merge SHA | Main CI | Notes |
 | --- | --- | --- | --- |
 | — | — | — | Phase 0 complete; findings recorded above. |
+| #16 | `c138313` | green | Execution identity split from logical-run identity. Integration 615 → 641. `sql/09_migrations` introduced, fresh and upgrade paths both tested. |
+| #18 | `64c8085` | green | Sentinel arithmetic corrected; proven before/after under `pandas==2.2.3`. Logger isolation fixture; the Phase 0 reproduction now passes in every order. Two deterministic order-regression CI steps. |
+| #19 | `e87f704` | green | `uv.lock`; CI and the Railway provisioning image install frozen. New `floor` job runs the suite at the declared minimums (2210 tests, pandas 2.2.0). New `database-setup-image` job caught a real defect on its first run: the image built and could not run. |
+
+### Findings corrected after Phase 0
+
+Three statements in this ledger were wrong when written and are corrected here rather
+than edited away:
+
+1. **"The Frontend workflow is green"** — one of §1's starting assumptions. It was not.
+   The workflow was already failing on `main` at the redesign merge, in three unit
+   assertions and thirteen browser tests. All were stale assertions describing the
+   pre-redesign navigation, and all were fixed on `main` by PR #15 while this program was
+   under way. Verified directly afterwards: frontend unit 375 passed, browser suite 212
+   passed.
+
+2. **A claim that `main` did not contain the ARPI work.** It did. The local
+   `origin/main` remote-tracking ref was stale from clone time; `git ls-remote` showed the
+   real ref all along. No work was affected, but the reasoning behind it was wrong for
+   several steps.
+
+3. **Two "full-suite failures" attributed to the code.** Both were self-inflicted: a
+   `git checkout` ran against the working tree while a background suite was executing, so
+   `sql/09_migrations/` disappeared mid-run. A clean run on the merged `main` gave
+   2833 passed. Concurrent git operations and long test runs do not mix, and the lesson is
+   recorded here rather than in a commit message nobody will read.

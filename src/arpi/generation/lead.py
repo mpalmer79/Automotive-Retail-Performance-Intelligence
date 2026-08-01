@@ -451,8 +451,8 @@ _WAREHOUSE_FACT_LEAD: Final = "warehouse.fact_lead"
 
 # Registered at import time so the canonical register in
 # :mod:`arpi.validation.registry` is complete whenever this generator is importable.
-# ``layer`` is ``python`` because only a pandas implementation exists today; the SQL DDL and
-# its CHECK constraints are Planned and owned by another agent.
+# ``layer`` is ``python`` because only a pandas implementation exists today; the equivalent
+# SQL checks live in `sql/08_validation/` and are recorded separately.
 register_checks(
     (
         CheckDefinition(

@@ -157,7 +157,11 @@ docstring-code-format = true
 # language level it actually represents. `requires-python` remains the real floor, and
 # the 3.11 leg is what enforces it.
 files = ["src", "tests"]
-mypy_path = "src"
+# `scripts/` joins the path because the repository checks now have unit tests, and those
+# tests import the checkers. The scripts are standard-library-only and deliberately not
+# part of the installable package -- `repository-checks` runs them on a bare interpreter --
+# so they are reachable by path rather than by import.
+mypy_path = "src:scripts"
 namespace_packages = true
 explicit_package_bases = true
 strict = true

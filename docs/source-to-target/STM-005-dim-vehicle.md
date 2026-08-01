@@ -314,8 +314,10 @@ in `src/arpi/generation/vehicle.py`.
 
 ## 10. Open questions and known gaps
 
-- **No SQL load exists yet.** The DDL, raw and staging objects, and the Type 1 merge are Planned. Every
-  statement in sections 5 and 9 about database behaviour is a specification, not an observation.
+- **The SQL load exists and is exercised.** The DDL, the raw and staging objects, and the Type 1 merge are
+  implemented in `sql/`, run by the loader, and covered by the PostgreSQL integration suite. This entry
+  previously recorded them as Planned, which was true when written; the statements in sections 5 and 9 about
+  `dim_vehicle` database behaviour are now observations rather than specification.
 - **`odometer_reading` is an acquisition-time reading with no timestamp.** It is the reading when the unit
   entered inventory. Once `acquisition_event` exists, that event supplies the date; until then, the column
   is a point-in-time value whose point in time is implicit. A sale-time reading is a separate measure and

@@ -297,8 +297,10 @@ data, so every deviation is a defect.
 
 ## 10. Open questions and known gaps
 
-- **No SQL load exists yet.** The DDL, raw and staging objects, and the Type 1 merge are Planned. Every
-  statement in sections 5 and 9 about database behaviour is a specification, not an observation.
+- **The SQL load exists and is exercised.** The DDL, the raw and staging objects, and the Type 1 merge are
+  implemented in `sql/`, run by the loader, and covered by the PostgreSQL integration suite. This entry
+  previously recorded them as Planned, which was true when written; the statements in sections 5 and 9 about
+  `dim_vehicle_model` database behaviour are now observations rather than specification.
 - **The catalogue is a subset by design, and the dimension is a subset of the catalogue.** Neither is a
   complete manufacturer product list, and nothing in ARPI may present it as one.
 - **`is_current_model_line` is authored, not derived.** It encodes "still sold new as of model year 2026".

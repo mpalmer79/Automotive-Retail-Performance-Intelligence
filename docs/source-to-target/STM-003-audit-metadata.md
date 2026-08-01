@@ -116,12 +116,15 @@ one value per attempt. `logical_run_key` groups equivalent attempts and is delib
 | Measured count | `bigint` | `row_count` | `bigint` | Direct measurement at that layer. | `n/a — required` | Not null; ≥ 0 | Insert failure aborts the run | `pipeline_run_id` | Loader |
 | Wall clock | `timestamptz` | `recorded_at` | `timestamptz` | Current UTC time at measurement. | `n/a — required` | Not null | Insert failure aborts the run | itself | Loader |
 
-**Which layers Phase 0 actually writes.** The `layer` CHECK admits five values, but only three are ever
-recorded: `source` (by `src/arpi/pipeline.py`) and `raw` plus `warehouse` (by
-`src/arpi/ingestion/loader.py`). **No code path records a `staging` or a `rejected` row count**, so
-[ARCHITECTURE.md §21.4](../../ARCHITECTURE.md), which requires both, is not yet satisfied — see
-[LIMITATIONS.md §10.1](../../LIMITATIONS.md). Because `raw` and `warehouse` are written by the loader, a
-run that skips the optional database load records the `source` layer alone.
+**Which layers are actually written.** The `layer` CHECK admits five values and **all five are recorded**:
+`source` (by `src/arpi/pipeline.py`) and `raw`, `staging`, `warehouse` plus `rejected` (by
+`src/arpi/ingestion/loader.py`). [ARCHITECTURE.md §21.4](../../ARCHITECTURE.md) is therefore satisfied, and
+the chain identity `raw = staging accepted + rejected invalid + deduplicated` is measured term by term
+rather than derived — see [LIMITATIONS.md §10.1](../../LIMITATIONS.md), which records the closed gap.
+
+Phase 0 recorded only three of the five, which is what `DOC-23` registered; this paragraph described that
+state and is corrected here. Because every layer but `source` is written by the loader, a run that skips
+the optional database load still records the `source` layer alone.
 
 **Expected pattern for a clean Phase 0 run with the database load enabled:** `source = raw = warehouse`.
 `rejected` would be `0` if it were recorded, because `validation.max_rejected_record_ratio` is `0.0`.
