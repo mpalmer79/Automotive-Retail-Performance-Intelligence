@@ -411,8 +411,8 @@ export default function InventoryOperationsPage() {
               </span>
               , intentionally uses underscores between filename words and hyphens only
               inside the ISO date. Each is declared in the workbook contract with its
-              SHA-256, each lives under its own store's directory, and no duplicate or
-              alias copy of any of them exists anywhere in the repository.
+              SHA-256, each lives under its own store&rsquo;s directory, and no duplicate
+              or alias copy of any of them exists anywhere in the repository.
             </Text>
             <div className="flex flex-wrap gap-3">
               <SourceLink path={artifact.path} field="download the workbook" />
