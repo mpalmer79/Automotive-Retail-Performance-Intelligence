@@ -14,7 +14,8 @@ from typing import Any
 
 import requests
 
-INVENTORY_URL = "https://www.cars.com/dealers/156767/amherst-subaru/inventory/"
+PUBLIC_INVENTORY_URL = "https://www.cars.com/dealers/156767/amherst-subaru/inventory/"
+READER_INVENTORY_URL = "https://r.jina.ai/http://www.cars.com/dealers/156767/amherst-subaru/inventory/"
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -23,24 +24,23 @@ USER_AGENT = (
 ARRAY_MARKER = '"search_type":"general-inventory-search","vehicle_array":'
 
 
-def parse_vehicle_array(html: str) -> list[dict[str, Any]]:
-    marker_index = html.find(ARRAY_MARKER)
+def parse_vehicle_array(content: str) -> list[dict[str, Any]]:
+    marker_index = content.find(ARRAY_MARKER)
     if marker_index < 0:
-        raise RuntimeError("Cars.com vehicle array was not found in the page source")
+        raise RuntimeError("Cars.com vehicle array was not found in the response")
     array_start = marker_index + len(ARRAY_MARKER)
-    parsed, _ = json.JSONDecoder().raw_decode(html[array_start:])
+    parsed, _ = json.JSONDecoder().raw_decode(content[array_start:])
     if not isinstance(parsed, list):
         raise RuntimeError("Cars.com vehicle array was not a JSON list")
     return [row for row in parsed if isinstance(row, dict)]
 
 
-def parse_total(html: str) -> int:
-    patterns = (
+def parse_total(content: str) -> int:
+    for pattern in (
         r"([0-9][0-9,]*)\s+vehicles\s+for\s+sale",
         r"See all\s+([0-9][0-9,]*)\s+vehicles",
-    )
-    for pattern in patterns:
-        match = re.search(pattern, html, flags=re.IGNORECASE)
+    ):
+        match = re.search(pattern, content, flags=re.IGNORECASE)
         if match:
             return int(match.group(1).replace(",", ""))
     raise RuntimeError("Cars.com inventory total was not found")
@@ -51,10 +51,9 @@ def build_session() -> requests.Session:
     session.headers.update(
         {
             "User-Agent": USER_AGENT,
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept": "text/plain,text/markdown,text/html,*/*;q=0.8",
             "Accept-Language": "en-US,en;q=0.9",
             "Cache-Control": "no-cache",
-            "Pragma": "no-cache",
         }
     )
     return session
@@ -65,20 +64,21 @@ def fetch_page(session: requests.Session, page: int, page_size: int) -> str:
     for attempt in range(5):
         try:
             response = session.get(
-                INVENTORY_URL,
+                READER_INVENTORY_URL,
                 params={"page": page, "page_size": page_size},
-                timeout=45,
+                timeout=90,
             )
             response.raise_for_status()
             if ARRAY_MARKER not in response.text:
                 raise RuntimeError(
-                    f"Cars.com returned HTML without inventory data on page {page}"
+                    f"Reader response omitted inventory data on page {page}: "
+                    f"{response.text[:300]}"
                 )
             return response.text
         except (requests.RequestException, RuntimeError) as error:
             last_error = error
             time.sleep(2**attempt)
-    raise RuntimeError(f"Unable to retrieve Cars.com inventory page {page}") from last_error
+    raise RuntimeError(f"Unable to retrieve inventory page {page}") from last_error
 
 
 def normalize(row: dict[str, Any], captured_at: str) -> dict[str, Any]:
@@ -122,12 +122,12 @@ def normalize(row: dict[str, Any], captured_at: str) -> dict[str, Any]:
 
 def collect(page_size: int, debug_dir: Path) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     session = build_session()
-    first_html = fetch_page(session, 1, page_size)
+    first_content = fetch_page(session, 1, page_size)
     debug_dir.mkdir(parents=True, exist_ok=True)
-    (debug_dir / "page-1.html").write_text(first_html, encoding="utf-8")
+    (debug_dir / "page-1.txt").write_text(first_content, encoding="utf-8")
 
-    expected = parse_total(first_html)
-    first_rows = parse_vehicle_array(first_html)
+    expected = parse_total(first_content)
+    first_rows = parse_vehicle_array(first_content)
     actual_page_size = len(first_rows)
     if actual_page_size < 1:
         raise RuntimeError("Cars.com page 1 contained no inventory records")
@@ -135,8 +135,8 @@ def collect(page_size: int, debug_dir: Path) -> tuple[list[dict[str, Any]], dict
     total_pages = math.ceil(expected / actual_page_size)
     source_rows = list(first_rows)
     for page in range(2, total_pages + 1):
-        html = fetch_page(session, page, page_size)
-        page_rows = parse_vehicle_array(html)
+        content = fetch_page(session, page, page_size)
+        page_rows = parse_vehicle_array(content)
         if not page_rows:
             raise RuntimeError(f"Cars.com page {page} contained no records")
         source_rows.extend(page_rows)
@@ -161,7 +161,8 @@ def collect(page_size: int, debug_dir: Path) -> tuple[list[dict[str, Any]], dict
         ),
     )
     metadata = {
-        "source": INVENTORY_URL,
+        "source": PUBLIC_INVENTORY_URL,
+        "retrieval_service": "Jina Reader",
         "captured_at": captured_at,
         "expected_records": expected,
         "raw_records": len(source_rows),
