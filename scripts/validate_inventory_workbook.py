@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""Validate a committed sanitized listing workbook against the governed contract.
+r"""Validate a committed sanitized listing workbook against the governed contract.
 
 A thin wrapper over ``arpi validate-inventory``.
 
 Usage
 -----
     python scripts/validate_inventory_workbook.py \\
-      --workbook data/reference/inventory/gsa-001/2026-08-02/ARPI_Granite_Chevrolet_Inventory_Sanitized_2026-08-02.xlsx
+      --workbook data/reference/inventory/gsa-001/2026-08-02/\
+ARPI_Granite_Chevrolet_Inventory_Sanitized_2026-08-02.xlsx
 
 What it refuses
 ---------------
@@ -35,7 +36,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from arpi.cli import main  # noqa: E402 - the path shim above must run first
+from arpi.cli import main
 
 
 def run(argv: list[str] | None = None) -> int:

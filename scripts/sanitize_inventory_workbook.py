@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Sanitize a private dealership inventory workbook into a governed public artifact.
+r"""Sanitize a private dealership inventory workbook into a governed public artifact.
 
 This is the documented Chromebook-friendly entry point. It is a thin wrapper over
 ``arpi sanitize-inventory``: one implementation, two ways to reach it, so a change to the
@@ -11,7 +11,8 @@ Usage
       --input /private/path/source.xlsx \\
       --dealership-id GSA-001 \\
       --captured-at 2026-08-02 \\
-      --output data/reference/inventory/gsa-001/2026-08-02/ARPI_Granite_Chevrolet_Inventory_Sanitized_2026-08-02.xlsx
+      --output data/reference/inventory/gsa-001/2026-08-02/\
+ARPI_Granite_Chevrolet_Inventory_Sanitized_2026-08-02.xlsx
 
 Omit ``--output`` and the approved underscore-based name is derived for you:
 
@@ -38,7 +39,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from arpi.cli import main  # noqa: E402 - the path shim above must run first
+from arpi.cli import main
 
 
 def run(argv: list[str] | None = None) -> int:

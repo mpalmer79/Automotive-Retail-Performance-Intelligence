@@ -33,7 +33,11 @@ from arpi.generation.calendar import generate_date_dataset
 from arpi.generation.dealership import generate_dealership_dataset
 from arpi.generation.writer import write_outputs
 from arpi.ingestion.database import database_available
-from arpi.inventory.cli import add_inventory_commands, dispatch_inventory_command, is_inventory_command
+from arpi.inventory.cli import (
+    add_inventory_commands,
+    dispatch_inventory_command,
+    is_inventory_command,
+)
 from arpi.logging_config import configure_logging
 from arpi.pipeline import run_foundation
 from arpi.utilities.paths import resolve_output_dir

@@ -63,6 +63,18 @@ from arpi.inventory.workbook import (
 
 __all__ = ["ReportSummary", "export_operating_report"]
 
+#: One-based column positions on the Inventory sheet that carry a formatted type.
+#: Named because a bare `column == 8` in a formatting loop says nothing about which
+#: column moved when the sheet's shape changes.
+_INVENTORY_INTEGER_COLUMNS = frozenset({7, 12})
+_INVENTORY_CURRENCY_COLUMN = 8
+_INVENTORY_DATE_COLUMNS = frozenset({13, 14})
+
+#: The same, for the Snapshot Changes sheet.
+_CHANGE_CURRENCY_COLUMNS = frozenset({8, 9, 10})
+_CHANGE_DATE_COLUMN = 13
+_CHANGE_INTEGER_COLUMN = 14
+
 #: The interpretation block the Summary sheet carries, stated on the artifact rather than
 #: only in a document a reader of the workbook will never open.
 GOVERNED_INTERPRETATION = (
@@ -328,11 +340,11 @@ def _write_inventory(
     for offset, row in enumerate(rows):
         for column, value in enumerate(row, start=1):
             cell = sheet.cell(row=2 + offset, column=column, value=value)
-            if column in {7, 12}:
+            if column in _INVENTORY_INTEGER_COLUMNS:
                 cell.number_format = INTEGER_FORMAT
-            elif column == 8:
+            elif column == _INVENTORY_CURRENCY_COLUMN:
                 cell.number_format = CURRENCY_FORMAT
-            elif column in {13, 14}:
+            elif column in _INVENTORY_DATE_COLUMNS:
                 cell.number_format = DATE_FORMAT
     style_table(
         sheet,
@@ -341,15 +353,15 @@ def _write_inventory(
         last_row=1 + len(rows),
         last_column=len(headers),
     )
-    column_widths(
-        sheet, (11, 12, 18, 30, 18, 42, 15, 17, 15, 22, 20, 19, 15, 15, 22, 52)
-    )
+    column_widths(sheet, (11, 12, 18, 30, 18, 42, 15, 17, 15, 22, 20, 19, 15, 15, 22, 52))
     # `contract` is accepted so the signature matches its sibling writers and a future
     # contract change reaches this sheet without a signature churn.
     _ = contract
 
 
-def _write_summary(  # noqa: PLR0913 - the summary block is one statement with many fields
+def _write_summary(  # noqa: PLR0913, PLR0915 - one sheet, written cell by cell
+    # A sheet layout is a sequence of placements. Extracting each block into a helper
+    # would hide the row arithmetic that makes the layout readable at all.
     sheet: Any,
     *,
     store_name: str,
@@ -560,9 +572,9 @@ def _write_model_summary(
         for column, value in enumerate(model_row[:3], start=1):
             sheet.cell(row=target, column=column, value=value)
         criteria = f"{condition_range},$A{target},{make_range},$B{target},{model_range},$C{target}"
-        sheet.cell(row=target, column=4, value=f"=COUNTIFS({criteria})").number_format = (
-            INTEGER_FORMAT
-        )
+        sheet.cell(
+            row=target, column=4, value=f"=COUNTIFS({criteria})"
+        ).number_format = INTEGER_FORMAT
         sheet.cell(
             row=target, column=5, value=f'=COUNTIFS({criteria},{status_range},"Listed")'
         ).number_format = INTEGER_FORMAT
@@ -639,11 +651,11 @@ def _write_changes(
     for offset, row in enumerate(rows):
         for column, value in enumerate(row, start=1):
             written = sheet.cell(row=5 + offset, column=column, value=value)
-            if column in {8, 9, 10}:
+            if column in _CHANGE_CURRENCY_COLUMNS:
                 written.number_format = CURRENCY_FORMAT
-            elif column == 13:
+            elif column == _CHANGE_DATE_COLUMN:
                 written.number_format = DATE_FORMAT
-            elif column == 14:
+            elif column == _CHANGE_INTEGER_COLUMN:
                 written.number_format = INTEGER_FORMAT
     style_table(
         sheet,
@@ -652,9 +664,7 @@ def _write_changes(
         last_row=4 + len(rows),
         last_column=len(headers),
     )
-    column_widths(
-        sheet, (22, 11, 18, 30, 18, 42, 22, 20, 18, 15, 20, 16, 18, 20)
-    )
+    column_widths(sheet, (22, 11, 18, 30, 18, 42, 22, 20, 18, 15, 20, 16, 18, 20))
 
     write_notice(
         sheet,
@@ -673,7 +683,7 @@ def _write_changes(
 # --------------------------------------------------------------------------------------
 
 
-def export_operating_report(  # noqa: PLR0913 - every argument is an operator decision
+def export_operating_report(
     connection: Any,
     *,
     dealership_id: str,
@@ -708,9 +718,7 @@ def export_operating_report(  # noqa: PLR0913 - every argument is an operator de
         Path(active.report_root)
         / derived_report_file_name(store.dealership_id, captured_at, contract=active)
     )
-    expected_name = derived_report_file_name(
-        store.dealership_id, captured_at, contract=active
-    )
+    expected_name = derived_report_file_name(store.dealership_id, captured_at, contract=active)
 
     if destination.exists() and not overwrite:
         raise ValidationError(
@@ -771,9 +779,7 @@ def export_operating_report(  # noqa: PLR0913 - every argument is an operator de
             contract=active,
         )
         _write_inventory(book.create_sheet(active.sheets["inventory"]), listings, active)
-        _write_model_summary(
-            book.create_sheet(active.sheets["model_summary"]), model_rows, active
-        )
+        _write_model_summary(book.create_sheet(active.sheets["model_summary"]), model_rows, active)
         if prior_captured_at:
             _write_changes(
                 book.create_sheet(active.optional_sheets["snapshot_changes"]),

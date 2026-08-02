@@ -354,18 +354,24 @@ def _inventory_lane_sql_files() -> frozenset[str]:
         tree = ast.parse(INVENTORY_SPEC_SOURCE.read_text(encoding="utf-8"))
     except SyntaxError:
         return frozenset()
+    # The declaration is annotated (`X: Final[tuple[str, ...]] = (...)`), so it is an
+    # AnnAssign rather than an Assign. Both are handled: an annotation is a style choice
+    # and this check must not depend on one.
     for node in ast.walk(tree):
-        target = None
         if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
-            target = node.target.id
-        elif isinstance(node, ast.Assign) and node.targets and isinstance(node.targets[0], ast.Name):
-            target = node.targets[0].id
-        if target != "INVENTORY_LANE_SQL_FILES" or node.value is None:
+            target, value = node.target.id, node.value
+        elif (
+            isinstance(node, ast.Assign) and node.targets and isinstance(node.targets[0], ast.Name)
+        ):
+            target, value = node.targets[0].id, node.value
+        else:
             continue
-        if isinstance(node.value, (ast.Tuple, ast.List)):
+        if target != "INVENTORY_LANE_SQL_FILES" or value is None:
+            continue
+        if isinstance(value, (ast.Tuple, ast.List)):
             return frozenset(
                 element.value
-                for element in node.value.elts
+                for element in value.elts
                 if isinstance(element, ast.Constant) and isinstance(element.value, str)
             )
     return frozenset()

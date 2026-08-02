@@ -43,10 +43,10 @@ import argparse
 import hashlib
 import re
 import sys
-import xml.etree.ElementTree as ElementTree
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
+from xml.etree import ElementTree
 
 REPO_ROOT: Path = Path(__file__).resolve().parent.parent
 CONTRACT_PATH: Path = REPO_ROOT / "config" / "reference" / "inventory_listing_contract.yaml"
@@ -68,7 +68,9 @@ URL_PATTERN = re.compile(
 REAL_VIN_PATTERN = re.compile(r"\b[A-HJ-NPR-Z0-9]{17}\b")
 
 #: Text files this check reads when looking for a wrong filename or a prohibited claim.
-DOCUMENT_SUFFIXES: frozenset[str] = frozenset({".md", ".py", ".ts", ".tsx", ".sql", ".yaml", ".yml", ".json"})
+DOCUMENT_SUFFIXES: frozenset[str] = frozenset(
+    {".md", ".py", ".ts", ".tsx", ".sql", ".yaml", ".yml", ".json"}
+)
 
 #: Directories never searched.
 SKIPPED_DIRECTORIES: frozenset[str] = frozenset(
@@ -91,12 +93,21 @@ SKIPPED_DIRECTORIES: frozenset[str] = frozenset(
     }
 )
 
-#: This file states every prohibited pattern as a literal and would always match itself.
-#: The reference policy quotes the prohibited claims in order to prohibit them, and the
-#: contract records the one declared legacy path hint, so all three are exempt by path.
+#: Files that state a prohibited pattern in order to prohibit it, and would therefore
+#: always match themselves.
+#:
+#: Each is exempt for the same reason and no other: it is where the rule is DEFINED. The
+#: check script holds every pattern as a literal; the reference policy, the ADR and the
+#: contract quote the prohibited claims in the act of forbidding them; and the test suite
+#: for this script has to build the exact defect each rule is about.
+#:
+#: The list is deliberately short and deliberately by exact path. "Exempt every test file"
+#: would be the obvious generalisation and the wrong one -- a prohibited claim in an
+#: ordinary test's docstring is still a prohibited claim somebody will read.
 SELF_EXEMPT: frozenset[str] = frozenset(
     {
         "scripts/check_reference_data.py",
+        "tests/unit/test_reference_data_check.py",
         "data/reference/README.md",
         "config/reference/inventory_listing_contract.yaml",
         "docs/architecture-decisions/ADR-0011-sanitized-public-inventory-reference-data.md",
@@ -128,17 +139,27 @@ class Violation:
 # --------------------------------------------------------------------------------------
 
 
+#: Shortest string that can be a quoted YAML scalar: an opening and a closing quote.
+_QUOTED_MINIMUM = 2
+
+#: YAML block-scalar indicators. A value that is one of these means the real value is on
+#: the following line, which the contract uses for the one path too long to fit inline.
+_BLOCK_INDICATORS = frozenset({">-", ">", "|", "|-"})
+
+
 def _scalar(text: str) -> str:
     """Strip inline comments and surrounding quotes from a YAML scalar."""
     value = text.strip()
     if value and value[0] not in {'"', "'"} and " #" in value:
         value = value.split(" #", 1)[0].strip()
-    if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
+    if len(value) >= _QUOTED_MINIMUM and value[0] == value[-1] and value[0] in {'"', "'"}:
         value = value[1:-1]
     return value
 
 
-def read_contract_facts(path: Path) -> tuple[list[dict[str, str]], str, str]:
+def read_contract_facts(  # noqa: PLR0912 - one branch per YAML construct the contract uses
+    path: Path,
+) -> tuple[list[dict[str, str]], str, str]:
     """Read the canonical artifact declarations and the two naming regexes.
 
     A full YAML parser is not available here, and the contract's shape is fixed: a
@@ -193,7 +214,7 @@ def read_contract_facts(path: Path) -> tuple[list[dict[str, str]], str, str]:
         if ":" in stripped:
             key, _, value = stripped.partition(":")
             value = _scalar(value)
-            if value in {">-", ">", "|", "|-"}:
+            if value in _BLOCK_INDICATORS:
                 pending_key = key.strip()
             else:
                 current[key.strip()] = value
@@ -447,7 +468,9 @@ def check_artifact_contents(artifacts: list[dict[str, str]]) -> list[Violation]:
             )
             continue
 
-        urls = sorted({match.group(0) for value in strings for match in URL_PATTERN.finditer(value)})
+        urls = sorted(
+            {match.group(0) for value in strings for match in URL_PATTERN.finditer(value)}
+        )
         if urls:
             violations.append(
                 Violation(
@@ -503,7 +526,9 @@ def check_documentation(artifacts: list[dict[str, str]]) -> list[Violation]:
     """Documentation names the canonical artifact correctly and makes no prohibited claim."""
     violations: list[Violation] = []
     legacy_hints = {
-        artifact.get("legacy_path_hint", "") for artifact in artifacts if artifact.get("legacy_path_hint")
+        artifact.get("legacy_path_hint", "")
+        for artifact in artifacts
+        if artifact.get("legacy_path_hint")
     }
 
     hyphenated = re.compile(
@@ -533,7 +558,7 @@ def check_documentation(artifacts: list[dict[str, str]]) -> list[Violation]:
             re.compile(
                 r"removed(?: from)?[- ]listing[^.\n]{0,60}?\b(?:means|is|are|equals)\b"
                 + _not_negated
-                + r"[^.\n]{0,20}\bsold\b",
+                + r"[^.\n]{0,40}\bsold\b",
                 re.IGNORECASE,
             ),
             "a removed listing is not a sale. It can reflect a sale, a trade, a wholesale, "

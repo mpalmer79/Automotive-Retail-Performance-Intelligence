@@ -1286,7 +1286,7 @@ There is **no** sold-units KPI, no inventory turn, no days in stock, no front, b
 | **Null behaviour** | Call-for-price units contribute nothing. KPI-LST-005 sits beside this figure so the exclusion is visible. |
 | **Filter behaviour** | As KPI-LST-001. |
 | **Additivity** | SEMI-ADDITIVE. Summing across capture dates reports the same money once per capture. |
-| **Interpretation caution** | NOT inventory investment, NOT asset value, NOT floor-plan exposure, NOT gross, and NOT money the store has. It is the sum of advertised numbers at one moment. |
+| **Interpretation caution** | NOT inventory investment, NOT acquisition cost, NOT asset value, NOT floor-plan exposure, NOT gross, and NOT money the store has. It is the sum of advertised numbers at one moment. |
 | **Source view** | `reporting.vw_vehicle_listing_summary` |
 | **Status** | Implemented |
 | **Owner** | Michael Palmer |

@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import hashlib
 import re
-from collections.abc import Iterable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from pathlib import Path
@@ -44,7 +44,7 @@ from arpi.constants import (
 from arpi.exceptions import ValidationError
 from arpi.inventory.contract import InventoryListingContract, load_contract, normalise_header
 from arpi.inventory.identity import derived_sanitized_file_name
-from arpi.inventory.spec import known_dealership_ids, resolve_store
+from arpi.inventory.spec import resolve_store
 from arpi.inventory.workbook import SheetData, open_read_only, open_with_formulas, read_sheet_rows
 
 __all__ = [
@@ -81,6 +81,14 @@ _URL_PATTERN: Final = re.compile(
 #: own identifiers are unaffected because every one of them begins ``ARPI`` and ``I`` is
 #: not in the set -- which is the whole reason ADR-0005 chose that prefix.
 _REAL_VIN_PATTERN: Final = re.compile(r"^[A-HJ-NPR-Z0-9]{17}$")
+
+#: A README key/value row needs both halves to say anything.
+_KEY_VALUE_WIDTH: Final = 2
+
+#: Path segments the governed layout puts after the reference root: a date directory,
+#: and a store directory above it.
+_DATE_SEGMENT_DEPTH: Final = 2
+_STORE_SEGMENT_DEPTH: Final = 3
 
 #: Real dealer identities must never appear. The rule is positive rather than a blocklist
 #: of real companies: a store name that is not one of the fictional Granite State Auto
@@ -189,7 +197,9 @@ LISTING_CHECKS: Final[tuple[ListingCheck, ...]] = (
         "workbook",
     ),
     ListingCheck(
-        "DQ-LST-012", "Workbook path date agrees with Captured At", CHECK_CATEGORY_STRUCTURAL,
+        "DQ-LST-012",
+        "Workbook path date agrees with Captured At",
+        CHECK_CATEGORY_STRUCTURAL,
         "workbook",
     ),
     ListingCheck(
@@ -263,7 +273,9 @@ class ValidationFinding:
         elif self.sheet:
             location = self.sheet
         if self.column:
-            location = f"{location}, column {self.column!r}" if location else f"column {self.column!r}"
+            location = (
+                f"{location}, column {self.column!r}" if location else f"column {self.column!r}"
+            )
         prefix = f"{self.check_id} [{self.category}]"
         return f"{prefix} {location}: {self.message}" if location else f"{prefix} {self.message}"
 
@@ -365,8 +377,7 @@ class WorkbookValidationResult:
             f"workbook           : {self.path.name}",
             f"path               : {self.path.as_posix()}",
             f"sha256             : {self.digest}",
-            f"dealership         : {self.metadata.dealership_id} "
-            f"({self.metadata.store_name})",
+            f"dealership         : {self.metadata.dealership_id} ({self.metadata.store_name})",
             f"captured at        : {self.metadata.captured_at}",
             f"classification     : {self.metadata.classification}",
             f"inventory rows     : {self.row_count}",
@@ -468,7 +479,7 @@ def _read_metadata(sheet_rows: Sequence[tuple[Any, ...]]) -> WorkbookMetadata:
     """Read the governance block from the ``README`` sheet's key/value rows."""
     values: dict[str, str] = {}
     for row in sheet_rows:
-        if len(row) < 2:
+        if len(row) < _KEY_VALUE_WIDTH:
             continue
         key = _text(row[0])
         if not key:
@@ -554,9 +565,7 @@ def _check_header_contract(
     if actual != expected:
         missing = [header for header in expected if header not in actual]
         unexpected = [
-            header
-            for header in actual
-            if header not in expected and header not in prohibited
+            header for header in actual if header not in expected and header not in prohibited
         ]
         detail = []
         if missing:
@@ -580,7 +589,10 @@ def _check_header_contract(
     return ok
 
 
-def _typed_record(  # noqa: PLR0913 - one argument per contract concern, all required
+def _typed_record(  # noqa: PLR0912, PLR0915 - one branch per contract rule
+    # The nineteen-column contract is validated here, field by field, in one place. A
+    # split into "type checks" and "domain checks" would put half the specification in
+    # each and make a missing rule invisible in both.
     values: Sequence[Any],
     *,
     row_number: int,
@@ -606,11 +618,18 @@ def _typed_record(  # noqa: PLR0913 - one argument per contract concern, all req
 
     for column in contract.inventory_columns:
         if column.required and not _text(by_column.get(column.column)):
-            fail("CONTRACT", CHECK_CATEGORY_COMPLETENESS, "a required value is absent", column.header)
+            fail(
+                "CONTRACT", CHECK_CATEGORY_COMPLETENESS, "a required value is absent", column.header
+            )
 
     captured_at = _as_date(by_column.get("captured_at"))
     if captured_at is None:
-        fail("CONTRACT", CHECK_CATEGORY_STRUCTURAL, "Captured At is missing or unparseable", "Captured At")
+        fail(
+            "CONTRACT",
+            CHECK_CATEGORY_STRUCTURAL,
+            "Captured At is missing or unparseable",
+            "Captured At",
+        )
 
     model_year = _as_int(by_column.get("model_year"))
     if model_year is None:
@@ -636,7 +655,12 @@ def _typed_record(  # noqa: PLR0913 - one argument per contract concern, all req
 
     odometer = _as_int(by_column.get("odometer_miles"))
     if odometer is None:
-        fail("DQ-LST-008", CHECK_CATEGORY_STRUCTURAL, "Odometer Miles is not an integer", "Odometer Miles")
+        fail(
+            "DQ-LST-008",
+            CHECK_CATEGORY_STRUCTURAL,
+            "Odometer Miles is not an integer",
+            "Odometer Miles",
+        )
     elif not contract.odometer_minimum <= odometer <= contract.odometer_maximum:
         fail(
             "DQ-LST-008",
@@ -651,8 +675,7 @@ def _typed_record(  # noqa: PLR0913 - one argument per contract concern, all req
         fail(
             "DQ-LST-007",
             CHECK_CATEGORY_BUSINESS_RULE,
-            f"Condition is outside the governed domain "
-            f"({' | '.join(contract.condition_values)})",
+            f"Condition is outside the governed domain ({' | '.join(contract.condition_values)})",
             "Condition",
         )
 
@@ -670,7 +693,12 @@ def _typed_record(  # noqa: PLR0913 - one argument per contract concern, all req
     price = _as_float(price_cell)
     has_price = _text(price_cell) != ""
     if has_price and price is None:
-        fail("DQ-LST-009", CHECK_CATEGORY_STRUCTURAL, "Advertised Price is not a number", "Advertised Price")
+        fail(
+            "DQ-LST-009",
+            CHECK_CATEGORY_STRUCTURAL,
+            "Advertised Price is not a number",
+            "Advertised Price",
+        )
     elif price is not None and not contract.price_minimum <= price <= contract.price_maximum:
         fail(
             "DQ-LST-009",
@@ -686,7 +714,12 @@ def _typed_record(  # noqa: PLR0913 - one argument per contract concern, all req
             "Pricing Status is 'Listed' but no advertised price is present",
             "Advertised Price",
         )
-    if not contract.call_for_price_allows_price and not listed and pricing_status and price is not None:
+    if (
+        not contract.call_for_price_allows_price
+        and not listed
+        and pricing_status
+        and price is not None
+    ):
         fail(
             "DQ-LST-009",
             CHECK_CATEGORY_BUSINESS_RULE,
@@ -721,8 +754,7 @@ def _typed_record(  # noqa: PLR0913 - one argument per contract concern, all req
             fail(
                 "DQ-LST-005",
                 CHECK_CATEGORY_PRIVACY,
-                "the cell holds a seventeen-character value drawn from the real VIN "
-                "alphabet",
+                "the cell holds a seventeen-character value drawn from the real VIN alphabet",
                 column.header,
             )
         if column.max_length is not None and len(_text(cell)) > column.max_length:
@@ -754,10 +786,10 @@ def _typed_record(  # noqa: PLR0913 - one argument per contract concern, all req
     if len(findings) != before:
         return None
 
-    assert captured_at is not None  # noqa: S101 - narrowed by the checks above
-    assert model_year is not None  # noqa: S101
-    assert odometer is not None  # noqa: S101
-    assert unit_count is not None  # noqa: S101
+    assert captured_at is not None
+    assert model_year is not None
+    assert odometer is not None
+    assert unit_count is not None
     return ListingRecord(
         source_record_id=_text(by_column.get("source_record_id")),
         dealership_id=_text(by_column.get("dealership_id")),
@@ -788,16 +820,20 @@ def _check_uniqueness(
     findings: list[ValidationFinding],
 ) -> None:
     """Refuse duplicated grains, record identifiers, vehicle identifiers and VINs."""
-    for check_id, label, key in (
-        ("DQ-LST-001", "declared grain (Dealership ID, Captured At, Synthetic Vehicle ID)",
-         lambda r: r.natural_key),
+    rules: tuple[tuple[str, str, Callable[[ListingRecord], Any]], ...] = (
+        (
+            "DQ-LST-001",
+            "declared grain (Dealership ID, Captured At, Synthetic Vehicle ID)",
+            lambda r: r.natural_key,
+        ),
         ("CONTRACT", "Source Record ID", lambda r: r.source_record_id),
         ("DQ-LST-004", "Synthetic Vehicle ID", lambda r: r.synthetic_vehicle_id),
         ("DQ-LST-004", "Synthetic VIN", lambda r: r.synthetic_vin),
-    ):
+    )
+    for check_id, label, key in rules:
         seen: dict[Any, int] = {}
         for record in records:
-            value = key(record)  # type: ignore[operator]
+            value = key(record)
             if value in seen:
                 findings.append(
                     ValidationFinding(
@@ -1030,9 +1066,13 @@ def _check_path_and_name(
         )
 
     parts = path.resolve().parts
-    if len(parts) >= 2:
-        date_segment, store_segment = parts[-2], parts[-3] if len(parts) >= 3 else ""
-        if re.fullmatch(r"\d{4}-\d{2}-\d{2}", date_segment) and date_segment != captured_at.isoformat():
+    if len(parts) >= _DATE_SEGMENT_DEPTH:
+        date_segment = parts[-_DATE_SEGMENT_DEPTH]
+        store_segment = parts[-_STORE_SEGMENT_DEPTH] if len(parts) >= _STORE_SEGMENT_DEPTH else ""
+        if (
+            re.fullmatch(r"\d{4}-\d{2}-\d{2}", date_segment)
+            and date_segment != captured_at.isoformat()
+        ):
             findings.append(
                 ValidationFinding(
                     check_id="DQ-LST-012",
@@ -1043,8 +1083,10 @@ def _check_path_and_name(
                     ),
                 )
             )
-        if store_segment and re.fullmatch(r"gsa-\d{3}", store_segment) and (
-            store_segment != dealership_id.lower()
+        if (
+            store_segment
+            and re.fullmatch(r"gsa-\d{3}", store_segment)
+            and (store_segment != dealership_id.lower())
         ):
             findings.append(
                 ValidationFinding(

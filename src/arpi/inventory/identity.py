@@ -106,9 +106,7 @@ def synthetic_identity(
             "identity can be derived for it.",
             field="original_vin",
         )
-    digest = hashlib.sha256(
-        f"{active.identity_namespace}{normalised}".encode()
-    ).hexdigest().upper()
+    digest = hashlib.sha256(f"{active.identity_namespace}{normalised}".encode()).hexdigest().upper()
     return SyntheticIdentity(
         vehicle_id=f"{active.vehicle_id_prefix}{digest[: active.vehicle_id_digest_length]}",
         vin=f"{active.vin_prefix}{digest[: active.vin_digest_length]}",

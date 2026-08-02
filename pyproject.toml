@@ -41,6 +41,20 @@ dependencies = [
     "pydantic-settings>=2.2",
     "PyYAML>=6.0",
     "pandas>=2.2",
+    # XLSX read and write for the sanitized public inventory reference lane (ADR-0011).
+    #
+    # openpyxl was chosen over the alternatives on four properties this lane needs:
+    # streaming read-only loading, so a ten-thousand-row workbook does not have to be
+    # materialised; write support with real Excel tables, number formats and charts, so
+    # the exported operating report is a workbook a dealership can actually use rather
+    # than a grid; NO MACRO EXECUTION and no network access of any kind, which matters
+    # because this is the one code path in ARPI that opens a file somebody else produced;
+    # and MIT licensing, matching the project's own.
+    #
+    # It is a runtime dependency rather than an extra because the four `arpi
+    # *-inventory*` commands are part of the CLI, and an optional dependency behind a
+    # documented command is a command that fails on first use.
+    "openpyxl>=3.1",
 ]
 
 [project.optional-dependencies]
@@ -56,6 +70,9 @@ dev = [
     # the project cannot actually be used at is not a supported floor.
     "types-PyYAML>=6.0",
     "pandas-stubs>=2.2",
+    # openpyxl ships no inline types. Without these, `mypy --strict` treats every
+    # workbook object as Any and the Inventory Operations modules type-check vacuously.
+    "types-openpyxl>=3.1",
 ]
 
 [project.urls]

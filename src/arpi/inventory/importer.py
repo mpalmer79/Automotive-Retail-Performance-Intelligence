@@ -28,6 +28,7 @@ identifiers, a digest and repository paths.
 
 from __future__ import annotations
 
+import json
 import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -35,6 +36,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
+from arpi.audit.run import build_execution_uuid, build_logical_run_key
 from arpi.constants import ARPI_VERSION
 from arpi.exceptions import DatabaseLoadError, ValidationError
 from arpi.inventory.contract import InventoryListingContract, load_contract
@@ -45,6 +47,7 @@ from arpi.inventory.validation import (
     read_listing_records,
 )
 from arpi.logging_config import get_logger
+from arpi.validation.privacy import redact_payload
 
 __all__ = [
     "ImportSummary",
@@ -215,18 +218,20 @@ def _already_imported(cursor: Any, spec: ReferenceSourceSpec, digest: str) -> bo
     return bool(
         _scalar(
             cursor,
-            f"SELECT EXISTS (SELECT 1 FROM warehouse.{spec.fact_table} "  # noqa: S608
+            f"SELECT EXISTS (SELECT 1 FROM warehouse.{spec.fact_table} "
             "WHERE source_file_digest = %s)",
             (digest,),
         )
     )
 
 
-def _conflicting_batch(cursor: Any, spec: ReferenceSourceSpec, batch_id: str, digest: str) -> str | None:
+def _conflicting_batch(
+    cursor: Any, spec: ReferenceSourceSpec, batch_id: str, digest: str
+) -> str | None:
     """Return the digest already loaded for this batch under different bytes, if any."""
     return _scalar(  # type: ignore[no-any-return]
         cursor,
-        f"SELECT min(source_file_digest) FROM warehouse.{spec.fact_table} "  # noqa: S608
+        f"SELECT min(source_file_digest) FROM warehouse.{spec.fact_table} "
         "WHERE source_batch_id = %s AND source_file_digest <> %s",
         (batch_id, digest),
     )
@@ -250,7 +255,7 @@ def _land_raw_rows(
     """
     columns = (*contract.columns, *_LOAD_METADATA_COLUMNS)
     column_sql = ", ".join(columns)
-    statement = f"COPY raw.{spec.raw_table} ({column_sql}) FROM STDIN"  # noqa: S608
+    statement = f"COPY raw.{spec.raw_table} ({column_sql}) FROM STDIN"
     with cursor.copy(statement) as copy:
         for record in records:
             copy.write_row(
@@ -325,8 +330,6 @@ def _open_audit_run(cursor: Any, *, profile: str, source_entity: str, captured_a
     of a synthetic generator, and recording a fictitious seed would imply the import
     could be reproduced from one.
     """
-    from arpi.audit.run import build_execution_uuid, build_logical_run_key
-
     logical_key = build_logical_run_key(
         pipeline_name=source_entity,
         profile=profile,
@@ -367,7 +370,9 @@ def _close_audit_run(cursor: Any, pipeline_run_id: int, status: str, notes: str)
     )
 
 
-def _record_row_counts(cursor: Any, pipeline_run_id: int, entity: str, counts: dict[str, int]) -> None:
+def _record_row_counts(
+    cursor: Any, pipeline_run_id: int, entity: str, counts: dict[str, int]
+) -> None:
     """Record the observed row count at each layer boundary.
 
     All five layers are recorded on every import -- ``source``, ``raw``, ``staging``,
@@ -377,7 +382,9 @@ def _record_row_counts(cursor: Any, pipeline_run_id: int, entity: str, counts: d
     for layer, row_count in counts.items():
         cursor.execute(
             """
-            INSERT INTO audit.pipeline_run_row_count (pipeline_run_id, entity_name, layer, row_count)
+            INSERT INTO audit.pipeline_run_row_count (
+                pipeline_run_id, entity_name, layer, row_count
+            )
             VALUES (%s, %s, %s, %s)
             ON CONFLICT (pipeline_run_id, entity_name, layer) DO UPDATE
                SET row_count = EXCLUDED.row_count, recorded_at = now()
@@ -394,15 +401,13 @@ def _record_rejections(cursor: Any, spec: ReferenceSourceSpec, pipeline_run_id: 
     is a no-op today -- and it is applied anyway, because the day a future contract adds a
     column is not the day to discover that this path skipped the control.
     """
-    from arpi.validation.privacy import redact_payload
-
     cursor.execute(
         f"""
         SELECT source_entity, source_record_key, rejection_code, rejection_reason,
                record_payload
         FROM staging.{spec.rejected_view}
         ORDER BY raw_record_id
-        """  # noqa: S608 - spec.rejected_view is a module-level literal, never input
+        """
     )
     rows = cursor.fetchall()
     for source_entity, source_record_key, rejection_code, rejection_reason, payload in rows:
@@ -451,8 +456,6 @@ def _record_reconciliations(
 
 def _json(payload: dict[str, Any]) -> str:
     """Render a payload as JSON for the audit table's jsonb column."""
-    import json
-
     return json.dumps(payload, default=str, sort_keys=True)
 
 
@@ -552,8 +555,7 @@ def import_listing_workbook(  # noqa: PLR0913 - every argument is an operator de
                 observed_vehicles=0,
                 fact_rows_inserted=0,
                 fact_rows_total=int(
-                    _scalar(cursor, f"SELECT count(*) FROM warehouse.{spec.fact_table}")  # noqa: S608
-                    or 0
+                    _scalar(cursor, f"SELECT count(*) FROM warehouse.{spec.fact_table}") or 0
                 ),
                 reconciliations=(),
                 already_imported=True,
@@ -587,8 +589,7 @@ def import_listing_workbook(  # noqa: PLR0913 - every argument is an operator de
                 observed_vehicles=0,
                 fact_rows_inserted=0,
                 fact_rows_total=int(
-                    _scalar(cursor, f"SELECT count(*) FROM warehouse.{spec.fact_table}")  # noqa: S608
-                    or 0
+                    _scalar(cursor, f"SELECT count(*) FROM warehouse.{spec.fact_table}") or 0
                 ),
                 reconciliations=(),
                 already_imported=False,
@@ -602,7 +603,7 @@ def import_listing_workbook(  # noqa: PLR0913 - every argument is an operator de
             captured_at=first.captured_at,
         )
         fact_rows_before = int(
-            _scalar(cursor, f"SELECT count(*) FROM warehouse.{spec.fact_table}") or 0  # noqa: S608
+            _scalar(cursor, f"SELECT count(*) FROM warehouse.{spec.fact_table}") or 0
         )
 
         raw_rows = _land_raw_rows(
@@ -615,21 +616,19 @@ def import_listing_workbook(  # noqa: PLR0913 - every argument is an operator de
             digest=result.digest,
         )
 
-        staged_rows = int(
-            _scalar(cursor, f"SELECT count(*) FROM staging.{spec.staging_view}") or 0  # noqa: S608
-        )
+        staged_rows = int(_scalar(cursor, f"SELECT count(*) FROM staging.{spec.staging_view}") or 0)
         rejected_rows = _record_rejections(cursor, spec, pipeline_run_id)
 
         _execute_script(cursor, sql_root, f"03_dimensions/{spec.dimension_merge_script}")
         _execute_script(cursor, sql_root, f"04_facts/{spec.fact_load_script}")
 
         fact_rows_after = int(
-            _scalar(cursor, f"SELECT count(*) FROM warehouse.{spec.fact_table}") or 0  # noqa: S608
+            _scalar(cursor, f"SELECT count(*) FROM warehouse.{spec.fact_table}") or 0
         )
         observed_vehicles = int(
             _scalar(
                 cursor,
-                f"SELECT count(*) FROM warehouse.{spec.dimension_table} AS d "  # noqa: S608
+                f"SELECT count(*) FROM warehouse.{spec.dimension_table} AS d "
                 f"WHERE d.synthetic_vehicle_id IN "
                 f"(SELECT synthetic_vehicle_id FROM staging.{spec.staging_view})",
             )
@@ -653,9 +652,7 @@ def import_listing_workbook(  # noqa: PLR0913 - every argument is an operator de
         _record_reconciliations(cursor, pipeline_run_id, outcomes)
         failing = [row for row in outcomes if row.status != "passed"]
         if failing:
-            rendered = "\n  ".join(
-                f"{row.reconciliation_id}: {row.description}" for row in failing
-            )
+            rendered = "\n  ".join(f"{row.reconciliation_id}: {row.description}" for row in failing)
             # The run is marked failed before the exception is raised, so an operator who
             # inspects the audit trail after a rollback sees the same verdict the CLI
             # printed. The caller's rollback then discards both, which is correct: an
@@ -664,8 +661,7 @@ def import_listing_workbook(  # noqa: PLR0913 - every argument is an operator de
                 cursor,
                 pipeline_run_id,
                 "failed",
-                f"{len(failing)} listing reconciliation(s) failed for "
-                f"{workbook_path.name}.",
+                f"{len(failing)} listing reconciliation(s) failed for {workbook_path.name}.",
             )
             raise DatabaseLoadError(
                 f"{len(failing)} listing reconciliation(s) failed, so the import is "

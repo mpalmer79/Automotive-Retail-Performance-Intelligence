@@ -141,10 +141,9 @@ def open_read_only(path: Path) -> Iterator[Any]:
     with _quiet_openpyxl():
         try:
             workbook = load_workbook(path, read_only=True, data_only=True)
-        except Exception as error:  # noqa: BLE001 - openpyxl raises a wide range of types
+        except Exception as error:
             raise ValidationError(
-                f"{path.name} could not be opened as an .xlsx workbook "
-                f"({type(error).__name__}).",
+                f"{path.name} could not be opened as an .xlsx workbook ({type(error).__name__}).",
                 field="input",
             ) from error
         try:
@@ -175,10 +174,9 @@ def open_with_formulas(path: Path) -> Iterator[Any]:
     with _quiet_openpyxl():
         try:
             workbook = load_workbook(path, read_only=False, data_only=False)
-        except Exception as error:  # noqa: BLE001 - openpyxl raises a wide range of types
+        except Exception as error:
             raise ValidationError(
-                f"{path.name} could not be opened as an .xlsx workbook "
-                f"({type(error).__name__}).",
+                f"{path.name} could not be opened as an .xlsx workbook ({type(error).__name__}).",
                 field="input",
             ) from error
         try:
@@ -250,7 +248,7 @@ def atomic_workbook_save(destination: Path) -> Iterator[Workbook]:
     try:
         yield workbook
         workbook.save(temporary_path)
-        os.replace(temporary_path, destination)
+        temporary_path.replace(destination)
     finally:
         workbook.close()
         if temporary_path.exists():
@@ -286,9 +284,7 @@ def write_notice(sheet: Worksheet, row: int, heading: str, text: str, *, width: 
     cell = sheet.cell(row=row + 1, column=1, value=text)
     cell.font = _NOTICE_FONT
     cell.alignment = Alignment(wrap_text=True, vertical="top")
-    sheet.merge_cells(
-        start_row=row + 1, start_column=1, end_row=row + 1, end_column=max(width, 2)
-    )
+    sheet.merge_cells(start_row=row + 1, start_column=1, end_row=row + 1, end_column=max(width, 2))
     sheet.row_dimensions[row + 1].height = 46
     return row + 3
 
@@ -299,7 +295,7 @@ def style_key_value_block(sheet: Worksheet, first_row: int, last_row: int) -> No
         sheet.cell(row=row, column=1).font = _LABEL_FONT
 
 
-def style_table(  # noqa: PLR0913 - a table is placed by its four corners plus two flags
+def style_table(
     sheet: Worksheet,
     *,
     name: str,
@@ -378,8 +374,10 @@ def add_condition_chart(
     chart.height = 6.5
     chart.width = 11
     chart.legend = None
-    chart.add_data(Reference(sheet, range_string=f"'{sheet.title}'!{values}"), titles_from_data=True)
-    chart.set_categories(Reference(sheet, range_string=f"'{sheet.title}'!{labels}"))
+    chart.add_data(
+        Reference(worksheet=sheet, range_string=f"'{sheet.title}'!{values}"), titles_from_data=True
+    )
+    chart.set_categories(Reference(worksheet=sheet, range_string=f"'{sheet.title}'!{labels}"))
     sheet.add_chart(chart, anchor)
 
 
@@ -401,6 +399,8 @@ def add_top_model_chart(
     chart.height = 9
     chart.width = 13
     chart.legend = None
-    chart.add_data(Reference(sheet, range_string=f"'{sheet.title}'!{values}"), titles_from_data=True)
-    chart.set_categories(Reference(sheet, range_string=f"'{sheet.title}'!{labels}"))
+    chart.add_data(
+        Reference(worksheet=sheet, range_string=f"'{sheet.title}'!{values}"), titles_from_data=True
+    )
+    chart.set_categories(Reference(worksheet=sheet, range_string=f"'{sheet.title}'!{labels}"))
     sheet.add_chart(chart, anchor)

@@ -81,6 +81,16 @@ from arpi.inventory.workbook import (
 
 __all__ = ["SanitizationSummary", "sanitize_workbook"]
 
+#: Length of a modern VIN. A source identifier of any other length is not refused on that
+#: basis alone -- powersports and pre-1981 units legitimately carry shorter ones -- but it
+#: is the threshold below which a value is too short to be a vehicle identifier at all.
+_VIN_LENGTH = 17
+
+#: Shortest string this sanitizer will accept as a source vehicle identifier. Below it, the
+#: value is a truncation or an export artefact rather than an identifier.
+_MINIMUM_IDENTIFIER_LENGTH = 8
+
+
 #: The notice every governed workbook carries, verbatim, on its README sheet.
 PUBLIC_REFERENCE_NOTICE = (
     "Granite State Auto Group and its stores are fictional. Original VINs, source URLs, "
@@ -275,7 +285,10 @@ class _SanitizedRow:
     had_url: bool
 
 
-def _transform(  # noqa: PLR0913 - one argument per contract concern, all required
+def _transform(  # noqa: PLR0912, PLR0915 - one branch per input-contract field
+    # Splitting this would scatter one specification across several functions, which is
+    # the harm the complexity rules exist to prevent rather than the shape they produce
+    # here. Every branch validates one declared column and records one redacted finding.
     rows: Sequence[tuple[Any, ...]],
     *,
     index: dict[str, int],
@@ -312,17 +325,21 @@ def _transform(  # noqa: PLR0913 - one argument per contract concern, all requir
         if not original_vin:
             fail(row_number, "VIN", CHECK_CATEGORY_COMPLETENESS, "the source identifier is absent")
             continue
-        if not looks_like_a_real_vin(original_vin) and len(original_vin) != 17:
-            # Not a refusal on its own -- powersports and older units carry shorter
-            # identifiers -- but a zero-length or obviously truncated value is.
-            if len(original_vin) < 8:
-                fail(
-                    row_number,
-                    "VIN",
-                    CHECK_CATEGORY_STRUCTURAL,
-                    "the source identifier is too short to be a vehicle identifier",
-                )
-                continue
+        # A non-standard length is not a refusal on its own: powersports and pre-1981
+        # units legitimately carry shorter identifiers. A value too short to be an
+        # identifier at all is.
+        if (
+            not looks_like_a_real_vin(original_vin)
+            and len(original_vin) != _VIN_LENGTH
+            and len(original_vin) < _MINIMUM_IDENTIFIER_LENGTH
+        ):
+            fail(
+                row_number,
+                "VIN",
+                CHECK_CATEGORY_STRUCTURAL,
+                "the source identifier is too short to be a vehicle identifier",
+            )
+            continue
 
         identity = synthetic_identity(original_vin, contract=contract)
         if identity.vehicle_id in seen_identities:
@@ -567,7 +584,9 @@ def _write_readme(  # noqa: PLR0913 - the README block is one statement with man
         sheet.cell(row=row + 1 + offset, column=2, value=value)
     style_key_value_block(sheet, row + 1, row + len(placement))
 
-    write_notice(sheet, row + len(placement) + 2, "Published reference notice", PUBLIC_REFERENCE_NOTICE)
+    write_notice(
+        sheet, row + len(placement) + 2, "Published reference notice", PUBLIC_REFERENCE_NOTICE
+    )
     column_widths(sheet, (30, 62, 62))
 
 
@@ -600,7 +619,7 @@ def _write_inventory(
     )
 
 
-def _write_summary(  # noqa: PLR0913 - the summary block is one statement with many fields
+def _write_summary(
     sheet: Any,
     *,
     store_name: str,
@@ -772,12 +791,10 @@ def _write_model_summary(
         sheet.cell(row=target, column=1, value=condition)
         sheet.cell(row=target, column=2, value=make)
         sheet.cell(row=target, column=3, value=model)
-        criteria = (
-            f"{condition_range},$A{target},{make_range},$B{target},{model_range},$C{target}"
-        )
-        sheet.cell(row=target, column=4, value=f"=COUNTIFS({criteria})").number_format = (
-            INTEGER_FORMAT
-        )
+        criteria = f"{condition_range},$A{target},{make_range},$B{target},{model_range},$C{target}"
+        sheet.cell(
+            row=target, column=4, value=f"=COUNTIFS({criteria})"
+        ).number_format = INTEGER_FORMAT
         sheet.cell(
             row=target, column=5, value=f'=COUNTIFS({criteria},{status_range},"Listed")'
         ).number_format = INTEGER_FORMAT
@@ -837,7 +854,7 @@ def _model_groups(rows: Sequence[_SanitizedRow]) -> tuple[tuple[str, str, str], 
 # --------------------------------------------------------------------------------------
 
 
-def sanitize_workbook(  # noqa: PLR0913 - every argument is an operator decision
+def sanitize_workbook(
     *,
     input_path: Path,
     dealership_id: str,
@@ -874,9 +891,7 @@ def sanitize_workbook(  # noqa: PLR0913 - every argument is an operator decision
     destination = output_path or default_output_path(
         store.dealership_id, captured_at, contract=active
     )
-    expected_name = derived_sanitized_file_name(
-        store.dealership_id, captured_at, contract=active
-    )
+    expected_name = derived_sanitized_file_name(store.dealership_id, captured_at, contract=active)
 
     if destination.exists() and not overwrite and not dry_run:
         raise ValidationError(

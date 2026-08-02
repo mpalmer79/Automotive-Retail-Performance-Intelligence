@@ -236,9 +236,26 @@ def dispatch_inventory_command(
     }
     return int(
         handlers[args.command](
-            args, config, emit=emit, emit_error=emit_error, exit_ok=exit_ok, exit_failure=exit_failure
+            args,
+            config,
+            emit=emit,
+            emit_error=emit_error,
+            exit_ok=exit_ok,
+            exit_failure=exit_failure,
         )
     )
+
+
+# WHY THE HANDLERS BELOW IMPORT INSIDE THEMSELVES
+# ------------------------------------------------
+# `arpi.cli` imports this module at start-up so it can register four subparsers. If the
+# handlers imported the sanitizer, the validator, the importer and the exporter at module
+# scope, `arpi version` would pay for openpyxl and psycopg on every invocation -- two
+# dependencies it has no use for, one of them optional.
+#
+# Deferring them costs one suppression per import and keeps the CLI's start-up cost
+# proportional to what was actually asked for. Each deferred import carries a PLC0415
+# suppression naming this comment as its reason.
 
 
 def _report(emit: Any, payload: Any, *, as_json: bool) -> None:
@@ -249,7 +266,7 @@ def _report(emit: Any, payload: Any, *, as_json: bool) -> None:
         emit(payload.summary())
 
 
-def _command_sanitize(  # noqa: PLR0913 - the handler signature is fixed by the dispatcher
+def _command_sanitize(
     args: argparse.Namespace,
     config: ArpiConfig,  # noqa: ARG001 - the sanitizer needs no configuration
     *,
@@ -259,7 +276,7 @@ def _command_sanitize(  # noqa: PLR0913 - the handler signature is fixed by the 
     exit_failure: int,
 ) -> int:
     """Sanitize a private workbook."""
-    from arpi.inventory.sanitizer import sanitize_workbook
+    from arpi.inventory.sanitizer import sanitize_workbook  # noqa: PLC0415
 
     try:
         summary = sanitize_workbook(
@@ -278,7 +295,7 @@ def _command_sanitize(  # noqa: PLR0913 - the handler signature is fixed by the 
     return exit_ok
 
 
-def _command_validate(  # noqa: PLR0913 - the handler signature is fixed by the dispatcher
+def _command_validate(
     args: argparse.Namespace,
     config: ArpiConfig,  # noqa: ARG001 - the validator needs no configuration
     *,
@@ -288,7 +305,7 @@ def _command_validate(  # noqa: PLR0913 - the handler signature is fixed by the 
     exit_failure: int,
 ) -> int:
     """Validate a committed sanitized workbook."""
-    from arpi.inventory.validation import validate_workbook
+    from arpi.inventory.validation import validate_workbook  # noqa: PLC0415
 
     try:
         result = validate_workbook(
@@ -306,7 +323,7 @@ def _command_validate(  # noqa: PLR0913 - the handler signature is fixed by the 
     return exit_ok
 
 
-def _command_load(  # noqa: PLR0913 - the handler signature is fixed by the dispatcher
+def _command_load(
     args: argparse.Namespace,
     config: ArpiConfig,
     *,
@@ -316,8 +333,8 @@ def _command_load(  # noqa: PLR0913 - the handler signature is fixed by the disp
     exit_failure: int,
 ) -> int:
     """Import a sanitized workbook into PostgreSQL."""
-    from arpi.ingestion.database import connect
-    from arpi.inventory.importer import import_listing_workbook
+    from arpi.ingestion.database import connect  # noqa: PLC0415
+    from arpi.inventory.importer import import_listing_workbook  # noqa: PLC0415
 
     try:
         with connect(config) as connection:
@@ -344,7 +361,7 @@ def _command_load(  # noqa: PLR0913 - the handler signature is fixed by the disp
     return exit_ok
 
 
-def _command_export(  # noqa: PLR0913 - the handler signature is fixed by the dispatcher
+def _command_export(
     args: argparse.Namespace,
     config: ArpiConfig,
     *,
@@ -354,8 +371,8 @@ def _command_export(  # noqa: PLR0913 - the handler signature is fixed by the di
     exit_failure: int,
 ) -> int:
     """Export the Excel operating report."""
-    from arpi.ingestion.database import connect
-    from arpi.inventory.report import export_operating_report
+    from arpi.ingestion.database import connect  # noqa: PLC0415
+    from arpi.inventory.report import export_operating_report  # noqa: PLC0415
 
     try:
         with connect(config) as connection:
