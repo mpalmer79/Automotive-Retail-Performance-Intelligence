@@ -531,8 +531,31 @@ on a fork.
 `ci.yml`'s `database-setup-image` job builds
 `Dockerfile.database-setup` and then **runs it, twice, against
 `ghcr.io/railwayapp-templates/postgres-ssl:18`** — the image
-`project.config.json` declares Railway will run. It needs no secret either: the
+`project.config.json` declares Railway will run — with a Docker volume mounted at
+the path that file declares Railway mounts one at. It needs no secret either: the
 database is a throwaway container on a job-local network.
+
+Both the image and the mount path are read from `project.config.json` rather than
+written into the workflow, so the rehearsal cannot drift onto an image or a layout
+the deployment does not use. The mount path is load-bearing: the image **refuses
+to start** unless `PGDATA` lies beneath it —
+
+```
+PGDATA variable does not start with the expected volume mount path,
+expected to start with /var/lib/postgresql/data
+```
+
+— because on Railway that is where the persistent volume is, and a `PGDATA`
+outside it would put the database on the container's ephemeral filesystem
+silently and lose it on the next deploy. The `postgres:18` base image moved its
+default `PGDATA` out of that directory, which is why a plain `docker run` trips
+the guard.
+
+Because the volume is real, the job also **restarts the database and asserts the
+warehouse is unchanged**. That turns "the data survives a restart" from a claim
+about Railway into something a run either does or does not demonstrate — and a
+`PGDATA` that had ended up on the container filesystem would pass every other
+check here and fail that one.
 
 It was added because a build is not a run, and the gap was not theoretical. Two
 defects lived in `provision_database.sh` until it was executed for the first
@@ -544,6 +567,7 @@ IaC evaluation and review:
 | `$$` inside a **double-quoted** shell string is the shell's process ID, not a dollar-quote. The bootstrap-role probe therefore asked PostgreSQL for `rolsuper \|\| 12345/12345 \|\| rolcreaterole` | every run aborted at step 3 with "the connecting role holds neither superuser nor CREATEROLE" — against a role that held both. No schema would ever have been created |
 | The same mistake in the reconciliation report, wrapped in `\|\| printf 'unavailable'` | the query failed and the fallback hid it, reporting `unavailable` over a reconciliation set that might have been failing — the exact hiding the code comment beside it warns against |
 | `verify_cloud_database.py` expected fixed totals for four audit-history views | the **second** run failed over a byte-identical warehouse, making "safe to rerun" and the password rotation in section 8 unrunnable |
+| `WORKDIR /app` creates the directory as root, and the image runs as `arpi`. `run-foundation` generates the profile's CSVs to `data/raw/<profile>/` before loading them | the run generated every row and passed all 114 data-quality checks, then died one step before writing anything, with `Permission denied: '/app/data'`. The image now creates `data/` and `logs/` owned by `arpi`, and the contract test asserts both are writable |
 
 The offline checks in the table above are still worth what they cost. They just
 cannot answer the question "does this script reach the end", and that question is

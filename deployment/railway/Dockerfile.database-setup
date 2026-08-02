@@ -122,8 +122,8 @@ RUN apt-get update \
     && apt-get install --no-install-recommends -y postgresql-client ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Least privilege. The job connects to a database and writes nothing to its own
-# filesystem outside /tmp, so there is nothing it needs root for.
+# Least privilege. The job connects to a database, and the only directories it
+# writes are the two created below, so there is nothing it needs root for.
 RUN groupadd --system --gid 1001 arpi \
     && useradd --system --uid 1001 --gid arpi --create-home --home-dir /home/arpi arpi
 
@@ -162,6 +162,28 @@ COPY --chown=arpi:arpi deployment/railway/provision_database.sh ./provision_data
 # again install into the system interpreter.
 RUN uv pip install --python /opt/venv/bin/python --no-deps -e . \
     && chmod +x ./provision_database.sh
+
+# The two directories the run writes, owned by the user that will write them.
+#
+# `arpi run-foundation` is a GENERATE-then-load pipeline: it writes the profile's
+# CSVs to `data/raw/<profile>/` and only then loads them, and it logs to `logs/`.
+# Both are relative to the working directory, because
+# `arpi.utilities.paths.resolve_output_dir` refuses to write outside the directory
+# ARPI was invoked from -- deliberately, so a stray `--output-dir` cannot scatter
+# files across a filesystem.
+#
+# `WORKDIR` creates /app as root and `.dockerignore` keeps `data/` out of the
+# build context, so without this the directories do not exist and the `arpi` user
+# cannot create them. The run then generates every row, passes all 114 data-quality
+# checks, and dies one step before writing anything:
+#
+#     ARPI error: Could not create output directory /app/data/raw/development:
+#     [Errno 13] Permission denied: '/app/data'
+#
+# Created here rather than by widening ownership of /app, so the source tree, the
+# SQL and the virtual environment stay read-only to the process that runs them.
+RUN mkdir -p /app/data /app/logs \
+    && chown arpi:arpi /app/data /app/logs
 
 # The entry point must be the one inside the virtual environment. Asserted at BUILD
 # time as well as in CI, so an image that could not run is never produced at all.

@@ -314,6 +314,13 @@ jobs:
             psql --version
             test -f uv.lock
             test -x ./provision_database.sh
+            # The run GENERATES the profile to data/raw/<profile>/ before loading
+            # it, and logs to logs/. Both are relative to the working directory,
+            # which WORKDIR creates as root while the image runs as `arpi`. Asserted
+            # as a writability check rather than as an ownership one, because what
+            # the run needs is the ability to write, however that is arranged.
+            test -w ./data
+            test -w ./logs
           '
 
       # The reason the image was changed at all: it must install what the lock says,
@@ -339,19 +346,147 @@ jobs:
       # The PostgreSQL image is read from project.config.json rather than written
       # here, so this job cannot rehearse against an image Railway does not run.
       # -----------------------------------------------------------------------
+      # `docker run -d` returns as soon as the container is CREATED, so this step
+      # succeeding says nothing about whether PostgreSQL ever started. It is
+      # therefore followed by an explicit readiness gate rather than by the
+      # provisioning run — the first attempt at this job had no gate, the database
+      # never came up, and the only symptom was the provisioning script's own
+      # five-minute timeout with the container's logs nowhere in the output.
+      # BOTH the image and the volume mount path come from project.config.json,
+      # so this job cannot rehearse against an image Railway does not run or a
+      # layout Railway does not use.
+      #
+      # The mount path is not decoration. This image refuses to start unless
+      # `PGDATA` lies under it:
+      #
+      #   PGDATA variable does not start with the expected volume mount path,
+      #   expected to start with /var/lib/postgresql/data
+      #
+      # — because on Railway that path is where the persistent volume is mounted,
+      # and a PGDATA outside it would put the database on the container's
+      # ephemeral filesystem, silently, and lose it on the next deploy. The
+      # official postgres:18 base image moved its default PGDATA out of that
+      # directory, so the wrapper's guard fires on a plain `docker run`. Supplying
+      # the volume and the PGDATA is supplying exactly what Railway supplies.
+      #
+      # PGDATA is a SUBDIRECTORY of the mount rather than the mount itself, which
+      # is the usual arrangement for a mounted volume: initdb wants an empty
+      # directory, and a volume root is not reliably one.
       - name: Start the PostgreSQL image the deployment declares
         run: |
           set -euo pipefail
-          prefix=$(python -c "import json;print(json.load(open('deployment/railway/project.config.json'))['services']['postgres']['expectedImagePrefix'])")
+          config=deployment/railway/project.config.json
+          prefix=$(python -c "import json,sys;print(json.load(open('$config'))['services']['postgres']['expectedImagePrefix'])")
+          mount=$(python -c "import json,sys;print(json.load(open('$config'))['services']['postgres']['volume']['mountPath'])")
           echo "POSTGRES_IMAGE=${prefix}:18" >> "$GITHUB_ENV"
+          echo "Image: ${prefix}:18   volume mount: ${mount}"
+
           docker network create arpi-rehearsal
+          docker volume create arpi-rehearsal-data
           # THROWAWAY CI-ONLY CONTAINER CREDENTIAL — NOT A SECRET. It exists for
           # the lifetime of one job, on a container reachable only from that job.
           docker run -d --name arpi-postgres --network arpi-rehearsal \
+            -v arpi-rehearsal-data:"${mount}" \
+            -e PGDATA="${mount}/pgdata" \
             -e POSTGRES_PASSWORD=rehearsal \
             -e POSTGRES_USER=postgres \
             -e POSTGRES_DB=railway \
             "${prefix}:18"
+
+      # Two probes, because they fail for different reasons and the difference is
+      # the diagnosis:
+      #
+      #   `docker exec ... pg_isready`   the server itself, with no network in the
+      #                                  way. Fails => the image did not start.
+      #   `pg_isready -h arpi-postgres`  from another container on the same
+      #                                  network, which is what the provisioning
+      #                                  job does. Fails while the first passes
+      #                                  => Docker DNS or the network, not the
+      #                                  database.
+      #
+      # Bounded at 120s. The server needs seconds; a minute of failure means it is
+      # not coming, and waiting the provisioning script's full five minutes only
+      # delays the same answer.
+      - name: Wait for PostgreSQL, and say why if it never comes
+        run: |
+          set -uo pipefail
+          ready=""
+          for _ in $(seq 1 60); do
+            if docker exec arpi-postgres pg_isready -q -U postgres -d railway 2>/dev/null; then
+              ready=yes
+              break
+            fi
+            sleep 2
+          done
+
+          if [ -z "$ready" ]; then
+            echo "::group::docker ps -a"
+            docker ps -a
+            echo "::endgroup::"
+            echo "::group::docker inspect state"
+            docker inspect --format '{{json .State}}' arpi-postgres || true
+            echo "::endgroup::"
+            echo "::group::docker logs arpi-postgres"
+            docker logs arpi-postgres 2>&1 | tail -100 || true
+            echo "::endgroup::"
+            echo "::error title=Rehearsal database never started::${POSTGRES_IMAGE} did not accept connections within 120s. Its logs are above."
+            exit 1
+          fi
+          echo "PostgreSQL is accepting connections inside the container."
+
+          # Now the same question from where the provisioning job will ask it.
+          if ! docker run --rm --network arpi-rehearsal --entrypoint pg_isready \
+                 arpi-database-setup:ci -q -h arpi-postgres -p 5432 -U postgres -d railway; then
+            echo "::group::docker network inspect"
+            docker network inspect arpi-rehearsal || true
+            echo "::endgroup::"
+            echo "::error title=Rehearsal database unreachable across the network::PostgreSQL is up inside its container but not reachable as 'arpi-postgres' from another container on arpi-rehearsal."
+            exit 1
+          fi
+          echo "PostgreSQL is reachable as arpi-postgres from the provisioning image."
+
+          # The point of using Railway's postgres-ssl image rather than a plain
+          # postgres container: the provisioning script refuses to create a
+          # credential over an unencrypted session, so TLS must be on before the
+          # rehearsal is worth running at all.
+          docker exec arpi-postgres psql -U postgres -d railway -tAc 'SHOW ssl' | grep -qx on || {
+            echo "::error title=TLS is not enabled::${POSTGRES_IMAGE} started without SSL, so the provisioning script's encryption assertion cannot be rehearsed."
+            exit 1
+          }
+          echo "TLS is enabled on the rehearsal database."
+
+      # One definition of "what is in the warehouse", used after each load and
+      # again after the restart. Written once rather than three times, because
+      # three copies of a count query are three chances for the comparison to be
+      # between two different questions.
+      #
+      # Real counts, not pg_stat_user_tables — its n_live_tup is an estimate
+      # maintained by autovacuum and can lag a load that just finished.
+      - name: Prepare the warehouse count probe
+        run: |
+          set -euo pipefail
+          cat > warehouse_counts.sql <<'SQL'
+          SELECT string_agg(t.name || '=' || t.rows, E'\n' ORDER BY t.name)
+          FROM (
+            SELECT c.relname AS name,
+                   (xpath('/row/c/text()',
+                          query_to_xml(format('SELECT count(*) AS c FROM warehouse.%I',
+                                              c.relname), false, true, '')))[1]::text::bigint AS rows
+            FROM pg_class AS c
+            JOIN pg_namespace AS n ON n.oid = c.relnamespace
+            WHERE n.nspname = 'warehouse' AND c.relkind = 'r'
+          ) AS t;
+          SQL
+          cat > count_warehouse.sh <<'SH'
+          #!/bin/sh
+          # $1 = file to write "table=rows" lines into.
+          set -eu
+          docker run --rm --network arpi-rehearsal \
+            -v "$PWD/warehouse_counts.sql:/probe.sql:ro" \
+            -e PGPASSWORD=rehearsal --entrypoint psql arpi-database-setup:ci \
+            -h arpi-postgres -U postgres -d railway -tA -f /probe.sql > "$1"
+          SH
+          chmod +x count_warehouse.sh
 
       # Twice, on purpose. deployment/railway/README.md section 6 states the run is
       # safe to repeat, and section 8's password rotation depends on it: step 2 is a
@@ -406,21 +541,7 @@ jobs:
               exit 1
             fi
 
-            # Real counts, not pg_stat_user_tables — its n_live_tup is an estimate
-            # maintained by autovacuum and can lag a load that just finished.
-            docker run --rm --network arpi-rehearsal \
-              -e PGPASSWORD=rehearsal --entrypoint psql arpi-database-setup:ci \
-              -h arpi-postgres -U postgres -d railway -tAc "
-                SELECT string_agg(t.name || '=' || t.rows, E'\n' ORDER BY t.name)
-                FROM (
-                  SELECT c.relname AS name,
-                         (xpath('/row/c/text()',
-                                query_to_xml(format('SELECT count(*) AS c FROM warehouse.%I',
-                                                    c.relname), false, true, '')))[1]::text::bigint AS rows
-                  FROM pg_class AS c
-                  JOIN pg_namespace AS n ON n.oid = c.relnamespace
-                  WHERE n.nspname = 'warehouse' AND c.relkind = 'r'
-                ) AS t" > "counts${run}.txt"
+            ./count_warehouse.sh "counts${run}.txt"
             echo "warehouse after run ${run}:"
             cat "counts${run}.txt"
           done
@@ -455,9 +576,46 @@ jobs:
           done
           echo "13 of 13 warehouse tables present and populated, stable across two loads."
 
+      # Volume persistence, which is otherwise an untestable claim about Railway.
+      #
+      # The database now runs with a real Docker volume mounted at the path
+      # project.config.json declares Railway mounts one at, so "the data survives a
+      # restart of the database service" can be asked here rather than asserted in
+      # prose. A PGDATA that had ended up on the container filesystem would pass
+      # every other check in this job and fail this one — which is precisely the
+      # mistake the image's own PGDATA guard exists to prevent.
+      - name: Assert the data survives a database restart
+        run: |
+          set -uo pipefail
+          docker restart arpi-postgres
+
+          ready=""
+          for _ in $(seq 1 60); do
+            if docker exec arpi-postgres pg_isready -q -U postgres -d railway 2>/dev/null; then
+              ready=yes
+              break
+            fi
+            sleep 2
+          done
+          if [ -z "$ready" ]; then
+            docker logs arpi-postgres 2>&1 | tail -50 || true
+            echo "::error title=Database did not come back::PostgreSQL did not restart within 120s."
+            exit 1
+          fi
+
+          ./count_warehouse.sh counts-after-restart.txt || exit 1
+          if ! diff -u counts2.txt counts-after-restart.txt; then
+            echo "::error title=Data did not survive the restart::The warehouse changed across a restart, so PGDATA is not on the mounted volume."
+            exit 1
+          fi
+          echo "Warehouse identical after restart: the data is on the volume, not the container filesystem."
+
+      # The volume outlives `docker rm` by design, so it is removed explicitly.
       - name: Stop the rehearsal database
         if: always()
-        run: docker rm -f arpi-postgres || true
+        run: |
+          docker rm -f arpi-postgres || true
+          docker volume rm arpi-rehearsal-data || true
 
   # ---------------------------------------------------------------------------
   # 2. repository-checks — repository hygiene, not code correctness.
