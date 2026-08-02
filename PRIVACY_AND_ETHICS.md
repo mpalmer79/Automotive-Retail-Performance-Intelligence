@@ -594,3 +594,57 @@ That is what a reviewer should take from it.
   provenance documentation in section 8 to be completed first.
 - Any change to this document must keep section 13's status column honest. Marking a Planned control as
   Implemented without the control existing is the single worst failure mode available to this document.
+
+---
+
+## 16. Sanitized public reference data (ADR-0011)
+
+This section is the exception to section 2, and it is written to be read alongside it
+rather than instead of it.
+
+**ARPI's standing policy is that every row is machine generated.** One lane is not:
+`data/reference/` holds de-identified public dealership listing snapshots. Its correct
+classification is **sanitized public reference data**. The dealer and vehicle identifiers
+are synthetic; the listing attributes — condition, model year, make, model, trim,
+advertised odometer, advertised price, pricing status — are retained from a public source.
+
+Calling this lane "fully synthetic" is a governance failure, not a wording preference, and
+`scripts/check_reference_data.py` fails CI if a document does.
+
+### 16.1 What is removed, and why removal is one-way
+
+| Removed | Replaced with |
+|---|---|
+| Original VIN | A deterministic, group-stable `ARPI`-prefixed synthetic VIN and vehicle identifier |
+| Row-level source URL | A neutral feed label naming the lane, never the origin |
+| External dealer identity | A fictional Granite State Auto Group store, resolved from the ARPI registry |
+| Street address | Nothing. Geography stops at store name and market region |
+
+The identity function is a SHA-256 over a group namespace. **No reverse mapping is
+produced, committed, or committable.** A reversible de-identification is not a
+de-identification; it is a lock whose key is in the same repository. The cost is that a
+committed row cannot be traced back to a source listing and therefore cannot be
+re-verified against one. That cost is accepted deliberately.
+
+### 16.2 What this lane may never contain
+
+No customer or employee data, in any form, banded or otherwise. No confidential DMS, CRM,
+F&I, service, lender or transaction data. No cost, gross, acquisition or floor-plan
+figure. No street address. No credential. No data that required authentication, payment
+or any technical circumvention to obtain — **if access required getting around a control,
+the source is out of scope, and there is no version of this lane that involves doing so.**
+
+### 16.3 What it may never be presented as
+
+Not synthetic. Not current business performance. Not confidential dealer data, DMS
+inventory, completed sales, transaction data or inventory ownership. It cannot generate
+analytical findings about the real source dealer — the source is unnamed by design, and a
+finding about an unnamed party is either meaningless or a re-identification attempt.
+
+### 16.4 Removal on request
+
+A removal request is honoured by deleting the committed artifact, its declaration, and the
+loaded rows from any deployed database. There is no review period and no requirement that
+the requester explain themselves. The procedure is in
+[`data/reference/README.md`](data/reference/README.md) section 8. Nothing in this project
+is worth keeping over an objection.

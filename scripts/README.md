@@ -147,6 +147,72 @@ python scripts/check_desktop_validation_freshness.py
 python scripts/check_desktop_validation_freshness.py --print-hash
 ```
 
+### `check_reference_data.py`
+
+Guards the one lane of committed data that is **not** synthetic: the sanitized
+public dealership listing snapshots of
+[ADR-0011](../docs/architecture-decisions/ADR-0011-sanitized-public-inventory-reference-data.md).
+
+Everything that makes that lane safe is a property of the **committed file**,
+not of the code that produced it. A sanitizer that behaves perfectly is no
+evidence about a workbook somebody added by hand, so this check reads the files
+themselves.
+
+| Rule | What fails |
+|---|---|
+| `undeclared-artifact` | A workbook under `data/reference/` that the contract does not declare |
+| `missing-artifact` | A declared artifact that is not in the repository |
+| `canonical-filename` | A name that does not match the approved pattern — underscores between filename words, hyphens only inside the ISO date |
+| `artifact-digest` | Content that does not match the declared SHA-256 |
+| `duplicate-artifact` | The same workbook committed under a second path |
+| `artifact-misfiled` | A workbook under another store's directory — caught even when it is the only file there |
+| `sample-is-synthetic-only` | A non-synthetic file appearing under `data/sample/` |
+| `artifact-url` | A source URL inside a committed workbook |
+| `artifact-real-vin` | A value inside a committed workbook that could be a real VIN |
+| `artifact-classification` | A workbook that does not carry its classification on every row |
+| `artifact-unreadable` | A workbook the checker cannot open, which is never treated as a pass |
+| `reference-data-is-not-synthetic` | A **document** describing this lane as synthetic |
+| `removed-is-not-sold` | A document reading a removed listing as a sale |
+| `days-observed-is-not-days-in-stock` | A document reading days observed online as days in stock |
+
+The last three are prose rules, and they are the ones most likely to fire. The
+code has no way to claim a listing was sold; a sentence does. Each is written so
+that the correct statement of the boundary — "a removed listing is **not** a
+sale" — is not itself caught.
+
+Reading a workbook without openpyxl is the reason this file is longer than the
+others: an `.xlsx` is a ZIP of XML, and `zipfile` plus the shared-strings table
+is enough to walk every cell. That keeps the check in the `repository-checks`
+job, which installs nothing.
+
+```bash
+python scripts/check_reference_data.py
+python scripts/check_reference_data.py --quiet
+```
+
+---
+
+## The inventory lane operator scripts
+
+These four are **not** CI checks. They are run by an operator against a workbook
+or a database, and they are the only way data enters the sanitized public
+reference lane. Unlike everything above, they need the `arpi` package installed.
+
+| Script | What it does |
+|---|---|
+| `sanitize_inventory_workbook.py` | Reads a **private** dealership workbook from a path the operator supplies and writes the governed sanitized workbook. The input never enters the repository. Failures name a row, a column and a category with the offending value **redacted** |
+| `validate_inventory_workbook.py` | Runs the 17 `DQ-LST-*` checks against a sanitized workbook, without a database |
+| `import_inventory_snapshot.py` | Loads a sanitized workbook into PostgreSQL — raw, staging, `dim_observed_vehicle`, `fact_vehicle_listing_snapshot` — and records its own `audit.pipeline_run`, rejections and reconciliations. A workbook whose digest is already loaded does **no work at all** |
+| `export_inventory_operating_report.py` | Exports the dealership-facing Excel operating report from the reporting views into `artifacts/inventory/`, which is gitignored |
+
+Each is a thin wrapper over `arpi.inventory`; the same four operations are
+available as `arpi inventory sanitize`, `validate`, `import` and `report`.
+
+```bash
+python scripts/validate_inventory_workbook.py \
+  data/reference/inventory/gsa-001/2026-08-02/ARPI_Granite_Chevrolet_Inventory_Sanitized_2026-08-02.xlsx
+```
+
 ---
 
 ## The generators and the Desktop validator
@@ -198,10 +264,16 @@ in CI runs it, and nothing in CI ever may.
 
 ## When CI runs them
 
-The five Python checks run in the `repository-checks` job of
+The Python checks run in the `repository-checks` job of
 [`.github/workflows/ci.yml`](../.github/workflows/ci.yml), on every push to any
 branch, on every pull request, and on manual dispatch. That job installs
-nothing beyond a Python interpreter.
+nothing beyond a Python interpreter — which is why every check here imports only
+the standard library, including the one that reads a spreadsheet.
+
+The four inventory-lane operator scripts are **not** in that job and never will
+be. Sanitization needs a private workbook that is not in the repository, and the
+other three need a database; a CI job holding either would move a boundary that
+exists precisely so no reviewer has to take it on trust.
 
 `check_naming.py` and `check_secrets.py` also run as `local` hooks in
 [`.pre-commit-config.yaml`](../.pre-commit-config.yaml) on every commit;
@@ -216,16 +288,18 @@ From anywhere in the repository:
 python scripts/check_naming.py
 python scripts/check_docs_links.py
 python scripts/check_secrets.py
+python scripts/check_reference_data.py
 python scripts/check_powerbi_model.py
 python scripts/check_desktop_validation_freshness.py
 ```
 
-Or all five, stopping at the first failure:
+Or all of them, stopping at the first failure:
 
 ```bash
 python scripts/check_naming.py \
   && python scripts/check_docs_links.py \
   && python scripts/check_secrets.py \
+  && python scripts/check_reference_data.py \
   && python scripts/check_powerbi_model.py \
   && python scripts/check_desktop_validation_freshness.py
 ```

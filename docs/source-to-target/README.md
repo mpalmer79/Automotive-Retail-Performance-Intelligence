@@ -156,11 +156,20 @@ A mapping is ready for review when all of the following are true:
 | [STM-012](STM-012-fact-appointment.md) | Appointment fact | `warehouse.fact_appointment` (via `raw.appointment_load`, `staging.stg_appointment`) | 1.0 | **Implemented** |
 | [STM-013](STM-013-dim-marketing-campaign.md) | Marketing campaign dimension | `warehouse.dim_marketing_campaign` (via `raw.marketing_campaign_load`, `staging.stg_marketing_campaign`) | 1.0 | **Implemented** |
 | [STM-014](STM-014-fact-marketing-spend.md) | Marketing spend fact | `warehouse.fact_marketing_spend` (via `raw.marketing_spend_load`, `staging.stg_marketing_spend`) | 1.0 | **Implemented** |
+| [STM-015](STM-015-inventory-listing-snapshot.md) | Sanitized public inventory listing snapshot | `warehouse.fact_vehicle_listing_snapshot`, `warehouse.dim_observed_vehicle` (via `raw.inventory_listing_snapshot_load`, `staging.stg_inventory_listing_snapshot`) | 1.0 | **Implemented** |
 
-**All fourteen mappings are written, and every MVP dimension and fact has one.**
+**All fifteen mappings are written, and every MVP dimension and fact has one.**
 `tests/integration/test_gate1_readiness.py` asserts a mapping exists for each of the thirteen warehouse
 entities; it does not verify that a mapping's *content* is current, which stays a review responsibility and
 is why the Definition of Done requires an STM update in the same change as its target object.
+
+**STM-015 is the one mapping whose source is not a generator.** It documents the sanitized public dealership
+listing lane ([ADR-0011](../architecture-decisions/ADR-0011-sanitized-public-inventory-reference-data.md)),
+whose source is a committed workbook rather than a seeded CSV, and whose first transformation happens
+**outside the repository** because its input must never enter one. It therefore departs from the five-stage
+shape in section 7 at the first stage and rejoins it at `raw`. It also covers two target objects rather than
+one, because the listing dimension has no independent load path: it is merged from the same staging view in
+the same import, immediately before the fact that references it.
 
 **No mapping covers the reporting layer**, and none should: an STM records how a value reaches the
 warehouse. How it is then projected for reporting is documented on the view itself — every reporting view

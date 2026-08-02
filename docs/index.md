@@ -73,7 +73,7 @@ Contracts are the tier most worth reading closely. They are also the tier a revi
 | [`database-setup.md`](database-setup.md) | Optional local PostgreSQL setup, role creation, and the ordered SQL build | Contributors running the database layer or the integration tests | Implemented |
 | [`../CONTRIBUTING.md`](../CONTRIBUTING.md) | Development workflow, branch and commit conventions, the quality gates, and what CI enforces | Contributors | Implemented |
 | [`../SECURITY.md`](../SECURITY.md) | Secret handling, what must never be committed, and how to report a vulnerability | Contributors, security reviewers | Implemented |
-| [`diagrams/`](diagrams/) | Source-controlled Mermaid diagrams: system context, Phase 0 data flow, the initial dimensional model, and the repository component map | Visual learners; anyone orienting quickly | Implemented |
+| [`diagrams/`](diagrams/) | Source-controlled Mermaid diagrams: system context, Phase 0 data flow, the initial dimensional model, the repository component map, and the sanitized public inventory listing lane | Visual learners; anyone orienting quickly | Implemented |
 
 ### Portfolio website
 
@@ -92,6 +92,25 @@ Its own documentation lives beside it, in [`../portfolio/`](../portfolio/) and [
 | [`../portfolio/docs/PERFORMANCE.md`](../portfolio/docs/PERFORMANCE.md) | The performance budget and how the static build is kept within it | Contributors adding weight to a route | Implemented |
 | [`../portfolio/docs/DEPLOYMENT.md`](../portfolio/docs/DEPLOYMENT.md) | How the site is built and deployed. **Deployed to Railway `staging`; no production environment exists** | Whoever operates the deployment | Implemented — live verification is **UNVERIFIED** from CI |
 | [`../portfolio/docs/VISUAL_REVIEW.md`](../portfolio/docs/VISUAL_REVIEW.md) | The route-by-route visual review record | Reviewers checking the UI against its own rules | Implemented |
+
+---
+
+### Inventory Operations — the sanitized public reference lane
+
+The one part of ARPI whose data is not machine generated, and the documents that govern it.
+
+| Document | What it answers |
+|---|---|
+| [`architecture-decisions/ADR-0011-sanitized-public-inventory-reference-data.md`](architecture-decisions/ADR-0011-sanitized-public-inventory-reference-data.md) | Why a third data lane exists, what it permits and forbids, and what it may never be presented as |
+| [`../data/reference/README.md`](../data/reference/README.md) | The lane's policy: what may be stored, required metadata, sanitization controls, directory and naming conventions, review, supersession and removal |
+| [`../config/reference/inventory_listing_contract.yaml`](../config/reference/inventory_listing_contract.yaml) | The versioned workbook contract every consumer reads |
+| [`source-to-target/STM-015-inventory-listing-snapshot.md`](source-to-target/STM-015-inventory-listing-snapshot.md) | Workbook to raw to staging to dimension to fact to reporting to Excel |
+| [`diagrams/05-inventory-listing-lane.md`](diagrams/05-inventory-listing-lane.md) | The same path as one diagram, with the reasoning behind each boundary |
+| [`../KPI_CATALOG.md`](../KPI_CATALOG.md) §38 | The 22 governed Inventory Listings KPIs, and the measures the lane will never define |
+| [`../LIMITATIONS.md`](../LIMITATIONS.md) §13 | What a listing snapshot cannot establish |
+
+**Read the boundary first.** Advertised price is not transaction price. A removed listing
+is not a sale. Days observed online is not days in stock.
 
 ---
 
@@ -241,6 +260,9 @@ python scripts/check_secrets.py
 | [`diagrams/02-phase-0-data-flow.md`](diagrams/02-phase-0-data-flow.md) | Implementation guides |
 | [`diagrams/03-initial-dimensional-model.md`](diagrams/03-initial-dimensional-model.md) | Implementation guides |
 | [`diagrams/04-repository-component-map.md`](diagrams/04-repository-component-map.md) | Implementation guides |
+| [`diagrams/05-inventory-listing-lane.md`](diagrams/05-inventory-listing-lane.md) | Implementation guides |
+| [`../data/reference/README.md`](../data/reference/README.md) | Evidence and constraints |
+| [`source-to-target/STM-015-inventory-listing-snapshot.md`](source-to-target/STM-015-inventory-listing-snapshot.md) | Contracts |
 | [`../LIMITATIONS.md`](../LIMITATIONS.md) | Evidence and constraints |
 | [`../PRIVACY_AND_ETHICS.md`](../PRIVACY_AND_ETHICS.md) | Evidence and constraints |
 | [`research.md`](research.md) | Evidence and constraints |

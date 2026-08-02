@@ -38,7 +38,7 @@ document before they shipped**, which is the argument for having them:
 ## 1. What is verified automatically
 
 `tests/e2e/accessibility.spec.ts` runs `axe-core` via `@axe-core/playwright`
-against a **production build** in Chromium, on all nine routes, at 375px and
+against a **production build** in Chromium, on all ten routes, at 375px and
 1440px, tagged `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa`, `wcag22aa`.
 
 Result: **0 violations.** Every violation found during development is listed in

@@ -151,7 +151,16 @@ pytest -m "not integration" --cov=arpi --cov-report=term-missing --cov-report=xm
 python scripts/check_naming.py
 python scripts/check_docs_links.py
 python scripts/check_secrets.py
+python scripts/check_reference_data.py
 ```
+
+`check_reference_data.py` guards `data/reference/`, the one lane of committed data
+that is **not** synthetic ([ADR-0011](docs/architecture-decisions/ADR-0011-sanitized-public-inventory-reference-data.md)).
+It fails on an undeclared or misfiled workbook, a digest mismatch, a source URL or a
+real-looking VIN inside a committed workbook, and on **prose** that describes that lane
+as synthetic, reads a removed listing as a sale, or reads days observed online as days
+in stock. The prose rules are the ones most likely to catch you, and they are written so
+that stating the boundary correctly is never a violation.
 
 With a local PostgreSQL instance available, also run the database-backed tests:
 

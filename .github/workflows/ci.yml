@@ -654,6 +654,29 @@ jobs:
       - name: Secret safety net
         run: python scripts/check_secrets.py
 
+      # ADR-0011 admits ONE lane of committed data that is not synthetic: sanitized
+      # public dealership listing snapshots under data/reference/. Everything that makes
+      # that safe is a property of the committed file rather than of the code that wrote
+      # it, so it has to be checked where the file is -- here.
+      #
+      # This step fails on an artifact the contract does not declare, a declared
+      # artifact that is missing, a canonical file name that does not match the approved
+      # pattern, a content digest that does not match the declaration, a duplicate of a
+      # workbook under a second path, a workbook filed under another store's directory,
+      # a non-synthetic file appearing under data/sample/, and -- reading the workbook
+      # itself as a ZIP of XML, with no dependency installed -- a source URL or a
+      # real-looking VIN inside committed reference data.
+      #
+      # It also fails a DOCUMENT that describes this lane as fully synthetic, that reads
+      # a removed listing as a sale, or that reads days observed online as days in
+      # stock. Those three are the claims the lane can most plausibly be mistaken for,
+      # and prose is where the mistake would actually be made.
+      #
+      # Standard library only, like every other step in this job: the workbook reader is
+      # zipfile plus the XML the spreadsheet already is.
+      - name: Reference-data governance
+        run: python scripts/check_reference_data.py
+
       # Fails when the semantic model departs from the register in
       # powerbi/model_documentation/ -- a table, relationship, hidden column or
       # measure that the specification does not describe, a bidirectional

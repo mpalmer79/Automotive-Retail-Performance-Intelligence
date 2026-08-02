@@ -68,7 +68,7 @@
     "That the vehicle was physically on the ground.",
     "That the dealership owned it.",
     "What it cost, what it sold for, or what it grossed.",
-    "That a listing which disappeared was sold — it can equally be a trade, a wholesale, a feed suppression or an error.",
+    "That a listing which disappeared was sold. It can equally be a trade, a wholesale, a feed suppression or an error.",
     "Days in stock. That runs from acquisition and lives in the DMS; this lane never sees it.",
     "Current business performance of any kind."
   ],
@@ -134,7 +134,7 @@
     },
     {
       "name": "vw_vehicle_listing_observation_span",
-      "purpose": "First observed, last observed, snapshots seen and days observed online — which is not days in stock."
+      "purpose": "First observed, last observed, snapshots seen and days observed online, which is not days in stock."
     },
     {
       "name": "vw_vehicle_listing_change",
@@ -145,11 +145,11 @@
     "command": "arpi export-inventory-report --dealership-id GSA-001 --captured-at 2026-08-02",
     "output": "artifacts/inventory/ARPI_Granite_Chevrolet_Inventory_Report_2026-08-02.xlsx",
     "sheets": [
-      "README — provenance, and a question-and-answer table of what the report can and cannot establish",
-      "Summary — formula-driven metrics beside the warehouse's own figures, with condition and top-model charts",
-      "Inventory — the listing detail, as a filterable Excel table with frozen headers",
-      "Model Summary — formula-driven price statistics per condition, make and model",
-      "Snapshot Changes — present only when a prior capture exists to compare against"
+      "README: provenance, and a question-and-answer table of what the report can and cannot establish",
+      "Summary: formula-driven metrics beside the warehouse's own figures, with condition and top-model charts",
+      "Inventory: the listing detail, as a filterable Excel table with frozen headers",
+      "Model Summary: formula-driven price statistics per condition, make and model",
+      "Snapshot Changes: present only when a prior capture exists to compare against"
     ]
   },
   "multiStore": {

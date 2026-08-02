@@ -100,6 +100,12 @@ INVENTORY_SPEC_SOURCE = REPO_ROOT / "src" / "arpi" / "inventory" / "spec.py"
 LOADER_SOURCE = REPO_ROOT / "src" / "arpi" / "ingestion" / "loader.py"
 FACT_SQL_DIR = REPO_ROOT / "sql" / "04_facts"
 
+#: The exporter behind ``deliverables.inventory_operating_report``. A separate deliverable
+#: from ``deliverables.excel_operating_report``, which is P2.4-03 -- the Power BI-reconciled
+#: workbook over the synthetic warehouse -- and is still deferred. Two Excel workbooks that
+#: answer different questions from different lanes; neither stands in for the other.
+INVENTORY_REPORT_SOURCE = REPO_ROOT / "src" / "arpi" / "inventory" / "report.py"
+
 #: The function whose failure mode this register guards.
 FACT_DISCOVERY_FUNCTION = "discover_fact_sql"
 
@@ -172,6 +178,9 @@ class DerivedEvidence:
     #: build this record positionally to describe an MVP-shaped repository, keep doing so.
     inventory_listing_sql_files: int = 0
     inventory_listing_reporting_views: int = 0
+    #: Whether the sanitized-listing Excel exporter exists in source. Guards
+    #: ``deliverables.inventory_operating_report`` only, never ``excel_operating_report``.
+    inventory_report_exporter: bool = False
 
     @property
     def semantic_model_source_exists(self) -> bool:
@@ -494,6 +503,7 @@ def derive_evidence() -> DerivedEvidence:
         reporting_views=len(reporting_scripts),
         inventory_listing_sql_files=len(lane_files),
         inventory_listing_reporting_views=len(lane_reporting_scripts),
+        inventory_report_exporter=INVENTORY_REPORT_SOURCE.is_file(),
         audit_layers_recorded=_count_audit_layers_recorded(),
         migrations=sum(1 for p in migrations.glob("*.sql")) if migrations.is_dir() else 0,
         desktop=_engine_evidence(DESKTOP_EVIDENCE),
@@ -866,6 +876,34 @@ def check_declarations(declared: dict[str, Any], evidence: DerivedEvidence) -> l
                 location=DECLARED_PATH.relative_to(REPO_ROOT).as_posix(),
             )
         )
+    # Two Excel deliverables, and the register keeps them apart on purpose.
+    # `excel_operating_report` is P2.4-03: the Power BI-reconciled workbook over the
+    # synthetic warehouse, gated on a reconciliation that does not exist yet. This one is
+    # the sanitized-listing operating report (ADR-0011), which is built and does not
+    # reconcile to Power BI because no Power BI measure reads that lane. Declaring either
+    # one satisfies nothing about the other; a reader who conflated them would believe the
+    # deferred workbook had shipped.
+    if deliverables.get("inventory_operating_report") not in (
+        None,
+        "not-started",
+        "deferred",
+    ) and not (evidence.inventory_report_exporter and evidence.inventory_listing_reporting_views):
+        found.append(
+            Contradiction(
+                rule="inventory-report-needs-an-exporter",
+                claim=(
+                    "deliverables.inventory_operating_report = "
+                    f"{deliverables.get('inventory_operating_report')!r}"
+                ),
+                evidence=(
+                    f"{INVENTORY_REPORT_SOURCE.relative_to(REPO_ROOT).as_posix()} exists="
+                    f"{evidence.inventory_report_exporter}; listing reporting views="
+                    f"{evidence.inventory_listing_reporting_views}"
+                ),
+                location=DECLARED_PATH.relative_to(REPO_ROOT).as_posix(),
+            )
+        )
+
     if deliverables.get("dashboard") not in (None, "not-started") and evidence.report_pages == 0:
         found.append(
             Contradiction(

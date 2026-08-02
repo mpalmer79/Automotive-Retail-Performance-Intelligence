@@ -305,6 +305,41 @@ def test_declaring_a_dashboard_without_report_pages_fails() -> None:
     assert "dashboard-needs-pages" in {c.rule for c in found}
 
 
+def test_declaring_the_inventory_report_without_an_exporter_fails() -> None:
+    declared = {"deliverables": {"inventory_operating_report": "implemented"}}
+    found = check_declarations(declared, _fake())
+    assert "inventory-report-needs-an-exporter" in {c.rule for c in found}
+
+
+def test_declaring_the_inventory_report_with_its_exporter_is_accepted() -> None:
+    declared = {"deliverables": {"inventory_operating_report": "implemented"}}
+    evidence = _fake(inventory_report_exporter=True, inventory_listing_reporting_views=6)
+    assert check_declarations(declared, evidence) == []
+
+
+def test_the_two_excel_deliverables_are_checked_separately() -> None:
+    """A shipped listing report must not vouch for the deferred P2.4-03 workbook.
+
+    They are different workbooks over different lanes. The failure this guards is a reader
+    -- or a later rule -- treating one Excel deliverable as evidence for the other, which
+    would let the Power BI-reconciled report read as delivered while it does not exist.
+    """
+    shipped_listing_report = _fake(
+        inventory_report_exporter=True, inventory_listing_reporting_views=6
+    )
+    declared = {
+        "deliverables": {
+            "inventory_operating_report": "implemented",
+            "excel_operating_report": "deferred",
+        }
+    }
+    assert check_declarations(declared, shipped_listing_report) == []
+
+    # The listing exporter exists, and it still cannot carry excel_operating_report: that
+    # entry stays deferred on its own evidence, which is the report pages it needs.
+    assert shipped_listing_report.report_pages == 0
+
+
 def test_completing_phase_5_without_a_real_engine_fails() -> None:
     declared = {"lifecycle_phases": {"5_semantic_model": "complete"}}
     found = check_declarations(declared, _fake())

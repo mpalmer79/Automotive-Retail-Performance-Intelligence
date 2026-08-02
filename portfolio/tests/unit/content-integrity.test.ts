@@ -499,3 +499,39 @@ describe('the manifest carries no secret', () => {
     }
   })
 })
+
+describe('authored copy carries no em dash', () => {
+  /*
+   * The same house rule the end-to-end suite enforces on the rendered page, moved
+   * to where it can be answered in milliseconds.
+   *
+   * The e2e version is the authority: it sees the composed page, including copy
+   * that reaches the DOM from the manifest or from a component's own literals.
+   * But it needs a production build and a browser, so it reports a stray glyph
+   * roughly six minutes after the edit that introduced one. Every content file
+   * added to this project so far has tripped that rule at least once, and finding
+   * out here instead is the difference between a typo and an afternoon.
+   *
+   * This does not replace the e2e test and must not be allowed to. It reads the
+   * authored content files only, so a component literal is still the browser's
+   * problem.
+   */
+  const CONTENT = join(PORTFOLIO, 'src/content')
+
+  const contentFiles = readdirSync(CONTENT)
+    .filter((name) => name.endsWith('.json'))
+    .sort()
+
+  it('has content files to check', () => {
+    expect(contentFiles.length).toBeGreaterThan(0)
+  })
+
+  it.each(contentFiles)('%s uses a spaced hyphen, a colon or a full stop', (name) => {
+    const text = readFileSync(join(CONTENT, name), 'utf8')
+    const line = text.split('\n').find((candidate) => candidate.includes('—'))
+    expect(
+      line,
+      `src/content/${name} contains an em dash: ${line?.trim() ?? ''}`
+    ).toBeUndefined()
+  })
+})

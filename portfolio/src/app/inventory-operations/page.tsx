@@ -183,7 +183,7 @@ export default function InventoryOperationsPage() {
             </Heading>
             <Text size="body">
               The right-hand column is the more important one. Every item in it is
-              enforced somewhere — in a view definition, in a column comment, in a CI
+              enforced somewhere: in a view definition, in a column comment, in a CI
               check that fails the build if a document contradicts it.
             </Text>
           </Reveal>
@@ -346,7 +346,7 @@ export default function InventoryOperationsPage() {
               <Heading level={2}>An Excel report a dealership can actually open</Heading>
               <Text size="body">
                 Built from the reporting views over PostgreSQL, never from the input
-                workbook — a report assembled from its own source would prove nothing
+                workbook. A report assembled from its own source would prove nothing
                 about the load. Formula-driven where a user will filter, values where two
                 captures are being compared.
               </Text>

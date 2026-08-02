@@ -2851,3 +2851,99 @@ encoding an absent arrival as zero would make every broken appointment the most 
 | `DQ-APT-006` | Sold implies shown and links to a finalized retail sale | `referential` | critical |
 | `DQ-APT-007` | **`minutes_early_or_late` is NULL when not shown** | `completeness` | critical |
 | `DQ-APT-008` | **No prohibited PII or communication-content column exists** | `privacy` | critical |
+
+---
+
+## 40. The sanitized public inventory listing lane (ADR-0011)
+
+Three objects, one lane. Everything here is **sanitized public reference data**: the
+dealer and vehicle identifiers are synthetic, the listing attributes are a de-identified
+public reference snapshot. The canonical committed artifact is
+`ARPI_Granite_Chevrolet_Inventory_Sanitized_2026-08-02.xlsx` at
+`data/reference/inventory/gsa-001/2026-08-02/`.
+
+### 40.1 `raw.inventory_listing_snapshot_load`
+
+**Grain** — one row per Inventory-sheet data row of one sanitized workbook within one load
+batch. Every business column is `text`; typing happens in staging.
+
+There is **no original VIN column and no source URL column**, and there never may be. The
+sanitizer removes both, the validator refuses a workbook carrying either (DQ-LST-005,
+DQ-LST-006), and the importer cannot COPY a column this table does not declare.
+
+Load metadata: `load_batch_id`, `source_file_name` (preserved exactly, underscores and
+capitalisation included), `source_file_digest` (SHA-256, shape-checked), `source_row_number`,
+`ingested_at`.
+
+### 40.2 `staging.stg_inventory_listing_snapshot`
+
+**Grain** — one accepted row per `(dealership_id, captured_at, synthetic_vehicle_id)` in
+the newest load batch. Three views, one rule set, as every other ARPI entity: `_typed`,
+the accepted view, and `_rejected`.
+
+Rejections, in precedence order: `REJ-TYPE-001` (unrepresentable in the governed type),
+`REJ-NULL-001` (required value absent), `REJ-DOMAIN-001` (outside a domain, a range, the
+classification, or the pricing contract), `REJ-REF-001` (store does not resolve, or its
+name disagrees with the registry on the capture date), `REJ-KEY-001` (duplicate grain).
+
+### 40.3 `warehouse.dim_observed_vehicle`
+
+**Grain** — one row per sanitized physical vehicle identity observed through a public
+listing source. **Type 1**, and ADR-0006 requires the reason: the listing fact already
+preserves observation history, so a second parallel history here would answer no question
+and could disagree with the fact.
+
+| Column | Type | Notes |
+|---|---|---|
+| `observed_vehicle_key` | `integer` | Primary key |
+| `synthetic_vehicle_id` | `varchar(24)` | Business key. Group-stable: the same vehicle at any store |
+| `synthetic_vin` | `varchar(24)` | `ARPI`-prefixed. `I` is not a VIN character, so it can never be a real VIN |
+| `condition_type` | `varchar(16)` | `New` or `Used`, as advertised |
+| `model_year`, `make`, `model`, `trim`, `vehicle_display` | | As most recently advertised |
+| `source_system` | `varchar(40)` | `arpi_sanitized_public_reference` |
+| `first_observed_at` | `date` | **Not** an acquisition date |
+| `last_observed_at` | `date` | **Not** a sale date |
+
+Deliberately absent: acquisition source and date, colour, MSRP, inventory cost,
+reconditioning cost, ownership status, sold status, customer and employee linkage. Each
+would require data this source does not have. **The absence is the contract.**
+
+### 40.4 `warehouse.fact_vehicle_listing_snapshot`
+
+**Grain** — one observed vehicle listing per dealership per `captured_at` value, enforced
+by `uq_fact_vehicle_listing_snapshot_grain`.
+
+| Column | Type | Additivity |
+|---|---|---|
+| `vehicle_listing_snapshot_key` | `bigint` | Primary key |
+| `snapshot_date_key`, `dealership_key`, `observed_vehicle_key` | `integer` | The declared grain |
+| `captured_at` | `date` | When the listing was **seen** |
+| `odometer_miles` | `integer` | **Non-additive** |
+| `advertised_price` | `numeric(12,2)` | **Semi-additive.** NULL exactly when call-for-price |
+| `pricing_status` | `varchar(20)` | `Listed` or `Call for price` |
+| `inventory_unit_count` | `smallint` | Always 1. **Semi-additive** |
+| `source_batch_id`, `source_file_name`, `source_file_digest`, `source_system` | | Lineage |
+
+**What `advertised_price` is not:** transaction price, acquisition cost, inventory
+investment, MSRP, or gross.
+
+**What the absence of a row means:** the listing was **removed from listing** on that
+capture. That is not *sold* — it can equally be a trade, a wholesale, a feed suppression
+or an error, and this data cannot tell them apart.
+
+Historical snapshots are **immutable**: the load inserts and never updates.
+
+### 40.5 Reporting views
+
+`vw_vehicle_listing_current`, `_summary`, `_model_mix`, `_price_completeness`,
+`_observation_span`, `_change`. Held separate from `MVP_REPORTING_VIEWS` in
+`arpi.constants`, because those 28 are what the SQL baseline measured and the semantic
+model binds to.
+
+`vw_vehicle_listing_change` emits six labels — New Listing, Still Listed, Removed From
+Listing, Price Increase, Price Reduction, Price Unchanged — and **there is no sold label,
+and there must never be one.**
+
+`vw_vehicle_listing_observation_span.days_observed_online` is **not days in stock.** Days
+in stock runs from acquisition and lives on `warehouse.fact_vehicle_inventory_snapshot`;
+this lane never sees it.

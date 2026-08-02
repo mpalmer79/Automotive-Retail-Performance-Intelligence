@@ -929,3 +929,60 @@ review notes cite the previous numbering:
 | §12 Analytical method | §6.2 |
 | §13 Planned versus Implemented | §10 |
 | §14 Maintenance | §12 |
+
+---
+
+## 13. What the sanitized public listing lane cannot support (ADR-0011)
+
+This lane exists to demonstrate ingestion, sanitization, validation, warehouse modelling
+and reporting against material ARPI did not author. Every limitation below is inherent to
+the source, not a gap somebody will close later.
+
+### 13.1 The six statements that bound every listing number
+
+1. **Advertised price is not transaction price.** It is what the listing displayed.
+2. **Advertised price is not acquisition cost or inventory investment.** This lane holds
+   no cost of any kind, so nothing here says anything about margin.
+3. **A listing that disappears was removed from listing, not sold.** It can equally be a
+   trade, a wholesale, a feed suppression or an error, and this data cannot distinguish
+   them. `reporting.vw_vehicle_listing_change` emits six labels and none is *Sold*.
+4. **Days observed online is not days in stock.** Days in stock runs from acquisition and
+   is recorded by the DMS. This lane never sees an acquisition. The span is additionally
+   bounded below by the capture cadence — a vehicle seen once has a span of zero, meaning
+   *seen once*, not *listed for no time* — and above by when observation began.
+5. **A listing does not prove physical presence or ownership.** It proves a listing was
+   visible.
+6. **A public reference snapshot does not establish current business performance.**
+
+### 13.2 Measures this lane will never define
+
+No sold units, inventory turn, days in stock, front/back/total gross, inventory
+investment, acquisition cost, reconditioning cost, carrying cost, return on investment or
+marketing attribution. Each needs data a listing snapshot does not carry.
+`arpi.constants.PROHIBITED_LISTING_MEASURES` records the list and
+`tests/unit/test_inventory_kpis.py` fails the build if one is defined as a KPI.
+
+### 13.3 Limitations of the controls themselves
+
+- **The real-VIN detector inspects shape, not provenance.** It flags any seventeen-character
+  string drawn from the ISO 3779 alphabet. It cannot tell a real VIN from a
+  seventeen-character coincidence, and it deliberately errs toward refusing.
+- **The prohibited-claim check reads text, not meaning.** It catches the specific
+  affirmative phrasings it knows. A novel way of saying "removed means sold" would pass it.
+- **Sanitization is verified on the output, not on the input.** ARPI can prove no original
+  VIN or URL reached a committed artifact. It cannot prove the private input was what the
+  operator said it was.
+- **One capture cannot exercise the change or observation-span views.** They are built,
+  constrained and tested against fabricated repeat captures; the committed artifact is a
+  single snapshot, so its span is zero for every vehicle and every row is New Listing.
+- **The lane's reconciliations are technical load evidence.** "The total advertised value
+  reconciles" means the number that reached the warehouse is the number the workbook
+  carried. It is not a valuation and not a finding.
+
+### 13.4 What is committed, and what is not
+
+Only the Granite Chevrolet capture of 2026-08-02 is committed. Neither the Granite Subaru
+nor the Granite Used Auto Center workbook exists in this repository, in any commit, on any
+branch. The code accepts either today and their governed paths are declared, but an
+artifact is admitted only once a real capture has been sanitized and reviewed — generating
+one in advance would put a file in the lane that has been through none of the controls.
