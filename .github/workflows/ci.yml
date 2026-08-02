@@ -339,6 +339,12 @@ jobs:
       # The PostgreSQL image is read from project.config.json rather than written
       # here, so this job cannot rehearse against an image Railway does not run.
       # -----------------------------------------------------------------------
+      # `docker run -d` returns as soon as the container is CREATED, so this step
+      # succeeding says nothing about whether PostgreSQL ever started. It is
+      # therefore followed by an explicit readiness gate rather than by the
+      # provisioning run — the first attempt at this job had no gate, the database
+      # never came up, and the only symptom was the provisioning script's own
+      # five-minute timeout with the container's logs nowhere in the output.
       - name: Start the PostgreSQL image the deployment declares
         run: |
           set -euo pipefail
@@ -352,6 +358,68 @@ jobs:
             -e POSTGRES_USER=postgres \
             -e POSTGRES_DB=railway \
             "${prefix}:18"
+
+      # Two probes, because they fail for different reasons and the difference is
+      # the diagnosis:
+      #
+      #   `docker exec ... pg_isready`   the server itself, with no network in the
+      #                                  way. Fails => the image did not start.
+      #   `pg_isready -h arpi-postgres`  from another container on the same
+      #                                  network, which is what the provisioning
+      #                                  job does. Fails while the first passes
+      #                                  => Docker DNS or the network, not the
+      #                                  database.
+      #
+      # Bounded at 120s. The server needs seconds; a minute of failure means it is
+      # not coming, and waiting the provisioning script's full five minutes only
+      # delays the same answer.
+      - name: Wait for PostgreSQL, and say why if it never comes
+        run: |
+          set -uo pipefail
+          ready=""
+          for _ in $(seq 1 60); do
+            if docker exec arpi-postgres pg_isready -q -U postgres -d railway 2>/dev/null; then
+              ready=yes
+              break
+            fi
+            sleep 2
+          done
+
+          if [ -z "$ready" ]; then
+            echo "::group::docker ps -a"
+            docker ps -a
+            echo "::endgroup::"
+            echo "::group::docker inspect state"
+            docker inspect --format '{{json .State}}' arpi-postgres || true
+            echo "::endgroup::"
+            echo "::group::docker logs arpi-postgres"
+            docker logs arpi-postgres 2>&1 | tail -100 || true
+            echo "::endgroup::"
+            echo "::error title=Rehearsal database never started::${POSTGRES_IMAGE} did not accept connections within 120s. Its logs are above."
+            exit 1
+          fi
+          echo "PostgreSQL is accepting connections inside the container."
+
+          # Now the same question from where the provisioning job will ask it.
+          if ! docker run --rm --network arpi-rehearsal --entrypoint pg_isready \
+                 arpi-database-setup:ci -q -h arpi-postgres -p 5432 -U postgres -d railway; then
+            echo "::group::docker network inspect"
+            docker network inspect arpi-rehearsal || true
+            echo "::endgroup::"
+            echo "::error title=Rehearsal database unreachable across the network::PostgreSQL is up inside its container but not reachable as 'arpi-postgres' from another container on arpi-rehearsal."
+            exit 1
+          fi
+          echo "PostgreSQL is reachable as arpi-postgres from the provisioning image."
+
+          # The point of using Railway's postgres-ssl image rather than a plain
+          # postgres container: the provisioning script refuses to create a
+          # credential over an unencrypted session, so TLS must be on before the
+          # rehearsal is worth running at all.
+          docker exec arpi-postgres psql -U postgres -d railway -tAc 'SHOW ssl' | grep -qx on || {
+            echo "::error title=TLS is not enabled::${POSTGRES_IMAGE} started without SSL, so the provisioning script's encryption assertion cannot be rehearsed."
+            exit 1
+          }
+          echo "TLS is enabled on the rehearsal database."
 
       # Twice, on purpose. deployment/railway/README.md section 6 states the run is
       # safe to repeat, and section 8's password rotation depends on it: step 2 is a
