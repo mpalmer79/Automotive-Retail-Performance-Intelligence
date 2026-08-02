@@ -188,8 +188,8 @@ export default function InventoryOperationsPage() {
             </Heading>
             <Text size="body">
               The right-hand column is the more important one. Every item in it is
-              enforced somewhere: in a view definition, in a column comment, in a CI
-              check that fails the build if a document contradicts it.
+              enforced somewhere: in a view definition, in a column comment, in a CI check
+              that fails the build if a document contradicts it.
             </Text>
           </Reveal>
           <Grid columns={2} gap={4}>
@@ -351,8 +351,8 @@ export default function InventoryOperationsPage() {
               <Heading level={2}>An Excel report a dealership can actually open</Heading>
               <Text size="body">
                 Built from the reporting views over PostgreSQL, never from the input
-                workbook. A report assembled from its own source would prove nothing
-                about the load. Formula-driven where a user will filter, values where two
+                workbook. A report assembled from its own source would prove nothing about
+                the load. Formula-driven where a user will filter, values where two
                 captures are being compared.
               </Text>
               <CodeLabel>{report.command}</CodeLabel>
@@ -555,9 +555,7 @@ function ArtifactCard({ artifact }: { artifact: InventoryArtifact }) {
         <ArtifactCount
           value={artifact.noOdometerUnits}
           label="Rows with no mileage"
-          detail={
-            artifact.noOdometerUnits > 0 ? 'Not rows with zero miles' : undefined
-          }
+          detail={artifact.noOdometerUnits > 0 ? 'Not rows with zero miles' : undefined}
         />
       </Grid>
       {artifact.coverage === 'partial' && artifact.coverageNote ? (
