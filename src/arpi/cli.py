@@ -33,6 +33,7 @@ from arpi.generation.calendar import generate_date_dataset
 from arpi.generation.dealership import generate_dealership_dataset
 from arpi.generation.writer import write_outputs
 from arpi.ingestion.database import database_available
+from arpi.inventory.cli import add_inventory_commands, dispatch_inventory_command, is_inventory_command
 from arpi.logging_config import configure_logging
 from arpi.pipeline import run_foundation
 from arpi.utilities.paths import resolve_output_dir
@@ -71,7 +72,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     Returns:
         A parser exposing the ``version``, ``check-config``, ``generate`` and
-        ``run-foundation`` subcommands.
+        ``run-foundation`` subcommands, plus the four Inventory Operations subcommands
+        registered by :func:`arpi.inventory.cli.add_inventory_commands`.
     """
     parser = argparse.ArgumentParser(
         prog="arpi",
@@ -146,6 +148,13 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Directory for the raw CSVs (default: <paths.raw_output_dir>/<profile>).",
     )
+
+    # The Inventory Operations lane registers its own four subcommands. They live in
+    # arpi.inventory.cli rather than here because they are a separate data lane with its
+    # own governance (ADR-0011), and because this module would otherwise grow a second
+    # personality. They still print through emit()/emit_error() below, so the rule that
+    # only arpi.cli writes to stdout is unchanged.
+    add_inventory_commands(subparsers, common)
     return parser
 
 
@@ -179,6 +188,15 @@ def _dispatch(args: argparse.Namespace) -> int:
         return _command_check_config(config)
     if args.command == "generate":
         return _command_generate(config, args.output_dir)
+    if is_inventory_command(args.command):
+        return dispatch_inventory_command(
+            args,
+            config,
+            emit=emit,
+            emit_error=emit_error,
+            exit_ok=EXIT_OK,
+            exit_failure=EXIT_FAILURE,
+        )
     return _command_run_foundation(config, args.load_database, args.output_dir)
 
 

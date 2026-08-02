@@ -1,0 +1,382 @@
+# =============================================================================
+# ARPI sanitized inventory listing workbook contract
+# =============================================================================
+# ONE DECLARATION, READ BY CODE, TESTS AND CI.
+#
+# Sheet names, header names, controlled vocabularies, classification values and
+# the approved file-naming convention are declared here exactly once. The
+# sanitizer writes to this contract, the validator refuses a workbook that
+# departs from it, the importer types its columns from it, the Excel exporter
+# reproduces it, and the repository check `scripts/check_reference_data.py`
+# enforces it against every committed artifact under `data/reference/`.
+#
+# Duplicating any of these strings into Python or into a test would create a
+# second copy able to disagree with the first, which is the drift this file
+# exists to stop.
+#
+# VERSIONED. `contract_version` changes whenever the sanitized shape changes.
+# A workbook records the version it was written against in its README sheet, so
+# a future contract can accept an older artifact deliberately rather than by
+# accident. Bumping it is an ADR-0011 review event, not a routine edit.
+# =============================================================================
+
+schema: arpi.inventory_listing_contract/1
+contract_version: "1.0"
+
+# ---------------------------------------------------------------------------
+# 1. Governed classification
+# ---------------------------------------------------------------------------
+# The ONLY value `Data Classification` may hold, and the only value the README
+# sheet's Classification field may hold. This lane is not synthetic and must
+# never be labelled as such; ADR-0011 section 3 is the decision.
+classification: Sanitized public reference data
+
+# The neutral feed label that replaces every row-level source URL. It names the
+# LANE, never the origin site.
+source_feed: sanitized_public_inventory_reference
+
+# The `source_system` value the warehouse stamps on every listing row.
+source_system: arpi_sanitized_public_reference
+
+# ---------------------------------------------------------------------------
+# 2. Sheets
+# ---------------------------------------------------------------------------
+# Order is significant: it is the order Excel shows and the order the exporter
+# writes. `Snapshot Changes` is conditional -- it exists only when a prior
+# snapshot for the same store is present -- so it is declared separately.
+sheets:
+  readme: README
+  summary: Summary
+  inventory: Inventory
+  model_summary: Model Summary
+
+optional_sheets:
+  snapshot_changes: Snapshot Changes
+
+# ---------------------------------------------------------------------------
+# 3. The Inventory sheet contract
+# ---------------------------------------------------------------------------
+# `header` is the exact spelling in row 1, in exact order. `column` is the
+# warehouse-side snake_case name. `type` drives both validation and the raw ->
+# staging cast. `required` means the cell may not be blank.
+#
+# Two columns are deliberately absent and must never appear: an original VIN
+# and a row-level source URL. `prohibited_headers` below makes their absence a
+# refusal rather than an omission nobody notices.
+inventory_columns:
+  - header: Source Record ID
+    column: source_record_id
+    type: text
+    required: true
+    max_length: 40
+  - header: Dealership ID
+    column: dealership_id
+    type: text
+    required: true
+    max_length: 16
+  - header: Store Name
+    column: store_name
+    type: text
+    required: true
+    max_length: 80
+  - header: Captured At
+    column: captured_at
+    type: date
+    required: true
+  - header: Source Batch ID
+    column: source_batch_id
+    type: text
+    required: true
+    max_length: 40
+  - header: Source Feed
+    column: source_feed
+    type: text
+    required: true
+    max_length: 60
+  - header: Condition
+    column: condition_type
+    type: text
+    required: true
+    max_length: 8
+  - header: Model Year
+    column: model_year
+    type: integer
+    required: true
+  - header: Make
+    column: make
+    type: text
+    required: true
+    max_length: 40
+  - header: Model
+    column: model
+    type: text
+    required: true
+    max_length: 60
+  - header: Trim
+    column: trim
+    type: text
+    required: false
+    max_length: 60
+  - header: Vehicle Display
+    column: vehicle_display
+    type: text
+    required: true
+    max_length: 160
+  - header: Odometer Miles
+    column: odometer_miles
+    type: integer
+    required: true
+  - header: Advertised Price
+    column: advertised_price
+    type: money
+    required: false
+  - header: Pricing Status
+    column: pricing_status
+    type: text
+    required: true
+    max_length: 20
+  - header: Synthetic Vehicle ID
+    column: synthetic_vehicle_id
+    type: text
+    required: true
+    max_length: 24
+  - header: Synthetic VIN
+    column: synthetic_vin
+    type: text
+    required: true
+    max_length: 24
+  - header: Inventory Unit Count
+    column: inventory_unit_count
+    type: integer
+    required: true
+  - header: Data Classification
+    column: data_classification
+    type: text
+    required: true
+    max_length: 40
+
+# Headers that must NOT appear on the Inventory sheet, however they are spelled.
+# Matching is case-insensitive on the normalised name (spaces, hyphens and dots
+# folded to underscores), so `Source-URL`, `source url` and `SOURCE_URL` are all
+# refused. `vin` is refused on its own; `synthetic_vin` is the approved column
+# and is exempted by exact match.
+prohibited_headers:
+  - vin
+  - vehicle_identification_number
+  - source_url
+  - url
+  - listing_url
+  - vdp_url
+  - dealer_name
+  - dealership_name
+  - street_address
+  - address
+  - stock_number
+
+# ---------------------------------------------------------------------------
+# 4. Controlled vocabularies
+# ---------------------------------------------------------------------------
+condition_values:
+  - New
+  - Used
+
+pricing_status_values:
+  - Listed
+  - Call for price
+
+# The pricing rule, stated once.
+#
+#   Listed          => advertised_price MUST be present and non-negative.
+#   Call for price  => advertised_price MUST be absent.
+#
+# `call_for_price_allows_price` is the explicit, documented switch section 5 of
+# the assignment requires. It is FALSE: a call-for-price row carrying a number
+# is a contradiction between the two columns, and admitting it would let a
+# pricing-completeness percentage count a vehicle in both buckets.
+pricing_rules:
+  listed_requires_price: true
+  call_for_price_allows_price: false
+
+# ---------------------------------------------------------------------------
+# 5. Governed numeric ranges
+# ---------------------------------------------------------------------------
+# The model-year window is deliberately wide. A listing snapshot legitimately
+# carries next year's models -- the committed Granite Chevrolet artifact holds
+# 2027 units captured in 2026 -- and an aged used unit can be old. The range
+# exists to catch a transposed or garbage year, not to express an opinion about
+# what a store should stock.
+model_year:
+  minimum: 1980
+  maximum: 2100
+  # A model year more than this many years beyond the snapshot year is refused.
+  # Two model years ahead of the capture year is normal ordering practice.
+  years_ahead_of_capture: 2
+
+odometer_miles:
+  minimum: 0
+  maximum: 1000000
+
+advertised_price:
+  minimum: 0
+  maximum: 10000000
+
+inventory_unit_count:
+  exactly: 1
+
+# ---------------------------------------------------------------------------
+# 6. Synthetic identity
+# ---------------------------------------------------------------------------
+# The group-stable identity algorithm, declared so the sanitizer, the validator
+# and the tests cannot disagree about it.
+#
+#   digest = SHA256(UTF8("ARPI|GSA|" + upper(trim(original VIN)))) rendered as
+#            UPPERCASE hexadecimal
+#   synthetic_vehicle_id = "VEH-" + digest[:12]
+#   synthetic_vin        = "ARPI" + digest[:13]
+#
+# The `ARPI` prefix is what makes the result provably NOT a real VIN: `I` is not
+# a permitted VIN character, so no ARPI-prefixed identifier can ever pass a real
+# VIN check-digit validation. That is the point -- see ADR-0005.
+identity:
+  namespace: "ARPI|GSA|"
+  vehicle_id_prefix: "VEH-"
+  vehicle_id_digest_length: 12
+  vin_prefix: ARPI
+  vin_digest_length: 13
+
+# ---------------------------------------------------------------------------
+# 7. The private input contract
+# ---------------------------------------------------------------------------
+# The shape the sanitizer accepts on the way IN. These headers name columns that
+# hold identifying values; nothing here is ever committed. The sanitizer reads
+# this to validate the private workbook before it transforms anything, so a
+# malformed private file fails with a redacted message rather than half-writing
+# a sanitized one.
+private_input_columns:
+  - header: Condition
+    role: condition
+    required: true
+  - header: Year
+    role: model_year
+    required: true
+  - header: Make
+    role: make
+    required: true
+  - header: Model
+    role: model
+    required: true
+  - header: Trim
+    role: trim
+    required: false
+  - header: Vehicle
+    role: vehicle_display
+    required: false
+  - header: Mileage
+    role: odometer_miles
+    required: true
+  - header: Price
+    role: advertised_price
+    required: false
+  - header: Price Status
+    role: pricing_status
+    required: true
+  - header: VIN
+    role: original_vin
+    required: true
+  - header: Source URL
+    role: source_url
+    required: false
+  - header: Captured
+    role: captured_at
+    required: false
+
+# ---------------------------------------------------------------------------
+# 8. File naming
+# ---------------------------------------------------------------------------
+# THE APPROVED ARPI PORTFOLIO CONVENTION, AND IT USES UNDERSCORES.
+#
+#   ARPI_<Store_Descriptor>_Inventory_Sanitized_<yyyy-mm-dd>.xlsx
+#
+# Underscores separate filename words. Hyphens appear ONLY inside the ISO date.
+# The canonical Granite Chevrolet artifact is
+# `ARPI_Granite_Chevrolet_Inventory_Sanitized_2026-08-02.xlsx` and that spelling
+# is final: it is not renamed, not lowercased, not hyphenated, and no duplicate
+# or alias copy of it exists. ADR-0011 section 8 records the decision, and
+# changing it requires an explicit migration rather than an informal rename.
+naming:
+  sanitized_pattern: "ARPI_{store_descriptor}_Inventory_Sanitized_{captured_at}.xlsx"
+  report_pattern: "ARPI_{store_descriptor}_Inventory_Report_{captured_at}.xlsx"
+  # Anchored regexes the CI check applies to every committed reference workbook.
+  #
+  # SINGLE-QUOTED on purpose. These are read by two parsers: PyYAML in the
+  # application, and the small line scanner in scripts/check_reference_data.py,
+  # which runs in CI on a bare interpreter with nothing installed. A
+  # double-quoted YAML scalar would need backslash unescaping that the second
+  # parser does not do, and the two would then compile different patterns while
+  # both looking correct. Single quotes are literal in YAML, so both read the
+  # same characters.
+  sanitized_regex: '^ARPI_[A-Za-z0-9]+(?:_[A-Za-z0-9]+)*_Inventory_Sanitized_\d{4}-\d{2}-\d{2}\.xlsx$'
+  report_regex: '^ARPI_[A-Za-z0-9]+(?:_[A-Za-z0-9]+)*_Inventory_Report_\d{4}-\d{2}-\d{2}\.xlsx$'
+  # data/reference/inventory/<dealership-id lowercased>/<yyyy-mm-dd>/<file>.xlsx
+  reference_root: data/reference/inventory
+  report_root: artifacts/inventory
+  date_format: "%Y-%m-%d"
+
+# The store descriptor used in a derived filename, per dealership. Taken from
+# the store's short name with spaces replaced by underscores, and declared here
+# so a rename in the registry cannot silently rename a committed artifact.
+store_descriptors:
+  GSA-001: Granite_Chevrolet
+  GSA-002: Granite_Subaru
+  GSA-003: Granite_Used_Auto
+
+# ---------------------------------------------------------------------------
+# 9. The canonical committed artifacts
+# ---------------------------------------------------------------------------
+# Every sanitized reference workbook that is committed, declared explicitly.
+# `scripts/check_reference_data.py` fails when a file exists under
+# `data/reference/inventory/` that is not listed here, and when a listed file is
+# missing -- so neither an undeclared duplicate nor a silent deletion can pass.
+canonical_artifacts:
+  - dealership_id: GSA-001
+    captured_at: "2026-08-02"
+    file_name: ARPI_Granite_Chevrolet_Inventory_Sanitized_2026-08-02.xlsx
+    path: >-
+      data/reference/inventory/gsa-001/2026-08-02/ARPI_Granite_Chevrolet_Inventory_Sanitized_2026-08-02.xlsx
+    row_count: 199
+    # SHA-256 of the committed bytes. Recorded so a silent replacement of the
+    # artifact is a test failure rather than a diff nobody reads.
+    sha256: eaa366b5e3ddc0473b8ac7b4abd021e361b0f9daddc1b46883c442da78700ecb
+    # DECLARED, REVIEWED DEVIATION -- see data/reference/README.md section 9.
+    #
+    # This workbook was produced by hand BEFORE the naming decision was made, and
+    # its README sheet's "Recommended repository path" cell still suggests the
+    # hyphenated lowercase name that was under consideration at the time. The
+    # committed FILE has always carried the approved underscore name, at the
+    # approved path, and that is what every document, test, CI check and portfolio
+    # link uses.
+    #
+    # The cell is a stale hint inside a data value, not a repository path and not
+    # documentation. It is declared here rather than corrected in place because
+    # rewriting the artifact's bytes to fix one string would discard the Excel
+    # conditional-formatting parts openpyxl cannot round-trip, and would change the
+    # digest of the evidence this pull request was asked to preserve.
+    #
+    # The rule is enforced for everything else: a NEW workbook whose recommended
+    # path disagrees with its own canonical path is refused (DQ-LST-016), because
+    # the exception below is keyed to this artifact's digest and to nothing else.
+    # The sanitizer writes the approved path, so the next capture -- Chevrolet or
+    # Subaru -- carries the correct hint with no exception at all.
+    legacy_path_hint: data/reference/inventory/gsa-001/2026-08-02/granite-chevrolet-inventory-sanitized.xlsx
+
+# ---------------------------------------------------------------------------
+# 10. Rejection codes
+# ---------------------------------------------------------------------------
+# Reused from the register in docs/source-to-target/README.md section 4 so the
+# listing lane reports rejections in the same vocabulary as every other entity.
+rejection_codes:
+  type: REJ-TYPE-001
+  null: REJ-NULL-001
+  domain: REJ-DOMAIN-001
+  key: REJ-KEY-001
+  referential: REJ-REF-001
