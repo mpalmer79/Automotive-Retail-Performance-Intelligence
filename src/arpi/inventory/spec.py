@@ -102,6 +102,39 @@ INVENTORY_LISTING_SOURCE: Final = ReferenceSourceSpec(
 #: Every sanitized reference source ARPI can import.
 REFERENCE_SOURCE_SPECS: Final[tuple[ReferenceSourceSpec, ...]] = (INVENTORY_LISTING_SOURCE,)
 
+#: Every SQL file under ``sql/`` that belongs to this lane rather than to the MVP
+#: warehouse, declared once and read by machine.
+#:
+#: WHY THIS LIST EXISTS
+#: --------------------
+#: Several checks count SQL objects and mean the MVP by it: the capability register's
+#: warehouse block ("five fact DDL scripts", "twenty-eight reporting views"), the
+#: portfolio manifest generator, and the semantic-model expectation file. Those counts are
+#: measured against a specific baseline run and must not move because a second, separately
+#: governed lane appeared beside them.
+#:
+#: ``scripts/project_capabilities.py`` and ``portfolio/scripts/generate-project-manifest.ts``
+#: both read this tuple to subtract the lane from the MVP counts and report it on its own.
+#: Declaring it here -- next to the spec that owns the scripts -- rather than in either
+#: consumer is what stops the two from disagreeing.
+INVENTORY_LANE_SQL_FILES: Final[tuple[str, ...]] = (
+    "01_raw/14_raw_inventory_listing_snapshot_load.sql",
+    "02_staging/15_stg_inventory_listing_snapshot.sql",
+    "03_dimensions/08_dim_observed_vehicle.sql",
+    "03_dimensions/18_dim_observed_vehicle_load.sql",
+    "04_facts/05_fact_vehicle_listing_snapshot.sql",
+    "04_facts/15_fact_vehicle_listing_snapshot_load.sql",
+    "05_reporting/33_vw_vehicle_listing_current.sql",
+    "05_reporting/34_vw_vehicle_listing_summary.sql",
+    "05_reporting/35_vw_vehicle_listing_model_mix.sql",
+    "05_reporting/36_vw_vehicle_listing_price_completeness.sql",
+    "05_reporting/37_vw_vehicle_listing_observation_span.sql",
+    "05_reporting/38_vw_vehicle_listing_change.sql",
+    "06_indexes/02_inventory_listing_indexes.sql",
+    "08_validation/12_recon_inventory_listing.sql",
+    "09_migrations/0002_add_inventory_listing_objects.sql",
+)
+
 #: The registry keyed by entity name.
 _BY_ENTITY: Final[dict[str, ReferenceSourceSpec]] = {
     spec.source_entity: spec for spec in REFERENCE_SOURCE_SPECS

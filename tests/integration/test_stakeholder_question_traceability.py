@@ -18,7 +18,7 @@ from pathlib import Path
 
 import pytest
 
-from arpi.constants import KPI_IDS, REPORTING_VIEWS
+from arpi.constants import INVENTORY_LISTING_KPI_IDS, KPI_IDS, REPORTING_VIEWS
 
 pytestmark = pytest.mark.integration
 
@@ -55,9 +55,18 @@ def matrix_text() -> str:
     return MATRIX.read_text(encoding="utf-8")
 
 
+#: Every governed KPI identifier, MVP and Inventory Listings alike.
+#:
+#: The two tuples are separate in ``arpi.constants`` because only the first is implemented
+#: as DAX and counted against the semantic model's expectation file. Traceability is not a
+#: property of the semantic model, though -- it is a property of the catalogue -- so both
+#: sets are held to it here.
+ALL_KPI_IDS: tuple[str, ...] = (*KPI_IDS, *INVENTORY_LISTING_KPI_IDS)
+
+
 def test_every_kpi_is_cited_by_at_least_one_question(matrix_text: str) -> None:
     """KPI_CATALOG.md §37: a KPI with no business question behind it fails Gate 4."""
-    missing = [kpi_id for kpi_id in KPI_IDS if kpi_id not in matrix_text]
+    missing = [kpi_id for kpi_id in ALL_KPI_IDS if kpi_id not in matrix_text]
     assert not missing, (
         f"KPI identifiers cited by no stakeholder question: {missing}. Either add a "
         "question that needs them, or list them explicitly as unattributed in section 5."
@@ -80,7 +89,7 @@ def test_every_research_persona_appears(matrix_text: str, persona: str) -> None:
 def test_every_cited_kpi_identifier_resolves_to_a_catalogued_kpi(matrix_text: str) -> None:
     """The other direction: the matrix may not invent an identifier."""
     cited = set(re.findall(r"KPI-[A-Z]{3}-\d{3}", matrix_text))
-    unknown = sorted(cited - set(KPI_IDS))
+    unknown = sorted(cited - set(ALL_KPI_IDS))
     assert not unknown, f"the matrix cites KPI identifiers that do not exist: {unknown}"
 
 

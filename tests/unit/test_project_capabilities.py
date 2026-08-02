@@ -60,6 +60,16 @@ REQUIRED_FACT_LOADS = (
     "14_fact_marketing_spend_load.sql",
 )
 
+#: The sanitized listing lane's fact-load script, declared by arpi.inventory.spec rather
+#: than by arpi.ingestion.spec. It is spelled out here for the same reason as the five
+#: above, and kept separate because the fixtures below describe an MVP-shaped repository.
+LISTING_FACT_LOAD = "15_fact_vehicle_listing_snapshot_load.sql"
+
+#: Every fact-load script the repository actually holds, across both registries. The
+#: contract is that the two sets are equal: a script no registry names is never executed,
+#: so it would sit in the tree looking loaded.
+ALL_FACT_LOADS = tuple(sorted((*REQUIRED_FACT_LOADS, LISTING_FACT_LOAD)))
+
 PENDING = EngineEvidence(
     path="powerbi/validation/fabric_validation_results.json",
     exists=True,
@@ -358,9 +368,17 @@ def test_the_repository_requires_the_facts_it_declares(evidence: DerivedEvidence
 
 
 def test_the_required_fact_set_is_read_from_the_registry(evidence: DerivedEvidence) -> None:
-    """Derived from source, so a renamed script cannot pass by editing one side."""
-    assert evidence.required_fact_load_scripts == REQUIRED_FACT_LOADS
-    assert evidence.present_fact_load_scripts == REQUIRED_FACT_LOADS
+    """Derived from source, so a renamed script cannot pass by editing one side.
+
+    Both ingestion registries contribute: arpi.ingestion.spec declares the five MVP fact
+    loads the pipeline runs on every execution, and arpi.inventory.spec declares the
+    sanitized listing lane's, which a workbook import runs on its own cadence. The
+    contract holds across both, because a script neither registry names is never executed.
+    """
+    assert evidence.required_fact_load_scripts == ALL_FACT_LOADS
+    assert evidence.present_fact_load_scripts == ALL_FACT_LOADS
+    assert set(REQUIRED_FACT_LOADS) < set(evidence.required_fact_load_scripts)
+    assert LISTING_FACT_LOAD in evidence.required_fact_load_scripts
     assert evidence.fact_discovery_fails_closed is True
 
 

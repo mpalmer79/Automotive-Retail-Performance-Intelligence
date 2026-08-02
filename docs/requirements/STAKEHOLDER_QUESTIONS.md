@@ -45,12 +45,13 @@ works is a marketing document.
 
 | Check | Result |
 |---|---|
-| Questions recorded | 35 |
+| Questions recorded | 39 |
 | Personas covered | 12 of 12 from `docs/research.md` §11.3 |
-| Questions the MVP can answer today | 31 |
+| Questions the MVP can answer today | 35 |
 | Questions the MVP cannot answer, recorded with the blocking fact | 4 |
-| KPIs traced to at least one question | **29 of 29** — no unattributed KPI |
-| Reporting views supporting at least one question | **28 of 28** — no orphan view |
+| MVP KPIs traced to at least one question | **29 of 29** — no unattributed KPI |
+| Inventory Listings KPIs traced to at least one question | **22 of 22** — no unattributed KPI |
+| Reporting views supporting at least one question | **34 of 34** — no orphan view |
 
 ### 3.1 Reconciling the two persona lists
 
@@ -628,15 +629,79 @@ list the acceptance criteria bind to.
 | **Interpretation caution** | Geography is **county and market area only** -- no street address, postal code or coordinate exists anywhere in ARPI -- and age is a band. Cohort analysis at this resolution supports comparison, not targeting of individuals, and must never be presented as if it identified people. Small cohorts also produce unstable per-unit gross figures; publish the unit count beside the ratio. |
 | **Implementation status** | **Implemented** |
 
+### SQ-36 — General manager
+
+| Field | Value |
+|---|---|
+| **Persona** | General manager |
+| **Business question** | *What is actually visible to a shopper on our website today, and how much of it shows a price?* |
+| **Required dimensions** | `dim_date`, `dim_dealership`, `dim_observed_vehicle` |
+| **Required facts** | `fact_vehicle_listing_snapshot` |
+| **KPI IDs** | `KPI-LST-001`, `KPI-LST-002`, `KPI-LST-003`, `KPI-LST-004`, `KPI-LST-005`, `KPI-LST-006`, `KPI-LST-022` |
+| **Reporting view** | `reporting.vw_vehicle_listing_summary`, `reporting.vw_vehicle_listing_current`, `reporting.vw_vehicle_listing_price_completeness` |
+| **Intended future report page** | 8. Inventory Operations |
+| **Decision enabled** | Where to direct merchandising effort: which vehicles a shopper cannot price without calling. |
+| **Interpretation caution** | This is a **sanitized public listing snapshot** (ADR-0011), not DMS inventory. A row proves a listing was visible, not that the vehicle was on the ground or owned. Call-for-price is a legitimate merchandising choice for pre-order, fleet and in-transit units, so a low completeness figure is a prompt to look, not a defect. `KPI-LST-022` is published beside every figure because a stale capture must never be read as a current position. |
+| **Implementation status** | **Implemented** |
+
+
+### SQ-37 — Used-car manager
+
+| Field | Value |
+|---|---|
+| **Persona** | Used-car manager |
+| **Business question** | *What is our advertised price spread by model and trim, and where are we the outlier?* |
+| **Required dimensions** | `dim_date`, `dim_dealership`, `dim_observed_vehicle` |
+| **Required facts** | `fact_vehicle_listing_snapshot` |
+| **KPI IDs** | `KPI-LST-007`, `KPI-LST-008`, `KPI-LST-009`, `KPI-LST-010`, `KPI-LST-011`, `KPI-LST-012`, `KPI-LST-013` |
+| **Reporting view** | `reporting.vw_vehicle_listing_model_mix`, `reporting.vw_vehicle_listing_summary` |
+| **Intended future report page** | 8. Inventory Operations |
+| **Decision enabled** | Which model and trim groups to re-shop against the market. |
+| **Interpretation caution** | Advertised price is **not** transaction price, acquisition cost, inventory investment, MSRP or gross, so neither the store-level total (`KPI-LST-007`) nor any spread says anything about margin — this lane holds no cost of any kind. Call-for-price units are excluded from every price statistic, and the count of them is published beside each one. A group of one vehicle produces an "average" equal to that vehicle; read every statistic with its unit count. |
+| **Implementation status** | **Implemented** |
+
+
+### SQ-38 — General sales manager
+
+| Field | Value |
+|---|---|
+| **Persona** | General sales manager |
+| **Business question** | *What changed on the website since the last capture — what appeared, what came off, and what got repriced?* |
+| **Required dimensions** | `dim_date`, `dim_dealership`, `dim_observed_vehicle` |
+| **Required facts** | `fact_vehicle_listing_snapshot` |
+| **KPI IDs** | `KPI-LST-014`, `KPI-LST-015`, `KPI-LST-016`, `KPI-LST-017`, `KPI-LST-018` |
+| **Reporting view** | `reporting.vw_vehicle_listing_change` |
+| **Intended future report page** | 8. Inventory Operations |
+| **Decision enabled** | Whether merchandising activity is happening at the pace the store intends. |
+| **Interpretation caution** | **A removed listing is not a sale.** It can reflect a sale, a trade, a wholesale, a feed suppression or an error, and this data cannot tell them apart — `reporting.vw_vehicle_listing_change` emits six labels and none of them is *Sold*. "New Listing" means newly **observed**, not newly acquired. Every count must be read with `days_between_snapshots`: eleven price reductions means something different over one day than over one quarter. On a store's first capture there is nothing to compare against, and the view says so rather than returning an empty result. |
+| **Implementation status** | **Implemented** |
+
+
+### SQ-39 — Regional operations manager
+
+| Field | Value |
+|---|---|
+| **Persona** | Regional operations manager |
+| **Business question** | *How long has each advertised vehicle been visible online, and which ones have been sitting there longest?* |
+| **Required dimensions** | `dim_date`, `dim_dealership`, `dim_observed_vehicle` |
+| **Required facts** | `fact_vehicle_listing_snapshot` |
+| **KPI IDs** | `KPI-LST-019`, `KPI-LST-020`, `KPI-LST-021` |
+| **Reporting view** | `reporting.vw_vehicle_listing_observation_span` |
+| **Intended future report page** | 8. Inventory Operations |
+| **Decision enabled** | Which advertised units to review first for merchandising attention. |
+| **Interpretation caution** | **Days observed online is not days in stock.** Days in stock runs from acquisition, is recorded by the DMS, and lives on `warehouse.fact_vehicle_inventory_snapshot`; this lane cannot produce it because it never sees an acquisition. The span is bounded below by the capture cadence — a vehicle seen once has a span of zero, meaning "seen once", not "listed for no time" — and above by when observation began. It must be read with `snapshot_count` and `observation_gap_days`, because a 30-day span built from two captures is not the evidence a 30-day span built from thirty captures is. |
+| **Implementation status** | **Implemented** |
+
 ---
 
 ## 5. Unattributed KPIs and orphan views
 
-**None.** All 29 KPI identifiers in [KPI_CATALOG.md](../../KPI_CATALOG.md) are cited by at least one
-question above, and all 28 views in the `reporting` schema support at least one. Both directions are
-asserted by `tests/integration/test_stakeholder_question_traceability.py`, which reads
-`arpi.constants.KPI_IDS` and `arpi.constants.REPORTING_VIEWS` and fails if either gains a member this
-document does not cite.
+**None.** All 29 MVP KPI identifiers and all 22 Inventory Listings KPI identifiers in
+[KPI_CATALOG.md](../../KPI_CATALOG.md) are cited by at least one question above, and all 34 views in the
+`reporting` schema support at least one. Both directions are asserted by
+`tests/integration/test_stakeholder_question_traceability.py`, which reads `arpi.constants.KPI_IDS`,
+`arpi.constants.INVENTORY_LISTING_KPI_IDS` and `arpi.constants.REPORTING_VIEWS` and fails if any of them
+gains a member this document does not cite.
 
 Eight dimension views and four operational views own no KPI. They are cited here through the questions they
 make answerable — a dimension supplies grain and context, and the data-quality views answer the question

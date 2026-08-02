@@ -695,8 +695,15 @@ OPERATIONAL_REPORTING_VIEWS: Final[tuple[str, ...]] = (
     "vw_data_quality_summary",
 )
 
-#: Every view the ``reporting`` schema is expected to contain, and nothing else.
-REPORTING_VIEWS: Final[tuple[str, ...]] = tuple(
+#: The MVP reporting surface: the twenty-eight views the semantic model may read.
+#:
+#: This tuple is what ``powerbi/validation/sql_baseline_metadata.json`` describes, what
+#: the semantic-model documentation binds to, and what the portfolio's "reporting views"
+#: count means. It is held separate from :data:`REPORTING_VIEWS` for exactly that reason:
+#: the Inventory Operations views below are real reporting views in the same schema, and
+#: folding them in would silently change a number that was measured against a specific
+#: baseline run.
+MVP_REPORTING_VIEWS: Final[tuple[str, ...]] = tuple(
     sorted(
         {
             *MVP_DIMENSION_VIEWS,
@@ -705,6 +712,28 @@ REPORTING_VIEWS: Final[tuple[str, ...]] = tuple(
             *OPERATIONAL_REPORTING_VIEWS,
         }
     )
+)
+
+#: The ARPI Inventory Operations views, over the sanitized public listing lane (ADR-0011).
+#:
+#: Separate from the MVP surface on purpose. These read
+#: ``warehouse.fact_vehicle_listing_snapshot`` and ``warehouse.dim_observed_vehicle``,
+#: which are populated by a workbook import rather than by a pipeline run, and they are
+#: NOT part of the current semantic model -- that model is awaiting real-engine validation
+#: and adding tables to it would change the validation target. See section 14 of the
+#: Inventory Operations increment and ``docs/requirements/PHASE_2_BACKLOG.md``.
+INVENTORY_LISTING_VIEWS: Final[tuple[str, ...]] = (
+    "vw_vehicle_listing_current",
+    "vw_vehicle_listing_summary",
+    "vw_vehicle_listing_model_mix",
+    "vw_vehicle_listing_price_completeness",
+    "vw_vehicle_listing_observation_span",
+    "vw_vehicle_listing_change",
+)
+
+#: Every view the ``reporting`` schema is expected to contain, and nothing else.
+REPORTING_VIEWS: Final[tuple[str, ...]] = tuple(
+    sorted({*MVP_REPORTING_VIEWS, *INVENTORY_LISTING_VIEWS})
 )
 
 # ---------------------------------------------------------------------------------------
@@ -785,6 +814,99 @@ KPI_VIEW_OWNERSHIP: Final[Mapping[str, tuple[str, ...]]] = MappingProxyType(
         "KPI-MKT-002": ("vw_marketing_performance",),
         "KPI-MKT-003": ("vw_marketing_performance",),
     }
+)
+
+# ---------------------------------------------------------------------------------------
+# The Inventory Listings KPI domain (ADR-0011)
+# ---------------------------------------------------------------------------------------
+#: Every governed KPI over the sanitized public listing lane, in KPI_CATALOG.md order.
+#:
+#: HELD SEPARATE FROM :data:`KPI_IDS` ON PURPOSE. ``KPI_IDS`` is the MVP set the semantic
+#: model implements as DAX measures, and ``powerbi/validation/model_expectations.json``
+#: asserts its size against the measures that actually exist. These KPIs are governed and
+#: documented but are NOT semantic-model measures: the current model is awaiting
+#: real-engine validation, and adding measures before that validation would change what is
+#: being validated. Counting them in ``KPI_IDS`` would make the model's own expectation
+#: file wrong the moment this tuple grew.
+#:
+#: WHAT IS DELIBERATELY ABSENT, AND WHY IT MUST STAY ABSENT
+#: -------------------------------------------------------
+#: There is no sold-units KPI, no inventory turn, no days in stock, no gross, no inventory
+#: investment, no acquisition or reconditioning cost, no carrying cost, no ROI and no
+#: marketing attribution. Each of those needs data a public listing snapshot does not
+#: carry, and a KPI defined over data that does not exist is a number somebody will
+#: eventually quote.
+INVENTORY_LISTING_KPI_IDS: Final[tuple[str, ...]] = (
+    "KPI-LST-001",  # Observed listing units
+    "KPI-LST-002",  # New listing units
+    "KPI-LST-003",  # Used listing units
+    "KPI-LST-004",  # Vehicles with listed price
+    "KPI-LST-005",  # Call-for-price units
+    "KPI-LST-006",  # Pricing completeness percentage
+    "KPI-LST-007",  # Total advertised listing value
+    "KPI-LST-008",  # Average advertised price
+    "KPI-LST-009",  # Average advertised price by model
+    "KPI-LST-010",  # Minimum advertised price
+    "KPI-LST-011",  # Maximum advertised price
+    "KPI-LST-012",  # Model mix percentage
+    "KPI-LST-013",  # Trim mix percentage
+    "KPI-LST-014",  # New listings since prior snapshot
+    "KPI-LST-015",  # Removed listings since prior snapshot
+    "KPI-LST-016",  # Price reductions since prior snapshot
+    "KPI-LST-017",  # Price increases since prior snapshot
+    "KPI-LST-018",  # Average price change
+    "KPI-LST-019",  # First observed date
+    "KPI-LST-020",  # Last observed date
+    "KPI-LST-021",  # Days observed online
+    "KPI-LST-022",  # Snapshot freshness
+)
+
+#: The reporting view each Inventory Listings KPI is computed from.
+INVENTORY_LISTING_KPI_VIEW_OWNERSHIP: Final[Mapping[str, tuple[str, ...]]] = MappingProxyType(
+    {
+        "KPI-LST-001": ("vw_vehicle_listing_summary", "vw_vehicle_listing_current"),
+        "KPI-LST-002": ("vw_vehicle_listing_summary", "vw_vehicle_listing_current"),
+        "KPI-LST-003": ("vw_vehicle_listing_summary", "vw_vehicle_listing_current"),
+        "KPI-LST-004": ("vw_vehicle_listing_summary", "vw_vehicle_listing_price_completeness"),
+        "KPI-LST-005": ("vw_vehicle_listing_summary", "vw_vehicle_listing_price_completeness"),
+        "KPI-LST-006": ("vw_vehicle_listing_price_completeness", "vw_vehicle_listing_summary"),
+        "KPI-LST-007": ("vw_vehicle_listing_summary",),
+        "KPI-LST-008": ("vw_vehicle_listing_summary",),
+        "KPI-LST-009": ("vw_vehicle_listing_model_mix",),
+        "KPI-LST-010": ("vw_vehicle_listing_model_mix", "vw_vehicle_listing_summary"),
+        "KPI-LST-011": ("vw_vehicle_listing_model_mix", "vw_vehicle_listing_summary"),
+        "KPI-LST-012": ("vw_vehicle_listing_model_mix",),
+        "KPI-LST-013": ("vw_vehicle_listing_model_mix",),
+        "KPI-LST-014": ("vw_vehicle_listing_change",),
+        "KPI-LST-015": ("vw_vehicle_listing_change",),
+        "KPI-LST-016": ("vw_vehicle_listing_change",),
+        "KPI-LST-017": ("vw_vehicle_listing_change",),
+        "KPI-LST-018": ("vw_vehicle_listing_change",),
+        "KPI-LST-019": ("vw_vehicle_listing_observation_span",),
+        "KPI-LST-020": ("vw_vehicle_listing_observation_span",),
+        "KPI-LST-021": ("vw_vehicle_listing_observation_span",),
+        "KPI-LST-022": ("vw_vehicle_listing_summary", "vw_vehicle_listing_current"),
+    }
+)
+
+#: Measures that must NEVER be defined over the sanitized listing lane, because the source
+#: cannot supply them. Asserted by ``tests/unit/test_inventory_kpis.py`` against the
+#: catalogue's Inventory Listings section, so a future edit cannot quietly add one.
+PROHIBITED_LISTING_MEASURES: Final[tuple[str, ...]] = (
+    "sold units",
+    "units sold",
+    "inventory turn",
+    "days in stock",
+    "front gross",
+    "back gross",
+    "total gross",
+    "inventory investment",
+    "acquisition cost",
+    "reconditioning cost",
+    "carrying cost",
+    "floor plan",
+    "return on investment",
+    "marketing attribution",
 )
 
 # ---------------------------------------------------------------------------------------

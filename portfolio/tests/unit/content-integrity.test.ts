@@ -12,7 +12,7 @@
  * Enforces controls C2, C3 and C5 in
  * docs/architecture-decisions/ADR-0009-portfolio-ui-foundation-before-gate-2.md.
  */
-import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
@@ -29,6 +29,18 @@ function repoJson<T>(relative: string): T {
 
 function repoText(relative: string): string {
   return readFileSync(join(REPO, relative), 'utf8')
+}
+
+/**
+ * The SQL files the sanitized public listing lane owns, read from the one place that
+ * declares them: `arpi.inventory.spec.INVENTORY_LANE_SQL_FILES`. Restating the list
+ * here is exactly what would drift away from the declaration.
+ */
+function laneSqlFiles(): Set<string> {
+  const source = repoText('src/arpi/inventory/spec.py')
+  const block = /INVENTORY_LANE_SQL_FILES[^=]*=\s*\(([\s\S]*?)\)/.exec(source)
+  expect(block, 'INVENTORY_LANE_SQL_FILES is no longer declared').toBeTruthy()
+  return new Set([...block![1]!.matchAll(/"([^"]+\.sql)"/g)].map((m) => m[1]!))
 }
 
 /** Every .ts/.tsx file under src/, excluding the generated manifest. */
@@ -120,16 +132,36 @@ describe('every displayed count traces to repository evidence', () => {
   })
 
   it('counts the eight dimensions and five facts from the DDL on disk', () => {
+    // The sanitized public listing lane (ADR-0011) puts its own dimension and fact in
+    // these same directories and is deliberately NOT part of the MVP warehouse the
+    // semantic model reads. It is subtracted here exactly as the manifest generator
+    // subtracts it, from the one place that declares which files belong to it, so this
+    // test cannot pass by agreeing with a broken derivation.
+    const lane = laneSqlFiles()
     const dims = readdirSync(join(REPO, 'sql/03_dimensions')).filter(
-      (f) => f.endsWith('.sql') && !f.includes('_merge')
+      (f) =>
+        f.endsWith('.sql') && !f.includes('_merge') && !lane.has(`03_dimensions/${f}`)
     ).length
     const facts = readdirSync(join(REPO, 'sql/04_facts')).filter(
-      (f) => f.endsWith('.sql') && !f.includes('_load')
+      (f) => f.endsWith('.sql') && !f.includes('_load') && !lane.has(`04_facts/${f}`)
     ).length
     expect(manifest.counts.dimensions.value).toBe(dims)
     expect(manifest.counts.facts.value).toBe(facts)
     expect(dims).toBe(8)
     expect(facts).toBe(5)
+  })
+
+  it('keeps the sanitized listing lane out of the MVP counts and declares it once', () => {
+    const lane = laneSqlFiles()
+    expect(lane.size).toBeGreaterThan(0)
+    // One dimension, one fact, six reporting views. If the lane grows, this is the line
+    // that says so rather than a silently moved MVP count.
+    expect([...lane].filter((f) => f.startsWith('05_reporting/'))).toHaveLength(6)
+    expect(lane.has('03_dimensions/08_dim_observed_vehicle.sql')).toBe(true)
+    expect(lane.has('04_facts/05_fact_vehicle_listing_snapshot.sql')).toBe(true)
+    for (const file of lane) {
+      expect(existsSync(join(REPO, 'sql', file))).toBe(true)
+    }
   })
 
   it('gives every count at least one source path that exists', () => {
