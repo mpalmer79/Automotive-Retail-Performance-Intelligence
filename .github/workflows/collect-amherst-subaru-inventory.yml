@@ -1,6 +1,12 @@
 name: Collect Amherst Subaru inventory
 
 on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - scripts/collect_amherst_subaru_inventory.py
+      - .github/workflows/collect-amherst-subaru-inventory.yml
   push:
     branches:
       - agent/amherst-complete-inventory-2026-08-02
