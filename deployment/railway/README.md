@@ -343,13 +343,27 @@ one-time job quietly becomes a permanent service.
 11. records a non-secret provisioning result, including the Fabric handoff
     coordinates
 
-### Safe to rerun
+### Safe to rerun, and that is now rehearsed rather than asserted
 
 Every step is idempotent. The SQL sequence prints `already exists, skipping`; the
 login roles are created only when absent; the loader's Type 1 upserts fire only
 where an attribute differs and its Type 2 merges only where an `attribute_hash`
 changes, so a second run writes zero warehouse rows. Nothing drops, truncates or
 recreates anything.
+
+The `audit` layer is the deliberate exception, and it is not a violation of the
+above: `audit.pipeline_run`, `audit.validation_result` and `audit.reconciliation`
+are **append-only**, because an audit layer that forgot the previous run would
+not be one. The four reporting views over them therefore grow by a fixed quantum
+per run, and `scripts/verify_cloud_database.py` expects them as `quantum × runs`
+rather than as fixed totals.
+
+`ci.yml`'s `database-setup-image` job runs this image against Railway's own
+`postgres-ssl` image **twice**, and asserts that the second run exits zero, that
+every warehouse count is unchanged between the two, that all thirteen warehouse
+tables hold rows, and that neither generated password reached the log. Before
+that job existed, two defects in `provision_database.sh` survived every offline
+check in this repository — see section 10.
 
 `sql/99_local_reset.sql` is present in the image and is **never invoked**. It DROPs
 every ARPI schema, and refuses to run unless the database name begins `arpi_` —
@@ -511,6 +525,29 @@ file is deliberately absent rather than present and disabled.
 
 These run in `ci.yml`'s `deployment-tooling` job. They need no secret, so they run
 on a fork.
+
+### The provisioning run itself, rehearsed on every push
+
+`ci.yml`'s `database-setup-image` job builds
+`Dockerfile.database-setup` and then **runs it, twice, against
+`ghcr.io/railwayapp-templates/postgres-ssl:18`** — the image
+`project.config.json` declares Railway will run. It needs no secret either: the
+database is a throwaway container on a job-local network.
+
+It was added because a build is not a run, and the gap was not theoretical. Two
+defects lived in `provision_database.sh` until it was executed for the first
+time, and both were invisible to the type check, the specification validator, the
+IaC evaluation and review:
+
+| Defect | Effect |
+| ------ | ------ |
+| `$$` inside a **double-quoted** shell string is the shell's process ID, not a dollar-quote. The bootstrap-role probe therefore asked PostgreSQL for `rolsuper \|\| 12345/12345 \|\| rolcreaterole` | every run aborted at step 3 with "the connecting role holds neither superuser nor CREATEROLE" — against a role that held both. No schema would ever have been created |
+| The same mistake in the reconciliation report, wrapped in `\|\| printf 'unavailable'` | the query failed and the fallback hid it, reporting `unavailable` over a reconciliation set that might have been failing — the exact hiding the code comment beside it warns against |
+| `verify_cloud_database.py` expected fixed totals for four audit-history views | the **second** run failed over a byte-identical warehouse, making "safe to rerun" and the password rotation in section 8 unrunnable |
+
+The offline checks in the table above are still worth what they cost. They just
+cannot answer the question "does this script reach the end", and that question is
+the one a paid database is provisioned to answer.
 
 ### What is recorded, and what is proven
 
