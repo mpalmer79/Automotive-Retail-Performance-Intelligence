@@ -314,6 +314,13 @@ jobs:
             psql --version
             test -f uv.lock
             test -x ./provision_database.sh
+            # The run GENERATES the profile to data/raw/<profile>/ before loading
+            # it, and logs to logs/. Both are relative to the working directory,
+            # which WORKDIR creates as root while the image runs as `arpi`. Asserted
+            # as a writability check rather than as an ownership one, because what
+            # the run needs is the ability to write, however that is arranged.
+            test -w ./data
+            test -w ./logs
           '
 
       # The reason the image was changed at all: it must install what the lock says,

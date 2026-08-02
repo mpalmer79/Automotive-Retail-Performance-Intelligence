@@ -567,6 +567,7 @@ IaC evaluation and review:
 | `$$` inside a **double-quoted** shell string is the shell's process ID, not a dollar-quote. The bootstrap-role probe therefore asked PostgreSQL for `rolsuper \|\| 12345/12345 \|\| rolcreaterole` | every run aborted at step 3 with "the connecting role holds neither superuser nor CREATEROLE" — against a role that held both. No schema would ever have been created |
 | The same mistake in the reconciliation report, wrapped in `\|\| printf 'unavailable'` | the query failed and the fallback hid it, reporting `unavailable` over a reconciliation set that might have been failing — the exact hiding the code comment beside it warns against |
 | `verify_cloud_database.py` expected fixed totals for four audit-history views | the **second** run failed over a byte-identical warehouse, making "safe to rerun" and the password rotation in section 8 unrunnable |
+| `WORKDIR /app` creates the directory as root, and the image runs as `arpi`. `run-foundation` generates the profile's CSVs to `data/raw/<profile>/` before loading them | the run generated every row and passed all 114 data-quality checks, then died one step before writing anything, with `Permission denied: '/app/data'`. The image now creates `data/` and `logs/` owned by `arpi`, and the contract test asserts both are writable |
 
 The offline checks in the table above are still worth what they cost. They just
 cannot answer the question "does this script reach the end", and that question is
