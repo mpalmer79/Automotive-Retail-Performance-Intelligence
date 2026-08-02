@@ -13,6 +13,9 @@
 # JOBS
 # ----
 #   quality             formatting, lint, types, unit and data-quality tests
+#   floor               the minimum supported dependency versions still work
+#   database-setup-image  builds the Railway provisioning image AND rehearses the
+#                       provisioning run twice against Railway's postgres-ssl image
 #   repository-checks   naming, documentation links, secret safety net,
 #                       Power BI model structure, real-engine validation evidence
 #   deployment-tooling  Railway deployment specification, IaC declaration and the
@@ -260,9 +263,27 @@ jobs:
   #     point of the lock is that Railway and CI install the same graph, and an
   #     assertion nobody executes is not evidence.
   #
-  #     Build only. Running it needs a PostgreSQL superuser and Railway reference
-  #     variables, and the NO SECRETS RULE at the top of this file keeps that out of
-  #     CI. The integration job already proves the SQL sequence against a container.
+  #     It also REHEARSES the run. Building the image proves it can start; it does
+  #     not prove `provision_database.sh` reaches the end, and the difference was not
+  #     academic. Two defects lived in that script until a rehearsal was performed:
+  #     `$$` inside a double-quoted shell string is the shell's process ID, not a
+  #     dollar-quote, so the bootstrap-role probe compared `true1true` against a
+  #     `*/true` pattern and aborted every run before a single schema was created,
+  #     and the same mistake in the reconciliation report was swallowed by its own
+  #     `|| printf 'unavailable'` fallback. Neither is visible in a build, in a type
+  #     check, or in a review; both are unmissable the first time the script is run.
+  #
+  #     The rehearsal is deliberately NOT the integration job's `postgres:16` service
+  #     container. That container has no TLS, and the script asserts an encrypted
+  #     session from `pg_stat_ssl` before it will create a credential — so the one
+  #     property this job exists to rehearse is the one that container cannot
+  #     provide. It runs against `ghcr.io/railwayapp-templates/postgres-ssl`, the
+  #     image `deployment/railway/project.config.json` declares Railway will run.
+  #
+  #     STILL NO SECRETS. The database is a throwaway container on a job-local
+  #     network, and its credential is a literal for the same reason the integration
+  #     job's is: putting it in `secrets.*` would imply it protects something and
+  #     would stop this workflow running on a fork.
   # ---------------------------------------------------------------------------
   database-setup-image:
     name: Railway database-setup image
@@ -311,6 +332,132 @@ jobs:
           echo "lock:  $locked"
           echo "image: $built"
           test "$locked" = "$built"
+
+      # -----------------------------------------------------------------------
+      # The rehearsal.
+      #
+      # The PostgreSQL image is read from project.config.json rather than written
+      # here, so this job cannot rehearse against an image Railway does not run.
+      # -----------------------------------------------------------------------
+      - name: Start the PostgreSQL image the deployment declares
+        run: |
+          set -euo pipefail
+          prefix=$(python -c "import json;print(json.load(open('deployment/railway/project.config.json'))['services']['postgres']['expectedImagePrefix'])")
+          echo "POSTGRES_IMAGE=${prefix}:18" >> "$GITHUB_ENV"
+          docker network create arpi-rehearsal
+          # THROWAWAY CI-ONLY CONTAINER CREDENTIAL — NOT A SECRET. It exists for
+          # the lifetime of one job, on a container reachable only from that job.
+          docker run -d --name arpi-postgres --network arpi-rehearsal \
+            -e POSTGRES_PASSWORD=rehearsal \
+            -e POSTGRES_USER=postgres \
+            -e POSTGRES_DB=railway \
+            "${prefix}:18"
+
+      # Twice, on purpose. deployment/railway/README.md section 6 states the run is
+      # safe to repeat, and section 8's password rotation depends on it: step 2 is a
+      # redeploy of this job. A rerun that fails makes both procedures unrunnable,
+      # which is precisely what the verifier's fixed audit-history expectations did
+      # until they were re-expressed per run.
+      #
+      # `--network` puts the job on the same network as the database, the way
+      # Railway's private network does. The two role passwords are generated here
+      # and never printed, mirroring Railway's server-side generators.
+      #
+      # They are passed to `docker run` as `-e NAME` — the PASS-THROUGH form, which
+      # takes the value from this step's own environment — rather than as
+      # `-e NAME=value`. A value written into the argument list is visible in `ps`
+      # on the runner and in the command echo, which is the same rule
+      # `provision_database.sh` follows when it feeds psql on stdin.
+      - name: Rehearse the provisioning run, twice
+        env:
+          ARPI_PROFILE: development
+        run: |
+          set -euo pipefail
+          ARPI_PIPELINE_PASSWORD=$(python -c "import secrets;print(secrets.token_urlsafe(36))")
+          ARPI_FABRIC_PASSWORD=$(python -c "import secrets;print(secrets.token_urlsafe(36))")
+          export ARPI_PIPELINE_PASSWORD ARPI_FABRIC_PASSWORD
+          for run in 1 2; do
+            echo "::group::provisioning run ${run}"
+            docker run --rm --network arpi-rehearsal \
+              -e PGHOST=arpi-postgres -e PGPORT=5432 -e PGDATABASE=railway \
+              -e PGUSER=postgres -e PGPASSWORD=rehearsal \
+              -e ARPI_PIPELINE_PASSWORD \
+              -e ARPI_FABRIC_PASSWORD \
+              -e ARPI_PROFILE \
+              arpi-database-setup:ci > "run${run}.log" 2>&1 || {
+                tail -40 "run${run}.log"
+                echo "::error title=Provisioning rehearsal failed::Run ${run} did not complete."
+                exit 1
+              }
+            tail -30 "run${run}.log"
+            echo "::endgroup::"
+
+            # The two role passwords must not reach the deploy log. This is the
+            # assertion the script's "NO PASSWORD IS EVER PRINTED" header makes.
+            if grep -qF "$ARPI_PIPELINE_PASSWORD" "run${run}.log" || grep -qF "$ARPI_FABRIC_PASSWORD" "run${run}.log"; then
+              echo "::error title=Credential leaked::A generated password appeared in the run output."
+              exit 1
+            fi
+
+            # `unavailable` here is the reconciliation report failing silently — the
+            # second of the two defects this rehearsal was added to catch.
+            if grep -q 'reconciliations  *: unavailable' "run${run}.log"; then
+              echo "::error title=Reconciliation report unavailable::The reconciliation query failed and was swallowed."
+              exit 1
+            fi
+
+            # Real counts, not pg_stat_user_tables — its n_live_tup is an estimate
+            # maintained by autovacuum and can lag a load that just finished.
+            docker run --rm --network arpi-rehearsal \
+              -e PGPASSWORD=rehearsal --entrypoint psql arpi-database-setup:ci \
+              -h arpi-postgres -U postgres -d railway -tAc "
+                SELECT string_agg(t.name || '=' || t.rows, E'\n' ORDER BY t.name)
+                FROM (
+                  SELECT c.relname AS name,
+                         (xpath('/row/c/text()',
+                                query_to_xml(format('SELECT count(*) AS c FROM warehouse.%I',
+                                                    c.relname), false, true, '')))[1]::text::bigint AS rows
+                  FROM pg_class AS c
+                  JOIN pg_namespace AS n ON n.oid = c.relnamespace
+                  WHERE n.nspname = 'warehouse' AND c.relkind = 'r'
+                ) AS t" > "counts${run}.txt"
+            echo "warehouse after run ${run}:"
+            cat "counts${run}.txt"
+          done
+
+      # The warehouse is deterministic at seed 20250701, so a second load must leave
+      # every warehouse count exactly where the first one put it. Only the
+      # append-only audit layer may grow.
+      - name: Assert the warehouse is complete and the reload changed nothing
+        run: |
+          set -euo pipefail
+
+          if ! diff -u counts1.txt counts2.txt; then
+            echo "::error title=Reload was not deterministic::The second load changed a warehouse row count."
+            exit 1
+          fi
+
+          # Eight conformed dimensions and five MVP facts, each holding rows.
+          expected="dim_customer dim_date dim_dealership dim_employee dim_lead_source
+                    dim_marketing_campaign dim_vehicle dim_vehicle_model
+                    fact_appointment fact_lead fact_marketing_spend
+                    fact_vehicle_inventory_snapshot fact_vehicle_sale"
+          for table in $expected; do
+            line=$(grep "^${table}=" counts1.txt || true)
+            if [ -z "$line" ]; then
+              echo "::error title=Missing warehouse table::${table} does not exist."
+              exit 1
+            fi
+            if [ "${line#*=}" = "0" ]; then
+              echo "::error title=Empty warehouse table::${table} exists but holds no rows."
+              exit 1
+            fi
+          done
+          echo "13 of 13 warehouse tables present and populated, stable across two loads."
+
+      - name: Stop the rehearsal database
+        if: always()
+        run: docker rm -f arpi-postgres || true
 
   # ---------------------------------------------------------------------------
   # 2. repository-checks — repository hygiene, not code correctness.

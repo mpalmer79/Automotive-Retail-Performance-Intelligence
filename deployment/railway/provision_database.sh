@@ -114,9 +114,15 @@ esac
 # database with no security model, which is worse than one that was never built.
 # Checked first so the failure names the cause.
 # ---------------------------------------------------------------------------
+# The SQL is SINGLE-quoted, and that is load-bearing rather than a style choice.
+# Inside a double-quoted shell string `$$` is the shell's own process ID, so
+# `$$/$$` would reach PostgreSQL as `12345/12345` — an integer division that
+# evaluates to 1 and makes the report read `true1true`, which matches no `*/true`
+# case and fails a run whose role was in fact correct. Single quotes pass the
+# dollar-quoted separator through untouched. Nothing here needs shell expansion.
 step 'Checking the bootstrap role'
 role_report="$($PSQL -tAc \
-    "SELECT rolsuper::text || $$/$$ || rolcreaterole::text FROM pg_roles WHERE rolname = current_user")"
+    'SELECT rolsuper::text || $$/$$ || rolcreaterole::text FROM pg_roles WHERE rolname = current_user')"
 printf '  [ ok ] superuser/createrole = %s\n' "$role_report"
 case "$role_report" in
     */true) : ;;
@@ -249,8 +255,8 @@ printf '  schemas=%s reporting views=%s warehouse tables=%s\n' "$schemas" "$view
 # 8. The repository's own cloud verification
 #
 # Nine checks: server version, TLS, schemas, reporting view count, warehouse
-# tables populated, exact reporting row counts, reconciliations recorded with none
-# failing, the pipeline run's profile and seed, and reporter isolation. It never
+# tables populated, exact reporting row counts, reconciliations recorded per run with
+# none failing, the pipeline run's profile and seed, and reporter isolation. It never
 # prints a host, port, user, database name or password — its output is safe as it
 # stands.
 #
@@ -333,9 +339,16 @@ step 'Provisioning result'
 # `is_passing` is the view's own column name — a generated boolean over
 # `status = 'passed'`. Named explicitly rather than guessed, because a typo here
 # would silently report "unavailable" and hide a failing reconciliation.
-recon="$($PSQL -tAc "SELECT count(*)::text || $$ recorded, $$ ||
+#
+# SINGLE-quoted for the same reason as the bootstrap-role probe above: `$$` in a
+# double-quoted shell string is the shell's PID, so the dollar-quoted separators
+# would reach PostgreSQL as arithmetic, the query would fail, and `|| printf
+# 'unavailable'` would swallow it — reporting "unavailable" over a reconciliation
+# set that might have been failing. That is the exact hiding this comment warns
+# against.
+recon="$($PSQL -tAc 'SELECT count(*)::text || $$ recorded, $$ ||
     count(*) FILTER (WHERE NOT is_passing)::text || $$ failing$$
-    FROM reporting.vw_reconciliation_status" 2>/dev/null || printf 'unavailable')"
+    FROM reporting.vw_reconciliation_status' 2>/dev/null || printf 'unavailable')"
 
 printf '\n'
 printf 'ARPI provisioning result\n'

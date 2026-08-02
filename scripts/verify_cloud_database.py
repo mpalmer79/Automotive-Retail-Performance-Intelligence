@@ -128,6 +128,10 @@ EXPECTED_FACT_TABLES: tuple[str, ...] = (
 #: 2025-07-01 .. 2025-12-31 with three stores. These are equalities on purpose:
 #: the generator is deterministic, so a correct cloud load reproduces every one of
 #: them. A mismatch identifies which view diverged and by how much.
+#:
+#: Every view here is grained on the WAREHOUSE, so its row count is a property of
+#: the data and not of how many times the loader has been run. The audit-history
+#: views are in :data:`EXPECTED_REPORTING_ROW_COUNTS_PER_RUN` instead.
 EXPECTED_REPORTING_ROW_COUNTS: dict[str, int] = {
     "vw_calendar": 184,
     "vw_dealership": 3,
@@ -145,6 +149,28 @@ EXPECTED_REPORTING_ROW_COUNTS: dict[str, int] = {
     "vw_inventory_turn": 30,
     "vw_days_supply": 920,
     "vw_marketing_performance": 537,
+}
+
+#: Reporting views grained on the pipeline RUN rather than on the warehouse, and
+#: how many rows one run contributes to each.
+#:
+#: These are audit history. `audit.pipeline_run`, `audit.validation_result` and
+#: `audit.reconciliation` are append-only by design -- keeping the previous run is
+#: the point of an audit layer -- so every one of these views grows by a fixed
+#: quantum per run and shrinks for no reason at all.
+#:
+#: They were expected as fixed totals until a second provisioning run was actually
+#: performed. The warehouse was byte-identical, as the deterministic seed
+#: promises, and the verifier failed anyway on four views that had merely recorded
+#: a second run. That made two documented procedures unrunnable: "safe to rerun"
+#: in deployment/railway/README.md section 6, and the reporter-password rotation
+#: in section 8, whose step 2 is a redeploy of the provisioning job.
+#:
+#: The assertion is not weakened by scaling it. `observed == quantum * runs` still
+#: fails a run that recorded 57 of its 58 reconciliations, which is the defect
+#: these expectations exist to catch; it just no longer fails a run for the fact
+#: that an earlier one is still on record.
+EXPECTED_REPORTING_ROW_COUNTS_PER_RUN: dict[str, int] = {
     "vw_data_quality_trend": 9,
     "vw_reconciliation_status": 58,
     "vw_pipeline_run_summary": 1,
@@ -152,7 +178,8 @@ EXPECTED_REPORTING_ROW_COUNTS: dict[str, int] = {
 }
 
 #: Reconciliations the loader records on every run, and how many may fail.
-EXPECTED_RECONCILIATION_COUNT: int = 58
+#: Per run, for the reason recorded above.
+EXPECTED_RECONCILIATION_COUNT_PER_RUN: int = 58
 EXPECTED_FAILING_RECONCILIATION_COUNT: int = 0
 
 #: The profile and seed the cloud database must have been loaded from.
@@ -359,12 +386,31 @@ def _reporting_relations(cursor: Any) -> set[str]:
     return {str(row[0]) for row in cursor.fetchall()}
 
 
+def _recorded_pipeline_runs(cursor: Any) -> int:
+    """Return how many pipeline runs this database has on record, at least one.
+
+    The multiplier for every audit-history expectation. Read from `audit.pipeline_run`
+    rather than from the reporting view over it, so a defect in the view cannot make
+    the expectation it is checked against agree with it.
+
+    Floors at one so that a database whose audit layer is empty is measured against a
+    single run's worth of history and reported as short, rather than against zero rows
+    and reported as correct.
+    """
+    return max(1, int(scalar(cursor, "SELECT count(*) FROM audit.pipeline_run")))
+
+
 def check_reporting_row_counts(cursor: Any) -> CheckOutcome:
     """Fail on any reporting view whose row count is not exactly the expected one."""
     present = _reporting_relations(cursor)
+    runs = _recorded_pipeline_runs(cursor)
+    expectations = {
+        **EXPECTED_REPORTING_ROW_COUNTS,
+        **{view: quantum * runs for view, quantum in EXPECTED_REPORTING_ROW_COUNTS_PER_RUN.items()},
+    }
     findings: list[Finding] = []
     matched = 0
-    for view, expected in EXPECTED_REPORTING_ROW_COUNTS.items():
+    for view, expected in expectations.items():
         if view not in present:
             findings.append(
                 Finding(
@@ -383,12 +429,19 @@ def check_reporting_row_counts(cursor: Any) -> CheckOutcome:
                     "reporting-row-counts",
                     f"expected {expected} rows, found {observed}. The development profile is "
                     "deterministic at seed 20250701, so this is a difference in the load, not "
-                    "in the expectation.",
+                    "in the expectation."
+                    + (
+                        f" This view is grained on the pipeline run: the expectation is "
+                        f"{EXPECTED_REPORTING_ROW_COUNTS_PER_RUN[view]} per run over the "
+                        f"{runs} run(s) on record."
+                        if view in EXPECTED_REPORTING_ROW_COUNTS_PER_RUN
+                        else ""
+                    ),
                 )
             )
             continue
         matched += 1
-    return findings, f"{matched} of {len(EXPECTED_REPORTING_ROW_COUNTS)} views exact"
+    return findings, f"{matched} of {len(expectations)} views exact"
 
 
 def check_reconciliations(cursor: Any) -> CheckOutcome:
@@ -410,14 +463,18 @@ def check_reconciliations(cursor: Any) -> CheckOutcome:
         "FROM reporting.vw_reconciliation_status",
     )
     total, failing = (int(value) for value in cursor.fetchone())
+    runs = _recorded_pipeline_runs(cursor)
+    expected_total = EXPECTED_RECONCILIATION_COUNT_PER_RUN * runs
     findings: list[Finding] = []
-    if total != EXPECTED_RECONCILIATION_COUNT:
+    if total != expected_total:
         findings.append(
             Finding(
                 "reporting.vw_reconciliation_status",
                 "reconciliations",
-                f"expected {EXPECTED_RECONCILIATION_COUNT} recorded reconciliations, found "
-                f"{total}. A short count means the load did not record them all.",
+                f"expected {expected_total} recorded reconciliations "
+                f"({EXPECTED_RECONCILIATION_COUNT_PER_RUN} per run over {runs} run(s) on "
+                f"record), found {total}. A short count means the load did not record "
+                "them all.",
             )
         )
     if failing != EXPECTED_FAILING_RECONCILIATION_COUNT:
@@ -627,7 +684,7 @@ CHECKS: tuple[Check, ...] = (
     ),
     Check(
         "reconciliations",
-        f"{EXPECTED_RECONCILIATION_COUNT} reconciliations recorded, none failing",
+        f"{EXPECTED_RECONCILIATION_COUNT_PER_RUN} reconciliations recorded per run, none failing",
         check_reconciliations,
     ),
     Check(

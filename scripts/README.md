@@ -275,17 +275,19 @@ schema is a faithful copy of the local one, so a cloud semantic-model engine can
 be pointed at it. The procedure around it is
 [`../docs/cloud-database-setup.md`](../docs/cloud-database-setup.md).
 
-Like the two generators above, this is **not** a CI check: it needs `psycopg`
-and a loaded database, and CI has neither and never contacts a hosted one. It is
-run by hand, at the end of a cloud build.
+It never contacts a hosted database from CI, and it is run by hand at the end of
+a cloud build. It is not, however, unexercised: the `database-setup-image` job in
+`ci.yml` runs the whole provisioning image against Railway's own
+`postgres-ssl` image twice and calls this script on the result, which is how the
+per-run behaviour described below was discovered rather than assumed.
 
 Nine named checks, each with its own failure message: the server is PostgreSQL
 16 or later; **this connection is actually encrypted**, according to the server's
 own `pg_stat_ssl` rather than according to a configuration file; all five schemas
 exist; there are exactly 28 views in `reporting`; the eight dimensions and five
 facts exist and hold rows; all twenty reporting row counts match the
-`development` profile **exactly**; 58 reconciliations are recorded with none
-failing; the run recorded profile `development` at seed `20250701`; and
+`development` profile **exactly**; 58 reconciliations are recorded per run with
+none failing; the run recorded profile `development` at seed `20250701`; and
 `arpi_reporter` holds no privilege on any object in `raw`, `staging`,
 `warehouse` or `audit` — checked object by object and privilege by privilege, and
 listing every offender.
@@ -296,6 +298,18 @@ a correct cloud load. The reporter isolation is re-proved against the cloud
 database rather than inherited from the local one, because a managed provider's
 non-superuser bootstrap role changes who owns what, and ownership is the
 mechanism the isolation rests on.
+
+**Sixteen of those twenty counts are grained on the warehouse and four are
+grained on the pipeline run.** `vw_pipeline_run_summary`,
+`vw_reconciliation_status`, `vw_data_quality_summary` and `vw_data_quality_trend`
+read the append-only `audit` layer, so they grow by a fixed quantum every time
+the loader runs — keeping the previous run is what an audit layer is *for*. They
+are asserted as `quantum × runs on record`, read from `audit.pipeline_run`. That
+is still an equality and still fails a run that recorded 57 of its 58
+reconciliations; it just no longer fails a database for remembering that it was
+loaded twice. Expecting fixed totals made both documented rerun procedures —
+"safe to rerun", and the reporter-password rotation, whose second step is a
+redeploy of the provisioning job — fail on a warehouse that was byte-identical.
 
 It **never prints a host name, port, user name, database name or password**, in
 normal output or in error output — a connection failure is reported by exception
