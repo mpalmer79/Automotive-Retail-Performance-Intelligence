@@ -97,7 +97,9 @@ inventory_columns:
     column: condition_type
     type: text
     required: true
-    max_length: 8
+    # Wide enough to HOLD a value outside the domain, so the domain rule reports it
+    # rather than the cast failing first and calling it a type error.
+    max_length: 16
   - header: Model Year
     column: model_year
     type: integer
@@ -328,7 +330,7 @@ naming:
 store_descriptors:
   GSA-001: Granite_Chevrolet
   GSA-002: Granite_Subaru
-  GSA-003: Granite_Used_Auto
+  GSA-003: Granite_Used_Auto_Center
 
 # ---------------------------------------------------------------------------
 # 9. The canonical committed artifacts
@@ -337,6 +339,22 @@ store_descriptors:
 # `scripts/check_reference_data.py` fails when a file exists under
 # `data/reference/inventory/` that is not listed here, and when a listed file is
 # missing -- so neither an undeclared duplicate nor a silent deletion can pass.
+# EVERY STORE HAS EXACTLY ONE DIRECTORY, AND IT IS ITS OWN.
+#
+#   GSA-001  data/reference/inventory/gsa-001/<yyyy-mm-dd>/ARPI_Granite_Chevrolet_Inventory_Sanitized_<yyyy-mm-dd>.xlsx
+#   GSA-002  data/reference/inventory/gsa-002/<yyyy-mm-dd>/ARPI_Granite_Subaru_Inventory_Sanitized_<yyyy-mm-dd>.xlsx
+#   GSA-003  data/reference/inventory/gsa-003/<yyyy-mm-dd>/ARPI_Granite_Used_Auto_Center_Inventory_Sanitized_<yyyy-mm-dd>.xlsx
+#
+# A workbook filed under another store's directory is refused by
+# `scripts/check_reference_data.py` (rule `artifact-misfiled`) and by DQ-LST-011,
+# whether or not a second workbook is sitting beside it. The directory is part of
+# the artifact's identity, not a filing convenience.
+#
+# ONLY GSA-001 IS COMMITTED TODAY. The Subaru and Used Auto workbooks are not in
+# this repository and are not generated in advance -- ADR-0011 admits an artifact
+# only once a real capture has been sanitized and reviewed. Their paths above are
+# the convention their eventual artifacts must satisfy, not a promise that they
+# exist.
 canonical_artifacts:
   - dealership_id: GSA-001
     captured_at: "2026-08-02"

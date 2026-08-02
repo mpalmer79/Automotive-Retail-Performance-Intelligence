@@ -49,6 +49,71 @@
 -- NEWEST-BATCH RULE: greatest max(ingested_at), ties broken by greatest
 -- max(raw_record_id). Identical to every other staging view.
 
+--
+-- WHY THE REGISTRY CHECK GOES THROUGH A FUNCTION
+-- ----------------------------------------------
+-- The two rules below have to ask warehouse.dim_dealership whether a store exists and
+-- whether it was named what the workbook says on the capture date. A VIEW resolves every
+-- table it names AT CREATION TIME, and the ordered build sequence creates sql/02_staging
+-- before sql/03_dimensions -- so a view referencing the dimension directly cannot be
+-- created on a fresh database at all.
+--
+-- Three options were considered. Moving this file into sql/03_dimensions would file a
+-- staging object under dimensions and make the layer boundary a lie. Dropping the check
+-- and relying on the fact load's inner join would turn a wrong store name from a reported
+-- rejection into a silently missing row, which is the outcome this whole layer exists to
+-- prevent. A plpgsql function is the third: its body is not resolved until it is CALLED,
+-- so the rule stays in staging, stays reported, and the build order stays honest.
+--
+-- Both functions are STABLE rather than IMMUTABLE: their answer depends on the contents
+-- of dim_dealership, which changes between statements but not within one.
+
+CREATE OR REPLACE FUNCTION staging.fn_dealership_exists(p_dealership_id text)
+RETURNS boolean
+LANGUAGE plpgsql
+STABLE
+AS $$
+BEGIN
+    RETURN EXISTS (
+        SELECT 1 FROM warehouse.dim_dealership AS d
+        WHERE d.dealership_id = p_dealership_id
+    );
+END
+$$;
+
+COMMENT ON FUNCTION staging.fn_dealership_exists(text) IS
+    'Whether a dealership identifier resolves against warehouse.dim_dealership. Used by
+staging.stg_inventory_listing_snapshot_typed, which cannot reference the dimension directly because a view
+resolves its tables at creation time and staging is built before dimensions.';
+
+CREATE OR REPLACE FUNCTION staging.fn_dealership_named(
+    p_dealership_id text,
+    p_store_name text,
+    p_as_of date
+)
+RETURNS boolean
+LANGUAGE plpgsql
+STABLE
+AS $$
+BEGIN
+    -- The store name is compared against the version that was CURRENT ON THE CAPTURE
+    -- DATE, which is the same version the fact load resolves. Comparing against today''s
+    -- version instead would reject a correct historical snapshot the day a store is
+    -- renamed.
+    RETURN EXISTS (
+        SELECT 1 FROM warehouse.dim_dealership AS d
+        WHERE d.dealership_id = p_dealership_id
+          AND d.store_name = p_store_name
+          AND p_as_of BETWEEN d.effective_date AND d.expiration_date
+    );
+END
+$$;
+
+COMMENT ON FUNCTION staging.fn_dealership_named(text, text, date) IS
+    'Whether a store carried the given name on the given date, according to warehouse.dim_dealership. SCD
+Type 2 aware: a snapshot resolves the version whose validity window contains its capture date, so a store
+rename does not retroactively invalidate an older workbook.';
+
 CREATE OR REPLACE VIEW staging.stg_inventory_listing_snapshot_typed AS
 WITH latest_batch AS (
     SELECT r.load_batch_id
@@ -96,7 +161,7 @@ cast_attempt AS (
         staging.fn_try_date(t.src_captured_at) AS captured_at,
         CASE WHEN length(t.src_source_batch_id) <= 40 THEN t.src_source_batch_id::varchar(40) END AS source_batch_id,
         CASE WHEN length(t.src_source_feed) <= 60 THEN t.src_source_feed::varchar(60) END AS source_feed,
-        CASE WHEN length(t.src_condition_type) <= 8 THEN t.src_condition_type::varchar(8) END AS condition_type,
+        CASE WHEN length(t.src_condition_type) <= 16 THEN t.src_condition_type::varchar(16) END AS condition_type,
         staging.fn_try_integer(t.src_model_year) AS model_year,
         CASE WHEN length(t.src_make) <= 40 THEN t.src_make::varchar(40) END AS make,
         CASE WHEN length(t.src_model) <= 60 THEN t.src_model::varchar(60) END AS model,
@@ -193,24 +258,15 @@ flagged AS (
         -- referential failures, and the row is quarantined rather than joined to
         -- whichever version happens to match.
         array_remove(ARRAY[
-            CASE WHEN c.dealership_id IS NOT NULL AND NOT EXISTS (
-                     SELECT 1 FROM warehouse.dim_dealership AS d
-                     WHERE d.dealership_id = c.dealership_id
-                 ) THEN 'dealership_id' END,
-            -- The store name is compared against the version of the store that was
-            -- current ON THE CAPTURE DATE, which is the same version the fact load
-            -- resolves. Comparing against today's version instead would reject a
-            -- correct historical snapshot the day a store is renamed.
+            CASE WHEN c.dealership_id IS NOT NULL
+                  AND NOT staging.fn_dealership_exists(c.dealership_id)
+                THEN 'dealership_id' END,
             CASE WHEN c.dealership_id IS NOT NULL AND c.store_name IS NOT NULL
                   AND c.captured_at IS NOT NULL
-                  AND EXISTS (SELECT 1 FROM warehouse.dim_dealership AS d
-                              WHERE d.dealership_id = c.dealership_id)
-                  AND NOT EXISTS (
-                     SELECT 1 FROM warehouse.dim_dealership AS d
-                     WHERE d.dealership_id = c.dealership_id
-                       AND d.store_name = c.store_name
-                       AND c.captured_at BETWEEN d.effective_date AND d.expiration_date
-                 ) THEN 'store_name' END
+                  AND staging.fn_dealership_exists(c.dealership_id)
+                  AND NOT staging.fn_dealership_named(
+                          c.dealership_id, c.store_name, c.captured_at)
+                THEN 'store_name' END
         ], NULL) AS referential_failures
     FROM cast_attempt AS c
 ),

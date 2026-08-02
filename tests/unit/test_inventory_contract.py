@@ -229,8 +229,49 @@ def test_the_subaru_name_follows_the_same_convention() -> None:
 def test_the_used_store_also_has_a_declared_descriptor() -> None:
     assert (
         derived_sanitized_file_name("GSA-003", date(2026, 8, 9))
-        == "ARPI_Granite_Used_Auto_Inventory_Sanitized_2026-08-09.xlsx"
+        == "ARPI_Granite_Used_Auto_Center_Inventory_Sanitized_2026-08-09.xlsx"
     )
+
+
+def test_all_three_stores_derive_their_governed_path_and_name() -> None:
+    """One store, one directory, one name -- for every store, not only the committed one.
+
+    Spelled out rather than derived. These are the paths a future Subaru or Used Auto
+    capture must occupy, and a workbook filed under another store's directory is refused
+    by `scripts/check_reference_data.py` even when it is the only file there.
+    """
+    captured = date(2026, 8, 2)
+    expected = {
+        "GSA-001": (
+            "data/reference/inventory/gsa-001/2026-08-02/"
+            "ARPI_Granite_Chevrolet_Inventory_Sanitized_2026-08-02.xlsx"
+        ),
+        "GSA-002": (
+            "data/reference/inventory/gsa-002/2026-08-02/"
+            "ARPI_Granite_Subaru_Inventory_Sanitized_2026-08-02.xlsx"
+        ),
+        "GSA-003": (
+            "data/reference/inventory/gsa-003/2026-08-02/"
+            "ARPI_Granite_Used_Auto_Center_Inventory_Sanitized_2026-08-02.xlsx"
+        ),
+    }
+    for dealership, path in expected.items():
+        assert default_output_path(dealership, captured).as_posix() == path
+    # Three stores, three distinct directories. None of them shares one.
+    directories = {Path(path).parent for path in expected.values()}
+    assert len(directories) == len(expected)
+
+
+def test_only_the_chevrolet_artifact_is_committed(contract: InventoryListingContract) -> None:
+    """Subaru and Used Auto are conventions, not promises that a file exists.
+
+    ADR-0011 admits an artifact only once a real capture has been sanitized and reviewed.
+    Generating one in advance would put a file in the reference lane that has been through
+    none of the controls.
+    """
+    assert [a.dealership_id for a in contract.canonical_artifacts] == ["GSA-001"]
+    for dealership in ("GSA-002", "GSA-003"):
+        assert not (REPO_ROOT / "data" / "reference" / "inventory" / dealership.lower()).exists()
 
 
 def test_the_report_name_uses_the_same_convention_with_a_different_word() -> None:

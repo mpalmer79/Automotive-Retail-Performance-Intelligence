@@ -133,6 +133,10 @@ def fake_repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
         "  report_regex: "
         r"'^ARPI_[A-Za-z0-9]+(?:_[A-Za-z0-9]+)*_Inventory_Report_\d{4}-\d{2}-\d{2}\.xlsx$'"
         "\n"
+        "  store_descriptors:\n"
+        "    GSA-001: Granite_Chevrolet\n"
+        "    GSA-002: Granite_Subaru\n"
+        "    GSA-003: Granite_Used_Auto_Center\n"
         "canonical_artifacts:\n"
         "  - dealership_id: GSA-001\n"
         '    captured_at: "2026-08-02"\n'
@@ -189,6 +193,73 @@ def test_a_second_copy_of_the_canonical_file_elsewhere_is_caught(fake_repo: Path
 def test_an_alias_differing_only_in_hyphenation_is_caught(fake_repo: Path) -> None:
     _workbook(fake_repo / "arpi-granite-chevrolet-inventory-sanitized-2026-08-02.xlsx")
     assert "duplicate-artifact" in _rules(fake_repo)
+
+
+def test_a_workbook_filed_under_another_store_is_caught(fake_repo: Path) -> None:
+    """The exact mistake: three captures uploaded into one store's directory.
+
+    Filed alone, so the duplicate rule cannot be what catches it. The directory is part of
+    the artifact's identity and this is the rule that says so.
+    """
+    _workbook(
+        fake_repo
+        / "data/reference/inventory/gsa-001/2026-08-02"
+        / "ARPI_Granite_Subaru_Inventory_Sanitized_2026-08-02.xlsx"
+    )
+    assert "artifact-misfiled" in _rules(fake_repo)
+
+
+def test_a_used_auto_workbook_belongs_under_gsa_003(fake_repo: Path) -> None:
+    misfiled = (
+        fake_repo
+        / "data/reference/inventory/gsa-001/2026-08-02"
+        / "ARPI_Granite_Used_Auto_Center_Inventory_Sanitized_2026-08-02.xlsx"
+    )
+    _workbook(misfiled)
+    findings = [v for v in check_reference_data.run() if v.rule == "artifact-misfiled"]
+    assert findings
+    assert "gsa-003" in findings[0].message
+
+    # Filed correctly, the rule is silent -- it is about the directory, not the name.
+    misfiled.unlink()
+    _workbook(
+        fake_repo
+        / "data/reference/inventory/gsa-003/2026-08-02"
+        / "ARPI_Granite_Used_Auto_Center_Inventory_Sanitized_2026-08-02.xlsx"
+    )
+    assert "artifact-misfiled" not in _rules(fake_repo)
+
+
+def test_a_file_name_date_that_disagrees_with_its_directory_is_caught(
+    fake_repo: Path,
+) -> None:
+    _workbook(
+        fake_repo
+        / "data/reference/inventory/gsa-002/2026-08-09"
+        / "ARPI_Granite_Subaru_Inventory_Sanitized_2026-08-02.xlsx"
+    )
+    findings = [v for v in check_reference_data.run() if v.rule == "artifact-misfiled"]
+    assert findings
+    assert "the same fact and must agree" in findings[0].message
+
+
+def test_an_unknown_store_descriptor_is_caught(fake_repo: Path) -> None:
+    _workbook(
+        fake_repo
+        / "data/reference/inventory/gsa-004/2026-08-02"
+        / "ARPI_Granite_Honda_Inventory_Sanitized_2026-08-02.xlsx"
+    )
+    assert "artifact-misfiled" in _rules(fake_repo)
+
+
+def test_the_three_store_descriptors_are_the_ones_the_paths_use() -> None:
+    """Read from the real contract, so a rename cannot leave this test agreeing with itself."""
+    descriptors = check_reference_data.store_descriptors(check_reference_data.CONTRACT_PATH)
+    assert descriptors == {
+        "GSA-001": "Granite_Chevrolet",
+        "GSA-002": "Granite_Subaru",
+        "GSA-003": "Granite_Used_Auto_Center",
+    }
 
 
 def test_a_missing_declared_artifact_is_caught(fake_repo: Path) -> None:

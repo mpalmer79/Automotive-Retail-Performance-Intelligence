@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS warehouse.dim_observed_vehicle (
     observed_vehicle_key    integer        NOT NULL,
     synthetic_vehicle_id    varchar(24)    NOT NULL,
     synthetic_vin           varchar(24)    NOT NULL,
-    condition_type          varchar(8)     NOT NULL,
+    condition_type          varchar(16)    NOT NULL,
     model_year              smallint       NOT NULL,
     make                    varchar(40)    NOT NULL,
     model                   varchar(60)    NOT NULL,

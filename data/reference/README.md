@@ -119,6 +119,23 @@ data/reference/inventory/<dealership-id lowercased>/<yyyy-mm-dd>/<approved-file-
 The store segment is lowercased because it is a path segment. The **file name is not**, and
 the two rules are independent on purpose.
 
+### 6.1 Every store has its own directory, and only its own
+
+| Store | Directory | Artifact name |
+|---|---|---|
+| GSA-001 — Granite Chevrolet of Nashua | `data/reference/inventory/gsa-001/<yyyy-mm-dd>/` | `ARPI_Granite_Chevrolet_Inventory_Sanitized_<yyyy-mm-dd>.xlsx` |
+| GSA-002 — Granite Subaru of Manchester | `data/reference/inventory/gsa-002/<yyyy-mm-dd>/` | `ARPI_Granite_Subaru_Inventory_Sanitized_<yyyy-mm-dd>.xlsx` |
+| GSA-003 — Granite Used Auto Center of Merrimack | `data/reference/inventory/gsa-003/<yyyy-mm-dd>/` | `ARPI_Granite_Used_Auto_Center_Inventory_Sanitized_<yyyy-mm-dd>.xlsx` |
+
+**A workbook filed under another store's directory is a governance failure, not a filing
+preference.** It is refused by `scripts/check_reference_data.py` (rule `artifact-misfiled`)
+and by DQ-LST-011, and it is refused *whether or not a second workbook is sitting beside
+it*: a lone Subaru capture in the `gsa-001` directory passes every duplicate rule and is
+still wrong. The directory is part of the artifact's identity.
+
+The capture date in the file name and the capture date in the directory are the same fact
+and must agree. That too is checked rather than assumed.
+
 ## 7. Naming conventions
 
 The approved ARPI portfolio convention is:
@@ -149,6 +166,12 @@ The expected Granite Subaru convention, when that workbook is supplied, is:
 
 ```
 data/reference/inventory/gsa-002/<yyyy-mm-dd>/ARPI_Granite_Subaru_Inventory_Sanitized_<yyyy-mm-dd>.xlsx
+```
+
+and Granite Used Auto Center:
+
+```
+data/reference/inventory/gsa-003/<yyyy-mm-dd>/ARPI_Granite_Used_Auto_Center_Inventory_Sanitized_<yyyy-mm-dd>.xlsx
 ```
 
 A filename change requires an **explicit migration**, not an informal rename: the name is
@@ -247,5 +270,19 @@ The following are true of every artifact here and are enforced rather than merel
 Of those 199 rows: 195 New and 4 Used; 197 with a listed price and 2 call-for-price. Those
 are **counts of what the artifact contains**, not findings about any dealership.
 
-The Granite Subaru artifact will be added when the workbook is supplied. It is not
-generated in advance, and no placeholder for it exists.
+**Only GSA-001 is committed.** Neither the Granite Subaru nor the Granite Used Auto
+Center workbook is in this repository, in any commit, on any branch. Their directories do
+not exist and no placeholder for them exists: ADR-0011 admits an artifact only once a real
+capture has been sanitized and reviewed, so generating one in advance would create a file
+that has been through none of the controls this policy describes.
+
+The convention in section 6.1 is what their artifacts must satisfy when they are supplied.
+The sanitizer already derives both names correctly today —
+
+```
+arpi sanitize-inventory --input /private/path/subaru.xlsx \
+  --dealership-id GSA-002 --captured-at 2026-08-02 --dry-run
+```
+
+— and reports the governed path it would write to, so the placement is checkable before a
+single byte is committed.

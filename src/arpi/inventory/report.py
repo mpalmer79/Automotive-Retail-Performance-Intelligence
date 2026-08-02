@@ -160,7 +160,7 @@ _LISTING_SQL = """
            c.first_observed_at, c.last_observed_at, c.source_batch_id, c.source_file_name
     FROM reporting.vw_vehicle_listing_current AS c
     JOIN reporting.vw_dealership AS d ON d.dealership_key = c.dealership_key
-    WHERE d.dealership_id = %s AND c.last_captured_at = %s
+    WHERE d.dealership_code = %s AND c.last_captured_at = %s
     ORDER BY c.condition_type, c.make, c.model, c.trim NULLS FIRST, c.synthetic_vehicle_id
 """
 
@@ -171,18 +171,33 @@ _SUMMARY_SQL = """
            s.latest_capture_age_days, s.is_latest_snapshot, s.source_file_name
     FROM reporting.vw_vehicle_listing_summary AS s
     JOIN reporting.vw_dealership AS d ON d.dealership_key = s.dealership_key
-    WHERE d.dealership_id = %s AND s.captured_at = %s
+    WHERE d.dealership_code = %s AND s.captured_at = %s
 """
 
+# Model-level statistics come from vw_vehicle_listing_model_mix, which owns
+# KPI-LST-009..011 and is the only view publishing minimum and maximum advertised price.
+# It is grained one level finer than this sheet -- it carries trim -- so the sheet rolls
+# trim up here rather than showing one row per trim, which is what the sanitized workbook's
+# own Model Summary does.
 _MODEL_SQL = """
-    SELECT m.condition_type, m.make, m.model, m.observed_listing_units,
-           m.listed_price_units, m.call_for_price_units, m.average_advertised_price,
-           m.minimum_advertised_price, m.maximum_advertised_price,
-           m.average_odometer_miles
-    FROM reporting.vw_vehicle_listing_price_completeness AS m
+    SELECT m.condition_type,
+           m.make,
+           m.model,
+           sum(m.observed_listing_units)::bigint          AS observed_listing_units,
+           sum(m.listed_price_units)::bigint              AS listed_price_units,
+           sum(m.call_for_price_units)::bigint            AS call_for_price_units,
+           CASE WHEN sum(m.listed_price_units) = 0 THEN NULL
+                ELSE (sum(m.total_advertised_value) / sum(m.listed_price_units))::numeric(12,2)
+           END                                            AS average_advertised_price,
+           min(m.minimum_advertised_price)                AS minimum_advertised_price,
+           max(m.maximum_advertised_price)                AS maximum_advertised_price,
+           round(avg(m.average_odometer_miles))::bigint   AS average_odometer_miles
+    FROM reporting.vw_vehicle_listing_model_mix AS m
     JOIN reporting.vw_dealership AS d ON d.dealership_key = m.dealership_key
-    WHERE d.dealership_id = %s AND m.captured_at = %s
-    ORDER BY (m.condition_type <> 'New'), m.observed_listing_units DESC, m.make, m.model
+    WHERE d.dealership_code = %s AND m.captured_at = %s
+    GROUP BY m.condition_type, m.make, m.model
+    ORDER BY (m.condition_type <> 'New'), sum(m.observed_listing_units) DESC,
+             m.make, m.model
 """
 
 _CHANGE_SQL = """
@@ -192,7 +207,7 @@ _CHANGE_SQL = """
            ch.pricing_status, ch.prior_captured_at, ch.days_between_snapshots
     FROM reporting.vw_vehicle_listing_change AS ch
     JOIN reporting.vw_dealership AS d ON d.dealership_key = ch.dealership_key
-    WHERE d.dealership_id = %s AND ch.captured_at = %s AND ch.has_prior_snapshot
+    WHERE d.dealership_code = %s AND ch.captured_at = %s AND ch.has_prior_snapshot
     ORDER BY ch.change_type, ch.make, ch.model, ch.synthetic_vehicle_id
 """
 
@@ -200,7 +215,7 @@ _PRIOR_CAPTURE_SQL = """
     SELECT max(s.captured_at)
     FROM reporting.vw_vehicle_listing_summary AS s
     JOIN reporting.vw_dealership AS d ON d.dealership_key = s.dealership_key
-    WHERE d.dealership_id = %s AND s.captured_at < %s
+    WHERE d.dealership_code = %s AND s.captured_at < %s
 """
 
 

@@ -568,6 +568,17 @@ APPROVED_ASSET_AGE_COLUMNS: Final[Mapping[str, str]] = MappingProxyType(
             "Days a vehicle has been in stock, reserved for a future row-level column. "
             "Describes a vehicle, never a person."
         ),
+        "snapshot_age_days": (
+            "reporting.vw_vehicle_listing_current. Days between one observation and the "
+            "store's newest capture, published so a stale observation cannot be read as a "
+            "current one. Describes an OBSERVATION, never a person -- and deliberately "
+            "not a vehicle either: it is not days in stock and not vehicle age."
+        ),
+        "latest_capture_age_days": (
+            "KPI-LST-022, reporting.vw_vehicle_listing_summary. Days between a capture "
+            "date and the store's newest capture. This is SNAPSHOT FRESHNESS. Describes "
+            "an observation, never a person."
+        ),
     }
 )
 

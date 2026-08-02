@@ -12,6 +12,9 @@ about the REPOSITORY rather than about a workbook:
 * Does every artifact's file name follow the approved ARPI underscore convention?
 * Is there a duplicate or alias copy -- a second workbook for the same store and snapshot,
   a hyphenated or lowercased twin, or a stray copy at the repository root?
+* Is every artifact filed under ITS OWN store's directory? A Subaru workbook sitting in
+  the ``gsa-001`` directory is wrong even when it is the only file there, and the
+  duplicate rule alone would not notice it.
 * Do the committed bytes still match the declared digest?
 * Is ``data/sample`` still synthetic-only, with no reference workbook smuggled into it?
 * Does any committed artifact carry a URL, or a value that looks like a real VIN?
@@ -145,6 +148,10 @@ _QUOTED_MINIMUM = 2
 #: YAML block-scalar indicators. A value that is one of these means the real value is on
 #: the following line, which the contract uses for the one path too long to fit inline.
 _BLOCK_INDICATORS = frozenset({">-", ">", "|", "|-"})
+
+#: Path segments the governed layout puts under `data/reference/`: the `inventory`
+#: root, the store directory, the date directory, and the file itself.
+_REFERENCE_PATH_DEPTH = 3
 
 
 def _scalar(text: str) -> str:
@@ -429,6 +436,103 @@ def check_no_duplicate_artifacts(artifacts: list[dict[str, str]]) -> list[Violat
     return violations
 
 
+#: Store descriptors, keyed by the directory segment they belong under. Read from the
+#: contract so a store rename cannot leave this check enforcing the previous name.
+def store_descriptors(path: Path) -> dict[str, str]:
+    """Read ``naming.store_descriptors`` as ``{dealership id: descriptor}``."""
+    found: dict[str, str] = {}
+    in_block = False
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        stripped = raw_line.strip()
+        if stripped == "store_descriptors:":
+            in_block = True
+            continue
+        if in_block:
+            if not raw_line.startswith((" ", "\t")) and stripped:
+                break
+            if stripped.startswith("#") or not stripped:
+                continue
+            key, _, value = stripped.partition(":")
+            if value.strip():
+                found[key.strip()] = _scalar(value)
+    return found
+
+
+def check_artifacts_are_filed_under_their_own_store(contract_path: Path) -> list[Violation]:
+    """Every workbook sits in the directory of the store its own name declares.
+
+    THE MISTAKE THIS CATCHES
+    ------------------------
+    Three captures uploaded into one store's directory. The duplicate rule notices that
+    only because there are three of them; a single Subaru workbook filed under ``gsa-001``
+    would pass every other rule here, load against the wrong store's directory date, and
+    be discovered by somebody reading a report that said Chevrolet and showed Outbacks.
+
+    The directory is part of an artifact's identity. This rule says so.
+    """
+    descriptors = store_descriptors(contract_path)
+    by_descriptor = {descriptor: dealership for dealership, descriptor in descriptors.items()}
+    violations: list[Violation] = []
+
+    for path in sorted(REFERENCE_ROOT.rglob("*")):
+        if not (path.is_file() and path.suffix.lower() in WORKBOOK_SUFFIXES):
+            continue
+        rel = relative(path)
+        parts = path.relative_to(REFERENCE_ROOT).parts
+        if len(parts) < _REFERENCE_PATH_DEPTH:
+            violations.append(
+                Violation(
+                    "artifact-misfiled",
+                    rel,
+                    "a reference workbook must live at "
+                    "data/reference/inventory/<dealership-id lowercased>/<yyyy-mm-dd>/, "
+                    "and this one is not that deep.",
+                )
+            )
+            continue
+        store_segment, date_segment = parts[-3], parts[-2]
+
+        match = re.match(r"^ARPI_(.+)_Inventory_Sanitized_(\d{4}-\d{2}-\d{2})\.xlsx$", path.name)
+        if match is None:
+            # The naming rule reports this separately; nothing further can be said here.
+            continue
+        descriptor, file_date = match.group(1), match.group(2)
+
+        owner = by_descriptor.get(descriptor)
+        if owner is None:
+            violations.append(
+                Violation(
+                    "artifact-misfiled",
+                    rel,
+                    f"the file name declares the store descriptor {descriptor!r}, which no "
+                    "dealership in naming.store_descriptors claims. Add the store to the "
+                    "contract, or correct the file name.",
+                )
+            )
+        elif owner.lower() != store_segment:
+            violations.append(
+                Violation(
+                    "artifact-misfiled",
+                    rel,
+                    f"this is a {owner} workbook filed under {store_segment!r}. It belongs "
+                    f"at {REFERENCE_ROOT.name}/inventory/{owner.lower()}/{date_segment}/. A "
+                    "workbook in another store's directory is wrong even when it is the "
+                    "only file there.",
+                )
+            )
+
+        if file_date != date_segment:
+            violations.append(
+                Violation(
+                    "artifact-misfiled",
+                    rel,
+                    f"the file name carries the capture date {file_date} and the directory "
+                    f"says {date_segment!r}. The two are the same fact and must agree.",
+                )
+            )
+    return violations
+
+
 def check_sample_stays_synthetic() -> list[Violation]:
     """``data/sample`` is reserved for fully machine-generated data and holds no workbook."""
     if not SAMPLE_ROOT.is_dir():
@@ -662,6 +766,7 @@ def run() -> list[Violation]:
     violations: list[Violation] = []
     violations.extend(check_declared_artifacts(artifacts, sanitized_regex))
     violations.extend(check_no_duplicate_artifacts(artifacts))
+    violations.extend(check_artifacts_are_filed_under_their_own_store(CONTRACT_PATH))
     violations.extend(check_sample_stays_synthetic())
     violations.extend(check_artifact_contents(artifacts))
     violations.extend(check_documentation(artifacts))
