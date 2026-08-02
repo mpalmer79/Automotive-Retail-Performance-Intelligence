@@ -21,7 +21,7 @@ permissions:
 jobs:
   collect:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     steps:
       - name: Check out repository
@@ -32,14 +32,15 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install collection dependency
-        run: python -m pip install cloudscraper
+      - name: Install collection dependencies
+        run: python -m pip install requests beautifulsoup4
 
       - name: Collect and reconcile inventory
         run: >-
           python scripts/collect_amherst_subaru_inventory.py
           --output-dir artifacts/amherst-inventory
           --minimum-count 250
+          --workers 8
 
       - name: Upload inventory source artifact
         if: always()
