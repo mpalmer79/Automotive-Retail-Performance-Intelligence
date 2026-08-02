@@ -23,6 +23,13 @@ Each table has a matching `NN_<name>_load.sql` script, which the loader runs aft
 dimension merge. A fact resolves its surrogate keys by joining the dimensions, so running
 a fact load before the dimensions are merged would resolve nothing.
 
+All five scripts are **required**, not discovered opportunistically. `arpi.ingestion.spec`
+names which script loads which fact, and `discover_fact_sql` refuses a database load when
+any of them is missing or renamed out of that contract: a run that quietly loaded the
+dimensions alone would report success over a warehouse with no measures and every
+reporting view over these facts empty. Only the scripts the registry names are executed,
+so a stray `.sql` file dropped in here is never run.
+
 ---
 
 ## Reconciliation is what makes the loads trustworthy

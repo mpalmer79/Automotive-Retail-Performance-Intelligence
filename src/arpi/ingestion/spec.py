@@ -46,14 +46,25 @@ class EntityIngestionSpec:
         raw_table: Unqualified table in the ``raw`` schema the CSV lands in.
         staging_view: Unqualified view in the ``staging`` schema holding the accepted
             rows -- typed, domain-filtered and deduplicated.
-        warehouse_table: Unqualified table in the ``warehouse`` schema the merge writes,
-            or ``None`` for a source entity that has no warehouse target yet.
+        warehouse_table: Unqualified table in the ``warehouse`` schema the Python-driven
+            merge writes, or ``None`` for a source entity whose warehouse target is a
+            fact loaded by SQL. See :attr:`warehouse_fact_table` for that case.
         natural_key: Business key columns, in order, as they are named in the staging
             view. Used to deduplicate, to reconcile staging against the warehouse, and to
             identify a rejected row.
-        merge_script: File name of the merge script under ``sql/03_dimensions`` (or
-            ``sql/04_facts``) that loads the warehouse table, or ``None`` when none
-            exists yet.
+        merge_script: File name of the merge script under ``sql/03_dimensions`` that
+            loads the warehouse dimension, or ``None`` when the entity has no dimension
+            target.
+        warehouse_fact_table: Unqualified table in the ``warehouse`` schema that the SQL
+            fact load populates from this entity, or ``None`` when the entity feeds no
+            fact. This is deliberately NOT ``warehouse_table``: the Python loader
+            reconciles ``warehouse_table`` itself, whereas a fact is loaded, reconciled
+            and grained entirely in SQL. Recording it here keeps one registry able to
+            answer which facts a complete warehouse must contain.
+        fact_load_script: File name of the fact-load script under ``sql/04_facts`` that
+            populates :attr:`warehouse_fact_table`, or ``None`` when the entity feeds no
+            fact. The loader derives its required-script set from this field, so a fact
+            load cannot be silently dropped by deleting or renaming a file.
         rejected_view: Unqualified view in the ``staging`` schema listing the rows the
             staging view did NOT accept, or ``None`` when the entity has no rejected
             companion view. Phase 0's two staging views predate the pattern and have
@@ -76,11 +87,21 @@ class EntityIngestionSpec:
     scd_type_2: bool = False
     source_file_name: str | None = None
     row_count_reconciliation_id: str | None = None
+    warehouse_fact_table: str | None = None
+    fact_load_script: str | None = None
 
     def __post_init__(self) -> None:
         """Reject a spec that cannot describe a real load."""
         if not self.natural_key:
             raise ValueError(f"{self.entity_name}: natural_key must name at least one column.")
+        # A fact the registry names but cannot load, or a script loading a fact nobody
+        # named, would each make the required-set contract unenforceable in one
+        # direction. They are declared together or not at all.
+        if (self.warehouse_fact_table is None) != (self.fact_load_script is None):
+            raise ValueError(
+                f"{self.entity_name}: warehouse_fact_table and fact_load_script must be "
+                "declared together; one without the other cannot describe a fact load."
+            )
 
     @property
     def csv_name(self) -> str:
@@ -179,13 +200,22 @@ def _source_entity(
     *,
     subject: str | None = None,
     natural_key: tuple[str, ...],
+    fact_table: str | None = None,
+    fact_load_script: str | None = None,
 ) -> EntityIngestionSpec:
-    """Build a spec for a pre-warehouse source entity with no warehouse target yet.
+    """Build a spec for a pre-warehouse source entity, which no Python merge writes.
+
+    ``warehouse_table`` stays ``None`` for every entity built here: the Python loader
+    merges dimensions, and the facts these entities feed are loaded, grained and
+    reconciled in SQL. An entity that feeds a fact still names it, so the loader can tell
+    which SQL scripts a complete warehouse requires.
 
     Args:
         entity_name: The name the generator declares for the entity.
         subject: The SQL layer's object stem, when it differs from ``entity_name``.
         natural_key: Business key columns as named in the staging view.
+        fact_table: Unqualified warehouse fact the SQL load populates, when there is one.
+        fact_load_script: File name of that load script under ``sql/04_facts``.
 
     Returns:
         The populated spec.
@@ -199,6 +229,8 @@ def _source_entity(
         natural_key=natural_key,
         merge_script=None,
         rejected_view=f"stg_{stem}_rejected",
+        warehouse_fact_table=fact_table,
+        fact_load_script=fact_load_script,
     )
 
 
@@ -265,14 +297,35 @@ ENTITY_SPECS: Final[tuple[EntityIngestionSpec, ...]] = (
         natural_key=("campaign_id",),
         merge_script="17_dim_marketing_campaign_merge.sql",
     ),
+    # acquisition_event feeds no fact of its own: an acquisition is an attribute of the
+    # vehicle and a term of the sale, so it reaches staging and is consumed there.
     _source_entity("acquisition_event", natural_key=("acquisition_id",)),
-    _source_entity("sale_event", natural_key=("sale_id",)),
-    _source_entity("lead_event", subject="lead", natural_key=("lead_id",)),
-    _source_entity("appointment_event", subject="appointment", natural_key=("appointment_id",)),
+    _source_entity(
+        "sale_event",
+        natural_key=("sale_id",),
+        fact_table="fact_vehicle_sale",
+        fact_load_script="10_fact_vehicle_sale_load.sql",
+    ),
+    _source_entity(
+        "lead_event",
+        subject="lead",
+        natural_key=("lead_id",),
+        fact_table="fact_lead",
+        fact_load_script="12_fact_lead_load.sql",
+    ),
+    _source_entity(
+        "appointment_event",
+        subject="appointment",
+        natural_key=("appointment_id",),
+        fact_table="fact_appointment",
+        fact_load_script="13_fact_appointment_load.sql",
+    ),
     _source_entity(
         "inventory_snapshot_event",
         subject="inventory_snapshot",
         natural_key=("vehicle_id", "dealership_id", "snapshot_date"),
+        fact_table="fact_vehicle_inventory_snapshot",
+        fact_load_script="11_fact_vehicle_inventory_snapshot_load.sql",
     ),
     # The generator in arpi.generation.marketing declares this entity as
     # `marketing_spend_event`, so that -- not the bare `marketing_spend` the SQL objects
@@ -282,6 +335,8 @@ ENTITY_SPECS: Final[tuple[EntityIngestionSpec, ...]] = (
         "marketing_spend_event",
         subject="marketing_spend",
         natural_key=("marketing_spend_id",),
+        fact_table="fact_marketing_spend",
+        fact_load_script="14_fact_marketing_spend_load.sql",
     ),
 )
 

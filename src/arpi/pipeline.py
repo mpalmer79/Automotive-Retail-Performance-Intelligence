@@ -1,14 +1,31 @@
 """The ARPI vertical slice: generate, validate, write, optionally load, audit.
 
-This orchestrator is the whole implemented pipeline. It generates every Phase 1
-dimension plus the pre-warehouse source entities that feed the facts, in dependency
-order, and hands them to the ingestion loader. The fact merge scripts themselves are
-**Planned**, not implemented: ``acquisition_event`` and ``sale_event`` reach ``raw`` and
-``staging`` but have no warehouse target yet.
+This orchestrator is the whole implemented pipeline. It generates all fourteen entities
+in :data:`GENERATION_ORDER` -- the eight conformed dimensions plus the six pre-warehouse
+source entities -- and hands them to the ingestion loader.
 
-The database step is optional by design. When PostgreSQL is unavailable the run is
-reported as *skipped, not failed*, together with the exact reason, so the slice remains
-runnable on a laptop with nothing installed but Python.
+WHAT REACHES WHERE
+------------------
+All fourteen generated entities reach ``raw`` and ``staging``. Eight of them are loaded
+into the warehouse as dimensions, by the merge scripts under ``sql/03_dimensions/``. The
+five MVP facts are then loaded by the fact-load scripts under ``sql/04_facts/``:
+``fact_vehicle_sale``, ``fact_vehicle_inventory_snapshot``, ``fact_lead``,
+``fact_appointment`` and ``fact_marketing_spend``. The fact scripts run after every
+dimension merge, because a fact resolves its surrogate keys through the conformed
+dimensions and would resolve nothing before they exist.
+
+``acquisition_event`` is the one source entity with no fact of its own: an acquisition is
+an attribute of the vehicle and a term of the sale, so it is consumed in staging.
+
+THE DATABASE STEP IS OPTIONAL; THE SQL IT NEEDS IS NOT
+------------------------------------------------------
+PostgreSQL remains optional for a generation-only run. When it is unavailable, or was
+never requested, the run is reported as *skipped, not failed*, together with the exact
+reason, so the slice stays runnable on a laptop with nothing installed but Python.
+
+Once a database load IS requested, the warehouse SQL it depends on is not optional. The
+loader refuses to run when a required merge or fact-load script is absent, rather than
+loading part of the warehouse and reporting success over it.
 """
 
 from __future__ import annotations

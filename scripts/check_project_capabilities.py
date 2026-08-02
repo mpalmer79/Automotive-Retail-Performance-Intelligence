@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Fail when an implementation-status claim disagrees with the repository.
 
-Five checks, run over every tracked text file:
+Six checks, run over every tracked text file:
 
   1. DECLARED vs DERIVED  -- a declared status the evidence refutes, such as an engine
      validation marked passed while its evidence file records no run, or a deployment
@@ -13,6 +13,10 @@ Five checks, run over every tracked text file:
      well-formed, because a stale limitations register is the failure it exists to prevent.
   5. DEPLOYMENT EVIDENCE  -- the evidence file must record identifiers and never a
      credential.
+  6. FACT-LOADING CONTRACT -- capability that is declared must also be required. The five
+     MVP facts are documented as loaded on every database run, so the loader may not
+     treat their load scripts as optional, and the registry and the SQL tree must name
+     the same set.
 
 Every rule only ever tightens a claim toward the evidence. None can open a gate, mark a
 validation passed, promote a phase, or turn a live website into a running database
@@ -42,6 +46,7 @@ from project_capabilities import (
     Contradiction,
     build_capabilities,
     check_declarations,
+    check_fact_load_contract,
     check_review_metadata,
     check_website_agreement,
     derive_evidence,
@@ -134,6 +139,7 @@ def main() -> int:
     prose_problems = find_stale_claims(evidence, files)
     website_problems = check_website_agreement(evidence)
     review_problems = check_review_metadata(load_review())
+    fact_load_problems = check_fact_load_contract(evidence)
 
     if declaration_problems:
         _report("Declared status contradicted by evidence", declaration_problems)
@@ -143,6 +149,8 @@ def main() -> int:
         _report("Website manifest disagrees with the register", website_problems)
     if review_problems:
         _report("Register review metadata is unusable", review_problems)
+    if fact_load_problems:
+        _report("Fact loading is declared but not required", fact_load_problems)
 
     secret_fields = find_secret_fields()
     if secret_fields:
@@ -159,6 +167,7 @@ def main() -> int:
         + len(prose_problems)
         + len(website_problems)
         + len(review_problems)
+        + len(fact_load_problems)
         + len(secret_fields)
     )
     if total:

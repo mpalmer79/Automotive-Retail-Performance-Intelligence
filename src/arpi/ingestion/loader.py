@@ -1,8 +1,11 @@
 """Load generated entities into PostgreSQL and record the full audit trail.
 
 The loader is deliberately thin. It moves rows into the ``raw`` schema with ``COPY`` and
-then hands control to the SQL under ``sql/03_dimensions/``: the merge logic lives in SQL
-so it can be reviewed, tested and run independently of Python.
+then hands control to the SQL under ``sql/03_dimensions/`` and ``sql/04_facts/``: the
+merge and fact-load logic lives in SQL so it can be reviewed, tested and run
+independently of Python. Both sets are required. A run that reached the database and
+executed only some of them would report success over a warehouse missing measures, so
+discovery refuses the load instead.
 
 Row values are always passed as parameters or through ``COPY``. SQL text is only ever
 composed from :class:`psycopg.sql.Identifier` and from repository-controlled ``.sql``
@@ -93,6 +96,29 @@ FACT_SQL_SUBDIR = "04_facts"
 #: every dimension has been merged. Ordering by filename keeps that deterministic and
 #: reviewable.
 FACT_SQL_GLOB = "*_load.sql"
+
+#: The fact-load scripts a database load is required to execute, in execution order.
+#:
+#: Derived from the ingestion registry, never listed again by hand: the registry already
+#: records which SQL script loads which entity into which warehouse fact, and a second
+#: hand-maintained list is precisely what would drift away from it. Sorted by file name,
+#: so the order is the numbering a reviewer reads in ``sql/04_facts`` rather than
+#: whatever order the filesystem happens to return.
+REQUIRED_FACT_SQL: Final[tuple[str, ...]] = tuple(
+    sorted(
+        entity_spec.fact_load_script
+        for entity_spec in ENTITY_SPECS
+        if entity_spec.fact_load_script is not None
+    )
+)
+
+#: The warehouse fact each required script populates, so a failure can name what would
+#: otherwise have been left empty.
+FACT_TABLE_BY_SCRIPT: Final[dict[str, str]] = {
+    entity_spec.fact_load_script: entity_spec.warehouse_fact_table
+    for entity_spec in ENTITY_SPECS
+    if entity_spec.fact_load_script is not None and entity_spec.warehouse_fact_table is not None
+}
 
 #: Default SQL root, relative to the directory ARPI is run from.
 DEFAULT_SQL_ROOT = Path("sql")
@@ -189,7 +215,8 @@ class LoadResult:
         load_batch_id: The batch identifier stamped on every raw row of this run.
         raw_row_counts: Rows copied into ``raw`` per entity.
         warehouse_row_counts: Rows present in ``warehouse`` per entity after the merge.
-        executed_sql: Merge scripts that were executed, in execution order.
+        executed_sql: Warehouse scripts that were executed, in execution order: every
+            dimension merge, then every fact load.
         layer_counts: The full five-layer chain per entity.
         rejected_records: Every quarantined row, already redacted.
     """
@@ -238,20 +265,80 @@ def discover_fact_sql(sql_root: Path = DEFAULT_SQL_ROOT) -> list[Path]:
     """Find the fact load scripts, which run after every dimension merge.
 
     A fact resolves its surrogate keys by joining the dimensions, so running a fact load
-    before the dimensions are merged would resolve nothing. An absent directory is not an
-    error here: the facts are permitted to be unimplemented, whereas a missing dimension
-    merge means the warehouse would be left empty and is refused.
+    before the dimensions are merged would resolve nothing.
+
+    This discovery fails closed. An earlier revision returned an empty list when the
+    directory was absent, which was correct while the facts were unimplemented: a load
+    that skipped work nobody had written was not a lie. All five MVP facts are now built
+    and loaded on every database run, so an absent or incomplete fact-load set no longer
+    means "not yet" -- it means the run would leave the warehouse holding dimensions and
+    no measures, and every reporting view over those facts empty, while reporting
+    success. Only the scripts the ingestion registry names are executed, so a stray file
+    dropped into the directory is never run.
 
     Args:
         sql_root: Directory containing the numbered SQL folders.
 
     Returns:
-        The ``*_load.sql`` files under ``<sql_root>/04_facts``, sorted by name.
+        The required fact-load scripts under ``<sql_root>/04_facts``, in
+        :data:`REQUIRED_FACT_SQL` order.
+
+    Raises:
+        DatabaseLoadError: If the directory is missing, holds no fact-load script, or is
+            missing any script :data:`REQUIRED_FACT_SQL` names -- including one that was
+            renamed out of the contract.
     """
     directory = Path(sql_root) / FACT_SQL_SUBDIR
     if not directory.is_dir():
-        return []
-    return sorted(directory.glob(FACT_SQL_GLOB))
+        raise DatabaseLoadError(
+            f"Fact load SQL directory not found: {directory}. Continuing would load the "
+            "dimensions and none of the five MVP facts, leaving an incomplete warehouse; "
+            "run ARPI from the repository root or pass an explicit sql_root.",
+            missing_paths=[directory],
+        )
+
+    present = {path.name for path in directory.glob(FACT_SQL_GLOB) if path.is_file()}
+    if not present:
+        raise DatabaseLoadError(
+            f"No {FACT_SQL_GLOB} scripts found in {directory}. Every warehouse fact would "
+            "be left empty, so the load is refused.",
+            missing_paths=[directory / FACT_SQL_GLOB],
+        )
+
+    missing = [name for name in REQUIRED_FACT_SQL if name not in present]
+    if missing:
+        empty_facts = ", ".join(f"warehouse.{FACT_TABLE_BY_SCRIPT[name]}" for name in missing)
+        raise DatabaseLoadError(
+            f"{len(missing)} required fact load script(s) are missing from {directory}: "
+            f"{', '.join(missing)}. Continuing would produce an incomplete warehouse, "
+            f"with {empty_facts} unloaded while the run reported success. Restore the "
+            "script, or update arpi.ingestion.spec.ENTITY_SPECS if it was deliberately "
+            "renamed.",
+            missing_paths=[directory / name for name in missing],
+            context={"required_fact_sql": list(REQUIRED_FACT_SQL)},
+        )
+
+    return [directory / name for name in REQUIRED_FACT_SQL]
+
+
+def discover_load_sql(sql_root: Path = DEFAULT_SQL_ROOT) -> tuple[Path, ...]:
+    """Every repository-controlled script a database load executes, in execution order.
+
+    The order is the contract: every dimension merge, then every fact load. A fact
+    resolves its surrogate keys by joining the conformed dimensions, so a fact load run
+    before the merges would resolve nothing and silently drop its rows. Composing the
+    order here rather than at the call site makes it one testable statement.
+
+    Args:
+        sql_root: Directory containing the numbered SQL folders.
+
+    Returns:
+        The merge scripts followed by the fact-load scripts.
+
+    Raises:
+        DatabaseLoadError: If either required set is missing or incomplete.
+    """
+    return (*discover_merge_sql(sql_root), *discover_fact_sql(sql_root))
 
 
 def rows_for_copy(
@@ -291,9 +378,10 @@ def load_foundation(
 ) -> LoadResult:
     """Load the generated entities into PostgreSQL and write the audit rows.
 
-    Each entity is copied into its raw table inside its own transaction. The merge
-    scripts then run in a single transaction, followed by the count collection, the
-    rejected-record collection and the audit inserts.
+    Each entity is copied into its raw table inside its own transaction. The warehouse
+    SQL then runs in a single transaction -- every dimension merge, then every fact load
+    -- followed by the count collection, the rejected-record collection and the audit
+    inserts.
 
     Args:
         config: Resolved configuration; the database must be enabled and reachable.
@@ -306,13 +394,13 @@ def load_foundation(
         A :class:`LoadResult` describing what was written.
 
     Raises:
-        DatabaseLoadError: If an entity has no registered ingestion spec, or the merge
-            SQL is missing.
+        DatabaseLoadError: If an entity has no registered ingestion spec, or any required
+            merge or fact-load SQL is missing. Both are checked before the connection is
+            opened, so an incomplete checkout costs nothing and writes nothing.
         DatabaseUnavailableError: If PostgreSQL cannot be reached.
     """
     specs = [spec_for(dataset.entity_name) for dataset in datasets]
-    merge_scripts = discover_merge_sql(sql_root)
-    fact_scripts = discover_fact_sql(sql_root)
+    scripts = discover_load_sql(sql_root)
     load_batch_id = uuid.uuid4()
     counts: dict[str, LayerCounts] = {}
     rejections: list[RejectedRecord] = []
@@ -322,7 +410,7 @@ def load_foundation(
             _copy_into_raw(connection, dataset, entity_spec, load_batch_id)
             connection.commit()
 
-        for script in (*merge_scripts, *fact_scripts):
+        for script in scripts:
             _execute_script(connection, script)
         connection.commit()
 
@@ -341,7 +429,7 @@ def load_foundation(
         load_batch_id=load_batch_id,
         raw_row_counts={name: layer.raw for name, layer in counts.items()},
         warehouse_row_counts={name: layer.warehouse for name, layer in counts.items()},
-        executed_sql=(*merge_scripts, *fact_scripts),
+        executed_sql=scripts,
         layer_counts=counts,
         rejected_records=tuple(rejections),
     )
@@ -382,7 +470,7 @@ def _execute_script(connection: Any, script: Path) -> None:
     statement = script.read_text(encoding="utf-8")
     with connection.cursor() as cursor:
         cursor.execute(statement)
-    _LOGGER.info("Executed merge script %s.", script)
+    _LOGGER.info("Executed warehouse script %s.", script)
 
 
 def _scalar(connection: Any, statement: Any, parameters: Sequence[Any] | None = None) -> int:

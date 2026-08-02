@@ -41,12 +41,23 @@ from project_capabilities import (  # noqa: E402  (path set above)
     EngineEvidence,
     build_capabilities,
     check_declarations,
+    check_fact_load_contract,
     check_review_metadata,
     check_website_agreement,
     derive_evidence,
     find_stale_claims,
     load_declared,
     load_review,
+)
+
+#: The five MVP fact-load scripts, spelled out rather than derived, so a test fixture
+#: cannot agree with a broken derivation by construction.
+REQUIRED_FACT_LOADS = (
+    "10_fact_vehicle_sale_load.sql",
+    "11_fact_vehicle_inventory_snapshot_load.sql",
+    "12_fact_lead_load.sql",
+    "13_fact_appointment_load.sql",
+    "14_fact_marketing_spend_load.sql",
 )
 
 PENDING = EngineEvidence(
@@ -119,6 +130,9 @@ def _fake(**overrides: object) -> DerivedEvidence:
         static_model_validation=True,
         fact_ddl_scripts=5,
         fact_load_scripts=5,
+        required_fact_load_scripts=REQUIRED_FACT_LOADS,
+        present_fact_load_scripts=REQUIRED_FACT_LOADS,
+        fact_discovery_fails_closed=True,
         dimension_merge_scripts=8,
         reporting_views=28,
         audit_layers_recorded=5,
@@ -327,6 +341,99 @@ def test_no_rule_can_open_a_gate_or_pass_a_validation() -> None:
         _fake(desktop=PASSED, fabric=PASSED, report_pages=12),
     ):
         assert check_declarations(conservative, evidence_case) == []
+
+
+# --------------------------------------------------------------------------------------
+# Declared capability must also be required capability
+# --------------------------------------------------------------------------------------
+# The contradiction guarded here lived in the repository: sql/04_facts/README.md declared
+# all five MVP facts populated and loaded on every pipeline run, while the loader returned
+# an empty list when the fact directory was absent and carried on. Both were reviewed;
+# neither could fail a build.
+
+
+def test_the_repository_requires_the_facts_it_declares(evidence: DerivedEvidence) -> None:
+    contradictions = check_fact_load_contract(evidence)
+    assert contradictions == [], "\n".join(c.render() for c in contradictions)
+
+
+def test_the_required_fact_set_is_read_from_the_registry(evidence: DerivedEvidence) -> None:
+    """Derived from source, so a renamed script cannot pass by editing one side."""
+    assert evidence.required_fact_load_scripts == REQUIRED_FACT_LOADS
+    assert evidence.present_fact_load_scripts == REQUIRED_FACT_LOADS
+    assert evidence.fact_discovery_fails_closed is True
+
+
+def test_a_loader_that_tolerates_missing_facts_is_caught() -> None:
+    found = check_fact_load_contract(_fake(fact_discovery_fails_closed=False))
+    assert [c.rule for c in found] == ["fact-loads-are-required-infrastructure"]
+    assert "no measures" in found[0].evidence
+
+
+def test_a_fact_script_no_ingestion_spec_names_is_caught() -> None:
+    """An unregistered script is never executed, so it must not sit there looking loaded."""
+    found = check_fact_load_contract(
+        _fake(present_fact_load_scripts=(*REQUIRED_FACT_LOADS, "15_fact_service_ro_load.sql"))
+    )
+    assert [c.rule for c in found] == ["fact-load-contract-names-every-script"]
+    assert "15_fact_service_ro_load.sql" in found[0].evidence
+
+
+def test_a_required_script_missing_from_the_tree_is_caught() -> None:
+    found = check_fact_load_contract(_fake(present_fact_load_scripts=REQUIRED_FACT_LOADS[1:]))
+    assert [c.rule for c in found] == ["fact-load-contract-names-every-script"]
+    assert REQUIRED_FACT_LOADS[0] in found[0].evidence
+
+
+def test_the_rule_retires_itself_when_no_fact_load_exists() -> None:
+    """A semantic check, not a permanent demand.
+
+    With no fact-load script in the tree there is no capability being declared, and the
+    rule must stay silent rather than forbid a state that has become honest again.
+    """
+    unimplemented = _fake(
+        fact_load_scripts=0,
+        present_fact_load_scripts=(),
+        required_fact_load_scripts=(),
+        fact_discovery_fails_closed=False,
+    )
+    assert check_fact_load_contract(unimplemented) == []
+
+
+def test_the_structural_derivation_reads_behaviour_not_a_sentence(tmp_path: Path) -> None:
+    """The guard survives a rewording of the loader and fails on a rewrite of it.
+
+    A comment saying the load is required proves nothing; what the check reads is whether
+    ``discover_fact_sql`` raises and whether any path returns an empty list.
+    """
+    import project_capabilities as capabilities
+
+    fails_closed = tmp_path / "fails_closed.py"
+    fails_closed.write_text(
+        "def discover_fact_sql(root):\n"
+        "    if not root.is_dir():\n"
+        "        raise DatabaseLoadError('refused', missing_paths=[root])\n"
+        "    return [root / name for name in REQUIRED_FACT_SQL]\n",
+        encoding="utf-8",
+    )
+    fails_open = tmp_path / "fails_open.py"
+    fails_open.write_text(
+        "def discover_fact_sql(root):\n"
+        "    # The fact loads are required infrastructure and this load cannot skip them.\n"
+        "    if not root.is_dir():\n"
+        "        return []\n"
+        "    return sorted(root.glob('*_load.sql'))\n",
+        encoding="utf-8",
+    )
+
+    original = capabilities.LOADER_SOURCE
+    try:
+        capabilities.LOADER_SOURCE = fails_closed
+        assert capabilities._fact_discovery_fails_closed() is True
+        capabilities.LOADER_SOURCE = fails_open
+        assert capabilities._fact_discovery_fails_closed() is False
+    finally:
+        capabilities.LOADER_SOURCE = original
 
 
 def test_the_website_disagreeing_is_caught(tmp_path: Path) -> None:

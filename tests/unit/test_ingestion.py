@@ -13,12 +13,27 @@ from arpi.generation.base import GeneratedDataset
 from arpi.ingestion import database
 from arpi.ingestion.loader import (
     ENTITY_TABLES,
+    FACT_SQL_GLOB,
     MERGE_SQL_GLOB,
     RAW_METADATA_COLUMNS,
+    REQUIRED_FACT_SQL,
+    discover_fact_sql,
+    discover_load_sql,
     discover_merge_sql,
     load_foundation,
     rows_for_copy,
 )
+
+REPO_SQL_ROOT = Path(__file__).resolve().parents[2] / "sql"
+
+
+def _write_fact_scripts(sql_root: Path, *, names: tuple[str, ...] = REQUIRED_FACT_SQL) -> Path:
+    """Write fact-load scripts into a throwaway SQL root and return the directory."""
+    directory = sql_root / "04_facts"
+    directory.mkdir(parents=True, exist_ok=True)
+    for name in names:
+        (directory / name).write_text("-- load", encoding="utf-8")
+    return directory
 
 
 @pytest.fixture
@@ -138,6 +153,141 @@ def test_discover_merge_sql_reports_an_empty_directory(tmp_path: Path) -> None:
     assert "refused" in str(excinfo.value)
 
 
+# --------------------------------------------------------------------------------------
+# Fact discovery fails closed
+# --------------------------------------------------------------------------------------
+# All five MVP facts are built and loaded on every database run. A load that found no
+# fact scripts once meant "not implemented yet"; it now means the run would leave the
+# warehouse holding dimensions and no measures while reporting success, so every one of
+# these conditions is refused rather than tolerated.
+
+
+def test_the_required_fact_set_is_derived_from_the_ingestion_registry() -> None:
+    from arpi.ingestion.spec import ENTITY_SPECS
+
+    declared = {spec.fact_load_script for spec in ENTITY_SPECS if spec.fact_load_script is not None}
+    assert set(REQUIRED_FACT_SQL) == declared
+    assert len(REQUIRED_FACT_SQL) == 5
+    assert list(REQUIRED_FACT_SQL) == sorted(REQUIRED_FACT_SQL), "execution order is by file name"
+
+
+def test_discover_fact_sql_returns_the_complete_set_in_order(tmp_path: Path) -> None:
+    directory = _write_fact_scripts(tmp_path)
+    # Neither a document nor a DDL script is a load script, and neither may perturb the
+    # result: the directory holds the fact DDL alongside the loads in the real tree.
+    (directory / "README.md").write_text("# facts", encoding="utf-8")
+    (directory / "00_fact_vehicle_sale.sql").write_text("-- ddl", encoding="utf-8")
+    (directory / ".gitkeep").write_text("", encoding="utf-8")
+
+    assert [path.name for path in discover_fact_sql(tmp_path)] == list(REQUIRED_FACT_SQL)
+
+
+def test_discover_fact_sql_executes_only_the_scripts_the_registry_names(tmp_path: Path) -> None:
+    """A file appearing in the directory is not a licence to execute it."""
+    directory = _write_fact_scripts(tmp_path)
+    (directory / "99_unregistered_load.sql").write_text("-- not ours", encoding="utf-8")
+
+    assert [path.name for path in discover_fact_sql(tmp_path)] == list(REQUIRED_FACT_SQL)
+
+
+def test_discover_fact_sql_reports_a_missing_directory(tmp_path: Path) -> None:
+    with pytest.raises(DatabaseLoadError) as excinfo:
+        discover_fact_sql(tmp_path)
+    assert excinfo.value.missing_paths == (tmp_path / "04_facts",)
+    assert "04_facts" in str(excinfo.value)
+    assert "incomplete warehouse" in str(excinfo.value)
+
+
+def test_discover_fact_sql_reports_an_empty_directory(tmp_path: Path) -> None:
+    (tmp_path / "04_facts").mkdir()
+    with pytest.raises(DatabaseLoadError) as excinfo:
+        discover_fact_sql(tmp_path)
+    assert FACT_SQL_GLOB in str(excinfo.value)
+    assert "refused" in str(excinfo.value)
+
+
+def test_discover_fact_sql_names_the_scripts_a_partial_directory_is_missing(
+    tmp_path: Path,
+) -> None:
+    present, missing = REQUIRED_FACT_SQL[:2], REQUIRED_FACT_SQL[2:]
+    _write_fact_scripts(tmp_path, names=present)
+
+    with pytest.raises(DatabaseLoadError) as excinfo:
+        discover_fact_sql(tmp_path)
+
+    message = str(excinfo.value)
+    for name in missing:
+        assert name in message
+    for name in present:
+        assert f"04_facts/{name}" not in message.replace("\\", "/")
+    assert excinfo.value.missing_paths == tuple(tmp_path / "04_facts" / name for name in missing)
+    # The warehouse facts that would have been left empty are named, because "a script is
+    # missing" and "the group's gross is missing from every report" are the same failure.
+    assert "warehouse.fact_" in message
+
+
+def test_a_required_script_renamed_out_of_the_contract_fails(tmp_path: Path) -> None:
+    renamed = (*REQUIRED_FACT_SQL[1:], "20_fact_vehicle_sale_load.sql")
+    _write_fact_scripts(tmp_path, names=renamed)
+
+    with pytest.raises(DatabaseLoadError) as excinfo:
+        discover_fact_sql(tmp_path)
+    assert REQUIRED_FACT_SQL[0] in str(excinfo.value)
+    assert "arpi.ingestion.spec" in str(excinfo.value)
+
+
+def test_the_repository_fact_directory_satisfies_the_contract() -> None:
+    """The production tree, not a fixture: the contract has to hold where it ships."""
+    discovered = discover_fact_sql(REPO_SQL_ROOT)
+    assert [path.name for path in discovered] == list(REQUIRED_FACT_SQL)
+    assert all(path.is_file() for path in discovered)
+
+
+def test_facts_execute_after_every_dimension_merge(tmp_path: Path) -> None:
+    """The ordering contract: a fact resolves surrogate keys through the dimensions."""
+    merge_directory = tmp_path / "03_dimensions"
+    merge_directory.mkdir()
+    (merge_directory / "10_dim_date_merge.sql").write_text("-- merge", encoding="utf-8")
+    (merge_directory / "20_dim_dealership_merge.sql").write_text("-- merge", encoding="utf-8")
+    _write_fact_scripts(tmp_path)
+
+    order = [path.name for path in discover_load_sql(tmp_path)]
+    assert order == [
+        "10_dim_date_merge.sql",
+        "20_dim_dealership_merge.sql",
+        *REQUIRED_FACT_SQL,
+    ]
+
+
+def test_the_repository_executes_every_merge_before_every_fact() -> None:
+    order = discover_load_sql(REPO_SQL_ROOT)
+    last_merge = max(index for index, path in enumerate(order) if path.name.endswith("_merge.sql"))
+    first_fact = min(index for index, path in enumerate(order) if path.name in REQUIRED_FACT_SQL)
+    assert last_merge < first_fact
+
+
+def test_a_missing_fact_set_is_reported_without_leaking_the_connection(
+    db_config: ArpiConfig, date_dataset: GeneratedDataset, tmp_path: Path
+) -> None:
+    """The refusal names SQL paths and nothing else: no password, no connection string."""
+    from arpi.audit.run import AuditRecorder, PipelineRun
+
+    merge_directory = tmp_path / "03_dimensions"
+    merge_directory.mkdir()
+    (merge_directory / "10_dim_date_merge.sql").write_text("-- merge", encoding="utf-8")
+
+    recorder = AuditRecorder(run=PipelineRun.start(db_config, pipeline_name="test"))
+    with pytest.raises(DatabaseLoadError) as excinfo:
+        load_foundation(db_config, [date_dataset], recorder, sql_root=tmp_path)
+
+    message = str(excinfo.value)
+    assert "04_facts" in message
+    assert "s3cret" not in message
+    assert "arpi_absent" not in message
+    assert "postgresql://" not in message
+    assert "127.0.0.1" not in message
+
+
 def test_rows_for_copy_appends_the_metadata_columns(
     dealership_dataset: GeneratedDataset,
 ) -> None:
@@ -196,6 +346,29 @@ def test_every_registered_spec_is_internally_consistent() -> None:
         assert spec.warehouse_reconciliation_id.endswith("-WAREHOUSE")
         if spec.warehouse_table is None:
             assert spec.merge_script is None
+        # A fact nobody can load, or a load script for a fact nobody named, would leave
+        # the required-set contract unenforceable in one direction.
+        assert (spec.warehouse_fact_table is None) == (spec.fact_load_script is None)
+        if spec.fact_load_script is not None:
+            assert spec.fact_load_script.endswith("_load.sql")
+            assert spec.warehouse_table is None, (
+                "a fact is loaded, grained and reconciled in SQL, not by the Python merge"
+            )
+
+
+def test_a_spec_may_not_name_a_fact_it_cannot_load() -> None:
+    from arpi.ingestion.spec import EntityIngestionSpec
+
+    with pytest.raises(ValueError, match="declared together"):
+        EntityIngestionSpec(
+            entity_name="halfway",
+            raw_table="halfway_load",
+            staging_view="stg_halfway",
+            warehouse_table=None,
+            natural_key=("halfway_id",),
+            merge_script=None,
+            warehouse_fact_table="fact_halfway",
+        )
 
 
 def test_spec_for_names_the_registered_entities_when_it_fails() -> None:
@@ -396,6 +569,7 @@ def test_load_foundation_copies_merges_counts_and_audits(
     sql_dir.mkdir()
     (sql_dir / "10_dim_date_merge.sql").write_text("-- merge date", encoding="utf-8")
     (sql_dir / "20_dim_dealership_merge.sql").write_text("-- merge dealership", encoding="utf-8")
+    _write_fact_scripts(tmp_path)
 
     # Six scalar queries per entity, in the order _collect_layer_counts issues them:
     # raw, staging, distinct staging keys, deduplicated, warehouse, warehouse-matched.
@@ -430,9 +604,12 @@ def test_load_foundation_copies_merges_counts_and_audits(
     assert result.warehouse_row_counts == {"dim_date": 59, "dim_dealership": 3}
     assert all(counts.chain_balances for counts in result.layer_counts.values())
     assert result.rejected_records == ()
+    # Every dimension merge, then every fact load: the facts join the dimensions to
+    # resolve their surrogate keys, so the order is part of the contract.
     assert [path.name for path in result.executed_sql] == [
         "10_dim_date_merge.sql",
         "20_dim_dealership_merge.sql",
+        *REQUIRED_FACT_SQL,
     ]
     assert len(connection.copy_statements) == 2
     assert len(connection.copied_rows) == 62
@@ -487,6 +664,7 @@ def test_load_foundation_reports_a_row_count_mismatch(
     sql_dir = tmp_path / "03_dimensions"
     sql_dir.mkdir()
     (sql_dir / "10_dim_date_merge.sql").write_text("-- merge", encoding="utf-8")
+    _write_fact_scripts(tmp_path)
 
     # raw, staging, staging keys, deduplicated, warehouse, warehouse-matched, run id,
     # then the SQL reconciliation count. The warehouse holds one row fewer than the
