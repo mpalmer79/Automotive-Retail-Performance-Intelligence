@@ -1,4 +1,4 @@
-"""Collect every public Amherst Subaru listing from AutoTrader."""
+"""Collect Amherst Subaru vehicle detail pages from its public XML sitemap."""
 
 from __future__ import annotations
 
@@ -7,167 +7,213 @@ import csv
 import json
 import re
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Iterator
-from urllib.parse import urlencode
+from typing import Any
+from urllib.parse import urlparse
+from xml.etree import ElementTree
 
-import cloudscraper
+import requests
+from bs4 import BeautifulSoup
 
-BASE_URL = "https://www.autotrader.com"
-DEALER_URL = f"{BASE_URL}/car-dealers/amherst-nh/70248507/amherst-subaru"
-RECORDS_PER_PAGE = 25
-NEXT_DATA_PATTERN = re.compile(
-    r'<script[^>]+id=["\']__NEXT_DATA__["\'][^>]*>(.*?)</script>',
-    re.DOTALL | re.IGNORECASE,
+BASE_URL = "https://www.amherstsubaru.com"
+ROOT_SITEMAP = f"{BASE_URL}/sitemap.xml"
+USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/138.0.0.0 Safari/537.36"
 )
+VIN_PATTERN = re.compile(r"\b[A-HJ-NPR-Z0-9]{17}\b")
+MONEY_PATTERN = re.compile(r"\$\s*([0-9][0-9,]*)")
+MILEAGE_PATTERN = re.compile(r"(?:Mileage|Odometer)\s*[:\n ]+([0-9][0-9,]*)", re.I)
+STOCK_PATTERN = re.compile(r"Stock(?: Number| #)?\s*[:\n ]+([A-Z0-9-]+)", re.I)
 
 
-def walk_dicts(value: Any) -> Iterator[dict[str, Any]]:
-    if isinstance(value, dict):
-        yield value
-        for child in value.values():
-            yield from walk_dicts(child)
-    elif isinstance(value, list):
-        for child in value:
-            yield from walk_dicts(child)
-
-
-def find_eggs_state(data: dict[str, Any]) -> dict[str, Any]:
-    direct = (
-        data.get("props", {})
-        .get("pageProps", {})
-        .get("__eggsState", {})
+def session() -> requests.Session:
+    client = requests.Session()
+    client.headers.update(
+        {
+            "User-Agent": USER_AGENT,
+            "Accept-Language": "en-US,en;q=0.9",
+            "Cache-Control": "no-cache",
+            "Pragma": "no-cache",
+        }
     )
-    if isinstance(direct, dict) and direct.get("inventory"):
-        return direct
-
-    for candidate in walk_dicts(data):
-        if isinstance(candidate.get("inventory"), dict) and (
-            isinstance(candidate.get("srp_results"), dict)
-            or isinstance(candidate.get("searchResults"), dict)
-        ):
-            return candidate
-    raise RuntimeError("AutoTrader inventory state was not found in __NEXT_DATA__")
+    return client
 
 
-def parse_next_data(html: str) -> dict[str, Any]:
-    match = NEXT_DATA_PATTERN.search(html)
-    if not match:
-        raise RuntimeError("AutoTrader __NEXT_DATA__ script was not found")
-    parsed = json.loads(match.group(1))
-    if not isinstance(parsed, dict):
-        raise RuntimeError("AutoTrader __NEXT_DATA__ was not an object")
-    return parsed
+def fetch_text(client: requests.Session, url: str, accept: str, attempts: int = 5) -> str:
+    last_error: Exception | None = None
+    for attempt in range(attempts):
+        try:
+            response = client.get(
+                url,
+                timeout=60,
+                headers={"Accept": accept, "Referer": f"{BASE_URL}/all-inventory/index.htm"},
+            )
+            response.raise_for_status()
+            return response.text
+        except requests.RequestException as error:
+            last_error = error
+            time.sleep(2**attempt)
+    raise RuntimeError(f"Unable to retrieve {url}") from last_error
 
 
-def value_name(value: Any) -> str:
-    if isinstance(value, dict):
-        for key in ("name", "value", "label", "displayName"):
-            if value.get(key) not in (None, ""):
-                return str(value[key]).strip()
-    return str(value or "").strip()
+def xml_locations(xml_text: str) -> tuple[str, list[str]]:
+    root = ElementTree.fromstring(xml_text)
+    kind = root.tag.rsplit("}", 1)[-1]
+    locations = [
+        element.text.strip()
+        for element in root.iter()
+        if element.tag.rsplit("}", 1)[-1] == "loc" and element.text
+    ]
+    return kind, locations
+
+
+def collect_sitemap_urls(client: requests.Session) -> tuple[list[str], list[str]]:
+    queue = [ROOT_SITEMAP]
+    visited: set[str] = set()
+    pages: list[str] = []
+    sitemap_urls: list[str] = []
+
+    while queue:
+        url = queue.pop(0)
+        if url in visited:
+            continue
+        visited.add(url)
+        xml_text = fetch_text(client, url, "application/xml,text/xml;q=0.9,*/*;q=0.8")
+        kind, locations = xml_locations(xml_text)
+        sitemap_urls.append(url)
+        if kind == "sitemapindex":
+            queue.extend(location for location in locations if location not in visited)
+        else:
+            pages.extend(locations)
+
+    return sorted(set(pages)), sitemap_urls
+
+
+def is_vehicle_page(url: str) -> bool:
+    path = urlparse(url).path.lower()
+    return (
+        path.endswith(".htm")
+        and (path.startswith("/new/") or path.startswith("/used/"))
+        and "-for-sale-" in path
+    )
+
+
+def clean_text(value: Any) -> str:
+    return re.sub(r"\s+", " ", str(value or "")).strip()
 
 
 def parse_int(value: Any) -> int | None:
-    if isinstance(value, dict):
-        value = value.get("value") or value.get("amount")
-    if value in (None, ""):
-        return None
-    match = re.search(r"-?\d+(?:\.\d+)?", str(value).replace(",", ""))
-    return round(float(match.group(0))) if match else None
+    match = re.search(r"[0-9][0-9,]*", clean_text(value))
+    return int(match.group(0).replace(",", "")) if match else None
 
 
-def first_nonempty(mapping: dict[str, Any], *keys: str) -> Any:
-    for key in keys:
-        value = mapping.get(key)
-        if value not in (None, "", [], {}):
-            return value
-    return None
+def json_ld_objects(soup: BeautifulSoup) -> list[dict[str, Any]]:
+    objects: list[dict[str, Any]] = []
+    for script in soup.select('script[type="application/ld+json"]'):
+        try:
+            parsed = json.loads(script.get_text(strip=True))
+        except (json.JSONDecodeError, TypeError):
+            continue
+        candidates = parsed if isinstance(parsed, list) else [parsed]
+        for candidate in candidates:
+            if isinstance(candidate, dict):
+                objects.append(candidate)
+                graph = candidate.get("@graph")
+                if isinstance(graph, list):
+                    objects.extend(item for item in graph if isinstance(item, dict))
+    return objects
 
 
-def listing_price(raw: dict[str, Any]) -> int | None:
-    pricing = raw.get("pricingDetail")
-    if isinstance(pricing, dict):
-        for key in ("salePrice", "incentive", "price", "msrp"):
-            parsed = parse_int(pricing.get(key))
-            if parsed is not None:
-                return parsed
-    for key in ("salePrice", "price", "internetPrice", "askingPrice", "msrp"):
-        parsed = parse_int(raw.get(key))
-        if parsed is not None:
-            return parsed
-    return None
+def first_json_ld(objects: list[dict[str, Any]], *types: str) -> dict[str, Any]:
+    wanted = {value.lower() for value in types}
+    for item in objects:
+        item_type = item.get("@type")
+        values = item_type if isinstance(item_type, list) else [item_type]
+        if any(str(value).lower() in wanted for value in values):
+            return item
+    return {}
 
 
-def total_and_ids(eggs: dict[str, Any]) -> tuple[int, list[str]]:
-    result_state = eggs.get("srp_results")
-    if not isinstance(result_state, dict):
-        result_state = eggs.get("searchResults")
-    if not isinstance(result_state, dict):
-        result_state = {}
-
-    total = parse_int(
-        first_nonempty(result_state, "count", "totalCount", "total", "resultCount")
-    ) or 0
-    active = first_nonempty(
-        result_state,
-        "activeResults",
-        "activeResultIds",
-        "listingIds",
-        "results",
-    )
-    ids: list[str] = []
-    if isinstance(active, list):
-        for entry in active:
-            if isinstance(entry, dict):
-                candidate = first_nonempty(entry, "id", "listingId", "listingID")
-            else:
-                candidate = entry
-            if candidate not in (None, ""):
-                ids.append(str(candidate))
-
-    inventory = eggs.get("inventory")
-    if not ids and isinstance(inventory, dict):
-        ids = [str(key) for key in inventory]
-    return total, ids
-
-
-def normalize(
-    listing_id: str,
-    raw: dict[str, Any],
-    owners: dict[str, Any],
-    captured_at: str,
-) -> dict[str, Any]:
-    owner_id = str(first_nonempty(raw, "ownerId", "dealerId", "sellerId") or "")
-    owner = owners.get(owner_id)
-    if not isinstance(owner, dict):
-        owner = {}
-
-    year = parse_int(raw.get("year"))
-    make = value_name(raw.get("make"))
-    model = value_name(raw.get("model"))
-    trim = value_name(raw.get("trim"))
-    condition = value_name(
-        first_nonempty(raw, "listingType", "condition", "stockType", "newOrUsed")
-    )
-    certified = bool(
-        first_nonempty(raw, "certified", "isCertified", "manufacturerCertified")
-    ) or condition.lower() == "certified"
-    if certified and condition.lower() not in {"new", "used"}:
-        condition = "Certified"
-
-    mileage = parse_int(first_nonempty(raw, "mileage", "odometer"))
-    advertised_price = listing_price(raw)
-    vin = value_name(first_nonempty(raw, "vin", "vehicleIdentificationNumber"))
-    stock_number = value_name(
-        first_nonempty(raw, "stockNumber", "stockNum", "stock", "dealerStockNumber")
-    )
-    title = value_name(first_nonempty(raw, "titleLong", "title"))
+def parse_title(url: str, soup: BeautifulSoup, text: str) -> tuple[int | None, str, str, str, str]:
+    heading = soup.find("h1")
+    title = clean_text(heading.get_text(" ") if heading else "")
     if not title:
-        title = " ".join(
-            part for part in (str(year) if year else "", make, model, trim) if part
+        meta = soup.find("meta", property="og:title")
+        title = clean_text(meta.get("content") if meta else "")
+    if not title:
+        title = clean_text(soup.title.get_text(" ") if soup.title else "")
+
+    title = re.sub(r"\s+(?:for sale|near|in Amherst|\|).*$", "", title, flags=re.I)
+    title = re.sub(r"^(?:New|Used|Certified)\s+", "", title, flags=re.I)
+    match = re.match(r"(?P<year>20\d{2}|19\d{2})\s+(?P<make>\S+)\s+(?P<model>\S+)(?:\s+(?P<trim>.*))?", title)
+    if match:
+        year = int(match.group("year"))
+        make = clean_text(match.group("make"))
+        model = clean_text(match.group("model"))
+        trim = clean_text(match.group("trim"))
+        return year, make, model, trim, title
+
+    path_parts = [part for part in urlparse(url).path.split("/") if part]
+    condition = path_parts[0].title() if path_parts else ""
+    slug = path_parts[2] if len(path_parts) > 2 else ""
+    year_match = re.search(r"(19|20)\d{2}", slug)
+    year = int(year_match.group(0)) if year_match else None
+    make = path_parts[1] if len(path_parts) > 1 else ""
+    model_match = re.search(r"Subaru-([^-]+)-for-sale", slug, re.I)
+    model = model_match.group(1) if model_match else ""
+    display = " ".join(part for part in (str(year or ""), make, model) if part)
+    return year, make, model, "", display or condition
+
+
+def extract_vehicle(url: str, html: str, captured_at: str) -> dict[str, Any]:
+    soup = BeautifulSoup(html, "html.parser")
+    visible_text = soup.get_text("\n")
+    objects = json_ld_objects(soup)
+    vehicle_ld = first_json_ld(objects, "Vehicle", "Car", "Product")
+    offer_ld = vehicle_ld.get("offers") if isinstance(vehicle_ld.get("offers"), dict) else {}
+
+    condition = "New" if urlparse(url).path.lower().startswith("/new/") else "Used"
+    year, make, model, trim, display = parse_title(url, soup, visible_text)
+
+    vin = clean_text(
+        vehicle_ld.get("vehicleIdentificationNumber")
+        or vehicle_ld.get("vin")
+        or (VIN_PATTERN.search(visible_text).group(0) if VIN_PATTERN.search(visible_text) else "")
+    )
+    stock_match = STOCK_PATTERN.search(visible_text)
+    stock_number = clean_text(stock_match.group(1) if stock_match else "")
+    mileage_match = MILEAGE_PATTERN.search(visible_text)
+    mileage = parse_int(mileage_match.group(1)) if mileage_match else (1 if condition == "New" else None)
+
+    advertised_price = parse_int(
+        offer_ld.get("price")
+        or vehicle_ld.get("price")
+    )
+    if advertised_price is None:
+        true_price_match = re.search(
+            r"(?:True Price|Sale Price|Internet Price)[^$]{0,80}\$\s*([0-9][0-9,]*)",
+            visible_text,
+            flags=re.I,
         )
+        if true_price_match:
+            advertised_price = parse_int(true_price_match.group(1))
+    if advertised_price is None:
+        money_values = [int(value.replace(",", "")) for value in MONEY_PATTERN.findall(visible_text)]
+        plausible = [value for value in money_values if 2_000 <= value <= 150_000]
+        advertised_price = plausible[0] if plausible else None
+
+    if not make:
+        make = clean_text(vehicle_ld.get("manufacturer") or vehicle_ld.get("brand"))
+    if not model:
+        model = clean_text(vehicle_ld.get("model"))
+    if not trim:
+        trim = clean_text(vehicle_ld.get("vehicleConfiguration") or vehicle_ld.get("trim"))
+    if not display:
+        display = " ".join(part for part in (str(year or ""), make, model, trim) if part)
 
     return {
         "condition": condition,
@@ -175,140 +221,76 @@ def normalize(
         "make": make,
         "model": model,
         "trim": trim,
-        "vehicle": title,
+        "vehicle": display,
         "mileage": mileage,
         "advertised_price": advertised_price,
-        "price_status": "Listed" if advertised_price is not None else "Call for price",
+        "price_status": "Listed" if advertised_price is not None else "Not exposed",
         "vin": vin,
         "stock_number": stock_number,
-        "listing_id": listing_id,
-        "source_url": f"{BASE_URL}/cars-for-sale/vehicle/{listing_id}",
-        "owner_id": owner_id,
-        "dealer_name": value_name(first_nonempty(owner, "name", "displayName"))
-        or value_name(raw.get("ownerName")),
-        "certified": certified,
-        "body_style": value_name(first_nonempty(raw, "bodyStyle", "bodyType")),
-        "exterior_color": value_name(first_nonempty(raw, "exteriorColor", "color")),
-        "interior_color": value_name(raw.get("interiorColor")),
-        "drivetrain": value_name(first_nonempty(raw, "driveType", "drivetrain")),
-        "fuel_type": value_name(raw.get("fuelType")),
-        "transmission": value_name(raw.get("transmission")),
+        "source_url": url,
         "captured_at": captured_at,
+        "http_bytes": len(html.encode("utf-8")),
     }
 
 
-def fetch_html(scraper: Any, first_record: int) -> str:
-    params = {
-        "firstRecord": first_record,
-        "numRecords": RECORDS_PER_PAGE,
-        "searchRadius": 0,
-        "zip": "03031",
-    }
-    last_error: Exception | None = None
-    for attempt in range(5):
-        try:
-            response = scraper.get(
-                f"{DEALER_URL}?{urlencode(params)}",
-                timeout=60,
-                headers={
-                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                    "Accept-Language": "en-US,en;q=0.9",
-                    "Cache-Control": "no-cache",
-                    "Referer": DEALER_URL,
-                },
-            )
-            response.raise_for_status()
-            if "__NEXT_DATA__" not in response.text:
-                raise RuntimeError(
-                    f"AutoTrader response omitted __NEXT_DATA__: {response.text[:300]}"
-                )
-            return response.text
-        except Exception as error:
-            last_error = error
-            time.sleep(2**attempt)
-    raise RuntimeError(f"AutoTrader request failed at firstRecord={first_record}") from last_error
+def fetch_vehicle(client: requests.Session, url: str, captured_at: str) -> tuple[str, dict[str, Any] | None, str]:
+    try:
+        html = fetch_text(client, url, "text/html,application/xhtml+xml")
+        return url, extract_vehicle(url, html, captured_at), ""
+    except Exception as error:
+        return url, None, f"{type(error).__name__}: {error}"
 
 
-def collect(output_dir: Path) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    scraper = cloudscraper.create_scraper(
-        browser={"browser": "chrome", "platform": "windows", "desktop": True}
-    )
+def collect(output_dir: Path, workers: int) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    client = session()
+    pages, sitemap_urls = collect_sitemap_urls(client)
+    vehicle_urls = sorted(url for url in pages if is_vehicle_page(url))
     captured_at = datetime.now(UTC).replace(microsecond=0).isoformat()
-    records_by_key: dict[str, dict[str, Any]] = {}
-    expected = 0
-    first_record = 0
-    pages = 0
 
-    debug_dir = output_dir / "debug"
-    debug_dir.mkdir(parents=True, exist_ok=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "all_sitemap_urls.json").write_text(json.dumps(pages, indent=2), encoding="utf-8")
+    (output_dir / "vehicle_urls.json").write_text(json.dumps(vehicle_urls, indent=2), encoding="utf-8")
 
-    while True:
-        html = fetch_html(scraper, first_record)
-        data = parse_next_data(html)
-        eggs = find_eggs_state(data)
-        inventory = eggs.get("inventory")
-        owners = eggs.get("owners")
-        if not isinstance(inventory, dict):
-            raise RuntimeError("AutoTrader inventory map was missing")
-        if not isinstance(owners, dict):
-            owners = {}
+    records: list[dict[str, Any]] = []
+    failures: list[dict[str, str]] = []
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        futures = {
+            executor.submit(fetch_vehicle, session(), url, captured_at): url
+            for url in vehicle_urls
+        }
+        for future in as_completed(futures):
+            url, record, error = future.result()
+            if record is None:
+                failures.append({"source_url": url, "error": error})
+            else:
+                records.append(record)
 
-        page_total, active_ids = total_and_ids(eggs)
-        expected = max(expected, page_total)
-        if pages == 0:
-            (debug_dir / "page-1-next-data.json").write_text(
-                json.dumps(data, indent=2), encoding="utf-8"
-            )
-
-        page_added = 0
-        for listing_id in active_ids:
-            raw = inventory.get(str(listing_id))
-            if not isinstance(raw, dict):
-                continue
-            row = normalize(str(listing_id), raw, owners, captured_at)
-            key = row["vin"] or row["listing_id"]
-            if key and key not in records_by_key:
-                records_by_key[key] = row
-                page_added += 1
-
-        pages += 1
-        if not active_ids or page_added == 0:
-            break
-        if expected and len(records_by_key) >= expected:
-            break
-        if len(active_ids) < RECORDS_PER_PAGE and not expected:
-            break
-        first_record += RECORDS_PER_PAGE
-        if first_record > 2500:
-            raise RuntimeError("AutoTrader pagination exceeded safety limit")
-        time.sleep(1.5)
-
-    records = sorted(
-        records_by_key.values(),
+    records.sort(
         key=lambda row: (
             row["condition"],
             -(row["year"] or 0),
             row["make"],
             row["model"],
             row["trim"],
-            row["vin"],
-        ),
+            row["source_url"],
+        )
     )
     metadata = {
-        "source": DEALER_URL,
+        "source": ROOT_SITEMAP,
         "captured_at": captured_at,
-        "expected_records": expected,
-        "unique_records": len(records),
-        "pages_retrieved": pages,
-        "new_records": sum(row["condition"].lower() == "new" for row in records),
-        "used_records": sum(row["condition"].lower() == "used" for row in records),
-        "certified_records": sum(bool(row["certified"]) for row in records),
+        "sitemaps_retrieved": sitemap_urls,
+        "all_page_urls": len(pages),
+        "vehicle_urls": len(vehicle_urls),
+        "vehicle_pages_parsed": len(records),
+        "vehicle_page_failures": len(failures),
+        "new_records": sum(row["condition"] == "New" for row in records),
+        "used_records": sum(row["condition"] == "Used" for row in records),
     }
+    (output_dir / "failures.json").write_text(json.dumps(failures, indent=2), encoding="utf-8")
     return records, metadata
 
 
 def write_outputs(records: list[dict[str, Any]], metadata: dict[str, Any], output_dir: Path) -> None:
-    output_dir.mkdir(parents=True, exist_ok=True)
     fields = [
         "condition",
         "year",
@@ -321,18 +303,9 @@ def write_outputs(records: list[dict[str, Any]], metadata: dict[str, Any], outpu
         "price_status",
         "vin",
         "stock_number",
-        "listing_id",
         "source_url",
-        "owner_id",
-        "dealer_name",
-        "certified",
-        "body_style",
-        "exterior_color",
-        "interior_color",
-        "drivetrain",
-        "fuel_type",
-        "transmission",
         "captured_at",
+        "http_bytes",
     ]
     with (output_dir / "amherst_subaru_inventory_complete.csv").open(
         "w", encoding="utf-8", newline=""
@@ -352,17 +325,19 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output-dir", type=Path, default=Path("artifacts/amherst-inventory"))
     parser.add_argument("--minimum-count", type=int, default=250)
+    parser.add_argument("--workers", type=int, default=8)
     args = parser.parse_args()
 
-    records, metadata = collect(args.output_dir)
+    records, metadata = collect(args.output_dir, args.workers)
     write_outputs(records, metadata, args.output_dir)
-    expected = int(metadata["expected_records"] or 0)
-    if expected and len(records) != expected:
+    if metadata["vehicle_urls"] < args.minimum_count:
         raise RuntimeError(
-            f"Inventory reconciliation failed: expected={expected}, unique={len(records)}"
+            f"Only {metadata['vehicle_urls']} vehicle URLs were found in the sitemap"
         )
-    if len(records) < args.minimum_count:
-        raise RuntimeError(f"Only {len(records)} unique units were collected")
+    if metadata["vehicle_page_failures"]:
+        raise RuntimeError(
+            f"{metadata['vehicle_page_failures']} vehicle pages failed to parse"
+        )
     print(json.dumps(metadata, indent=2))
 
 
