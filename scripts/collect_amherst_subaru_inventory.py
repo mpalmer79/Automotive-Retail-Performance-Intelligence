@@ -15,7 +15,7 @@ from typing import Any
 import requests
 
 PUBLIC_INVENTORY_URL = "https://www.cars.com/dealers/156767/amherst-subaru/inventory/"
-READER_INVENTORY_URL = "https://r.jina.ai/http://www.cars.com/dealers/156767/amherst-subaru/inventory/"
+READER_INVENTORY_URL = "https://r.jina.ai/https://www.cars.com/dealers/156767/amherst-subaru/inventory/"
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -53,7 +53,10 @@ def build_session() -> requests.Session:
             "User-Agent": USER_AGENT,
             "Accept": "text/plain,text/markdown,text/html,*/*;q=0.8",
             "Accept-Language": "en-US,en;q=0.9",
-            "Cache-Control": "no-cache",
+            "X-Engine": "browser",
+            "X-Respond-With": "markdown",
+            "X-No-Cache": "true",
+            "X-Timeout": "30",
         }
     )
     return session
@@ -66,7 +69,7 @@ def fetch_page(session: requests.Session, page: int, page_size: int) -> str:
             response = session.get(
                 READER_INVENTORY_URL,
                 params={"page": page, "page_size": page_size},
-                timeout=90,
+                timeout=120,
             )
             response.raise_for_status()
             if ARRAY_MARKER not in response.text:
