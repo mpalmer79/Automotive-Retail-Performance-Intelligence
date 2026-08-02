@@ -126,6 +126,19 @@ export interface InventoryArtifact {
   readonly usedUnits: number
   readonly listedPriceUnits: number
   readonly callForPriceUnits: number
+  /** Listings whose source published no price field at all. Not call-for-price. */
+  readonly priceNotExposedUnits: number
+  /** Listings that published no odometer reading. Not listings with zero miles. */
+  readonly noOdometerUnits: number
+  /**
+   * `complete`, or `partial` when the capture is known not to hold every listing the
+   * store published. A partial capture's row count is a count of WHAT WAS VISIBLE, and
+   * the page has to say so: read as an inventory count it reports a shortfall that
+   * exists only in the extraction.
+   */
+  readonly coverage: 'complete' | 'partial'
+  /** Why the capture is partial. Present only when `coverage` is `partial`. */
+  readonly coverageNote?: string
 }
 
 export interface SanitizationRemoval {
@@ -154,7 +167,10 @@ export interface InventoryStatusItem {
 }
 
 export interface InventoryOperationsContent {
+  /** The lead artifact, used where the page needs one concrete example. */
   readonly artifact: InventoryArtifact
+  /** Every committed artifact, one per store, in dealership order. */
+  readonly artifacts: readonly InventoryArtifact[]
   readonly notice: string
   readonly problem: {
     readonly heading: string

@@ -15,6 +15,8 @@
 --   KPI-LST-003  Used listing units                used_listing_units
 --   KPI-LST-004  Vehicles with listed price        listed_price_units
 --   KPI-LST-005  Call-for-price units              call_for_price_units
+--   KPI-LST-023  Price-not-exposed units           price_not_exposed_units
+--   KPI-LST-024  Unpriced units                    unpriced_units
 --   KPI-LST-006  Pricing completeness percentage   listed_price_units / observed_listing_units
 --   KPI-LST-007  Total advertised listing value    total_advertised_value
 --   KPI-LST-008  Average advertised price          total_advertised_value / listed_price_units
@@ -38,9 +40,12 @@
 -- ----------------------------------
 -- It is the sum of the prices that were ADVERTISED at one moment. It is not inventory
 -- investment, not the value of the assets, not floor-plan exposure and not money the
--- store has. Call-for-price units contribute nothing to it, which is why
--- call_for_price_units sits beside it: a total that excludes some vehicles must show
--- how many it excluded.
+-- store has. Unpriced units contribute nothing to it, which is why unpriced_units sits
+-- beside it: a total that excludes some vehicles must show how many it excluded.
+--
+-- The exclusion is not hypothetical. Granite Used Auto Center's capture publishes no
+-- price for 287 of its 318 listings, so its total_advertised_value describes 31
+-- vehicles. A reader who saw only the total would read that store as small.
 
 CREATE OR REPLACE VIEW reporting.vw_vehicle_listing_summary AS
 WITH store_latest AS (
@@ -65,6 +70,12 @@ SELECT
     -- Pricing completeness, numerator and denominator both published.
     count(*) FILTER (WHERE f.pricing_status = 'Listed')::bigint         AS listed_price_units,
     count(*) FILTER (WHERE f.pricing_status = 'Call for price')::bigint AS call_for_price_units,
+    count(*) FILTER (WHERE f.pricing_status = 'Price not exposed')::bigint
+                                                                        AS price_not_exposed_units,
+    -- The derived total, published so that listed + unpriced = observed always holds.
+    -- Without it a reader adds the two named buckets, finds they do not reach the
+    -- total, and has no way to tell whether rows were lost or a status was added.
+    count(*) FILTER (WHERE f.pricing_status <> 'Listed')::bigint        AS unpriced_units,
 
     -- Advertised value. NOT inventory investment.
     coalesce(sum(f.advertised_price), 0)::numeric(14,2)                 AS total_advertised_value,
@@ -98,10 +109,12 @@ COMMENT ON COLUMN reporting.vw_vehicle_listing_summary.observed_listing_units IS
 COMMENT ON COLUMN reporting.vw_vehicle_listing_summary.new_listing_units IS 'KPI-LST-002. Observed listings whose advertised condition is New. SEMI-ADDITIVE.';
 COMMENT ON COLUMN reporting.vw_vehicle_listing_summary.used_listing_units IS 'KPI-LST-003. Observed listings whose advertised condition is Used. SEMI-ADDITIVE.';
 COMMENT ON COLUMN reporting.vw_vehicle_listing_summary.listed_price_units IS 'KPI-LST-004, and the numerator of KPI-LST-006. Observed listings that displayed a price.';
-COMMENT ON COLUMN reporting.vw_vehicle_listing_summary.call_for_price_units IS 'KPI-LST-005. Observed listings that displayed no price. These contribute nothing to total_advertised_value, which is why the count sits beside it.';
+COMMENT ON COLUMN reporting.vw_vehicle_listing_summary.call_for_price_units IS 'KPI-LST-005. Observed listings that DISPLAYED a call-for-price treatment: the price was withheld and contact invited. These contribute nothing to total_advertised_value, which is why the count sits beside it. NOT the same as price_not_exposed_units.';
+COMMENT ON COLUMN reporting.vw_vehicle_listing_summary.price_not_exposed_units IS 'KPI-LST-023. Observed listings whose source published NO price field at all. Distinct from call_for_price_units on purpose: that one records a merchandising choice somebody made and showed, this one records that the listing surface carried no price. Treating them as one would attribute a decision to a dealership on no evidence.';
+COMMENT ON COLUMN reporting.vw_vehicle_listing_summary.unpriced_units IS 'KPI-LST-024. call_for_price_units + price_not_exposed_units. Published so that listed_price_units + unpriced_units = observed_listing_units holds by construction, and a future pricing status cannot silently break the identity.';
 COMMENT ON COLUMN reporting.vw_vehicle_listing_summary.total_advertised_value IS 'KPI-LST-007. Sum of the prices ADVERTISED on this capture date. NOT inventory investment, NOT asset value, NOT floor-plan exposure, NOT gross. SEMI-ADDITIVE: never sum across capture dates.';
-COMMENT ON COLUMN reporting.vw_vehicle_listing_summary.minimum_advertised_price IS 'Lowest advertised price on this capture date. NULL when every listing was call-for-price.';
-COMMENT ON COLUMN reporting.vw_vehicle_listing_summary.maximum_advertised_price IS 'Highest advertised price on this capture date. NULL when every listing was call-for-price.';
+COMMENT ON COLUMN reporting.vw_vehicle_listing_summary.minimum_advertised_price IS 'Lowest advertised price on this capture date. NULL when no listing displayed a price at all.';
+COMMENT ON COLUMN reporting.vw_vehicle_listing_summary.maximum_advertised_price IS 'Highest advertised price on this capture date. NULL when no listing displayed a price at all.';
 COMMENT ON COLUMN reporting.vw_vehicle_listing_summary.latest_capture_age_days IS 'KPI-LST-022. Days between this capture date and the store''s newest capture. Zero on the newest row. This is SNAPSHOT FRESHNESS -- it is not days in stock and not days on lot.';
 COMMENT ON COLUMN reporting.vw_vehicle_listing_summary.is_latest_snapshot IS 'True on the store''s newest capture date. Filter on it to report one honest as-of position.';
 COMMENT ON COLUMN reporting.vw_vehicle_listing_summary.source_batch_count IS 'Distinct capture batches contributing to this row. One workbook is one batch, so anything but 1 means a snapshot was assembled from several files.';

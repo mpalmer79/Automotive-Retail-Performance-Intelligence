@@ -46,6 +46,9 @@ SELECT
     sum(f.inventory_unit_count)::bigint                                 AS observed_listing_units,
     count(*) FILTER (WHERE f.pricing_status = 'Listed')::bigint         AS listed_price_units,
     count(*) FILTER (WHERE f.pricing_status = 'Call for price')::bigint AS call_for_price_units,
+    count(*) FILTER (WHERE f.pricing_status = 'Price not exposed')::bigint
+                                                                        AS price_not_exposed_units,
+    count(*) FILTER (WHERE f.pricing_status <> 'Listed')::bigint        AS unpriced_units,
 
     -- Convenience only. The two counts above are the authority.
     round(
@@ -68,10 +71,11 @@ GROUP BY
     v.model;
 
 COMMENT ON VIEW reporting.vw_vehicle_listing_price_completeness IS
-    'Grain: one row per dealership per capture date per condition, make and model. The listed versus
-call-for-price distribution over SANITIZED PUBLIC REFERENCE data. A low percentage means the PUBLIC LISTING
-showed no price; it does not mean the store has no price, that the vehicle is not for sale, or that anything
-is wrong. Aggregate by summing listed_price_units and observed_listing_units and recomputing the ratio --
+    'Grain: one row per dealership per capture date per condition, make and model. The priced versus unpriced
+distribution over SANITIZED PUBLIC REFERENCE data. A low percentage means the PUBLIC LISTING showed no
+price; it does not mean the store has no price, that the vehicle is not for sale, or that anything is
+wrong. It can equally mean the listing surface publishes no price field at all, which is why the two
+unpriced buckets are reported separately. Aggregate by summing listed_price_units and observed_listing_units and recomputing the ratio --
 never by averaging pricing_completeness_pct.';
 
 COMMENT ON COLUMN reporting.vw_vehicle_listing_price_completeness.dealership_key IS 'Foreign key to reporting.vw_dealership: the store the listings were assigned to.';
@@ -82,7 +86,9 @@ COMMENT ON COLUMN reporting.vw_vehicle_listing_price_completeness.make IS 'Adver
 COMMENT ON COLUMN reporting.vw_vehicle_listing_price_completeness.model IS 'Advertised model. Part of the declared grain. Trim is deliberately not part of it: the merchandising question is answered at model level.';
 COMMENT ON COLUMN reporting.vw_vehicle_listing_price_completeness.observed_listing_units IS 'Listings observed in this group on this capture date. Denominator of the completeness ratio. SEMI-ADDITIVE: never sum across capture dates.';
 COMMENT ON COLUMN reporting.vw_vehicle_listing_price_completeness.listed_price_units IS 'Listings in this group that displayed a price. Numerator of the completeness ratio.';
-COMMENT ON COLUMN reporting.vw_vehicle_listing_price_completeness.call_for_price_units IS 'Listings in this group that displayed no price. A legitimate merchandising choice, not a defect.';
+COMMENT ON COLUMN reporting.vw_vehicle_listing_price_completeness.call_for_price_units IS 'Listings in this group that DISPLAYED a call-for-price treatment. A legitimate merchandising choice, not a defect.';
+COMMENT ON COLUMN reporting.vw_vehicle_listing_price_completeness.price_not_exposed_units IS 'Listings in this group whose source published no price field at all. Not a merchandising choice and not a defect: the listing surface carried no price. Kept apart from call_for_price_units because only one of the two evidences a decision.';
+COMMENT ON COLUMN reporting.vw_vehicle_listing_price_completeness.unpriced_units IS 'call_for_price_units + price_not_exposed_units, so that listed_price_units + unpriced_units = observed_listing_units holds by construction.';
 COMMENT ON COLUMN reporting.vw_vehicle_listing_price_completeness.pricing_completeness_pct IS 'KPI-LST-006 at this grain, to one decimal place. CONVENIENCE ONLY: recompute from the two counts when aggregating, because averaging percentages across groups of different sizes is wrong.';
 COMMENT ON COLUMN reporting.vw_vehicle_listing_price_completeness.total_advertised_value IS 'Sum of the prices ADVERTISED in this group. NOT inventory investment. SEMI-ADDITIVE.';
-COMMENT ON COLUMN reporting.vw_vehicle_listing_price_completeness.average_advertised_price IS 'Mean ADVERTISED price over the priced listings only. NULL when every listing in the group was call-for-price.';
+COMMENT ON COLUMN reporting.vw_vehicle_listing_price_completeness.average_advertised_price IS 'Mean ADVERTISED price over the priced listings only. NULL when no listing in the group displayed a price.';

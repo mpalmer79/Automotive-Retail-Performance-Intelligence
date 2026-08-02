@@ -1044,3 +1044,264 @@ def test_a_dry_run_writes_nothing(
             _scalar(cursor, "SELECT count(*) FROM warehouse.fact_vehicle_listing_snapshot")
             == before
         )
+
+
+# --------------------------------------------------------------------------------------
+# The other two committed captures, which are the ones that stressed the contract
+# --------------------------------------------------------------------------------------
+#
+# The Granite Chevrolet workbook exercises the happy path: every row priced, every row
+# with a reading. The other two are why the contract was amended, and loading them is the
+# only thing that proves the amendment reaches the warehouse rather than stopping at the
+# validator.
+#
+#   GSA-002   a PARTIAL capture -- 24 visible records out of a larger reported inventory
+#   GSA-003   287 of 318 rows with NO price and NO mileage, status 'Price not exposed'
+
+GSA002 = (
+    REPO_ROOT
+    / "data/reference/inventory/gsa-002/2026-08-02"
+    / "ARPI_Granite_Subaru_Inventory_Sanitized_2026-08-02.xlsx"
+)
+GSA003 = (
+    REPO_ROOT
+    / "data/reference/inventory/gsa-003/2026-08-02"
+    / "ARPI_Granite_Used_Auto_Center_Inventory_Sanitized_2026-08-02.xlsx"
+)
+
+#: The capture date all three committed artifacts share. Every assertion below filters on
+#: it, because earlier tests in this module import FABRICATED workbooks on other dates
+#: into the same database; an unfiltered store total would count those too and would move
+#: whenever a test above is added.
+COMMITTED_CAPTURE = date(2026, 8, 2)
+
+
+@pytest.fixture(scope="module")
+def all_three_stores(listing_connection: Any) -> Any:
+    """Import the other two committed captures beside the Chevrolet one, and commit.
+
+    Rolls back first. The shared connection may carry uncommitted work from a test that
+    exercised a refusal, and committing somebody else's half-finished transaction as a
+    side effect of this fixture would be its own defect.
+    """
+    listing_connection.rollback()
+    for workbook in (GSA002, GSA003):
+        summary = import_listing_workbook(
+            listing_connection, workbook, sql_root=SQL_ROOT, profile="test"
+        )
+        assert summary.already_imported is False, workbook.name
+        assert not summary.failing_reconciliations, summary.summary()
+    listing_connection.commit()
+    return listing_connection
+
+
+@pytest.fixture
+def three_store_cursor(all_three_stores: Any) -> Iterator[Any]:
+    """A cursor over the three-store database, rolled back after every test.
+
+    The same reason ``listing_cursor`` exists: the connection is shared and committed, so
+    one statement that errors would abort the transaction and every later test would fail
+    for a reason that has nothing to do with it. Two tests below deliberately provoke a
+    constraint violation, which makes the rollback load-bearing rather than tidy.
+    """
+    with all_three_stores.cursor() as cursor:
+        try:
+            yield cursor
+        finally:
+            all_three_stores.rollback()
+
+
+def test_all_three_committed_captures_load(three_store_cursor: Any) -> None:
+    three_store_cursor.execute(
+        """
+        SELECT d.dealership_id, count(*)
+        FROM warehouse.fact_vehicle_listing_snapshot AS f
+        JOIN warehouse.dim_dealership AS d ON d.dealership_key = f.dealership_key
+        WHERE f.captured_at = %(captured_at)s
+        GROUP BY d.dealership_id
+        ORDER BY d.dealership_id
+        """,
+        {"captured_at": COMMITTED_CAPTURE},
+    )
+    assert three_store_cursor.fetchall() == [("GSA-001", 199), ("GSA-002", 24), ("GSA-003", 318)]
+
+
+def test_an_unpriced_listing_reaches_the_warehouse_as_null_and_not_as_zero(
+    three_store_cursor: Any,
+) -> None:
+    """The single most consequential assertion about this capture.
+
+    A zero is a number and a number gets averaged. If 287 unpriced listings arrived as
+    zero, Granite Used Auto Center's average advertised price would be a fraction of the
+    truth and every one of those rows would look like a free car.
+    """
+    three_store_cursor.execute(
+        """
+        SELECT f.pricing_status, count(*), count(f.advertised_price), count(f.odometer_miles)
+        FROM warehouse.fact_vehicle_listing_snapshot AS f
+        JOIN warehouse.dim_dealership AS d ON d.dealership_key = f.dealership_key
+        WHERE d.dealership_id = 'GSA-003' AND f.captured_at = %(captured_at)s
+        GROUP BY f.pricing_status
+        ORDER BY f.pricing_status
+        """,
+        {"captured_at": COMMITTED_CAPTURE},
+    )
+    # count(column) counts non-NULLs, so a zero would appear here as a priced row.
+    assert three_store_cursor.fetchall() == [
+        ("Listed", 31, 31, 31),
+        ("Price not exposed", 287, 0, 0),
+    ]
+
+
+def test_an_absent_optional_value_lands_as_null_and_not_as_the_word_none(
+    three_store_cursor: Any,
+) -> None:
+    """The COPY writer must not stringify None.
+
+    It did. ``str(record.odometer_miles)`` put the four characters "None" into a text
+    column, staging correctly reported a value present but not representable, and 287
+    rows of a real capture were quarantined as REJ-TYPE-001 for a defect in one line of
+    Python rather than anything in the workbook.
+
+    What made it expensive to spot is that every layer behaved correctly: the rejection
+    was real, the reconciliations compared staged against loaded and passed, and the
+    import reported success over a fact holding 31 of 318 rows.
+    """
+    three_store_cursor.execute(
+        """
+        SELECT count(*)
+        FROM raw.inventory_listing_snapshot_load
+        WHERE odometer_miles = 'None' OR advertised_price = 'None'
+        """
+    )
+    assert three_store_cursor.fetchone()[0] == 0
+
+    three_store_cursor.execute(
+        """
+        SELECT count(*)
+        FROM staging.stg_inventory_listing_snapshot_rejected
+        WHERE rejection_reason LIKE '%odometer_miles%'
+        """
+    )
+    assert three_store_cursor.fetchone()[0] == 0
+
+
+def test_the_summary_view_publishes_both_unpriced_buckets_and_they_reconcile(
+    three_store_cursor: Any,
+) -> None:
+    """Every store satisfies listed + unpriced = observed, and the split says why."""
+    three_store_cursor.execute(
+        """
+        SELECT d.dealership_code,
+               s.observed_listing_units,
+               s.listed_price_units,
+               s.call_for_price_units,
+               s.price_not_exposed_units,
+               s.unpriced_units
+        FROM reporting.vw_vehicle_listing_summary AS s
+        JOIN reporting.vw_dealership AS d ON d.dealership_key = s.dealership_key
+        WHERE s.captured_at = %(captured_at)s
+        ORDER BY d.dealership_code
+        """,
+        {"captured_at": COMMITTED_CAPTURE},
+    )
+    rows = three_store_cursor.fetchall()
+    assert [row[0] for row in rows] == ["GSA-001", "GSA-002", "GSA-003"]
+    for code, observed, listed, call_for_price, not_exposed, unpriced in rows:
+        assert listed + unpriced == observed, code
+        assert call_for_price + not_exposed == unpriced, code
+    assert rows[2] == ("GSA-003", 318, 31, 0, 287, 287)
+
+
+def test_total_advertised_value_describes_only_the_priced_listings(
+    three_store_cursor: Any,
+) -> None:
+    """And the view publishes the count it excluded, so the total cannot mislead alone."""
+    three_store_cursor.execute(
+        """
+        SELECT s.total_advertised_value, s.listed_price_units, s.unpriced_units
+        FROM reporting.vw_vehicle_listing_summary AS s
+        JOIN reporting.vw_dealership AS d ON d.dealership_key = s.dealership_key
+        WHERE d.dealership_code = 'GSA-003' AND s.captured_at = %(captured_at)s
+        """,
+        {"captured_at": COMMITTED_CAPTURE},
+    )
+    total, listed, unpriced = three_store_cursor.fetchone()
+    assert listed == 31
+    assert unpriced == 287
+    assert total > 0
+
+
+def test_the_model_mix_average_odometer_ignores_the_rows_without_a_reading(
+    three_store_cursor: Any,
+) -> None:
+    """avg() skips NULL, and no_odometer_units is what stops that being invisible."""
+    three_store_cursor.execute(
+        """
+        SELECT coalesce(sum(m.no_odometer_units), 0),
+               count(*) FILTER (WHERE m.average_odometer_miles IS NULL)
+        FROM reporting.vw_vehicle_listing_model_mix AS m
+        JOIN reporting.vw_dealership AS d ON d.dealership_key = m.dealership_key
+        WHERE d.dealership_code = 'GSA-003' AND m.captured_at = %(captured_at)s
+        """,
+        {"captured_at": COMMITTED_CAPTURE},
+    )
+    no_reading, groups_without_an_average = three_store_cursor.fetchone()
+    assert no_reading == 287
+    # Some groups are entirely unpriced and unread, so their mean is NULL rather than
+    # zero. A zero-mile average in a used-car report reads as a new car.
+    assert groups_without_an_average > 0
+
+
+def test_a_priced_row_under_a_no_price_status_is_refused_by_the_database(
+    three_store_cursor: Any,
+) -> None:
+    """The pricing contract covers the new status, not just call-for-price."""
+    three_store_cursor.execute(
+        "SELECT vehicle_listing_snapshot_key FROM warehouse.fact_vehicle_listing_snapshot "
+        "WHERE pricing_status = 'Price not exposed' LIMIT 1"
+    )
+    key = three_store_cursor.fetchone()[0]
+    with pytest.raises(Exception, match="pricing_contract"):
+        three_store_cursor.execute(
+            "UPDATE warehouse.fact_vehicle_listing_snapshot SET advertised_price = 1000 "
+            "WHERE vehicle_listing_snapshot_key = %s",
+            (key,),
+        )
+
+
+def test_an_unknown_pricing_status_is_still_refused(three_store_cursor: Any) -> None:
+    """Widening the vocabulary by one did not make it open.
+
+    Two constraints refuse an unknown status and PostgreSQL reports whichever it reaches
+    first, so the assertion names both. That is not vagueness: the pricing contract is
+    written as "Listed requires a price OR a no-price status forbids one", and a status in
+    neither set satisfies neither branch. An unknown status therefore cannot get in past
+    the domain check by also being priced correctly, which is the loophole worth having.
+    """
+    three_store_cursor.execute(
+        "SELECT vehicle_listing_snapshot_key FROM warehouse.fact_vehicle_listing_snapshot LIMIT 1"
+    )
+    key = three_store_cursor.fetchone()[0]
+    with pytest.raises(Exception, match=r"pricing_status_domain|pricing_contract"):
+        three_store_cursor.execute(
+            "UPDATE warehouse.fact_vehicle_listing_snapshot SET pricing_status = 'Ask us' "
+            "WHERE vehicle_listing_snapshot_key = %s",
+            (key,),
+        )
+
+
+def test_an_operating_report_exports_for_the_store_with_no_prices(
+    all_three_stores: Any, tmp_path_factory: pytest.TempPathFactory
+) -> None:
+    """The deliverable has to survive a store whose price statistics are mostly absent."""
+    output = tmp_path_factory.mktemp("gsa003-report") / "report.xlsx"
+    summary = export_operating_report(
+        all_three_stores,
+        dealership_id="GSA-003",
+        captured_at=COMMITTED_CAPTURE,
+        output_path=output,
+    )
+    assert output.is_file()
+    assert summary.row_count == 318
+    all_three_stores.rollback()

@@ -68,7 +68,7 @@ CREATE TABLE IF NOT EXISTS warehouse.fact_vehicle_listing_snapshot (
     dealership_key                integer        NOT NULL,
     observed_vehicle_key          integer        NOT NULL,
     captured_at                   date           NOT NULL,
-    odometer_miles                integer        NOT NULL,
+    odometer_miles                integer        NULL,
     advertised_price              numeric(12,2)  NULL,
     pricing_status                varchar(20)    NOT NULL,
     inventory_unit_count          smallint       NOT NULL,
@@ -87,12 +87,14 @@ CREATE TABLE IF NOT EXISTS warehouse.fact_vehicle_listing_snapshot (
     -- Domain constraints -----------------------------------------------------
     CONSTRAINT ck_fact_vehicle_listing_snapshot_key_positive
         CHECK (vehicle_listing_snapshot_key > 0),
+    -- NULL is permitted and means the listing published no mileage. It is not zero:
+    -- zero is a reading, and a reading gets averaged.
     CONSTRAINT ck_fact_vehicle_listing_snapshot_odometer_nonnegative
-        CHECK (odometer_miles >= 0),
+        CHECK (odometer_miles IS NULL OR odometer_miles >= 0),
     CONSTRAINT ck_fact_vehicle_listing_snapshot_price_nonnegative
         CHECK (advertised_price IS NULL OR advertised_price >= 0),
     CONSTRAINT ck_fact_vehicle_listing_snapshot_pricing_status_domain
-        CHECK (pricing_status IN ('Listed', 'Call for price')),
+        CHECK (pricing_status IN ('Listed', 'Call for price', 'Price not exposed')),
     CONSTRAINT ck_fact_vehicle_listing_snapshot_unit_count_is_one
         CHECK (inventory_unit_count = 1),
     CONSTRAINT ck_fact_vehicle_listing_snapshot_source_batch_not_blank
@@ -107,10 +109,16 @@ CREATE TABLE IF NOT EXISTS warehouse.fact_vehicle_listing_snapshot (
     -- Business-rule constraints ----------------------------------------------
     -- The pricing contract, enforced rather than merely documented. A vehicle cannot
     -- be counted in both halves of a pricing-completeness percentage.
+    -- Two statuses carry no price and they are NOT interchangeable. 'Call for price'
+    -- means the listing displayed a call-for-price treatment: a choice was made and
+    -- shown. 'Price not exposed' means the listing surface published no price field at
+    -- all, and evidences no choice by anybody. Collapsing them would attribute a
+    -- merchandising decision to a dealership on no evidence.
     CONSTRAINT ck_fact_vehicle_listing_snapshot_pricing_contract
         CHECK (
             (pricing_status = 'Listed' AND advertised_price IS NOT NULL)
-         OR (pricing_status = 'Call for price' AND advertised_price IS NULL)
+         OR (pricing_status IN ('Call for price', 'Price not exposed')
+             AND advertised_price IS NULL)
         )
 );
 
@@ -153,9 +161,9 @@ COMMENT ON COLUMN warehouse.fact_vehicle_listing_snapshot.snapshot_date_key IS '
 COMMENT ON COLUMN warehouse.fact_vehicle_listing_snapshot.dealership_key IS 'Foreign key to warehouse.dim_dealership: the store the listing was assigned to, as that store stood on the capture date. Part of the declared grain.';
 COMMENT ON COLUMN warehouse.fact_vehicle_listing_snapshot.observed_vehicle_key IS 'Foreign key to warehouse.dim_observed_vehicle: the observed physical vehicle. Part of the declared grain. NOT warehouse.dim_vehicle -- this source cannot prove ownership or acquisition.';
 COMMENT ON COLUMN warehouse.fact_vehicle_listing_snapshot.captured_at IS 'The capture date carried on the fact as well as resolved to a key, so a listing query needs no join to dim_date to filter one snapshot.';
-COMMENT ON COLUMN warehouse.fact_vehicle_listing_snapshot.odometer_miles IS 'Advertised odometer reading on the capture date. NON-ADDITIVE: average it or take the latest, never sum it. Not a verified reading and not a title record.';
-COMMENT ON COLUMN warehouse.fact_vehicle_listing_snapshot.advertised_price IS 'The price the listing DISPLAYED on the capture date. NOT transaction price, acquisition cost, inventory investment, MSRP or gross. NULL exactly when pricing_status is Call for price. SEMI-ADDITIVE: never sum across capture dates.';
-COMMENT ON COLUMN warehouse.fact_vehicle_listing_snapshot.pricing_status IS 'Listed or Call for price. Governs whether advertised_price may be present, enforced by ck_fact_vehicle_listing_snapshot_pricing_contract.';
+COMMENT ON COLUMN warehouse.fact_vehicle_listing_snapshot.odometer_miles IS 'Advertised odometer reading on the capture date. NULL means the listing published no mileage, which is a real state of a public listing surface and NOT a zero reading. NON-ADDITIVE: average it or take the latest, never sum it. Not a verified reading and not a title record.';
+COMMENT ON COLUMN warehouse.fact_vehicle_listing_snapshot.advertised_price IS 'The price the listing DISPLAYED on the capture date. NOT transaction price, acquisition cost, inventory investment, MSRP or gross. NULL exactly when pricing_status is Call for price or Price not exposed. SEMI-ADDITIVE: never sum across capture dates.';
+COMMENT ON COLUMN warehouse.fact_vehicle_listing_snapshot.pricing_status IS 'Listed, Call for price, or Price not exposed. Governs whether advertised_price may be present, enforced by ck_fact_vehicle_listing_snapshot_pricing_contract. Call for price and Price not exposed both mean no price reached the warehouse and are NOT interchangeable: the first records a displayed merchandising choice, the second records that the listing surface published no price field at all.';
 COMMENT ON COLUMN warehouse.fact_vehicle_listing_snapshot.inventory_unit_count IS 'Always 1. SEMI-ADDITIVE: sum across vehicles on ONE capture date to get observed listing units; summing across capture dates counts the same listing repeatedly.';
 COMMENT ON COLUMN warehouse.fact_vehicle_listing_snapshot.source_batch_id IS 'Capture-batch identifier. One committed workbook is one batch, and a batch is never reloaded with different contents.';
 COMMENT ON COLUMN warehouse.fact_vehicle_listing_snapshot.source_file_name IS 'The committed workbook file name, preserved EXACTLY -- underscores and capitalisation included, for example ARPI_Granite_Chevrolet_Inventory_Sanitized_2026-08-02.xlsx.';

@@ -870,6 +870,8 @@ INVENTORY_LISTING_KPI_IDS: Final[tuple[str, ...]] = (
     "KPI-LST-020",  # Last observed date
     "KPI-LST-021",  # Days observed online
     "KPI-LST-022",  # Snapshot freshness
+    "KPI-LST-023",  # Price-not-exposed units
+    "KPI-LST-024",  # Unpriced listing units
 )
 
 #: The reporting view each Inventory Listings KPI is computed from.
@@ -897,6 +899,16 @@ INVENTORY_LISTING_KPI_VIEW_OWNERSHIP: Final[Mapping[str, tuple[str, ...]]] = Map
         "KPI-LST-020": ("vw_vehicle_listing_observation_span",),
         "KPI-LST-021": ("vw_vehicle_listing_observation_span",),
         "KPI-LST-022": ("vw_vehicle_listing_summary", "vw_vehicle_listing_current"),
+        "KPI-LST-023": (
+            "vw_vehicle_listing_summary",
+            "vw_vehicle_listing_price_completeness",
+            "vw_vehicle_listing_model_mix",
+        ),
+        "KPI-LST-024": (
+            "vw_vehicle_listing_summary",
+            "vw_vehicle_listing_price_completeness",
+            "vw_vehicle_listing_model_mix",
+        ),
     }
 )
 

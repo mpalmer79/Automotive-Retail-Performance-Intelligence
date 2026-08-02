@@ -68,7 +68,28 @@ URL_PATTERN = re.compile(
 
 #: The ISO 3779 VIN alphabet: no I, O or Q. Seventeen characters drawn only from it is
 #: treated as a real VIN. ARPI's own identifiers all begin `ARPI` and so never match.
-REAL_VIN_PATTERN = re.compile(r"\b[A-HJ-NPR-Z0-9]{17}\b")
+#:
+#: The boundaries are `(?<![A-Z0-9.])` and `(?![A-Z0-9.])` rather than `\b`, and the
+#: token must contain a letter. Both restrictions were added because the first version
+#: fired on a real committed artifact and was wrong.
+#:
+#: `\b` sits at a decimal point, so `9.99999999999999999` -- a float rendered at full
+#: precision on a Model Summary sheet -- offered seventeen digits with a word boundary
+#: at each end and was reported as a VIN. Excluding `.` from the boundary stops a
+#: fragment of a number being read as an identifier, and requiring a letter stops any
+#: seventeen-digit run doing so: a VIN's manufacturer and descriptor sections are
+#: alphanumeric, and an all-digit seventeen-character run is a number, not a VIN.
+#:
+#: The match stays a SEARCH rather than a full match, unlike the runtime rule in
+#: arpi.inventory.validation. A cell reading "VIN: 1HGCM82633A004352" is a leak that a
+#: full-match rule would pass, and this check is the backstop for exactly the case
+#: where the sanitizer was not the thing that wrote the file.
+REAL_VIN_PATTERN = re.compile(
+    r"(?<![A-Z0-9.])"  # not the tail of a longer token, and not after a decimal point
+    r"(?=[A-HJ-NPR-Z0-9]{17}(?![A-Z0-9.]))"  # exactly seventeen, then a real boundary
+    r"(?=[0-9]*[A-HJ-NPR-Z])"  # and at least one letter: an all-digit run is a number
+    r"[A-HJ-NPR-Z0-9]{17}"
+)
 
 #: Text files this check reads when looking for a wrong filename or a prohibited claim.
 DOCUMENT_SUFFIXES: frozenset[str] = frozenset(

@@ -20,8 +20,62 @@
     "newUnits": 195,
     "usedUnits": 4,
     "listedPriceUnits": 197,
-    "callForPriceUnits": 2
+    "callForPriceUnits": 2,
+    "priceNotExposedUnits": 0,
+    "noOdometerUnits": 0,
+    "coverage": "complete"
   },
+  "artifacts": [
+    {
+      "fileName": "ARPI_Granite_Chevrolet_Inventory_Sanitized_2026-08-02.xlsx",
+      "path": "data/reference/inventory/gsa-001/2026-08-02/ARPI_Granite_Chevrolet_Inventory_Sanitized_2026-08-02.xlsx",
+      "dealershipId": "GSA-001",
+      "storeName": "Granite Chevrolet of Nashua",
+      "capturedAt": "2026-08-02",
+      "classification": "Sanitized public reference data",
+      "rows": 199,
+      "newUnits": 195,
+      "usedUnits": 4,
+      "listedPriceUnits": 197,
+      "callForPriceUnits": 2,
+      "priceNotExposedUnits": 0,
+      "noOdometerUnits": 0,
+      "coverage": "complete"
+    },
+    {
+      "fileName": "ARPI_Granite_Subaru_Inventory_Sanitized_2026-08-02.xlsx",
+      "path": "data/reference/inventory/gsa-002/2026-08-02/ARPI_Granite_Subaru_Inventory_Sanitized_2026-08-02.xlsx",
+      "dealershipId": "GSA-002",
+      "storeName": "Granite Subaru of Manchester",
+      "capturedAt": "2026-08-02",
+      "classification": "Sanitized public reference data",
+      "rows": 24,
+      "newUnits": 8,
+      "usedUnits": 16,
+      "listedPriceUnits": 24,
+      "callForPriceUnits": 0,
+      "priceNotExposedUnits": 0,
+      "noOdometerUnits": 0,
+      "coverage": "partial",
+      "coverageNote": "24 visible indexed listing records from a larger reported inventory. The source did not expose every listing through a reliably extractable path, so this row count is a count of what was visible to the capture and not of the store's inventory."
+    },
+    {
+      "fileName": "ARPI_Granite_Used_Auto_Center_Inventory_Sanitized_2026-08-02.xlsx",
+      "path": "data/reference/inventory/gsa-003/2026-08-02/ARPI_Granite_Used_Auto_Center_Inventory_Sanitized_2026-08-02.xlsx",
+      "dealershipId": "GSA-003",
+      "storeName": "Granite Used Auto Center of Merrimack",
+      "capturedAt": "2026-08-02",
+      "classification": "Sanitized public reference data",
+      "rows": 318,
+      "newUnits": 0,
+      "usedUnits": 318,
+      "listedPriceUnits": 31,
+      "callForPriceUnits": 0,
+      "priceNotExposedUnits": 287,
+      "noOdometerUnits": 287,
+      "coverage": "complete"
+    }
+  ],
   "notice": "This feature uses a de-identified public inventory reference snapshot. Dealer and vehicle identities are synthetic. Listing attributes are not confidential DMS data and do not establish sales or inventory ownership.",
   "problem": {
     "heading": "What a dealership actually asks about its own website",
@@ -153,11 +207,13 @@
     ]
   },
   "multiStore": {
-    "heading": "Built for the second store before the second store arrived",
+    "heading": "The second and third stores arrived, and nothing needed rewriting",
     "points": [
       "The dealership is resolved from the workbook's own metadata against the ARPI registry, never inferred from a file name.",
-      "GSA-002 resolves to Granite Subaru of Manchester with no code change, and Subaru makes and models are accepted because nothing in the lane knows what a franchise brand is.",
+      "GSA-002 and GSA-003 loaded with no Chevrolet-specific change, and their Subaru, Jeep and thirty other makes were accepted because nothing in the lane knows what a franchise brand is.",
       "A franchise store's used inventory of other makes is accepted, which is what the committed Chevrolet artifact already contains.",
+      "What did have to change was the contract, not the code: one store publishes no mileage and no price for most of its listings, so the odometer column became optional and 'Price not exposed' was added as a status distinct from call-for-price.",
+      "That is the intended shape of a contract change. It is one reviewed edit to a versioned YAML file that five consumers read, rather than a new branch in five modules.",
       "Vehicle identity is group-stable, so the same physical vehicle observed at two stores resolves to one identity and the appearance is detectable.",
       "Detectable is not explained: ARPI holds no dealer-trade event and does not infer one."
     ]

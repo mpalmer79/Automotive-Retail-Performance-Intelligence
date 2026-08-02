@@ -24,6 +24,14 @@ confidential DMS data.
 | Rows | 199 |
 | Sheets | README, Summary, Inventory, Model Summary |
 
+Two further artifacts are committed on the same capture date and are documented in full in
+[`data/reference/README.md`](../../data/reference/README.md) section 10:
+
+| Store | Rows | What is unusual about it |
+|---|---:|---|
+| GSA-002 — Granite Subaru of Manchester | 24 | **A partial capture.** The source did not expose every listing through a reliably extractable path. Twenty-four is a count of what was visible, not of the store's inventory |
+| GSA-003 — Granite Used Auto Center of Merrimack | 318 | **287 rows publish no price and no mileage.** Their `Pricing Status` is `Price not exposed`, which is why this lane's odometer column is optional and why that status exists |
+
 The file name **intentionally uses underscores between filename words**; hyphens appear
 only inside the ISO date. It is declared with its SHA-256 in
 `config/reference/inventory_listing_contract.yaml`, stamped onto every warehouse row as
@@ -38,8 +46,10 @@ Every store has its own directory and only its own:
 | GSA-002 | `data/reference/inventory/gsa-002/<yyyy-mm-dd>/` | `ARPI_Granite_Subaru_Inventory_Sanitized_<yyyy-mm-dd>.xlsx` |
 | GSA-003 | `data/reference/inventory/gsa-003/<yyyy-mm-dd>/` | `ARPI_Granite_Used_Auto_Center_Inventory_Sanitized_<yyyy-mm-dd>.xlsx` |
 
-Only GSA-001 is committed. The other two are conventions their eventual artifacts must
-satisfy, not promises that a file exists.
+All three are committed. All three were uploaded into the `gsa-001` directory and were
+moved to their own before the lane was declared complete; the `artifact-misfiled` rule
+found them, including the Subaru workbook while it was the only Subaru file in the
+repository.
 
 ---
 
@@ -58,9 +68,9 @@ the repository**.
 | `Year` | `Model Year` | Integer, governed range 1980–2100, at most 2 years beyond the capture year |
 | `Make`, `Model`, `Trim` | same | Whitespace-normalised. Blank make or model is refused |
 | `Vehicle` | `Vehicle Display` | Composed from year/make/model/trim when absent |
-| `Mileage` | `Odometer Miles` | Integer, non-negative |
-| `Price` | `Advertised Price` | Numeric. **Dropped when the status is call-for-price**: the two columns disagreed and the status governs |
-| `Price Status` | `Pricing Status` | Matched case-insensitively to `Listed` or `Call for price` |
+| `Mileage` | `Odometer Miles` | Integer, non-negative, **optional**. Blank means the listing published no mileage, which is not a zero reading. A present value that will not coerce is still refused |
+| `Price` | `Advertised Price` | Numeric. **Dropped under any status that forbids a price**: the two columns disagreed and the status governs |
+| `Price Status` | `Pricing Status` | Matched case-insensitively to `Listed`, `Call for price` or `Price not exposed`. The last two both mean no price, and are **not** collapsed: one records a displayed merchandising choice, the other records that the source published no price field |
 | `Captured` | `Captured At` | Must equal the operator-supplied snapshot date. One workbook is one snapshot |
 | — | `Source Record ID`, `Source Batch ID` | Deterministic: `GSA001-20260802-0001`, `GSA001-20260802-001` |
 | — | `Inventory Unit Count` | Always `1` |
@@ -156,6 +166,15 @@ through the supersession procedure in `data/reference/README.md` section 8.
 Additive across vehicle, store, make and model; **never across capture dates**.
 **Non-additive** — `odometer_miles`, every ratio, every order statistic, `days_observed_online`.
 
+**Every price statistic excludes the listings that carry no price, and every view says how
+many it excluded.** `listed_price_units` and `unpriced_units` sum to `observed_listing_units`
+by construction — `unpriced_units` is defined as the complement of `Listed`, not as the sum
+of the named unpriced statuses, so a future status cannot fall outside every bucket.
+`call_for_price_units` and `price_not_exposed_units` sit beside it to say *why*, and are
+never merged: one records a merchandising choice that was displayed, the other records that
+the source published no price field at all. `average_odometer_miles` is likewise the mean of
+the readings that exist, with `no_odometer_units` beside it.
+
 `vw_vehicle_listing_change` emits **New Listing, Still Listed, Removed From Listing, Price
 Increase, Price Reduction, Price Unchanged**. There is no *Sold* label, and there must
 never be one.
@@ -188,7 +207,7 @@ validation target.
 
 The proposed extension — `vw_vehicle_listing_summary` and `vw_vehicle_listing_current` as
 imported tables, `vw_calendar` and `vw_dealership` as the shared conformed dimensions, and
-the 22 `KPI-LST-*` definitions as measures — is recorded in
+the 24 `KPI-LST-*` definitions as measures — is recorded in
 [`../requirements/PHASE_2_BACKLOG.md`](../requirements/PHASE_2_BACKLOG.md). No TMDL table,
 relationship or DAX measure was added by this increment, and the model source hash is
 unchanged.

@@ -122,11 +122,49 @@ def test_call_for_price_may_not_carry_a_price(contract: InventoryListingContract
     assert contract.call_for_price_allows_price is False
 
 
-def test_the_controlled_vocabularies_are_exactly_two_values_each(
+def test_the_controlled_vocabularies_are_exactly_what_the_contract_declares(
     contract: InventoryListingContract,
 ) -> None:
     assert contract.condition_values == ("New", "Used")
-    assert contract.pricing_status_values == ("Listed", "Call for price")
+    assert contract.pricing_status_values == ("Listed", "Call for price", "Price not exposed")
+
+
+def test_two_pricing_statuses_forbid_a_price_and_they_are_not_the_same_thing(
+    contract: InventoryListingContract,
+) -> None:
+    """Both mean no price reached the warehouse. Only one records a decision.
+
+    'Call for price' means the listing DISPLAYED a call-for-price treatment: somebody
+    withheld the number and invited contact. 'Price not exposed' means the listing
+    surface published no price field at all. Collapsing them would attribute a
+    merchandising choice to a dealership on no evidence, so they are counted separately
+    everywhere and this test exists to stop a later simplification merging them.
+    """
+    assert contract.statuses_that_forbid_a_price == frozenset(
+        {"Call for price", "Price not exposed"}
+    )
+    assert "Listed" not in contract.statuses_that_forbid_a_price
+    assert not contract.call_for_price_allows_price
+    assert not contract.price_not_exposed_allows_price
+
+
+def test_a_pricing_switch_that_disagrees_with_the_list_is_refused(tmp_path: Path) -> None:
+    """The contract states the pricing rule twice, so the two statements must agree.
+
+    The booleans exist because the specification requires an explicit named switch per
+    status; the list exists because every consumer needs the set rather than a chain of
+    literal comparisons. Neither is derived from the other, which is what makes this
+    check meaningful -- and what makes a disagreement possible if nothing refuses it.
+    """
+    text = CONTRACT_PATH.read_text(encoding="utf-8").replace(
+        "  call_for_price_allows_price: false",
+        "  call_for_price_allows_price: true",
+    )
+    broken = tmp_path / "contract.yaml"
+    broken.write_text(text, encoding="utf-8")
+
+    with pytest.raises(ConfigurationError, match="call_for_price_allows_price"):
+        load_contract(broken)
 
 
 def test_the_canonical_artifact_is_declared_with_its_digest(
@@ -262,16 +300,48 @@ def test_all_three_stores_derive_their_governed_path_and_name() -> None:
     assert len(directories) == len(expected)
 
 
-def test_only_the_chevrolet_artifact_is_committed(contract: InventoryListingContract) -> None:
-    """Subaru and Used Auto are conventions, not promises that a file exists.
+def test_all_three_stores_are_declared_and_each_file_is_where_it_says_it_is(
+    contract: InventoryListingContract,
+) -> None:
+    """One artifact per store, each under its own directory.
 
-    ADR-0011 admits an artifact only once a real capture has been sanitized and reviewed.
-    Generating one in advance would put a file in the reference lane that has been through
-    none of the controls.
+    All three workbooks were uploaded into the gsa-001 directory. This asserts the state
+    after they were filed, and it asserts the property that made the mistake findable:
+    the declared path's store segment must match the artifact's own dealership.
     """
-    assert [a.dealership_id for a in contract.canonical_artifacts] == ["GSA-001"]
-    for dealership in ("GSA-002", "GSA-003"):
-        assert not (REPO_ROOT / "data" / "reference" / "inventory" / dealership.lower()).exists()
+    assert [a.dealership_id for a in contract.canonical_artifacts] == [
+        "GSA-001",
+        "GSA-002",
+        "GSA-003",
+    ]
+    for artifact in contract.canonical_artifacts:
+        expected = f"data/reference/inventory/{artifact.dealership_id.lower()}/"
+        assert artifact.path.startswith(expected), (
+            f"{artifact.file_name} is declared at {artifact.path}, which is not its "
+            f"own store's directory"
+        )
+        assert artifact.path.endswith(artifact.file_name)
+        assert (REPO_ROOT / artifact.path).is_file()
+
+
+def test_the_subaru_capture_is_declared_partial(contract: InventoryListingContract) -> None:
+    """Its row count is a count of what was visible, not of the store's inventory.
+
+    The source did not expose every listing through a reliably extractable path. Reading
+    24 as Granite Subaru's inventory would report a shortfall that exists only in the
+    extraction, so the limitation is declared where a consumer sees it without opening
+    the file.
+    """
+    subaru = contract.artifact_for("GSA-002", date(2026, 8, 2))
+    assert subaru is not None
+    assert subaru.is_partial
+    assert subaru.coverage_note
+    assert "complete inventory" in subaru.coverage_note
+
+    for dealership in ("GSA-001", "GSA-003"):
+        other = contract.artifact_for(dealership, date(2026, 8, 2))
+        assert other is not None
+        assert not other.is_partial
 
 
 def test_the_report_name_uses_the_same_convention_with_a_different_word() -> None:

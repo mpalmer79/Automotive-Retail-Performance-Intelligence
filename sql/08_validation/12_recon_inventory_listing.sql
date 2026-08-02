@@ -40,7 +40,7 @@ WITH staged AS (
         count(*)::numeric                                                  AS accepted_rows,
         count(DISTINCT synthetic_vehicle_id)::numeric                      AS distinct_vehicles,
         count(*) FILTER (WHERE pricing_status = 'Listed')::numeric         AS listed_rows,
-        count(*) FILTER (WHERE pricing_status = 'Call for price')::numeric AS call_for_price_rows,
+        count(*) FILTER (WHERE pricing_status <> 'Listed')::numeric        AS unpriced_rows,
         count(*) FILTER (WHERE condition_type = 'New')::numeric            AS new_rows,
         count(*) FILTER (WHERE condition_type = 'Used')::numeric           AS used_rows,
         coalesce(sum(advertised_price), 0)::numeric                        AS advertised_total,
@@ -71,7 +71,7 @@ loaded AS (
         count(*)::numeric                                                  AS fact_rows,
         count(DISTINCT f.observed_vehicle_key)::numeric                    AS distinct_vehicles,
         count(*) FILTER (WHERE f.pricing_status = 'Listed')::numeric       AS listed_rows,
-        count(*) FILTER (WHERE f.pricing_status = 'Call for price')::numeric AS call_for_price_rows,
+        count(*) FILTER (WHERE f.pricing_status <> 'Listed')::numeric      AS unpriced_rows,
         count(*) FILTER (WHERE v.condition_type = 'New')::numeric          AS new_rows,
         count(*) FILTER (WHERE v.condition_type = 'Used')::numeric         AS used_rows,
         coalesce(sum(f.advertised_price), 0)::numeric                      AS advertised_total,
@@ -157,17 +157,22 @@ FROM staged, loaded
 
 UNION ALL
 
--- RECON-LISTING-CALL-FOR-PRICE-COUNT -----------------------------------------
+-- RECON-LISTING-UNPRICED-COUNT -----------------------------------------------
+-- Every row that carried no price, under ANY pricing status, rather than just the
+-- call-for-price ones. The narrower rule was correct when there were two statuses and
+-- would have gone quietly blind to a third: rows under a new status would have
+-- reconciled in neither the listed count nor this one, and both rules would still have
+-- passed. Complementing 'Listed' is what makes the pair exhaustive by construction.
 SELECT
-    'RECON-LISTING-CALL-FOR-PRICE-COUNT'::text,
-    format('The call-for-price count survived the load (%s staged, %s loaded).',
-           staged.call_for_price_rows, loaded.call_for_price_rows)::text,
+    'RECON-LISTING-UNPRICED-COUNT'::text,
+    format('The unpriced-listing count survived the load (%s staged, %s loaded).',
+           staged.unpriced_rows, loaded.unpriced_rows)::text,
     'staging.stg_inventory_listing_snapshot'::text,
-    staged.call_for_price_rows,
+    staged.unpriced_rows,
     'warehouse.fact_vehicle_listing_snapshot'::text,
-    loaded.call_for_price_rows,
+    loaded.unpriced_rows,
     0::numeric,
-    CASE WHEN staged.call_for_price_rows = loaded.call_for_price_rows
+    CASE WHEN staged.unpriced_rows = loaded.unpriced_rows
          THEN 'passed' ELSE 'failed' END::text
 FROM staged, loaded
 

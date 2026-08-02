@@ -166,7 +166,8 @@ _LISTING_SQL = """
 
 _SUMMARY_SQL = """
     SELECT s.observed_listing_units, s.new_listing_units, s.used_listing_units,
-           s.listed_price_units, s.call_for_price_units, s.total_advertised_value,
+           s.listed_price_units, s.call_for_price_units, s.price_not_exposed_units,
+           s.unpriced_units, s.total_advertised_value,
            s.minimum_advertised_price, s.maximum_advertised_price,
            s.latest_capture_age_days, s.is_latest_snapshot, s.source_file_name
     FROM reporting.vw_vehicle_listing_summary AS s
@@ -186,11 +187,16 @@ _MODEL_SQL = """
            sum(m.observed_listing_units)::bigint          AS observed_listing_units,
            sum(m.listed_price_units)::bigint              AS listed_price_units,
            sum(m.call_for_price_units)::bigint            AS call_for_price_units,
+           sum(m.unpriced_units)::bigint                  AS unpriced_units,
+           sum(m.no_odometer_units)::bigint               AS no_odometer_units,
            CASE WHEN sum(m.listed_price_units) = 0 THEN NULL
                 ELSE (sum(m.total_advertised_value) / sum(m.listed_price_units))::numeric(12,2)
            END                                            AS average_advertised_price,
            min(m.minimum_advertised_price)                AS minimum_advertised_price,
            max(m.maximum_advertised_price)                AS maximum_advertised_price,
+           -- NULL when no listing in the rolled-up group published a reading. Left as
+           -- NULL rather than coalesced to zero: a zero-mile row in a used-car report
+           -- reads as a brand-new car, which is the opposite of what NULL means here.
            round(avg(m.average_odometer_miles))::bigint   AS average_odometer_miles
     FROM reporting.vw_vehicle_listing_model_mix AS m
     JOIN reporting.vw_dealership AS d ON d.dealership_key = m.dealership_key
@@ -435,17 +441,70 @@ def _write_summary(  # noqa: PLR0913, PLR0915 - one sheet, written cell by cell
 
     sheet.cell(row=10, column=1, value="Metric")
     sheet.cell(row=10, column=2, value="Value")
-    metrics = (
+
+    # Metrics are declared as (label, formula, format) and the formulas that depend on
+    # OTHER metrics reference them by label through `{units}`-style placeholders, filled
+    # in below from each label's actual row.
+    #
+    # An earlier version wrote `B14` and `B16` literally. Inserting two rows above them
+    # moved the values they pointed at, and the workbook went on opening cleanly while
+    # dividing the wrong number by the right one -- a defect that survives every test
+    # that does not evaluate the formulas. Positional references into a list somebody
+    # will edit are a trap; this makes the reference say what it means.
+    metric_specs: tuple[tuple[str, str, str], ...] = (
         ("Observed listing units", f"=COUNTA({id_range})", INTEGER_FORMAT),
         ("New listing units", f'=COUNTIF({condition_range},"New")', INTEGER_FORMAT),
         ("Used listing units", f'=COUNTIF({condition_range},"Used")', INTEGER_FORMAT),
         ("Vehicles with listed price", f'=COUNTIF({status_range},"Listed")', INTEGER_FORMAT),
         ("Call-for-price units", f'=COUNTIF({status_range},"Call for price")', INTEGER_FORMAT),
+        (
+            "Price-not-exposed units",
+            f'=COUNTIF({status_range},"Price not exposed")',
+            INTEGER_FORMAT,
+        ),
+        # The complement, so listed + unpriced is every row whatever statuses exist.
+        (
+            "Units with no listed price",
+            f'=COUNTA({id_range})-COUNTIF({status_range},"Listed")',
+            INTEGER_FORMAT,
+        ),
         ("Total advertised listing value", f"=SUM({price_range})", CURRENCY_FORMAT),
-        ("Average advertised price", "=IF(B14=0,0,B16/B14)", CURRENCY_FORMAT),
-        ("Minimum advertised price", f"=IF(B14=0,0,MIN({price_range}))", CURRENCY_FORMAT),
-        ("Maximum advertised price", f"=IF(B14=0,0,MAX({price_range}))", CURRENCY_FORMAT),
-        ("Pricing completeness", "=IF(B11=0,0,B14/B11)", PERCENT_FORMAT),
+        (
+            "Average advertised price",
+            "=IF({Vehicles with listed price}=0,0,"
+            "{Total advertised listing value}/{Vehicles with listed price})",
+            CURRENCY_FORMAT,
+        ),
+        (
+            "Minimum advertised price",
+            f"=IF({{Vehicles with listed price}}=0,0,MIN({price_range}))",
+            CURRENCY_FORMAT,
+        ),
+        (
+            "Maximum advertised price",
+            f"=IF({{Vehicles with listed price}}=0,0,MAX({price_range}))",
+            CURRENCY_FORMAT,
+        ),
+        (
+            "Pricing completeness",
+            "=IF({Observed listing units}=0,0,"
+            "{Vehicles with listed price}/{Observed listing units})",
+            PERCENT_FORMAT,
+        ),
+    )
+    cell_of = {label: f"B{11 + index}" for index, (label, _, _) in enumerate(metric_specs)}
+
+    def _resolve(formula: str) -> str:
+        """Replace every ``{Metric label}`` with that metric's own cell reference."""
+        for label, reference in cell_of.items():
+            formula = formula.replace("{" + label + "}", reference)
+        if "{" in formula:
+            unresolved = formula[formula.index("{") :].split("}")[0] + "}"
+            raise KeyError(f"Summary formula references an unknown metric: {unresolved}")
+        return formula
+
+    metrics = tuple(
+        (label, _resolve(formula), number_format) for label, formula, number_format in metric_specs
     )
     for offset, (label, formula, number_format) in enumerate(metrics):
         sheet.cell(row=11 + offset, column=1, value=label)
@@ -573,7 +632,7 @@ def _write_model_summary(
         "Model",
         "Total Units",
         "Listed Units",
-        "Call for Price",
+        "No Listed Price",
         "Average Listed Price",
         "Minimum Listed Price",
         "Maximum Listed Price",
@@ -593,8 +652,9 @@ def _write_model_summary(
         sheet.cell(
             row=target, column=5, value=f'=COUNTIFS({criteria},{status_range},"Listed")'
         ).number_format = INTEGER_FORMAT
+        # Total minus listed, so every unpriced status is counted whatever it is called.
         sheet.cell(
-            row=target, column=6, value=f'=COUNTIFS({criteria},{status_range},"Call for price")'
+            row=target, column=6, value=f"=D{target}-E{target}"
         ).number_format = INTEGER_FORMAT
         sheet.cell(
             row=target,

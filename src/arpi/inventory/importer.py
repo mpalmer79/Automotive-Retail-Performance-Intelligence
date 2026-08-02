@@ -278,7 +278,11 @@ def _land_raw_rows(
                     record.model,
                     record.trim,
                     record.vehicle_display,
-                    str(record.odometer_miles),
+                    # NOT str(): odometer is optional, and str(None) lands the four
+                    # characters "None" in a text column. Staging then reports a value
+                    # present but not representable, and 287 rows of a real capture are
+                    # quarantined for a defect in this line rather than in the workbook.
+                    None if record.odometer_miles is None else str(record.odometer_miles),
                     None if record.advertised_price is None else f"{record.advertised_price:.2f}",
                     record.pricing_status,
                     record.synthetic_vehicle_id,

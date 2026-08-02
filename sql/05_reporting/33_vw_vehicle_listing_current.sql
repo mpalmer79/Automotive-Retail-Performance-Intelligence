@@ -84,9 +84,9 @@ COMMENT ON COLUMN reporting.vw_vehicle_listing_current.make IS 'Make, as most re
 COMMENT ON COLUMN reporting.vw_vehicle_listing_current.model IS 'Model, as most recently advertised.';
 COMMENT ON COLUMN reporting.vw_vehicle_listing_current.trim IS 'Trim, as most recently advertised. NULL means the listing carried none.';
 COMMENT ON COLUMN reporting.vw_vehicle_listing_current.vehicle_display IS 'Year/make/model/trim as the listing worded it.';
-COMMENT ON COLUMN reporting.vw_vehicle_listing_current.odometer_miles IS 'Advertised odometer reading at the most recent capture. NON-ADDITIVE.';
+COMMENT ON COLUMN reporting.vw_vehicle_listing_current.odometer_miles IS 'Advertised odometer reading at the most recent capture. NULL means the listing published no mileage, which is not a zero reading. NON-ADDITIVE.';
 COMMENT ON COLUMN reporting.vw_vehicle_listing_current.advertised_price IS 'Advertised price at the most recent capture. NOT transaction price, acquisition cost, inventory investment, MSRP or gross. NULL for a call-for-price listing.';
-COMMENT ON COLUMN reporting.vw_vehicle_listing_current.pricing_status IS 'Listed or Call for price at the most recent capture.';
+COMMENT ON COLUMN reporting.vw_vehicle_listing_current.pricing_status IS 'Listed, Call for price, or Price not exposed at the most recent capture. The last two both mean advertised_price is NULL and are not interchangeable: one records a displayed merchandising choice, the other records that the source published no price field.';
 COMMENT ON COLUMN reporting.vw_vehicle_listing_current.inventory_unit_count IS 'Always 1. Sum it across vehicles to count observed listings at one store; never sum across capture dates.';
 COMMENT ON COLUMN reporting.vw_vehicle_listing_current.first_observed_at IS 'Earliest capture on which this vehicle appeared anywhere. NOT an acquisition date.';
 COMMENT ON COLUMN reporting.vw_vehicle_listing_current.last_observed_at IS 'Latest capture on which this vehicle appeared anywhere. NOT a sale date.';

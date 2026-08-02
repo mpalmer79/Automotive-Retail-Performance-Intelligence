@@ -277,7 +277,16 @@ def test_every_row_has_an_inventory_unit_count_of_one(result: WorkbookValidation
 
 
 def test_no_mileage_is_negative(result: WorkbookValidationResult) -> None:
-    assert min(record.odometer_miles for record in result.records) >= 0
+    """Mileage is optional, so the assertion is about the readings that exist.
+
+    A listing that publishes no mileage carries ``None``, which is not a reading and not
+    a zero. Comparing it against zero would be asserting something about an absence.
+    """
+    readings = [
+        record.odometer_miles for record in result.records if record.odometer_miles is not None
+    ]
+    assert readings, "the Granite Chevrolet artifact publishes a reading on every row"
+    assert min(readings) >= 0
 
 
 def test_the_totals_reconcile_between_the_split_and_the_whole(
@@ -297,16 +306,19 @@ def test_one_store_one_capture_one_batch(result: WorkbookValidationResult) -> No
     assert {r.source_feed for r in result.records} == {"sanitized_public_inventory_reference"}
 
 
-def test_the_portfolio_content_agrees_with_the_artifact() -> None:
-    """The website's counts are read from the same file this test just counted."""
+def _portfolio_content() -> dict[str, Any]:
     import json
 
-    content = json.loads(
+    return json.loads(  # type: ignore[no-any-return]
         (REPO_ROOT / "portfolio" / "src" / "content" / "inventory-operations.json").read_text(
             encoding="utf-8"
         )
     )
-    artifact = content["artifact"]
+
+
+def test_the_portfolio_content_agrees_with_the_artifact() -> None:
+    """The website's counts are read from the same file this test just counted."""
+    artifact = _portfolio_content()["artifact"]
     assert artifact["fileName"] == CANONICAL_NAME
     assert artifact["path"] == CANONICAL_PATH.relative_to(REPO_ROOT).as_posix()
     assert artifact["rows"] == EXPECTED_ROWS
@@ -315,6 +327,91 @@ def test_the_portfolio_content_agrees_with_the_artifact() -> None:
     assert artifact["listedPriceUnits"] == EXPECTED_LISTED
     assert artifact["callForPriceUnits"] == EXPECTED_CALL_FOR_PRICE
     assert artifact["classification"] == "Sanitized public reference data"
+
+
+def test_the_website_shows_every_committed_artifact_and_no_others() -> None:
+    """A store whose workbook is committed but not shown is the quiet failure here.
+
+    The page's headline sums the cards, so an artifact missing from the content file
+    would produce a smaller, entirely plausible total that nothing else contradicts.
+    """
+    declared = load_contract().canonical_artifacts
+    shown = _portfolio_content()["artifacts"]
+
+    assert [entry["dealershipId"] for entry in shown] == [a.dealership_id for a in declared]
+    for entry, artifact in zip(shown, declared, strict=True):
+        assert entry["fileName"] == artifact.file_name
+        assert entry["path"] == artifact.path
+        assert entry["rows"] == artifact.row_count
+        assert entry["classification"] == "Sanitized public reference data"
+
+
+def test_the_website_repeats_every_declared_coverage_caveat() -> None:
+    """A partial capture must say so where it is read, not only in the contract.
+
+    Granite Subaru's 24 rows are a count of what the capture could see. Shown beside two
+    stores holding 199 and 318 with no caveat, that number reads as a small store.
+    """
+    declared = {a.dealership_id: a for a in load_contract().canonical_artifacts}
+    for entry in _portfolio_content()["artifacts"]:
+        artifact = declared[entry["dealershipId"]]
+        assert entry["coverage"] == artifact.coverage
+        if artifact.is_partial:
+            assert entry.get("coverageNote"), f"{artifact.file_name} is partial and says nothing"
+
+
+@pytest.mark.parametrize("dealership_id", ["GSA-001", "GSA-002", "GSA-003"])
+def test_every_shown_count_matches_the_workbook_it_describes(dealership_id: str) -> None:
+    """Counted from the committed bytes, not copied from the contract.
+
+    The contract declares a row count; these counts are conditions, pricing statuses and
+    missing odometer readings, which nothing else re-derives. Reading the workbook is the
+    only way this test can disagree with the website, and disagreeing is its whole job.
+    """
+    artifact = next(
+        a for a in load_contract().canonical_artifacts if a.dealership_id == dealership_id
+    )
+    result = validate_workbook(REPO_ROOT / artifact.path)
+    assert result.is_valid, result.summary()
+
+    condition = Counter(record.condition_type for record in result.records)
+    status = Counter(record.pricing_status for record in result.records)
+    shown = next(
+        entry
+        for entry in _portfolio_content()["artifacts"]
+        if entry["dealershipId"] == dealership_id
+    )
+
+    assert shown["rows"] == len(result.records)
+    assert shown["newUnits"] == condition["New"]
+    assert shown["usedUnits"] == condition["Used"]
+    assert shown["listedPriceUnits"] == status["Listed"]
+    assert shown["callForPriceUnits"] == status["Call for price"]
+    assert shown["priceNotExposedUnits"] == status["Price not exposed"]
+    assert shown["noOdometerUnits"] == sum(
+        1 for record in result.records if record.odometer_miles is None
+    )
+
+
+@pytest.mark.parametrize("dealership_id", ["GSA-001", "GSA-002", "GSA-003"])
+def test_validity_does_not_depend_on_how_the_path_was_spelled(dealership_id: str) -> None:
+    """A workbook is valid or it is not. How the caller typed its path is not a property of it.
+
+    DQ-LST-016 compares the README's recommended repository path against the path being
+    validated, and the recommended path is always repository-relative. Comparing the two
+    literally meant `arpi validate-inventory data/reference/...` passed while the same
+    workbook validated by absolute path was refused -- a refusal that named the workbook
+    for a defect belonging to the command line.
+    """
+    artifact = next(
+        a for a in load_contract().canonical_artifacts if a.dealership_id == dealership_id
+    )
+    absolute = validate_workbook(REPO_ROOT / artifact.path)
+    relative = validate_workbook(Path(artifact.path))
+
+    assert absolute.is_valid, absolute.summary()
+    assert relative.is_valid, relative.summary()
+    assert [f.check_id for f in absolute.findings] == [f.check_id for f in relative.findings]
 
 
 def test_a_franchise_store_legitimately_lists_other_makes(result: WorkbookValidationResult) -> None:

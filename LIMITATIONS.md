@@ -972,17 +972,45 @@ marketing attribution. Each needs data a listing snapshot does not carry.
 - **Sanitization is verified on the output, not on the input.** ARPI can prove no original
   VIN or URL reached a committed artifact. It cannot prove the private input was what the
   operator said it was.
-- **One capture cannot exercise the change or observation-span views.** They are built,
-  constrained and tested against fabricated repeat captures; the committed artifact is a
-  single snapshot, so its span is zero for every vehicle and every row is New Listing.
+- **The real-VIN detector was, at one point, too eager.** It reported a float rendered at
+  full precision as a real VIN, because a word boundary sits at a decimal point and
+  offered seventeen digits. It now requires a letter and refuses to match inside a longer
+  token. The lesson is recorded here because it is the more dangerous failure of the two:
+  a privacy check that cries wolf teaches people to override it, and the override is what
+  gets reached for on the day the finding is real.
+- **One capture date cannot exercise the change or observation-span views.** They are
+  built, constrained and tested against fabricated repeat captures; all three committed
+  artifacts are single snapshots on the same date, so every span is zero and every row is
+  New Listing.
 - **The lane's reconciliations are technical load evidence.** "The total advertised value
   reconciles" means the number that reached the warehouse is the number the workbook
   carried. It is not a valuation and not a finding.
 
-### 13.4 What is committed, and what is not
+### 13.4 What is committed, and the two things about it that are easiest to misread
 
-Only the Granite Chevrolet capture of 2026-08-02 is committed. Neither the Granite Subaru
-nor the Granite Used Auto Center workbook exists in this repository, in any commit, on any
-branch. The code accepts either today and their governed paths are declared, but an
-artifact is admitted only once a real capture has been sanitized and reviewed — generating
-one in advance would put a file in the lane that has been through none of the controls.
+Three captures are committed, all dated 2026-08-02: Granite Chevrolet (199 rows), Granite
+Subaru (24) and Granite Used Auto Center (318). All three are governed identically. Two
+carry limitations that a reader who only saw the row counts would get wrong.
+
+**The Granite Subaru capture is partial.** The public source did not expose every listing
+through a reliably extractable path, so the artifact holds 24 visible indexed records out
+of a larger reported inventory. **Twenty-four is a count of what was visible to the
+capture. It is not that store's inventory**, and beside two stores holding 199 and 318 it
+reads as a small store unless the limitation travels with it. It is declared as
+`coverage: partial` in the workbook contract, repeated on the portfolio page, and asserted
+by `tests/unit/test_inventory_reference_artifact.py`.
+
+**The Granite Used Auto Center capture publishes no price and no mileage for 287 of its
+318 listings.** Their pricing status is `Price not exposed`. The consequences are
+concrete: that store's `total_advertised_value` describes 31 vehicles, not 318, and no
+average mileage can be computed for the other 287. The lane reports both as **counts of
+what was not published** rather than as zeros, because a zero is a number and a number
+gets averaged — a zero-mile row in a used-car report reads as a new car.
+
+**`Price not exposed` is not `Call for price`, and the two are never added together
+silently.** Call-for-price means the listing displayed a call-for-price treatment: a
+merchandising choice was made and shown. Price-not-exposed means the listing surface
+published no price field at all, and evidences no choice by anyone. Reporting the second
+as the first would attribute a decision to a dealership on no evidence. Where a single
+number is genuinely wanted, `unpriced_units` is published and is defined as the complement
+of `Listed`, so it stays exhaustive however many statuses exist.

@@ -51,11 +51,19 @@ SELECT
     sum(f.inventory_unit_count)::bigint                                 AS observed_listing_units,
     count(*) FILTER (WHERE f.pricing_status = 'Listed')::bigint         AS listed_price_units,
     count(*) FILTER (WHERE f.pricing_status = 'Call for price')::bigint AS call_for_price_units,
+    count(*) FILTER (WHERE f.pricing_status = 'Price not exposed')::bigint
+                                                                        AS price_not_exposed_units,
+    count(*) FILTER (WHERE f.pricing_status <> 'Listed')::bigint        AS unpriced_units,
+    count(*) FILTER (WHERE f.odometer_miles IS NULL)::bigint            AS no_odometer_units,
 
     coalesce(sum(f.advertised_price), 0)::numeric(14,2)                 AS total_advertised_value,
     avg(f.advertised_price)::numeric(12,2)                              AS average_advertised_price,
     min(f.advertised_price)                                             AS minimum_advertised_price,
     max(f.advertised_price)                                             AS maximum_advertised_price,
+    -- avg() already ignores NULL, so this is the mean of the listings that PUBLISHED a
+    -- reading, not of the group. no_odometer_units above says how many it left out --
+    -- without it, a group where one listing in three hundred carried a reading would
+    -- report that one reading as the group's average with nothing to signal it.
     avg(f.odometer_miles)::numeric(12,1)                                AS average_odometer_miles,
 
     -- The two denominators, published rather than left to the consumer to guess.
@@ -94,11 +102,14 @@ COMMENT ON COLUMN reporting.vw_vehicle_listing_model_mix.model IS 'Advertised mo
 COMMENT ON COLUMN reporting.vw_vehicle_listing_model_mix.trim IS 'Advertised trim. Part of the declared grain, and NULLABLE: a listing carrying no trim groups under NULL rather than being folded into the model total.';
 COMMENT ON COLUMN reporting.vw_vehicle_listing_model_mix.observed_listing_units IS 'Listings observed in this group on this capture date. Numerator of KPI-LST-012 and KPI-LST-013. SEMI-ADDITIVE.';
 COMMENT ON COLUMN reporting.vw_vehicle_listing_model_mix.listed_price_units IS 'Listings in this group that displayed a price. Denominator of KPI-LST-009.';
-COMMENT ON COLUMN reporting.vw_vehicle_listing_model_mix.call_for_price_units IS 'Listings in this group that displayed no price, and are therefore excluded from every price statistic on this row.';
+COMMENT ON COLUMN reporting.vw_vehicle_listing_model_mix.call_for_price_units IS 'Listings in this group that DISPLAYED a call-for-price treatment, and are therefore excluded from every price statistic on this row. NOT the same as price_not_exposed_units.';
+COMMENT ON COLUMN reporting.vw_vehicle_listing_model_mix.price_not_exposed_units IS 'Listings in this group whose source published no price field at all. Also excluded from every price statistic. Kept apart from call_for_price_units because one records a merchandising choice and the other records the absence of a field.';
+COMMENT ON COLUMN reporting.vw_vehicle_listing_model_mix.unpriced_units IS 'call_for_price_units + price_not_exposed_units: every listing in this group excluded from the price statistics. Published so the exclusion is one number a reader cannot miss.';
+COMMENT ON COLUMN reporting.vw_vehicle_listing_model_mix.no_odometer_units IS 'Listings in this group that published no odometer reading, and are therefore excluded from average_odometer_miles. NOT listings with zero miles.';
 COMMENT ON COLUMN reporting.vw_vehicle_listing_model_mix.total_advertised_value IS 'Sum of the prices ADVERTISED in this group. NOT inventory investment and NOT asset value. SEMI-ADDITIVE.';
 COMMENT ON COLUMN reporting.vw_vehicle_listing_model_mix.average_advertised_price IS 'KPI-LST-009. Mean of the ADVERTISED prices, over listed_price_units only. NULL when every listing in the group was call-for-price.';
 COMMENT ON COLUMN reporting.vw_vehicle_listing_model_mix.minimum_advertised_price IS 'KPI-LST-010. Lowest advertised price in the group. NULL when every listing was call-for-price.';
 COMMENT ON COLUMN reporting.vw_vehicle_listing_model_mix.maximum_advertised_price IS 'KPI-LST-011. Highest advertised price in the group. NULL when every listing was call-for-price.';
-COMMENT ON COLUMN reporting.vw_vehicle_listing_model_mix.average_odometer_miles IS 'Mean ADVERTISED odometer reading in the group. Not a verified reading and not a title record.';
+COMMENT ON COLUMN reporting.vw_vehicle_listing_model_mix.average_odometer_miles IS 'Mean ADVERTISED odometer reading across the listings in this group THAT PUBLISHED ONE; see no_odometer_units for how many did not. NULL when none did. Not a verified reading and not a title record.';
 COMMENT ON COLUMN reporting.vw_vehicle_listing_model_mix.snapshot_listing_units IS 'Denominator of KPI-LST-012: every listing the store showed on this capture date.';
 COMMENT ON COLUMN reporting.vw_vehicle_listing_model_mix.model_listing_units IS 'Denominator of KPI-LST-013: every listing of this condition, make and model on this capture date, across all trims.';

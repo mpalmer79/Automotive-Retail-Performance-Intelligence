@@ -66,7 +66,9 @@ spans AS (
         min(f.advertised_price)                AS lowest_advertised_price,
         max(f.advertised_price)                AS highest_advertised_price,
         count(*) FILTER (WHERE f.pricing_status = 'Call for price')::integer
-                                               AS call_for_price_snapshots
+                                               AS call_for_price_snapshots,
+        count(*) FILTER (WHERE f.pricing_status <> 'Listed')::integer
+                                               AS unpriced_snapshots
     FROM warehouse.fact_vehicle_listing_snapshot AS f
     GROUP BY f.dealership_key, f.observed_vehicle_key
 )
@@ -93,7 +95,8 @@ SELECT
 
     s.lowest_advertised_price                                 AS lowest_advertised_price,
     s.highest_advertised_price                                AS highest_advertised_price,
-    s.call_for_price_snapshots                                AS call_for_price_snapshots
+    s.call_for_price_snapshots                                AS call_for_price_snapshots,
+    s.unpriced_snapshots                                      AS unpriced_snapshots
 FROM spans AS s
 JOIN warehouse.dim_observed_vehicle AS v
   ON v.observed_vehicle_key = s.observed_vehicle_key
@@ -125,4 +128,5 @@ COMMENT ON COLUMN reporting.vw_vehicle_listing_observation_span.is_currently_lis
 COMMENT ON COLUMN reporting.vw_vehicle_listing_observation_span.days_since_last_observed IS 'Days between this vehicle''s last observation and the store''s newest capture. Zero when still listed.';
 COMMENT ON COLUMN reporting.vw_vehicle_listing_observation_span.lowest_advertised_price IS 'Lowest price ever ADVERTISED for this vehicle across its observations. NULL when it was always call-for-price.';
 COMMENT ON COLUMN reporting.vw_vehicle_listing_observation_span.highest_advertised_price IS 'Highest price ever ADVERTISED for this vehicle across its observations. NULL when it was always call-for-price.';
-COMMENT ON COLUMN reporting.vw_vehicle_listing_observation_span.call_for_price_snapshots IS 'Number of this vehicle''s observations that displayed no price. A vehicle that moves between priced and call-for-price is visible here rather than hidden in a NULL.';
+COMMENT ON COLUMN reporting.vw_vehicle_listing_observation_span.call_for_price_snapshots IS 'Number of this vehicle''s observations that DISPLAYED a call-for-price treatment. A vehicle that moves between priced and call-for-price is visible here rather than hidden in a NULL.';
+COMMENT ON COLUMN reporting.vw_vehicle_listing_observation_span.unpriced_snapshots IS 'Number of this vehicle''s observations that carried no price for any reason -- call-for-price or a source that published no price field. Published so that priced + unpriced = snapshots_observed holds however many pricing statuses exist.';

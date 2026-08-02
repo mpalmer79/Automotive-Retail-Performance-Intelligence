@@ -30,7 +30,7 @@ import re
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 from datetime import date, datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any, Final
 
 from arpi.constants import (
@@ -305,7 +305,7 @@ class ListingRecord:
     model: str
     trim: str | None
     vehicle_display: str
-    odometer_miles: int
+    odometer_miles: int | None
     advertised_price: float | None
     pricing_status: str
     synthetic_vehicle_id: str
@@ -468,6 +468,17 @@ def _as_float(value: Any) -> float | None:
 def _text(value: Any) -> str:
     """Render a cell value as trimmed text."""
     return "" if value is None else str(value).strip()
+
+
+def _is_blank(value: Any) -> bool:
+    """Return whether a cell holds nothing at all.
+
+    Distinct from "does not coerce". For an optional column the difference decides
+    whether a row is accepted: an empty cell is an absence the contract permits, and a
+    cell holding ``unknown`` is a value somebody wrote that ARPI cannot represent.
+    Treating the second as the first would discard it silently.
+    """
+    return value is None or (isinstance(value, str) and not value.strip())
 
 
 # --------------------------------------------------------------------------------------
@@ -653,15 +664,23 @@ def _typed_record(  # noqa: PLR0912, PLR0915 - one branch per contract rule
             "Model Year",
         )
 
-    odometer = _as_int(by_column.get("odometer_miles"))
-    if odometer is None:
+    # Odometer is OPTIONAL by contract: a listing surface that publishes no mileage is
+    # a real thing, and the Granite Used Auto Center workbook is entirely made of them.
+    # A blank cell is therefore an absence, not a defect. A cell that holds something
+    # which is not an integer still is -- "unknown" typed into the column is a value
+    # somebody meant, and reading it as NULL would silently discard it.
+    raw_odometer = by_column.get("odometer_miles")
+    odometer = _as_int(raw_odometer)
+    if odometer is None and not _is_blank(raw_odometer):
         fail(
             "DQ-LST-008",
             CHECK_CATEGORY_STRUCTURAL,
             "Odometer Miles is not an integer",
             "Odometer Miles",
         )
-    elif not contract.odometer_minimum <= odometer <= contract.odometer_maximum:
+    elif odometer is not None and not (
+        contract.odometer_minimum <= odometer <= contract.odometer_maximum
+    ):
         fail(
             "DQ-LST-008",
             CHECK_CATEGORY_BUSINESS_RULE,
@@ -714,17 +733,15 @@ def _typed_record(  # noqa: PLR0912, PLR0915 - one branch per contract rule
             "Pricing Status is 'Listed' but no advertised price is present",
             "Advertised Price",
         )
-    if (
-        not contract.call_for_price_allows_price
-        and not listed
-        and pricing_status
-        and price is not None
-    ):
+    # Read from the contract's declared set rather than testing for a literal status.
+    # There are two statuses that forbid a price and there may one day be a third; a
+    # chain of string comparisons here is how the fourth one gets missed.
+    if pricing_status in contract.statuses_that_forbid_a_price and price is not None:
         fail(
             "DQ-LST-009",
             CHECK_CATEGORY_BUSINESS_RULE,
-            "Pricing Status is 'Call for price' but an advertised price is present; the "
-            "contract does not permit that combination",
+            f"Pricing Status is {pricing_status!r} but an advertised price is present; "
+            "the contract does not permit that combination",
             "Advertised Price",
         )
 
@@ -788,7 +805,6 @@ def _typed_record(  # noqa: PLR0912, PLR0915 - one branch per contract rule
 
     assert captured_at is not None
     assert model_year is not None
-    assert odometer is not None
     assert unit_count is not None
     return ListingRecord(
         source_record_id=_text(by_column.get("source_record_id")),
@@ -1122,7 +1138,7 @@ def _check_recommended_path(
     recommended = metadata.values.get("Recommended repository path")
     if not recommended:
         return
-    if recommended == path.as_posix():
+    if _recommends_this_file(recommended, path):
         return
 
     captured_at = metadata.captured_at or (records[0].captured_at if records else None)
@@ -1149,6 +1165,24 @@ def _check_recommended_path(
             sheet="README",
         )
     )
+
+
+def _recommends_this_file(recommended: str, path: Path) -> bool:
+    """Whether a README's recommended path names the file at ``path``.
+
+    Compared by SUFFIX rather than by equality. The recommended path is always
+    repository-relative, and the path being validated is whatever the caller supplied:
+    the CLI passes a relative path and a test passes an absolute one. Comparing the two
+    literally made a workbook's validity depend on how somebody spelled its path on the
+    command line, which is not a property of the workbook.
+
+    Matching on whole path segments rather than on the raw string is what keeps this from
+    being a substring check: ``.../gsa-002/2026-08-02/X.xlsx`` must not satisfy a
+    recommendation of ``.../other-gsa-002/2026-08-02/X.xlsx``.
+    """
+    wanted = PurePosixPath(recommended.strip()).parts
+    actual = PurePosixPath(path.as_posix()).parts
+    return len(actual) >= len(wanted) and actual[-len(wanted) :] == wanted
 
 
 def _check_no_alias(

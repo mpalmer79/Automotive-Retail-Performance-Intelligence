@@ -637,11 +637,11 @@ list the acceptance criteria bind to.
 | **Business question** | *What is actually visible to a shopper on our website today, and how much of it shows a price?* |
 | **Required dimensions** | `dim_date`, `dim_dealership`, `dim_observed_vehicle` |
 | **Required facts** | `fact_vehicle_listing_snapshot` |
-| **KPI IDs** | `KPI-LST-001`, `KPI-LST-002`, `KPI-LST-003`, `KPI-LST-004`, `KPI-LST-005`, `KPI-LST-006`, `KPI-LST-022` |
+| **KPI IDs** | `KPI-LST-001`, `KPI-LST-002`, `KPI-LST-003`, `KPI-LST-004`, `KPI-LST-005`, `KPI-LST-006`, `KPI-LST-022`, `KPI-LST-023`, `KPI-LST-024` |
 | **Reporting view** | `reporting.vw_vehicle_listing_summary`, `reporting.vw_vehicle_listing_current`, `reporting.vw_vehicle_listing_price_completeness` |
 | **Intended future report page** | 8. Inventory Operations |
 | **Decision enabled** | Where to direct merchandising effort: which vehicles a shopper cannot price without calling. |
-| **Interpretation caution** | This is a **sanitized public listing snapshot** (ADR-0011), not DMS inventory. A row proves a listing was visible, not that the vehicle was on the ground or owned. Call-for-price is a legitimate merchandising choice for pre-order, fleet and in-transit units, so a low completeness figure is a prompt to look, not a defect. `KPI-LST-022` is published beside every figure because a stale capture must never be read as a current position. |
+| **Interpretation caution** | This is a **sanitized public listing snapshot** (ADR-0011), not DMS inventory. A row proves a listing was visible, not that the vehicle was on the ground or owned. Call-for-price is a legitimate merchandising choice for pre-order, fleet and in-transit units, so a low completeness figure is a prompt to look, not a defect. **A low figure can also mean the listing surface publishes no price field at all**, which is a different thing and is counted separately as `KPI-LST-023`; the answer to "how many vehicles are missing from the price statistics" is `KPI-LST-024`, and the answer to "why" is the split between the two. `KPI-LST-022` is published beside every figure because a stale capture must never be read as a current position. |
 | **Implementation status** | **Implemented** |
 
 

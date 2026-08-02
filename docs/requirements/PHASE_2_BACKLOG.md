@@ -993,7 +993,7 @@ These seven apply identically to both paths. A run that satisfies six of them ha
 
 | Field | Value |
 |---|---|
-| **Purpose** | Bring the sanitized public listing lane ([ADR-0011](../architecture-decisions/ADR-0011-sanitized-public-inventory-reference-data.md)) into the semantic model, so the twenty-two `KPI-LST-*` definitions in [KPI_CATALOG.md §38](../../KPI_CATALOG.md) are answerable in Power BI rather than only in SQL and Excel. The lane's warehouse objects, reporting views, KPI definitions and Excel export are **built**; the semantic model is the one layer it deliberately does not reach. |
+| **Purpose** | Bring the sanitized public listing lane ([ADR-0011](../architecture-decisions/ADR-0011-sanitized-public-inventory-reference-data.md)) into the semantic model, so the twenty-four `KPI-LST-*` definitions in [KPI_CATALOG.md §38](../../KPI_CATALOG.md) are answerable in Power BI rather than only in SQL and Excel. The lane's warehouse objects, reporting views, KPI definitions and Excel export are **built**; the semantic model is the one layer it deliberately does not reach. |
 | **Dependencies** | **`P2.1-09` must have passed.** See the status field. |
 | **Estimated complexity** | **Medium** |
 | **Blocking gate** | Gate 1 is open. Gated on `P2.1-09` rather than on a scope gate. |
@@ -2084,7 +2084,7 @@ of the remaining work.
 
 `P2.1` gained `P2.1-16` when [ADR-0011](../architecture-decisions/ADR-0011-sanitized-public-inventory-reference-data.md)
 added the sanitized public listing lane. The item exists to record work that was **deliberately not done**:
-the lane's warehouse objects, reporting views, twenty-two KPI definitions and Excel export are built, and
+the lane's warehouse objects, reporting views, twenty-four KPI definitions and Excel export are built, and
 the semantic model was left untouched because `P2.1-09` has not passed and extending an unvalidated model
 moves the validation target. Adding the item rather than the tables is the point — a backlog entry says
 "not yet, and here is why"; an unrecorded omission says nothing at all.

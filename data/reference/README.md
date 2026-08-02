@@ -162,17 +162,34 @@ That spelling is final. It is not renamed, not lowercased, not hyphenated, and n
 duplicate, alias, symlink or second copy of it exists anywhere in the repository. There is
 **no hyphenated alternative and this document does not offer one.**
 
-The expected Granite Subaru convention, when that workbook is supplied, is:
+The canonical Granite Subaru artifact is:
 
 ```
-data/reference/inventory/gsa-002/<yyyy-mm-dd>/ARPI_Granite_Subaru_Inventory_Sanitized_<yyyy-mm-dd>.xlsx
+ARPI_Granite_Subaru_Inventory_Sanitized_2026-08-02.xlsx
 ```
 
-and Granite Used Auto Center:
+at:
 
 ```
-data/reference/inventory/gsa-003/<yyyy-mm-dd>/ARPI_Granite_Used_Auto_Center_Inventory_Sanitized_<yyyy-mm-dd>.xlsx
+data/reference/inventory/gsa-002/2026-08-02/ARPI_Granite_Subaru_Inventory_Sanitized_2026-08-02.xlsx
 ```
+
+and the canonical Granite Used Auto Center artifact is:
+
+```
+ARPI_Granite_Used_Auto_Center_Inventory_Sanitized_2026-08-02.xlsx
+```
+
+at:
+
+```
+data/reference/inventory/gsa-003/2026-08-02/ARPI_Granite_Used_Auto_Center_Inventory_Sanitized_2026-08-02.xlsx
+```
+
+All three were uploaded into the `gsa-001` directory and were **moved to their own
+stores' directories** before this lane was declared complete. The `artifact-misfiled`
+rule is what found them, and it found the Subaru workbook while it was the only Subaru
+file in the repository -- which is the case a duplicate rule cannot see.
 
 A filename change requires an **explicit migration**, not an informal rename: the name is
 declared in the contract, stamped onto every warehouse row as `source_file_name`, and
@@ -263,26 +280,59 @@ The following are true of every artifact here and are enforced rather than merel
 
 ## 10. Current contents
 
-| Store | Capture | Artifact | Rows |
-|---|---|---|---|
-| GSA-001 — Granite Chevrolet of Nashua | 2026-08-02 | [`ARPI_Granite_Chevrolet_Inventory_Sanitized_2026-08-02.xlsx`](inventory/gsa-001/2026-08-02/ARPI_Granite_Chevrolet_Inventory_Sanitized_2026-08-02.xlsx) | 199 |
+| Store | Capture | Artifact | Rows | Coverage |
+|---|---|---|---|---|
+| GSA-001 — Granite Chevrolet of Nashua | 2026-08-02 | [`ARPI_Granite_Chevrolet_Inventory_Sanitized_2026-08-02.xlsx`](inventory/gsa-001/2026-08-02/ARPI_Granite_Chevrolet_Inventory_Sanitized_2026-08-02.xlsx) | 199 | Complete |
+| GSA-002 — Granite Subaru of Manchester | 2026-08-02 | [`ARPI_Granite_Subaru_Inventory_Sanitized_2026-08-02.xlsx`](inventory/gsa-002/2026-08-02/ARPI_Granite_Subaru_Inventory_Sanitized_2026-08-02.xlsx) | 24 | **Partial** |
+| GSA-003 — Granite Used Auto Center of Merrimack | 2026-08-02 | [`ARPI_Granite_Used_Auto_Center_Inventory_Sanitized_2026-08-02.xlsx`](inventory/gsa-003/2026-08-02/ARPI_Granite_Used_Auto_Center_Inventory_Sanitized_2026-08-02.xlsx) | 318 | Complete |
 
-Of those 199 rows: 195 New and 4 Used; 197 with a listed price and 2 call-for-price. Those
-are **counts of what the artifact contains**, not findings about any dealership.
+What each artifact contains, as **counts of the file** and not as findings about any
+dealership:
 
-**Only GSA-001 is committed.** Neither the Granite Subaru nor the Granite Used Auto
-Center workbook is in this repository, in any commit, on any branch. Their directories do
-not exist and no placeholder for them exists: ADR-0011 admits an artifact only once a real
-capture has been sanitized and reviewed, so generating one in advance would create a file
-that has been through none of the controls this policy describes.
+| | GSA-001 | GSA-002 | GSA-003 |
+|---|---:|---:|---:|
+| Rows | 199 | 24 | 318 |
+| New | 195 | 8 | 0 |
+| Used | 4 | 16 | 318 |
+| `Listed` (a price was displayed) | 197 | 24 | 31 |
+| `Call for price` | 2 | 0 | 0 |
+| `Price not exposed` | 0 | 0 | 287 |
+| Rows with no odometer reading | 0 | 0 | 287 |
 
-The convention in section 6.1 is what their artifacts must satisfy when they are supplied.
-The sanitizer already derives both names correctly today —
+### 10.1 Three things in that table need saying out loud
 
-```
-arpi sanitize-inventory --input /private/path/subaru.xlsx \
-  --dealership-id GSA-002 --captured-at 2026-08-02 --dry-run
-```
+**GSA-002 is a partial capture, and its row count is not an inventory count.** The public
+source did not expose every listing through a reliably extractable path, so the artifact
+holds 24 visible indexed records out of a larger reported inventory. Twenty-four is a
+count of *what was visible to the capture*. Reading it as the store's inventory would
+report a shortfall that exists only in the extraction. It is declared as
+`coverage: partial` in the contract so no consumer has to open the file to find out.
 
-— and reports the governed path it would write to, so the placement is checkable before a
-single byte is committed.
+**GSA-003 publishes no price for 287 of its 318 listings, and no mileage for the same
+287.** That is a property of the listing surface, not a defect in the workbook and not a
+finding about the store. It is why this lane's odometer column is optional and why
+`Price not exposed` exists as a status.
+
+**`Price not exposed` is not `Call for price`.** Call-for-price means the listing
+*displayed* a call-for-price treatment: somebody chose to withhold the number and invite
+contact. Price not exposed means the listing surface published no price field at all, and
+evidences no choice by anyone. Collapsing them would attribute a merchandising decision
+to a dealership on no evidence, which is precisely the class of claim this lane refuses.
+They are counted separately everywhere they appear.
+
+The consequence for GSA-003 is worth stating plainly: **no price statistic, no total
+advertised value and no average odometer can be computed for that store's 287 unpriced
+listings.** The lane reports them as a count of what was not published rather than as a
+zero, because a zero is a number and a number gets averaged.
+
+### 10.2 How these three arrived
+
+All three were uploaded into `data/reference/inventory/gsa-001/2026-08-02/`, and one was
+uploaded a second time to the repository root. They were moved to their own stores'
+directories, the root copy was deleted, and both new artifacts were validated and declared
+with their SHA-256 before this lane was called complete.
+
+The `artifact-misfiled` rule is what found them. It matters that it found the Subaru
+workbook while that was the only Subaru file in the repository: a duplicate rule cannot
+see a lone file in the wrong place, and "there is only one of it" is exactly the argument
+that would have let it stay.

@@ -106,7 +106,7 @@ The one part of ARPI whose data is not machine generated, and the documents that
 | [`../config/reference/inventory_listing_contract.yaml`](../config/reference/inventory_listing_contract.yaml) | The versioned workbook contract every consumer reads |
 | [`source-to-target/STM-015-inventory-listing-snapshot.md`](source-to-target/STM-015-inventory-listing-snapshot.md) | Workbook to raw to staging to dimension to fact to reporting to Excel |
 | [`diagrams/05-inventory-listing-lane.md`](diagrams/05-inventory-listing-lane.md) | The same path as one diagram, with the reasoning behind each boundary |
-| [`../KPI_CATALOG.md`](../KPI_CATALOG.md) §38 | The 22 governed Inventory Listings KPIs, and the measures the lane will never define |
+| [`../KPI_CATALOG.md`](../KPI_CATALOG.md) §38 | The 24 governed Inventory Listings KPIs, and the measures the lane will never define |
 | [`../LIMITATIONS.md`](../LIMITATIONS.md) §13 | What a listing snapshot cannot establish |
 
 **Read the boundary first.** Advertised price is not transaction price. A removed listing

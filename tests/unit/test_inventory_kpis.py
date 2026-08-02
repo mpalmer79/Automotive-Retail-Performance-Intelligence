@@ -68,7 +68,7 @@ def domain_section(catalogue: str) -> str:
 
 
 def test_twenty_two_listing_kpis_are_registered_with_no_gaps() -> None:
-    assert tuple(f"KPI-LST-{index:03d}" for index in range(1, 23)) == INVENTORY_LISTING_KPI_IDS
+    assert tuple(f"KPI-LST-{index:03d}" for index in range(1, 25)) == INVENTORY_LISTING_KPI_IDS
 
 
 def test_every_registered_kpi_is_defined_in_the_catalogue(domain_section: str) -> None:

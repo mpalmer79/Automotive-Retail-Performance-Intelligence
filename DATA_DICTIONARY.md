@@ -2918,9 +2918,9 @@ by `uq_fact_vehicle_listing_snapshot_grain`.
 | `vehicle_listing_snapshot_key` | `bigint` | Primary key |
 | `snapshot_date_key`, `dealership_key`, `observed_vehicle_key` | `integer` | The declared grain |
 | `captured_at` | `date` | When the listing was **seen** |
-| `odometer_miles` | `integer` | **Non-additive** |
-| `advertised_price` | `numeric(12,2)` | **Semi-additive.** NULL exactly when call-for-price |
-| `pricing_status` | `varchar(20)` | `Listed` or `Call for price` |
+| `odometer_miles` | `integer` NULL | **Non-additive.** NULL means the listing published no mileage, which is not a zero reading and must not be coalesced to one |
+| `advertised_price` | `numeric(12,2)` | **Semi-additive.** NULL exactly when `pricing_status` is `Call for price` or `Price not exposed` |
+| `pricing_status` | `varchar(20)` | `Listed`, `Call for price` or `Price not exposed`. The last two both mean `advertised_price` is NULL and are deliberately distinct: `Call for price` records a displayed merchandising choice, `Price not exposed` records that the listing surface published no price field at all |
 | `inventory_unit_count` | `smallint` | Always 1. **Semi-additive** |
 | `source_batch_id`, `source_file_name`, `source_file_digest`, `source_system` | | Lineage |
 

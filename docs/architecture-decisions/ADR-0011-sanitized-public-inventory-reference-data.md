@@ -225,3 +225,50 @@ capability rather than as a finding.
 | Documentation may not call a removal a sale | `scripts/check_reference_data.py` |
 | Documentation may not call days observed days in stock | `scripts/check_reference_data.py` |
 | Historical snapshots are immutable | `sql/04_facts/15_fact_vehicle_listing_snapshot_load.sql`, `arpi.inventory.importer` |
+| A workbook is filed under its own store | `scripts/check_reference_data.py` rule `artifact-misfiled`, DQ-LST-011 |
+| A partial capture declares that it is partial | `config/reference/inventory_listing_contract.yaml`, `tests/unit/test_inventory_reference_artifact.py` |
+
+## 6. Amendments
+
+The decision above is unchanged. The **contract** it governs has been amended once, and
+the amendment is recorded here because the contract is where this decision is executable.
+
+### 6.1 2026-08-02 — optional mileage, and a third pricing status
+
+**What prompted it.** The Granite Subaru and Granite Used Auto Center captures arrived.
+The Used Auto Center listing surface publishes **no price and no mileage** for 287 of its
+318 listings. Under the original contract — mileage required, two pricing statuses — the
+whole workbook was refused, 861 findings deep.
+
+**What changed, and what did not.**
+
+| | Before | After |
+|---|---|---|
+| `Odometer Miles` | Required | **Optional.** A blank cell is an absence; a present value that will not coerce is still refused |
+| `pricing_status_values` | `Listed`, `Call for price` | `Listed`, `Call for price`, **`Price not exposed`** |
+| `advertised_price` | NULL exactly when call-for-price | NULL under any status that forbids a price |
+| `warehouse.fact_vehicle_listing_snapshot.odometer_miles` | `NOT NULL` | Nullable |
+
+**Why the workbook was not refused instead.** Refusing it would have asserted that a
+public listing surface must publish mileage and a price. ARPI is not in a position to
+make that claim about somebody else's website, and a lane whose contract only admits
+sources that resemble the first one it saw is not an ingestion capability.
+
+**Why `Price not exposed` is a new status rather than an alias for `Call for price`.**
+Call-for-price means the listing *displayed* a call-for-price treatment: a merchandising
+choice was made and shown. Price-not-exposed means the listing surface published no price
+field at all, and evidences no choice by anyone. Recording the second as the first would
+attribute a decision to a dealership on no evidence, which is the exact class of claim
+section 2 forbids. They are counted separately in every view, and `unpriced_units` — the
+complement of `Listed` — is published for the case where one number is genuinely wanted.
+
+**What this cost.** Granite Used Auto Center's `total_advertised_value` describes 31
+vehicles rather than 318, and no average mileage exists for the other 287. Both are
+reported as counts of what was not published rather than as zeros. That is the honest
+answer and it is a worse-looking one, which is the point: a zero is a number, and a
+number gets averaged.
+
+**Where the change is enforced.** `pricing_rules` now states the rule twice — as a named
+boolean per status, which section 5 of the specification requires, and as
+`statuses_that_forbid_a_price`, which every consumer reads. `load_contract()` refuses a
+contract where the two disagree, so neither statement can quietly become decorative.

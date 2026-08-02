@@ -169,10 +169,10 @@ COMMENT ON COLUMN reporting.vw_vehicle_listing_change.make IS 'Make, as most rec
 COMMENT ON COLUMN reporting.vw_vehicle_listing_change.model IS 'Model, as most recently advertised.';
 COMMENT ON COLUMN reporting.vw_vehicle_listing_change.trim IS 'Trim, as most recently advertised. NULL means the listing carried none.';
 COMMENT ON COLUMN reporting.vw_vehicle_listing_change.vehicle_display IS 'Year/make/model/trim as the listing worded it.';
-COMMENT ON COLUMN reporting.vw_vehicle_listing_change.odometer_miles IS 'Advertised odometer reading in the current capture. NULL on a Removed From Listing row.';
+COMMENT ON COLUMN reporting.vw_vehicle_listing_change.odometer_miles IS 'Advertised odometer reading in the current capture. NULL on a Removed From Listing row, and also when the listing published no mileage -- the change_type column is what tells the two apart.';
 COMMENT ON COLUMN reporting.vw_vehicle_listing_change.advertised_price IS 'Advertised price in the current capture. NULL for a call-for-price listing and on a Removed From Listing row.';
 COMMENT ON COLUMN reporting.vw_vehicle_listing_change.prior_advertised_price IS 'Advertised price in the prior capture. NULL for a call-for-price listing and on a New Listing row.';
 COMMENT ON COLUMN reporting.vw_vehicle_listing_change.price_change IS 'KPI-LST-018 input: advertised_price minus prior_advertised_price. Negative is a reduction. NULL whenever either side is absent, so a vehicle moving to or from call-for-price never fabricates a change of the full price.';
-COMMENT ON COLUMN reporting.vw_vehicle_listing_change.pricing_status IS 'Listed or Call for price in the current capture.';
-COMMENT ON COLUMN reporting.vw_vehicle_listing_change.prior_pricing_status IS 'Listed or Call for price in the prior capture. A move between the two is visible here rather than hidden in a NULL price_change.';
+COMMENT ON COLUMN reporting.vw_vehicle_listing_change.pricing_status IS 'Listed, Call for price, or Price not exposed in the current capture.';
+COMMENT ON COLUMN reporting.vw_vehicle_listing_change.prior_pricing_status IS 'Listed, Call for price, or Price not exposed in the prior capture. A move between any two of them is visible here rather than hidden in a NULL price_change.';
 COMMENT ON COLUMN reporting.vw_vehicle_listing_change.change_type IS 'New Listing | Still Listed | Removed From Listing | Price Increase | Price Reduction | Price Unchanged. THERE IS NO SOLD LABEL AND THERE MUST NEVER BE ONE: this data cannot distinguish a sale from a trade, a wholesale, a feed suppression or an error.';

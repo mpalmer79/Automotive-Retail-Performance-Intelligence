@@ -1250,7 +1250,7 @@ There is **no** sold-units KPI, no inventory turn, no days in stock, no front, b
 | **Null behaviour** | NULL when no capture exists. |
 | **Filter behaviour** | As KPI-LST-001. |
 | **Additivity** | SEMI-ADDITIVE. |
-| **Interpretation caution** | Call-for-price is a legitimate merchandising choice for pre-order, fleet, chassis-cab and in-transit units. A count is a prompt to look, not a defect. |
+| **Interpretation caution** | Call-for-price is a legitimate merchandising choice for pre-order, fleet, chassis-cab and in-transit units. A count is a prompt to look, not a defect. **This is not every unpriced listing** — see `KPI-LST-023` and `KPI-LST-024`. |
 | **Source view** | `reporting.vw_vehicle_listing_summary` |
 | **Status** | Implemented |
 | **Owner** | Michael Palmer |
@@ -1558,6 +1558,42 @@ There is **no** sold-units KPI, no inventory turn, no days in stock, no front, b
 | **Additivity** | NON-ADDITIVE. |
 | **Interpretation caution** | This is snapshot age. It is not days in stock, not days on lot, and not vehicle age. |
 | **Source view** | `reporting.vw_vehicle_listing_summary` |
+| **Status** | Implemented |
+| **Owner** | Michael Palmer |
+
+### 38.4.23 `KPI-LST-023` — Price-not-exposed units
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-LST-023` |
+| **Display name** | Price-not-exposed units |
+| **Business question** | How many advertised vehicles came from a source that published no price field at all? |
+| **Grain** | Store x capture date; also published at store x capture x condition x make x model |
+| **Formula** | `COUNT(*) WHERE pricing_status = 'Price not exposed'` |
+| **Date basis** | Capture date. |
+| **Null behaviour** | NULL when no capture exists. |
+| **Filter behaviour** | As KPI-LST-001. |
+| **Additivity** | SEMI-ADDITIVE. |
+| **Interpretation caution** | **This is not `KPI-LST-005` and the two must never be added into one bucket without saying so.** Call-for-price means the listing *displayed* a call-for-price treatment: a merchandising choice was made and shown. Price-not-exposed means the listing surface carried no price field, and evidences no choice by anyone. Reporting this as call-for-price would attribute a decision to a dealership on no evidence. It is equally **not** a data-quality defect: the sanitizer received no price because none was published. |
+| **Source view** | `reporting.vw_vehicle_listing_summary`, `reporting.vw_vehicle_listing_price_completeness`, `reporting.vw_vehicle_listing_model_mix` |
+| **Status** | Implemented |
+| **Owner** | Michael Palmer |
+
+### 38.4.24 `KPI-LST-024` — Unpriced listing units
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-LST-024` |
+| **Display name** | Unpriced listing units |
+| **Business question** | How many advertised vehicles contributed nothing to total advertised value? |
+| **Grain** | Store x capture date; also published at store x capture x condition x make x model |
+| **Formula** | `COUNT(*) WHERE pricing_status <> 'Listed'` |
+| **Date basis** | Capture date. |
+| **Null behaviour** | NULL when no capture exists. |
+| **Filter behaviour** | As KPI-LST-001. |
+| **Additivity** | SEMI-ADDITIVE. |
+| **Interpretation caution** | Defined as the **complement of listed**, not as the sum of the named unpriced statuses, so that `KPI-LST-004 + KPI-LST-024 = KPI-LST-001` holds however many pricing statuses exist. A future status cannot silently fall outside every bucket. Use this when the question is "how many vehicles are missing from the price statistics"; use `KPI-LST-005` and `KPI-LST-023` when the question is *why*. |
+| **Source view** | `reporting.vw_vehicle_listing_summary`, `reporting.vw_vehicle_listing_price_completeness`, `reporting.vw_vehicle_listing_model_mix` |
 | **Status** | Implemented |
 | **Owner** | Michael Palmer |
 

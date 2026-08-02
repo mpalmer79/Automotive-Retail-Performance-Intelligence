@@ -58,10 +58,15 @@ def test_the_contract_reader_finds_the_declared_artifact_and_both_regexes() -> N
     artifacts, sanitized_regex, report_regex = check_reference_data.read_contract_facts(
         check_reference_data.CONTRACT_PATH
     )
-    assert len(artifacts) == 1
+    assert [a["dealership_id"] for a in artifacts] == ["GSA-001", "GSA-002", "GSA-003"]
     assert artifacts[0]["file_name"] == CANONICAL_NAME
     assert artifacts[0]["path"] == CANONICAL_PATH
     assert artifacts[0]["row_count"] == "199"
+    # The small parser must read a multi-entry list, not just the first one. It is a
+    # hand-written line scanner, and "works on a list of one" is the shape of bug that
+    # would have gone unnoticed until the day a second store was declared.
+    assert artifacts[1]["path"].startswith("data/reference/inventory/gsa-002/")
+    assert artifacts[2]["path"].startswith("data/reference/inventory/gsa-003/")
     # Both regexes must have survived the small parser intact, including the
     # backslash escapes -- which is exactly what single-quoting them protects.
     import re
@@ -286,6 +291,45 @@ def test_a_url_inside_a_committed_artifact_is_caught(fake_repo: Path) -> None:
 def test_a_real_vin_inside_a_committed_artifact_is_caught(fake_repo: Path) -> None:
     _workbook(fake_repo / CANONICAL_PATH, extra="1GCUYDED5NZ123456")
     assert "artifact-real-vin" in _rules(fake_repo)
+
+
+def test_a_real_vin_embedded_in_a_longer_cell_is_still_caught(fake_repo: Path) -> None:
+    """The rule is a search, not a full match, and it has to stay one.
+
+    The runtime validator full-matches a trimmed cell, which is right for a workbook the
+    sanitizer wrote. This check exists for the workbook it did not, where an identifier
+    can arrive inside a sentence.
+    """
+    _workbook(fake_repo / CANONICAL_PATH, extra="Stock VIN 1GCUYDED5NZ123456 (source)")
+    assert "artifact-real-vin" in _rules(fake_repo)
+
+
+@pytest.mark.parametrize(
+    ("value", "why"),
+    [
+        ("9.99999999999999999", "a float rendered at full precision"),
+        ("0.12345678901234567", "a ratio rendered at full precision"),
+        ("12345678901234567", "seventeen digits, which is a number and not a VIN"),
+        ("ARPI16E677B741223", "an ARPI identity, which contains I"),
+        ("1GCUYDED5NZ1234567", "eighteen characters"),
+    ],
+)
+def test_a_value_that_only_looks_like_a_vin_is_not_reported(
+    fake_repo: Path, value: str, why: str
+) -> None:
+    """Every one of these was a false positive, or would have been.
+
+    The first is not hypothetical: ``9.99999999999999999`` on a Model Summary sheet was
+    reported as a real VIN in a committed artifact, because a word boundary sits at a
+    decimal point and offered seventeen digits with one at each end.
+
+    A privacy check that cries wolf is worse than one that is merely noisy. This rule
+    refuses a commit, so a false positive teaches the next person to reach for an
+    override -- and the override is what will be reached for on the day the finding is
+    real.
+    """
+    _workbook(fake_repo / CANONICAL_PATH, extra=value)
+    assert "artifact-real-vin" not in _rules(fake_repo), why
 
 
 def test_a_missing_classification_is_caught(fake_repo: Path) -> None:

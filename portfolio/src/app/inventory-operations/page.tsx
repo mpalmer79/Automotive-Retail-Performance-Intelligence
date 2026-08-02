@@ -9,6 +9,7 @@ import { Container, Grid, Section } from '@/components/ui/layout'
 import { PageHeader } from '@/components/ui/page-header'
 import { CodeLabel, Eyebrow, Heading, Text } from '@/components/ui/typography'
 import { inventoryOperations } from '@/lib/content'
+import type { InventoryArtifact } from '@/types/content'
 import { pageMetadata } from '@/lib/metadata'
 import { Canvas } from '@/components/shell/field'
 
@@ -30,8 +31,12 @@ export const metadata: Metadata = pageMetadata('inventoryOperations')
  * and for the claims it must never make.
  */
 export default function InventoryOperationsPage() {
-  const { artifact, notice, problem, sanitization, canProve, cannotProve } =
+  const { artifact, artifacts, notice, problem, sanitization, canProve, cannotProve } =
     inventoryOperations
+
+  // Summed here rather than authored, so the headline cannot disagree with the
+  // cards beneath it when a fourth capture lands.
+  const totalRows = artifacts.reduce((running, entry) => running + entry.rows, 0)
   const { pipeline, grain, views, report, multiStore, status, governance } =
     inventoryOperations
 
@@ -378,39 +383,36 @@ export default function InventoryOperationsPage() {
         </Container>
       </Section>
 
-      {/* 9. The committed artifact, with its counts stated as counts. */}
+      {/* 9. The committed artifacts, with every count stated as a count. */}
       <Section tone="canvas">
         <Container width="wide">
           <Reveal className="mb-8 flex max-w-prose flex-col gap-5">
-            <Eyebrow>The committed artifact</Eyebrow>
+            <Eyebrow>The committed artifacts</Eyebrow>
             <Heading level={2}>
-              One store, one capture, {artifact.rows} listing rows
+              Three stores, one capture date, {totalRows} listing rows
             </Heading>
             <Text size="body">
-              Every figure below is a count of what the file contains. None of them is a
+              Every figure below is a count of what the files contain. None of them is a
               finding, a performance figure, or a statement about any real dealership.
+              Where a capture could be misread, the reason is stated on the card rather
+              than left for someone to discover.
             </Text>
           </Reveal>
-          <Grid columns={4} gap={4}>
-            <ArtifactCount value={artifact.rows} label="Imported reference rows" />
-            <ArtifactCount value={artifact.newUnits} label="New-condition rows" />
-            <ArtifactCount value={artifact.usedUnits} label="Used-condition rows" />
-            <ArtifactCount
-              value={artifact.listedPriceUnits}
-              label="Rows showing a price"
-              detail={`${String(artifact.callForPriceUnits)} call-for-price`}
-            />
-          </Grid>
+          <div className="flex flex-col gap-4">
+            {artifacts.map((entry) => (
+              <ArtifactCard key={entry.dealershipId} artifact={entry} />
+            ))}
+          </div>
           <Card className="mt-6 flex flex-col gap-3">
             <Text size="sm" tone="secondary">
-              The canonical artifact is{' '}
+              Each name, such as{' '}
               <span className="font-mono text-xs text-ink-primary">
                 {artifact.fileName}
               </span>
-              . The name intentionally uses underscores between filename words and hyphens
-              only inside the ISO date. It is declared in the workbook contract with its
-              SHA-256, and no duplicate or alias copy of it exists anywhere in the
-              repository.
+              , intentionally uses underscores between filename words and hyphens only
+              inside the ISO date. Each is declared in the workbook contract with its
+              SHA-256, each lives under its own store's directory, and no duplicate or
+              alias copy of any of them exists anywhere in the repository.
             </Text>
             <div className="flex flex-wrap gap-3">
               <SourceLink path={artifact.path} field="download the workbook" />
@@ -519,7 +521,67 @@ export default function InventoryOperationsPage() {
   )
 }
 
-/** One count from the committed artifact, labelled as a count and never as a finding. */
+/**
+ * One committed workbook, with its counts and the caveats a reader needs beside them.
+ *
+ * The caveats are not decoration. A partial capture's row count is a count of what was
+ * visible, and an unpriced count is what stops a total advertised value being read as
+ * the store's whole book. Both are rendered from the content file rather than written
+ * into the component, and `tests/unit/inventory-operations.test.ts` checks them against
+ * the workbook contract.
+ */
+function ArtifactCard({ artifact }: { artifact: InventoryArtifact }) {
+  const unpriced = artifact.callForPriceUnits + artifact.priceNotExposedUnits
+  return (
+    <Card className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <Heading level={3} size="h6">
+          {artifact.storeName}
+        </Heading>
+        <span className="font-mono text-xs text-ink-muted">{artifact.dealershipId}</span>
+      </div>
+      <Grid columns={4} gap={4}>
+        <ArtifactCount value={artifact.rows} label="Reference rows" />
+        <ArtifactCount
+          value={artifact.usedUnits}
+          label="Used-condition rows"
+          detail={`${String(artifact.newUnits)} new`}
+        />
+        <ArtifactCount
+          value={artifact.listedPriceUnits}
+          label="Rows showing a price"
+          detail={unpriced > 0 ? `${String(unpriced)} showing none` : undefined}
+        />
+        <ArtifactCount
+          value={artifact.noOdometerUnits}
+          label="Rows with no mileage"
+          detail={
+            artifact.noOdometerUnits > 0 ? 'Not rows with zero miles' : undefined
+          }
+        />
+      </Grid>
+      {artifact.coverage === 'partial' && artifact.coverageNote ? (
+        <Text size="sm" tone="secondary">
+          <strong className="text-ink-secondary">Partial capture.</strong>{' '}
+          {artifact.coverageNote}
+        </Text>
+      ) : null}
+      {artifact.priceNotExposedUnits > 0 ? (
+        <Text size="sm" tone="secondary">
+          <strong className="text-ink-secondary">
+            {artifact.priceNotExposedUnits} listings published no price field
+          </strong>{' '}
+          and no mileage. That is a property of the listing surface, not a merchandising
+          choice and not a defect, so it is counted separately from call-for-price. No
+          price statistic and no average mileage can be computed for those rows, and the
+          lane reports them as a count rather than as a zero.
+        </Text>
+      ) : null}
+    </Card>
+  )
+}
+
+/** One count from a committed artifact, labelled as a count and never as a finding. */
 function ArtifactCount({
   value,
   label,

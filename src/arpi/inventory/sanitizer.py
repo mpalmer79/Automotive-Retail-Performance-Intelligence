@@ -233,6 +233,16 @@ def _text(value: Any) -> str:
     return "" if value is None else str(value).strip()
 
 
+def _is_blank(value: Any) -> bool:
+    """Return whether a private-workbook cell holds nothing at all.
+
+    An empty cell in an optional column is an absence the contract permits. A cell
+    holding something that will not coerce is a value somebody wrote, and reading it as
+    an absence would discard it silently.
+    """
+    return not _text(value)
+
+
 def _int_or_none(value: Any) -> int | None:
     """Coerce to int, tolerating ``"12,345"`` and ``"12345 mi"``-style noise."""
     text = _text(value).replace(",", "")
@@ -384,13 +394,27 @@ def _transform(  # noqa: PLR0912, PLR0915 - one branch per input-contract field
             part for part in (str(model_year), make, model, trim) if part
         )
 
-        odometer = _int_or_none(cell("odometer_miles"))
-        if odometer is None or odometer < contract.odometer_minimum:
+        # Mileage is OPTIONAL. A listing surface that publishes none is a real thing --
+        # Granite Used Auto Center publishes none for 287 of its 318 listings -- and
+        # refusing those rows would assert that a public listing must carry mileage.
+        # A present value that is negative is still a refusal: that is a bad reading,
+        # not an absent one.
+        raw_odometer = cell("odometer_miles")
+        odometer = _int_or_none(raw_odometer)
+        if odometer is None and not _is_blank(raw_odometer):
             fail(
                 row_number,
                 "Mileage",
                 CHECK_CATEGORY_STRUCTURAL,
-                "Mileage is absent or negative",
+                "Mileage is present but is not a whole number",
+            )
+            continue
+        if odometer is not None and odometer < contract.odometer_minimum:
+            fail(
+                row_number,
+                "Mileage",
+                CHECK_CATEGORY_STRUCTURAL,
+                "Mileage is negative",
             )
             continue
 
@@ -410,7 +434,10 @@ def _transform(  # noqa: PLR0912, PLR0915 - one branch per input-contract field
             )
             continue
         pricing_status = matched[0]
-        listed = pricing_status == contract.pricing_status_values[0]
+        # Read the contract's declared set rather than testing for a literal status:
+        # there are two statuses that forbid a price and there may one day be a third.
+        forbids_price = pricing_status in contract.statuses_that_forbid_a_price
+        listed = not forbids_price
 
         price = _price_or_none(cell("advertised_price"))
         if listed and price is None:
@@ -421,10 +448,10 @@ def _transform(  # noqa: PLR0912, PLR0915 - one branch per input-contract field
                 "Price Status is 'Listed' but no price is present",
             )
             continue
-        if not listed:
-            # The contract does not permit a priced call-for-price row. Dropping the
-            # number is the sanitization, not a rejection: the two columns disagreed in
-            # the source and the status is the governing statement.
+        if forbids_price:
+            # The contract does not permit a price under a status that forbids one.
+            # Dropping the number is the sanitization, not a rejection: the two columns
+            # disagreed in the source and the status is the governing statement.
             price = None
 
         had_url = contains_url(cell("source_url"))
@@ -655,11 +682,18 @@ def _write_summary(
 
     sheet.cell(row=4, column=4, value="Condition")
     sheet.cell(row=4, column=5, value="Count")
-    condition_rows = (
-        ("New", f'=COUNTIF({condition_range},"New")'),
-        ("Used", f'=COUNTIF({condition_range},"Used")'),
-        ("Listed price", f'=COUNTIF({status_range},"Listed")'),
-        ("Call for price", f'=COUNTIF({status_range},"Call for price")'),
+    # One row per governed condition and one per governed pricing status, both read
+    # from the contract. A hard-coded pair of statuses was correct until a third
+    # arrived, and the failure mode was silent: the sheet would still add up on a
+    # workbook where it no longer did.
+    condition_rows = tuple(
+        (value, f'=COUNTIF({condition_range},"{value}")') for value in contract.condition_values
+    ) + tuple(
+        (
+            "Listed price" if value == contract.pricing_status_values[0] else value,
+            f'=COUNTIF({status_range},"{value}")',
+        )
+        for value in contract.pricing_status_values
     )
     for offset, (label, formula) in enumerate(condition_rows):
         sheet.cell(row=5 + offset, column=4, value=label)
@@ -682,7 +716,14 @@ def _write_summary(
         ("New vehicles", f'=COUNTIF({condition_range},"New")', INTEGER_FORMAT),
         ("Used vehicles", f'=COUNTIF({condition_range},"Used")', INTEGER_FORMAT),
         ("Vehicles with listed price", f'=COUNTIF({status_range},"Listed")', INTEGER_FORMAT),
-        ("Call for price", f'=COUNTIF({status_range},"Call for price")', INTEGER_FORMAT),
+        # The complement rather than a count of one named status: whatever pricing
+        # statuses exist, listed + unpriced is every row, so the sheet cannot come to
+        # describe fewer vehicles than it holds.
+        (
+            "Vehicles with no listed price",
+            f'=COUNTA({id_range})-COUNTIF({status_range},"Listed")',
+            INTEGER_FORMAT,
+        ),
         ("Total advertised listing value", f"=SUM({price_range})", CURRENCY_FORMAT),
         ("Average advertised price", "=IF(B14=0,0,B16/B14)", CURRENCY_FORMAT),
         ("Pricing completeness", "=IF(B11=0,0,B14/B11)", "0.0%"),
@@ -777,7 +818,7 @@ def _write_model_summary(
         "Model",
         "Total Units",
         "Listed Units",
-        "Call for Price",
+        "No Listed Price",
         "Average Listed Price",
         "Minimum Listed Price",
         "Maximum Listed Price",
@@ -798,8 +839,9 @@ def _write_model_summary(
         sheet.cell(
             row=target, column=5, value=f'=COUNTIFS({criteria},{status_range},"Listed")'
         ).number_format = INTEGER_FORMAT
+        # Total minus listed, so every unpriced status is counted whatever it is called.
         sheet.cell(
-            row=target, column=6, value=f'=COUNTIFS({criteria},{status_range},"Call for price")'
+            row=target, column=6, value=f"=D{target}-E{target}"
         ).number_format = INTEGER_FORMAT
         sheet.cell(
             row=target,

@@ -113,6 +113,18 @@ class CanonicalArtifact:
     row_count: int
     sha256: str
     legacy_path_hint: str | None = None
+    coverage: str = "complete"
+    coverage_note: str | None = None
+
+    @property
+    def is_partial(self) -> bool:
+        """Whether this capture is known not to hold every listing the store published.
+
+        A partial capture's unit count is a count of what was VISIBLE. Reading it as the
+        store's inventory would report a shortfall that exists only in the extraction,
+        which is the most plausible way this lane could mislead somebody who trusts it.
+        """
+        return self.coverage != "complete"
 
 
 @dataclass(frozen=True, slots=True)
@@ -136,6 +148,11 @@ class InventoryListingContract:
     pricing_status_values: tuple[str, ...]
     listed_requires_price: bool
     call_for_price_allows_price: bool
+    price_not_exposed_allows_price: bool
+    #: The authoritative set of statuses under which ``advertised_price`` must be
+    #: absent. Every consumer reads this rather than testing for a literal status,
+    #: so a fourth status is a contract edit and not a hunt through five modules.
+    statuses_that_forbid_a_price: frozenset[str]
     model_year_minimum: int
     model_year_maximum: int
     model_year_years_ahead_of_capture: int
@@ -268,6 +285,63 @@ def _as_date(value: Any, key: str) -> date:
         ) from None
 
 
+#: The per-status switches, and the status each one governs. Declared here rather than
+#: derived from the status name so that adding a status is a deliberate edit in two
+#: places that must agree, not a string transformation that silently succeeds.
+_PRICING_SWITCHES: Final[tuple[tuple[str, str], ...]] = (
+    ("call_for_price_allows_price", "Call for price"),
+    ("price_not_exposed_allows_price", "Price not exposed"),
+)
+
+
+def _check_pricing_rules_agree(
+    payload: dict[str, Any], pricing: dict[str, Any], source: Path
+) -> None:
+    """Refuse a contract whose pricing switches disagree with its forbidden-price list.
+
+    The contract states the same rule twice on purpose: once as a named boolean per
+    status, because section 5 of the specification requires an explicit, documented
+    switch, and once as a list, because every consumer needs the set rather than a
+    chain of literal comparisons.
+
+    Two statements of one rule can disagree, and a disagreement here is silent and
+    expensive: the validator would refuse a row the warehouse accepts, or the reverse.
+    So this refuses the contract instead. Neither statement is derived from the other,
+    which is what makes the check meaningful.
+    """
+    declared = frozenset(str(value) for value in pricing["statuses_that_forbid_a_price"])
+    vocabulary = frozenset(str(value) for value in _require(payload, "pricing_status_values"))
+
+    unknown = sorted(declared - vocabulary)
+    if unknown:
+        raise ConfigurationError(
+            "pricing_rules.statuses_that_forbid_a_price names a status that is not in "
+            f"pricing_status_values: {unknown}.",
+            config_path=source,
+            keys=["pricing_rules.statuses_that_forbid_a_price"],
+        )
+
+    for switch, status in _PRICING_SWITCHES:
+        allows_price = bool(pricing[switch])
+        forbids_price = status in declared
+        if allows_price is forbids_price:
+            raise ConfigurationError(
+                f"pricing_rules.{switch} is {allows_price} but {status!r} is "
+                f"{'in' if forbids_price else 'absent from'} "
+                "pricing_rules.statuses_that_forbid_a_price. The two statements of the "
+                "pricing rule must agree; ARPI will not pick one.",
+                config_path=source,
+                keys=[f"pricing_rules.{switch}", "pricing_rules.statuses_that_forbid_a_price"],
+            )
+
+    if bool(pricing["listed_requires_price"]) and "Listed" in declared:
+        raise ConfigurationError(
+            "pricing_rules says Listed both requires and forbids a price.",
+            config_path=source,
+            keys=["pricing_rules.listed_requires_price"],
+        )
+
+
 @lru_cache(maxsize=1)
 def load_contract(path: Path | None = None) -> InventoryListingContract:
     """Load and validate the workbook contract.
@@ -311,6 +385,7 @@ def load_contract(path: Path | None = None) -> InventoryListingContract:
     model_year = _require(payload, "model_year")
     odometer = _require(payload, "odometer_miles")
     price = _require(payload, "advertised_price")
+    _check_pricing_rules_agree(payload, pricing, source)
 
     return InventoryListingContract(
         contract_version=str(_require(payload, "contract_version")),
@@ -336,6 +411,10 @@ def load_contract(path: Path | None = None) -> InventoryListingContract:
         pricing_status_values=tuple(str(v) for v in _require(payload, "pricing_status_values")),
         listed_requires_price=bool(pricing["listed_requires_price"]),
         call_for_price_allows_price=bool(pricing["call_for_price_allows_price"]),
+        price_not_exposed_allows_price=bool(pricing["price_not_exposed_allows_price"]),
+        statuses_that_forbid_a_price=frozenset(
+            str(value) for value in pricing["statuses_that_forbid_a_price"]
+        ),
         model_year_minimum=int(model_year["minimum"]),
         model_year_maximum=int(model_year["maximum"]),
         model_year_years_ahead_of_capture=int(model_year["years_ahead_of_capture"]),
@@ -377,6 +456,10 @@ def load_contract(path: Path | None = None) -> InventoryListingContract:
                 sha256=str(item["sha256"]),
                 legacy_path_hint=(
                     str(item["legacy_path_hint"]) if item.get("legacy_path_hint") else None
+                ),
+                coverage=str(item.get("coverage", "complete")),
+                coverage_note=(
+                    str(item["coverage_note"]).strip() if item.get("coverage_note") else None
                 ),
             )
             for item in payload.get("canonical_artifacts", ())

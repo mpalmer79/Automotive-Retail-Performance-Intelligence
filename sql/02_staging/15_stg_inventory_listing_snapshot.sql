@@ -42,7 +42,8 @@
 -- PRICING IS A TWO-COLUMN CONTRACT
 -- --------------------------------
 --   Listed          => advertised_price must be present.
---   Call for price  => advertised_price must be absent.
+--   Call for price     => advertised_price must be absent.
+--   Price not exposed  => advertised_price must be absent.
 -- A row where the two disagree is quarantined, not repaired. Admitting it would let
 -- one vehicle count in both halves of a pricing-completeness percentage.
 --
@@ -202,9 +203,11 @@ flagged AS (
             CASE WHEN c.src_inventory_unit_count IS NOT NULL AND c.inventory_unit_count IS NULL THEN 'inventory_unit_count' END,
             CASE WHEN c.src_data_classification IS NOT NULL AND c.data_classification IS NULL THEN 'data_classification' END
         ], NULL) AS cast_failures,
-        -- Required by the contract but absent. trim and advertised_price are
-        -- legitimately NULL and are deliberately not listed; the pricing rule below
-        -- is what makes a missing price a rejection when the status demands one.
+        -- Required by the contract but absent. trim, odometer_miles and
+        -- advertised_price are legitimately NULL and are deliberately not listed; the
+        -- pricing rule below is what makes a missing price a rejection when the status
+        -- demands one. odometer_miles has no such rule because no status implies a
+        -- reading: a listing surface that publishes none is a real thing.
         array_remove(ARRAY[
             CASE WHEN c.source_record_id IS NULL THEN 'source_record_id' END,
             CASE WHEN c.dealership_id IS NULL THEN 'dealership_id' END,
@@ -217,7 +220,6 @@ flagged AS (
             CASE WHEN c.make IS NULL THEN 'make' END,
             CASE WHEN c.model IS NULL THEN 'model' END,
             CASE WHEN c.vehicle_display IS NULL THEN 'vehicle_display' END,
-            CASE WHEN c.odometer_miles IS NULL THEN 'odometer_miles' END,
             CASE WHEN c.pricing_status IS NULL THEN 'pricing_status' END,
             CASE WHEN c.synthetic_vehicle_id IS NULL THEN 'synthetic_vehicle_id' END,
             CASE WHEN c.synthetic_vin IS NULL THEN 'synthetic_vin' END,
@@ -230,7 +232,7 @@ flagged AS (
         -- instead of aborting the whole import.
         array_remove(ARRAY[
             CASE WHEN c.condition_type IS NOT NULL AND c.condition_type NOT IN ('New', 'Used') THEN 'condition_type' END,
-            CASE WHEN c.pricing_status IS NOT NULL AND c.pricing_status NOT IN ('Listed', 'Call for price') THEN 'pricing_status' END,
+            CASE WHEN c.pricing_status IS NOT NULL AND c.pricing_status NOT IN ('Listed', 'Call for price', 'Price not exposed') THEN 'pricing_status' END,
             CASE WHEN c.odometer_miles IS NOT NULL AND c.odometer_miles < 0 THEN 'odometer_miles' END,
             CASE WHEN c.model_year IS NOT NULL AND (c.model_year < 1980 OR c.model_year > 2100) THEN 'model_year' END,
             CASE WHEN c.advertised_price IS NOT NULL AND c.advertised_price < 0 THEN 'advertised_price' END,
@@ -239,9 +241,12 @@ flagged AS (
             CASE WHEN c.data_classification IS NOT NULL
                   AND c.data_classification <> 'Sanitized public reference data'
                 THEN 'data_classification' END,
-            -- The two halves of the pricing contract.
+            -- The two halves of the pricing contract. Two statuses carry no price and
+            -- both are checked, because a price arriving under either one is the same
+            -- contradiction: the row would be counted in both halves of a pricing
+            -- completeness percentage.
             CASE WHEN c.pricing_status = 'Listed' AND c.advertised_price IS NULL THEN 'advertised_price' END,
-            CASE WHEN c.pricing_status = 'Call for price' AND c.advertised_price IS NOT NULL THEN 'advertised_price' END,
+            CASE WHEN c.pricing_status IN ('Call for price', 'Price not exposed') AND c.advertised_price IS NOT NULL THEN 'advertised_price' END,
             -- The synthetic identifiers must be recognisably synthetic. A value that
             -- did not come from the sanitizer has not been through it.
             CASE WHEN c.synthetic_vin IS NOT NULL AND c.synthetic_vin NOT LIKE 'ARPI%' THEN 'synthetic_vin' END,
@@ -399,9 +404,9 @@ COMMENT ON COLUMN staging.stg_inventory_listing_snapshot.make IS 'Make, as adver
 COMMENT ON COLUMN staging.stg_inventory_listing_snapshot.model IS 'Model, as advertised.';
 COMMENT ON COLUMN staging.stg_inventory_listing_snapshot.trim IS 'Trim, as advertised. Legitimately NULL.';
 COMMENT ON COLUMN staging.stg_inventory_listing_snapshot.vehicle_display IS 'Year/make/model/trim as one advertised string.';
-COMMENT ON COLUMN staging.stg_inventory_listing_snapshot.odometer_miles IS 'Advertised odometer reading. Not a verified reading and not a title record.';
+COMMENT ON COLUMN staging.stg_inventory_listing_snapshot.odometer_miles IS 'Advertised odometer reading. NULL means the listing published no mileage, which is not a zero reading. Not a verified reading and not a title record.';
 COMMENT ON COLUMN staging.stg_inventory_listing_snapshot.advertised_price IS 'ADVERTISED price. Not transaction price, acquisition cost, inventory investment, MSRP or gross. NULL when the listing says call for price.';
-COMMENT ON COLUMN staging.stg_inventory_listing_snapshot.pricing_status IS 'Listed or Call for price. Governs whether advertised_price may be present.';
+COMMENT ON COLUMN staging.stg_inventory_listing_snapshot.pricing_status IS 'Listed, Call for price, or Price not exposed. Governs whether advertised_price may be present. The last two both mean no price reached the warehouse and are NOT interchangeable: Call for price records a displayed merchandising choice, Price not exposed records that the listing surface published no price field at all.';
 COMMENT ON COLUMN staging.stg_inventory_listing_snapshot.synthetic_vehicle_id IS 'Group-stable ARPI vehicle identity; part of the declared grain. Resolved to observed_vehicle_key by the fact load.';
 COMMENT ON COLUMN staging.stg_inventory_listing_snapshot.synthetic_vin IS 'ARPI-prefixed synthetic VIN. Can never be a real VIN.';
 COMMENT ON COLUMN staging.stg_inventory_listing_snapshot.inventory_unit_count IS 'Always 1. SEMI-ADDITIVE: sum across vehicles on one capture date; never across capture dates.';

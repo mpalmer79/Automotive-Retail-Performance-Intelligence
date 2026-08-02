@@ -270,10 +270,15 @@ test.describe('the reduced-motion floor is real', () => {
   test('every route renders the same visible text as it does with motion on', async ({
     browser,
   }) => {
-    // Sixteen full page renders with a scroll walk each. The default 45s budget is
-    // not enough, and the comparison is worth the time: it is the only check that
-    // a reduced-motion branch has not quietly dropped content.
-    test.setTimeout(180_000)
+    // Two full page renders per route, each with a scroll walk and a settle. The
+    // default 45s budget is nowhere near enough, and the comparison is worth the time:
+    // it is the only check that a reduced-motion branch has not quietly dropped content.
+    //
+    // Budgeted PER ROUTE rather than as a flat number. The flat 180s was sized when
+    // there were eight routes; the ninth pushed the suite-under-load case over it, and
+    // it failed as a timeout that passed on its own -- which reads exactly like a flake
+    // and is not one.
+    test.setTimeout(PRIMARY_ROUTES.length * 25_000)
     // Reduced motion must remove movement, never content. Comparing the two
     // renderings word for word is the only way to be sure a `still` branch did
     // not quietly drop something.
