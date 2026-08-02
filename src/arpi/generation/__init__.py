@@ -1,10 +1,9 @@
 """Synthetic data generators for the ARPI warehouse.
 
-Every Phase 1 dimension is implemented here, together with the two pre-warehouse source
-entities that feed the facts -- ``acquisition_event`` and ``sale_event``. The remaining
-source entities (``lead``, ``appointment``, ``marketing_spend_event``) have generators or
-reserved ingestion specs but no warehouse target yet, so their facts are **Planned**, not
-implemented.
+Every conformed dimension is implemented here, together with the six pre-warehouse source
+entities: ``acquisition_event``, ``sale_event``, ``lead_event``, ``appointment_event``,
+``inventory_snapshot_event`` and ``marketing_spend_event``. Five of those six feed an MVP
+fact, loaded from staging by the SQL under ``sql/04_facts/`` on every database run.
 
 The CSV and manifest writer lives in :mod:`arpi.generation.writer`.
 """

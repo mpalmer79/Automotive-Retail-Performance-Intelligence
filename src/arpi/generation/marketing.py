@@ -495,9 +495,10 @@ _WAREHOUSE_DIM_CAMPAIGN: Final = "warehouse.dim_marketing_campaign"
 _WAREHOUSE_FACT_SPEND: Final = "warehouse.fact_marketing_spend"
 
 # Registered at import time so the canonical register in :mod:`arpi.validation.registry`
-# is complete whenever these generators are importable. ``layer`` is ``python``: the SQL
-# DDL, its CHECK constraints and the matching SQL implementations are **Planned** and
-# owned by another agent.
+# is complete whenever these generators are importable. ``layer`` is ``python`` because
+# these checks are evaluated in Python against the generated frame; the warehouse's own
+# CHECK constraints and the SQL data-quality views are separate evidence, registered
+# under their own layer.
 register_checks(
     (
         CheckDefinition(

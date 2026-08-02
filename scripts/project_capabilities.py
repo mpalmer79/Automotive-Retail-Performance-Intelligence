@@ -46,6 +46,7 @@ interpreter with nothing installed.
 
 from __future__ import annotations
 
+import ast
 import datetime as dt
 import json
 import re
@@ -90,6 +91,16 @@ REVIEWED_DOCUMENTS = ("LIMITATIONS.md",)
 #: `audit.pipeline_run_row_count.layer` admits exactly these. DOC-23 closed the gap
 #: between what the CHECK allowed and what the pipeline wrote.
 AUDIT_LAYERS = ("source", "raw", "staging", "warehouse", "rejected")
+
+#: The two sources the fact-loading contract is read from, and the directory it governs.
+#: Read as source rather than imported: this module runs on a bare interpreter with the
+#: package uninstalled.
+INGESTION_SPEC_SOURCE = REPO_ROOT / "src" / "arpi" / "ingestion" / "spec.py"
+LOADER_SOURCE = REPO_ROOT / "src" / "arpi" / "ingestion" / "loader.py"
+FACT_SQL_DIR = REPO_ROOT / "sql" / "04_facts"
+
+#: The function whose failure mode this register guards.
+FACT_DISCOVERY_FUNCTION = "discover_fact_sql"
 
 
 # --------------------------------------------------------------------------------------
@@ -141,6 +152,9 @@ class DerivedEvidence:
     static_model_validation: bool
     fact_ddl_scripts: int
     fact_load_scripts: int
+    required_fact_load_scripts: tuple[str, ...]
+    present_fact_load_scripts: tuple[str, ...]
+    fact_discovery_fails_closed: bool
     dimension_merge_scripts: int
     reporting_views: int
     audit_layers_recorded: int
@@ -297,6 +311,74 @@ def _count_audit_layers_recorded() -> int:
     return len(recorded)
 
 
+def _required_fact_load_scripts() -> tuple[str, ...]:
+    """The fact-load scripts the ingestion registry declares, read from its source.
+
+    Parsed rather than grepped, so a script name mentioned in a comment or a docstring is
+    not mistaken for a declaration.
+    """
+    if not INGESTION_SPEC_SOURCE.is_file():
+        return ()
+    try:
+        tree = ast.parse(INGESTION_SPEC_SOURCE.read_text(encoding="utf-8"))
+    except SyntaxError:
+        return ()
+    return tuple(
+        sorted(
+            {
+                node.value.value
+                for node in ast.walk(tree)
+                if isinstance(node, ast.keyword)
+                and node.arg == "fact_load_script"
+                and isinstance(node.value, ast.Constant)
+                and isinstance(node.value.value, str)
+            }
+        )
+    )
+
+
+def _fact_discovery_fails_closed() -> bool:
+    """Whether the loader refuses a database load rather than shipping without facts.
+
+    A structural property of ``discover_fact_sql``, not a sentence anywhere: it must
+    raise the database-loading error, and it must have no path that returns an empty
+    list. Returning nothing was correct while the facts were unimplemented and became a
+    silent partial load the moment they were not, which is the regression this guards.
+    """
+    if not LOADER_SOURCE.is_file():
+        return False
+    try:
+        tree = ast.parse(LOADER_SOURCE.read_text(encoding="utf-8"))
+    except SyntaxError:
+        return False
+
+    function = next(
+        (
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, ast.FunctionDef) and node.name == FACT_DISCOVERY_FUNCTION
+        ),
+        None,
+    )
+    if function is None:
+        return False
+
+    refuses = any(
+        isinstance(node, ast.Raise)
+        and isinstance(node.exc, ast.Call)
+        and isinstance(node.exc.func, ast.Name)
+        and node.exc.func.id == "DatabaseLoadError"
+        for node in ast.walk(function)
+    )
+    returns_nothing = any(
+        isinstance(node, ast.Return)
+        and isinstance(node.value, ast.List | ast.Tuple)
+        and not node.value.elts
+        for node in ast.walk(function)
+    )
+    return refuses and not returns_nothing
+
+
 def derive_evidence() -> DerivedEvidence:
     """Read the repository and report what is actually there."""
     sql = REPO_ROOT / "sql"
@@ -322,6 +404,11 @@ def derive_evidence() -> DerivedEvidence:
         static_model_validation=(REPO_ROOT / "scripts" / "check_powerbi_model.py").is_file(),
         fact_ddl_scripts=sum(1 for p in fact_scripts if "_load" not in p.name),
         fact_load_scripts=sum(1 for p in fact_scripts if p.name.endswith("_load.sql")),
+        required_fact_load_scripts=_required_fact_load_scripts(),
+        present_fact_load_scripts=tuple(
+            sorted(p.name for p in fact_scripts if p.name.endswith("_load.sql"))
+        ),
+        fact_discovery_fails_closed=_fact_discovery_fails_closed(),
         dimension_merge_scripts=sum(1 for p in dimension_scripts if p.name.endswith("_merge.sql")),
         reporting_views=sum(
             1
@@ -855,6 +942,82 @@ def _check_deployment_declarations(
     return found
 
 
+def check_fact_load_contract(evidence: DerivedEvidence) -> list[Contradiction]:
+    """A warehouse whose facts are declared loaded may not tolerate their absence.
+
+    The contradiction this exists to stop was real and lived in the repository for a
+    release: ``sql/04_facts/README.md`` stated that all five MVP facts were populated and
+    loaded on every pipeline run, while the loader returned an empty list when the fact
+    directory was missing and carried on. Both statements were reviewed. Neither could
+    fail a build, so the disagreement between them was invisible.
+
+    The rule is structural rather than textual. It reads three things -- the load scripts
+    on disk, the scripts the ingestion registry declares required, and whether the
+    loader's discovery raises rather than returning nothing -- and fails when the facts
+    exist but the loader would run without them. It also fails when the two name
+    different sets, which is what a rename on one side and not the other looks like.
+
+    It retires itself. With no fact-load script in the tree there is nothing to declare
+    implemented, and the rule stays silent instead of forbidding a state that has become
+    honest again.
+
+    Args:
+        evidence: The derived evidence.
+
+    Returns:
+        Every contradiction found, which is empty when the contract holds.
+    """
+    if evidence.fact_load_scripts == 0:
+        return []
+
+    found: list[Contradiction] = []
+    location = "src/arpi/ingestion/loader.py"
+
+    if not evidence.fact_discovery_fails_closed:
+        found.append(
+            Contradiction(
+                rule="fact-loads-are-required-infrastructure",
+                claim=(f"{FACT_DISCOVERY_FUNCTION} tolerates an absent or empty fact-load set"),
+                evidence=(
+                    f"{evidence.fact_load_scripts} fact-load scripts exist in "
+                    f"{FACT_SQL_DIR.relative_to(REPO_ROOT).as_posix()} and the warehouse "
+                    "documentation declares the five MVP facts loaded on every run; a load "
+                    "that skipped them would report success over a warehouse with no measures"
+                ),
+                location=location,
+            )
+        )
+
+    required = set(evidence.required_fact_load_scripts)
+    present = set(evidence.present_fact_load_scripts)
+    if required != present:
+        undeclared = sorted(present - required)
+        unbuilt = sorted(required - present)
+        detail = []
+        if unbuilt:
+            detail.append(f"declared but absent from the tree: {', '.join(unbuilt)}")
+        if undeclared:
+            detail.append(f"present but declared by no ingestion spec: {', '.join(undeclared)}")
+        found.append(
+            Contradiction(
+                rule="fact-load-contract-names-every-script",
+                claim=(
+                    f"the ingestion registry requires {len(required)} fact-load script(s) "
+                    f"while {FACT_SQL_DIR.relative_to(REPO_ROOT).as_posix()} holds "
+                    f"{len(present)}"
+                ),
+                evidence=(
+                    "; ".join(detail)
+                    + ". A script the registry does not name is never executed, so the two "
+                    "must describe the same set"
+                ),
+                location="src/arpi/ingestion/spec.py",
+            )
+        )
+
+    return found
+
+
 def check_review_metadata(review: dict[str, Any]) -> list[Contradiction]:
     """Reject review metadata that cannot be true.
 
@@ -968,6 +1131,8 @@ def build_capabilities() -> dict[str, Any]:
             "report_pages": evidence.report_pages,
             "fact_ddl_scripts": evidence.fact_ddl_scripts,
             "fact_load_scripts": evidence.fact_load_scripts,
+            "required_fact_load_scripts": list(evidence.required_fact_load_scripts),
+            "fact_discovery_fails_closed": evidence.fact_discovery_fails_closed,
             "dimension_merge_scripts": evidence.dimension_merge_scripts,
             "reporting_views": evidence.reporting_views,
             "audit_layers_recorded": evidence.audit_layers_recorded,
