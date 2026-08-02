@@ -1,321 +1,177 @@
-"""Collect and reconcile Amherst Subaru's public Dealer.com inventory."""
+"""Collect every Amherst Subaru listing exposed by the Cars.com dealer inventory."""
 
 from __future__ import annotations
 
 import argparse
 import csv
 import json
+import math
 import re
 import time
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Callable
-from urllib.parse import urljoin
+from typing import Any
 
 import requests
 
-BASE_URL = "https://www.amherstsubaru.com"
-INVENTORY_PAGE = f"{BASE_URL}/all-inventory/index.htm"
-ENDPOINTS = {
-    "New": "/apis/widget/INVENTORY_LISTING_DEFAULT_AUTO_NEW:inventory-data-bus1/getInventory",
-    "Used": "/apis/widget/INVENTORY_LISTING_DEFAULT_AUTO_USED:inventory-data-bus1/getInventory",
-}
+INVENTORY_URL = "https://www.cars.com/dealers/156767/amherst-subaru/inventory/"
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
     "Chrome/138.0.0.0 Safari/537.36"
 )
+ARRAY_MARKER = '"search_type":"general-inventory-search","vehicle_array":'
 
 
-def clean(value: Any) -> str:
-    if value is None:
-        return ""
-    text = re.sub(r"<[^>]+>", " ", str(value))
-    return re.sub(r"\s+", " ", text.replace("®", "").replace("Â", "")).strip()
+def parse_vehicle_array(html: str) -> list[dict[str, Any]]:
+    marker_index = html.find(ARRAY_MARKER)
+    if marker_index < 0:
+        raise RuntimeError("Cars.com vehicle array was not found in the page source")
+    array_start = marker_index + len(ARRAY_MARKER)
+    parsed, _ = json.JSONDecoder().raw_decode(html[array_start:])
+    if not isinstance(parsed, list):
+        raise RuntimeError("Cars.com vehicle array was not a JSON list")
+    return [row for row in parsed if isinstance(row, dict)]
 
 
-def number(value: Any) -> int | None:
-    match = re.search(r"-?\d+(?:\.\d+)?", clean(value).replace(",", ""))
-    return round(float(match.group(0))) if match else None
+def parse_total(html: str) -> int:
+    patterns = (
+        r"([0-9][0-9,]*)\s+vehicles\s+for\s+sale",
+        r"See all\s+([0-9][0-9,]*)\s+vehicles",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, html, flags=re.IGNORECASE)
+        if match:
+            return int(match.group(1).replace(",", ""))
+    raise RuntimeError("Cars.com inventory total was not found")
 
 
-def key_name(value: Any) -> str:
-    return re.sub(r"[^a-z0-9]", "", clean(value).lower())
-
-
-def attrs(item: dict[str, Any]) -> dict[str, str]:
-    result: dict[str, str] = {}
-    for attribute in item.get("attributes") or []:
-        if not isinstance(attribute, dict):
-            continue
-        value = clean(
-            attribute.get("value")
-            or attribute.get("normalizedValue")
-            or attribute.get("labeledValue")
-        )
-        for candidate in (attribute.get("name"), attribute.get("label")):
-            name = key_name(candidate)
-            if name and value and name not in result:
-                result[name] = value
-    return result
-
-
-def first(mapping: dict[str, Any], *names: str) -> Any:
-    for name in names:
-        value = mapping.get(name)
-        if value not in (None, "", []):
-            return value
-    return None
-
-
-def price(item: dict[str, Any]) -> int | None:
-    pricing = item.get("pricing")
-    if not isinstance(pricing, dict):
-        return None
-    displayed = pricing.get("dPrice")
-    if isinstance(displayed, list):
-        ordered = sorted(
-            (row for row in displayed if isinstance(row, dict)),
-            key=lambda row: bool(row.get("isFinalPrice")),
-            reverse=True,
-        )
-        for row in ordered:
-            parsed = number(row.get("value"))
-            if parsed is not None:
-                return parsed
-    return number(pricing.get("retailPrice"))
-
-
-def direct_fetcher() -> Callable[[str, int, int], dict[str, Any]]:
+def build_session() -> requests.Session:
     session = requests.Session()
     session.headers.update(
         {
             "User-Agent": USER_AGENT,
-            "Accept": "application/json",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             "Accept-Language": "en-US,en;q=0.9",
-            "Referer": INVENTORY_PAGE,
-            "X-Requested-With": "XMLHttpRequest",
+            "Cache-Control": "no-cache",
+            "Pragma": "no-cache",
         }
     )
-
-    def fetch(endpoint: str, start: int, count: int) -> dict[str, Any]:
-        response = session.get(
-            urljoin(BASE_URL, endpoint),
-            params={"start": start, "count": count},
-            timeout=45,
-        )
-        response.raise_for_status()
-        payload = response.json()
-        if not isinstance(payload, dict):
-            raise RuntimeError("Dealer.com returned a non-object response")
-        return payload
-
-    return fetch
+    return session
 
 
-def browser_fetcher() -> tuple[Callable[[str, int, int], dict[str, Any]], Callable[[], None]]:
-    from selenium import webdriver
-    from selenium.webdriver.chrome.options import Options
-    from selenium.webdriver.support.ui import WebDriverWait
-
-    options = Options()
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--disable-blink-features=AutomationControlled")
-    options.add_argument("--window-size=1920,1080")
-    options.add_argument(f"--user-agent={USER_AGENT}")
-    options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    options.add_experimental_option("useAutomationExtension", False)
-
-    driver = webdriver.Chrome(options=options)
-    driver.execute_cdp_cmd(
-        "Page.addScriptToEvaluateOnNewDocument",
-        {
-            "source": (
-                "Object.defineProperty(navigator,'webdriver',{get:()=>undefined});"
-                "Object.defineProperty(navigator,'languages',{get:()=>['en-US','en']});"
-                "Object.defineProperty(navigator,'plugins',{get:()=>[1,2,3,4,5]});"
+def fetch_page(session: requests.Session, page: int, page_size: int) -> str:
+    last_error: Exception | None = None
+    for attempt in range(5):
+        try:
+            response = session.get(
+                INVENTORY_URL,
+                params={"page": page, "page_size": page_size},
+                timeout=45,
             )
-        },
+            response.raise_for_status()
+            if ARRAY_MARKER not in response.text:
+                raise RuntimeError(
+                    f"Cars.com returned HTML without inventory data on page {page}"
+                )
+            return response.text
+        except (requests.RequestException, RuntimeError) as error:
+            last_error = error
+            time.sleep(2**attempt)
+    raise RuntimeError(f"Unable to retrieve Cars.com inventory page {page}") from last_error
+
+
+def normalize(row: dict[str, Any], captured_at: str) -> dict[str, Any]:
+    condition = str(row.get("stock_type") or "").strip()
+    year = int(row["year"]) if str(row.get("year") or "").isdigit() else None
+    make = str(row.get("make") or "").strip()
+    model = str(row.get("model") or "").strip()
+    trim = str(row.get("trim") or "").strip()
+    mileage_text = str(row.get("mileage") or "").replace(",", "").strip()
+    price_text = str(row.get("price") or "").replace(",", "").strip()
+    mileage = int(float(mileage_text)) if mileage_text else None
+    advertised_price = int(float(price_text)) if price_text else None
+    listing_id = str(row.get("listing_id") or "").strip()
+    vin = str(row.get("vin") or "").strip()
+    source_url = f"https://www.cars.com/vehicledetail/{listing_id}/" if listing_id else ""
+    vehicle = " ".join(
+        value for value in (str(year) if year else "", make, model, trim) if value
     )
-    driver.set_page_load_timeout(90)
-    driver.get(INVENTORY_PAGE)
-    WebDriverWait(driver, 60).until(lambda current: current.execute_script("return document.readyState") == "complete")
-    time.sleep(8)
-
-    script = """
-        const endpoint = arguments[0];
-        const start = arguments[1];
-        const count = arguments[2];
-        const done = arguments[arguments.length - 1];
-        const url = `${endpoint}?start=${start}&count=${count}`;
-        fetch(url, {
-            credentials: 'include',
-            headers: {'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest'}
-        })
-        .then(async response => ({status: response.status, text: await response.text()}))
-        .then(done)
-        .catch(error => done({status: 0, text: String(error)}));
-    """
-
-    def fetch(endpoint: str, start: int, count: int) -> dict[str, Any]:
-        result = driver.execute_async_script(script, endpoint, start, count)
-        status = int(result.get("status") or 0)
-        if status != 200:
-            raise RuntimeError(f"Browser fetch failed with HTTP {status}: {result.get('text', '')[:300]}")
-        payload = json.loads(result["text"])
-        if not isinstance(payload, dict):
-            raise RuntimeError("Dealer.com browser response was not an object")
-        return payload
-
-    return fetch, driver.quit
-
-
-def fetch_all(
-    fetch: Callable[[str, int, int], dict[str, Any]],
-    page_size: int,
-) -> tuple[list[tuple[str, dict[str, Any], dict[str, Any]]], dict[str, Any]]:
-    collected: list[tuple[str, dict[str, Any], dict[str, Any]]] = []
-    counts: dict[str, Any] = {}
-
-    for condition, endpoint in ENDPOINTS.items():
-        start = 0
-        expected = 0
-        retrieved = 0
-        accounts: dict[str, Any] = {}
-        seen_pages: set[tuple[str, ...]] = set()
-
-        while True:
-            payload = fetch(endpoint, start, page_size)
-            page_records = payload.get("inventory")
-            if not isinstance(page_records, list):
-                raise RuntimeError(f"{condition} response has no inventory array")
-
-            page_info = payload.get("pageInfo")
-            if isinstance(page_info, dict):
-                expected = max(expected, int(page_info.get("totalCount") or 0))
-            page_accounts = payload.get("accounts")
-            if isinstance(page_accounts, dict):
-                accounts.update(page_accounts)
-
-            valid = [row for row in page_records if isinstance(row, dict)]
-            signature = tuple(clean(row.get("uuid") or row.get("link")) for row in valid)
-            if signature in seen_pages:
-                raise RuntimeError(f"{condition} pagination repeated at start={start}")
-            seen_pages.add(signature)
-
-            for row in valid:
-                collected.append((condition, row, accounts))
-            retrieved += len(valid)
-            start += len(valid)
-
-            if not valid or (expected and start >= expected):
-                break
-            if not expected and len(valid) < page_size:
-                break
-            if start > 5000:
-                raise RuntimeError(f"{condition} inventory exceeded safety limit")
-
-        counts[condition] = {"expected": expected, "retrieved": retrieved}
-
-    return collected, counts
-
-
-def normalize(
-    condition: str,
-    item: dict[str, Any],
-    accounts: dict[str, Any],
-    captured_at: str,
-) -> dict[str, Any]:
-    attributes = attrs(item)
-    title = item.get("title")
-    title_parts = [clean(part) for part in title] if isinstance(title, list) else []
-
-    year = number(first(attributes, "modelyear", "year"))
-    make = clean(first(attributes, "make", "manufacturer"))
-    model = clean(first(attributes, "model") or item.get("model"))
-    trim = clean(first(attributes, "trim", "series"))
-
-    if year is None and title_parts:
-        year = number(title_parts[0])
-    if not make and len(title_parts) > 1:
-        make = title_parts[1]
-    if not model and len(title_parts) > 2:
-        model = title_parts[2]
-    if not trim and len(title_parts) > 3:
-        trim = " ".join(title_parts[3:])
-
-    account_id = clean(item.get("accountId"))
-    account = accounts.get(account_id)
-    listed_price = price(item)
-    source_url = urljoin(BASE_URL, clean(item.get("link")))
-    vin = clean(first(attributes, "vin", "vehicleidentificationnumber"))
-
     return {
-        "source_key": vin or clean(item.get("uuid")) or source_url,
         "condition": condition,
         "year": year,
         "make": make,
         "model": model,
         "trim": trim,
-        "vehicle": " ".join(
-            part for part in (str(year) if year else "", make, model, trim) if part
-        ),
-        "mileage": number(first(attributes, "odometer", "mileage", "miles")),
-        "advertised_price": listed_price,
-        "price_status": "Listed" if listed_price is not None else "Call for price",
+        "vehicle": vehicle,
+        "mileage": mileage,
+        "advertised_price": advertised_price,
+        "price_status": "Listed" if advertised_price is not None else "Call for price",
         "vin": vin,
-        "stock_number": clean(first(attributes, "stocknumber", "stock", "stockno")),
+        "listing_id": listing_id,
         "source_url": source_url,
-        "account_id": account_id,
-        "account_name": clean(account.get("name")) if isinstance(account, dict) else "",
-        "certified": bool(item.get("certified")),
+        "certified": bool(row.get("certified_preowned") or row.get("cpo_indicator")),
+        "exterior_color": str(row.get("exterior_color") or "").strip(),
+        "interior_color": str(row.get("interior_color") or "").strip(),
+        "fuel_type": str(row.get("fuel_type") or "").strip(),
+        "drivetrain": str(row.get("drivetrain") or "").strip(),
+        "body_style": str(row.get("bodystyle") or "").strip(),
         "captured_at": captured_at,
     }
 
 
-def collect(page_size: int) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    close: Callable[[], None] = lambda: None
-    method = "direct"
-    try:
-        source_rows, counts = fetch_all(direct_fetcher(), page_size)
-    except requests.HTTPError as error:
-        if error.response is None or error.response.status_code != 403:
-            raise
-        method = "browser"
-        fetch, close = browser_fetcher()
-        source_rows, counts = fetch_all(fetch, page_size)
-    finally:
-        close()
+def collect(page_size: int, debug_dir: Path) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    session = build_session()
+    first_html = fetch_page(session, 1, page_size)
+    debug_dir.mkdir(parents=True, exist_ok=True)
+    (debug_dir / "page-1.html").write_text(first_html, encoding="utf-8")
+
+    expected = parse_total(first_html)
+    first_rows = parse_vehicle_array(first_html)
+    actual_page_size = len(first_rows)
+    if actual_page_size < 1:
+        raise RuntimeError("Cars.com page 1 contained no inventory records")
+
+    total_pages = math.ceil(expected / actual_page_size)
+    source_rows = list(first_rows)
+    for page in range(2, total_pages + 1):
+        html = fetch_page(session, page, page_size)
+        page_rows = parse_vehicle_array(html)
+        if not page_rows:
+            raise RuntimeError(f"Cars.com page {page} contained no records")
+        source_rows.extend(page_rows)
 
     captured_at = datetime.now(UTC).replace(microsecond=0).isoformat()
-    records: list[dict[str, Any]] = []
-    seen: set[str] = set()
-    for condition, item, accounts in source_rows:
-        row = normalize(condition, item, accounts, captured_at)
-        unique_key = clean(row["source_key"])
-        if unique_key and unique_key not in seen:
-            seen.add(unique_key)
-            records.append(row)
+    records_by_key: dict[str, dict[str, Any]] = {}
+    for source_row in source_rows:
+        normalized = normalize(source_row, captured_at)
+        key = normalized["vin"] or normalized["listing_id"]
+        if key:
+            records_by_key[key] = normalized
 
-    records.sort(
+    records = sorted(
+        records_by_key.values(),
         key=lambda row: (
             row["condition"],
             -(row["year"] or 0),
             row["make"],
             row["model"],
             row["trim"],
-            row["source_key"],
-        )
+            row["vin"],
+        ),
     )
     metadata = {
-        "source": BASE_URL,
-        "method": method,
+        "source": INVENTORY_URL,
         "captured_at": captured_at,
-        "records": len(records),
-        "new_records": sum(row["condition"] == "New" for row in records),
-        "used_records": sum(row["condition"] == "Used" for row in records),
-        "endpoint_counts": counts,
+        "expected_records": expected,
+        "raw_records": len(source_rows),
+        "unique_records": len(records),
+        "requested_page_size": page_size,
+        "actual_page_size": actual_page_size,
+        "pages_retrieved": total_pages,
+        "new_records": sum(row["condition"].lower() == "new" for row in records),
+        "used_records": sum(row["condition"].lower() == "used" for row in records),
+        "cpo_records": sum(bool(row["certified"]) for row in records),
     }
     return records, metadata
 
@@ -333,17 +189,20 @@ def write_outputs(records: list[dict[str, Any]], metadata: dict[str, Any], outpu
         "advertised_price",
         "price_status",
         "vin",
-        "stock_number",
+        "listing_id",
         "source_url",
-        "account_id",
-        "account_name",
         "certified",
+        "exterior_color",
+        "interior_color",
+        "fuel_type",
+        "drivetrain",
+        "body_style",
         "captured_at",
     ]
     with (output_dir / "amherst_subaru_inventory_complete.csv").open(
         "w", encoding="utf-8", newline=""
     ) as stream:
-        writer = csv.DictWriter(stream, fieldnames=fields, extrasaction="ignore")
+        writer = csv.DictWriter(stream, fieldnames=fields)
         writer.writeheader()
         writer.writerows(records)
     (output_dir / "amherst_subaru_inventory_complete.json").write_text(
@@ -357,17 +216,17 @@ def write_outputs(records: list[dict[str, Any]], metadata: dict[str, Any], outpu
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output-dir", type=Path, default=Path("artifacts/amherst-inventory"))
-    parser.add_argument("--page-size", type=int, default=100)
+    parser.add_argument("--page-size", type=int, default=72)
     parser.add_argument("--minimum-count", type=int, default=250)
     args = parser.parse_args()
 
-    records, metadata = collect(args.page_size)
+    records, metadata = collect(args.page_size, args.output_dir / "debug")
     write_outputs(records, metadata, args.output_dir)
-
-    expected = sum(row["expected"] for row in metadata["endpoint_counts"].values())
-    retrieved = sum(row["retrieved"] for row in metadata["endpoint_counts"].values())
-    if expected != retrieved:
-        raise RuntimeError(f"Reconciliation failed: expected={expected}, retrieved={retrieved}")
+    if len(records) != metadata["expected_records"]:
+        raise RuntimeError(
+            "Inventory reconciliation failed: "
+            f"expected={metadata['expected_records']}, unique={len(records)}"
+        )
     if len(records) < args.minimum_count:
         raise RuntimeError(f"Only {len(records)} unique units were collected")
     print(json.dumps(metadata, indent=2))
