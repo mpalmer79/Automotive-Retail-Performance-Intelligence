@@ -1,0 +1,41 @@
+name: Collect Amherst Subaru inventory
+
+on:
+  push:
+    branches:
+      - agent/amherst-complete-inventory-2026-08-02
+    paths:
+      - scripts/collect_amherst_subaru_inventory.py
+      - .github/workflows/collect-amherst-subaru-inventory.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Collect and reconcile inventory
+        run: >-
+          python scripts/collect_amherst_subaru_inventory.py
+          --output-dir artifacts/amherst-inventory
+          --minimum-count 250
+
+      - name: Upload inventory source artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: amherst-subaru-complete-inventory
+          path: artifacts/amherst-inventory/
+          if-no-files-found: error
+          retention-days: 1
