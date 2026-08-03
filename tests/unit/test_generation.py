@@ -83,8 +83,8 @@ def test_attribute_hash_is_stable_and_documented() -> None:
     independent = STORE_DEFINITIONS[2]
     expected = hash_attributes(
         [
-            "Granite Used Auto Center of Merrimack",
-            "Granite Used Auto",
+            "Granite Pre-Owned Center of Merrimack",
+            "Granite Pre-Owned",
             "Independent Used",
             None,
             "Merrimack",

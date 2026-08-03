@@ -74,7 +74,7 @@ COMMENT ON COLUMN raw.vehicle_model_load.drivetrain IS 'Untyped source value. Dr
 COMMENT ON COLUMN raw.vehicle_model_load.transmission IS 'Untyped source value. Transmission type.';
 COMMENT ON COLUMN raw.vehicle_model_load.doors IS 'Untyped source value. Door count; 2..5.';
 COMMENT ON COLUMN raw.vehicle_model_load.seating_capacity IS 'Untyped source value. Factory seating capacity; 2..8.';
-COMMENT ON COLUMN raw.vehicle_model_load.franchise_alignment IS 'Untyped source value. Which Granite State Auto Group franchise sells this model line.';
+COMMENT ON COLUMN raw.vehicle_model_load.franchise_alignment IS 'Untyped source value. Which Granite Auto Group franchise sells this model line.';
 COMMENT ON COLUMN raw.vehicle_model_load.is_current_model_line IS 'Untyped source value. Whether the model line is still in production.';
 COMMENT ON COLUMN raw.vehicle_model_load.source_system IS 'Untyped source value. Originating system; constant arpi_synthetic_generator in Phase 1.';
 COMMENT ON COLUMN raw.vehicle_model_load.load_batch_id IS 'UUID identifying one ingestion batch. Every row written by a single load shares this value.';

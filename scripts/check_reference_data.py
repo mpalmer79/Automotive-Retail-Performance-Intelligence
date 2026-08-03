@@ -135,6 +135,18 @@ SELF_EXEMPT: frozenset[str] = frozenset(
         "data/reference/README.md",
         "config/reference/inventory_listing_contract.yaml",
         "docs/architecture-decisions/ADR-0011-sanitized-public-inventory-reference-data.md",
+        # The two suites that assert the hyphenated spelling is REFUSED. A negative
+        # assertion has to contain the string it forbids, exactly as this file and
+        # `scripts/check_naming.py` do.
+        #
+        # They were previously covered by the Granite Chevrolet artifact's
+        # `legacy_path_hint`, which incidentally matched the same literal. ADR-0012
+        # corrected that hint inside the workbook and retired the declaration, so the
+        # coverage these two were getting by coincidence is now stated on purpose --
+        # which is the better arrangement anyway: a test that asserts a rule should
+        # not depend on a data deviation to be allowed to name it.
+        "tests/unit/test_inventory_contract.py",
+        "tests/unit/test_inventory_cli.py",
     }
 )
 

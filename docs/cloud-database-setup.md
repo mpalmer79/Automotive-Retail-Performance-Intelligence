@@ -807,5 +807,5 @@ contain one; the ARPI scripts do not.
 
 ---
 
-*All data referenced here is synthetic. Granite State Auto Group is fictional. See
+*All data referenced here is synthetic. Granite Auto Group is fictional. See
 [`../PRIVACY_AND_ETHICS.md`](../PRIVACY_AND_ETHICS.md).*

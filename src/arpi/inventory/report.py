@@ -252,7 +252,7 @@ def _write_readme(  # noqa: PLR0913 - the README block is one statement with man
     write_title(sheet, "ARPI Inventory Operations | Listing Operating Report")
     facts = (
         ("Report", f"{store_name} observed listing operating report"),
-        ("Dealer group", "Granite State Auto Group"),
+        ("Dealer group", "Granite Auto Group"),
         ("Store", store_name),
         ("Dealership ID", dealership_id),
         ("Market", market_region),
@@ -406,7 +406,7 @@ def _write_summary(  # noqa: PLR0913, PLR0915 - one sheet, written cell by cell
 
     write_title(sheet, f"ARPI Inventory Operations | {store_name}")
     facts = (
-        ("Dealer group", "Granite State Auto Group"),
+        ("Dealer group", "Granite Auto Group"),
         ("Store", store_name),
         ("Dealership ID", dealership_id),
         ("Market", market_region),

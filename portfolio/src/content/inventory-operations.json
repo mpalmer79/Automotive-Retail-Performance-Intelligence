@@ -60,10 +60,10 @@
       "coverageNote": "24 visible indexed listing records from a larger reported inventory. The source did not expose every listing through a reliably extractable path, so this row count is a count of what was visible to the capture and not of the store's inventory."
     },
     {
-      "fileName": "ARPI_Granite_Used_Auto_Center_Inventory_Sanitized_2026-08-02.xlsx",
-      "path": "data/reference/inventory/gsa-003/2026-08-02/ARPI_Granite_Used_Auto_Center_Inventory_Sanitized_2026-08-02.xlsx",
+      "fileName": "ARPI_Granite_Pre_Owned_Center_Inventory_Sanitized_2026-08-02.xlsx",
+      "path": "data/reference/inventory/gsa-003/2026-08-02/ARPI_Granite_Pre_Owned_Center_Inventory_Sanitized_2026-08-02.xlsx",
       "dealershipId": "GSA-003",
-      "storeName": "Granite Used Auto Center of Merrimack",
+      "storeName": "Granite Pre-Owned Center of Merrimack",
       "capturedAt": "2026-08-02",
       "classification": "Sanitized public reference data",
       "rows": 318,
@@ -101,7 +101,7 @@
       },
       {
         "field": "External dealer identity",
-        "replacement": "A fictional Granite State Auto Group store",
+        "replacement": "A fictional Granite Auto Group store",
         "detail": "Resolved from the ARPI dealership registry, never inferred from the file name. The source dealership is not named anywhere."
       },
       {

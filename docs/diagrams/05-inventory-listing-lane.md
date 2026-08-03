@@ -176,6 +176,6 @@ twenty-eight views" meaning what the semantic model bound to.
 - [`03-initial-dimensional-model.md`](03-initial-dimensional-model.md) — the MVP model this lane is kept separate from
 - [`../../PRIVACY_AND_ETHICS.md`](../../PRIVACY_AND_ETHICS.md) — the disclosure boundaries this lane operates under
 
-*The MVP warehouse is synthetic and Granite State Auto Group is fictional. The listings in this lane are
+*The MVP warehouse is synthetic and Granite Auto Group is fictional. The listings in this lane are
 not synthetic: they are real advertised attributes under a synthetic identity, and no row here establishes
 a sale, a cost, or a current inventory position.*

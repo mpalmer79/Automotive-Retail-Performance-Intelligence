@@ -281,4 +281,4 @@ python scripts/check_secrets.py
 
 ---
 
-*All data referenced in this documentation is synthetic. Granite State Auto Group is fictional. See [`../PRIVACY_AND_ETHICS.md`](../PRIVACY_AND_ETHICS.md).*
+*All data referenced in this documentation is synthetic. Granite Auto Group is fictional. See [`../PRIVACY_AND_ETHICS.md`](../PRIVACY_AND_ETHICS.md).*

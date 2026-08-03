@@ -1,12 +1,12 @@
 {
   "schema": "arpi.project_manifest/1",
-  "generatedFromCommit": "db223960f339f3a63e3ba55958600396080ec4c5",
+  "generatedFromCommit": "2bc76e144c76ead4957a3595943a8e276bdec610",
   "dataProfile": "development",
   "project": {
     "name": "Automotive Retail Performance Intelligence",
     "shortName": "ARPI",
     "author": "Michael Palmer",
-    "dealershipGroup": "Granite State Auto Group",
+    "dealershipGroup": "Granite Auto Group",
     "repositoryUrl": "https://github.com/mpalmer79/Automotive-Retail-Performance-Intelligence",
     "licence": "MIT"
   },
@@ -14,7 +14,7 @@
     "dealerships": {
       "value": 3,
       "label": "Fictional dealerships",
-      "detail": "Granite State Auto Group stores. All three are invented.",
+      "detail": "Granite Auto Group stores. All three are invented.",
       "sources": [
         {
           "path": "powerbi/validation/model_expectations.json",

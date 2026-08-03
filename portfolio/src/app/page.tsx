@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import { DomainJudgement } from '@/components/sections/domain-judgement'
 import { EngineeringProof } from '@/components/sections/engineering-proof'
 import { FinalCta } from '@/components/sections/final-cta'
+import { GraniteGroup } from '@/components/sections/granite-group'
 import { Hero } from '@/components/sections/hero'
 import { OperatingView } from '@/components/sections/operating-view'
 import { PlatformStory } from '@/components/sections/platform-story'
@@ -12,14 +13,27 @@ import { pageMetadata } from '@/lib/metadata'
 export const metadata: Metadata = pageMetadata('home')
 
 /**
- * The home page: six chapters, each with a different job and a different ground.
+ * The home page: seven chapters, each with a different job and a different ground.
  *
  *   1  Hero               cinematic  what it is, who built it, two ways in
- *   2  Domain judgement   editorial  the problem, and why these answers differ
- *   3  Operating view     product    the signature surface: six domains
- *   4  Platform story     editorial  five stages, generate to serve
- *   5  Engineering proof  evidence   four counts, each linked to its source
- *   6  Closing            cinematic  two actions, and what is not finished
+ *   2  Granite Auto Group product    the business: three stores, three models
+ *   3  Domain judgement   editorial  the problem, and why these answers differ
+ *   4  Operating view     product    the signature surface: six domains
+ *   5  Platform story     editorial  five stages, generate to serve
+ *   6  Engineering proof  evidence   four counts, each linked to its source
+ *   7  Closing            cinematic  two actions, and what is not finished
+ *
+ * CHAPTER 2 WAS ADDED AFTER THE SIX-CHAPTER REDESIGN
+ * --------------------------------------------------
+ * The six chapters described a platform without ever describing what it was a
+ * platform for. "A fictional three-store dealer group" appeared as a
+ * subordinate clause in four of them and was never expanded, so a visitor could
+ * finish the page without learning that one of those stores is an independent
+ * that buys every car it sells. That fact is what makes a group-level number
+ * misleading on its own, which is the argument chapter 3 then goes on to make.
+ *
+ * It sits second rather than later for that reason: it is the setup for the
+ * chapter after it, not an appendix to the page.
  *
  * WHAT CHANGED, AND WHY
  * ---------------------
@@ -71,6 +85,7 @@ export default function HomePage() {
   return (
     <Canvas>
       <Hero />
+      <GraniteGroup />
       <DomainJudgement />
       <OperatingView />
       <PlatformStory />

@@ -222,7 +222,7 @@ def test_no_real_dealer_name_appears(every_string: tuple[str, ...]) -> None:
     """The rule is positive: the only store named is the fictional one."""
     rendered = " ".join(every_string)
     assert "Granite Chevrolet of Nashua" in rendered
-    assert "Granite State Auto Group" in rendered
+    assert "Granite Auto Group" in rendered
     # A store name is one of the three fictional ones, or it is not a store name.
     contract = load_contract()
     with open_read_only(CANONICAL_PATH) as book:

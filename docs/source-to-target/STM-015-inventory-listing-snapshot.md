@@ -30,7 +30,7 @@ Two further artifacts are committed on the same capture date and are documented 
 | Store | Rows | What is unusual about it |
 |---|---:|---|
 | GSA-002 — Granite Subaru of Manchester | 24 | **A partial capture.** The source did not expose every listing through a reliably extractable path. Twenty-four is a count of what was visible, not of the store's inventory |
-| GSA-003 — Granite Used Auto Center of Merrimack | 318 | **287 rows publish no price and no mileage.** Their `Pricing Status` is `Price not exposed`, which is why this lane's odometer column is optional and why that status exists |
+| GSA-003 — Granite Pre-Owned Center of Merrimack | 318 | **287 rows publish no price and no mileage.** Their `Pricing Status` is `Price not exposed`, which is why this lane's odometer column is optional and why that status exists |
 
 The file name **intentionally uses underscores between filename words**; hyphens appear
 only inside the ISO date. It is declared with its SHA-256 in
@@ -44,7 +44,7 @@ Every store has its own directory and only its own:
 |---|---|---|
 | GSA-001 | `data/reference/inventory/gsa-001/<yyyy-mm-dd>/` | `ARPI_Granite_Chevrolet_Inventory_Sanitized_<yyyy-mm-dd>.xlsx` |
 | GSA-002 | `data/reference/inventory/gsa-002/<yyyy-mm-dd>/` | `ARPI_Granite_Subaru_Inventory_Sanitized_<yyyy-mm-dd>.xlsx` |
-| GSA-003 | `data/reference/inventory/gsa-003/<yyyy-mm-dd>/` | `ARPI_Granite_Used_Auto_Center_Inventory_Sanitized_<yyyy-mm-dd>.xlsx` |
+| GSA-003 | `data/reference/inventory/gsa-003/<yyyy-mm-dd>/` | `ARPI_Granite_Pre_Owned_Center_Inventory_Sanitized_<yyyy-mm-dd>.xlsx` |
 
 All three are committed. All three were uploaded into the `gsa-001` directory and were
 moved to their own before the lane was declared complete; the `artifact-misfiled` rule

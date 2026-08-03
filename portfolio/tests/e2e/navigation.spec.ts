@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 
 import { gotoRendered } from './helpers'
-import { HEADER_NAV, PLATFORM_ROUTES, PRIMARY_ROUTES } from './routes'
+import { GROUP_ROUTES, HEADER_NAV, PLATFORM_ROUTES, PRIMARY_ROUTES } from './routes'
 
 /**
  * Navigation, metadata and the 404.
@@ -163,18 +163,28 @@ test.describe('mobile navigation', () => {
       page.getByRole('button', { name: /close navigation menu/i })
     ).toHaveAttribute('aria-expanded', 'true')
 
+    // Scoped to the drawer's PRIMARY list, not to the whole drawer.
+    //
+    // The drawer also carries two expanded destination groups below that list,
+    // and "Inventory" appears in both - once as a primary item and once as
+    // "Inventory explorer" inside the group. An unscoped name match resolves to
+    // two links and fails in strict mode, which is the test telling the truth
+    // about the DOM rather than a defect in it.
+    const primaryList = drawer.locator('nav > ul').first()
     for (const item of HEADER_NAV) {
       await expect(
-        drawer.getByRole('link', { name: new RegExp(item.label) })
+        primaryList.getByRole('link', { name: new RegExp(item.label) }),
+        `${item.label} is missing from the drawer`
       ).toBeVisible()
     }
 
-    // And the three platform pages, expanded. On a phone there is room to show
-    // them rather than making a visitor land on Architecture and then discover a
-    // sub-navigation, so no route is more than one tap away.
-    for (const route of PLATFORM_ROUTES) {
+    // And both destination groups, expanded. On a phone there is room to show
+    // them rather than making a visitor land on Architecture or on the group page
+    // and then discover a sub-navigation, so no route is more than one tap away.
+    for (const route of [...PLATFORM_ROUTES, ...GROUP_ROUTES]) {
       await expect(
-        drawer.getByRole('link', { name: route.label, exact: true })
+        drawer.getByRole('link', { name: route.label, exact: true }),
+        `${route.label} is missing from the drawer's expanded groups`
       ).toBeVisible()
     }
   })

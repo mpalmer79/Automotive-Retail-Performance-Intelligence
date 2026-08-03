@@ -248,7 +248,7 @@ def cursor(db: Any) -> Iterator[Any]:
 # Seed helpers
 # --------------------------------------------------------------------------------------
 
-#: The three Granite State Auto Group stores, exactly as the ARPI contract fixes
+#: The three Granite Auto Group stores, exactly as the ARPI contract fixes
 #: them. ``attribute_hash`` values are stand-ins with the right shape (64 lower-case
 #: hex characters); the generator computes the real digests.
 STORE_SEED: tuple[tuple[str, str, str, str, str | None, str, str, str, str], ...] = (
@@ -276,8 +276,8 @@ STORE_SEED: tuple[tuple[str, str, str, str, str | None, str, str, str, str], ...
     ),
     (
         "GSA-003",
-        "Granite Used Auto Center of Merrimack",
-        "Granite Used Auto",
+        "Granite Pre-Owned Center of Merrimack",
+        "Granite Pre-Owned",
         "Independent Used",
         None,
         "Merrimack",

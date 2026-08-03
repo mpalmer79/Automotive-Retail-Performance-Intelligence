@@ -267,7 +267,7 @@ def test_the_subaru_name_follows_the_same_convention() -> None:
 def test_the_used_store_also_has_a_declared_descriptor() -> None:
     assert (
         derived_sanitized_file_name("GSA-003", date(2026, 8, 9))
-        == "ARPI_Granite_Used_Auto_Center_Inventory_Sanitized_2026-08-09.xlsx"
+        == "ARPI_Granite_Pre_Owned_Center_Inventory_Sanitized_2026-08-09.xlsx"
     )
 
 
@@ -290,7 +290,7 @@ def test_all_three_stores_derive_their_governed_path_and_name() -> None:
         ),
         "GSA-003": (
             "data/reference/inventory/gsa-003/2026-08-02/"
-            "ARPI_Granite_Used_Auto_Center_Inventory_Sanitized_2026-08-02.xlsx"
+            "ARPI_Granite_Pre_Owned_Center_Inventory_Sanitized_2026-08-02.xlsx"
         ),
     }
     for dealership, path in expected.items():
@@ -513,7 +513,7 @@ def test_the_three_stores_resolve() -> None:
     assert known_dealership_ids() == ("GSA-001", "GSA-002", "GSA-003")
     assert resolve_store("GSA-001").store_name == "Granite Chevrolet of Nashua"
     assert resolve_store("GSA-002").store_name == "Granite Subaru of Manchester"
-    assert resolve_store("GSA-003").store_name == "Granite Used Auto Center of Merrimack"
+    assert resolve_store("GSA-003").store_name == "Granite Pre-Owned Center of Merrimack"
 
 
 def test_the_store_lookup_is_case_insensitive_and_trims() -> None:

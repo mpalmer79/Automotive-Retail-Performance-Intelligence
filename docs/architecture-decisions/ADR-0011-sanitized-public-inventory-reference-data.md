@@ -235,7 +235,7 @@ the amendment is recorded here because the contract is where this decision is ex
 
 ### 6.1 2026-08-02 — optional mileage, and a third pricing status
 
-**What prompted it.** The Granite Subaru and Granite Used Auto Center captures arrived.
+**What prompted it.** The Granite Subaru and Granite Pre-Owned Center captures arrived.
 The Used Auto Center listing surface publishes **no price and no mileage** for 287 of its
 318 listings. Under the original contract — mileage required, two pricing statuses — the
 whole workbook was refused, 861 findings deep.
@@ -262,7 +262,7 @@ attribute a decision to a dealership on no evidence, which is the exact class of
 section 2 forbids. They are counted separately in every view, and `unpriced_units` — the
 complement of `Listed` — is published for the case where one number is genuinely wanted.
 
-**What this cost.** Granite Used Auto Center's `total_advertised_value` describes 31
+**What this cost.** Granite Pre-Owned Center's `total_advertised_value` describes 31
 vehicles rather than 318, and no average mileage exists for the other 287. Both are
 reported as counts of what was not published rather than as zeros. That is the honest
 answer and it is a worse-looking one, which is the point: a zero is a number, and a

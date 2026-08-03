@@ -11,8 +11,10 @@
   "scripts": {
     "manifest": "tsx scripts/generate-project-manifest.ts",
     "manifest:check": "tsx scripts/generate-project-manifest.ts --check",
-    "prebuild": "npm run manifest:check",
-    "dev": "npm run manifest && next dev",
+    "inventory": "tsx scripts/generate-inventory-data.ts",
+    "inventory:check": "tsx scripts/generate-inventory-data.ts --check",
+    "prebuild": "npm run manifest:check && npm run inventory:check",
+    "dev": "npm run manifest && npm run inventory && next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
@@ -24,7 +26,7 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "test:e2e:a11y": "playwright test tests/e2e/accessibility.spec.ts",
-    "verify": "npm run format:check && npm run lint && npm run typecheck && npm run manifest:check && npm run test && npm run build",
+    "verify": "npm run format:check && npm run lint && npm run typecheck && npm run manifest:check && npm run inventory:check && npm run test && npm run build",
     "assets": "tsx scripts/render-raster-assets.ts",
     "review:screenshots": "tsx scripts/capture-review-screenshots.ts",
     "bundle": "tsx scripts/report-bundle.ts"

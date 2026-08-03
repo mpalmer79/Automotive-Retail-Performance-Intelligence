@@ -311,7 +311,7 @@ once and never updated. Extending the reporting window appends rows; it never re
 |---|---|
 | **Entity name** | `warehouse.dim_dealership` |
 | **Layer** | Warehouse (dimension) |
-| **Purpose** | Conformed store dimension for the fictional **Granite State Auto Group**. Every fact in the model is sliceable by store, and this dimension carries the store attributes (type, franchise brand, market) that drive nearly all comparative analysis. |
+| **Purpose** | Conformed store dimension for the fictional **Granite Auto Group**. Every fact in the model is sliceable by store, and this dimension carries the store attributes (type, franchise brand, market) that drive nearly all comparative analysis. |
 | **Declared grain** | **One row per dealership store version (Slowly Changing Dimension Type 2).** In Phase 0 exactly one current version exists per store, so the table holds three rows. |
 | **Primary key** | `dealership_key` (integer surrogate) |
 | **Natural / source key** | `dealership_id` (for example `GSA-001`). Unique among current rows. |
@@ -354,7 +354,7 @@ the number of defined stores.
 |---:|---|---|---|---|---|---|---|---|---|
 | 1 | `GSA-001` | Granite Chevrolet of Nashua | Granite Chevrolet | Franchise New and Used | Chevrolet | Nashua | NH | Southern New Hampshire | 2009-04-06 |
 | 2 | `GSA-002` | Granite Subaru of Manchester | Granite Subaru | Franchise New and Used | Subaru | Manchester | NH | Southern New Hampshire | 2013-08-19 |
-| 3 | `GSA-003` | Granite Used Auto Center of Merrimack | Granite Used Auto | Independent Used | *(null)* | Merrimack | NH | Southern New Hampshire | 2017-03-13 |
+| 3 | `GSA-003` | Granite Pre-Owned Center of Merrimack | Granite Pre-Owned | Independent Used | *(null)* | Merrimack | NH | Southern New Hampshire | 2017-03-13 |
 
 All three rows have `is_active = true`. **No street addresses, phone numbers, or email addresses exist for
 these stores** — they are omitted deliberately, not merely unpopulated.

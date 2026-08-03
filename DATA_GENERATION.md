@@ -401,7 +401,7 @@ Rules that apply to every scheme:
   §8.5](ARCHITECTURE.md)), so identifiers never need re-padding — which would change every byte of the
   output.
 - Identifiers are **assigned by deterministic sequence**, never randomly, so they are stable across runs.
-- **`GSA` stands for Granite State Auto Group. The fictional dealer group is never renamed**, so the prefix
+- **`GSA` stands for Granite Auto Group. The fictional dealer group is never renamed**, so the prefix
   is permanently stable.
 - The **synthetic VIN** is a separate scheme: a 17-character, structurally VIN-like, fabricated string. It
   deliberately does **not** carry the `VEH-` prefix, because it must be shaped like a VIN for modelling
@@ -758,6 +758,24 @@ repository must record the named creator, source URL, license, permitted uses, r
 redistribution restrictions, and whether derived files may be committed.
 
 No Kaggle dataset is used in ARPI today.
+
+### 14.6 Sanitized public inventory reference data — **IN USE**
+
+Unlike everything above, this one is not a plan. Three sanitized inventory workbooks are
+committed under `data/reference/inventory/`, admitted by
+[ADR-0011](docs/architecture-decisions/ADR-0011-sanitized-public-inventory-reference-data.md).
+They are the exception to "every record in this project is synthetic", and the project
+states the exception rather than absorbing it: §20 below describes the lane, why it is not
+generated, and what is deterministic about it anyway.
+
+One consumer is worth naming here because it sits outside the Python package entirely.
+The portfolio website reads the same workbooks at **build time** through
+`portfolio/scripts/generate-inventory-data.ts`, which drops every identifying column,
+derives every figure the dealership and inventory pages display, and refuses to write a
+frontend artefact whose output still matches a URL, a domain, an email address, a
+telephone number or a VIN-shaped token. No workbook is parsed in a browser, and no
+inventory figure on the site is authored by hand. See
+[`data/reference/README.md`](data/reference/README.md) section 7.2.
 
 ---
 

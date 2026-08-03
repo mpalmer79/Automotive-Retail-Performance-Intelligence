@@ -46,7 +46,7 @@ export default function InventoryOperationsPage() {
         eyebrow="Inventory operations"
         title="Ingesting something the project did not write"
         lede="Every other row in ARPI came from a generator ARPI also wrote, which exercises no sanitization, no source contract and no rejection path. This capability ingests a de-identified public inventory listing snapshot instead: a workbook with real-world shape, real-world mess, and a governance lane of its own."
-        supporting={`The committed reference artifact holds ${String(artifact.rows)} listing rows for one fictional store on one capture date. Those are counts of what the file contains. They are not findings, not performance, and not attributable to any real dealership.`}
+        supporting={`This page is about the LANE: what the sanitizer removes, what the contract refuses, and what a listing may never be read as. The vehicles themselves are on the inventory explorer, which renders the same workbooks store by store. The committed reference artifact holds ${String(artifact.rows)} listing rows for one fictional store on one capture date. Those are counts of what the file contains. They are not findings, not performance, and not attributable to any real dealership.`}
         platformNav
         meta={
           <>

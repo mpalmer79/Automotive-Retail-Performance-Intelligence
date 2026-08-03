@@ -125,7 +125,7 @@ inventory_columns:
     required: true
     max_length: 160
   # OPTIONAL, and this was a contract change rather than the original position.
-  # The Granite Used Auto Center listings publish no mileage at all. A required
+  # The Granite Pre-Owned Center listings publish no mileage at all. A required
   # column would have refused that workbook, and refusing it would assert that a
   # listing surface must publish mileage, which is not ARPI's call to make. What
   # the lane can say is how many listings published none, which is why
@@ -361,7 +361,7 @@ naming:
 store_descriptors:
   GSA-001: Granite_Chevrolet
   GSA-002: Granite_Subaru
-  GSA-003: Granite_Used_Auto_Center
+  GSA-003: Granite_Pre_Owned_Center
 
 # ---------------------------------------------------------------------------
 # 9. The canonical committed artifacts
@@ -374,7 +374,7 @@ store_descriptors:
 #
 #   GSA-001  data/reference/inventory/gsa-001/<yyyy-mm-dd>/ARPI_Granite_Chevrolet_Inventory_Sanitized_<yyyy-mm-dd>.xlsx
 #   GSA-002  data/reference/inventory/gsa-002/<yyyy-mm-dd>/ARPI_Granite_Subaru_Inventory_Sanitized_<yyyy-mm-dd>.xlsx
-#   GSA-003  data/reference/inventory/gsa-003/<yyyy-mm-dd>/ARPI_Granite_Used_Auto_Center_Inventory_Sanitized_<yyyy-mm-dd>.xlsx
+#   GSA-003  data/reference/inventory/gsa-003/<yyyy-mm-dd>/ARPI_Granite_Pre_Owned_Center_Inventory_Sanitized_<yyyy-mm-dd>.xlsx
 #
 # A workbook filed under another store's directory is refused by
 # `scripts/check_reference_data.py` (rule `artifact-misfiled`) and by DQ-LST-011,
@@ -395,28 +395,20 @@ canonical_artifacts:
     row_count: 199
     # SHA-256 of the committed bytes. Recorded so a silent replacement of the
     # artifact is a test failure rather than a diff nobody reads.
-    sha256: eaa366b5e3ddc0473b8ac7b4abd021e361b0f9daddc1b46883c442da78700ecb
-    # DECLARED, REVIEWED DEVIATION -- see data/reference/README.md section 9.
     #
-    # This workbook was produced by hand BEFORE the naming decision was made, and
-    # its README sheet's "Recommended repository path" cell still suggests the
-    # hyphenated lowercase name that was under consideration at the time. The
-    # committed FILE has always carried the approved underscore name, at the
-    # approved path, and that is what every document, test, CI check and portfolio
-    # link uses.
+    # RE-DECLARED under ADR-0012. The workbook's embedded dealer-group name was
+    # corrected from the retired 'Granite Auto Group', and its stale
+    # 'Recommended repository path' cell was corrected to the approved underscore
+    # name at the same time. Both were string substitutions inside the package's
+    # XML parts; every ZIP entry was rewritten verbatim and the part count is
+    # asserted unchanged, so the conditional-formatting parts an openpyxl
+    # round-trip would have discarded are intact. That is the specific objection
+    # the previous declaration raised, and it does not apply to this method.
     #
-    # The cell is a stale hint inside a data value, not a repository path and not
-    # documentation. It is declared here rather than corrected in place because
-    # rewriting the artifact's bytes to fix one string would discard the Excel
-    # conditional-formatting parts openpyxl cannot round-trip, and would change the
-    # digest of the evidence this pull request was asked to preserve.
-    #
-    # The rule is enforced for everything else: a NEW workbook whose recommended
-    # path disagrees with its own canonical path is refused (DQ-LST-016), because
-    # the exception below is keyed to this artifact's digest and to nothing else.
-    # The sanitizer writes the approved path, so the next capture -- Chevrolet or
-    # Subaru -- carries the correct hint with no exception at all.
-    legacy_path_hint: data/reference/inventory/gsa-001/2026-08-02/granite-chevrolet-inventory-sanitized.xlsx
+    # `legacy_path_hint` is GONE rather than re-keyed to the new digest. The hint
+    # it excused no longer exists in the file, so DQ-LST-016 now holds for this
+    # artifact with no exception at all.
+    sha256: 9a0d38570cef95b2a34bb56c8743edc3d18dc9b8d9d21121c6c12de23be4c643
 
   - dealership_id: GSA-002
     captured_at: "2026-08-02"
@@ -424,7 +416,8 @@ canonical_artifacts:
     path: >-
       data/reference/inventory/gsa-002/2026-08-02/ARPI_Granite_Subaru_Inventory_Sanitized_2026-08-02.xlsx
     row_count: 24
-    sha256: b00ed685faed7c2f6ebf3c47ea8842ebfc48201a7259cc2437efbfc054bd23a2
+    # RE-DECLARED under ADR-0012: the embedded dealer-group name was corrected.
+    sha256: 4b3317ddbb6f2ded24bfb1ecf8a030849ceaebff366d475e0fcb11bab752adea
     # DECLARED PARTIAL SAMPLE. The public source did not expose every listing
     # through a reliably extractable path, so this artifact holds 24 visible
     # indexed records out of a larger reported inventory.
@@ -441,11 +434,16 @@ canonical_artifacts:
 
   - dealership_id: GSA-003
     captured_at: "2026-08-02"
-    file_name: ARPI_Granite_Used_Auto_Center_Inventory_Sanitized_2026-08-02.xlsx
+    file_name: ARPI_Granite_Pre_Owned_Center_Inventory_Sanitized_2026-08-02.xlsx
     path: >-
-      data/reference/inventory/gsa-003/2026-08-02/ARPI_Granite_Used_Auto_Center_Inventory_Sanitized_2026-08-02.xlsx
+      data/reference/inventory/gsa-003/2026-08-02/ARPI_Granite_Pre_Owned_Center_Inventory_Sanitized_2026-08-02.xlsx
     row_count: 318
-    sha256: 8228e1abf090b72b046b96a36fe35fcc4e05b13e219f5ee45241e9b95faeb92b
+    # RENAMED AND RE-DECLARED under ADR-0012. GSA-003's public name is now
+    # 'Granite Pre-Owned Center of Merrimack', and the artifact's filename is
+    # rendered on the public website as a source link, which makes it
+    # public-facing content rather than an internal path. The workbook's embedded
+    # store and group names were corrected in the same pass.
+    sha256: 5a8326f0523cc218263247dfe48e0577eb035452b3a032f3db611810aea9e770
     # This store's listing surface publishes NEITHER mileage NOR price: every row
     # carries an empty Odometer Miles and a Pricing Status of 'Price not exposed'.
     # Both are why this contract's odometer column is optional and why

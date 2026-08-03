@@ -247,4 +247,4 @@ They are tracked rather than deleted so the intended structure is visible, and e
 - [`../../CONTRIBUTING.md`](../../CONTRIBUTING.md) — workflow and quality gates
 - [`../../ARCHITECTURE.md`](../../ARCHITECTURE.md) §24 — the annotated repository tree
 
-*All data is synthetic. Granite State Auto Group is fictional.*
+*All data is synthetic. Granite Auto Group is fictional.*

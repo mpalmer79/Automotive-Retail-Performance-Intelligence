@@ -1,6 +1,6 @@
 """Generator for ``warehouse.dim_dealership``.
 
-The three stores of the fictional Granite State Auto Group are fixed reference data, not
+The three stores of the fictional Granite Auto Group are fixed reference data, not
 random draws, so this generator is deterministic and seed-independent. It emits a single
 current SCD Type 2 version per store; historical versions are **Out of scope** for
 Phase 0.
@@ -81,8 +81,8 @@ STORE_DEFINITIONS: tuple[StoreDefinition, ...] = (
     ),
     StoreDefinition(
         dealership_id="GSA-003",
-        store_name="Granite Used Auto Center of Merrimack",
-        store_short_name="Granite Used Auto",
+        store_name="Granite Pre-Owned Center of Merrimack",
+        store_short_name="Granite Pre-Owned",
         store_type=STORE_TYPE_INDEPENDENT,
         franchise_brand=None,
         city="Merrimack",
@@ -156,7 +156,7 @@ def dealership_attribute_hash(store: StoreDefinition) -> str:
 
     For ``GSA-003`` the payload is therefore::
 
-        Granite Used Auto Center of Merrimack|Granite Used Auto|Independent Used||\
+        Granite Pre-Owned Center of Merrimack|Granite Pre-Owned|Independent Used||\
 Merrimack|NH|Southern New Hampshire|2017-03-13|true
 
     Args:

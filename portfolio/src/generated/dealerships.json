@@ -1,0 +1,366 @@
+{
+  "generatedFrom": [
+    "data/reference/inventory/gsa-001/2026-08-02/ARPI_Granite_Chevrolet_Inventory_Sanitized_2026-08-02.xlsx",
+    "data/reference/inventory/gsa-002/2026-08-02/ARPI_Granite_Subaru_Inventory_Sanitized_2026-08-02.xlsx",
+    "data/reference/inventory/gsa-003/2026-08-02/ARPI_Granite_Pre_Owned_Center_Inventory_Sanitized_2026-08-02.xlsx",
+    "data/sample/dim_dealership.csv",
+    "portfolio/src/content/dealership-profiles.json"
+  ],
+  "group": {
+    "name": "Granite Auto Group",
+    "introduction": "Granite Auto Group is a fictional three-store automotive retail organization serving Southern New Hampshire. Its Chevrolet franchise, Subaru franchise, and independent pre-owned center each operate with different inventory strategies. ARPI brings those operations into one governed reporting environment so leadership can compare performance without losing store-level context.",
+    "operatingModel": "One group, three operating models. Two franchise rooftops carry a manufacturer allocation and a new-vehicle order bank they do not fully control. The independent pre-owned center buys every unit it sells. A group report that treats those three as one line loses the only thing that explains their numbers.",
+    "governanceNote": "The group, its stores, its employees and its transactions are fictional. The inventory shown on this site is sanitized public reference data captured for portfolio use, not a dealer management system export, and it describes listings rather than completed sales.",
+    "marketRegion": "Southern New Hampshire",
+    "dealershipCount": 3
+  },
+  "dealerships": [
+    {
+      "id": "GSA-001",
+      "slug": "granite-chevrolet",
+      "href": "/dealerships/granite-chevrolet",
+      "name": "Granite Chevrolet of Nashua",
+      "shortName": "Granite Chevrolet",
+      "storeType": "Franchise New and Used",
+      "storeTypeLabel": "Franchise dealership",
+      "isFranchise": true,
+      "franchiseBrand": "Chevrolet",
+      "city": "Nashua",
+      "stateCode": "NH",
+      "marketRegion": "Southern New Hampshire",
+      "openedDate": "2009-04-06",
+      "accent": "chevrolet",
+      "tagline": "The franchise volume store",
+      "positioning": "Granite Chevrolet of Nashua is the group's volume franchise rooftop. Its inventory is dominated by new Chevrolet trucks and utilities arriving on manufacturer allocation, with a small pre-owned presence beside them.",
+      "inventoryStrategy": "Allocation led. What sits on the lot is largely decided by what the manufacturer builds and ships, so the levers available to the store are pricing, merchandising and turn rather than acquisition mix.",
+      "customerSegment": "New-vehicle truck and utility buyers, fleet and commercial work vehicles, and the service-retention base that a franchise rooftop carries with it.",
+      "analyticsFocus": "Days supply by model line, aged new inventory, and the gap between what the allocation delivers and what the market in Nashua actually asks for.",
+      "inventory": {
+        "snapshotDate": "2026-08-02",
+        "sourceWorkbook": "data/reference/inventory/gsa-001/2026-08-02/ARPI_Granite_Chevrolet_Inventory_Sanitized_2026-08-02.xlsx",
+        "sourceType": "Public inventory listing snapshot, de-identified for portfolio use",
+        "coverageStatus": null,
+        "coverageNote": null,
+        "totalRecords": 199,
+        "newRecords": 195,
+        "preOwnedRecords": 4,
+        "pricedRecords": 197,
+        "mileageRecords": 199,
+        "priceRange": {
+          "min": 8500,
+          "max": 109674
+        },
+        "medianPrice": 49304,
+        "preOwnedMileageRange": {
+          "min": 8339,
+          "max": 87787
+        },
+        "medianPreOwnedMileage": 59345,
+        "modelYearRange": {
+          "min": 2015,
+          "max": 2027
+        },
+        "makeCount": 5,
+        "modelCount": 22,
+        "topMakes": [
+          {
+            "make": "Chevrolet",
+            "count": 195
+          },
+          {
+            "make": "Ford",
+            "count": 1
+          },
+          {
+            "make": "GMC",
+            "count": 1
+          },
+          {
+            "make": "Harley-Davidson",
+            "count": 1
+          },
+          {
+            "make": "Kia",
+            "count": 1
+          }
+        ],
+        "topModels": [
+          {
+            "make": "Chevrolet",
+            "model": "Silverado 1500",
+            "count": 46
+          },
+          {
+            "make": "Chevrolet",
+            "model": "Equinox",
+            "count": 33
+          },
+          {
+            "make": "Chevrolet",
+            "model": "Silverado 2500 HD",
+            "count": 30
+          },
+          {
+            "make": "Chevrolet",
+            "model": "Traverse",
+            "count": 22
+          },
+          {
+            "make": "Chevrolet",
+            "model": "Colorado",
+            "count": 14
+          },
+          {
+            "make": "Chevrolet",
+            "model": "Tahoe",
+            "count": 13
+          },
+          {
+            "make": "Chevrolet",
+            "model": "Suburban",
+            "count": 10
+          },
+          {
+            "make": "Chevrolet",
+            "model": "Trax",
+            "count": 9
+          }
+        ]
+      }
+    },
+    {
+      "id": "GSA-002",
+      "slug": "granite-subaru",
+      "href": "/dealerships/granite-subaru",
+      "name": "Granite Subaru of Manchester",
+      "shortName": "Granite Subaru",
+      "storeType": "Franchise New and Used",
+      "storeTypeLabel": "Franchise dealership",
+      "isFranchise": true,
+      "franchiseBrand": "Subaru",
+      "city": "Manchester",
+      "stateCode": "NH",
+      "marketRegion": "Southern New Hampshire",
+      "openedDate": "2013-08-19",
+      "accent": "subaru",
+      "tagline": "The all-weather franchise",
+      "positioning": "Granite Subaru of Manchester is the group's second franchise rooftop. It sells a narrow, all-wheel-drive product line into a New England market that rewards it, and it runs a materially larger pre-owned share than the Chevrolet store.",
+      "inventoryStrategy": "Narrow new line, broad pre-owned bench. A small number of nameplates covers the new side, so the store differentiates on the pre-owned inventory it acquires, including brands it does not franchise.",
+      "customerSegment": "All-wheel-drive buyers, repeat Subaru owners, and cross-shoppers who arrive for the brand and leave in a pre-owned unit from another make.",
+      "analyticsFocus": "New versus pre-owned mix, off-brand pre-owned performance, and whether the pre-owned bench is priced against the same market the new line competes in.",
+      "inventory": {
+        "snapshotDate": "2026-08-02",
+        "sourceWorkbook": "data/reference/inventory/gsa-002/2026-08-02/ARPI_Granite_Subaru_Inventory_Sanitized_2026-08-02.xlsx",
+        "sourceType": "Public inventory listing snapshot, de-identified for portfolio use",
+        "coverageStatus": "Partial public reference sample",
+        "coverageNote": "This workbook contains 24 visible indexed listing records from a larger reported inventory. The public source did not expose every listing through a reliably extractable path, so this artifact is a partial reference sample. It must not be described as the dealership's complete inventory, current market position, or performance.",
+        "totalRecords": 24,
+        "newRecords": 8,
+        "preOwnedRecords": 16,
+        "pricedRecords": 24,
+        "mileageRecords": 24,
+        "priceRange": {
+          "min": 17895,
+          "max": 48982
+        },
+        "medianPrice": 28946,
+        "preOwnedMileageRange": {
+          "min": 1073,
+          "max": 91711
+        },
+        "medianPreOwnedMileage": 25905,
+        "modelYearRange": {
+          "min": 2020,
+          "max": 2026
+        },
+        "makeCount": 4,
+        "modelCount": 12,
+        "topMakes": [
+          {
+            "make": "Subaru",
+            "count": 19
+          },
+          {
+            "make": "Honda",
+            "count": 2
+          },
+          {
+            "make": "Mazda",
+            "count": 2
+          },
+          {
+            "make": "Ford",
+            "count": 1
+          }
+        ],
+        "topModels": [
+          {
+            "make": "Subaru",
+            "model": "Crosstrek",
+            "count": 6
+          },
+          {
+            "make": "Subaru",
+            "model": "Forester",
+            "count": 4
+          },
+          {
+            "make": "Subaru",
+            "model": "Outback",
+            "count": 3
+          },
+          {
+            "make": "Subaru",
+            "model": "Ascent",
+            "count": 2
+          },
+          {
+            "make": "Subaru",
+            "model": "Impreza",
+            "count": 2
+          },
+          {
+            "make": "Ford",
+            "model": "Edge",
+            "count": 1
+          },
+          {
+            "make": "Honda",
+            "model": "Accord",
+            "count": 1
+          },
+          {
+            "make": "Honda",
+            "model": "Civic",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "id": "GSA-003",
+      "slug": "granite-pre-owned",
+      "href": "/dealerships/granite-pre-owned",
+      "name": "Granite Pre-Owned Center of Merrimack",
+      "shortName": "Granite Pre-Owned",
+      "storeType": "Independent Used",
+      "storeTypeLabel": "Independent pre-owned dealership",
+      "isFranchise": false,
+      "franchiseBrand": null,
+      "city": "Merrimack",
+      "stateCode": "NH",
+      "marketRegion": "Southern New Hampshire",
+      "openedDate": "2017-03-13",
+      "accent": "preowned",
+      "tagline": "The independent marketplace",
+      "positioning": "Granite Pre-Owned Center of Merrimack is the group's independent store. It carries no franchise, buys every unit it sells, and lists a multi-brand inventory that spans a far wider band of model years and price points than either franchise rooftop.",
+      "inventoryStrategy": "Acquisition led. With no allocation and no new-vehicle order bank, every decision is a buying decision, and the resulting inventory is the widest and the oldest in the group.",
+      "customerSegment": "Value and budget buyers, trade-in absorption from the two franchise stores, and shoppers cross-shopping brands rather than a single nameplate.",
+      "analyticsFocus": "Acquisition source, price band coverage, model-year spread, and how much of the listed inventory the public source actually exposes a price for.",
+      "inventory": {
+        "snapshotDate": "2026-08-02",
+        "sourceWorkbook": "data/reference/inventory/gsa-003/2026-08-02/ARPI_Granite_Pre_Owned_Center_Inventory_Sanitized_2026-08-02.xlsx",
+        "sourceType": "Public indexed inventory listing snapshot, de-identified for portfolio use",
+        "coverageStatus": "Complete indexed public listing snapshot",
+        "coverageNote": "This workbook represents all 318 records exposed by the public indexed inventory source at capture time, not a confidential dealer-management-system export. Price and mileage were exposed for only 31 records. The remaining 287 rows are labeled Price not exposed, which is distinct from Call for price. Indexed inventory can differ from the live retail site and can change after capture.",
+        "totalRecords": 318,
+        "newRecords": 0,
+        "preOwnedRecords": 318,
+        "pricedRecords": 31,
+        "mileageRecords": 31,
+        "priceRange": {
+          "min": 7395,
+          "max": 47995
+        },
+        "medianPrice": 17395,
+        "preOwnedMileageRange": {
+          "min": 11156,
+          "max": 177335
+        },
+        "medianPreOwnedMileage": 99113,
+        "modelYearRange": {
+          "min": 2001,
+          "max": 2025
+        },
+        "makeCount": 30,
+        "modelCount": 139,
+        "topMakes": [
+          {
+            "make": "Chevrolet",
+            "count": 41
+          },
+          {
+            "make": "Nissan",
+            "count": 32
+          },
+          {
+            "make": "Ford",
+            "count": 29
+          },
+          {
+            "make": "Jeep",
+            "count": 28
+          },
+          {
+            "make": "BMW",
+            "count": 19
+          },
+          {
+            "make": "Ram",
+            "count": 19
+          },
+          {
+            "make": "GMC",
+            "count": 18
+          },
+          {
+            "make": "Honda",
+            "count": 18
+          }
+        ],
+        "topModels": [
+          {
+            "make": "Nissan",
+            "model": "Rogue",
+            "count": 16
+          },
+          {
+            "make": "Ram",
+            "model": "1500",
+            "count": 13
+          },
+          {
+            "make": "Ford",
+            "model": "F-150",
+            "count": 9
+          },
+          {
+            "make": "BMW",
+            "model": "X5",
+            "count": 8
+          },
+          {
+            "make": "Chevrolet",
+            "model": "Silverado 1500",
+            "count": 8
+          },
+          {
+            "make": "Ford",
+            "model": "Escape",
+            "count": 8
+          },
+          {
+            "make": "Jeep",
+            "model": "Compass",
+            "count": 8
+          },
+          {
+            "make": "Jeep",
+            "model": "Grand Cherokee",
+            "count": 8
+          }
+        ]
+      }
+    }
+  ]
+}

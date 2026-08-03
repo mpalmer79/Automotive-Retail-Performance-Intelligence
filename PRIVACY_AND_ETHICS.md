@@ -426,7 +426,7 @@ Concretely:
 
 - No figure produced by ARPI is a dealership benchmark, an industry average, or a target.
 - No ARPI figure may be compared to a real dealership's figure as though the comparison were meaningful.
-- The Granite State Auto Group is fictional and is **never renamed** to anything resembling a real group.
+- The Granite Auto Group is fictional and is **never renamed** to anything resembling a real group.
 - Resume, LinkedIn, and case-study materials must describe the work accurately
   ([ARCHITECTURE.md §33](ARCHITECTURE.md) item 14) — as an analytics project on synthetic data.
 
@@ -617,7 +617,7 @@ Calling this lane "fully synthetic" is a governance failure, not a wording prefe
 |---|---|
 | Original VIN | A deterministic, group-stable `ARPI`-prefixed synthetic VIN and vehicle identifier |
 | Row-level source URL | A neutral feed label naming the lane, never the origin |
-| External dealer identity | A fictional Granite State Auto Group store, resolved from the ARPI registry |
+| External dealer identity | A fictional Granite Auto Group store, resolved from the ARPI registry |
 | Street address | Nothing. Geography stops at store name and market region |
 
 The identity function is a SHA-256 over a group namespace. **No reverse mapping is

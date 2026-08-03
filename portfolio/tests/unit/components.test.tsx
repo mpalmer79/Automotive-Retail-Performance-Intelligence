@@ -38,11 +38,16 @@ import { clamp, cx, formatCount, formatDate, groupBy, slugify } from '@/lib/util
 /* -------------------------------------------------------------------------- */
 
 describe('the route map', () => {
-  it('holds the nine documented routes plus the internal UI lab', () => {
-    expect(ALL_ROUTES).toHaveLength(10)
+  it('holds the fourteen documented routes plus the internal UI lab', () => {
+    expect(ALL_ROUTES).toHaveLength(15)
     const hrefs = ALL_ROUTES.map((r) => r.href)
     expect(hrefs).toEqual([
       '/',
+      '/dealerships',
+      '/dealerships/granite-chevrolet',
+      '/dealerships/granite-subaru',
+      '/dealerships/granite-pre-owned',
+      '/inventory',
       '/architecture',
       '/data-model',
       '/inventory-operations',
@@ -55,12 +60,13 @@ describe('the route map', () => {
     ])
   })
 
-  it('puts five content destinations in the header and excludes the case study', () => {
-    // Five, not seven: Architecture, Data Model and Governance are grouped under
-    // "Platform". The full navigation contract is covered in
-    // tests/unit/site.test.ts; this is the component suite's own check that the
-    // list it renders from has not quietly grown.
-    expect(PRIMARY_NAV).toHaveLength(5)
+  it('puts seven content destinations in the header and excludes the case study', () => {
+    // Seven, not fourteen. Two of the seven are destination GROUPS: "Platform"
+    // covers Architecture, Data Model, Inventory operations and Governance, and
+    // "Dealerships" covers the group page and the three store pages. The full navigation contract is
+    // covered in tests/unit/site.test.ts; this is the component suite's own check
+    // that the list it renders from has not quietly grown.
+    expect(PRIMARY_NAV).toHaveLength(7)
     expect(PRIMARY_NAV.map((r) => r.href)).not.toContain('/case-study')
     expect(PRIMARY_NAV.map((r) => r.href)).not.toContain('/ui-lab')
   })

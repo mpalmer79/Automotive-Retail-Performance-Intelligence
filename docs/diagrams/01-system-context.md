@@ -133,4 +133,4 @@ declared to consume them.
 - [`04-repository-component-map.md`](04-repository-component-map.md) — which directory owns which artifact
 - [`../../ARCHITECTURE.md`](../../ARCHITECTURE.md) §§9–11 — layer responsibilities and the dimensional model
 
-*All data is synthetic. Granite State Auto Group is fictional.*
+*All data is synthetic. Granite Auto Group is fictional.*

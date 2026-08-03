@@ -91,10 +91,10 @@ _DATE_SEGMENT_DEPTH: Final = 2
 _STORE_SEGMENT_DEPTH: Final = 3
 
 #: Real dealer identities must never appear. The rule is positive rather than a blocklist
-#: of real companies: a store name that is not one of the fictional Granite State Auto
+#: of real companies: a store name that is not one of the fictional Granite Auto
 #: Group stores is refused, so a future source's real name fails without anyone having to
 #: predict it.
-_FICTIONAL_GROUP: Final = "Granite State Auto Group"
+_FICTIONAL_GROUP: Final = "Granite Auto Group"
 
 
 def contains_url(value: Any) -> bool:
@@ -665,7 +665,7 @@ def _typed_record(  # noqa: PLR0912, PLR0915 - one branch per contract rule
         )
 
     # Odometer is OPTIONAL by contract: a listing surface that publishes no mileage is
-    # a real thing, and the Granite Used Auto Center workbook is entirely made of them.
+    # a real thing, and the Granite Pre-Owned Center workbook is entirely made of them.
     # A blank cell is therefore an absence, not a defect. A cell that holds something
     # which is not an integer still is -- "unknown" typed into the column is a value
     # somebody meant, and reading it as NULL would silently discard it.

@@ -43,7 +43,7 @@
 -- store has. Unpriced units contribute nothing to it, which is why unpriced_units sits
 -- beside it: a total that excludes some vehicles must show how many it excluded.
 --
--- The exclusion is not hypothetical. Granite Used Auto Center's capture publishes no
+-- The exclusion is not hypothetical. Granite Pre-Owned Center's capture publishes no
 -- price for 287 of its 318 listings, so its total_advertised_value describes 31
 -- vehicles. A reader who saw only the total would read that store as small.
 

@@ -13,7 +13,7 @@ Original VIN                A deterministic, group-stable ``ARPI``-prefixed synt
                             VIN and vehicle identifier. No reverse mapping is produced
                             and no function here could build one.
 Row-level source URL        A neutral feed label naming the lane, never the origin.
-External dealer identity    The fictional Granite State Auto Group store the operator
+External dealer identity    The fictional Granite Auto Group store the operator
                             assigns, resolved from the authoritative registry.
 Street address              Nothing. Geography stops at store name and market region.
 ==========================  =========================================================
@@ -93,7 +93,7 @@ _MINIMUM_IDENTIFIER_LENGTH = 8
 
 #: The notice every governed workbook carries, verbatim, on its README sheet.
 PUBLIC_REFERENCE_NOTICE = (
-    "Granite State Auto Group and its stores are fictional. Original VINs, source URLs, "
+    "Granite Auto Group and its stores are fictional. Original VINs, source URLs, "
     "street address and real dealership identity have been removed. This workbook is NOT "
     "fully synthetic: model, trim, mileage, condition, advertised-price and inventory-mix "
     "attributes are retained from a de-identified public reference snapshot. Do not "
@@ -395,7 +395,7 @@ def _transform(  # noqa: PLR0912, PLR0915 - one branch per input-contract field
         )
 
         # Mileage is OPTIONAL. A listing surface that publishes none is a real thing --
-        # Granite Used Auto Center publishes none for 287 of its 318 listings -- and
+        # Granite Pre-Owned Center publishes none for 287 of its 318 listings -- and
         # refusing those rows would assert that a public listing must carry mileage.
         # A present value that is negative is still a refusal: that is a bad reading,
         # not an absent one.
@@ -517,7 +517,7 @@ def _write_readme(  # noqa: PLR0913 - the README block is one statement with man
     write_title(sheet, "ARPI Inventory Operations | Sanitized Public Reference Artifact")
     facts = (
         ("Artifact", f"{store_name} inventory listing snapshot"),
-        ("Dealer group", "Granite State Auto Group"),
+        ("Dealer group", "Granite Auto Group"),
         ("Store", store_name),
         ("Dealership ID", dealership_id),
         ("Market", market_region),
@@ -667,7 +667,7 @@ def _write_summary(
 
     write_title(sheet, f"ARPI Inventory Operations | {store_name}")
     facts = (
-        ("Dealer group", "Granite State Auto Group"),
+        ("Dealer group", "Granite Auto Group"),
         ("Store", store_name),
         ("Dealership ID", dealership_id),
         ("Market", market_region),

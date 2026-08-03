@@ -1,7 +1,7 @@
 -- =============================================================================
 -- File:            sql/03_dimensions/01_dim_dealership.sql
 -- Project:         Automotive Retail Performance Intelligence (ARPI)
--- Purpose:         Create warehouse.dim_dealership, the SCD Type 2 store dimension for Granite State Auto Group.
+-- Purpose:         Create warehouse.dim_dealership, the SCD Type 2 store dimension for Granite Auto Group.
 -- Execution order: 9 of 25 — after warehouse.dim_date, before sql/03_dimensions/11_dim_dealership_merge.sql.
 -- Idempotency:     Fully idempotent. CREATE TABLE IF NOT EXISTS plus CREATE UNIQUE INDEX IF NOT EXISTS and COMMENTs.
 -- Ownership:       Created by the bootstrap superuser, reassigned to arpi_admin by sql/07_security/01_grants.sql. Written by arpi_loader through the merge script.
@@ -90,7 +90,7 @@ COMMENT ON TABLE warehouse.dim_dealership IS
     'Grain: one row per dealership store version (SCD Type 2). A store has exactly one row with '
     'is_current = true, guaranteed by the partial unique index uix_dim_dealership_current_dealership_id; '
     'superseded versions carry expiration_date = (successor effective_date - 1 day). In Phase 0 the '
-    'fictional Granite State Auto Group has three stores and therefore three current rows. Loaded '
+    'fictional Granite Auto Group has three stores and therefore three current rows. Loaded '
     'exclusively by sql/03_dimensions/11_dim_dealership_merge.sql. Contains no personal data.';
 
 COMMENT ON COLUMN warehouse.dim_dealership.dealership_key IS 'Primary key. Warehouse-assigned surrogate key, unique per store VERSION. Assigned by the merge as max(dealership_key) + row_number() ordered by (dealership_id, effective_date); never taken from the source and never reused.';

@@ -59,6 +59,16 @@ export interface TrustLineProps {
    */
   variant?: 'hero' | 'route'
   /**
+   * Which provenance the route's data has.
+   *
+   * `synthetic` is the default and covers every page built on the generated
+   * warehouse. `inventory` is for the dealership and inventory routes, which
+   * render sanitized public reference data instead - a different provenance with
+   * a different limitation, and one that would be misdescribed by the word
+   * "synthetic". See `INVENTORY_DATA_STATEMENT` in `lib/site.ts`.
+   */
+  scope?: 'synthetic' | 'inventory'
+  /**
    * Where the reader is sent for the detail. Governance is the default because
    * it is the page whose subject this is; the status page is the right target
    * from routes that are themselves about progress.
@@ -69,10 +79,12 @@ export interface TrustLineProps {
 
 export function TrustLine({
   variant = 'route',
+  scope = 'synthetic',
   href = ROUTES.governance.href,
   className,
 }: TrustLineProps) {
   const isHero = variant === 'hero'
+  const isInventory = scope === 'inventory'
 
   return (
     <p
@@ -93,9 +105,12 @@ export function TrustLine({
         )}
       />
       <span className="font-medium text-ink-secondary">
-        Deterministic synthetic data.
+        {isInventory
+          ? 'Sanitized reference data over a synthetic warehouse.'
+          : 'Deterministic synthetic data.'}
       </span>
-      <Clause>Granite State Auto Group is fictional.</Clause>
+      <Clause>Granite Auto Group is fictional.</Clause>
+      {isInventory ? <Clause>Listings, not sales results.</Clause> : null}
       <Clause tone={realEngineValidated ? undefined : 'pending'}>
         {validationClause()}
       </Clause>

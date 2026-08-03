@@ -20,7 +20,7 @@ export const SITE_AUTHOR = 'Michael Palmer'
  * `RAILWAY_PUBLIC_DOMAIN`, so a staging deployment needs no variable typed by a
  * person; locally it is `http://localhost:3000` and also needs none.
  *
- * Read at module scope rather than per request because all fourteen routes are
+ * Read at module scope rather than per request because all nineteen routes are
  * statically prerendered: there is no request in scope when the sitemap, the
  * canonical tags or the JSON-LD graph are produced, and deriving them from a
  * `Host` header instead would make them vary with an attacker-controlled header.
@@ -106,6 +106,56 @@ export const ROUTES = {
     inPrimaryNav: true,
     indexable: true,
     priority: 1,
+  },
+  dealerships: {
+    href: '/dealerships',
+    navLabel: 'Dealerships',
+    title: 'Granite Auto Group',
+    description:
+      'The three stores ARPI models: a Chevrolet franchise in Nashua, a Subaru franchise in Manchester, and an independent pre-owned center in Merrimack. Their inventory profiles, their different operating models, and how one governed reporting layer compares them without flattening them.',
+    inPrimaryNav: true,
+    indexable: true,
+    priority: 0.9,
+  },
+  graniteChevrolet: {
+    href: '/dealerships/granite-chevrolet',
+    navLabel: 'Granite Chevrolet',
+    title: 'Granite Chevrolet of Nashua',
+    description:
+      'The volume franchise rooftop of Granite Auto Group. New Chevrolet trucks and utilities arriving on manufacturer allocation, a small pre-owned presence beside them, and the inventory profile that sanitized reference data actually supports.',
+    inPrimaryNav: false,
+    indexable: true,
+    priority: 0.7,
+  },
+  graniteSubaru: {
+    href: '/dealerships/granite-subaru',
+    navLabel: 'Granite Subaru',
+    title: 'Granite Subaru of Manchester',
+    description:
+      'The all-weather franchise rooftop of Granite Auto Group. A narrow new-vehicle line, a materially larger pre-owned share than the Chevrolet store, and a partial reference sample that says so.',
+    inPrimaryNav: false,
+    indexable: true,
+    priority: 0.7,
+  },
+  granitePreOwned: {
+    href: '/dealerships/granite-pre-owned',
+    navLabel: 'Granite Pre-Owned',
+    title: 'Granite Pre-Owned Center of Merrimack',
+    description:
+      'The independent store of Granite Auto Group. No franchise, no allocation, every unit bought rather than shipped, and the widest multi-brand model-year and price spread in the group.',
+    inPrimaryNav: false,
+    indexable: true,
+    priority: 0.7,
+  },
+  inventory: {
+    href: '/inventory',
+    navLabel: 'Inventory',
+    title: 'Inventory explorer',
+    description:
+      'Every sanitized inventory listing Granite Auto Group carries, filterable by store, condition, make, model, model year, price and mileage. Derived at build time from the reference workbooks in the repository, never fetched or invented.',
+    inPrimaryNav: true,
+    indexable: true,
+    priority: 0.9,
   },
   architecture: {
     href: '/architecture',
@@ -265,6 +315,39 @@ export const PRIMARY_NAV: readonly NavItem[] = [
     matches: ['/'],
     purpose: 'What ARPI is, who built it, and what it proves',
   },
+  /*
+   * Dealerships and Inventory, added after the five-item redesign.
+   *
+   * The argument above for a five-item ceiling was about three engineering pages
+   * competing for one click, and it still holds - Architecture, Data Model and
+   * Governance are still one item. These two are a different kind of
+   * destination. ARPI models a business, and until these routes existed a
+   * visitor could read the entire site without learning what that business sells
+   * or how its three stores differ from each other. A subject the site is about
+   * belongs in the navigation, not behind a link inside a section.
+   *
+   * They are two items rather than one because they answer two questions a
+   * visitor asks separately: "who is this group" and "what is on the lot". The
+   * three store pages sit behind `<GroupNav>`, which is the same pattern
+   * `<PlatformNav>` uses, so the count stops at seven.
+   */
+  {
+    href: ROUTES.dealerships.href,
+    label: 'Dealerships',
+    matches: [
+      ROUTES.dealerships.href,
+      ROUTES.graniteChevrolet.href,
+      ROUTES.graniteSubaru.href,
+      ROUTES.granitePreOwned.href,
+    ],
+    purpose: 'The three stores, and how their inventory strategies differ',
+  },
+  {
+    href: ROUTES.inventory.href,
+    label: 'Inventory',
+    matches: [ROUTES.inventory.href],
+    purpose: 'Every sanitized listing, filterable and sortable',
+  },
   {
     href: ROUTES.architecture.href,
     label: 'Platform',
@@ -300,7 +383,7 @@ export const PRIMARY_NAV: readonly NavItem[] = [
  * The ceiling on primary navigation, stated as a constant so the test that
  * enforces it reads as a rule rather than as a magic number.
  */
-export const MAX_PRIMARY_NAV_ITEMS = 5
+export const MAX_PRIMARY_NAV_ITEMS = 7
 
 /**
  * The platform sub-navigation.
@@ -342,6 +425,47 @@ export const PLATFORM_NAV: readonly NavItem[] = [
   },
 ]
 
+/**
+ * The Granite Auto Group sub-navigation.
+ *
+ * Rendered by `/dealerships`, the three store pages and `/inventory`, which is
+ * what makes "Dealerships" a destination group rather than a link to one page.
+ * Ordered as a reader takes them: the group first, then each store, then the
+ * inventory those stores hold.
+ */
+export const GROUP_NAV: readonly NavItem[] = [
+  {
+    href: ROUTES.dealerships.href,
+    label: 'The group',
+    matches: [ROUTES.dealerships.href],
+    purpose: 'Three stores, three operating models, one reporting layer',
+  },
+  {
+    href: ROUTES.graniteChevrolet.href,
+    label: 'Granite Chevrolet',
+    matches: [ROUTES.graniteChevrolet.href],
+    purpose: 'The franchise volume store in Nashua',
+  },
+  {
+    href: ROUTES.graniteSubaru.href,
+    label: 'Granite Subaru',
+    matches: [ROUTES.graniteSubaru.href],
+    purpose: 'The all-weather franchise in Manchester',
+  },
+  {
+    href: ROUTES.granitePreOwned.href,
+    label: 'Granite Pre-Owned',
+    matches: [ROUTES.granitePreOwned.href],
+    purpose: 'The independent pre-owned center in Merrimack',
+  },
+  {
+    href: ROUTES.inventory.href,
+    label: 'Inventory explorer',
+    matches: [ROUTES.inventory.href],
+    purpose: 'Every listing, filterable and sortable',
+  },
+]
+
 /** Whether a navigation item is the current one for a pathname. */
 export function isNavItemCurrent(item: NavItem, pathname: string): boolean {
   return item.matches.includes(pathname)
@@ -363,8 +487,30 @@ export function routeByHref(href: string): RouteDefinition | undefined {
  * the disclosure cannot end up living only in the footer.
  */
 export const SYNTHETIC_DATA_STATEMENT =
-  'Every record in this project is synthetic. Granite State Auto Group and its three stores are fictional. No real dealership, customer, employee or lending data exists anywhere in the project.'
+  'Every warehouse record in this project is synthetic. Granite Auto Group and its three stores are fictional. No real dealership, customer, employee or lending data exists anywhere in the project.'
 
 /** The short form, for space-constrained placements. */
-export const SYNTHETIC_DATA_SHORT =
-  'Synthetic data. Granite State Auto Group is fictional.'
+export const SYNTHETIC_DATA_SHORT = 'Synthetic data. Granite Auto Group is fictional.'
+
+/**
+ * The inventory disclosure, and why it is a SECOND statement rather than a
+ * clause added to the first one.
+ *
+ * The warehouse data and the inventory data have different provenance, and
+ * collapsing them into one sentence would misdescribe both. The warehouse is
+ * machine-generated from a seed: no row of it was ever observed anywhere. The
+ * inventory reference files are not that. They are vehicle attributes captured
+ * from a public listing source, de-identified, stripped of every real dealership
+ * identity, and reassigned to a fictional store. Calling that "synthetic" would
+ * claim more sanitization than was performed; calling the warehouse "sanitized"
+ * would claim less.
+ *
+ * Every route that renders an inventory figure carries this line as well as the
+ * one above, and the content-integrity suite asserts it.
+ */
+export const INVENTORY_DATA_STATEMENT =
+  'The inventory shown on this site is sanitized public reference data, not a dealer management system export and not machine-generated. Real VINs, source URLs, listing keys, street addresses and real dealership identity were removed before the workbooks entered this repository; the vehicle attributes that remain are a de-identified snapshot of what a public listing source exposed. Every row describes a listing that was visible at capture time. None of them describes a sale, a delivery, a gross figure or a dealership result.'
+
+/** The short form of the inventory disclosure. */
+export const INVENTORY_DATA_SHORT =
+  'Sanitized public reference data. Listings, not sales results.'

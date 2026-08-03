@@ -141,7 +141,7 @@ def fake_repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
         "  store_descriptors:\n"
         "    GSA-001: Granite_Chevrolet\n"
         "    GSA-002: Granite_Subaru\n"
-        "    GSA-003: Granite_Used_Auto_Center\n"
+        "    GSA-003: Granite_Pre_Owned_Center\n"
         "canonical_artifacts:\n"
         "  - dealership_id: GSA-001\n"
         '    captured_at: "2026-08-02"\n'
@@ -218,7 +218,7 @@ def test_a_used_auto_workbook_belongs_under_gsa_003(fake_repo: Path) -> None:
     misfiled = (
         fake_repo
         / "data/reference/inventory/gsa-001/2026-08-02"
-        / "ARPI_Granite_Used_Auto_Center_Inventory_Sanitized_2026-08-02.xlsx"
+        / "ARPI_Granite_Pre_Owned_Center_Inventory_Sanitized_2026-08-02.xlsx"
     )
     _workbook(misfiled)
     findings = [v for v in check_reference_data.run() if v.rule == "artifact-misfiled"]
@@ -230,7 +230,7 @@ def test_a_used_auto_workbook_belongs_under_gsa_003(fake_repo: Path) -> None:
     _workbook(
         fake_repo
         / "data/reference/inventory/gsa-003/2026-08-02"
-        / "ARPI_Granite_Used_Auto_Center_Inventory_Sanitized_2026-08-02.xlsx"
+        / "ARPI_Granite_Pre_Owned_Center_Inventory_Sanitized_2026-08-02.xlsx"
     )
     assert "artifact-misfiled" not in _rules(fake_repo)
 
@@ -263,7 +263,7 @@ def test_the_three_store_descriptors_are_the_ones_the_paths_use() -> None:
     assert descriptors == {
         "GSA-001": "Granite_Chevrolet",
         "GSA-002": "Granite_Subaru",
-        "GSA-003": "Granite_Used_Auto_Center",
+        "GSA-003": "Granite_Pre_Owned_Center",
     }
 
 

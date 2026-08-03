@@ -75,7 +75,7 @@ Every artifact carries a `README` sheet with these fields. A missing or wrong
 
 | Field | Required value |
 |---|---|
-| Dealer group | `Granite State Auto Group` |
+| Dealer group | `Granite Auto Group` |
 | Store | The store name exactly as `arpi.generation.dealership.STORE_DEFINITIONS` records it |
 | Dealership ID | A registered identifier: `GSA-001`, `GSA-002` or `GSA-003` |
 | Market | The store's market region |
@@ -91,7 +91,7 @@ Every artifact carries a `README` sheet with these fields. A missing or wrong
 |---|---|
 | Original VINs | Replaced with deterministic, group-stable `ARPI`-prefixed synthetic VINs and `VEH-` vehicle identifiers. No reverse mapping is produced. |
 | Source URLs | Removed and replaced with a neutral feed label naming the lane, never the origin. |
-| External dealer identity | Removed. Rows are assigned to a fictional Granite State Auto Group store resolved from the ARPI registry. |
+| External dealer identity | Removed. Rows are assigned to a fictional Granite Auto Group store resolved from the ARPI registry. |
 | Street address | Removed. |
 | Record identity | Deterministic source record and batch identifiers, so an import is repeatable and a rerun is provably a no-op. |
 | Classification | Stamped on the README sheet and on every data row. |
@@ -125,7 +125,7 @@ the two rules are independent on purpose.
 |---|---|---|
 | GSA-001 — Granite Chevrolet of Nashua | `data/reference/inventory/gsa-001/<yyyy-mm-dd>/` | `ARPI_Granite_Chevrolet_Inventory_Sanitized_<yyyy-mm-dd>.xlsx` |
 | GSA-002 — Granite Subaru of Manchester | `data/reference/inventory/gsa-002/<yyyy-mm-dd>/` | `ARPI_Granite_Subaru_Inventory_Sanitized_<yyyy-mm-dd>.xlsx` |
-| GSA-003 — Granite Used Auto Center of Merrimack | `data/reference/inventory/gsa-003/<yyyy-mm-dd>/` | `ARPI_Granite_Used_Auto_Center_Inventory_Sanitized_<yyyy-mm-dd>.xlsx` |
+| GSA-003 — Granite Pre-Owned Center of Merrimack | `data/reference/inventory/gsa-003/<yyyy-mm-dd>/` | `ARPI_Granite_Pre_Owned_Center_Inventory_Sanitized_<yyyy-mm-dd>.xlsx` |
 
 **A workbook filed under another store's directory is a governance failure, not a filing
 preference.** It is refused by `scripts/check_reference_data.py` (rule `artifact-misfiled`)
@@ -174,16 +174,16 @@ at:
 data/reference/inventory/gsa-002/2026-08-02/ARPI_Granite_Subaru_Inventory_Sanitized_2026-08-02.xlsx
 ```
 
-and the canonical Granite Used Auto Center artifact is:
+and the canonical Granite Pre-Owned Center artifact is:
 
 ```
-ARPI_Granite_Used_Auto_Center_Inventory_Sanitized_2026-08-02.xlsx
+ARPI_Granite_Pre_Owned_Center_Inventory_Sanitized_2026-08-02.xlsx
 ```
 
 at:
 
 ```
-data/reference/inventory/gsa-003/2026-08-02/ARPI_Granite_Used_Auto_Center_Inventory_Sanitized_2026-08-02.xlsx
+data/reference/inventory/gsa-003/2026-08-02/ARPI_Granite_Pre_Owned_Center_Inventory_Sanitized_2026-08-02.xlsx
 ```
 
 All three were uploaded into the `gsa-001` directory and were **moved to their own
@@ -195,23 +195,52 @@ A filename change requires an **explicit migration**, not an informal rename: th
 declared in the contract, stamped onto every warehouse row as `source_file_name`, and
 enforced by `scripts/check_reference_data.py`.
 
-### 7.1 One declared, reviewed deviation
+### 7.1 The declared deviation, and why it is gone
 
 The committed Granite Chevrolet workbook was produced by hand **before** the naming
-decision was made. Its `README` sheet's *Recommended repository path* cell still suggests
-the lowercase hyphenated name that was under consideration at the time.
+decision was made. Its `README` sheet's *Recommended repository path* cell suggested the
+lowercase hyphenated name that was under consideration at the time. That was declared as
+`legacy_path_hint` in `config/reference/inventory_listing_contract.yaml`, keyed to the
+artifact's SHA-256, and it was not corrected in place because doing so with `openpyxl`
+would discard Excel parts that library cannot round-trip.
 
-The committed **file** has always carried the approved underscore name at the approved
-path, and every document, test, CI check and portfolio link uses that name. The cell is a
-stale hint inside a data value; it is neither a repository path nor documentation.
+**It has since been corrected, and the deviation is retired rather than re-keyed.**
+[ADR-0012](../../docs/architecture-decisions/ADR-0012-dealer-group-public-naming.md)
+renamed the dealer group and GSA-003, which required editing embedded strings in all three
+artifacts anyway. The edit was made by rewriting the ZIP container entry by entry and
+substituting only inside the XML parts, with the part count asserted unchanged — so the
+conditional-formatting parts survive, which was the specific objection to the `openpyxl`
+route. The stale hint was corrected in the same pass.
 
-It is declared as `legacy_path_hint` in `config/reference/inventory_listing_contract.yaml`
-and keyed to that artifact's SHA-256, so the exception covers those exact bytes and
-nothing else. **A new workbook carrying the same hint is refused** (DQ-LST-016), and the
-sanitizer writes the approved path, so the next capture — Chevrolet or Subaru — carries the
-correct hint with no exception at all. It was not corrected in place because rewriting the
-artifact's bytes to fix one string would discard Excel parts `openpyxl` cannot round-trip
-and would change the digest of committed evidence.
+DQ-LST-016 therefore now holds for every committed artifact **with no exception at all**,
+and `legacy_path_hint` no longer appears in the contract. The digests were re-declared, and
+re-declaring a digest is exactly the reviewed event the pin exists to force.
+
+## 7.2 The website reads these workbooks too
+
+`data/reference/` has a second consumer besides the Python lane. The portfolio site's
+`portfolio/scripts/generate-inventory-data.ts` opens the same artifacts at **build time**
+and writes three frontend files under `portfolio/src/generated/`, which is what the
+`/dealerships`, store and `/inventory` routes render.
+
+It is a reader, never a writer: it does not sanitize, does not import, and does not touch
+the warehouse. What it adds is a second enforcement point on the same rules. It drops every
+identifying column rather than carrying it forward, and it refuses to write a frontend file
+whose output still contains a URL, a domain, an email address, a telephone number or a
+VIN-shaped token — so a workbook committed without sanitization fails the website build as
+well as `check_reference_data.py`.
+
+Two consequences worth stating:
+
+- **The site derives dealership identity from `data/sample/dim_dealership.csv`**, not from
+  the workbook's `Store Name` column, which it drops. The website and the warehouse
+  dimension therefore cannot disagree about who a store is.
+- **A statistic the artifacts cannot support is not rendered.** GSA-003 exposes a price for
+  31 of its 318 rows, so its price tiles state that denominator, and a store with no priced
+  row at all would show no price tile rather than a dash.
+
+Full contract in
+[`portfolio/docs/CONTENT_MODEL.md`](../../portfolio/docs/CONTENT_MODEL.md) section 11.
 
 ## 8. Review, retention, supersession and removal
 
@@ -284,7 +313,7 @@ The following are true of every artifact here and are enforced rather than merel
 |---|---|---|---|---|
 | GSA-001 — Granite Chevrolet of Nashua | 2026-08-02 | [`ARPI_Granite_Chevrolet_Inventory_Sanitized_2026-08-02.xlsx`](inventory/gsa-001/2026-08-02/ARPI_Granite_Chevrolet_Inventory_Sanitized_2026-08-02.xlsx) | 199 | Complete |
 | GSA-002 — Granite Subaru of Manchester | 2026-08-02 | [`ARPI_Granite_Subaru_Inventory_Sanitized_2026-08-02.xlsx`](inventory/gsa-002/2026-08-02/ARPI_Granite_Subaru_Inventory_Sanitized_2026-08-02.xlsx) | 24 | **Partial** |
-| GSA-003 — Granite Used Auto Center of Merrimack | 2026-08-02 | [`ARPI_Granite_Used_Auto_Center_Inventory_Sanitized_2026-08-02.xlsx`](inventory/gsa-003/2026-08-02/ARPI_Granite_Used_Auto_Center_Inventory_Sanitized_2026-08-02.xlsx) | 318 | Complete |
+| GSA-003 — Granite Pre-Owned Center of Merrimack | 2026-08-02 | [`ARPI_Granite_Pre_Owned_Center_Inventory_Sanitized_2026-08-02.xlsx`](inventory/gsa-003/2026-08-02/ARPI_Granite_Pre_Owned_Center_Inventory_Sanitized_2026-08-02.xlsx) | 318 | Complete |
 
 What each artifact contains, as **counts of the file** and not as findings about any
 dealership:

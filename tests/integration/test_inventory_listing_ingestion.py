@@ -1066,7 +1066,7 @@ GSA002 = (
 GSA003 = (
     REPO_ROOT
     / "data/reference/inventory/gsa-003/2026-08-02"
-    / "ARPI_Granite_Used_Auto_Center_Inventory_Sanitized_2026-08-02.xlsx"
+    / "ARPI_Granite_Pre_Owned_Center_Inventory_Sanitized_2026-08-02.xlsx"
 )
 
 #: The capture date all three committed artifacts share. Every assertion below filters on
@@ -1132,7 +1132,7 @@ def test_an_unpriced_listing_reaches_the_warehouse_as_null_and_not_as_zero(
     """The single most consequential assertion about this capture.
 
     A zero is a number and a number gets averaged. If 287 unpriced listings arrived as
-    zero, Granite Used Auto Center's average advertised price would be a fraction of the
+    zero, Granite Pre-Owned Center's average advertised price would be a fraction of the
     truth and every one of those rows would look like a free car.
     """
     three_store_cursor.execute(

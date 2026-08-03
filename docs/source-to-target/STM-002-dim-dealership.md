@@ -21,7 +21,7 @@
 
 ## 1. Purpose
 
-`warehouse.dim_dealership` is the conformed store dimension for the fictional **Granite State Auto Group**.
+`warehouse.dim_dealership` is the conformed store dimension for the fictional **Granite Auto Group**.
 Every fact in the model will be sliceable by store, and this dimension carries the attributes — store type,
 franchise brand, market region — that drive nearly all comparative analysis.
 
@@ -114,7 +114,7 @@ Fixed reference data held inside the generator. **The generator fails if the row
 |---:|---|---|---|---|---|---|---|---|---|
 | 1 | `GSA-001` | Granite Chevrolet of Nashua | Granite Chevrolet | Franchise New and Used | Chevrolet | Nashua | NH | Southern New Hampshire | 2009-04-06 |
 | 2 | `GSA-002` | Granite Subaru of Manchester | Granite Subaru | Franchise New and Used | Subaru | Manchester | NH | Southern New Hampshire | 2013-08-19 |
-| 3 | `GSA-003` | Granite Used Auto Center of Merrimack | Granite Used Auto | Independent Used | *(null)* | Merrimack | NH | Southern New Hampshire | 2017-03-13 |
+| 3 | `GSA-003` | Granite Pre-Owned Center of Merrimack | Granite Pre-Owned | Independent Used | *(null)* | Merrimack | NH | Southern New Hampshire | 2017-03-13 |
 
 All three have `is_active = true`, `effective_date = opened_date`, `expiration_date = 9999-12-31`,
 `is_current = true`, and `source_system = arpi_synthetic_generator`.

@@ -83,6 +83,6 @@ COMMENT ON COLUMN warehouse.dim_vehicle_model.drivetrain IS 'Driven axles.';
 COMMENT ON COLUMN warehouse.dim_vehicle_model.transmission IS 'Transmission type.';
 COMMENT ON COLUMN warehouse.dim_vehicle_model.doors IS 'Door count; 2..5.';
 COMMENT ON COLUMN warehouse.dim_vehicle_model.seating_capacity IS 'Factory seating capacity; 2..8.';
-COMMENT ON COLUMN warehouse.dim_vehicle_model.franchise_alignment IS 'Which Granite State Auto Group franchise sells this model line.';
+COMMENT ON COLUMN warehouse.dim_vehicle_model.franchise_alignment IS 'Which Granite Auto Group franchise sells this model line.';
 COMMENT ON COLUMN warehouse.dim_vehicle_model.is_current_model_line IS 'Whether the model line is still in production.';
 COMMENT ON COLUMN warehouse.dim_vehicle_model.source_system IS 'Originating system; constant arpi_synthetic_generator in Phase 1.';

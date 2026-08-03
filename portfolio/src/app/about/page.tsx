@@ -281,7 +281,7 @@ export default function AboutPage() {
                   On the fictional dealer group
                 </Heading>
                 <Text size="body" tone="muted" className="max-w-prose">
-                  Granite State Auto Group is invented. It exists to give the data model a
+                  Granite Auto Group is invented. It exists to give the data model a
                   coherent business context: three stores with different mixes, so that a
                   group-versus-store comparison has something to compare. It is not a real
                   business, and no figure in this project describes one.

@@ -20,6 +20,7 @@
  */
 import type { ReactNode } from 'react'
 
+import { GroupNav } from '@/components/shell/group-nav'
 import { PlatformNav } from '@/components/shell/platform-nav'
 import { Container, Section } from '@/components/ui/layout'
 import { Breadcrumbs } from '@/components/ui/states'
@@ -38,6 +39,18 @@ export interface PageHeaderProps {
   meta?: ReactNode
   /** Render the platform sub-navigation. Set by the three platform routes. */
   platformNav?: boolean
+  /**
+   * Render the Granite Auto Group sub-navigation. Set by `/dealerships`, the
+   * three store routes and `/inventory`. Mutually exclusive with `platformNav`
+   * in practice: a page belongs to one destination group.
+   */
+  groupNav?: boolean
+  /**
+   * Which provenance the route's data has, passed through to `<TrustLine>`.
+   * `inventory` on every route that renders a figure from the sanitized
+   * reference workbooks rather than from the synthetic warehouse.
+   */
+  trustScope?: 'synthetic' | 'inventory'
   /**
    * Where the trust line sends a reader for detail. Governance by default;
    * `/status` from routes that are themselves about progress.
@@ -58,6 +71,8 @@ export function PageHeader({
   supporting,
   meta,
   platformNav = false,
+  groupNav = false,
+  trustScope = 'synthetic',
   trustHref = ROUTES.governance.href,
   suppressTrustLine = false,
   className,
@@ -103,11 +118,12 @@ export function PageHeader({
           </div>
 
           {platformNav ? <PlatformNav className="pt-1" /> : null}
+          {groupNav ? <GroupNav className="pt-1" /> : null}
 
           {meta ? <div className="flex flex-wrap items-center gap-3">{meta}</div> : null}
 
           {!suppressTrustLine ? (
-            <TrustLine href={trustHref} className="max-w-3xl" />
+            <TrustLine href={trustHref} scope={trustScope} className="max-w-3xl" />
           ) : null}
         </div>
       </Container>

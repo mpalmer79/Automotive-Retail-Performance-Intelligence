@@ -37,7 +37,23 @@ committed one. It runs in `prebuild`, so a stale manifest cannot be built, and i
 as its own CI step, so a change to an evidence file that would make the site say
 something different fails the pipeline rather than shipping.
 
-The full contract is in [docs/CONTENT_MODEL.md](docs/CONTENT_MODEL.md).
+**The same rule covers the dealership pages, through a second generator.**
+[`scripts/generate-inventory-data.ts`](scripts/generate-inventory-data.ts) reads
+the sanitized inventory workbooks under `data/reference/inventory/` and the store
+dimension in `data/sample/dim_dealership.csv`, and writes three artefacts:
+`src/generated/dealerships.json`, `inventory-summary.json` and
+`inventory-records.json`. No workbook is parsed in the browser and no inventory
+figure on the site is authored. `npm run inventory:check` runs in `prebuild` and
+again inside the Railway image, so a stale artefact cannot deploy.
+
+That generator has one obligation the manifest generator does not: the workbooks
+are DE-IDENTIFIED PUBLIC REFERENCE DATA rather than machine-generated rows, so it
+refuses to write anything whose output still contains a VIN, a source URL, a
+domain, an email address or a telephone number. The two provenances carry two
+different disclosures on the site for the same reason.
+
+The full contract is in [docs/CONTENT_MODEL.md](docs/CONTENT_MODEL.md); the
+inventory half of it is section 11.
 
 ---
 
@@ -86,11 +102,13 @@ Both are what CI runs, in the same order, so a green local run predicts a green 
 
 | Command                           | What it does                                                                |
 | --------------------------------- | --------------------------------------------------------------------------- |
-| `npm run dev`                     | Regenerate the manifest, then start the dev server                          |
-| `npm run build`                   | Production build; `prebuild` runs `manifest:check` first                    |
+| `npm run dev`                     | Regenerate the manifest and the inventory data, then start the dev server   |
+| `npm run build`                   | Production build; `prebuild` runs `manifest:check` and `inventory:check`    |
 | `npm run start`                   | Serve the production build                                                  |
 | `npm run manifest`                | Regenerate `src/generated/project-manifest.json` from evidence              |
 | `npm run manifest:check`          | Fail if the committed manifest is stale or self-contradictory               |
+| `npm run inventory`               | Regenerate the three inventory artefacts from the sanitized workbooks       |
+| `npm run inventory:check`         | Fail if the committed inventory artefacts are stale or unsanitized          |
 | `npm run lint`                    | ESLint (flat config, `eslint-config-next`)                                  |
 | `npm run typecheck`               | `tsc --noEmit`                                                              |
 | `npm run format` / `format:check` | Prettier                                                                    |
@@ -110,20 +128,31 @@ they are not on by default is in
 
 ## 5. Routes
 
-Nine indexable routes, plus one that is not.
+Fourteen indexable routes, plus one that is not.
 
-| Route                   | What it is for                                                                                                                                  |
-| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/`                     | Six chapters: the hero, the dealership problem, the Operating View, the platform story, the proof, the close                                    |
-| `/architecture`         | Interactive explorer of the pipeline, from seeded generation to the semantic model                                                              |
-| `/data-model`           | The 8 conformed dimensions and 5 facts, with declared grains, keys, history policy and privacy class                                            |
-| `/kpis`                 | All 29 governed KPIs and 5 deferred ones, searchable and filterable                                                                             |
-| `/inventory-operations` | The sanitized public listing lane: what the workbook is, what it may never be read as, and the warehouse objects and Excel report built from it |
-| `/governance`           | Synthetic-only data, no PII by construction, lineage, reconciliation, scope gates                                                               |
-| `/status`               | Every lifecycle phase, delivery increment, gate and engine path, from the manifest                                                              |
-| `/about`                | The author, and why this project needs someone who has worked a dealership floor                                                                |
-| `/case-study`           | The gated case study. Currently renders a locked state and its blocking reasons                                                                 |
-| `/ui-lab`               | Internal design-system reference. `noindex`, disallowed in `robots.txt`, not in navigation                                                      |
+| Route                            | What it is for                                                                                                                                  |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/`                              | Seven chapters: the hero, Granite Auto Group, the dealership problem, the Operating View, the platform story, the proof, the close              |
+| `/dealerships`                   | The group: three stores, three operating models, the store comparison and the franchise-versus-independent argument                             |
+| `/dealerships/granite-chevrolet` | GSA-001, the franchise volume store in Nashua                                                                                                   |
+| `/dealerships/granite-subaru`    | GSA-002, the all-weather franchise in Manchester                                                                                                |
+| `/dealerships/granite-pre-owned` | GSA-003, the independent pre-owned center in Merrimack                                                                                          |
+| `/inventory`                     | Every sanitized listing, filterable by store, condition, make, model, year, price and mileage                                                   |
+| `/architecture`                  | Interactive explorer of the pipeline, from seeded generation to the semantic model                                                              |
+| `/data-model`                    | The 8 conformed dimensions and 5 facts, with declared grains, keys, history policy and privacy class                                            |
+| `/inventory-operations`          | The sanitized public listing lane: what the workbook is, what it may never be read as, and the warehouse objects and Excel report built from it |
+| `/kpis`                          | All 29 governed KPIs and 5 deferred ones, searchable and filterable                                                                             |
+| `/governance`                    | Synthetic-only data, no PII by construction, lineage, reconciliation, scope gates                                                               |
+| `/status`                        | Every lifecycle phase, delivery increment, gate and engine path, from the manifest                                                              |
+| `/about`                         | The author, and why this project needs someone who has worked a dealership floor                                                                |
+| `/case-study`                    | The gated case study. Currently renders a locked state and its blocking reasons                                                                 |
+| `/ui-lab`                        | Internal design-system reference. `noindex`, disallowed in `robots.txt`, not in navigation                                                      |
+
+**`/inventory-operations` and `/inventory` are different pages, on purpose.** The
+first is about the LANE: how a sanitized workbook becomes warehouse rows, what
+the sanitizer removed, and what the resulting data may never be read as. The
+second is about the VEHICLES: a filterable table of what the three stores had
+listed. One is the pipeline, the other is the lot, and each links to the other.
 
 Route metadata (titles, descriptions, indexability, sitemap priority) is declared once
 in [`src/lib/site.ts`](src/lib/site.ts) and consumed by the navigation, the sitemap, the
@@ -131,21 +160,26 @@ breadcrumbs and the accessibility sweep, so none of the four can drift from the 
 
 ### Navigation is a separate decision from the route map
 
-The header carries **five** content destinations plus GitHub, not nine:
+The header carries **seven** content destinations plus GitHub, not fourteen:
 
-`Overview` · `Platform` · `KPIs` · `Status` · `About`
+`Overview` · `Dealerships` · `Inventory` · `Platform` · `KPIs` · `Status` · `About`
 
+Two of the seven are destination GROUPS, and that is what keeps the count down.
 `Platform` points at `/architecture` and is the current item on `/data-model`,
-`/inventory-operations` and `/governance` too; all four render a shared `PlatformNav`
-that links them with `aria-current`, so each stays directly addressable, indexable and
-one click away. The locked case study is in the footer, on `/status` and in the home page's
+`/inventory-operations` and `/governance` too. `Dealerships` points at
+`/dealerships` and is the current item on all three store pages. Each group
+renders a shared sub-navigation - `PlatformNav` and `GroupNav` - that links its
+members with `aria-current`, so every route stays directly addressable, indexable
+and one click away.
+
+The locked case study is in the footer, on `/status` and in the home page's
 closing section rather than in the header, where it had been the only bordered
 control and therefore the site's loudest destination.
 
-`PRIMARY_NAV` and `MAX_PRIMARY_NAV_ITEMS` in `src/lib/site.ts` hold this, and
-`tests/unit/site.test.ts` fails if a sixth item arrives without a decision. The
-rejected alternatives (a header disclosure menu, a `/platform` overview route)
-are recorded above `PRIMARY_NAV` and in
+`PRIMARY_NAV`, `GROUP_NAV`, `PLATFORM_NAV` and `MAX_PRIMARY_NAV_ITEMS` in
+`src/lib/site.ts` hold this, and `tests/unit/site.test.ts` fails if an eighth item
+arrives without a decision. The rejected alternatives (a header disclosure menu, a
+`/platform` overview route) are recorded above `PRIMARY_NAV` and in
 [`docs/EXPERIENCE_REDESIGN_V2.md`](docs/EXPERIENCE_REDESIGN_V2.md) section 3.1.
 
 ---
@@ -156,6 +190,8 @@ are recorded above `PRIMARY_NAV` and in
 portfolio/
 ├─ scripts/
 │  ├─ generate-project-manifest.ts   the evidence backbone; see §1
+│  ├─ generate-inventory-data.ts     the inventory backbone; see §1
+│  ├─ lib/xlsx.ts                    a minimal, read-only XLSX reader; no dependency
 │  ├─ report-bundle.ts               per-route transfer, measured in a real browser
 │  ├─ capture-review-screenshots.ts  the visual-review matrix
 │  ├─ render-raster-assets.ts        SVG → PNG for the favicon and social preview
@@ -164,14 +200,16 @@ portfolio/
 │  ├─ app/                    one directory per route, plus sitemap, robots, manifest
 │  ├─ components/
 │  │  ├─ brand/               monogram and wordmark
-│  │  ├─ explorers/           architecture, data model, KPI catalogue
+│  │  ├─ dealerships/         store card, metric grid, group snapshot, inventory table
+│  │  ├─ explorers/           architecture, data model, KPI catalogue, inventory
 │  │  ├─ motion/              CSS reveal, motion boundary, animated count, pipeline hero
 │  │  ├─ sections/            the composed page sections
-│  │  ├─ shell/               header and footer
-│  │  └─ ui/                  the primitives: layout, typography, button, badge, card, data
+│  │  ├─ shell/               header, footer, platform and group sub-navigation
+│  │  ├─ ui/                  the primitives: layout, typography, button, badge, card, data
+│  │  └─ visuals/             the governed-signal mark and the inventory bar charts
 │  ├─ content/                hand-authored structured content (KPIs, entities, nodes)
 │  ├─ fonts/                  three committed woff2 latin subsets
-│  ├─ generated/              project-manifest.json — never edited by hand
+│  ├─ generated/              the four generated artefacts — never edited by hand
 │  ├─ lib/                    tokens-adjacent code: site, manifest, motion, metadata, hooks
 │  ├─ styles/                 tokens.css → theme.css → globals.css
 │  └─ types/                  the manifest and content type contracts
@@ -205,7 +243,7 @@ Stated here because they are easier to keep than to restore.
 
 **Data honesty**
 
-- Every dataset in ARPI is synthetic. Granite State Auto Group and its three stores are
+- Every dataset in ARPI is synthetic. Granite Auto Group and its three stores are
   fictional. The disclosure appears on every primary route, and a Playwright test
   asserts it — so it cannot quietly become a footer-only statement.
 - No route displays a customer-level detail, real or fictional.

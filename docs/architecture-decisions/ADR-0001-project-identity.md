@@ -67,7 +67,7 @@ All identifiers derive mechanically from this decision, with no variants permitt
 | Power BI working title | `Automotive Retail Performance Intelligence` |
 | Power BI file naming | `powerbi/ARPI_Performance_Intelligence.pbix` (NOT YET CREATED — reference only) |
 | Excel file naming | `excel/ARPI_Operating_Report.xlsx` (NOT YET CREATED — reference only) |
-| Fictional dealer group | `Granite State Auto Group` (NEVER rename) |
+| Fictional dealer group | `Granite State Auto Group` (NEVER rename) — **superseded, see ADR-0012** |
 | Author | Michael Palmer |
 | License | MIT, Copyright (c) 2026 Michael Palmer |
 | Version | `0.1.0` |
@@ -81,7 +81,9 @@ All identifiers derive mechanically from this decision, with no variants permitt
   `ARPI_LOGGING__LEVEL` and `ARPI_DATABASE__PASSWORD`.
 - Artifact filenames use the uppercase short identifier, for example `ARPI_Operating_Report.xlsx`.
 - The fictional dealer group `Granite State Auto Group` is part of the data model, not the project
-  identity, and is never renamed alongside it.
+  identity, and is never renamed alongside it. **The group's public name was later changed to
+  `Granite Auto Group` by [ADR-0012](ADR-0012-dealer-group-public-naming.md). The rule this line
+  states still holds: the group's name is not the project's identity and did not change with it.**
 
 ## Alternatives considered
 
