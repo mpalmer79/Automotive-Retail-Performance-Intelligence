@@ -1615,10 +1615,13 @@ Automotive-Retail-Performance-Intelligence/
 ├── config/
 │   ├── development.yaml                   [now]
 │   ├── test.yaml                          [now]
-│   └── portfolio.yaml                     [now]
+│   ├── portfolio.yaml                     [now]
+│   └── reference/                         [now]      The sanitized inventory listing contract
 ├── data/
 │   ├── raw/                               [now]      Generated output, gitignored
 │   ├── sample/                            [now]      Small committed synthetic extract
+│   ├── reference/                         [now]      Sanitized public listing snapshots.
+│   │                                                 NOT synthetic — see §37 and ADR-0011
 │   └── external/                          [empty]    Approved public reference data
 ├── docs/
 │   ├── index.md                           [now]      Documentation hub
@@ -2406,3 +2409,79 @@ Its credibility will come from:
 - Clear management recommendations
 
 The project must resist the temptation to prove every technical skill at once. The strongest portfolio outcome is a focused analytical system that demonstrates professional judgment, not the largest possible application.
+
+---
+
+## 37. ARPI Inventory Operations and the sanitized public reference lane
+
+[ADR-0011](docs/architecture-decisions/ADR-0011-sanitized-public-inventory-reference-data.md)
+adds the only exception to ARPI's synthetic-only data policy, and this section records
+what it changed in the architecture.
+
+### 37.1 Three controlled data lanes
+
+| # | Lane | Directory | Synthetic? |
+|---|---|---|---|
+| 1 | Fully synthetic operational data | `data/sample/`, `data/raw/` | Yes, entirely |
+| 2 | Approved general public reference data (products) | `config/reference/` | No, and it describes no business |
+| 3 | **Sanitized public dealership listing snapshots** | `data/reference/` | **No.** Identifiers are synthetic; listing attributes are de-identified public data |
+
+Lane 3 is narrow, directory-scoped and machine-checked. `scripts/check_reference_data.py`
+runs in the `repository-checks` CI job and fails the build if a workbook reaches
+`data/sample`, if an artifact carries a URL or a real VIN, if a workbook is filed under
+another store's directory, or if a document calls the lane fully synthetic.
+
+### 37.2 Why it does not reuse the owned-inventory objects
+
+`warehouse.fact_vehicle_inventory_snapshot` and `warehouse.dim_vehicle` describe inventory
+the dealership **owns**: acquisition cost, reconditioning cost, inventory investment, days
+in stock, disposition. A public listing supports none of those. Loading listings into them
+would mean either relaxing NOT NULL columns — so an inventory-investment report silently
+includes vehicles nobody bought — or defaulting them, which is worse, because a default is
+a number and a number gets summed.
+
+So the lane has its own objects:
+
+```
+data/reference/*.xlsx
+  -> raw.inventory_listing_snapshot_load          (untyped text + file digest)
+  -> staging.stg_inventory_listing_snapshot       (typed, classified, deduplicated)
+  -> warehouse.dim_observed_vehicle               (Type 1, observation only)
+  -> warehouse.fact_vehicle_listing_snapshot      (one listing per store per capture)
+  -> reporting.vw_vehicle_listing_*               (six governed views)
+  -> artifacts/inventory/*.xlsx                   (the Excel operating report)
+```
+
+The cost is that a listing cannot join to a sale. That cost is the truth: ARPI cannot
+connect them, and a model that appeared to would be lying.
+
+### 37.3 Where it deliberately differs from the pipeline
+
+| Property | MVP pipeline | Listing lane | Why |
+|---|---|---|---|
+| Trigger | Every pipeline run | A human commits a workbook | The source arrives on no schedule |
+| Registry | `arpi.ingestion.spec` | `arpi.inventory.spec` | A registered entity with no CSV would fail every ordinary run |
+| Dimension script | `*_merge.sql`, globbed and always run | `*_load.sql`, run by name | A green pipeline run must not read as evidence the lane loaded |
+| Fact conflict policy | Guarded `DO UPDATE` | `DO NOTHING` | A capture cannot be recomputed, so it is never restated |
+| Reconciliations | `audit.vw_recon_all`, recorded per run | `audit.vw_recon_inventory_listing`, recorded per import | Folding them in would record eight `0 = 0` verdicts on every run |
+| Reporting surface | `MVP_REPORTING_VIEWS` (28) | `INVENTORY_LISTING_VIEWS` (6) | The 28 are what the SQL baseline measured and the semantic model binds to |
+
+### 37.4 One thing an import may write outside its own lane
+
+`warehouse.dim_date` is conformed, so every date any fact references must be in it. A
+capture date is a property of when somebody looked at a website and has no reason to fall
+inside the reporting window a synthetic dataset was generated for — the committed capture
+is `2026-08-02` and no profile's window contains it.
+
+The import therefore **extends the calendar** for the dates its own fact needs, using
+ARPI's own generator, which is a pure function of the date and the holiday rules. Nothing
+is overwritten (`ON CONFLICT DO NOTHING`), no measure is written, and the number of dates
+added is reported on the import summary.
+
+### 37.5 Semantic-model boundary
+
+The current Power BI semantic model is **unchanged** by this increment and stays that way
+until real-engine validation completes. Adding tables before that validation would change
+the validation target. The listing lane's semantic-model extension is recorded as a
+backlog item; the warehouse, the reporting views, the Excel report and the portfolio route
+are complete without it.

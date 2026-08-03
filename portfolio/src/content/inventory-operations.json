@@ -1,0 +1,266 @@
+{
+  "$comment": [
+    "AUTHORED CONTENT FOR /inventory-operations, cross-checked by",
+    "tests/unit/inventory-operations.test.ts against the repository's own evidence:",
+    "config/reference/inventory_listing_contract.yaml for the canonical file name, path",
+    "and row count, and src/arpi/constants.py for the reporting views and KPI identifiers.",
+    "",
+    "EVERY NUMBER HERE IS A COUNT OF WHAT THE COMMITTED ARTIFACT CONTAINS. None of them is",
+    "a finding, a performance figure or a claim about any dealership. The page states that",
+    "in words as well, and tests/e2e/content-integrity.spec.ts asserts it."
+  ],
+  "artifact": {
+    "fileName": "ARPI_Granite_Chevrolet_Inventory_Sanitized_2026-08-02.xlsx",
+    "path": "data/reference/inventory/gsa-001/2026-08-02/ARPI_Granite_Chevrolet_Inventory_Sanitized_2026-08-02.xlsx",
+    "dealershipId": "GSA-001",
+    "storeName": "Granite Chevrolet of Nashua",
+    "capturedAt": "2026-08-02",
+    "classification": "Sanitized public reference data",
+    "rows": 199,
+    "newUnits": 195,
+    "usedUnits": 4,
+    "listedPriceUnits": 197,
+    "callForPriceUnits": 2,
+    "priceNotExposedUnits": 0,
+    "noOdometerUnits": 0,
+    "coverage": "complete"
+  },
+  "artifacts": [
+    {
+      "fileName": "ARPI_Granite_Chevrolet_Inventory_Sanitized_2026-08-02.xlsx",
+      "path": "data/reference/inventory/gsa-001/2026-08-02/ARPI_Granite_Chevrolet_Inventory_Sanitized_2026-08-02.xlsx",
+      "dealershipId": "GSA-001",
+      "storeName": "Granite Chevrolet of Nashua",
+      "capturedAt": "2026-08-02",
+      "classification": "Sanitized public reference data",
+      "rows": 199,
+      "newUnits": 195,
+      "usedUnits": 4,
+      "listedPriceUnits": 197,
+      "callForPriceUnits": 2,
+      "priceNotExposedUnits": 0,
+      "noOdometerUnits": 0,
+      "coverage": "complete"
+    },
+    {
+      "fileName": "ARPI_Granite_Subaru_Inventory_Sanitized_2026-08-02.xlsx",
+      "path": "data/reference/inventory/gsa-002/2026-08-02/ARPI_Granite_Subaru_Inventory_Sanitized_2026-08-02.xlsx",
+      "dealershipId": "GSA-002",
+      "storeName": "Granite Subaru of Manchester",
+      "capturedAt": "2026-08-02",
+      "classification": "Sanitized public reference data",
+      "rows": 24,
+      "newUnits": 8,
+      "usedUnits": 16,
+      "listedPriceUnits": 24,
+      "callForPriceUnits": 0,
+      "priceNotExposedUnits": 0,
+      "noOdometerUnits": 0,
+      "coverage": "partial",
+      "coverageNote": "24 visible indexed listing records from a larger reported inventory. The source did not expose every listing through a reliably extractable path, so this row count is a count of what was visible to the capture and not of the store's inventory."
+    },
+    {
+      "fileName": "ARPI_Granite_Used_Auto_Center_Inventory_Sanitized_2026-08-02.xlsx",
+      "path": "data/reference/inventory/gsa-003/2026-08-02/ARPI_Granite_Used_Auto_Center_Inventory_Sanitized_2026-08-02.xlsx",
+      "dealershipId": "GSA-003",
+      "storeName": "Granite Used Auto Center of Merrimack",
+      "capturedAt": "2026-08-02",
+      "classification": "Sanitized public reference data",
+      "rows": 318,
+      "newUnits": 0,
+      "usedUnits": 318,
+      "listedPriceUnits": 31,
+      "callForPriceUnits": 0,
+      "priceNotExposedUnits": 287,
+      "noOdometerUnits": 287,
+      "coverage": "complete"
+    }
+  ],
+  "notice": "This feature uses a de-identified public inventory reference snapshot. Dealer and vehicle identities are synthetic. Listing attributes are not confidential DMS data and do not establish sales or inventory ownership.",
+  "problem": {
+    "heading": "What a dealership actually asks about its own website",
+    "questions": [
+      "What is visible to a shopper right now, and how much of it shows a price?",
+      "What appeared since the last look, and what came off?",
+      "Which models and trims are we advertising, and at what spread?",
+      "How long has each unit been sitting on the site?"
+    ],
+    "why": "None of those needs the DMS. All of them need a repeatable capture, a contract that refuses a malformed one, and a warehouse that will not let one capture be counted twice."
+  },
+  "sanitization": {
+    "removed": [
+      {
+        "field": "Original VIN",
+        "replacement": "A deterministic ARPI-prefixed synthetic VIN and vehicle identifier",
+        "detail": "SHA-256 over a group namespace. The same physical vehicle gets the same identity at every store and on every capture, so a cross-store appearance is detectable. No reverse mapping is produced and none could be built."
+      },
+      {
+        "field": "Row-level source URL",
+        "replacement": "A neutral feed label",
+        "detail": "The label names the lane, never the origin. No URL appears on any sheet of a committed artifact, and CI fails if one does."
+      },
+      {
+        "field": "External dealer identity",
+        "replacement": "A fictional Granite State Auto Group store",
+        "detail": "Resolved from the ARPI dealership registry, never inferred from the file name. The source dealership is not named anywhere."
+      },
+      {
+        "field": "Street address",
+        "replacement": "Nothing",
+        "detail": "Geography stops at store name and market region, which is the standing rule for every ARPI store."
+      }
+    ]
+  },
+  "canProve": [
+    "A vehicle listing was visible at this store in a public source on this capture date.",
+    "What the listing advertised: condition, model year, make, model, trim, odometer and price.",
+    "Whether the listing showed a price at all.",
+    "Which listings appeared, disappeared or changed price between two captures.",
+    "How long a vehicle has been visible online across the captures taken."
+  ],
+  "cannotProve": [
+    "That the vehicle was physically on the ground.",
+    "That the dealership owned it.",
+    "What it cost, what it sold for, or what it grossed.",
+    "That a listing which disappeared was sold. It can equally be a trade, a wholesale, a feed suppression or an error.",
+    "Days in stock. That runs from acquisition and lives in the DMS; this lane never sees it.",
+    "Current business performance of any kind."
+  ],
+  "pipeline": [
+    {
+      "step": "Private workbook",
+      "detail": "Stays outside the repository, always. It is read once and never committed.",
+      "artifact": "outside Git"
+    },
+    {
+      "step": "Sanitizer",
+      "detail": "Validates the private input before transforming anything, replaces identifiers, removes URLs, resolves the store from the registry and writes a governed four-sheet workbook atomically.",
+      "artifact": "scripts/sanitize_inventory_workbook.py"
+    },
+    {
+      "step": "Governed artifact",
+      "detail": "Four sheets, an explicit classification on every row, and the approved underscore-based file name. Declared in the contract with its digest.",
+      "artifact": "data/reference/inventory/"
+    },
+    {
+      "step": "Validator",
+      "detail": "Fourteen workbook-answerable checks refuse a real VIN, a URL, a wrong classification, a duplicated grain, a broken pricing contract, an unknown store or a file name that disagrees with its own contents.",
+      "artifact": "arpi validate-inventory"
+    },
+    {
+      "step": "Raw and staging",
+      "detail": "Landed as untyped text with the file digest, then typed, domain-filtered, deduplicated and classified. Rejected rows keep a redacted payload and a REJ-* code.",
+      "artifact": "raw.inventory_listing_snapshot_load"
+    },
+    {
+      "step": "Warehouse",
+      "detail": "A separate observed-vehicle dimension and a listing snapshot fact, because this source proves observation rather than ownership. The grain is a UNIQUE constraint.",
+      "artifact": "warehouse.fact_vehicle_listing_snapshot"
+    },
+    {
+      "step": "Reporting and Excel",
+      "detail": "Six governed views, and a dealership-ready operating report built from the views rather than from the input workbook.",
+      "artifact": "arpi export-inventory-report"
+    }
+  ],
+  "grain": {
+    "statement": "One observed vehicle listing per dealership per captured_at value.",
+    "naturalKey": "dealership_id + captured_at + synthetic_vehicle_id",
+    "enforcement": "uq_fact_vehicle_listing_snapshot_grain, a UNIQUE constraint on the surrogate-key form of the same triple.",
+    "immutability": "The load inserts and never updates. A rerun of the same workbook writes nothing; a different workbook for a capture already loaded is refused rather than silently restating history."
+  },
+  "views": [
+    {
+      "name": "vw_vehicle_listing_current",
+      "purpose": "The latest observed listing for each store and vehicle, with the age of that observation on every row so a stale capture cannot read as a current one."
+    },
+    {
+      "name": "vw_vehicle_listing_summary",
+      "purpose": "Units, listed-price and call-for-price counts, advertised total and snapshot freshness by store and capture date."
+    },
+    {
+      "name": "vw_vehicle_listing_model_mix",
+      "purpose": "Condition, make, model and trim with unit counts and price statistics, and both mix denominators published as columns."
+    },
+    {
+      "name": "vw_vehicle_listing_price_completeness",
+      "purpose": "Where the listing shows no price, by store, condition, make and model."
+    },
+    {
+      "name": "vw_vehicle_listing_observation_span",
+      "purpose": "First observed, last observed, snapshots seen and days observed online, which is not days in stock."
+    },
+    {
+      "name": "vw_vehicle_listing_change",
+      "purpose": "New Listing, Still Listed, Removed From Listing, Price Increase, Price Reduction, Price Unchanged. There is no Sold label and there must never be one."
+    }
+  ],
+  "report": {
+    "command": "arpi export-inventory-report --dealership-id GSA-001 --captured-at 2026-08-02",
+    "output": "artifacts/inventory/ARPI_Granite_Chevrolet_Inventory_Report_2026-08-02.xlsx",
+    "sheets": [
+      "README: provenance, and a question-and-answer table of what the report can and cannot establish",
+      "Summary: formula-driven metrics beside the warehouse's own figures, with condition and top-model charts",
+      "Inventory: the listing detail, as a filterable Excel table with frozen headers",
+      "Model Summary: formula-driven price statistics per condition, make and model",
+      "Snapshot Changes: present only when a prior capture exists to compare against"
+    ]
+  },
+  "multiStore": {
+    "heading": "The second and third stores arrived, and nothing needed rewriting",
+    "points": [
+      "The dealership is resolved from the workbook's own metadata against the ARPI registry, never inferred from a file name.",
+      "GSA-002 and GSA-003 loaded with no Chevrolet-specific change, and their Subaru, Jeep and thirty other makes were accepted because nothing in the lane knows what a franchise brand is.",
+      "A franchise store's used inventory of other makes is accepted, which is what the committed Chevrolet artifact already contains.",
+      "What did have to change was the contract, not the code: one store publishes no mileage and no price for most of its listings, so the odometer column became optional and 'Price not exposed' was added as a status distinct from call-for-price.",
+      "That is the intended shape of a contract change. It is one reviewed edit to a versioned YAML file that five consumers read, rather than a new branch in five modules.",
+      "Vehicle identity is group-stable, so the same physical vehicle observed at two stores resolves to one identity and the appearance is detectable.",
+      "Detectable is not explained: ARPI holds no dealer-trade event and does not infer one."
+    ]
+  },
+  "status": [
+    {
+      "label": "Sanitizer, validator, importer and exporter",
+      "state": "complete",
+      "detail": "Implemented, tested and exercised against the committed artifact."
+    },
+    {
+      "label": "Warehouse objects and reporting views",
+      "state": "complete",
+      "detail": "Built, constrained and covered by the PostgreSQL integration suite."
+    },
+    {
+      "label": "Governed listing KPIs",
+      "state": "complete",
+      "detail": "Twenty-two definitions in the KPI catalogue, each with its grain, formula, null rule, additivity and interpretation caution."
+    },
+    {
+      "label": "Second store",
+      "state": "pending-external",
+      "detail": "The code accepts a Granite Subaru workbook today. No Subaru artifact is generated in advance, and no placeholder exists."
+    },
+    {
+      "label": "Semantic model extension",
+      "state": "pending-external",
+      "detail": "Deliberately not started. The current model is awaiting real-engine validation, and adding tables before that validation would change what is being validated."
+    },
+    {
+      "label": "Repeat-capture analysis",
+      "state": "pending-external",
+      "detail": "The change and observation-span views are built and queryable, and a single capture cannot exercise them. A second capture of the same store is what turns them on."
+    }
+  ],
+  "governance": {
+    "adr": "docs/architecture-decisions/ADR-0011-sanitized-public-inventory-reference-data.md",
+    "policy": "data/reference/README.md",
+    "contract": "config/reference/inventory_listing_contract.yaml",
+    "points": [
+      "Public listing data is used only where it was publicly accessible. No authentication bypass, no scraping circumvention, no restricted data.",
+      "No customer or employee data, and no confidential DMS, CRM, F&I, service, lender or transaction data, in any form.",
+      "Sanitized reference data lives outside data/sample, which stays synthetic-only. CI fails if a workbook appears there.",
+      "The artifact carries an explicit classification and cannot be presented as fully synthetic.",
+      "A removal request is honoured by deleting the artifact and its loaded rows. There is no review period.",
+      "The canonical file name uses underscores, is declared with its digest, and cannot be renamed without an explicit migration."
+    ]
+  }
+}

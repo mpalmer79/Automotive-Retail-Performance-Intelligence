@@ -848,3 +848,53 @@ Pytest markers: `integration` (requires PostgreSQL), `data_quality` (runs genera
 - Adding a **new generated entity** must not change any existing entity's digest. If it does, the
   per-entity seeding contract has been violated.
 - Adding a **new prohibited-field exception** is not permitted. The register in section 7.2 only grows.
+
+---
+
+## 20. Data ARPI does not generate: the sanitized public reference lane
+
+Every other section of this document describes something a generator produces. This one
+describes the exception, so that a reader looking for "how is the listing data generated"
+finds the answer *it is not* rather than an omission.
+
+[ADR-0011](docs/architecture-decisions/ADR-0011-sanitized-public-inventory-reference-data.md)
+admits one lane of data ARPI did not author: de-identified public dealership listing
+snapshots, under `data/reference/`. It is **sanitized public reference data**, not
+synthetic, and it is not produced by any generator in `arpi.generation`.
+
+### 20.1 Why it is not generated instead
+
+Generating a synthetic listing snapshot was considered seriously. It would have kept the
+policy intact and produced a workbook that looks identical. It was rejected because a
+generator that produces its own input proves nothing about handling somebody else's:
+every defect this lane exists to demonstrate — an unparseable price, a missing trim, a
+duplicated identifier, a condition value nobody anticipated — is a defect the generator
+would have to be *told* to produce.
+
+### 20.2 What is deterministic about it anyway
+
+The transformation is. The same private workbook sanitized twice produces the same
+identifiers, the same record and batch identifiers, and the same logical workbook:
+
+```
+digest = SHA256(UTF8("ARPI|GSA|" + upper(trim(original VIN)))).hex().upper()
+synthetic_vehicle_id = "VEH-" + digest[:12]
+synthetic_vin        = "ARPI" + digest[:13]
+```
+
+The namespace carries the **group**, not the store, so one physical vehicle observed at
+two stores resolves to one identity — which makes a cross-store appearance *detectable*.
+Detectable is not explained: ARPI holds no dealer-trade event and must never infer one.
+
+Byte identity is deliberately *not* claimed. The XLSX container records a creation
+timestamp, so two runs differ in bytes and agree in every value. The tests compare the
+logical workbook contract, not a digest of the file.
+
+### 20.3 The one thing an import generates
+
+`warehouse.dim_date` is conformed, so every date any fact references must be in it — and a
+capture date has no reason to fall inside the reporting window a synthetic dataset was
+generated for. An import therefore generates the calendar rows its own fact needs, using
+`arpi.generation.calendar.build_calendar_rows`, which is a pure function of the date and
+the holiday rules. A date added this way is identical to the same date produced by a
+pipeline run whose window did cover it.

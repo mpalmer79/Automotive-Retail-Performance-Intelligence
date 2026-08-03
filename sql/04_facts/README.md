@@ -32,6 +32,46 @@ so a stray `.sql` file dropped in here is never run.
 
 ---
 
+## The sixth fact in this directory, which is not one of the five
+
+`05_fact_vehicle_listing_snapshot.sql` and `15_fact_vehicle_listing_snapshot_load.sql`
+implement `warehouse.fact_vehicle_listing_snapshot`, the sanitized public dealership
+listing lane of
+[ADR-0011](../../docs/architecture-decisions/ADR-0011-sanitized-public-inventory-reference-data.md).
+It lives here because it is a fact and this is where facts live. **It is not an MVP fact**,
+and every sentence above about "the five" excludes it deliberately.
+
+| | The five MVP facts | `fact_vehicle_listing_snapshot` |
+|---|---|---|
+| Source | Deterministically generated synthetic data | A sanitized public listing snapshot workbook |
+| Cadence | Every pipeline run | Only when an operator imports a workbook |
+| Registry | `arpi.ingestion.spec` | `arpi.inventory.spec` |
+| Conflict policy | `ON CONFLICT ... DO UPDATE`, guarded | **`ON CONFLICT DO NOTHING`, with no UPDATE path** |
+| Read by the semantic model | Yes | No |
+| Reconciled by | `audit.vw_recon_ingestion`, on every run | `audit.vw_recon_inventory_listing`, per import |
+
+Two of those rows are the reason the lane is separate rather than absorbed.
+
+**The conflict policy.** Every other fact here is regenerable: its source is a seeded
+generator, so a corrected row can be recomputed and an `UPDATE` restores the truth. A
+capture is not regenerable. It records what somebody observed at a moment that has passed,
+and there is no way to go back and observe it again. So a re-import of a loaded batch is
+**refused** rather than merged, and a correction goes through the supersession procedure in
+[`data/reference/README.md`](../../data/reference/README.md) section 8.
+
+**The registry.** It is registered in `arpi.inventory.spec` and not `arpi.ingestion.spec`
+because `discover_fact_sql` requires every registered entity to have a generated CSV. A
+listing entity registered there would fail every ordinary pipeline run looking for a
+workbook nobody supplied — the check working correctly, on a claim that should never have
+been made.
+
+`arpi.inventory.spec.INVENTORY_LANE_SQL_FILES` is the single declaration of which files
+belong to the lane. The capability register, the portfolio manifest generator and the
+content-integrity suite all read it, which is what keeps "five MVP facts" meaning five
+while a sixth fact table sits in this directory.
+
+---
+
 ## Reconciliation is what makes the loads trustworthy
 
 Their ingestion specs carry no warehouse target — the specs describe the source entity,

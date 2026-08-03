@@ -26,6 +26,25 @@
 These are a committed, row-capped extract. The full, uncapped output is written to
 `data/raw/<profile>/`, which is gitignored.
 
+### This is not the only committed data directory, and the other one is not synthetic
+
+[`data/reference/`](../reference/README.md) holds **sanitized public dealership listing
+snapshots** ([ADR-0011](../../docs/architecture-decisions/ADR-0011-sanitized-public-inventory-reference-data.md)).
+Everything the warning above says applies to **this** directory and not to that one.
+
+| | `data/sample/` | `data/reference/` |
+|---|---|---|
+| Origin | A deterministic generator | A real public listing page, sanitized |
+| Is it synthetic? | **Yes, entirely** | **No.** The attributes are real; only the identity is synthetic |
+| Is the dealership fictional? | Yes | The store record is ARPI's fictional one; the listings were really published |
+| What a row proves | Nothing about the world | That a listing was **visible** at a moment in time — not that the vehicle was on the ground, that anyone owned it, what it cost, or what it sold for |
+| Regenerable | Yes, from the seed | **No.** A capture records a moment that has passed |
+
+The two are never mixed, never loaded by the same command, and never counted together.
+`scripts/check_reference_data.py` fails the build if a `.csv` or `.xlsx` appears in this
+directory that the synthetic manifest does not account for, and equally if any document
+describes the reference lane as synthetic.
+
 ## How it was produced
 
 | Setting | Value |

@@ -15,9 +15,12 @@ binary images, no `.drawio` files, and no exported PNGs.
 | 02 | [Phase 0 data flow](02-phase-0-data-flow.md) | What actually happens when you run the CLI — including audit capture and exit codes |
 | 03 | [Initial dimensional model](03-initial-dimensional-model.md) | What tables exist, with what columns, and what facts they are designed to support |
 | 04 | [Repository component map](04-repository-component-map.md) | Which directory owns what, and where does my change belong? |
+| 05 | [Sanitized public inventory listing lane](05-inventory-listing-lane.md) | How does a public dealership listing become a governed warehouse row and an Excel report — and what must it never be allowed to claim? |
 
 **Suggested order.** Read 01 for orientation, then 02 to see the implemented path in detail, then 03 for
-the data model. Read 04 when you are about to change something.
+the data model. Read 04 when you are about to change something. Read 05 only when you are working on the
+second data lane; it is deliberately separate from 02, because the two lanes share a `sql/` tree and
+nothing else.
 
 ---
 

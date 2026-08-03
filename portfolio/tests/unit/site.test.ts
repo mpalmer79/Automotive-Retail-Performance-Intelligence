@@ -81,11 +81,12 @@ describe('the route map is well-formed', () => {
   })
 })
 
-describe('the eight primary routes exist and the lab is not one of them', () => {
+describe('the nine primary routes exist and the lab is not one of them', () => {
   const PRIMARY = [
     '/',
     '/architecture',
     '/data-model',
+    '/inventory-operations',
     '/kpis',
     '/governance',
     '/status',
@@ -93,13 +94,13 @@ describe('the eight primary routes exist and the lab is not one of them', () => 
     '/case-study',
   ]
 
-  it('declares exactly the eight primary routes plus the lab', () => {
+  it('declares exactly the nine primary routes plus the lab', () => {
     expect(ALL_ROUTES.map((route) => route.href).sort()).toEqual(
       [...PRIMARY, '/ui-lab'].sort()
     )
   })
 
-  it("keeps seven routes reachable from the site's own navigation", () => {
+  it("keeps eight routes reachable from the site's own navigation", () => {
     // The case study is deliberately absent from this list: it is locked, and it
     // is reached from the footer, the status page and the home page's closing
     // section rather than from a navigation surface.
@@ -249,10 +250,11 @@ describe('the primary navigation stays inside its budget', () => {
 })
 
 describe('the platform sub-navigation is what makes the grouping honest', () => {
-  it('links exactly the three pages Platform covers', () => {
+  it('links exactly the four pages Platform covers', () => {
     expect(PLATFORM_NAV.map((item) => item.href)).toEqual([
       ROUTES.architecture.href,
       ROUTES.dataModel.href,
+      ROUTES.inventoryOperations.href,
       ROUTES.governance.href,
     ])
   })

@@ -337,12 +337,52 @@ const dashboardPageCount =
 // 4. SQL and warehouse counts
 // ---------------------------------------------------------------------------
 
+// The sanitized public listing lane (ADR-0011) lives in the same directories as the
+// MVP warehouse and is deliberately NOT part of it. Its files are read from the one
+// place that declares them -- `arpi.inventory.spec.INVENTORY_LANE_SQL_FILES` -- and
+// subtracted here, so that "five MVP facts", "eight conformed dimensions" and
+// "twenty-eight reporting views" keep meaning what the SQL baseline and the semantic
+// model were actually measured against. The lane is then counted on its own, below,
+// so it is reported rather than hidden.
+//
+// Reading the declaration rather than restating it is the point: a second hand-written
+// list here is exactly what would drift away from the first.
+const inventoryLaneSqlFiles = readInventoryLaneSqlFiles()
+
+function readInventoryLaneSqlFiles(): Set<string> {
+  const source = readText('src/arpi/inventory/spec.py')
+  const block = /INVENTORY_LANE_SQL_FILES[^=]*=\s*\(([\s\S]*?)\)/.exec(source)
+  if (!block) {
+    fail(
+      'src/arpi/inventory/spec.py no longer declares INVENTORY_LANE_SQL_FILES. The ' +
+        'manifest cannot tell the MVP warehouse and the sanitized listing lane apart ' +
+        'without it.'
+    )
+    return new Set()
+  }
+  const names = [...block[1]!.matchAll(/"([^"]+\.sql)"/g)].map((m) => m[1]!)
+  if (names.length === 0) {
+    fail('INVENTORY_LANE_SQL_FILES is declared but empty.')
+  }
+  return new Set(names)
+}
+
+/** Whether a file under `sql/<dir>/` belongs to the sanitized listing lane. */
+function inLane(dir: string, name: string): boolean {
+  return inventoryLaneSqlFiles.has(`${dir}/${name}`)
+}
+
 const dimensionDdl = listFiles('sql/03_dimensions', '.sql').filter(
-  (f) => !f.includes('_merge')
+  (f) => !f.includes('_merge') && !inLane('03_dimensions', f)
 )
-const factDdl = listFiles('sql/04_facts', '.sql').filter((f) => !f.includes('_load'))
+const factDdl = listFiles('sql/04_facts', '.sql').filter(
+  (f) => !f.includes('_load') && !inLane('04_facts', f)
+)
 const reportingViewFiles = listFiles('sql/05_reporting', '.sql').filter(
-  (f) => !f.includes('reporting_scope')
+  (f) => !f.includes('reporting_scope') && !inLane('05_reporting', f)
+)
+const listingReportingViewFiles = listFiles('sql/05_reporting', '.sql').filter((f) =>
+  inLane('05_reporting', f)
 )
 const orderedSqlScripts =
   countFilesRecursive('sql/00_database', '.sql') +
@@ -367,6 +407,11 @@ requireTrue(
 requireTrue(
   factDdl.length === 5,
   `Expected five MVP fact DDL scripts under sql/04_facts/, found ${factDdl.length}.`
+)
+requireTrue(
+  listingReportingViewFiles.length === 6,
+  `Expected six Inventory Operations reporting views under sql/05_reporting/, found ` +
+    `${listingReportingViewFiles.length}.`
 )
 requireTrue(
   !baseline.credentials_recorded,

@@ -110,19 +110,20 @@ they are not on by default is in
 
 ## 5. Routes
 
-Eight indexable routes, plus one that is not.
+Nine indexable routes, plus one that is not.
 
-| Route           | What it is for                                                                                               |
-| --------------- | ------------------------------------------------------------------------------------------------------------ |
-| `/`             | Six chapters: the hero, the dealership problem, the Operating View, the platform story, the proof, the close |
-| `/architecture` | Interactive explorer of the pipeline, from seeded generation to the semantic model                           |
-| `/data-model`   | The 8 conformed dimensions and 5 facts, with declared grains, keys, history policy and privacy class         |
-| `/kpis`         | All 29 governed KPIs and 5 deferred ones, searchable and filterable                                          |
-| `/governance`   | Synthetic-only data, no PII by construction, lineage, reconciliation, scope gates                            |
-| `/status`       | Every lifecycle phase, delivery increment, gate and engine path, from the manifest                           |
-| `/about`        | The author, and why this project needs someone who has worked a dealership floor                             |
-| `/case-study`   | The gated case study. Currently renders a locked state and its blocking reasons                              |
-| `/ui-lab`       | Internal design-system reference. `noindex`, disallowed in `robots.txt`, not in navigation                   |
+| Route                   | What it is for                                                                                                                                  |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/`                     | Six chapters: the hero, the dealership problem, the Operating View, the platform story, the proof, the close                                    |
+| `/architecture`         | Interactive explorer of the pipeline, from seeded generation to the semantic model                                                              |
+| `/data-model`           | The 8 conformed dimensions and 5 facts, with declared grains, keys, history policy and privacy class                                            |
+| `/kpis`                 | All 29 governed KPIs and 5 deferred ones, searchable and filterable                                                                             |
+| `/inventory-operations` | The sanitized public listing lane: what the workbook is, what it may never be read as, and the warehouse objects and Excel report built from it |
+| `/governance`           | Synthetic-only data, no PII by construction, lineage, reconciliation, scope gates                                                               |
+| `/status`               | Every lifecycle phase, delivery increment, gate and engine path, from the manifest                                                              |
+| `/about`                | The author, and why this project needs someone who has worked a dealership floor                                                                |
+| `/case-study`           | The gated case study. Currently renders a locked state and its blocking reasons                                                                 |
+| `/ui-lab`               | Internal design-system reference. `noindex`, disallowed in `robots.txt`, not in navigation                                                      |
 
 Route metadata (titles, descriptions, indexability, sitemap priority) is declared once
 in [`src/lib/site.ts`](src/lib/site.ts) and consumed by the navigation, the sitemap, the
@@ -130,14 +131,14 @@ breadcrumbs and the accessibility sweep, so none of the four can drift from the 
 
 ### Navigation is a separate decision from the route map
 
-The header carries **five** content destinations plus GitHub, not eight:
+The header carries **five** content destinations plus GitHub, not nine:
 
 `Overview` · `Platform` · `KPIs` · `Status` · `About`
 
-`Platform` points at `/architecture` and is the current item on `/data-model` and
-`/governance` too; all three render a shared `PlatformNav` that links them with
-`aria-current`, so both routes stay directly addressable, indexable and one click
-away. The locked case study is in the footer, on `/status` and in the home page's
+`Platform` points at `/architecture` and is the current item on `/data-model`,
+`/inventory-operations` and `/governance` too; all four render a shared `PlatformNav`
+that links them with `aria-current`, so each stays directly addressable, indexable and
+one click away. The locked case study is in the footer, on `/status` and in the home page's
 closing section rather than in the header, where it had been the only bordered
 control and therefore the site's loudest destination.
 

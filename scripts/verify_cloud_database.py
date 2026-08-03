@@ -72,8 +72,17 @@ from typing import Any
 
 try:
     import psycopg
+
+    PSYCOPG_AVAILABLE = True
 except ImportError:  # pragma: no cover - psycopg is an optional extra, not a hard dependency
     psycopg = None  # type: ignore[assignment]
+    PSYCOPG_AVAILABLE = False
+
+# The availability flag rather than `psycopg is None`. In an environment where psycopg IS
+# installed -- which is every environment that type-checks this file -- mypy narrows the
+# name to the module and reports the None branch as unreachable, which is true of the
+# type-checking environment and false of the one this script is written for. A plain bool
+# cannot be narrowed, so the branch stays reachable to mypy and stays correct at runtime.
 
 #: Minimum server version. `sql/` targets PostgreSQL 16; a managed provider that
 #: only offers 15 is a different deployment and must not be reported as this one.
@@ -99,9 +108,27 @@ TABLE_PRIVILEGES: tuple[str, ...] = (
     "REFERENCES",
 )
 
-#: Exactly this many views in `reporting`. More means something was added out of
-#: band; fewer means the ordered sequence did not finish.
-EXPECTED_REPORTING_VIEW_COUNT: int = 28
+#: Exactly this many views in `reporting`, counted as TWO lanes that share the schema.
+#:
+#: The check's value is that it is exact in both directions: fewer means the ordered
+#: sequence did not finish, more means an object was created out of band. Widening it to
+#: "at least 28" to accommodate a second lane would have thrown away the half that
+#: catches an object nobody declared.
+#:
+#: The two numbers are held apart rather than summed into one literal because they mean
+#: different things. Twenty-eight is what the SQL baseline and the Power BI semantic model
+#: were measured against; six is the sanitized public listing lane (ADR-0011), which the
+#: semantic model does not read. A reader who saw only 34 could not tell which had moved.
+#:
+#: They are duplicated from `arpi.constants` because this script imports only the standard
+#: library -- it runs against a database from a bare interpreter. `tests/unit/
+#: test_cloud_database_expectations.py` fails if these numbers and the constants disagree,
+#: so the duplication cannot drift.
+EXPECTED_MVP_REPORTING_VIEW_COUNT: int = 28
+EXPECTED_LISTING_REPORTING_VIEW_COUNT: int = 6
+EXPECTED_REPORTING_VIEW_COUNT: int = (
+    EXPECTED_MVP_REPORTING_VIEW_COUNT + EXPECTED_LISTING_REPORTING_VIEW_COUNT
+)
 
 #: The eight conformed dimensions. Each must exist and hold at least one row.
 EXPECTED_DIMENSION_TABLES: tuple[str, ...] = (
@@ -149,6 +176,12 @@ EXPECTED_REPORTING_ROW_COUNTS: dict[str, int] = {
     "vw_inventory_turn": 30,
     "vw_days_supply": 920,
     "vw_marketing_performance": 537,
+    # The six vw_vehicle_listing_* views are DELIBERATELY absent. They are the sanitized
+    # public listing lane (ADR-0011), which loads on a workbook cadence rather than on a
+    # pipeline run, so a correct cloud database holds those views with no rows until an
+    # operator imports a capture. An expected count here would fail a faithful deployment
+    # for not having been handed a workbook. The views' existence is still checked, by
+    # reporting-view-count.
 }
 
 #: Reporting views grained on the pipeline RUN rather than on the warehouse, and
@@ -321,9 +354,11 @@ def check_reporting_view_count(cursor: Any) -> CheckOutcome:
                 Finding(
                     "reporting",
                     "reporting-view-count",
-                    f"expected exactly {EXPECTED_REPORTING_VIEW_COUNT} views, found {observed}. "
-                    "Fewer means the ordered sequence did not finish; more means an object was "
-                    "created outside sql/.",
+                    f"expected exactly {EXPECTED_REPORTING_VIEW_COUNT} views "
+                    f"({EXPECTED_MVP_REPORTING_VIEW_COUNT} MVP + "
+                    f"{EXPECTED_LISTING_REPORTING_VIEW_COUNT} sanitized listing lane), "
+                    f"found {observed}. Fewer means the ordered sequence did not finish; "
+                    "more means an object was created outside sql/.",
                 )
             ],
             f"{observed} views",
@@ -669,7 +704,9 @@ CHECKS: tuple[Check, ...] = (
     Check("schemas", "all five ARPI schemas exist", check_schemas),
     Check(
         "reporting-view-count",
-        f"exactly {EXPECTED_REPORTING_VIEW_COUNT} views in reporting",
+        f"exactly {EXPECTED_REPORTING_VIEW_COUNT} views in reporting "
+        f"({EXPECTED_MVP_REPORTING_VIEW_COUNT} MVP + "
+        f"{EXPECTED_LISTING_REPORTING_VIEW_COUNT} listing lane)",
         check_reporting_view_count,
     ),
     Check(
@@ -796,7 +833,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(f"{check.name:<22} {check.description}")
         return 0
 
-    if psycopg is None:
+    if not PSYCOPG_AVAILABLE:
         print(
             "error: psycopg is required by this script and is not installed. "
             "Install the optional extra with: pip install -e '.[db]'",

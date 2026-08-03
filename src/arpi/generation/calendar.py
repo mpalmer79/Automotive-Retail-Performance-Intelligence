@@ -53,12 +53,33 @@ class CalendarDateGenerator(BaseGenerator):
         Returns:
             A frame with the 26 contract columns, in order, one row per date.
         """
-        start = config.reporting.start_date
-        end = config.reporting.end_date
-        holidays = _holiday_lookup(start.year, end.year)
-        records = [_build_row(day, holidays.get(day)) for day in iter_dates(start, end)]
-        frame = pd.DataFrame.from_records(records, columns=list(DIM_DATE_COLUMNS))
-        return frame.astype(DIM_DATE_DTYPES)
+        return build_calendar_rows(config.reporting.start_date, config.reporting.end_date)
+
+
+def build_calendar_rows(start: date, end: date) -> pd.DataFrame:
+    """Build the ``dim_date`` contract frame for any inclusive date range.
+
+    Factored out of :meth:`CalendarDateGenerator.build_frame` so that a caller which is
+    not a generator run can produce calendar rows for a range the reporting window does
+    not cover. The sanitized listing lane needs exactly that: a capture date is a property
+    of when somebody looked at a website, and it has no reason to fall inside the window
+    a synthetic operational dataset was generated for -- but ``dim_date`` is a CONFORMED
+    dimension, so every date any fact references has to be in it.
+
+    Deterministic and seed-independent: every column is a pure function of the date and of
+    the holiday rules, which is what makes it safe to call outside a generator run.
+
+    Args:
+        start: First date, inclusive.
+        end: Last date, inclusive.
+
+    Returns:
+        A frame with the 26 contract columns, in order, one row per date.
+    """
+    holidays = _holiday_lookup(start.year, end.year)
+    records = [_build_row(day, holidays.get(day)) for day in iter_dates(start, end)]
+    frame = pd.DataFrame.from_records(records, columns=list(DIM_DATE_COLUMNS))
+    return frame.astype(DIM_DATE_DTYPES)
 
 
 def generate_date_dataset(config: ArpiConfig) -> GeneratedDataset:

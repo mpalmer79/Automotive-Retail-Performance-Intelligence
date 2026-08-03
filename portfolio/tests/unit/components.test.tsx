@@ -38,13 +38,14 @@ import { clamp, cx, formatCount, formatDate, groupBy, slugify } from '@/lib/util
 /* -------------------------------------------------------------------------- */
 
 describe('the route map', () => {
-  it('holds the eight documented routes plus the internal UI lab', () => {
-    expect(ALL_ROUTES).toHaveLength(9)
+  it('holds the nine documented routes plus the internal UI lab', () => {
+    expect(ALL_ROUTES).toHaveLength(10)
     const hrefs = ALL_ROUTES.map((r) => r.href)
     expect(hrefs).toEqual([
       '/',
       '/architecture',
       '/data-model',
+      '/inventory-operations',
       '/kpis',
       '/governance',
       '/status',

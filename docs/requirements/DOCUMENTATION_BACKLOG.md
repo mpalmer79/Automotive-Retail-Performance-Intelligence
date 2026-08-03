@@ -67,6 +67,7 @@ being *credible* to a careful reader, and those are marked **High**.
 
 | `DOC-31` | **The website is deployed; the analytical platform is not, and one document said neither was.** The portfolio service now runs on Railway's `staging` environment at `https://arpi.up.railway.app`, while `README.md`, `LIMITATIONS.md` §10.3 and `docs/index.md` went on denying that any deployment of it existed. The same automation — `deployment/railway/`, `.railway/railway.ts`, `railway.json`, `portfolio/Dockerfile.railway`, `scripts/railway/` and `.github/workflows/railway-bootstrap.yml` — also describes a PostgreSQL service, a provisioning job, a drift verifier and a remote smoke suite. **None of those has been run.** | Two failures in opposite directions, which is why this item stayed open rather than closing. The first understated reality: a reviewer following the README could not find a live site that existed. The second is the dangerous one — a deployed website invites the reading that the *platform* is deployed, and it is not. The site is prerendered routes with no database connection; PostgreSQL remains declared, and the health check, the remote smoke suite, the Lighthouse figures, the row counts and the proven reporter boundary are all still **unrun**. | **Partly resolved 2026-08-01.** The website deployment is now recorded in [`deployment/evidence/portfolio_deployment.json`](../../deployment/evidence/portfolio_deployment.json), which holds the three deployments apart and marks every field this repository's automation cannot obtain as `UNVERIFIED` — live health, remote smoke and security headers among them, because neither CI nor the environments this project is built in may reach the host. `scripts/check_project_capabilities.py` now fails a deployment status asserted without that evidence, and fails a document that denies a deployment the evidence records. **Still open:** the analytical-platform half. Close it by recording the provisioning-job run, the verifier output and the restoration test — not by inferring any of them from the website being up. | **Medium** |
 | `DOC-32` | **`NEXT_PUBLIC_SITE_URL` is deprecated but still supported, and two variables now mean nearly the same thing.** [`portfolio/src/lib/site-url.ts`](../../portfolio/src/lib/site-url.ts) resolves the canonical origin from `ARPI_SITE_URL`, then `RAILWAY_PUBLIC_DOMAIN`, then `NEXT_PUBLIC_SITE_URL`. The third is retained only so an existing Vercel deployment keeps working, and it is ordered **below** the platform on purpose so a stale value cannot override where a deployment actually is. | Low, and in the safe direction — the ordering means the deprecated variable cannot win against the platform — but two variables that both mean "the site's origin" is a reader's trap, and the `NEXT_PUBLIC_` prefix on one of them publishes it into the client bundle for no reason. | Remove `NEXT_PUBLIC_SITE_URL` from the resolver, and the Vercel-era instructions with it, in the same change that either retires `portfolio/vercel.json` or confirms Vercel is no longer a target. Not before: removing it while a Vercel deployment could still exist would silently change that deployment's canonical URLs. Tracked from [`portfolio/docs/DEPLOYMENT.md`](../../portfolio/docs/DEPLOYMENT.md) section 3. | **Low** |
+| ~~`DOC-33`~~ | ~~**`sql/README.md`'s execution-order table had drifted behind the directory it documents.** The table states that it is "the authority for ordering", and it omitted `01_raw/13_raw_inventory_snapshot_load.sql`, `02_staging/14_stg_inventory_snapshot.sql` and every file under `09_migrations/`, while stating a total of 104 for a sequence that ran more than that.~~ | ~~A reader building a database by following the documented order would have produced one missing three scripts, and found out at the first query. Nothing failed, because `init_sequence_files` derives the real order from a sorted glob and the integration suite stayed green throughout.~~ | **Resolved 2026-08-02.** The table now names every file the sequence executes, with the fifteen sanitized-listing-lane scripts marked as such so a reader counting MVP objects cannot include them, and [`tests/unit/test_sql_readme_sequence.py`](../../tests/unit/test_sql_readme_sequence.py) compares the table against `tests/integration/conftest.py::init_sequence_files` in both directions, checks the stated total, and checks that each range row spans as many files as its ordinals claim. The correction alone would not have closed this: the drift had already happened twice unnoticed. | ~~Medium~~ **Resolved** |
 
 ---
 
@@ -75,9 +76,9 @@ being *credible* to a careful reader, and those are marked **High**.
 | Priority | Open | Resolved |
 |---|---:|---:|
 | High | 1 | 5 |
-| Medium | 14 | 2 |
+| Medium | 14 | 3 |
 | Low | 10 | 0 |
-| **Total** | **25** | **7** |
+| **Total** | **25** | **8** |
 
 **One open High item.** `DOC-04` — the customer dimension — is now *partially* resolved: `P1.1-06` and
 `P1.2-06` exist as first-class backlog items with all twelve prohibited fields named and privacy validation
@@ -97,8 +98,11 @@ stray `requirements.txt` — were **resolved during Phase 0** and are struck thr
 deleted, because the record of what was wrong is itself useful evidence. Resolution was verified by running
 `python scripts/check_naming.py`, which passes with `ARCHITECTURE.md` not on its allowlist.
 
-One Medium item, `DOC-09`, was also resolved during Phase 0: `docs/diagrams/` now holds five documents
-including a cardinality-annotated Mermaid ER model that separates Implemented from Planned entities.
+One Medium item, `DOC-09`, was also resolved during Phase 0: `docs/diagrams/` gained a README and four
+diagrams, including a cardinality-annotated Mermaid ER model that separates Implemented from Planned
+entities. A fifth diagram, `05-inventory-listing-lane.md`, was added on 2026-08-02 with the sanitized public
+listing lane; the resolution row above names the four that closed `DOC-09` and is left as the dated record
+of that closure.
 
 `DOC-31` and `DOC-32` were added on 2026-07-30 with the Railway deployment automation. `DOC-31` exists
 specifically so that the gap between "deployable" and "deployed" stays written down: the automation is
@@ -132,6 +136,17 @@ the register of. **Neither closes anything else.** Gate 2 remains **CLOSED** wit
 real-engine validation of the semantic model remains **pending on both accepted ADR-0008 paths**, no dashboard
 page or visual exists, the public case study remains gated behind a locked route, and no preview or production
 deployment of the website exists.
+
+**One item was added and closed on 2026-08-02**, during the ARPI Inventory Operations increment.
+`DOC-33` records that [`sql/README.md`](../../sql/README.md)'s execution-order table — which calls itself
+"the authority for ordering" — had silently drifted behind the directory it documents: two raw scripts, one
+staging script and the whole of `09_migrations/` were absent from it, and its stated total was wrong. It was
+closed by completing the table **and** by
+[`tests/unit/test_sql_readme_sequence.py`](../../tests/unit/test_sql_readme_sequence.py), which compares the
+table against `tests/integration/conftest.py::init_sequence_files` and fails when the two disagree. The
+correction alone would not have closed it: the same drift had already happened twice, silently, because
+nothing was watching. It is recorded rather than fixed quietly because the defect class — a document that
+declares itself authoritative and is checked by nothing — is the one this register exists for.
 
 **Items that remain open with an "in progress" note** — `DOC-12`, `DOC-13`, `DOC-21` and `DOC-24` — still
 state exactly what has been verified on disk and what has not. None is closed by assertion.
