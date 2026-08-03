@@ -147,18 +147,56 @@ test.describe('transitions and animations are suppressed, not merely shortened',
 test.describe('values that are content are never withheld', () => {
   test.use({ contextOptions: { reducedMotion: 'reduce' } })
 
-  test('every counting number shows its final value immediately', async ({ page }) => {
+  /**
+   * WHAT THIS ASSERTS NOW, AND WHY IT CHANGED.
+   *
+   * The old form scanned every `.numeric` element for a "0" and required none.
+   * Two problems with that, and the second one is why it had to be rewritten:
+   *
+   *   1. `.numeric` is the typographic class every figure on the site wears, not
+   *      a marker for a counter. The store comparison table legitimately shows 0
+   *      new vehicles for the independent store, and the rule failed on correct
+   *      output the moment that table arrived.
+   *   2. `<AnimatedCount>` is not rendered anywhere on the site any more - the
+   *      credibility strip that used it was removed in the six-chapter redesign.
+   *      So the check had quietly become vacuous: it was scanning figures that
+   *      never animate and could not have been withheld.
+   *
+   * The property that actually matters is provable without knowing which figures
+   * animate: the numbers a reduced-motion visitor reads are the SAME numbers
+   * everyone else reads. That is asserted directly, by rendering the page under
+   * both preferences and comparing. If a counter is ever reintroduced and holds
+   * its value back under reduced motion, the two lists diverge and this fails.
+   */
+  test('renders the same figures under reduced motion as without it', async ({
+    page,
+    browser,
+  }) => {
     await gotoRendered(page, '/')
-
-    // The counters are in the credibility strip near the top of the page, so they
-    // are read WITHOUT scrolling. Under reduced motion the value is content and the
-    // counting is not, so a zero here would be a reduced-motion bug.
-    const zeros = await page.evaluate(() =>
-      [...document.querySelectorAll('.numeric')]
-        .map((element) => element.textContent?.trim() ?? '')
-        .filter((text) => text === '0' || text === '')
+    const reduced = await page.evaluate(() =>
+      [...document.querySelectorAll('.numeric')].map(
+        (element) => element.textContent?.trim() ?? ''
+      )
     )
-    expect(zeros).toEqual([])
+    expect(reduced.length, 'no figures were found on the page at all').toBeGreaterThan(5)
+    expect(reduced, 'a figure rendered empty under reduced motion').not.toContain('')
+
+    const context = await browser.newContext({ reducedMotion: 'no-preference' })
+    try {
+      const full = await context.newPage()
+      await gotoRendered(full, '/')
+      // Settle first: a counter that is mid-animation would differ for a reason
+      // that is not a defect.
+      await settle(full)
+      const animated = await full.evaluate(() =>
+        [...document.querySelectorAll('.numeric')].map(
+          (element) => element.textContent?.trim() ?? ''
+        )
+      )
+      expect(reduced).toEqual(animated)
+    } finally {
+      await context.close()
+    }
   })
 
   test('the drawn pipeline is rendered complete', async ({ page }) => {

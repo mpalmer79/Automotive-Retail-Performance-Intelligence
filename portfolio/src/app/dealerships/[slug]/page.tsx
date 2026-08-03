@@ -17,6 +17,7 @@ import {
   accentPresentation,
   coverageSentences,
   dealershipBySlug,
+  dealershipGroup,
   dealerships,
   formatMiles,
   formatModelYear,
@@ -94,6 +95,9 @@ export default async function DealershipPage({
         supporting={dealership.customerSegment}
         groupNav
         trustScope="inventory"
+        // The group overview is the home page, so the parent crumb points there
+        // and names the group rather than repeating "Overview".
+        parentCrumb={{ href: ROUTES.home.href, label: dealershipGroup.name }}
         meta={
           <>
             <StatusBadge
@@ -401,7 +405,7 @@ export default async function DealershipPage({
             </Heading>
             <div className="flex flex-wrap gap-3">
               <LinkButton
-                href={ROUTES.dealerships.href}
+                href={ROUTES.home.href}
                 variant="primary"
                 iconBefore={<ArrowLeft strokeWidth={2} />}
                 className="max-w-full whitespace-normal text-left"

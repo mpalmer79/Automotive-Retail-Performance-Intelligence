@@ -4,7 +4,7 @@ import dealerships from '../../src/generated/dealerships.json'
 import records from '../../src/generated/inventory-records.json'
 import summary from '../../src/generated/inventory-summary.json'
 import { bodyText, gotoRendered, mainText, settle } from './helpers'
-import { GROUP_ROUTES, VIEWPORTS } from './routes'
+import { GROUP_NAV_ROUTES, GROUP_ROUTES, VIEWPORTS } from './routes'
 
 /**
  * The Granite Auto Group experience, in a browser.
@@ -22,7 +22,14 @@ import { GROUP_ROUTES, VIEWPORTS } from './routes'
 
 const STORES = dealerships.dealerships
 const DEALERSHIP_PATHS = STORES.map((store) => store.href)
-const ALL_INVENTORY_PATHS = ['/dealerships', ...DEALERSHIP_PATHS, '/inventory']
+/**
+ * Every route that renders sanitized inventory data.
+ *
+ * `/` leads the list because the group overview IS the home page now. The old
+ * `/dealerships` path is absent on purpose: it is a permanent redirect, and
+ * `navigation.spec.ts` asserts it as one rather than sweeping it as a page.
+ */
+const ALL_INVENTORY_PATHS = ['/', ...DEALERSHIP_PATHS, '/inventory']
 
 /** Digits only, so a comparison is not defeated by a thousands separator. */
 function digitsOf(value: number): string {
@@ -34,11 +41,36 @@ function digitsOf(value: number): string {
 /* -------------------------------------------------------------------------- */
 
 test.describe('the home page introduces Granite Auto Group', () => {
-  test('carries the section, by name', async ({ page }) => {
+  test('leads with the group, not with the author', async ({ page }) => {
     await gotoRendered(page, '/')
+    // The h1 is the product proposition. The author headline it replaced is now
+    // the h1 of `/about`, and `no-author-first-homepage` below asserts it is not
+    // also here.
+    await expect(page.getByRole('heading', { level: 1 })).toContainText(
+      'Three dealerships. Three operating models. One governed reporting layer.'
+    )
     await expect(
-      page.getByRole('heading', { name: 'Meet Granite Auto Group' })
+      page.getByRole('heading', { name: 'One group, three businesses' })
     ).toBeVisible()
+  })
+
+  test('names the group above the fold', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await gotoRendered(page, '/')
+    const aboveFold = await page.evaluate(() => {
+      const texts: string[] = []
+      for (const element of document.querySelectorAll('main p, main h1, main span')) {
+        const box = element.getBoundingClientRect()
+        if (box.top < window.innerHeight && box.bottom > 0) {
+          texts.push(element.textContent ?? '')
+        }
+      }
+      return texts.join(' ')
+    })
+    expect(aboveFold).toContain('Granite Auto Group')
+    for (const store of STORES) {
+      expect(aboveFold, `${store.id} is not named above the fold`).toContain(store.name)
+    }
   })
 
   test('names all three stores and links each one', async ({ page }) => {
@@ -101,31 +133,45 @@ test.describe('the home page introduces Granite Auto Group', () => {
 /* -------------------------------------------------------------------------- */
 
 test.describe('the group is reachable from the navigation', () => {
-  test('offers Dealerships and Inventory in the header', async ({ page }) => {
+  test('offers Overview and Inventory in the header, and no duplicate', async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: 1440, height: 900 })
     await gotoRendered(page, '/')
     const header = page.locator('header nav[aria-label="Primary"]')
-    await expect(header.getByRole('link', { name: 'Dealerships' })).toBeVisible()
+    await expect(header.getByRole('link', { name: 'Overview' })).toBeVisible()
     await expect(header.getByRole('link', { name: 'Inventory' })).toBeVisible()
+
+    // There is no "Dealerships" item: the group overview IS "Overview", and a
+    // second entry pointing at the same document would be two names for one URL.
+    await expect(header.getByRole('link', { name: 'Dealerships' })).toHaveCount(0)
+    const hrefs = await header
+      .locator('a')
+      .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('href') ?? ''))
+    expect(new Set(hrefs).size, 'two header links share an href').toBe(hrefs.length)
   })
 
-  test('marks Dealerships current on every store page', async ({ page }) => {
+  test('reaches every store page from the group sub-navigation', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 })
     for (const path of DEALERSHIP_PATHS) {
       await gotoRendered(page, path)
-      const current = page.locator(
-        'header nav[aria-label="Primary"] a[aria-current="page"]'
-      )
-      await expect(current, path).toHaveText('Dealerships')
+      const nav = page.locator('nav[aria-label="Granite Auto Group"]').first()
+      await expect(nav, path).toBeVisible()
+      await expect(nav.locator('a[aria-current="page"]'), path).toHaveCount(1)
     }
   })
 
-  test('renders the group sub-navigation on all five of its routes', async ({ page }) => {
-    for (const route of GROUP_ROUTES) {
+  test('renders the group sub-navigation on every route that carries it', async ({
+    page,
+  }) => {
+    for (const route of GROUP_NAV_ROUTES) {
       await gotoRendered(page, route.path)
       const nav = page.locator('nav[aria-label="Granite Auto Group"]').first()
       await expect(nav, route.path).toBeVisible()
       for (const entry of GROUP_ROUTES) {
+        // Every ITEM, on every route that renders the rail - including "The
+        // group", which points at the home page.
+        //
         // Not `exact`: the current item's accessible name carries a visually
         // hidden " (current page)" suffix, which is the point of it.
         await expect(
@@ -429,13 +475,13 @@ test.describe('every chart has a readable alternative', () => {
     await expect(page.locator('details[open] table').first()).toBeVisible()
   })
 
-  test('the group page offers a table for both of its charts', async ({ page }) => {
-    await gotoRendered(page, '/dealerships')
+  test('the home page offers a table for both of its group charts', async ({ page }) => {
+    await gotoRendered(page, '/')
     await expect(page.getByText(/Read .* as a table/i)).toHaveCount(2)
   })
 
   test('a chart never carries a figure that is nowhere else', async ({ page }) => {
-    await gotoRendered(page, '/dealerships')
+    await gotoRendered(page, '/')
     const text = await mainText(page)
     // The per-store totals the chart draws are also printed beside each bar and
     // again in the store comparison table.
@@ -484,10 +530,8 @@ test.describe('the trust model survives the new pages', () => {
     expect(await bodyText(page)).toMatch(/Gate 2 CLOSED/i)
   })
 
-  test('the dealerships page says an inventory summary is not a finding', async ({
-    page,
-  }) => {
-    await gotoRendered(page, '/dealerships')
+  test('the home page says an inventory summary is not a finding', async ({ page }) => {
+    await gotoRendered(page, '/')
     const text = await mainText(page)
     expect(text).toMatch(/descriptive evidence/i)
     expect(text).toMatch(/not an analytical finding/i)
@@ -501,7 +545,7 @@ test.describe('the trust model survives the new pages', () => {
 test.describe('no retired name appears in public copy', () => {
   const RETIRED = ['Game Auto Group', 'Granite State Auto Group', 'Granite Used Auto']
 
-  for (const path of ['/', ...ALL_INVENTORY_PATHS]) {
+  for (const path of ALL_INVENTORY_PATHS) {
     test(`${path} uses none of them`, async ({ page }) => {
       await gotoRendered(page, path)
       const text = await bodyText(page)

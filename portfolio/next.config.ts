@@ -7,7 +7,8 @@ import type { NextConfig } from 'next'
  * ARPI portfolio site build configuration.
  *
  * Deliberate omissions, so that a future reader does not have to guess:
- *   - No `rewrites`, `redirects` or `headers` proxying to an external service.
+ *   - No `rewrites` or `headers` proxying to an external service, and the one
+ *     `redirect` is internal: `/dealerships` to `/`.
  *     The site is entirely source-controlled content.
  *   - No image loader configuration. Every graphic on the site is an inline or
  *     static SVG authored in this repository, so the raster pipeline is unused.
@@ -63,6 +64,34 @@ const nextConfig: NextConfig = {
   // honoured for an HTML document; the header is what covers a crawler that
   // fetches the route without parsing it. It is declared here so it travels with
   // the application to any Node host.
+  /**
+   * The one redirect this application has.
+   *
+   * `/dealerships` was the group overview until the home page became it. The old
+   * URL is linked from README screenshots, from anything anyone bookmarked, and
+   * from a sitemap search engines have already fetched, so it resolves rather
+   * than 404s - permanently, because the move is permanent and a 308 is what
+   * tells a crawler to transfer the ranking rather than keep re-checking.
+   *
+   * `source` IS THE EXACT PATH, NOT A PREFIX. `/dealerships/:slug*` would take
+   * the three store pages with it, which is the opposite of the requirement:
+   * those routes stay exactly where they are and every deep link into them keeps
+   * working. Next matches `source` literally unless it carries a parameter
+   * segment, so this catches `/dealerships` and nothing beneath it.
+   *
+   * `tests/e2e/navigation.spec.ts` asserts both halves: the redirect is a
+   * permanent one to `/`, and each store route still answers 200.
+   */
+  async redirects() {
+    return [
+      {
+        source: '/dealerships',
+        destination: '/',
+        permanent: true,
+      },
+    ]
+  },
+
   async headers() {
     return [
       {

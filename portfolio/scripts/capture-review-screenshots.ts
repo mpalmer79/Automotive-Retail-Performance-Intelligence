@@ -29,8 +29,13 @@ const BASE = process.env.ARPI_REVIEW_BASE_URL ?? 'http://localhost:3111'
 /** Every route, at every viewport in the accessibility and responsive matrix. */
 const ROUTES = [
   '/',
+  '/dealerships/granite-chevrolet',
+  '/dealerships/granite-subaru',
+  '/dealerships/granite-pre-owned',
+  '/inventory',
   '/architecture',
   '/data-model',
+  '/inventory-operations',
   '/kpis',
   '/governance',
   '/status',
@@ -124,7 +129,13 @@ async function capture(browser: Browser, reducedMotion: boolean): Promise<void> 
     const routes =
       viewport.name === '375' || viewport.name === '1440'
         ? ROUTES
-        : (['/', '/architecture', '/data-model', '/kpis'] as const)
+        : ([
+            '/',
+            '/dealerships/granite-subaru',
+            '/inventory',
+            '/architecture',
+            '/kpis',
+          ] as const)
 
     const context = await browser.newContext({
       viewport: { width: viewport.width, height: viewport.height },

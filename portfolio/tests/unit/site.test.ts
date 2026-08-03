@@ -82,11 +82,10 @@ describe('the route map is well-formed', () => {
   })
 })
 
-describe('the fourteen primary routes exist and the lab is not one of them', () => {
+describe('the thirteen primary routes exist and the lab is not one of them', () => {
   // Declaration order, which is also navigation order and footer order.
   const PRIMARY = [
     '/',
-    '/dealerships',
     '/dealerships/granite-chevrolet',
     '/dealerships/granite-subaru',
     '/dealerships/granite-pre-owned',
@@ -109,13 +108,13 @@ describe('the fourteen primary routes exist and the lab is not one of them', () 
     '/dealerships/granite-pre-owned',
   ]
 
-  it('declares exactly the fourteen primary routes plus the lab', () => {
+  it('declares exactly the thirteen primary routes plus the lab', () => {
     expect(ALL_ROUTES.map((route) => route.href).sort()).toEqual(
       [...PRIMARY, '/ui-lab'].sort()
     )
   })
 
-  it("keeps ten routes reachable from the site's own navigation", () => {
+  it("keeps nine routes reachable from the site's own navigation", () => {
     // The case study is deliberately absent: it is locked, and it is reached from
     // the footer, the status page and the home page's closing section rather than
     // from a navigation surface.
@@ -204,10 +203,9 @@ describe('the primary navigation stays inside its budget', () => {
     expect(PRIMARY_NAV.length).toBeLessThanOrEqual(MAX_PRIMARY_NAV_ITEMS)
   })
 
-  it('offers exactly the seven agreed destinations, in order', () => {
+  it('offers exactly the six agreed destinations, in order', () => {
     expect(PRIMARY_NAV.map((item) => item.label)).toEqual([
       'Overview',
-      'Dealerships',
       'Inventory',
       'Platform',
       'KPIs',
@@ -216,31 +214,27 @@ describe('the primary navigation stays inside its budget', () => {
     ])
   })
 
+  it('never lists two header items pointing at the same document', () => {
+    // The reason "Dealerships" is gone rather than repointed at `/`. Two names
+    // for one URL read as two destinations, and the visitor who tries both finds
+    // out they were the same page.
+    const hrefs = PRIMARY_NAV.map((item) => item.href)
+    expect(new Set(hrefs).size).toBe(hrefs.length)
+  })
+
   it('reaches every store page from the group sub-navigation', () => {
-    // "Dealerships" is one header item covering five routes. The three store
-    // pages are not in the header, so if they are also missing from GROUP_NAV
-    // they are reachable only from a card, which is the state this prevents.
+    // The store pages are not in the header at all, so if they were also missing
+    // from GROUP_NAV they would be reachable only from a card on the home page.
+    // That is the state this prevents.
     const hrefs = GROUP_NAV.map((item) => item.href)
     for (const href of [
-      ROUTES.dealerships.href,
+      ROUTES.home.href,
       ROUTES.graniteChevrolet.href,
       ROUTES.graniteSubaru.href,
       ROUTES.granitePreOwned.href,
       ROUTES.inventory.href,
     ]) {
       expect(hrefs, `${href} is not reachable from GroupNav`).toContain(href)
-    }
-  })
-
-  it('marks the Dealerships item current on every store page', () => {
-    const dealershipsItem = PRIMARY_NAV.find((item) => item.label === 'Dealerships')
-    expect(dealershipsItem).toBeDefined()
-    for (const href of [
-      ROUTES.graniteChevrolet.href,
-      ROUTES.graniteSubaru.href,
-      ROUTES.granitePreOwned.href,
-    ]) {
-      expect(isNavItemCurrent(dealershipsItem!, href), href).toBe(true)
     }
   })
 
@@ -311,7 +305,7 @@ describe('the primary navigation stays inside its budget', () => {
 describe('the group sub-navigation is what makes the Dealerships grouping honest', () => {
   it('links the group page, all three stores and the explorer, in that order', () => {
     expect(GROUP_NAV.map((item) => item.href)).toEqual([
-      ROUTES.dealerships.href,
+      ROUTES.home.href,
       ROUTES.graniteChevrolet.href,
       ROUTES.graniteSubaru.href,
       ROUTES.granitePreOwned.href,

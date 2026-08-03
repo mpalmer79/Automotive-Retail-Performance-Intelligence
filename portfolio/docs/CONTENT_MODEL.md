@@ -383,7 +383,7 @@ separately.
 | Is it synthetic?    | yes, entirely                 | **no**                                                                      |
 | What was removed    | nothing was ever there        | VINs, source URLs, listing keys, street addresses, real dealership identity |
 | What remains        | nothing observed              | model, trim, condition, mileage, advertised price, inventory mix            |
-| Where it appears    | every route                   | `/`, `/dealerships`, the three store routes, `/inventory`                   |
+| Where it appears    | every route                   | `/`, the three store routes, `/inventory` (`/dealerships` redirects to `/`) |
 | Disclosure constant | `SYNTHETIC_DATA_STATEMENT`    | `INVENTORY_DATA_STATEMENT`                                                  |
 
 The two are separate constants on purpose. Calling the reference data
@@ -508,7 +508,70 @@ reason.
 
 ---
 
-## 12. Adding to the site without breaking the contract
+## 12. The information architecture, and the one redirect
+
+`/` is the **product** page and `/about` is the **author** page. It was the other
+way round until this was corrected, and the correction is worth recording because
+the old arrangement was defensible and still wrong.
+
+The home page opened with "Dealership intelligence built by someone who has run
+the dealership" and spent its first screen on a twenty-five year automotive
+career. That is the strongest claim this project makes. It was in the wrong
+place: it made the author the subject of the product's home page, so a visitor
+could arrive at ARPI, read a biography, and leave without learning what ARPI
+models or why the modelling is hard. Meanwhile `/dealerships` - which introduced
+the group, its three stores, their different operating models and the reporting
+problem - was the natural first page and was one click in.
+
+So the two swapped.
+
+| Route          | Subject                     | What moved                                                                    |
+| -------------- | --------------------------- | ----------------------------------------------------------------------------- |
+| `/`            | Granite Auto Group and ARPI | the whole `/dealerships` body, plus a product-first hero                      |
+| `/about`       | Michael Palmer              | the retired headline, now its `<h1>`, and the career narrative at full length |
+| `/dealerships` | nothing                     | a permanent redirect to `/`, declared in `next.config.ts`                     |
+
+### 12.1 The redirect is on the exact path
+
+`{ source: '/dealerships', destination: '/', permanent: true }`. Not
+`/dealerships/:slug*`, which would take the three store pages with it and break
+every deep link into a store. Next matches `source` literally unless it carries a
+parameter segment, so `/dealerships` moves and `/dealerships/granite-subaru` does
+not. `tests/e2e/navigation.spec.ts` asserts both halves, including that the status
+is a 308 rather than a 302: the move is permanent, and a temporary redirect would
+leave crawlers re-checking a path that is never coming back.
+
+`/dealerships` is deliberately NOT left in `ROUTES` pointing at `/`. A route map
+with two hrefs for one document produces two sitemap URLs, two canonical
+candidates and two navigation items for the same content.
+
+### 12.2 One implementation of the group overview
+
+The overview lives in `src/components/sections/group-overview.tsx` as seven
+exported sections, composed once by `src/app/page.tsx`. Nothing else renders
+them. That is what "no duplicate dealership overview is independently maintained"
+means in practice: not two copies kept in step, but one copy and a redirect.
+
+### 12.3 What the home page may say about the author
+
+One clause, in the hero, in a recessive tone, with a link to `/about`. The
+long-form career material - the systems list, the retraining narrative, the
+analytical philosophy - is on `/about` and nowhere else, and
+`navigation.spec.ts` asserts the home page does not carry it. Two pages telling
+the same story at different lengths is how the shorter one goes stale.
+
+### 12.4 The header lost an item
+
+Six destinations, not seven. There is no "Dealerships" entry because the group
+overview is "Overview": a second header link to the same URL reads as a second
+destination. The stores are reached from the home page's store cards, from
+`GroupNav` on every store page and on `/inventory`, and from the mobile drawer's
+expanded group. `tests/unit/site.test.ts` asserts no two header items share an
+href.
+
+---
+
+## 13. Adding to the site without breaking the contract
 
 | You want to                    | Do this                                                                                              |
 | ------------------------------ | ---------------------------------------------------------------------------------------------------- |
@@ -516,6 +579,7 @@ reason.
 | Add a count                    | Add a `SourcedCount` to the generator with at least one source path.                                 |
 | Change a status                | Change the evidence. The generator will refuse an unsupported status.                                |
 | Add a route                    | Add it to `ROUTES`. Nav, sitemap, breadcrumbs and the a11y sweep follow.                             |
+| Retire a route                 | Remove it from `ROUTES` and add a permanent redirect in `next.config.ts`. See section 12.            |
 | Add a KPI                      | Add it to `KPI_CATALOG.md` first, then to `src/content/kpis.json`. The unit test asserts they agree. |
 | Publish the case study         | Open Gate 2. All five conditions, in order. The flag is last, not first.                             |
 | Add a colour, size or duration | Add it to `tokens.css`. Nothing else may introduce a raw value.                                      |

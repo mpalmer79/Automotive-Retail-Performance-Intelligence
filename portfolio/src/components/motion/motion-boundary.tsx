@@ -154,7 +154,17 @@ export function AnimatedCount({
   const shown = prefersReducedMotion || !inView ? value : displayed
 
   return (
-    <span ref={ref} className={cx('numeric', className)}>
+    /*
+     * `data-animated-count` is a test contract, not styling.
+     *
+     * `tests/e2e/reduced-motion.spec.ts` asserts that no counting number is left
+     * showing 0 under a reduced-motion preference. It used to find them with
+     * `.numeric`, which is the typographic class every figure on the site wears
+     * - including data-table cells whose value is legitimately zero, such as the
+     * independent store's new-vehicle count. A withheld counter and a real zero
+     * are different failures, and only one of them is a bug.
+     */
+    <span ref={ref} data-animated-count="" className={cx('numeric', className)}>
       {formatCount(shown)}
     </span>
   )

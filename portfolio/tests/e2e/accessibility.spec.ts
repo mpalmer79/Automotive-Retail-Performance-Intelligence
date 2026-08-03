@@ -400,8 +400,8 @@ test.describe('reflow and target size', () => {
     // The hero's two calls to action and the navigation trigger are the controls
     // a visitor must be able to hit on a phone.
     const controls: { role: 'link' | 'button'; name: RegExp }[] = [
-      { role: 'link', name: /explore the platform/i },
-      { role: 'link', name: /view engineering evidence/i },
+      { role: 'link', name: /explore the three stores/i },
+      { role: 'link', name: /see how ARPI works/i },
       { role: 'button', name: /open navigation menu/i },
     ]
     for (const control of controls) {

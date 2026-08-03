@@ -96,26 +96,29 @@ export interface RouteDefinition {
   readonly priority: number
 }
 
+/**
+ * WHERE `/dealerships` WENT
+ * -------------------------
+ * It is not in this map because it is not a page. The group overview it used to
+ * render IS the home page now, and `/dealerships` is a permanent redirect to `/`
+ * declared in `next.config.ts`.
+ *
+ * Deliberately not left here as an entry pointing at `/`. A route map that
+ * declares two hrefs for one document produces two sitemap URLs, two canonical
+ * candidates and two navigation items for the same content, which is the
+ * duplication the redirect exists to prevent. The three store routes beneath it
+ * are unaffected and stay exactly where they were.
+ */
 export const ROUTES = {
   home: {
     href: '/',
     navLabel: 'Overview',
     title: 'Automotive Retail Performance Intelligence',
     description:
-      'Dealership intelligence built by someone who has run the dealership. ARPI joins more than 25 years of automotive retail experience to PostgreSQL, Python, governed KPIs and Power BI architecture, giving sales, gross, inventory, leads and marketing one definition each. Synthetic data throughout.',
+      'Granite Auto Group runs three dealerships under three different inventory realities: a Chevrolet franchise, a Subaru franchise, and an independent pre-owned center in Southern New Hampshire. ARPI preserves those differences while giving the group one governed reporting layer.',
     inPrimaryNav: true,
     indexable: true,
     priority: 1,
-  },
-  dealerships: {
-    href: '/dealerships',
-    navLabel: 'Dealerships',
-    title: 'Granite Auto Group',
-    description:
-      'The three stores ARPI models: a Chevrolet franchise in Nashua, a Subaru franchise in Manchester, and an independent pre-owned center in Merrimack. Their inventory profiles, their different operating models, and how one governed reporting layer compares them without flattening them.',
-    inPrimaryNav: true,
-    indexable: true,
-    priority: 0.9,
   },
   graniteChevrolet: {
     href: '/dealerships/granite-chevrolet',
@@ -222,7 +225,7 @@ export const ROUTES = {
     navLabel: 'About',
     title: 'About the author',
     description:
-      'Michael Palmer: more than 25 years in automotive retail sales, finance, dealership management, CRM, DMS and inventory, then computer science retraining and the SQL, Python and semantic modelling behind ARPI. Six design decisions that came from the floor rather than from a dataset.',
+      'Dealership intelligence built by someone who has run the dealership. Michael Palmer: more than 25 years in automotive retail sales, finance, dealership management, CRM, DMS and inventory, then computer science retraining and the engineering behind ARPI.',
     inPrimaryNav: true,
     indexable: true,
     priority: 0.7,
@@ -316,32 +319,18 @@ export const PRIMARY_NAV: readonly NavItem[] = [
     purpose: 'What ARPI is, who built it, and what it proves',
   },
   /*
-   * Dealerships and Inventory, added after the five-item redesign.
+   * "Dealerships" is NOT a separate item, and that is the point of this change.
    *
-   * The argument above for a five-item ceiling was about three engineering pages
-   * competing for one click, and it still holds - Architecture, Data Model and
-   * Governance are still one item. These two are a different kind of
-   * destination. ARPI models a business, and until these routes existed a
-   * visitor could read the entire site without learning what that business sells
-   * or how its three stores differ from each other. A subject the site is about
-   * belongs in the navigation, not behind a link inside a section.
+   * It used to be, pointing at `/dealerships`. The group overview is now the
+   * home page, so a "Dealerships" item would be a second header link to the same
+   * document as "Overview" - two names for one URL, which reads as two
+   * destinations and is the duplication this restructure exists to remove.
    *
-   * They are two items rather than one because they answer two questions a
-   * visitor asks separately: "who is this group" and "what is on the lot". The
-   * three store pages sit behind `<GroupNav>`, which is the same pattern
-   * `<PlatformNav>` uses, so the count stops at seven.
+   * The stores are still one click from anywhere. The home page's own store
+   * cards link each of them, `<GroupNav>` carries all three on every store page
+   * and on the inventory explorer, and the mobile drawer expands the group in
+   * full. What is gone is a redundant header entry, not a route.
    */
-  {
-    href: ROUTES.dealerships.href,
-    label: 'Dealerships',
-    matches: [
-      ROUTES.dealerships.href,
-      ROUTES.graniteChevrolet.href,
-      ROUTES.graniteSubaru.href,
-      ROUTES.granitePreOwned.href,
-    ],
-    purpose: 'The three stores, and how their inventory strategies differ',
-  },
   {
     href: ROUTES.inventory.href,
     label: 'Inventory',
@@ -435,9 +424,9 @@ export const PLATFORM_NAV: readonly NavItem[] = [
  */
 export const GROUP_NAV: readonly NavItem[] = [
   {
-    href: ROUTES.dealerships.href,
+    href: ROUTES.home.href,
     label: 'The group',
-    matches: [ROUTES.dealerships.href],
+    matches: [ROUTES.home.href],
     purpose: 'Three stores, three operating models, one reporting layer',
   },
   {
