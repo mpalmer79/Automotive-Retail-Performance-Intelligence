@@ -105,7 +105,7 @@ class GenerationConfig(_StrictModel):
         if value != EXPECTED_STORE_COUNT:
             raise ConfigurationError(
                 f"generation.store_count must be {EXPECTED_STORE_COUNT}: the fictional "
-                f"Granite State Auto Group has exactly {EXPECTED_STORE_COUNT} stores "
+                f"Granite Auto Group has exactly {EXPECTED_STORE_COUNT} stores "
                 f"defined in the generator, got {value}.",
                 keys=["generation.store_count"],
             )

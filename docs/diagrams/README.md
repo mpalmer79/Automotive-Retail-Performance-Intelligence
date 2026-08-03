@@ -123,4 +123,4 @@ A few things break GitHub rendering silently. Check these before committing.
 - [`../../ARCHITECTURE.md`](../../ARCHITECTURE.md) — the architecture these diagrams illustrate
 - [`../architecture-decisions/`](../architecture-decisions/) — the decisions behind the design
 
-*All data referenced in these diagrams is synthetic. Granite State Auto Group is fictional.*
+*All data referenced in these diagrams is synthetic. Granite Auto Group is fictional.*

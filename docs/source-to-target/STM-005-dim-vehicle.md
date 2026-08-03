@@ -132,7 +132,7 @@ reference table, decodes nothing, and creates no owner relationship. See
 |---|---|---:|---|
 | `GSA-001` Granite Chevrolet | Franchise New and Used | 0.40 | New 0.45 · Used 0.38 · Certified 0.17 |
 | `GSA-002` Granite Subaru | Franchise New and Used | 0.35 | New 0.42 · Used 0.36 · Certified 0.22 |
-| `GSA-003` Granite Used Auto | Independent Used | 0.25 | **Used 1.00** |
+| `GSA-003` Granite Pre-Owned | Independent Used | 0.25 | **Used 1.00** |
 
 `GSA-003` is an independent used operation: it holds no franchise, so it takes no factory allocation and can
 certify nothing. **`condition_type = 'New'` and `acquisition_source = 'Manufacturer Allocation'` can never

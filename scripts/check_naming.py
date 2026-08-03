@@ -50,12 +50,24 @@ ALLOWLISTED_PATHS: frozenset[str] = frozenset(
         # The naming decision of record. It must quote the retired name in order
         # to state what was retired and why.
         "docs/architecture-decisions/ADR-0001-project-identity.md",
+        # The dealer-group renaming decision of record, for the same reason: it
+        # cannot explain what was retired without naming it.
+        "docs/architecture-decisions/ADR-0011-dealer-group-public-naming.md",
         # Preserved historical research evidence, kept verbatim. The retired
         # name was proposed there; editing it would falsify the record.
         "docs/research.md",
         # This file. It necessarily contains every forbidden string as a pattern
         # literal, and scanning itself would always fail.
         "scripts/check_naming.py",
+        # The inventory generator's own sanitization gate. It refuses to write a
+        # frontend artefact containing a retired dealer-group or store name, and
+        # it cannot do that without naming them.
+        "portfolio/scripts/generate-inventory-data.ts",
+        # The two suites that assert the retired names never reach the generated
+        # data or a rendered page. Same reason: a test that a string is absent
+        # has to contain the string.
+        "portfolio/tests/unit/inventory.test.ts",
+        "portfolio/tests/e2e/inventory.spec.ts",
     }
 )
 
@@ -124,7 +136,7 @@ MAX_SCANNED_BYTES: int = 4 * 1024 * 1024
 MAX_SNIPPET_LENGTH: int = 160
 
 # Guards against an allowlist entry being added without a review.
-EXPECTED_ALLOWLIST_SIZE: int = 3
+EXPECTED_ALLOWLIST_SIZE: int = 7
 
 
 @dataclass(frozen=True)
@@ -178,6 +190,38 @@ FORBIDDEN_RULES: tuple[Rule, ...] = (
         name="retired-identifier",
         pattern=re.compile(r"dealerpulse", re.IGNORECASE),
         explanation="retired project identifier; use 'arpi' / 'ARPI'",
+    ),
+    # ---------------------------------------------------------------------
+    # The fictional dealer group's names.
+    #
+    # The group and its independent store were renamed for the public site.
+    # These are not merely stale strings: the website, the warehouse dimension,
+    # the SQL comments and the sanitized workbooks all have to agree on who this
+    # business is, and a single file left behind makes the site and the data
+    # model contradict each other about the subject they exist to describe.
+    #
+    # The dealership IDs (GSA-001 .. GSA-003) were deliberately NOT changed. They
+    # are internal keys, they appear in the warehouse, in the SQL, in the
+    # workbooks and in the reference directory structure, and renaming them would
+    # be a migration with no reader-visible benefit.
+    # ---------------------------------------------------------------------
+    Rule(
+        name="retired-group-name",
+        pattern=re.compile(r"Granite[ \t]+State[ \t]+Auto[ \t]+Group", re.IGNORECASE),
+        explanation="retired dealer-group name; use 'Granite Auto Group'",
+    ),
+    Rule(
+        name="retired-store-name",
+        pattern=re.compile(r"Granite[ \t_]+Used[ \t_]+Auto", re.IGNORECASE),
+        explanation=(
+            "retired store name; GSA-003 is 'Granite Pre-Owned Center of Merrimack', "
+            "short name 'Granite Pre-Owned'"
+        ),
+    ),
+    Rule(
+        name="never-used-group-name",
+        pattern=re.compile(r"Game[ \t]+Auto[ \t]+Group", re.IGNORECASE),
+        explanation="this project has never had a group by that name; use 'Granite Auto Group'",
     ),
 )
 

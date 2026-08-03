@@ -699,7 +699,7 @@ model_lines:
         transmission: Automatic
 
   # ---------------------------------------------------------------------------------
-  # Used-only long tail (GSA-003, Granite Used Auto Center of Merrimack, and the
+  # Used-only long tail (GSA-003, Granite Pre-Owned Center of Merrimack, and the
   # non-franchise used inventory carried by the two franchise stores)
   # ---------------------------------------------------------------------------------
   - make: Toyota

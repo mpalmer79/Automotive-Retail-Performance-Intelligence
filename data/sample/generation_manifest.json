@@ -17,7 +17,7 @@
       "entity": "dim_dealership",
       "row_count": 3,
       "column_count": 16,
-      "content_digest": "83b653797c8658d7986fcc33336384a03480f6ce353dc4c15650bbd23e2568ce"
+      "content_digest": "3eb3517f5a57c9c4999888c72673218a2fc129a974d5c497d13620babc38dbda"
     },
     {
       "entity": "dim_vehicle_model",
@@ -92,7 +92,7 @@
       "content_digest": "a459a872e28e45f2a485ad4ef09dc4cbb03ec18193f5edeec1f792a2dfd7842c"
     }
   ],
-  "synthetic_data_notice": "SYNTHETIC DATA -- 100% machine generated. Granite State Auto Group and every store, employee role and transaction referenced by this project are fictional. No real customer, employee, dealership or vendor data is present, and no record here describes a real person or a real business.",
+  "synthetic_data_notice": "SYNTHETIC DATA -- 100% machine generated. Granite Auto Group and every store, employee role and transaction referenced by this project are fictional. No real customer, employee, dealership or vendor data is present, and no record here describes a real person or a real business.",
   "generator_module": "arpi.generation",
   "timestamp_policy": "omitted for deterministic output"
 }

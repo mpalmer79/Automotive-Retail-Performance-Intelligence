@@ -233,4 +233,4 @@ something changed that deserves a look.
 - [`../../DATA_GENERATION.md`](../../DATA_GENERATION.md) — generation methodology
 - [`../database-setup.md`](../database-setup.md) — enabling the optional PostgreSQL branch
 
-*All data is synthetic. Granite State Auto Group is fictional.*
+*All data is synthetic. Granite Auto Group is fictional.*

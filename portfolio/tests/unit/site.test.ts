@@ -19,6 +19,7 @@ import { pageMetadata, rootMetadata, structuredData } from '../../src/lib/metada
 import {
   ALL_ROUTES,
   INDEXABLE_ROUTES,
+  GROUP_NAV,
   MAX_PRIMARY_NAV_ITEMS,
   NAVIGABLE_ROUTES,
   PLATFORM_NAV,
@@ -81,9 +82,15 @@ describe('the route map is well-formed', () => {
   })
 })
 
-describe('the eight primary routes exist and the lab is not one of them', () => {
+describe('the thirteen primary routes exist and the lab is not one of them', () => {
+  // Declaration order, which is also navigation order and footer order.
   const PRIMARY = [
     '/',
+    '/dealerships',
+    '/dealerships/granite-chevrolet',
+    '/dealerships/granite-subaru',
+    '/dealerships/granite-pre-owned',
+    '/inventory',
     '/architecture',
     '/data-model',
     '/kpis',
@@ -93,18 +100,32 @@ describe('the eight primary routes exist and the lab is not one of them', () => 
     '/case-study',
   ]
 
-  it('declares exactly the eight primary routes plus the lab', () => {
+  /** Routes that exist and are indexed but are not navigation destinations. */
+  const NOT_IN_NAV = [
+    '/case-study',
+    '/dealerships/granite-chevrolet',
+    '/dealerships/granite-subaru',
+    '/dealerships/granite-pre-owned',
+  ]
+
+  it('declares exactly the thirteen primary routes plus the lab', () => {
     expect(ALL_ROUTES.map((route) => route.href).sort()).toEqual(
       [...PRIMARY, '/ui-lab'].sort()
     )
   })
 
-  it("keeps seven routes reachable from the site's own navigation", () => {
-    // The case study is deliberately absent from this list: it is locked, and it
-    // is reached from the footer, the status page and the home page's closing
-    // section rather than from a navigation surface.
+  it("keeps nine routes reachable from the site's own navigation", () => {
+    // The case study is deliberately absent: it is locked, and it is reached from
+    // the footer, the status page and the home page's closing section rather than
+    // from a navigation surface.
+    //
+    // The three store pages are absent for a different reason. They are reached
+    // from `<GroupNav>`, from the dealership cards and from the mobile drawer's
+    // expanded group, which is what keeps "Dealerships" one header item rather
+    // than four. `inPrimaryNav` governs the footer index and the test sweep, and
+    // a store page in either would restate the group page four times.
     expect(NAVIGABLE_ROUTES.map((route) => route.href)).toEqual(
-      PRIMARY.filter((href) => href !== '/case-study')
+      PRIMARY.filter((href) => !NOT_IN_NAV.includes(href))
     )
   })
 
@@ -114,7 +135,7 @@ describe('the eight primary routes exist and the lab is not one of them', () => 
     expect(INDEXABLE_ROUTES.map((route) => route.href)).not.toContain('/ui-lab')
   })
 
-  it('indexes every primary route, including the locked case study', () => {
+  it('indexes every primary route, including the locked case study and each store', () => {
     // The locked case-study page is honest content: it names what is missing and
     // why. There is no reason to hide it from a search index.
     expect(INDEXABLE_ROUTES.map((route) => route.href).sort()).toEqual(
@@ -182,14 +203,44 @@ describe('the primary navigation stays inside its budget', () => {
     expect(PRIMARY_NAV.length).toBeLessThanOrEqual(MAX_PRIMARY_NAV_ITEMS)
   })
 
-  it('offers exactly Overview, Platform, KPIs, Status and About', () => {
+  it('offers exactly the seven agreed destinations, in order', () => {
     expect(PRIMARY_NAV.map((item) => item.label)).toEqual([
       'Overview',
+      'Dealerships',
+      'Inventory',
       'Platform',
       'KPIs',
       'Status',
       'About',
     ])
+  })
+
+  it('reaches every store page from the group sub-navigation', () => {
+    // "Dealerships" is one header item covering five routes. The three store
+    // pages are not in the header, so if they are also missing from GROUP_NAV
+    // they are reachable only from a card, which is the state this prevents.
+    const hrefs = GROUP_NAV.map((item) => item.href)
+    for (const href of [
+      ROUTES.dealerships.href,
+      ROUTES.graniteChevrolet.href,
+      ROUTES.graniteSubaru.href,
+      ROUTES.granitePreOwned.href,
+      ROUTES.inventory.href,
+    ]) {
+      expect(hrefs, `${href} is not reachable from GroupNav`).toContain(href)
+    }
+  })
+
+  it('marks the Dealerships item current on every store page', () => {
+    const dealershipsItem = PRIMARY_NAV.find((item) => item.label === 'Dealerships')
+    expect(dealershipsItem).toBeDefined()
+    for (const href of [
+      ROUTES.graniteChevrolet.href,
+      ROUTES.graniteSubaru.href,
+      ROUTES.granitePreOwned.href,
+    ]) {
+      expect(isNavItemCurrent(dealershipsItem!, href), href).toBe(true)
+    }
   })
 
   it('never puts the locked case study in the header', () => {
@@ -204,7 +255,7 @@ describe('the primary navigation stays inside its budget', () => {
   })
 
   it('points every navigation item and every match at a real route', () => {
-    for (const item of [...PRIMARY_NAV, ...PLATFORM_NAV]) {
+    for (const item of [...PRIMARY_NAV, ...PLATFORM_NAV, ...GROUP_NAV]) {
       expect(routeByHref(item.href), item.href).toBeDefined()
       for (const match of item.matches) {
         expect(routeByHref(match), `${item.label} matches ${match}`).toBeDefined()
@@ -213,7 +264,7 @@ describe('the primary navigation stays inside its budget', () => {
   })
 
   it('gives every navigation item a purpose line for the mobile drawer', () => {
-    for (const item of [...PRIMARY_NAV, ...PLATFORM_NAV]) {
+    for (const item of [...PRIMARY_NAV, ...PLATFORM_NAV, ...GROUP_NAV]) {
       expect(item.purpose.length, item.label).toBeGreaterThan(20)
     }
   })
@@ -234,7 +285,15 @@ describe('the primary navigation stays inside its budget', () => {
     for (const href of ['/architecture', '/data-model', '/governance']) {
       expect(isNavItemCurrent(platform!, href), href).toBe(true)
     }
-    for (const href of ['/', '/kpis', '/status', '/about', '/case-study']) {
+    for (const href of [
+      '/',
+      '/kpis',
+      '/status',
+      '/about',
+      '/case-study',
+      '/dealerships',
+      '/inventory',
+    ]) {
       expect(isNavItemCurrent(platform!, href), href).toBe(false)
     }
   })
@@ -245,6 +304,29 @@ describe('the primary navigation stays inside its budget', () => {
     // that class of defect only appears once the route is added.
     expect(isNavItemCurrent(status, '/status-report')).toBe(false)
     expect(isNavItemCurrent(status, '/status')).toBe(true)
+  })
+})
+
+describe('the group sub-navigation is what makes the Dealerships grouping honest', () => {
+  it('links the group page, all three stores and the explorer, in that order', () => {
+    expect(GROUP_NAV.map((item) => item.href)).toEqual([
+      ROUTES.dealerships.href,
+      ROUTES.graniteChevrolet.href,
+      ROUTES.graniteSubaru.href,
+      ROUTES.granitePreOwned.href,
+      ROUTES.inventory.href,
+    ])
+  })
+
+  it('keeps every one of them indexable and in the sitemap', () => {
+    for (const item of GROUP_NAV) {
+      expect(routeByHref(item.href)?.indexable, item.href).toBe(true)
+    }
+  })
+
+  it('gives every store its own route, with no duplicate href', () => {
+    const hrefs = GROUP_NAV.map((item) => item.href)
+    expect(new Set(hrefs).size).toBe(hrefs.length)
   })
 })
 
@@ -320,7 +402,7 @@ describe('the synthetic-data statement says the three things it has to say', () 
   it('names the data as synthetic, the group as fictional, and the absence of real data', () => {
     expect(SYNTHETIC_DATA_STATEMENT).toMatch(/synthetic/i)
     expect(SYNTHETIC_DATA_STATEMENT).toMatch(/fictional/i)
-    expect(SYNTHETIC_DATA_STATEMENT).toMatch(/Granite State Auto Group/)
+    expect(SYNTHETIC_DATA_STATEMENT).toMatch(/Granite Auto Group/)
     expect(SYNTHETIC_DATA_STATEMENT).toMatch(/no real dealership/i)
   })
 

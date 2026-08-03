@@ -2,8 +2,8 @@
 
 > ## ⚠️ EVERY ROW IN THIS DIRECTORY IS MACHINE GENERATED
 >
-> **Granite State Auto Group is fictional.** It does not exist. Neither do
-> Granite Chevrolet of Nashua, Granite Subaru of Manchester, nor Granite Used Auto Center
+> **Granite Auto Group is fictional.** It does not exist. Neither do
+> Granite Chevrolet of Nashua, Granite Subaru of Manchester, nor Granite Pre-Owned Center
 > of Merrimack. The `GSA-###` identifiers, the store names, the opening dates and the
 > market region are all invented for this portfolio project.
 >

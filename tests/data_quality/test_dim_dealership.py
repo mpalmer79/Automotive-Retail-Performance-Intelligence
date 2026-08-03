@@ -53,8 +53,8 @@ EXPECTED_STORES = [
     (
         3,
         "GSA-003",
-        "Granite Used Auto Center of Merrimack",
-        "Granite Used Auto",
+        "Granite Pre-Owned Center of Merrimack",
+        "Granite Pre-Owned",
         STORE_TYPE_INDEPENDENT,
         None,
         "Merrimack",

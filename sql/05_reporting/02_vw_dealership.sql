@@ -44,7 +44,7 @@ WHERE d.is_current;
 
 COMMENT ON VIEW reporting.vw_dealership IS
     'Grain: one row per dealership store, restricted to the current SCD Type 2 version '
-    '(warehouse.dim_dealership.is_current). Exactly three rows in Phase 0, one per Granite State Auto '
+    '(warehouse.dim_dealership.is_current). Exactly three rows in Phase 0, one per Granite Auto '
     'Group store. SCD plumbing (expiration_date, is_current, attribute_hash, superseded versions) is '
     'deliberately not exposed so that a report cannot double-count a store. Contains no personal data.';
 

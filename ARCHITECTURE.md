@@ -152,13 +152,13 @@ A public case-study page may be added after the analytical system is complete, b
 
 ### 8.1 Dealer group
 
-**Dealer group:** Granite State Auto Group
+**Dealer group:** Granite Auto Group
 
 ### 8.2 Stores
 
 1. Granite Chevrolet of Nashua
 2. Granite Subaru of Manchester
-3. Granite Used Auto Center of Merrimack
+3. Granite Pre-Owned Center of Merrimack
 
 ### 8.3 Geographic market
 

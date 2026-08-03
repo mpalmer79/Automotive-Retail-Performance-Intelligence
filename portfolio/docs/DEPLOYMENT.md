@@ -49,13 +49,27 @@ results, the semantic model's TMDL, the KPI catalogue, the readiness documents a
 the SQL tree. `npm run build` runs `manifest:check` first, which regenerates the
 manifest from those files and fails if it differs from the committed one.
 
+The same is true of the second generator.
+[`../scripts/generate-inventory-data.ts`](../scripts/generate-inventory-data.ts)
+reads the sanitized inventory workbooks under `data/reference/inventory/` and the
+store dimension in `data/sample/dim_dealership.csv`, and writes the three
+artefacts the dealership and inventory routes render. `prebuild` runs
+`inventory:check` beside `manifest:check`, and both run again inside the image.
+
 So an isolated `portfolio/` context does not merely lose a nice-to-have: the build
 **cannot complete** in it, and if it somehow did, the site would be free to display
 numbers no longer backed by anything.
 
-`portfolio/tests/unit/railway-config.test.ts` extracts the generator's own read set
-and fails if any source it touches is missing from the Dockerfile's `COPY` list,
-from `railway.json`'s watch patterns, or is excluded by `.dockerignore`.
+The workbooks are copied into the BUILDER stage and never into the runtime stage.
+What the site serves is the generated JSON; shipping the source spreadsheets into
+a public image would put the pre-sanitization column set one `docker pull` away,
+and `railway-config.test.ts` asserts the runtime stage references no path under
+`data/reference`.
+
+`portfolio/tests/unit/railway-config.test.ts` extracts BOTH generators' read sets
+and fails if any source either of them touches is missing from the Dockerfile's
+`COPY` list, from `railway.json`'s watch patterns, or is excluded by
+`.dockerignore`.
 
 ### Project settings
 
@@ -66,7 +80,7 @@ from `railway.json`'s watch patterns, or is excluded by `.dockerignore`.
 | Dockerfile path   | `portfolio/Dockerfile.railway` | named explicitly so no other tool picks it up by convention            |
 | Health-check path | `/status`                      | an existing prerendered route, not an endpoint invented to be probed   |
 | Restart policy    | `ON_FAILURE`, 3 retries        | this container has no legitimate reason to exit, so an exit is a fault |
-| Replicas          | 1                              | fourteen static routes with no session state                           |
+| Replicas          | 1                              | nineteen static routes with no session state                           |
 | Wait for CI       | on (`checkSuites`)             | the CI checks are what prove the manifest is current                   |
 | Node version      | 22                             | matches CI and `engines.node`                                          |
 | Autodeploy branch | `main`                         | Railway's GitHub integration is the one routine deployment owner       |
@@ -78,11 +92,16 @@ restating it, so the two cannot drift.
 
 ### The build gate is the same one CI uses
 
-`prebuild` runs `npm run manifest:check`. It runs **twice**: once in CI against the
-repository, and once **inside the image**, where it proves the manifest matches the
-evidence that was actually copied into the build. A missing `COPY` therefore fails
-the build rather than shipping a site whose numbers came from a partially populated
-context.
+`prebuild` runs `npm run manifest:check` and `npm run inventory:check`. Both run
+**twice**: once in CI against the repository, and once **inside the image**, where
+they prove the generated artefacts match the evidence that was actually copied into
+the build. A missing `COPY` therefore fails the build rather than shipping a site
+whose numbers came from a partially populated context.
+
+`inventory:check` is also the sanitization gate. The generator refuses to write an
+artefact whose output still contains a VIN, a source URL, a domain, an email
+address or a telephone number, so a workbook that was committed without being
+sanitized fails the deployment rather than reaching a public page.
 
 That is the single most important line in this document.
 

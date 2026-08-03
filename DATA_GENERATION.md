@@ -401,7 +401,7 @@ Rules that apply to every scheme:
   §8.5](ARCHITECTURE.md)), so identifiers never need re-padding — which would change every byte of the
   output.
 - Identifiers are **assigned by deterministic sequence**, never randomly, so they are stable across runs.
-- **`GSA` stands for Granite State Auto Group. The fictional dealer group is never renamed**, so the prefix
+- **`GSA` stands for Granite Auto Group. The fictional dealer group is never renamed**, so the prefix
   is permanently stable.
 - The **synthetic VIN** is a separate scheme: a 17-character, structurally VIN-like, fabricated string. It
   deliberately does **not** carry the `VEH-` prefix, because it must be shaped like a VIN for modelling
@@ -758,6 +758,46 @@ repository must record the named creator, source URL, license, permitted uses, r
 redistribution restrictions, and whether derived files may be committed.
 
 No Kaggle dataset is used in ARPI today.
+
+### 14.6 Sanitized public inventory reference data — **IN USE**
+
+Unlike everything above, this one is not a plan. Three sanitized inventory
+workbooks are committed under `data/reference/inventory/`, and the portfolio
+website renders them.
+
+They are the single exception to "every record in this project is synthetic", and
+the project states the exception rather than absorbing it. They are vehicle
+listing attributes captured from a **public** listing source, de-identified, and
+reassigned to the fictional stores of Granite Auto Group. Model, trim, condition,
+mileage, advertised price and inventory mix are retained from that source; VINs,
+source URLs, source listing keys, street addresses and real dealership identity
+are not.
+
+**Why they are not in `data/sample/`.** That directory is reserved for fully
+machine-generated output and is the basis of the repository's privacy claim.
+Filing observed data there would make that claim untrue by directory listing.
+`data/reference/` is a separate class with separate rules, consistent with §14.3
+control 1 above.
+
+**How they reach the website.** Not through this Python package. A build-time
+TypeScript generator, `portfolio/scripts/generate-inventory-data.ts`, reads the
+workbooks and the store dimension in `data/sample/dim_dealership.csv`, drops every
+identifying column, derives every displayed figure, and writes three JSON
+artefacts under `portfolio/src/generated/`. No workbook is parsed in a browser.
+The generator refuses to write an artefact whose output still matches a URL, a
+domain, an email address, a telephone number or a VIN-shaped token.
+
+**What a row supports, and what it does not.** A row proves a listing was visible
+in the source at a capture date. It does not prove a sale, a delivery, physical
+on-ground status or dealer ownership. An advertised price is not a transaction
+price, an acquisition cost, an inventory investment, a manufacturer suggested
+price or a gross figure. A listing that later disappears has been removed from a
+feed, which is not the same as sold. Repeated snapshots could support days
+observed online; that must never be labelled days in stock.
+
+Full schema, sanitization controls, coverage limitations per store and the
+procedure for adding a snapshot are in
+[`data/reference/inventory/README.md`](data/reference/inventory/README.md).
 
 ---
 

@@ -374,4 +374,4 @@ Python side inspects the generated frame's column list; the SQL side inspects th
 - [`../../ARCHITECTURE.md`](../../ARCHITECTURE.md) §§11–13 — dimensions, fact grains, and the full constellation
 - [`../source-to-target/`](../source-to-target/) — field-level lineage
 
-*All data is synthetic. Granite State Auto Group is fictional.*
+*All data is synthetic. Granite Auto Group is fictional.*

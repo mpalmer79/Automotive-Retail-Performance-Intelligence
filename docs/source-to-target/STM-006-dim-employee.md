@@ -172,7 +172,7 @@ All 15 columns of `warehouse.dim_employee`, in declared order. Every column is `
 Each store's slots are filled from its plan in order until the allocated headcount is reached. Where the
 headcount exceeds the explicit plan, the store's tail pattern repeats.
 
-| Position | `GSA-001` Granite Chevrolet | `GSA-002` Granite Subaru | `GSA-003` Granite Used Auto |
+| Position | `GSA-001` Granite Chevrolet | `GSA-002` Granite Subaru | `GSA-003` Granite Pre-Owned |
 |---:|---|---|---|
 | 1 | General Manager | General Manager | General Manager |
 | 2 | Sales Manager | Sales Manager | Salesperson |

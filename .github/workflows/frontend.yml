@@ -54,6 +54,10 @@ on:
       - 'docs/requirements/**'
       - 'docs/findings/**'
       - 'sql/**'
+      # The inventory generator reads these, so a change to either can make the
+      # committed inventory artefacts stale and must re-run the check.
+      - 'data/reference/inventory/**'
+      - 'data/sample/dim_dealership.csv'
       # The Railway deployment configuration. `tests/unit/railway-config.test.ts`
       # reads all four and asserts they agree with the manifest generator's own
       # read set, so a change to any of them can fail the frontend suite — and
@@ -72,6 +76,8 @@ on:
       - 'docs/requirements/**'
       - 'docs/findings/**'
       - 'sql/**'
+      - 'data/reference/inventory/**'
+      - 'data/sample/dim_dealership.csv'
       - 'railway.json'
       - '.dockerignore'
       - 'deployment/railway/**'
@@ -156,6 +162,17 @@ jobs:
       # document changed, and the site now needs to say something different.
       - name: Project manifest is current and self-consistent
         run: npm run manifest:check
+
+      # The same gate for the second generator.
+      #
+      # A failure here means a sanitized inventory workbook or the store
+      # dimension changed and the dealership pages now need to say something
+      # different, OR that the generated artefacts were hand-edited. The
+      # generator also refuses to write an artefact still containing a VIN, a
+      # URL, a domain, an email address or a telephone number, so this step is
+      # the sanitization gate as well as the freshness one.
+      - name: Inventory data is current and sanitized
+        run: npm run inventory:check
 
       - name: Unit, component and content-integrity tests
         run: npm run test

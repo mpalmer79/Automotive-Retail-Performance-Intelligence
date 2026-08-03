@@ -392,7 +392,7 @@ FROM reporting.vw_calendar
 ORDER BY date_key
 LIMIT 10;
 
--- The three Granite State Auto Group stores
+-- The three Granite Auto Group stores
 SELECT dealership_code, store_short_name, brand_label, location_label, opened_date
 FROM reporting.vw_dealership
 ORDER BY dealership_code;

@@ -30,7 +30,7 @@ test.describe('the synthetic-data statement', () => {
       )
       expect(
         normalised,
-        `${route.path} does not say Granite State Auto Group is fictional`
+        `${route.path} does not say Granite Auto Group is fictional`
       ).toMatch(/fictional/i)
     })
   }
@@ -176,6 +176,28 @@ test.describe('honest status language reaches the screen', () => {
   })
 })
 
+/**
+ * The routes that legitimately render an advertised price.
+ *
+ * `/` is on the list because its Granite Auto Group section carries the group
+ * inventory snapshot. Everything else on the site still renders no currency at
+ * all, and the two tests below enforce both halves of that.
+ */
+const INVENTORY_BEARING = ['/', '/dealerships', '/inventory'] as const
+
+/**
+ * Whether a route is one of them.
+ *
+ * `/` is matched EXACTLY. `startsWith('/')` is true of every route on the site,
+ * so a prefix test would exempt the whole suite and the rule would pass while
+ * checking nothing.
+ */
+function isInventoryBearing(path: string): boolean {
+  return INVENTORY_BEARING.some((entry) =>
+    entry === '/' ? path === '/' : path === entry || path.startsWith(`${entry}/`)
+  )
+}
+
 test.describe('no KPI value appears anywhere', () => {
   test('the KPI catalogue publishes definitions and says so', async ({ page }) => {
     await gotoRendered(page, '/kpis')
@@ -184,13 +206,33 @@ test.describe('no KPI value appears anywhere', () => {
     expect(text).toMatch(/no invented benchmarks/i)
   })
 
-  test('no route renders a currency figure or a percentage result', async ({ page }) => {
+  /**
+   * The currency rule, and why it is narrower than it used to be.
+   *
+   * It began as "no route renders a currency figure at all", which was correct
+   * while the site had no business data on it. The dealership and inventory
+   * routes now render ADVERTISED PRICES read from the sanitized reference
+   * workbooks, and a blanket ban would have to be either deleted or worked
+   * around - and a test that gets worked around stops protecting anything.
+   *
+   * So the rule is now the thing it was always for. What must never appear is a
+   * PERFORMANCE figure: a gross, a revenue, a profit, a return on spend. Those
+   * are results, this project has none, and the semantic model has never been
+   * evaluated. An advertised price is not one: it is an attribute of a listing
+   * that was publicly visible, and every page that shows one says so in the same
+   * viewport.
+   *
+   * The percentage and turn bans are unchanged and still apply everywhere.
+   */
+  test('no route renders a gross, revenue or profit figure', async ({ page }) => {
     for (const route of PRIMARY_ROUTES) {
       await gotoRendered(page, route.path)
       const text = await bodyText(page)
-      // A dealership figure would look like $12,450 or 41.2% or 2.13 turns.
-      expect(text, `${route.path} renders a currency figure`).not.toMatch(
-        /\$\s?\d[\d,]*(?:\.\d{2})?/
+      // A currency amount within 60 characters of a performance word.
+      const performanceFigure =
+        /(?:gross|revenue|profit|margin|return on|spend|cost per)[^.]{0,60}\$\s?\d[\d,]*|\$\s?\d[\d,]*[^.]{0,60}(?:gross|revenue|profit|margin|return on ad)/i
+      expect(text, `${route.path} renders a performance currency figure`).not.toMatch(
+        performanceFigure
       )
       expect(text, `${route.path} renders a percentage result`).not.toMatch(
         /\b\d{1,3}\.\d\s?%/
@@ -198,6 +240,44 @@ test.describe('no KPI value appears anywhere', () => {
       expect(text, `${route.path} renders a turn figure`).not.toMatch(
         /\b\d+\.\d{1,2}\s+turns?\b/i
       )
+    }
+  })
+
+  test('the routes with no inventory data render no currency figure at all', async ({
+    page,
+  }) => {
+    // The original blanket rule, kept in force everywhere it still belongs. The
+    // exemptions are named rather than inferred, so a currency figure appearing
+    // on a fourth kind of route fails. The home page is on the list because its
+    // Granite Auto Group section carries the group inventory snapshot, median
+    // advertised price included.
+    for (const route of PRIMARY_ROUTES) {
+      if (isInventoryBearing(route.path)) continue
+      await gotoRendered(page, route.path)
+      const text = await bodyText(page)
+      expect(text, `${route.path} renders a currency figure`).not.toMatch(
+        /\$\s?\d[\d,]*(?:\.\d{2})?/
+      )
+    }
+  })
+
+  test('every route that does render currency names it as an advertised price', async ({
+    page,
+  }) => {
+    // The compensating rule for the exempted routes. A currency figure is allowed
+    // there only because it is an advertised listing price, so each of those
+    // routes has to say the words in the same document. A page that started
+    // rendering money without that label would be presenting a figure whose
+    // provenance the reader cannot see.
+    for (const route of PRIMARY_ROUTES) {
+      if (!isInventoryBearing(route.path)) continue
+      await gotoRendered(page, route.path)
+      const text = await bodyText(page)
+      if (/\$\s?\d[\d,]*/.test(text)) {
+        expect(text, `${route.path} renders currency without naming it`).toMatch(
+          /advertised price/i
+        )
+      }
     }
   })
 
@@ -682,8 +762,7 @@ test.describe('every route carries exactly one trust line', () => {
     for (const route of PRIMARY_ROUTES) {
       await gotoRendered(page, route.path)
       const main = await mainText(page)
-      const occurrences = (main.match(/Granite State Auto Group is fictional/gi) ?? [])
-        .length
+      const occurrences = (main.match(/Granite Auto Group is fictional/gi) ?? []).length
       expect(occurrences, `${route.path} repeats the disclosure`).toBeLessThanOrEqual(2)
     }
   })

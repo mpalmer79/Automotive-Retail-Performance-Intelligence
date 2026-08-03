@@ -114,9 +114,18 @@ venv
 # -----------------------------------------------------------------------------
 # Generated data
 # -----------------------------------------------------------------------------
-# `data/sample/` is deliberately tracked in git — it is what makes the
-# repository reviewable — but the website does not read it, so it stays out of
-# the website's context. The database-setup image has its own ignore rules.
+# `data/sample/` and `data/reference/` are deliberately tracked in git — they are
+# what make the repository reviewable. The website reads exactly two things from
+# them: `data/sample/dim_dealership.csv`, which is the store registry the
+# dealership pages derive identity from, and the sanitized inventory workbooks
+# under `data/reference/inventory/`. Both are copied by name in
+# `portfolio/Dockerfile.railway`; nothing else in either tree is, and neither
+# reaches the runtime image.
+#
+# `data/raw/` and `data/external/` are excluded outright. Raw generator output is
+# reproducible from a seed and can be large, and `data/external/` is where an
+# unsanitized source workbook would land if one were ever placed in a working
+# tree — which is precisely the file that must never enter an image layer.
 data/raw
 data/external
 *.dump

@@ -35,6 +35,22 @@ async function settle(page: Page): Promise<void> {
 }
 
 test.describe('axe-core', () => {
+  /*
+   * Triple the default timeout for this sweep, and only for this sweep.
+   *
+   * axe-core's cost scales with the size of the accessibility tree, and the three
+   * store routes render their store's complete inventory table: up to 318 rows of
+   * ten cells, which is several thousand extra nodes for the scan to walk. Timed
+   * in isolation those routes take 11 to 17 seconds; under the suite's two
+   * parallel workers, on a loaded machine, they intermittently crossed the 45
+   * second default and failed as a timeout rather than as a violation.
+   *
+   * The alternative - paginating the store tables so the DOM stays small - would
+   * be shrinking the thing under test to fit the test. The tables are complete on
+   * purpose, and a complete table is what a reviewer should be able to audit.
+   */
+  test.slow()
+
   for (const route of ALL_TESTED_ROUTES) {
     test(`${route} has no critical or serious violation`, async ({ page }) => {
       await page.goto(route)

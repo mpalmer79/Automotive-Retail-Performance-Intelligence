@@ -3,7 +3,7 @@
 A synthetic automotive-retail analytics platform: deterministic data generation, a
 dimensional PostgreSQL warehouse, a data-quality framework and an audited pipeline.
 
-Every row ARPI produces is machine generated. Granite State Auto Group is fictional and
+Every row ARPI produces is machine generated. Granite Auto Group is fictional and
 no real person, customer, employee or business is represented anywhere in this project.
 
 This package implements: configuration, logging, fourteen deterministic generators, the

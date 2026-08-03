@@ -875,7 +875,7 @@ const counts = {
   dealerships: sourced(
     rowCounts['vw_dealership'] ?? 0,
     'Fictional dealerships',
-    'Granite State Auto Group stores. All three are invented.',
+    'Granite Auto Group stores. All three are invented.',
     [{ path: MODEL_EXPECTATIONS_PATH, field: 'expected_row_counts.vw_dealership' }]
   ),
   dimensions: sourced(
@@ -1218,7 +1218,7 @@ const manifest: ProjectManifest = {
     name: 'Automotive Retail Performance Intelligence',
     shortName: 'ARPI',
     author: 'Michael Palmer',
-    dealershipGroup: 'Granite State Auto Group',
+    dealershipGroup: 'Granite Auto Group',
     repositoryUrl:
       'https://github.com/mpalmer79/Automotive-Retail-Performance-Intelligence',
     licence: 'MIT',

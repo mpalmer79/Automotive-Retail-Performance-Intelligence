@@ -124,7 +124,7 @@
        important qualifier on the image. -->
   <g>
     <rect x="72" y="466" width="700" height="60" rx="10" fill="#3d2a05" fill-opacity="0.4" stroke="#eaab2c" stroke-opacity="0.45"/>
-    <text x="94" y="492" fill="#f7c96a" font-family="ui-sans-serif,system-ui,sans-serif" font-size="15" font-weight="600">Synthetic data only. Granite State Auto Group is fictional.</text>
+    <text x="94" y="492" fill="#f7c96a" font-family="ui-sans-serif,system-ui,sans-serif" font-size="15" font-weight="600">Synthetic data only. Granite Auto Group is fictional.</text>
     <text x="94" y="513" fill="#fcdfa4" font-family="ui-sans-serif,system-ui,sans-serif" font-size="13.5">No real dealership, customer, employee or lending data exists in this project.</text>
   </g>
 

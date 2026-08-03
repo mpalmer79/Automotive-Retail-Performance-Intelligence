@@ -25,6 +25,36 @@ export const PRIMARY_ROUTES: readonly RouteUnderTest[] = [
     navLabel: 'Overview',
   },
   {
+    path: '/dealerships',
+    heading: 'Three stores, three operating models',
+    inNav: true,
+    navLabel: 'Dealerships',
+  },
+  {
+    path: '/dealerships/granite-chevrolet',
+    heading: 'Granite Chevrolet of Nashua',
+    inNav: false,
+    navLabel: 'Granite Chevrolet',
+  },
+  {
+    path: '/dealerships/granite-subaru',
+    heading: 'Granite Subaru of Manchester',
+    inNav: false,
+    navLabel: 'Granite Subaru',
+  },
+  {
+    path: '/dealerships/granite-pre-owned',
+    heading: 'Granite Pre-Owned Center of Merrimack',
+    inNav: false,
+    navLabel: 'Granite Pre-Owned',
+  },
+  {
+    path: '/inventory',
+    heading: 'Every listing the three stores carried',
+    inNav: true,
+    navLabel: 'Inventory',
+  },
+  {
     path: '/architecture',
     heading: 'A layered batch pipeline',
     inNav: true,
@@ -61,10 +91,12 @@ export const PRIMARY_ROUTES: readonly RouteUnderTest[] = [
 /**
  * The HEADER navigation, which is a different list from the routes above.
  *
- * Five items for seven navigable routes: "Platform" points at `/architecture`
- * and is the current item on `/data-model` and `/governance` too, both of which
- * are reached from the platform sub-navigation on the page. `tests/unit/site.test.ts`
- * asserts this list agrees with `PRIMARY_NAV`, so the two cannot drift.
+ * Seven items for thirteen routes. Two of them are destination GROUPS:
+ * "Platform" points at `/architecture` and is current on `/data-model` and
+ * `/governance` too, and "Dealerships" points at `/dealerships` and is current on
+ * all three store pages. Both groups carry a sub-navigation on the page itself.
+ * `tests/unit/site.test.ts` asserts this list agrees with `PRIMARY_NAV`, so the
+ * two cannot drift.
  *
  * The case study is deliberately not here. It was a bordered control in the
  * header and is now in the footer, on the status page and in the home page's
@@ -80,6 +112,17 @@ export interface HeaderNavItem {
 export const HEADER_NAV: readonly HeaderNavItem[] = [
   { label: 'Overview', path: '/', currentOn: ['/'] },
   {
+    label: 'Dealerships',
+    path: '/dealerships',
+    currentOn: [
+      '/dealerships',
+      '/dealerships/granite-chevrolet',
+      '/dealerships/granite-subaru',
+      '/dealerships/granite-pre-owned',
+    ],
+  },
+  { label: 'Inventory', path: '/inventory', currentOn: ['/inventory'] },
+  {
     label: 'Platform',
     path: '/architecture',
     currentOn: ['/architecture', '/data-model', '/governance'],
@@ -94,6 +137,15 @@ export const PLATFORM_ROUTES: readonly { label: string; path: string }[] = [
   { label: 'Architecture', path: '/architecture' },
   { label: 'Data model', path: '/data-model' },
   { label: 'Governance', path: '/governance' },
+]
+
+/** The five routes that render the Granite Auto Group sub-navigation. */
+export const GROUP_ROUTES: readonly { label: string; path: string }[] = [
+  { label: 'The group', path: '/dealerships' },
+  { label: 'Granite Chevrolet', path: '/dealerships/granite-chevrolet' },
+  { label: 'Granite Subaru', path: '/dealerships/granite-subaru' },
+  { label: 'Granite Pre-Owned', path: '/dealerships/granite-pre-owned' },
+  { label: 'Inventory explorer', path: '/inventory' },
 ]
 
 /** Every route the accessibility sweep covers, including the internal lab. */

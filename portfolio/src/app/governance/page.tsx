@@ -12,7 +12,7 @@ import { TrustFramework } from '@/components/sections/trust-framework'
 import { CodeLabel, Eyebrow, Heading, Text } from '@/components/ui/typography'
 import { gate, counts } from '@/lib/manifest'
 import { pageMetadata } from '@/lib/metadata'
-import { SYNTHETIC_DATA_STATEMENT } from '@/lib/site'
+import { INVENTORY_DATA_STATEMENT, SYNTHETIC_DATA_STATEMENT } from '@/lib/site'
 import { Canvas } from '@/components/shell/field'
 
 export const metadata: Metadata = pageMetadata('governance')
@@ -68,16 +68,68 @@ export default function GovernancePage() {
                 {SYNTHETIC_DATA_STATEMENT}
               </Text>
               <Text size="sm" tone="muted" className="max-w-prose">
-                Granite State Auto Group, its three stores, its staff and its customers
-                were invented to give the data model a coherent business context. Every
-                figure the project can produce comes from documented rules and a fixed
-                random seed. Nothing here should be read as, compared against, or cited as
-                the performance of any real automotive retailer.
+                Granite Auto Group, its three stores, its staff and its customers were
+                invented to give the data model a coherent business context. Every figure
+                the project can produce comes from documented rules and a fixed random
+                seed. Nothing here should be read as, compared against, or cited as the
+                performance of any real automotive retailer.
               </Text>
               <div className="flex flex-wrap gap-3 pt-1">
                 <SourceLink path="PRIVACY_AND_ETHICS.md" field="section 2" />
                 <SourceLink path="DATA_GENERATION.md" field="generation rules" />
               </div>
+            </div>
+          </Card>
+        </Container>
+      </Section>
+
+      {/* 1b. The one exception, stated where a reader will look for it.
+
+           The trust line on the dealership and inventory routes points here, so
+           this page has to be the place the two provenances are distinguished.
+           Leaving it to say only "every record is synthetic" would make this
+           page the least accurate one on the site about its own subject. */}
+      <Section rhythm="none" className="pb-section-tight">
+        <Container width="wide">
+          <Card padding="lg" className="flex flex-col gap-4">
+            <Heading level={2} size="h4">
+              One exception, and it is named rather than absorbed
+            </Heading>
+            <Text size="body" tone="secondary" className="max-w-prose">
+              The inventory shown on the dealership pages and in the inventory explorer is
+              not machine-generated, and this project does not claim it is.
+            </Text>
+            <Text size="sm" tone="secondary" className="max-w-prose">
+              {INVENTORY_DATA_STATEMENT}
+            </Text>
+            <Text size="sm" tone="muted" className="max-w-prose">
+              The two are governed as different classes of data because they are
+              different. The warehouse is generated from a seed, so no row of it was ever
+              observed anywhere. The inventory workbooks were observed, then
+              de-identified, so calling them synthetic would claim more sanitization than
+              was performed. They live in the repository&apos;s reference tree, never in
+              the generated-sample tree, and the build-time generator that reads them
+              refuses to write a frontend file still containing a VIN, a source URL, a
+              domain, an email address or a telephone number.
+            </Text>
+            <Text size="sm" tone="muted" className="max-w-prose">
+              An inventory summary is descriptive evidence about a reference dataset. It
+              is not an analytical finding about dealership performance, and publishing it
+              does not open Gate 2 or complete the case study.
+            </Text>
+            <div className="flex flex-wrap gap-3 pt-1">
+              <SourceLink
+                path="data/reference/inventory/README.md"
+                field="sanitization controls and coverage limits"
+              />
+              <SourceLink
+                path="portfolio/scripts/generate-inventory-data.ts"
+                field="the build-time gate"
+              />
+              <SourceLink
+                path="docs/architecture-decisions/ADR-0011-dealer-group-public-naming.md"
+                field="the group's public naming decision"
+              />
             </div>
           </Card>
         </Container>

@@ -367,7 +367,148 @@ completed degree is claimed. No certification badge appears anywhere on the site
 
 ---
 
-## 11. Adding to the site without breaking the contract
+---
+
+## 11. The inventory content model
+
+Everything above describes ONE generator and ONE artefact. There are now two of
+each, and the second one is different enough in kind to be worth stating
+separately.
+
+### 11.1 Two provenances, two disclosures
+
+|                     | Warehouse data                | Inventory reference data                                                    |
+| ------------------- | ----------------------------- | --------------------------------------------------------------------------- |
+| Origin              | machine-generated from a seed | captured from a public listing source, then de-identified                   |
+| Is it synthetic?    | yes, entirely                 | **no**                                                                      |
+| What was removed    | nothing was ever there        | VINs, source URLs, listing keys, street addresses, real dealership identity |
+| What remains        | nothing observed              | model, trim, condition, mileage, advertised price, inventory mix            |
+| Where it appears    | every route                   | `/`, `/dealerships`, the three store routes, `/inventory`                   |
+| Disclosure constant | `SYNTHETIC_DATA_STATEMENT`    | `INVENTORY_DATA_STATEMENT`                                                  |
+
+The two are separate constants on purpose. Calling the reference data
+"synthetic" would claim more sanitization than was performed, and calling the
+warehouse "sanitized" would claim less. `TrustLine` takes a `scope` prop for the
+same reason, and every route that renders an advertised price passes
+`scope="inventory"`.
+
+### 11.2 The second pipeline
+
+```
+data/sample/dim_dealership.csv           the store registry (the warehouse's own dimension)
+data/reference/inventory/<id>/<date>/*.xlsx   one sanitized workbook per store per snapshot
+src/content/dealership-profiles.json     authored positioning prose, asserted to contain no digit
+        │
+        │  scripts/generate-inventory-data.ts
+        ▼
+src/generated/dealerships.json           identity + per-store derived profile
+src/generated/inventory-summary.json     group totals, facets, chart series
+src/generated/inventory-records.json     every sanitized listing, one per line
+        │
+        │  src/lib/inventory.ts  (typed accessors)
+        ▼
+components and routes
+```
+
+No workbook is parsed in the browser. `npm run build` runs
+`npm run inventory:check` first, inside the Railway image, so a stale or
+hand-edited artefact fails the deployment rather than reaching the site.
+
+### 11.3 Where dealership identity comes from
+
+Not from a constant in `src/`. The generator reads
+`data/sample/dim_dealership.csv`, which is the warehouse's own `dim_dealership`
+dimension, so the website and the data model cannot disagree about who the three
+stores are. Store type, franchise brand, city, state and market region all come
+from that row.
+
+What the website adds on top is PROSE ONLY: a slug, an accent, a tagline and four
+paragraphs of positioning, in `src/content/dealership-profiles.json`. That file is
+asserted to contain **no digit outside an identifier**, by the generator and again
+by `tests/unit/inventory.test.ts`. A content file is exactly where a
+plausible-looking "over 500 vehicles in stock" would be typed, and once one is
+there nothing downstream can tell it from a derived figure.
+
+### 11.4 The workbook schema
+
+Each workbook carries four worksheets. The generator reads two of them.
+
+`README` supplies the workbook's own metadata as label/value rows:
+`Dealership ID`, `Source type`, `Snapshot date`, and where the workbook states
+them, `Coverage status` and a coverage limitation paragraph.
+
+`Inventory` is the data. These columns are REQUIRED and the build fails without
+them:
+
+`Source Record ID`, `Dealership ID`, `Captured At`, `Condition`, `Model Year`,
+`Make`, `Model`, `Trim`, `Odometer Miles`, `Advertised Price`, `Pricing Status`.
+
+These columns are required to EXIST and are then dropped, so that a change to the
+workbook contract is a reviewed change rather than a silent one:
+
+`Store Name`, `Source Batch ID`, `Source Feed`, `Vehicle Display`,
+`Synthetic Vehicle ID`, `Synthetic VIN`, `Inventory Unit Count`,
+`Data Classification`.
+
+### 11.5 Sanitization rules
+
+The generator refuses to write anything if the serialised output matches a source
+URL, a hostname, an email address, a telephone number, a VIN-shaped token, a
+domain name, or a retired public name. The check runs on the whole serialised
+artefact rather than field by field, so a value that reached the file through a
+field nobody thought to check is still caught.
+
+`InventoryRecord` has no VIN field and no source-URL field at all. That is a
+stronger guarantee than "no value currently looks like one", and
+`tests/unit/inventory.test.ts` asserts the exact key set.
+
+### 11.6 What is never invented
+
+A statistic whose population is empty is `null`, and `<MetricGrid>` DROPS a null
+tile rather than drawing a dash. The independent store's public source exposed a
+price for fewer than a tenth of its listings, so a median price for it would be a
+median of the priced tenth presented as though it described the lot.
+
+Every price statistic states its own denominator in the same tile. A missing price
+or odometer renders as "Not exposed", which is what the source said. A range
+filter EXCLUDES listings the source did not expose that value for, and the
+explorer says so above the table rather than leaving the reader to notice that the
+total stopped adding up.
+
+### 11.7 Coverage
+
+A workbook that states a `Coverage status` has it rendered verbatim. A workbook
+that states none produces a sentence saying the claim is absent, rather than a
+confident default the source never asserted. Both are in `coverageSentences()` in
+`src/lib/inventory.ts`.
+
+### 11.8 An inventory summary is not a finding
+
+Adding these pages does not open Gate 2 and does not complete the analytical case
+study. A dealership inventory summary is DESCRIPTIVE EVIDENCE about a reference
+dataset: it describes a set of listings that were visible at a capture date. It is
+not a measured result about how the group performs.
+`tests/e2e/inventory.spec.ts` asserts the case study is still locked and that each
+of these routes says so in words.
+
+### 11.9 Adding a snapshot
+
+1. Sanitize the source workbook outside this repository. The unsanitized original
+   never enters git.
+2. Commit it to `data/reference/inventory/<dealership-id-lowercase>/<YYYY-MM-DD>/`,
+   one workbook per folder.
+3. Run `npm run inventory` from `portfolio/`.
+4. Read the diff. It is telling you what changed on the website.
+5. Commit the regenerated artefacts with the workbook.
+
+The generator always takes the LATEST snapshot folder per store. A folder that is
+not an ISO date, a folder holding two workbooks, and a workbook whose
+`Dealership ID` disagrees with its folder are all build failures with a named
+reason.
+
+---
+
+## 12. Adding to the site without breaking the contract
 
 | You want to                    | Do this                                                                                              |
 | ------------------------------ | ---------------------------------------------------------------------------------------------------- |
@@ -378,3 +519,6 @@ completed degree is claimed. No certification badge appears anywhere on the site
 | Add a KPI                      | Add it to `KPI_CATALOG.md` first, then to `src/content/kpis.json`. The unit test asserts they agree. |
 | Publish the case study         | Open Gate 2. All five conditions, in order. The flag is last, not first.                             |
 | Add a colour, size or duration | Add it to `tokens.css`. Nothing else may introduce a raw value.                                      |
+| Add an inventory snapshot      | Commit the sanitized workbook under `data/reference/inventory/`, then `npm run inventory`. See 11.9. |
+| Change a dealership's copy     | Edit `src/content/dealership-profiles.json`. Prose only: a digit there fails the build.              |
+| Change a dealership's identity | Change `data/sample/dim_dealership.csv`. The website reads the warehouse's own dimension.            |

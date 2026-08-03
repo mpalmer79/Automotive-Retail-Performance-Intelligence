@@ -1704,7 +1704,7 @@ These seven apply identically to both paths. A run that satisfies six of them ha
 - [ ] `portfolio/case-study-copy.md` covers business problem, architecture diagram, selected screenshots,
       key findings, technology stack, data limitations, and links to the repository and walkthrough — the
       seven elements [ARCHITECTURE.md §26.3](../../ARCHITECTURE.md) requires.
-- [ ] The copy states the data is synthetic and Granite State Auto Group is fictional, prominently rather
+- [ ] The copy states the data is synthetic and Granite Auto Group is fictional, prominently rather
       than in a footnote.
 - [ ] `portfolio/resume-bullets.md` contains no claim the repository cannot evidence. Every bullet maps to a
       delivered artefact.

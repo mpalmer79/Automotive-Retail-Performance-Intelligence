@@ -1,0 +1,40 @@
+{
+  "group": {
+    "name": "Granite Auto Group",
+    "introduction": "Granite Auto Group is a fictional three-store automotive retail organization serving Southern New Hampshire. Its Chevrolet franchise, Subaru franchise, and independent pre-owned center each operate with different inventory strategies. ARPI brings those operations into one governed reporting environment so leadership can compare performance without losing store-level context.",
+    "operatingModel": "One group, three operating models. Two franchise rooftops carry a manufacturer allocation and a new-vehicle order bank they do not fully control. The independent pre-owned center buys every unit it sells. A group report that treats those three as one line loses the only thing that explains their numbers.",
+    "governanceNote": "The group, its stores, its employees and its transactions are fictional. The inventory shown on this site is sanitized public reference data captured for portfolio use, not a dealer management system export, and it describes listings rather than completed sales."
+  },
+  "dealerships": [
+    {
+      "id": "GSA-001",
+      "slug": "granite-chevrolet",
+      "accent": "chevrolet",
+      "tagline": "The franchise volume store",
+      "positioning": "Granite Chevrolet of Nashua is the group's volume franchise rooftop. Its inventory is dominated by new Chevrolet trucks and utilities arriving on manufacturer allocation, with a small pre-owned presence beside them.",
+      "inventoryStrategy": "Allocation led. What sits on the lot is largely decided by what the manufacturer builds and ships, so the levers available to the store are pricing, merchandising and turn rather than acquisition mix.",
+      "customerSegment": "New-vehicle truck and utility buyers, fleet and commercial work vehicles, and the service-retention base that a franchise rooftop carries with it.",
+      "analyticsFocus": "Days supply by model line, aged new inventory, and the gap between what the allocation delivers and what the market in Nashua actually asks for."
+    },
+    {
+      "id": "GSA-002",
+      "slug": "granite-subaru",
+      "accent": "subaru",
+      "tagline": "The all-weather franchise",
+      "positioning": "Granite Subaru of Manchester is the group's second franchise rooftop. It sells a narrow, all-wheel-drive product line into a New England market that rewards it, and it runs a materially larger pre-owned share than the Chevrolet store.",
+      "inventoryStrategy": "Narrow new line, broad pre-owned bench. A small number of nameplates covers the new side, so the store differentiates on the pre-owned inventory it acquires, including brands it does not franchise.",
+      "customerSegment": "All-wheel-drive buyers, repeat Subaru owners, and cross-shoppers who arrive for the brand and leave in a pre-owned unit from another make.",
+      "analyticsFocus": "New versus pre-owned mix, off-brand pre-owned performance, and whether the pre-owned bench is priced against the same market the new line competes in."
+    },
+    {
+      "id": "GSA-003",
+      "slug": "granite-pre-owned",
+      "accent": "preowned",
+      "tagline": "The independent marketplace",
+      "positioning": "Granite Pre-Owned Center of Merrimack is the group's independent store. It carries no franchise, buys every unit it sells, and lists a multi-brand inventory that spans a far wider band of model years and price points than either franchise rooftop.",
+      "inventoryStrategy": "Acquisition led. With no allocation and no new-vehicle order bank, every decision is a buying decision, and the resulting inventory is the widest and the oldest in the group.",
+      "customerSegment": "Value and budget buyers, trade-in absorption from the two franchise stores, and shoppers cross-shopping brands rather than a single nameplate.",
+      "analyticsFocus": "Acquisition source, price band coverage, model-year spread, and how much of the listed inventory the public source actually exposes a price for."
+    }
+  ]
+}

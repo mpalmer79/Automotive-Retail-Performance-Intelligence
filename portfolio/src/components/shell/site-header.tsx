@@ -3,7 +3,7 @@
 /**
  * The site header.
  *
- * Five content destinations, a GitHub action, and a menu button below the large
+ * Seven content destinations, a GitHub action, and a menu button below the large
  * breakpoint. That is the whole surface.
  *
  * WHAT THE REDESIGN REMOVED, AND WHY
@@ -34,7 +34,14 @@ import { useCallback, useState } from 'react'
 import { Wordmark } from '@/components/brand/logo'
 import { IconButton } from '@/components/ui/button'
 import { useEscapeKey, useFocusTrap, useScrollLock } from '@/lib/hooks'
-import { PLATFORM_NAV, PRIMARY_NAV, REPOSITORY_URL, isNavItemCurrent } from '@/lib/site'
+import {
+  GROUP_NAV,
+  PLATFORM_NAV,
+  PRIMARY_NAV,
+  REPOSITORY_URL,
+  isNavItemCurrent,
+  type NavItem,
+} from '@/lib/site'
 import { cx } from '@/lib/utils'
 
 export function SiteHeader() {
@@ -114,9 +121,10 @@ export function SiteHeader() {
             <Wordmark />
           </Link>
 
-          {/* Desktop navigation. Five items, evenly weighted, with room around
-              them - where seven pushed against the GitHub icon and read as a
-              table of contents that had run out of space. */}
+          {/* Desktop navigation. Seven items, evenly weighted. Two destination
+              GROUPS - "Platform" and "Dealerships" - stand in for six routes
+              between them, which is what keeps this a navigation rather than a
+              table of contents. */}
           <nav aria-label="Primary" className="ml-auto hidden lg:block">
             <ul className="flex items-center gap-1">
               {PRIMARY_NAV.map((item) => {
@@ -253,39 +261,69 @@ export function SiteHeader() {
                 })}
               </ul>
 
-              {/* The platform group, expanded.
-                  On a phone there is room to show the three pages behind
-                  "Platform" rather than making a visitor land on Architecture and
-                  then discover a sub-navigation. On a desktop that job belongs to
-                  `<PlatformNav>`, which is on the page itself. */}
-              <div className="mt-5 flex flex-col gap-1 border-t border-line pt-4">
-                <p className="eyebrow text-2xs">Inside the platform</p>
-                <ul className="flex flex-col">
-                  {PLATFORM_NAV.map((item) => {
-                    const current = isNavItemCurrent(item, pathname)
-                    return (
-                      <li key={item.href}>
-                        <Link
-                          href={item.href}
-                          aria-current={current ? 'page' : undefined}
-                          className={cx(
-                            'flex min-h-touch items-center text-base',
-                            current
-                              ? 'font-semibold text-accent'
-                              : 'text-ink-secondary hover:text-ink'
-                          )}
-                        >
-                          {item.label}
-                        </Link>
-                      </li>
-                    )
-                  })}
-                </ul>
-              </div>
+              {/* The two destination groups, expanded.
+                  On a phone there is room to show the pages behind "Platform"
+                  and "Dealerships" rather than making a visitor land on one and
+                  then discover a sub-navigation. On a desktop that job belongs
+                  to `<PlatformNav>` and `<GroupNav>`, which are on the pages
+                  themselves. */}
+              <NavGroup
+                heading="Inside the platform"
+                items={PLATFORM_NAV}
+                pathname={pathname}
+              />
+              <NavGroup
+                heading="Inside the group"
+                items={GROUP_NAV}
+                pathname={pathname}
+              />
             </nav>
           </div>
         </>
       ) : null}
     </>
+  )
+}
+
+/**
+ * One expanded destination group inside the mobile drawer.
+ *
+ * Extracted rather than repeated, because there are now two of them and a copied
+ * block is where the second one quietly stops matching the first.
+ */
+function NavGroup({
+  heading,
+  items,
+  pathname,
+}: {
+  heading: string
+  items: readonly NavItem[]
+  pathname: string
+}) {
+  return (
+    <div className="mt-5 flex flex-col gap-1 border-t border-line pt-4">
+      <p className="eyebrow text-2xs">{heading}</p>
+      <ul className="flex flex-col">
+        {items.map((item) => {
+          const current = isNavItemCurrent(item, pathname)
+          return (
+            <li key={item.href}>
+              <Link
+                href={item.href}
+                aria-current={current ? 'page' : undefined}
+                className={cx(
+                  'flex min-h-touch items-center text-base',
+                  current
+                    ? 'font-semibold text-accent'
+                    : 'text-ink-secondary hover:text-ink'
+                )}
+              >
+                {item.label}
+              </Link>
+            </li>
+          )
+        })}
+      </ul>
+    </div>
   )
 }

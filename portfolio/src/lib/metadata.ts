@@ -144,7 +144,7 @@ const SOFTWARE_ID = `${REPOSITORY_URL}#source`
  *   CreativeWork        the project as a documented body of work
  *
  * Deliberately absent: any rating, review, award, testimonial, price, or
- * `Organization` node. Granite State Auto Group is fictional and must never
+ * `Organization` node. Granite Auto Group is fictional and must never
  * appear in structured data as though it were a real business.
  */
 export function structuredData(): string {
@@ -207,7 +207,7 @@ export function structuredData(): string {
       // The single most important claim on the site, stated in machine-readable
       // form as well as in prose.
       abstract:
-        'A portfolio data platform built entirely on synthetic data. Granite State Auto Group is a fictional dealer group; no real dealership, customer, employee or lending data is used anywhere in the project, and no figure it produces describes any real automotive retailer.',
+        'A portfolio data platform built entirely on synthetic data. Granite Auto Group is a fictional dealer group; no real dealership, customer, employee or lending data is used anywhere in the project, and no figure it produces describes any real automotive retailer.',
       creativeWorkStatus: 'In progress',
     },
   ]

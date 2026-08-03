@@ -18,10 +18,19 @@
  *   3. `.dockerignore`                or a needed path is excluded from the upload
  *
  * A human keeping three lists in step with a fourth is a matter of time. So
- * rather than duplicating the list here, this suite EXTRACTS it from
- * `generate-project-manifest.ts` — from its actual read call sites — and asserts
- * the three configurations cover it. Adding a new evidence source to the
+ * rather than duplicating the list here, this suite EXTRACTS it from the two
+ * build-time generators — from their actual read call sites — and asserts the
+ * three configurations cover it. Adding a new evidence source to either
  * generator without updating them fails here.
+ *
+ * THE SECOND GENERATOR
+ * --------------------
+ * `generate-inventory-data.ts` reads the sanitized inventory workbooks and the
+ * store dimension, and writes the three artefacts the dealership and inventory
+ * pages render. It runs in `--check` mode inside the image for the same reason
+ * the manifest does, so its inputs have to reach the build context too. It is
+ * folded into the same extraction rather than given a parallel suite, because a
+ * parallel suite is a second place for the rule to be written down.
  */
 import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
@@ -35,7 +44,9 @@ const REPO = resolve(PORTFOLIO, '..')
 
 const read = (relative: string) => readFileSync(resolve(REPO, relative), 'utf8')
 
-const GENERATOR_SOURCE = read('portfolio/scripts/generate-project-manifest.ts')
+const MANIFEST_GENERATOR_SOURCE = read('portfolio/scripts/generate-project-manifest.ts')
+const INVENTORY_GENERATOR_SOURCE = read('portfolio/scripts/generate-inventory-data.ts')
+const GENERATOR_SOURCE = `${MANIFEST_GENERATOR_SOURCE}\n${INVENTORY_GENERATOR_SOURCE}`
 const DOCKERFILE = read('portfolio/Dockerfile.railway')
 const DOCKERIGNORE = read('.dockerignore')
 const RAILWAY_CONFIG = JSON.parse(read('railway.json')) as {
@@ -227,6 +238,20 @@ describe('the generator read set is extracted correctly', () => {
     expect(
       READ_PATHS.some((path) => path.startsWith('powerbi/ARPI_Performance_Intelligence'))
     ).toBe(true)
+  })
+
+  it("includes the inventory generator's own sources", () => {
+    // The dealership and inventory pages display no authored number either, and
+    // their evidence lives outside `portfolio/` exactly as the manifest's does.
+    for (const expected of [
+      'data/sample/dim_dealership.csv',
+      'data/reference/inventory',
+      'portfolio/src/content/dealership-profiles.json',
+    ]) {
+      expect(READ_PATHS, `the inventory generator no longer reads ${expected}`).toContain(
+        expected
+      )
+    }
   })
 
   it('excludes paths the generator only records as evidence links', () => {
@@ -462,6 +487,12 @@ describe('the Railway image honours the platform runtime contract', () => {
     expect(DOCKERFILE).toMatch(/RUN npm run manifest:check/)
   })
 
+  it('runs the inventory freshness gate inside the image', () => {
+    // Same argument, second generator: a stale `inventory-records.json` would
+    // deploy a dealership experience whose counts no longer match the workbooks.
+    expect(DOCKERFILE).toMatch(/RUN npm run inventory:check/)
+  })
+
   it('copies the two directories standalone output does not populate', () => {
     // Omitting either produces a site that boots with no styling and no favicon.
     expect(DOCKERFILE).toMatch(/\.next\/static/)
@@ -472,9 +503,18 @@ describe('the Railway image honours the platform runtime contract', () => {
     expect(DOCKERFILE).toMatch(/test -f \.next\/standalone\/server\.js/)
   })
 
-  it('keeps tests, SQL and the Power BI project out of the runtime stage', () => {
+  it('keeps tests, SQL, the Power BI project and the workbooks out of the runtime stage', () => {
+    // The workbooks in particular: the generated JSON is what the site serves,
+    // and shipping the source spreadsheets into a public image would put the
+    // pre-sanitization column set one `docker pull` away.
     const runtimeStage = DOCKERFILE.slice(DOCKERFILE.indexOf('AS runtime'))
-    for (const forbidden of ['/tests', '/sql', '/powerbi', 'playwright']) {
+    for (const forbidden of [
+      '/tests',
+      '/sql',
+      '/powerbi',
+      'playwright',
+      'data/reference',
+    ]) {
       expect(
         runtimeStage.includes(forbidden),
         `the runtime stage references ${forbidden}`

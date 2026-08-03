@@ -169,6 +169,19 @@ RUN mkdir -p ./docs/findings
 # Script and DDL counts across the nine numbered build directories.
 COPY sql ./sql
 
+# --- Inventory evidence, read by generate-inventory-data.ts ----------------
+#
+# The store dimension is the registry the website derives dealership identity
+# from, so the site and the warehouse cannot disagree about who the three stores
+# are. Only that one file is copied: the rest of `data/sample/` is generated
+# transaction data the website never reads.
+COPY data/sample/dim_dealership.csv ./data/sample/dim_dealership.csv
+# The sanitized inventory workbooks, one per store per snapshot. Read here and
+# NEVER copied into the runtime stage: what the site serves is the generated
+# JSON, and shipping the source spreadsheets into a public image would put the
+# pre-sanitization column set one `docker pull` away.
+COPY data/reference/inventory ./data/reference/inventory
+
 # --- Website source --------------------------------------------------------
 COPY portfolio ./portfolio
 
@@ -182,6 +195,14 @@ WORKDIR /build/portfolio
 # missing `COPY` above fails here rather than shipping a site whose numbers came
 # from a partially populated context.
 RUN npm run manifest:check
+
+# THE INVENTORY FRESHNESS GATE, for the same reason.
+#
+# A stale `inventory-records.json` would deploy a dealership experience whose
+# counts no longer match the workbooks it claims to be derived from. This
+# regenerates the three artefacts from the workbooks copied above and fails if
+# they differ from the committed ones by a byte.
+RUN npm run inventory:check
 
 # `next build` — types are checked as part of it (`ignoreBuildErrors: false`).
 RUN npm run build

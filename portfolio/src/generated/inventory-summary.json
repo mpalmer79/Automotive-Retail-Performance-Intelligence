@@ -1,0 +1,1212 @@
+{
+  "generatedFrom": [
+    "data/reference/inventory/gsa-001/2026-08-02/ARPI_Granite_Chevrolet_Inventory_Sanitized_2026-08-02.xlsx",
+    "data/reference/inventory/gsa-002/2026-08-02/ARPI_Granite_Subaru_Inventory_Sanitized_2026-08-02.xlsx",
+    "data/reference/inventory/gsa-003/2026-08-02/ARPI_Granite_Pre_Owned_Center_Inventory_Sanitized_2026-08-02.xlsx"
+  ],
+  "latestSnapshotDate": "2026-08-02",
+  "snapshotDates": [
+    "2026-08-02"
+  ],
+  "totalRecords": 541,
+  "newRecords": 203,
+  "preOwnedRecords": 338,
+  "pricedRecords": 252,
+  "mileageRecords": 254,
+  "dealershipCount": 3,
+  "makeCount": 31,
+  "modelCount": 157,
+  "medianPrice": 43342,
+  "medianPreOwnedMileage": 77843,
+  "priceRange": {
+    "min": 7395,
+    "max": 109674
+  },
+  "modelYearRange": {
+    "min": 2001,
+    "max": 2027
+  },
+  "byDealership": [
+    {
+      "dealershipId": "GSA-001",
+      "name": "Granite Chevrolet of Nashua",
+      "shortName": "Granite Chevrolet",
+      "slug": "granite-chevrolet",
+      "accent": "chevrolet",
+      "total": 199,
+      "newRecords": 195,
+      "preOwnedRecords": 4
+    },
+    {
+      "dealershipId": "GSA-002",
+      "name": "Granite Subaru of Manchester",
+      "shortName": "Granite Subaru",
+      "slug": "granite-subaru",
+      "accent": "subaru",
+      "total": 24,
+      "newRecords": 8,
+      "preOwnedRecords": 16
+    },
+    {
+      "dealershipId": "GSA-003",
+      "name": "Granite Pre-Owned Center of Merrimack",
+      "shortName": "Granite Pre-Owned",
+      "slug": "granite-pre-owned",
+      "accent": "preowned",
+      "total": 318,
+      "newRecords": 0,
+      "preOwnedRecords": 318
+    }
+  ],
+  "byCondition": [
+    {
+      "condition": "new",
+      "label": "New",
+      "count": 203
+    },
+    {
+      "condition": "pre-owned",
+      "label": "Pre-owned",
+      "count": 338
+    }
+  ],
+  "byMake": [
+    {
+      "make": "Chevrolet",
+      "count": 236
+    },
+    {
+      "make": "Subaru",
+      "count": 37
+    },
+    {
+      "make": "Nissan",
+      "count": 32
+    },
+    {
+      "make": "Ford",
+      "count": 31
+    },
+    {
+      "make": "Jeep",
+      "count": 28
+    },
+    {
+      "make": "Honda",
+      "count": 20
+    },
+    {
+      "make": "BMW",
+      "count": 19
+    },
+    {
+      "make": "GMC",
+      "count": 19
+    },
+    {
+      "make": "Ram",
+      "count": 19
+    },
+    {
+      "make": "Mazda",
+      "count": 12
+    },
+    {
+      "make": "Hyundai",
+      "count": 10
+    },
+    {
+      "make": "Kia",
+      "count": 10
+    },
+    {
+      "make": "Toyota",
+      "count": 10
+    },
+    {
+      "make": "Audi",
+      "count": 8
+    },
+    {
+      "make": "Mercedes-Benz",
+      "count": 8
+    },
+    {
+      "make": "Volkswagen",
+      "count": 8
+    },
+    {
+      "make": "Buick",
+      "count": 6
+    },
+    {
+      "make": "Dodge",
+      "count": 6
+    },
+    {
+      "make": "Acura",
+      "count": 3
+    },
+    {
+      "make": "Chrysler",
+      "count": 3
+    },
+    {
+      "make": "Volvo",
+      "count": 3
+    },
+    {
+      "make": "INFINITI",
+      "count": 2
+    },
+    {
+      "make": "Mitsubishi",
+      "count": 2
+    },
+    {
+      "make": "Porsche",
+      "count": 2
+    },
+    {
+      "make": "Cadillac",
+      "count": 1
+    },
+    {
+      "make": "Genesis",
+      "count": 1
+    },
+    {
+      "make": "Harley-Davidson",
+      "count": 1
+    },
+    {
+      "make": "Jaguar",
+      "count": 1
+    },
+    {
+      "make": "Lexus",
+      "count": 1
+    },
+    {
+      "make": "Maserati",
+      "count": 1
+    },
+    {
+      "make": "Tesla",
+      "count": 1
+    }
+  ],
+  "byModelYear": [
+    {
+      "modelYear": 2001,
+      "count": 1
+    },
+    {
+      "modelYear": 2003,
+      "count": 1
+    },
+    {
+      "modelYear": 2004,
+      "count": 2
+    },
+    {
+      "modelYear": 2006,
+      "count": 1
+    },
+    {
+      "modelYear": 2008,
+      "count": 2
+    },
+    {
+      "modelYear": 2009,
+      "count": 1
+    },
+    {
+      "modelYear": 2010,
+      "count": 2
+    },
+    {
+      "modelYear": 2011,
+      "count": 4
+    },
+    {
+      "modelYear": 2012,
+      "count": 10
+    },
+    {
+      "modelYear": 2013,
+      "count": 10
+    },
+    {
+      "modelYear": 2014,
+      "count": 12
+    },
+    {
+      "modelYear": 2015,
+      "count": 17
+    },
+    {
+      "modelYear": 2016,
+      "count": 21
+    },
+    {
+      "modelYear": 2017,
+      "count": 22
+    },
+    {
+      "modelYear": 2018,
+      "count": 34
+    },
+    {
+      "modelYear": 2019,
+      "count": 40
+    },
+    {
+      "modelYear": 2020,
+      "count": 34
+    },
+    {
+      "modelYear": 2021,
+      "count": 32
+    },
+    {
+      "modelYear": 2022,
+      "count": 29
+    },
+    {
+      "modelYear": 2023,
+      "count": 30
+    },
+    {
+      "modelYear": 2024,
+      "count": 28
+    },
+    {
+      "modelYear": 2025,
+      "count": 7
+    },
+    {
+      "modelYear": 2026,
+      "count": 199
+    },
+    {
+      "modelYear": 2027,
+      "count": 2
+    }
+  ],
+  "priceBands": [
+    {
+      "label": "$0k to $10k",
+      "min": 0,
+      "max": 10000,
+      "count": 6
+    },
+    {
+      "label": "$10k to $20k",
+      "min": 10000,
+      "max": 20000,
+      "count": 15
+    },
+    {
+      "label": "$20k to $30k",
+      "min": 20000,
+      "max": 30000,
+      "count": 28
+    },
+    {
+      "label": "$30k to $40k",
+      "min": 30000,
+      "max": 40000,
+      "count": 60
+    },
+    {
+      "label": "$40k to $50k",
+      "min": 40000,
+      "max": 50000,
+      "count": 56
+    },
+    {
+      "label": "$50k to $60k",
+      "min": 50000,
+      "max": 60000,
+      "count": 21
+    },
+    {
+      "label": "$60k to $75k",
+      "min": 60000,
+      "max": 75000,
+      "count": 38
+    },
+    {
+      "label": "$75k and above",
+      "min": 75000,
+      "max": null,
+      "count": 28
+    }
+  ],
+  "facets": {
+    "dealershipIds": [
+      "GSA-001",
+      "GSA-002",
+      "GSA-003"
+    ],
+    "conditions": [
+      "new",
+      "pre-owned"
+    ],
+    "makes": [
+      "Acura",
+      "Audi",
+      "BMW",
+      "Buick",
+      "Cadillac",
+      "Chevrolet",
+      "Chrysler",
+      "Dodge",
+      "Ford",
+      "Genesis",
+      "GMC",
+      "Harley-Davidson",
+      "Honda",
+      "Hyundai",
+      "INFINITI",
+      "Jaguar",
+      "Jeep",
+      "Kia",
+      "Lexus",
+      "Maserati",
+      "Mazda",
+      "Mercedes-Benz",
+      "Mitsubishi",
+      "Nissan",
+      "Porsche",
+      "Ram",
+      "Subaru",
+      "Tesla",
+      "Toyota",
+      "Volkswagen",
+      "Volvo"
+    ],
+    "models": [
+      {
+        "make": "Acura",
+        "model": "RDX",
+        "count": 2
+      },
+      {
+        "make": "Acura",
+        "model": "TLX",
+        "count": 1
+      },
+      {
+        "make": "Audi",
+        "model": "A3",
+        "count": 1
+      },
+      {
+        "make": "Audi",
+        "model": "A4",
+        "count": 1
+      },
+      {
+        "make": "Audi",
+        "model": "A8",
+        "count": 1
+      },
+      {
+        "make": "Audi",
+        "model": "allroad",
+        "count": 1
+      },
+      {
+        "make": "Audi",
+        "model": "Q7",
+        "count": 3
+      },
+      {
+        "make": "Audi",
+        "model": "SQ8",
+        "count": 1
+      },
+      {
+        "make": "BMW",
+        "model": "2 Series",
+        "count": 1
+      },
+      {
+        "make": "BMW",
+        "model": "3 Series",
+        "count": 1
+      },
+      {
+        "make": "BMW",
+        "model": "5 Series",
+        "count": 2
+      },
+      {
+        "make": "BMW",
+        "model": "X1",
+        "count": 3
+      },
+      {
+        "make": "BMW",
+        "model": "X3",
+        "count": 4
+      },
+      {
+        "make": "BMW",
+        "model": "X5",
+        "count": 8
+      },
+      {
+        "make": "Buick",
+        "model": "Enclave",
+        "count": 2
+      },
+      {
+        "make": "Buick",
+        "model": "Encore",
+        "count": 4
+      },
+      {
+        "make": "Cadillac",
+        "model": "ATS",
+        "count": 1
+      },
+      {
+        "make": "Chevrolet",
+        "model": "Blazer",
+        "count": 1
+      },
+      {
+        "make": "Chevrolet",
+        "model": "Colorado",
+        "count": 16
+      },
+      {
+        "make": "Chevrolet",
+        "model": "Corvette Grand Sport",
+        "count": 1
+      },
+      {
+        "make": "Chevrolet",
+        "model": "Corvette Stingray",
+        "count": 1
+      },
+      {
+        "make": "Chevrolet",
+        "model": "Cruze",
+        "count": 2
+      },
+      {
+        "make": "Chevrolet",
+        "model": "Equinox",
+        "count": 39
+      },
+      {
+        "make": "Chevrolet",
+        "model": "Express Cargo",
+        "count": 1
+      },
+      {
+        "make": "Chevrolet",
+        "model": "Express Cutaway 3500",
+        "count": 4
+      },
+      {
+        "make": "Chevrolet",
+        "model": "Express Cutaway 4500",
+        "count": 1
+      },
+      {
+        "make": "Chevrolet",
+        "model": "Low Cab Forward 4500 HG",
+        "count": 1
+      },
+      {
+        "make": "Chevrolet",
+        "model": "Malibu",
+        "count": 4
+      },
+      {
+        "make": "Chevrolet",
+        "model": "Silverado 1500",
+        "count": 54
+      },
+      {
+        "make": "Chevrolet",
+        "model": "Silverado 1500 LD",
+        "count": 2
+      },
+      {
+        "make": "Chevrolet",
+        "model": "Silverado 1500 LTD",
+        "count": 2
+      },
+      {
+        "make": "Chevrolet",
+        "model": "Silverado 2500 HD",
+        "count": 30
+      },
+      {
+        "make": "Chevrolet",
+        "model": "Silverado 2500HD",
+        "count": 6
+      },
+      {
+        "make": "Chevrolet",
+        "model": "Silverado 3500 HD",
+        "count": 2
+      },
+      {
+        "make": "Chevrolet",
+        "model": "Silverado 3500 HD Chassis Cab",
+        "count": 3
+      },
+      {
+        "make": "Chevrolet",
+        "model": "Spark",
+        "count": 1
+      },
+      {
+        "make": "Chevrolet",
+        "model": "Suburban",
+        "count": 10
+      },
+      {
+        "make": "Chevrolet",
+        "model": "Suburban 1500",
+        "count": 1
+      },
+      {
+        "make": "Chevrolet",
+        "model": "Tahoe",
+        "count": 15
+      },
+      {
+        "make": "Chevrolet",
+        "model": "Trailblazer",
+        "count": 3
+      },
+      {
+        "make": "Chevrolet",
+        "model": "TrailBlazer",
+        "count": 2
+      },
+      {
+        "make": "Chevrolet",
+        "model": "Traverse",
+        "count": 23
+      },
+      {
+        "make": "Chevrolet",
+        "model": "Trax",
+        "count": 11
+      },
+      {
+        "make": "Chrysler",
+        "model": "200",
+        "count": 1
+      },
+      {
+        "make": "Chrysler",
+        "model": "Pacifica",
+        "count": 2
+      },
+      {
+        "make": "Dodge",
+        "model": "Challenger",
+        "count": 1
+      },
+      {
+        "make": "Dodge",
+        "model": "Charger",
+        "count": 1
+      },
+      {
+        "make": "Dodge",
+        "model": "Durango",
+        "count": 2
+      },
+      {
+        "make": "Dodge",
+        "model": "Hornet",
+        "count": 1
+      },
+      {
+        "make": "Dodge",
+        "model": "Journey",
+        "count": 1
+      },
+      {
+        "make": "Ford",
+        "model": "Bronco Sport",
+        "count": 1
+      },
+      {
+        "make": "Ford",
+        "model": "EcoSport",
+        "count": 2
+      },
+      {
+        "make": "Ford",
+        "model": "Edge",
+        "count": 2
+      },
+      {
+        "make": "Ford",
+        "model": "Escape",
+        "count": 8
+      },
+      {
+        "make": "Ford",
+        "model": "Expedition Max",
+        "count": 1
+      },
+      {
+        "make": "Ford",
+        "model": "Explorer",
+        "count": 1
+      },
+      {
+        "make": "Ford",
+        "model": "F-150",
+        "count": 9
+      },
+      {
+        "make": "Ford",
+        "model": "F-250SD",
+        "count": 2
+      },
+      {
+        "make": "Ford",
+        "model": "Fusion",
+        "count": 1
+      },
+      {
+        "make": "Ford",
+        "model": "Mustang",
+        "count": 2
+      },
+      {
+        "make": "Ford",
+        "model": "Mustang Mach-E",
+        "count": 1
+      },
+      {
+        "make": "Ford",
+        "model": "Ranger",
+        "count": 1
+      },
+      {
+        "make": "Genesis",
+        "model": "GV80",
+        "count": 1
+      },
+      {
+        "make": "GMC",
+        "model": "Acadia",
+        "count": 3
+      },
+      {
+        "make": "GMC",
+        "model": "Canyon",
+        "count": 2
+      },
+      {
+        "make": "GMC",
+        "model": "Savana 2500",
+        "count": 1
+      },
+      {
+        "make": "GMC",
+        "model": "Sierra 1500",
+        "count": 2
+      },
+      {
+        "make": "GMC",
+        "model": "Sierra 1500 Limited",
+        "count": 1
+      },
+      {
+        "make": "GMC",
+        "model": "Sierra 2500 HD",
+        "count": 1
+      },
+      {
+        "make": "GMC",
+        "model": "Sierra 2500HD",
+        "count": 3
+      },
+      {
+        "make": "GMC",
+        "model": "Sierra 3500HD",
+        "count": 1
+      },
+      {
+        "make": "GMC",
+        "model": "Terrain",
+        "count": 2
+      },
+      {
+        "make": "GMC",
+        "model": "Yukon",
+        "count": 2
+      },
+      {
+        "make": "GMC",
+        "model": "Yukon XL",
+        "count": 1
+      },
+      {
+        "make": "Harley-Davidson",
+        "model": "HERITAGE SOFT TAIL CLASSI",
+        "count": 1
+      },
+      {
+        "make": "Honda",
+        "model": "Accord",
+        "count": 2
+      },
+      {
+        "make": "Honda",
+        "model": "Civic",
+        "count": 6
+      },
+      {
+        "make": "Honda",
+        "model": "CR-V",
+        "count": 4
+      },
+      {
+        "make": "Honda",
+        "model": "HR-V",
+        "count": 3
+      },
+      {
+        "make": "Honda",
+        "model": "Odyssey",
+        "count": 1
+      },
+      {
+        "make": "Honda",
+        "model": "Passport",
+        "count": 1
+      },
+      {
+        "make": "Honda",
+        "model": "Pilot",
+        "count": 2
+      },
+      {
+        "make": "Honda",
+        "model": "Ridgeline",
+        "count": 1
+      },
+      {
+        "make": "Hyundai",
+        "model": "Elantra",
+        "count": 2
+      },
+      {
+        "make": "Hyundai",
+        "model": "Kona",
+        "count": 1
+      },
+      {
+        "make": "Hyundai",
+        "model": "Santa Fe",
+        "count": 2
+      },
+      {
+        "make": "Hyundai",
+        "model": "Sonata",
+        "count": 1
+      },
+      {
+        "make": "Hyundai",
+        "model": "Tucson",
+        "count": 3
+      },
+      {
+        "make": "Hyundai",
+        "model": "Veloster",
+        "count": 1
+      },
+      {
+        "make": "INFINITI",
+        "model": "G37",
+        "count": 1
+      },
+      {
+        "make": "INFINITI",
+        "model": "QX80",
+        "count": 1
+      },
+      {
+        "make": "Jaguar",
+        "model": "F-PACE",
+        "count": 1
+      },
+      {
+        "make": "Jeep",
+        "model": "Cherokee",
+        "count": 4
+      },
+      {
+        "make": "Jeep",
+        "model": "Compass",
+        "count": 8
+      },
+      {
+        "make": "Jeep",
+        "model": "Grand Cherokee",
+        "count": 8
+      },
+      {
+        "make": "Jeep",
+        "model": "Grand Wagoneer",
+        "count": 1
+      },
+      {
+        "make": "Jeep",
+        "model": "Patriot",
+        "count": 1
+      },
+      {
+        "make": "Jeep",
+        "model": "Renegade",
+        "count": 1
+      },
+      {
+        "make": "Jeep",
+        "model": "Wrangler",
+        "count": 1
+      },
+      {
+        "make": "Jeep",
+        "model": "Wrangler Unlimited",
+        "count": 4
+      },
+      {
+        "make": "Kia",
+        "model": "Forte",
+        "count": 1
+      },
+      {
+        "make": "Kia",
+        "model": "Optima",
+        "count": 1
+      },
+      {
+        "make": "Kia",
+        "model": "Sorento",
+        "count": 2
+      },
+      {
+        "make": "Kia",
+        "model": "Sportage",
+        "count": 4
+      },
+      {
+        "make": "Kia",
+        "model": "Stinger",
+        "count": 1
+      },
+      {
+        "make": "Kia",
+        "model": "Telluride",
+        "count": 1
+      },
+      {
+        "make": "Lexus",
+        "model": "RX 350",
+        "count": 1
+      },
+      {
+        "make": "Maserati",
+        "model": "Ghibli",
+        "count": 1
+      },
+      {
+        "make": "Mazda",
+        "model": "CX-5",
+        "count": 4
+      },
+      {
+        "make": "Mazda",
+        "model": "CX-50",
+        "count": 2
+      },
+      {
+        "make": "Mazda",
+        "model": "CX-90",
+        "count": 1
+      },
+      {
+        "make": "Mazda",
+        "model": "Mazda3",
+        "count": 1
+      },
+      {
+        "make": "Mazda",
+        "model": "Mazda6",
+        "count": 3
+      },
+      {
+        "make": "Mazda",
+        "model": "Tribute",
+        "count": 1
+      },
+      {
+        "make": "Mercedes-Benz",
+        "model": "E-Class",
+        "count": 1
+      },
+      {
+        "make": "Mercedes-Benz",
+        "model": "GL-Class",
+        "count": 1
+      },
+      {
+        "make": "Mercedes-Benz",
+        "model": "GLA",
+        "count": 2
+      },
+      {
+        "make": "Mercedes-Benz",
+        "model": "GLC",
+        "count": 1
+      },
+      {
+        "make": "Mercedes-Benz",
+        "model": "GLE",
+        "count": 2
+      },
+      {
+        "make": "Mercedes-Benz",
+        "model": "GLS",
+        "count": 1
+      },
+      {
+        "make": "Mitsubishi",
+        "model": "Mirage G4",
+        "count": 1
+      },
+      {
+        "make": "Mitsubishi",
+        "model": "Outlander",
+        "count": 1
+      },
+      {
+        "make": "Nissan",
+        "model": "Altima",
+        "count": 1
+      },
+      {
+        "make": "Nissan",
+        "model": "Frontier",
+        "count": 1
+      },
+      {
+        "make": "Nissan",
+        "model": "Murano",
+        "count": 1
+      },
+      {
+        "make": "Nissan",
+        "model": "Pathfinder",
+        "count": 6
+      },
+      {
+        "make": "Nissan",
+        "model": "Rogue",
+        "count": 16
+      },
+      {
+        "make": "Nissan",
+        "model": "Sentra",
+        "count": 4
+      },
+      {
+        "make": "Nissan",
+        "model": "Titan",
+        "count": 1
+      },
+      {
+        "make": "Nissan",
+        "model": "Versa",
+        "count": 2
+      },
+      {
+        "make": "Porsche",
+        "model": "Macan",
+        "count": 1
+      },
+      {
+        "make": "Porsche",
+        "model": "Panamera",
+        "count": 1
+      },
+      {
+        "make": "Ram",
+        "model": "1500",
+        "count": 13
+      },
+      {
+        "make": "Ram",
+        "model": "1500 Classic",
+        "count": 6
+      },
+      {
+        "make": "Subaru",
+        "model": "Ascent",
+        "count": 5
+      },
+      {
+        "make": "Subaru",
+        "model": "Crosstrek",
+        "count": 10
+      },
+      {
+        "make": "Subaru",
+        "model": "Forester",
+        "count": 10
+      },
+      {
+        "make": "Subaru",
+        "model": "Forester Hybrid",
+        "count": 1
+      },
+      {
+        "make": "Subaru",
+        "model": "Impreza",
+        "count": 2
+      },
+      {
+        "make": "Subaru",
+        "model": "Legacy",
+        "count": 3
+      },
+      {
+        "make": "Subaru",
+        "model": "Outback",
+        "count": 5
+      },
+      {
+        "make": "Subaru",
+        "model": "WRX",
+        "count": 1
+      },
+      {
+        "make": "Tesla",
+        "model": "Model 3",
+        "count": 1
+      },
+      {
+        "make": "Toyota",
+        "model": "Camry",
+        "count": 3
+      },
+      {
+        "make": "Toyota",
+        "model": "Highlander",
+        "count": 1
+      },
+      {
+        "make": "Toyota",
+        "model": "Prius Prime",
+        "count": 1
+      },
+      {
+        "make": "Toyota",
+        "model": "RAV4",
+        "count": 1
+      },
+      {
+        "make": "Toyota",
+        "model": "Sienna",
+        "count": 1
+      },
+      {
+        "make": "Toyota",
+        "model": "Tacoma",
+        "count": 3
+      },
+      {
+        "make": "Volkswagen",
+        "model": "Atlas",
+        "count": 3
+      },
+      {
+        "make": "Volkswagen",
+        "model": "Beetle",
+        "count": 1
+      },
+      {
+        "make": "Volkswagen",
+        "model": "Golf SportWagen",
+        "count": 1
+      },
+      {
+        "make": "Volkswagen",
+        "model": "Passat",
+        "count": 1
+      },
+      {
+        "make": "Volkswagen",
+        "model": "Tiguan",
+        "count": 2
+      },
+      {
+        "make": "Volvo",
+        "model": "S60",
+        "count": 1
+      },
+      {
+        "make": "Volvo",
+        "model": "V60 Cross Country",
+        "count": 1
+      },
+      {
+        "make": "Volvo",
+        "model": "XC60",
+        "count": 1
+      }
+    ],
+    "modelYears": [
+      2027,
+      2026,
+      2025,
+      2024,
+      2023,
+      2022,
+      2021,
+      2020,
+      2019,
+      2018,
+      2017,
+      2016,
+      2015,
+      2014,
+      2013,
+      2012,
+      2011,
+      2010,
+      2009,
+      2008,
+      2006,
+      2004,
+      2003,
+      2001
+    ],
+    "priceBounds": {
+      "min": 7395,
+      "max": 109674
+    },
+    "mileageBounds": {
+      "min": 1,
+      "max": 177335
+    }
+  }
+}

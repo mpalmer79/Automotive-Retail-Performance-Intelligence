@@ -120,7 +120,7 @@ def test_vw_dealership_business_columns(
     assert cursor.fetchall() == [
         ("GSA-001", "Granite Chevrolet", "Chevrolet", True, "Nashua, NH"),
         ("GSA-002", "Granite Subaru", "Subaru", True, "Manchester, NH"),
-        ("GSA-003", "Granite Used Auto", "Independent", False, "Merrimack, NH"),
+        ("GSA-003", "Granite Pre-Owned", "Independent", False, "Merrimack, NH"),
     ]
 
 
