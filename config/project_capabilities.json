@@ -48,12 +48,25 @@
     },
 
     "deliverables": {
-      "_comment": "What a reader would look for and not find. Checked against derived counts.",
+      "_comment": [
+        "What a reader would look for and not find. Checked against derived counts.",
+        "",
+        "TWO EXCEL ENTRIES, AND THEY ARE NOT THE SAME DELIVERABLE. excel_operating_report",
+        "is P2.4-03: the workbook built over the SYNTHETIC warehouse whose reconciliation",
+        "total must match PostgreSQL and Power BI. It is deferred because that",
+        "reconciliation needs report pages that do not exist. inventory_operating_report is",
+        "the SANITIZED PUBLIC LISTING workbook (ADR-0011), exported from the listing",
+        "reporting views by src/arpi/inventory/report.py. It does not reconcile to Power BI",
+        "and never will on its own: no DAX measure reads that lane. Declaring one says",
+        "nothing about the other, and check_project_capabilities.py holds each to its own",
+        "evidence so a reader cannot take the shipped one as proof the deferred one landed."
+      ],
       "power_bi_report_pages": "not-started",
       "dashboard": "not-started",
       "analytical_findings": "not-started",
       "case_study": "locked",
-      "excel_operating_report": "deferred"
+      "excel_operating_report": "deferred",
+      "inventory_operating_report": "implemented"
     },
 
     "deployment": {

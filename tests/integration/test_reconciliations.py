@@ -37,6 +37,20 @@ from arpi.constants import (
 pytestmark = pytest.mark.integration
 
 
+#: The run these reconciliations belong to.
+#:
+#: Names the PIPELINE rather than taking ``max(pipeline_run_id)``. The newest run is only
+#: the pipeline's run while nothing else writes one, and that stopped being true when the
+#: sanitized listing lane started recording an audit run per import. A test that means
+#: "the run the fixture made" should say so; the alternative is a test that breaks when an
+#: unrelated feature writes to a table it never reads.
+PIPELINE_RUN_SQL = """
+    SELECT max(pipeline_run_id)
+    FROM audit.pipeline_run
+    WHERE pipeline_name = 'phase0_foundation'
+"""
+
+
 def _scalar(cursor: Any, statement: str, parameters: tuple[Any, ...] | None = None) -> Any:
     cursor.execute(statement, parameters)
     row = cursor.fetchone()
@@ -109,7 +123,7 @@ def test_every_reconciliation_is_recorded_against_the_run(loaded_cursor: Any) ->
     became recorded evidence, which is the difference between a check that exists and a
     check that ran.
     """
-    run_id = _scalar(loaded_cursor, "SELECT max(pipeline_run_id) FROM audit.pipeline_run")
+    run_id = _scalar(loaded_cursor, PIPELINE_RUN_SQL)
     assert run_id is not None, "the loaded fixture recorded no pipeline run"
 
     loaded_cursor.execute(
@@ -123,7 +137,7 @@ def test_every_reconciliation_is_recorded_against_the_run(loaded_cursor: Any) ->
 
 def test_recording_is_idempotent_within_a_run(loaded_cursor: Any) -> None:
     """A rerun restates the verdicts rather than accumulating a second set."""
-    run_id = _scalar(loaded_cursor, "SELECT max(pipeline_run_id) FROM audit.pipeline_run")
+    run_id = _scalar(loaded_cursor, PIPELINE_RUN_SQL)
     before = _scalar(
         loaded_cursor,
         "SELECT count(*) FROM audit.reconciliation_result WHERE pipeline_run_id = %s",

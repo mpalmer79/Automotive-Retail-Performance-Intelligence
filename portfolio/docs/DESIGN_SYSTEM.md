@@ -517,6 +517,6 @@ the site implied real dealership data.
 | Motion scales agree between CSS and JS                     | `tests/unit/motion.test.ts`                                       |
 | Route metadata cannot drift from nav, sitemap, breadcrumbs | `tests/unit/site.test.ts`                                         |
 | Status is never colour-only                                | `tests/e2e/accessibility.spec.ts`                                 |
-| Contrast, target size, heading order, landmarks            | axe-core, all nine routes, two viewports                          |
+| Contrast, target size, heading order, landmarks            | axe-core, all ten routes, two viewports                           |
 | No horizontal overflow at 320px or 200% zoom               | `tests/e2e/accessibility.spec.ts` (real scrollability)            |
 | Every primitive forwards ARIA props                        | `tests/unit/components.test.tsx`                                  |

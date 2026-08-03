@@ -1,4 +1,4 @@
-# ADR-0011: Dealer Group Public Naming
+# ADR-0012: Dealer Group Public Naming
 
 ## Status
 
@@ -81,7 +81,7 @@ at render time.
 | `data/sample/dim_dealership.csv` | GSA-003's `store_name`, `store_short_name` and its recomputed `attribute_hash` |
 | `data/sample/generation_manifest.json` | the file's recomputed `content_digest` and the notice |
 | `sql/`, `powerbi/` | comments and TMDL descriptions only; no DDL, no column, no constraint |
-| `data/reference/inventory/**` | the workbooks' own README and Summary sheets, rewritten in place |
+| `data/reference/inventory/**` | the workbooks' own README and Summary sheets, rewritten in place; GSA-003's filename; the digests declared in `config/reference/inventory_listing_contract.yaml` |
 | `portfolio/` | every public-facing string, plus the route map and navigation |
 | documentation | every occurrence outside the two preserved historical records |
 
@@ -120,6 +120,24 @@ layer, would invalidate the committed workbooks without a re-sanitization pass,
 and would buy a reader nothing: nobody sees a surrogate key. The general principle
 is the one ADR-0001 already states - the display name and the identity are
 different things - and this is that principle applied in the other direction.
+
+**Leave the workbook bytes alone and rename only outside them.** Rejected, and it
+was the closest call here. [ADR-0011](ADR-0011-sanitized-public-inventory-reference-data.md)
+pins each artifact's SHA-256 precisely so a replacement cannot be silent, and it
+declined an in-place correction once already on the grounds that an `openpyxl`
+round-trip discards Excel parts that library cannot reproduce.
+
+That objection is real and it does not apply here. The rewrite used no
+spreadsheet library: it opened each package as a ZIP, copied every entry verbatim,
+substituted strings only inside the XML parts, and asserts the part count is
+unchanged, so the conditional-formatting parts survive. And the artifact's own
+filename is rendered on the public website as a source link, which makes
+`ARPI_Granite_Used_Auto_Center_...xlsx` public-facing content rather than an
+internal path.
+
+The digest pin is a review gate, not a prohibition. Re-declaring three digests
+with a record of why is what walking through that gate looks like; leaving a
+retired store name inside evidence a reviewer is invited to open would not be.
 
 **Change `store_type` from `Independent Used` to `Independent Pre-Owned`.**
 Rejected. It is a warehouse enumeration, it appears in a `dim_dealership` column
@@ -162,11 +180,19 @@ so the window was open and is now closed.
   it protects still holds, and striking it would hide that this record had to
   argue against it.
 - Three sanitized workbooks were rewritten in place to correct their embedded
-  group and store names. The rewrite touched only the XML string content of the
-  package and preserved every other part, but the files' bytes changed, so a
-  reviewer diffing them sees a binary change with no readable diff. The
-  substitutions applied are listed in this record and the resulting values are
-  asserted by `portfolio/tests/unit/inventory.test.ts`.
+  group and store names, and GSA-003's file was renamed. The rewrite touched only
+  the XML string content of each package and preserved every other part, but the
+  files' bytes changed, so a reviewer diffing them sees a binary change with no
+  readable diff. The substitutions applied are listed in this record, the new
+  digests are declared in `config/reference/inventory_listing_contract.yaml`, and
+  the resulting values are asserted by `portfolio/tests/unit/inventory.test.ts`
+  and by `scripts/check_reference_data.py`.
+- ADR-0011's `legacy_path_hint` deviation is retired rather than re-keyed to the
+  new digest: the stale hint it excused was corrected in the same pass, so
+  DQ-LST-016 now holds for every committed artifact with no exception. That is a
+  net simplification, but it does mean a reader of ADR-0011 alone will find a
+  declared exception that no longer exists; `data/reference/README.md` section
+  7.1 says so.
 
 ## Enforcement
 

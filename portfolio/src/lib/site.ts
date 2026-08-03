@@ -177,6 +177,16 @@ export const ROUTES = {
     indexable: true,
     priority: 0.9,
   },
+  inventoryOperations: {
+    href: '/inventory-operations',
+    navLabel: 'Inventory Operations',
+    title: 'Inventory operations',
+    description:
+      'Ingesting a de-identified public inventory listing snapshot: what sanitization removes, what a listing can and cannot prove, the listing snapshot grain, six governed reporting views, and the Excel operating report built from them. The one part of ARPI that is not fully synthetic, and it says so.',
+    inPrimaryNav: true,
+    indexable: true,
+    priority: 0.8,
+  },
   kpis: {
     href: '/kpis',
     navLabel: 'KPIs',
@@ -341,8 +351,13 @@ export const PRIMARY_NAV: readonly NavItem[] = [
   {
     href: ROUTES.architecture.href,
     label: 'Platform',
-    matches: [ROUTES.architecture.href, ROUTES.dataModel.href, ROUTES.governance.href],
-    purpose: 'Architecture, the data model, and how it is governed',
+    matches: [
+      ROUTES.architecture.href,
+      ROUTES.dataModel.href,
+      ROUTES.inventoryOperations.href,
+      ROUTES.governance.href,
+    ],
+    purpose: 'Architecture, the data model, inventory operations and how it is governed',
   },
   {
     href: ROUTES.kpis.href,
@@ -373,10 +388,15 @@ export const MAX_PRIMARY_NAV_ITEMS = 7
 /**
  * The platform sub-navigation.
  *
- * Rendered by `/architecture`, `/data-model` and `/governance`, which is what
- * makes "Platform" a real destination group rather than a relabelled link to one
- * page. Ordered as a reader would take them: how the data moves, what it becomes,
- * and the rules that hold it.
+ * Rendered by `/architecture`, `/data-model`, `/inventory-operations` and
+ * `/governance`, which is what makes "Platform" a real destination group rather
+ * than a relabelled link to one page. Ordered as a reader would take them: how
+ * the data moves, what it becomes, what happens when something arrives from
+ * outside, and the rules that hold all three.
+ *
+ * `/inventory-operations` sits inside the group rather than in the header for the
+ * same reason the other three do: it is a platform capability, not a top-level
+ * destination, and MAX_PRIMARY_NAV_ITEMS is a rule rather than a preference.
  */
 export const PLATFORM_NAV: readonly NavItem[] = [
   {
@@ -390,6 +410,12 @@ export const PLATFORM_NAV: readonly NavItem[] = [
     label: 'Data model',
     matches: [ROUTES.dataModel.href],
     purpose: 'Facts, dimensions, declared grains and history policies',
+  },
+  {
+    href: ROUTES.inventoryOperations.href,
+    label: 'Inventory operations',
+    matches: [ROUTES.inventoryOperations.href],
+    purpose: 'Ingesting a sanitized public listing snapshot end to end',
   },
   {
     href: ROUTES.governance.href,

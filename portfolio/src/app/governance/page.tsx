@@ -119,7 +119,7 @@ export default function GovernancePage() {
             </Text>
             <div className="flex flex-wrap gap-3 pt-1">
               <SourceLink
-                path="data/reference/inventory/README.md"
+                path="data/reference/README.md"
                 field="sanitization controls and coverage limits"
               />
               <SourceLink
@@ -127,8 +127,8 @@ export default function GovernancePage() {
                 field="the build-time gate"
               />
               <SourceLink
-                path="docs/architecture-decisions/ADR-0011-dealer-group-public-naming.md"
-                field="the group's public naming decision"
+                path="docs/architecture-decisions/ADR-0011-sanitized-public-inventory-reference-data.md"
+                field="the reference-data lane decision"
               />
             </div>
           </Card>

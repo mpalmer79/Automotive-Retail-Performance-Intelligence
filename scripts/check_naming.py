@@ -52,7 +52,7 @@ ALLOWLISTED_PATHS: frozenset[str] = frozenset(
         "docs/architecture-decisions/ADR-0001-project-identity.md",
         # The dealer-group renaming decision of record, for the same reason: it
         # cannot explain what was retired without naming it.
-        "docs/architecture-decisions/ADR-0011-dealer-group-public-naming.md",
+        "docs/architecture-decisions/ADR-0012-dealer-group-public-naming.md",
         # Preserved historical research evidence, kept verbatim. The retired
         # name was proposed there; editing it would falsify the record.
         "docs/research.md",

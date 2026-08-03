@@ -34,6 +34,8 @@ RAW_ENTITIES = (
     "appointment_load",
     "marketing_spend_load",
     "inventory_snapshot_load",
+    # The sanitized public listing lane (ADR-0011).
+    "inventory_listing_snapshot_load",
 )
 
 #: Entities whose staging layer follows the Phase 1 three-view pattern:
@@ -51,6 +53,7 @@ STAGING_ENTITIES = (
     "appointment",
     "marketing_spend",
     "inventory_snapshot",
+    "inventory_listing_snapshot",
 )
 
 #: The conformed dimensions.
@@ -74,6 +77,11 @@ FACT_TABLES = (
     "fact_lead",
     "fact_appointment",
     "fact_marketing_spend",
+    # The sanitized public listing lane (ADR-0011). Structurally a sixth fact and
+    # deliberately not a sixth MVP fact: it is loaded by a workbook import rather than by
+    # a pipeline run, so it is absent from arpi.ingestion.spec.ENTITY_SPECS and is empty
+    # in a structure-only database exactly as the other five are.
+    "fact_vehicle_listing_snapshot",
 )
 
 EXPECTED_TABLES = {
@@ -85,6 +93,7 @@ EXPECTED_TABLES = {
     ("audit", "validation_result"),
     *(("raw", name) for name in RAW_ENTITIES),
     *(("warehouse", name) for name in DIMENSION_TABLES),
+    ("warehouse", "dim_observed_vehicle"),
     *(("warehouse", name) for name in FACT_TABLES),
 }
 
@@ -100,6 +109,11 @@ AUDIT_VIEWS = (
     "vw_recon_funnel",
     "vw_recon_gross",
     "vw_recon_ingestion",
+    # The listing lane's reconciliations. Deliberately NOT unioned into vw_recon_all --
+    # that view is the pipeline's per-run set with a published identifier list and an
+    # asserted per-run count, and this lane runs on a workbook cadence instead. See the
+    # view's own header.
+    "vw_recon_inventory_listing",
     "vw_recon_marketing",
     "vw_recon_reporting",
     "vw_recon_result_template",

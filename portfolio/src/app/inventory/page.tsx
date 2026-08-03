@@ -4,6 +4,7 @@ import { Suspense } from 'react'
 import { InventoryExplorer } from '@/components/explorers/inventory-explorer'
 import { Canvas } from '@/components/shell/field'
 import { StatusBadge } from '@/components/ui/badge'
+import { LinkButton } from '@/components/ui/button'
 import { Card } from '@/components/ui/card-static'
 import { SourceLink } from '@/components/ui/data-card'
 import { Container, Section, SectionHeader } from '@/components/ui/layout'
@@ -17,7 +18,7 @@ import {
   inventorySummary,
 } from '@/lib/inventory'
 import { pageMetadata } from '@/lib/metadata'
-import { INVENTORY_DATA_STATEMENT } from '@/lib/site'
+import { INVENTORY_DATA_STATEMENT, ROUTES } from '@/lib/site'
 import { formatCount, formatDate } from '@/lib/utils'
 
 export const metadata: Metadata = pageMetadata('inventory')
@@ -44,7 +45,7 @@ export default function InventoryPage() {
         eyebrow="Inventory explorer"
         title="Every listing the three stores carried, and nothing they did not"
         lede={`${formatCount(summary.totalRecords)} sanitized listings across ${formatCount(summary.dealershipCount)} stores, captured ${formatDate(summary.latestSnapshotDate)}. Filter by store, condition, make, model, model year, advertised price and mileage; sort six ways.`}
-        supporting="The records were read from the reference workbooks at build time. Nothing on this page is fetched, and no Excel file is parsed in your browser."
+        supporting="The records were read from the reference workbooks at build time. Nothing on this page is fetched, and no Excel file is parsed in your browser. How those workbooks are sanitized, contracted and loaded into the warehouse is a separate subject, and it has its own page: Inventory operations."
         groupNav
         trustScope="inventory"
         meta={
@@ -63,6 +64,9 @@ export default function InventoryPage() {
               path="portfolio/scripts/generate-inventory-data.ts"
               field="build-time ingestion"
             />
+            <LinkButton href={ROUTES.inventoryOperations.href} variant="ghost" size="sm">
+              How the lane is sanitized and loaded
+            </LinkButton>
           </>
         }
       />

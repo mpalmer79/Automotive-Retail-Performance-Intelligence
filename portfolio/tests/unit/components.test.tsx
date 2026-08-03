@@ -38,8 +38,8 @@ import { clamp, cx, formatCount, formatDate, groupBy, slugify } from '@/lib/util
 /* -------------------------------------------------------------------------- */
 
 describe('the route map', () => {
-  it('holds the thirteen documented routes plus the internal UI lab', () => {
-    expect(ALL_ROUTES).toHaveLength(14)
+  it('holds the fourteen documented routes plus the internal UI lab', () => {
+    expect(ALL_ROUTES).toHaveLength(15)
     const hrefs = ALL_ROUTES.map((r) => r.href)
     expect(hrefs).toEqual([
       '/',
@@ -50,6 +50,7 @@ describe('the route map', () => {
       '/inventory',
       '/architecture',
       '/data-model',
+      '/inventory-operations',
       '/kpis',
       '/governance',
       '/status',
@@ -60,9 +61,9 @@ describe('the route map', () => {
   })
 
   it('puts seven content destinations in the header and excludes the case study', () => {
-    // Seven, not thirteen. Two of the seven are destination GROUPS: "Platform"
-    // covers Architecture, Data Model and Governance, and "Dealerships" covers
-    // the group page and the three store pages. The full navigation contract is
+    // Seven, not fourteen. Two of the seven are destination GROUPS: "Platform"
+    // covers Architecture, Data Model, Inventory operations and Governance, and
+    // "Dealerships" covers the group page and the three store pages. The full navigation contract is
     // covered in tests/unit/site.test.ts; this is the component suite's own check
     // that the list it renders from has not quietly grown.
     expect(PRIMARY_NAV).toHaveLength(7)

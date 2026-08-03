@@ -747,7 +747,7 @@ source it describes — which is precisely how the statements corrected in this 
 | Fact load scripts | 5 | Implemented. Facts are **not** merely planned. |
 | Reporting views | 28 | The only surface the semantic model may read. |
 | Audit row-count layers recorded | 5 of 5 | `source`, `raw`, `staging`, `warehouse`, `rejected`. |
-| Forward migrations | 2 | Ordered, immutable once released, recorded in `audit.schema_migration`. |
+| Forward migrations | 3 | Ordered, immutable once released, recorded in `audit.schema_migration`. |
 <!-- ARPI:CAPABILITIES:END warehouse -->
 
 <!-- ARPI:CAPABILITIES:BEGIN semantic-model -->
@@ -929,3 +929,88 @@ review notes cite the previous numbering:
 | §12 Analytical method | §6.2 |
 | §13 Planned versus Implemented | §10 |
 | §14 Maintenance | §12 |
+
+---
+
+## 13. What the sanitized public listing lane cannot support (ADR-0011)
+
+This lane exists to demonstrate ingestion, sanitization, validation, warehouse modelling
+and reporting against material ARPI did not author. Every limitation below is inherent to
+the source, not a gap somebody will close later.
+
+### 13.1 The six statements that bound every listing number
+
+1. **Advertised price is not transaction price.** It is what the listing displayed.
+2. **Advertised price is not acquisition cost or inventory investment.** This lane holds
+   no cost of any kind, so nothing here says anything about margin.
+3. **A listing that disappears was removed from listing, not sold.** It can equally be a
+   trade, a wholesale, a feed suppression or an error, and this data cannot distinguish
+   them. `reporting.vw_vehicle_listing_change` emits six labels and none is *Sold*.
+4. **Days observed online is not days in stock.** Days in stock runs from acquisition and
+   is recorded by the DMS. This lane never sees an acquisition. The span is additionally
+   bounded below by the capture cadence — a vehicle seen once has a span of zero, meaning
+   *seen once*, not *listed for no time* — and above by when observation began.
+5. **A listing does not prove physical presence or ownership.** It proves a listing was
+   visible.
+6. **A public reference snapshot does not establish current business performance.**
+
+### 13.2 Measures this lane will never define
+
+No sold units, inventory turn, days in stock, front/back/total gross, inventory
+investment, acquisition cost, reconditioning cost, carrying cost, return on investment or
+marketing attribution. Each needs data a listing snapshot does not carry.
+`arpi.constants.PROHIBITED_LISTING_MEASURES` records the list and
+`tests/unit/test_inventory_kpis.py` fails the build if one is defined as a KPI.
+
+### 13.3 Limitations of the controls themselves
+
+- **The real-VIN detector inspects shape, not provenance.** It flags any seventeen-character
+  string drawn from the ISO 3779 alphabet. It cannot tell a real VIN from a
+  seventeen-character coincidence, and it deliberately errs toward refusing.
+- **The prohibited-claim check reads text, not meaning.** It catches the specific
+  affirmative phrasings it knows. A novel way of saying "removed means sold" would pass it.
+- **Sanitization is verified on the output, not on the input.** ARPI can prove no original
+  VIN or URL reached a committed artifact. It cannot prove the private input was what the
+  operator said it was.
+- **The real-VIN detector was, at one point, too eager.** It reported a float rendered at
+  full precision as a real VIN, because a word boundary sits at a decimal point and
+  offered seventeen digits. It now requires a letter and refuses to match inside a longer
+  token. The lesson is recorded here because it is the more dangerous failure of the two:
+  a privacy check that cries wolf teaches people to override it, and the override is what
+  gets reached for on the day the finding is real.
+- **One capture date cannot exercise the change or observation-span views.** They are
+  built, constrained and tested against fabricated repeat captures; all three committed
+  artifacts are single snapshots on the same date, so every span is zero and every row is
+  New Listing.
+- **The lane's reconciliations are technical load evidence.** "The total advertised value
+  reconciles" means the number that reached the warehouse is the number the workbook
+  carried. It is not a valuation and not a finding.
+
+### 13.4 What is committed, and the two things about it that are easiest to misread
+
+Three captures are committed, all dated 2026-08-02: Granite Chevrolet (199 rows), Granite
+Subaru (24) and Granite Pre-Owned Center (318). All three are governed identically. Two
+carry limitations that a reader who only saw the row counts would get wrong.
+
+**The Granite Subaru capture is partial.** The public source did not expose every listing
+through a reliably extractable path, so the artifact holds 24 visible indexed records out
+of a larger reported inventory. **Twenty-four is a count of what was visible to the
+capture. It is not that store's inventory**, and beside two stores holding 199 and 318 it
+reads as a small store unless the limitation travels with it. It is declared as
+`coverage: partial` in the workbook contract, repeated on the portfolio page, and asserted
+by `tests/unit/test_inventory_reference_artifact.py`.
+
+**The Granite Pre-Owned Center capture publishes no price and no mileage for 287 of its
+318 listings.** Their pricing status is `Price not exposed`. The consequences are
+concrete: that store's `total_advertised_value` describes 31 vehicles, not 318, and no
+average mileage can be computed for the other 287. The lane reports both as **counts of
+what was not published** rather than as zeros, because a zero is a number and a number
+gets averaged — a zero-mile row in a used-car report reads as a new car.
+
+**`Price not exposed` is not `Call for price`, and the two are never added together
+silently.** Call-for-price means the listing displayed a call-for-price treatment: a
+merchandising choice was made and shown. Price-not-exposed means the listing surface
+published no price field at all, and evidences no choice by anyone. Reporting the second
+as the first would attribute a decision to a dealership on no evidence. Where a single
+number is genuinely wanted, `unpriced_units` is published and is defined as the complement
+of `Listed`, so it stays exhaustive however many statuses exist.

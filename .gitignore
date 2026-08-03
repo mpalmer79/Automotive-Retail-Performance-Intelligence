@@ -207,6 +207,13 @@ pip-log.txt
 ~$*.pptx
 *.xlk
 
+# The inventory operating report is EXPORTED, never committed. It is derived entirely
+# from the warehouse, so committing one would add a second copy of numbers that already
+# have an authoritative source and that goes stale the moment a new capture lands. The
+# sanitized workbook it ultimately descends from IS committed, under data/reference/,
+# because that one is the evidence.
+artifacts/
+
 
 # -----------------------------------------------------------------------------
 # Jupyter

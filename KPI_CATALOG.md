@@ -1130,3 +1130,470 @@ against 153 and 351 under the old field — so they are recorded here rather tha
   asserted.
 - **No benchmark, target, or "good" value may be added to this catalogue** unless ARPI acquires a
   documented, licensed, citable source for it — and then it must be cited inline.
+
+---
+
+## 38. Inventory Listings domain — sanitized public reference lane
+
+This domain is governed by [ADR-0011](docs/architecture-decisions/ADR-0011-sanitized-public-inventory-reference-data.md) and is **separate from the 29 MVP KPIs above**. Everything here is computed over `warehouse.fact_vehicle_listing_snapshot`, whose source is a de-identified public inventory listing snapshot rather than ARPI's synthetic generators.
+
+### 38.1 What this domain is, and what it is not
+
+> **The source is a public LISTING snapshot, not a DMS.** A row proves that a vehicle listing was visible at a moment in time. It does not prove the vehicle was physically present, that the dealership owned it, what it cost, or what it sold for.
+
+Six statements bind every KPI below, and each is enforced rather than merely written down:
+
+1. Advertised price is **not** transaction price.
+2. Advertised price is **not** acquisition cost or inventory investment.
+3. A listing that disappears was **removed from listing**, which is not *sold*.
+4. Days observed online is **not** days in stock.
+5. A listing does **not** prove physical presence or ownership.
+6. A public reference snapshot does **not** establish current business performance.
+
+### 38.2 What this domain deliberately does not define
+
+There is **no** sold-units KPI, no inventory turn, no days in stock, no front, back or total gross, no inventory investment, no acquisition or reconditioning cost, no carrying cost, no return on investment and no marketing attribution. Each needs data a public listing snapshot does not carry. `arpi.constants.PROHIBITED_LISTING_MEASURES` records the list and `tests/unit/test_inventory_kpis.py` fails the build if one appears in this section.
+
+### 38.3 Shared fields
+
+| Field | Value for every KPI in this domain |
+|---|---|
+| **Status** | Implemented — computable from the `reporting` schema once a workbook is imported. |
+| **Owner** | Michael Palmer (dealer principal and general manager personas). |
+| **Source lane** | Sanitized public reference data (ADR-0011). Not synthetic, not confidential DMS data. |
+| **Underlying fact** | `warehouse.fact_vehicle_listing_snapshot`, grain: one observed vehicle listing per dealership per `captured_at`. |
+| **Future DAX ownership** | **None yet, deliberately.** The current Power BI semantic model is awaiting real-engine validation; adding measures before that validation would change what is being validated. Recorded as a backlog item in `docs/requirements/PHASE_2_BACKLOG.md`. |
+| **Reconciliation** | `RECON-LISTING-*` in `audit.vw_recon_inventory_listing`, evaluated and recorded at import time. |
+
+### 38.4.1 `KPI-LST-001` — Observed listing units
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-LST-001` |
+| **Display name** | Observed listing units |
+| **Business question** | How many vehicles were advertised at this store on this capture date? |
+| **Grain** | Store x capture date |
+| **Formula** | `SUM(inventory_unit_count)` |
+| **Date basis** | Capture date (captured_at). The date the listing was SEEN. |
+| **Null behaviour** | No rows for a store and date means no capture, not zero inventory. Returns NULL, never 0. |
+| **Filter behaviour** | Filters on store, capture date, condition, make, model and trim. A filter across several capture dates does not aggregate: pick one. |
+| **Additivity** | SEMI-ADDITIVE. Additive across vehicle, store, make and model; NEVER across capture dates. |
+| **Interpretation caution** | Not units in stock and not units owned. A listing does not prove the vehicle was on the ground. |
+| **Source view** | `reporting.vw_vehicle_listing_summary` |
+| **Status** | Implemented |
+| **Owner** | Michael Palmer |
+
+### 38.4.2 `KPI-LST-002` — New listing units
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-LST-002` |
+| **Display name** | New listing units |
+| **Business question** | How much of the advertised inventory is new? |
+| **Grain** | Store x capture date |
+| **Formula** | `SUM(inventory_unit_count) WHERE condition_type = 'New'` |
+| **Date basis** | Capture date. |
+| **Null behaviour** | NULL when no capture exists; 0 is a real answer when a capture found no new units. |
+| **Filter behaviour** | As KPI-LST-001. Condition comes from the listing, not from a title record. |
+| **Additivity** | SEMI-ADDITIVE. |
+| **Interpretation caution** | Condition is as ADVERTISED. A unit advertised New that is in fact a demo or a loaner is counted as the listing described it. |
+| **Source view** | `reporting.vw_vehicle_listing_summary` |
+| **Status** | Implemented |
+| **Owner** | Michael Palmer |
+
+### 38.4.3 `KPI-LST-003` — Used listing units
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-LST-003` |
+| **Display name** | Used listing units |
+| **Business question** | How much of the advertised inventory is used? |
+| **Grain** | Store x capture date |
+| **Formula** | `SUM(inventory_unit_count) WHERE condition_type = 'Used'` |
+| **Date basis** | Capture date. |
+| **Null behaviour** | NULL when no capture exists; 0 is a real answer. |
+| **Filter behaviour** | As KPI-LST-002. |
+| **Additivity** | SEMI-ADDITIVE. |
+| **Interpretation caution** | Certified pre-owned is not separated: the source carries a two-value condition and inventing a third would be fabrication. |
+| **Source view** | `reporting.vw_vehicle_listing_summary` |
+| **Status** | Implemented |
+| **Owner** | Michael Palmer |
+
+### 38.4.4 `KPI-LST-004` — Vehicles with listed price
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-LST-004` |
+| **Display name** | Vehicles with listed price |
+| **Business question** | How many advertised vehicles showed a price? |
+| **Grain** | Store x capture date |
+| **Formula** | `COUNT(*) WHERE pricing_status = 'Listed'` |
+| **Date basis** | Capture date. |
+| **Null behaviour** | NULL when no capture exists. |
+| **Filter behaviour** | As KPI-LST-001. |
+| **Additivity** | SEMI-ADDITIVE. |
+| **Interpretation caution** | Numerator of KPI-LST-006. A vehicle showing a price is not thereby correctly priced. |
+| **Source view** | `reporting.vw_vehicle_listing_summary` |
+| **Status** | Implemented |
+| **Owner** | Michael Palmer |
+
+### 38.4.5 `KPI-LST-005` — Call-for-price units
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-LST-005` |
+| **Display name** | Call-for-price units |
+| **Business question** | How many advertised vehicles showed no price? |
+| **Grain** | Store x capture date |
+| **Formula** | `COUNT(*) WHERE pricing_status = 'Call for price'` |
+| **Date basis** | Capture date. |
+| **Null behaviour** | NULL when no capture exists. |
+| **Filter behaviour** | As KPI-LST-001. |
+| **Additivity** | SEMI-ADDITIVE. |
+| **Interpretation caution** | Call-for-price is a legitimate merchandising choice for pre-order, fleet, chassis-cab and in-transit units. A count is a prompt to look, not a defect. **This is not every unpriced listing** — see `KPI-LST-023` and `KPI-LST-024`. |
+| **Source view** | `reporting.vw_vehicle_listing_summary` |
+| **Status** | Implemented |
+| **Owner** | Michael Palmer |
+
+### 38.4.6 `KPI-LST-006` — Pricing completeness percentage
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-LST-006` |
+| **Display name** | Pricing completeness percentage |
+| **Business question** | What share of advertised vehicles shows a price? |
+| **Grain** | Store x capture date; also published at store x capture x condition x make x model |
+| **Formula** | `listed_price_units / observed_listing_units` |
+| **Date basis** | Capture date. Both sides from the same capture. |
+| **Null behaviour** | Zero denominator returns NULL, never 0 and never infinity. |
+| **Filter behaviour** | Both sides published as columns, so the ratio is recomputed from sums at any grain rather than averaged. |
+| **Additivity** | NON-ADDITIVE ratio. Never average it across groups of different sizes. |
+| **Interpretation caution** | A low percentage means the PUBLIC LISTING showed no price. It does not mean the store has no price, that the vehicle is unpriced in the DMS, or that anything is wrong. |
+| **Source view** | `reporting.vw_vehicle_listing_price_completeness` |
+| **Status** | Implemented |
+| **Owner** | Michael Palmer |
+
+### 38.4.7 `KPI-LST-007` — Total advertised listing value
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-LST-007` |
+| **Display name** | Total advertised listing value |
+| **Business question** | What is the sum of the prices advertised at this store on this capture date? |
+| **Grain** | Store x capture date |
+| **Formula** | `SUM(advertised_price)` |
+| **Date basis** | Capture date. |
+| **Null behaviour** | Call-for-price units contribute nothing. KPI-LST-005 sits beside this figure so the exclusion is visible. |
+| **Filter behaviour** | As KPI-LST-001. |
+| **Additivity** | SEMI-ADDITIVE. Summing across capture dates reports the same money once per capture. |
+| **Interpretation caution** | NOT inventory investment, NOT acquisition cost, NOT asset value, NOT floor-plan exposure, NOT gross, and NOT money the store has. It is the sum of advertised numbers at one moment. |
+| **Source view** | `reporting.vw_vehicle_listing_summary` |
+| **Status** | Implemented |
+| **Owner** | Michael Palmer |
+
+### 38.4.8 `KPI-LST-008` — Average advertised price
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-LST-008` |
+| **Display name** | Average advertised price |
+| **Business question** | What is the typical advertised price at this store on this capture date? |
+| **Grain** | Store x capture date |
+| **Formula** | `total_advertised_value / listed_price_units` |
+| **Date basis** | Capture date. |
+| **Null behaviour** | Zero denominator returns NULL. Call-for-price units are excluded from BOTH sides. |
+| **Filter behaviour** | Dividing by observed_listing_units instead would treat a call-for-price vehicle as costing zero. |
+| **Additivity** | NON-ADDITIVE ratio. |
+| **Interpretation caution** | A mean over a right-skewed mix of compacts and heavy-duty trucks says little on its own; read it with KPI-LST-010 and KPI-LST-011. |
+| **Source view** | `reporting.vw_vehicle_listing_summary` |
+| **Status** | Implemented |
+| **Owner** | Michael Palmer |
+
+### 38.4.9 `KPI-LST-009` — Average advertised price by model
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-LST-009` |
+| **Display name** | Average advertised price by model |
+| **Business question** | What is the typical advertised price for this model? |
+| **Grain** | Store x capture date x condition x make x model x trim |
+| **Formula** | `AVG(advertised_price) over priced listings in the group` |
+| **Date basis** | Capture date. |
+| **Null behaviour** | NULL when every listing in the group was call-for-price. |
+| **Filter behaviour** | Excludes call-for-price units from numerator and denominator alike. |
+| **Additivity** | NON-ADDITIVE ratio. |
+| **Interpretation caution** | A group of one vehicle produces an average equal to that vehicle. Read it with observed_listing_units. |
+| **Source view** | `reporting.vw_vehicle_listing_model_mix` |
+| **Status** | Implemented |
+| **Owner** | Michael Palmer |
+
+### 38.4.10 `KPI-LST-010` — Minimum advertised price
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-LST-010` |
+| **Display name** | Minimum advertised price |
+| **Business question** | What is the lowest price advertised in this group? |
+| **Grain** | Store x capture date x condition x make x model x trim |
+| **Formula** | `MIN(advertised_price)` |
+| **Date basis** | Capture date. |
+| **Null behaviour** | NULL when every listing in the group was call-for-price. |
+| **Filter behaviour** | Priced listings only. |
+| **Additivity** | NON-ADDITIVE order statistic. Cannot be recomputed from an aggregate at another grain. |
+| **Interpretation caution** | An advertised floor, not a transaction floor and not a cost floor. |
+| **Source view** | `reporting.vw_vehicle_listing_model_mix` |
+| **Status** | Implemented |
+| **Owner** | Michael Palmer |
+
+### 38.4.11 `KPI-LST-011` — Maximum advertised price
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-LST-011` |
+| **Display name** | Maximum advertised price |
+| **Business question** | What is the highest price advertised in this group? |
+| **Grain** | Store x capture date x condition x make x model x trim |
+| **Formula** | `MAX(advertised_price)` |
+| **Date basis** | Capture date. |
+| **Null behaviour** | NULL when every listing in the group was call-for-price. |
+| **Filter behaviour** | Priced listings only. |
+| **Additivity** | NON-ADDITIVE order statistic. |
+| **Interpretation caution** | An advertised ceiling, not a transaction ceiling. |
+| **Source view** | `reporting.vw_vehicle_listing_model_mix` |
+| **Status** | Implemented |
+| **Owner** | Michael Palmer |
+
+### 38.4.12 `KPI-LST-012` — Model mix percentage
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-LST-012` |
+| **Display name** | Model mix percentage |
+| **Business question** | What share of the advertised inventory is this model? |
+| **Grain** | Store x capture date x condition x make x model |
+| **Formula** | `observed_listing_units / snapshot_listing_units` |
+| **Date basis** | Capture date. Both sides from the same capture. |
+| **Null behaviour** | Zero denominator returns NULL. |
+| **Filter behaviour** | The denominator is every listing the store showed on that capture date, published as a column so it cannot be guessed at. |
+| **Additivity** | NON-ADDITIVE ratio. |
+| **Interpretation caution** | Mix is what was ADVERTISED, which is not necessarily what was stocked, ordered or sold. |
+| **Source view** | `reporting.vw_vehicle_listing_model_mix` |
+| **Status** | Implemented |
+| **Owner** | Michael Palmer |
+
+### 38.4.13 `KPI-LST-013` — Trim mix percentage
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-LST-013` |
+| **Display name** | Trim mix percentage |
+| **Business question** | Within this model, what share is this trim? |
+| **Grain** | Store x capture date x condition x make x model x trim |
+| **Formula** | `observed_listing_units / model_listing_units` |
+| **Date basis** | Capture date. |
+| **Null behaviour** | Zero denominator returns NULL. Listings carrying no trim group under a NULL trim rather than being dropped. |
+| **Filter behaviour** | The denominator is every listing of the same condition, make and model across all trims, published as a column. |
+| **Additivity** | NON-ADDITIVE ratio. |
+| **Interpretation caution** | Trim is free text as advertised and is not normalised against a manufacturer catalogue. |
+| **Source view** | `reporting.vw_vehicle_listing_model_mix` |
+| **Status** | Implemented |
+| **Owner** | Michael Palmer |
+
+### 38.4.14 `KPI-LST-014` — New listings since prior snapshot
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-LST-014` |
+| **Display name** | New listings since prior snapshot |
+| **Business question** | What appeared since the last capture? |
+| **Grain** | Store x capture date |
+| **Formula** | `COUNT(*) WHERE change_type = 'New Listing'` |
+| **Date basis** | Capture date, compared against the store's immediately preceding capture. |
+| **Null behaviour** | On a store's FIRST capture every vehicle is labelled New Listing and has_prior_snapshot is false. Read that flag first. |
+| **Filter behaviour** | Requires two captures to mean anything. |
+| **Additivity** | SEMI-ADDITIVE across the compared pair only. |
+| **Interpretation caution** | NEWLY OBSERVED, not newly acquired and not a new vehicle. A unit appearing for the first time may have been on the lot for months before observation began. |
+| **Source view** | `reporting.vw_vehicle_listing_change` |
+| **Status** | Implemented |
+| **Owner** | Michael Palmer |
+
+### 38.4.15 `KPI-LST-015` — Removed listings since prior snapshot
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-LST-015` |
+| **Display name** | Removed listings since prior snapshot |
+| **Business question** | What disappeared since the last capture? |
+| **Grain** | Store x capture date |
+| **Formula** | `COUNT(*) WHERE change_type = 'Removed From Listing'` |
+| **Date basis** | Capture date, compared against the immediately preceding capture. |
+| **Null behaviour** | Zero on a store's first capture, where there is nothing to have disappeared from. |
+| **Filter behaviour** | Requires two captures. |
+| **Additivity** | SEMI-ADDITIVE across the compared pair only. |
+| **Interpretation caution** | REMOVED FROM LISTING IS NOT SOLD. A listing can disappear because the vehicle sold, was traded, was wholesaled, was suppressed by the feed, or because of an error, and this data cannot tell them apart. There is no sold label anywhere in this lane and there must never be one. |
+| **Source view** | `reporting.vw_vehicle_listing_change` |
+| **Status** | Implemented |
+| **Owner** | Michael Palmer |
+
+### 38.4.16 `KPI-LST-016` — Price reductions since prior snapshot
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-LST-016` |
+| **Display name** | Price reductions since prior snapshot |
+| **Business question** | How many advertised prices came down? |
+| **Grain** | Store x capture date |
+| **Formula** | `COUNT(*) WHERE change_type = 'Price Reduction'` |
+| **Date basis** | Capture date, compared against the immediately preceding capture. |
+| **Null behaviour** | A vehicle moving to or from call-for-price produces no price change rather than a change of the full price. |
+| **Filter behaviour** | Requires two captures. Read with days_between_snapshots: eleven reductions means something different over one day than over one quarter. |
+| **Additivity** | SEMI-ADDITIVE across the compared pair only. |
+| **Interpretation caution** | A reduction is a merchandising action, not a margin outcome. This lane holds no cost, so it cannot say what a reduction did to gross. |
+| **Source view** | `reporting.vw_vehicle_listing_change` |
+| **Status** | Implemented |
+| **Owner** | Michael Palmer |
+
+### 38.4.17 `KPI-LST-017` — Price increases since prior snapshot
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-LST-017` |
+| **Display name** | Price increases since prior snapshot |
+| **Business question** | How many advertised prices went up? |
+| **Grain** | Store x capture date |
+| **Formula** | `COUNT(*) WHERE change_type = 'Price Increase'` |
+| **Date basis** | Capture date, compared against the immediately preceding capture. |
+| **Null behaviour** | As KPI-LST-016. |
+| **Filter behaviour** | Requires two captures. |
+| **Additivity** | SEMI-ADDITIVE across the compared pair only. |
+| **Interpretation caution** | An increase can be a correction of an earlier error, an added accessory package, or a genuine reprice. The source cannot distinguish them. |
+| **Source view** | `reporting.vw_vehicle_listing_change` |
+| **Status** | Implemented |
+| **Owner** | Michael Palmer |
+
+### 38.4.18 `KPI-LST-018` — Average price change
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-LST-018` |
+| **Display name** | Average price change |
+| **Business question** | When advertised prices moved, by how much did they move? |
+| **Grain** | Store x capture date |
+| **Formula** | `AVG(price_change) over vehicles present in both captures with a price in both` |
+| **Date basis** | Capture date, compared against the immediately preceding capture. |
+| **Null behaviour** | NULL when no vehicle had a price on both sides. Negative means a reduction. |
+| **Filter behaviour** | Excludes new and removed listings, and excludes any vehicle that was call-for-price on either side. |
+| **Additivity** | NON-ADDITIVE. |
+| **Interpretation caution** | A mean over few movements is dominated by the largest one. Read it with KPI-LST-016 and KPI-LST-017. |
+| **Source view** | `reporting.vw_vehicle_listing_change` |
+| **Status** | Implemented |
+| **Owner** | Michael Palmer |
+
+### 38.4.19 `KPI-LST-019` — First observed date
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-LST-019` |
+| **Display name** | First observed date |
+| **Business question** | When did we first see this vehicle advertised? |
+| **Grain** | Store x observed vehicle |
+| **Formula** | `MIN(captured_at)` |
+| **Date basis** | Capture date. |
+| **Null behaviour** | Never NULL for a vehicle that has any observation. |
+| **Filter behaviour** | Bounded below by when observation began. |
+| **Additivity** | NON-ADDITIVE. |
+| **Interpretation caution** | NOT an acquisition date and NOT the date the vehicle arrived. It is the first time anybody looked and saw it. |
+| **Source view** | `reporting.vw_vehicle_listing_observation_span` |
+| **Status** | Implemented |
+| **Owner** | Michael Palmer |
+
+### 38.4.20 `KPI-LST-020` — Last observed date
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-LST-020` |
+| **Display name** | Last observed date |
+| **Business question** | When did we last see this vehicle advertised? |
+| **Grain** | Store x observed vehicle |
+| **Formula** | `MAX(captured_at)` |
+| **Date basis** | Capture date. |
+| **Null behaviour** | Never NULL for a vehicle that has any observation. |
+| **Filter behaviour** | Equal to the store's newest capture for a vehicle still listed. |
+| **Additivity** | NON-ADDITIVE. |
+| **Interpretation caution** | NOT a sale date and NOT a disposition date. |
+| **Source view** | `reporting.vw_vehicle_listing_observation_span` |
+| **Status** | Implemented |
+| **Owner** | Michael Palmer |
+
+### 38.4.21 `KPI-LST-021` — Days observed online
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-LST-021` |
+| **Display name** | Days observed online |
+| **Business question** | How long has this vehicle been visible in the listing? |
+| **Grain** | Store x observed vehicle |
+| **Formula** | `last_observed_at - first_observed_at, in days` |
+| **Date basis** | Capture date. |
+| **Null behaviour** | Zero means the vehicle was seen in exactly one capture. That is 'seen once', not 'listed for no time'. |
+| **Filter behaviour** | Must be read with snapshot_count and observation_gap_days: a 30-day span from two captures is not the evidence a 30-day span from thirty captures is. |
+| **Additivity** | NON-ADDITIVE. |
+| **Interpretation caution** | THIS IS NOT DAYS IN STOCK. Days in stock runs from acquisition, is recorded by the DMS, and lives on warehouse.fact_vehicle_inventory_snapshot. This lane cannot produce it, because it does not know when the store bought the vehicle. The measure is also bounded below by the capture cadence and above by when observation started. |
+| **Source view** | `reporting.vw_vehicle_listing_observation_span` |
+| **Status** | Implemented |
+| **Owner** | Michael Palmer |
+
+### 38.4.22 `KPI-LST-022` — Snapshot freshness
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-LST-022` |
+| **Display name** | Snapshot freshness |
+| **Business question** | How old is the position this report describes? |
+| **Grain** | Store x capture date |
+| **Formula** | `store's newest captured_at - this row's captured_at, in days` |
+| **Date basis** | Capture date. |
+| **Null behaviour** | Zero on the store's newest capture. |
+| **Filter behaviour** | Published on every summary row so a stale capture cannot be read as a current one. |
+| **Additivity** | NON-ADDITIVE. |
+| **Interpretation caution** | This is snapshot age. It is not days in stock, not days on lot, and not vehicle age. |
+| **Source view** | `reporting.vw_vehicle_listing_summary` |
+| **Status** | Implemented |
+| **Owner** | Michael Palmer |
+
+### 38.4.23 `KPI-LST-023` — Price-not-exposed units
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-LST-023` |
+| **Display name** | Price-not-exposed units |
+| **Business question** | How many advertised vehicles came from a source that published no price field at all? |
+| **Grain** | Store x capture date; also published at store x capture x condition x make x model |
+| **Formula** | `COUNT(*) WHERE pricing_status = 'Price not exposed'` |
+| **Date basis** | Capture date. |
+| **Null behaviour** | NULL when no capture exists. |
+| **Filter behaviour** | As KPI-LST-001. |
+| **Additivity** | SEMI-ADDITIVE. |
+| **Interpretation caution** | **This is not `KPI-LST-005` and the two must never be added into one bucket without saying so.** Call-for-price means the listing *displayed* a call-for-price treatment: a merchandising choice was made and shown. Price-not-exposed means the listing surface carried no price field, and evidences no choice by anyone. Reporting this as call-for-price would attribute a decision to a dealership on no evidence. It is equally **not** a data-quality defect: the sanitizer received no price because none was published. |
+| **Source view** | `reporting.vw_vehicle_listing_summary`, `reporting.vw_vehicle_listing_price_completeness`, `reporting.vw_vehicle_listing_model_mix` |
+| **Status** | Implemented |
+| **Owner** | Michael Palmer |
+
+### 38.4.24 `KPI-LST-024` — Unpriced listing units
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-LST-024` |
+| **Display name** | Unpriced listing units |
+| **Business question** | How many advertised vehicles contributed nothing to total advertised value? |
+| **Grain** | Store x capture date; also published at store x capture x condition x make x model |
+| **Formula** | `COUNT(*) WHERE pricing_status <> 'Listed'` |
+| **Date basis** | Capture date. |
+| **Null behaviour** | NULL when no capture exists. |
+| **Filter behaviour** | As KPI-LST-001. |
+| **Additivity** | SEMI-ADDITIVE. |
+| **Interpretation caution** | Defined as the **complement of listed**, not as the sum of the named unpriced statuses, so that `KPI-LST-004 + KPI-LST-024 = KPI-LST-001` holds however many pricing statuses exist. A future status cannot silently fall outside every bucket. Use this when the question is "how many vehicles are missing from the price statistics"; use `KPI-LST-005` and `KPI-LST-023` when the question is *why*. |
+| **Source view** | `reporting.vw_vehicle_listing_summary`, `reporting.vw_vehicle_listing_price_completeness`, `reporting.vw_vehicle_listing_model_mix` |
+| **Status** | Implemented |
+| **Owner** | Michael Palmer |
+

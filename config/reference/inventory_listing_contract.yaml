@@ -1,0 +1,468 @@
+# =============================================================================
+# ARPI sanitized inventory listing workbook contract
+# =============================================================================
+# ONE DECLARATION, READ BY CODE, TESTS AND CI.
+#
+# Sheet names, header names, controlled vocabularies, classification values and
+# the approved file-naming convention are declared here exactly once. The
+# sanitizer writes to this contract, the validator refuses a workbook that
+# departs from it, the importer types its columns from it, the Excel exporter
+# reproduces it, and the repository check `scripts/check_reference_data.py`
+# enforces it against every committed artifact under `data/reference/`.
+#
+# Duplicating any of these strings into Python or into a test would create a
+# second copy able to disagree with the first, which is the drift this file
+# exists to stop.
+#
+# VERSIONED. `contract_version` changes whenever the sanitized shape changes.
+# A workbook records the version it was written against in its README sheet, so
+# a future contract can accept an older artifact deliberately rather than by
+# accident. Bumping it is an ADR-0011 review event, not a routine edit.
+# =============================================================================
+
+schema: arpi.inventory_listing_contract/1
+contract_version: "1.0"
+
+# ---------------------------------------------------------------------------
+# 1. Governed classification
+# ---------------------------------------------------------------------------
+# The ONLY value `Data Classification` may hold, and the only value the README
+# sheet's Classification field may hold. This lane is not synthetic and must
+# never be labelled as such; ADR-0011 section 3 is the decision.
+classification: Sanitized public reference data
+
+# The neutral feed label that replaces every row-level source URL. It names the
+# LANE, never the origin site.
+source_feed: sanitized_public_inventory_reference
+
+# The `source_system` value the warehouse stamps on every listing row.
+source_system: arpi_sanitized_public_reference
+
+# ---------------------------------------------------------------------------
+# 2. Sheets
+# ---------------------------------------------------------------------------
+# Order is significant: it is the order Excel shows and the order the exporter
+# writes. `Snapshot Changes` is conditional -- it exists only when a prior
+# snapshot for the same store is present -- so it is declared separately.
+sheets:
+  readme: README
+  summary: Summary
+  inventory: Inventory
+  model_summary: Model Summary
+
+optional_sheets:
+  snapshot_changes: Snapshot Changes
+
+# ---------------------------------------------------------------------------
+# 3. The Inventory sheet contract
+# ---------------------------------------------------------------------------
+# `header` is the exact spelling in row 1, in exact order. `column` is the
+# warehouse-side snake_case name. `type` drives both validation and the raw ->
+# staging cast. `required` means the cell may not be blank.
+#
+# Two columns are deliberately absent and must never appear: an original VIN
+# and a row-level source URL. `prohibited_headers` below makes their absence a
+# refusal rather than an omission nobody notices.
+inventory_columns:
+  - header: Source Record ID
+    column: source_record_id
+    type: text
+    required: true
+    max_length: 40
+  - header: Dealership ID
+    column: dealership_id
+    type: text
+    required: true
+    max_length: 16
+  - header: Store Name
+    column: store_name
+    type: text
+    required: true
+    max_length: 80
+  - header: Captured At
+    column: captured_at
+    type: date
+    required: true
+  - header: Source Batch ID
+    column: source_batch_id
+    type: text
+    required: true
+    max_length: 40
+  - header: Source Feed
+    column: source_feed
+    type: text
+    required: true
+    max_length: 60
+  - header: Condition
+    column: condition_type
+    type: text
+    required: true
+    # Wide enough to HOLD a value outside the domain, so the domain rule reports it
+    # rather than the cast failing first and calling it a type error.
+    max_length: 16
+  - header: Model Year
+    column: model_year
+    type: integer
+    required: true
+  - header: Make
+    column: make
+    type: text
+    required: true
+    max_length: 40
+  - header: Model
+    column: model
+    type: text
+    required: true
+    max_length: 60
+  - header: Trim
+    column: trim
+    type: text
+    required: false
+    max_length: 60
+  - header: Vehicle Display
+    column: vehicle_display
+    type: text
+    required: true
+    max_length: 160
+  # OPTIONAL, and this was a contract change rather than the original position.
+  # The Granite Pre-Owned Center listings publish no mileage at all. A required
+  # column would have refused that workbook, and refusing it would assert that a
+  # listing surface must publish mileage, which is not ARPI's call to make. What
+  # the lane can say is how many listings published none, which is why
+  # unpriced/no-odometer counts are surfaced rather than left as silent NULLs.
+  - header: Odometer Miles
+    column: odometer_miles
+    type: integer
+    required: false
+  - header: Advertised Price
+    column: advertised_price
+    type: money
+    required: false
+  - header: Pricing Status
+    column: pricing_status
+    type: text
+    required: true
+    max_length: 20
+  - header: Synthetic Vehicle ID
+    column: synthetic_vehicle_id
+    type: text
+    required: true
+    max_length: 24
+  - header: Synthetic VIN
+    column: synthetic_vin
+    type: text
+    required: true
+    max_length: 24
+  - header: Inventory Unit Count
+    column: inventory_unit_count
+    type: integer
+    required: true
+  - header: Data Classification
+    column: data_classification
+    type: text
+    required: true
+    max_length: 40
+
+# Headers that must NOT appear on the Inventory sheet, however they are spelled.
+# Matching is case-insensitive on the normalised name (spaces, hyphens and dots
+# folded to underscores), so `Source-URL`, `source url` and `SOURCE_URL` are all
+# refused. `vin` is refused on its own; `synthetic_vin` is the approved column
+# and is exempted by exact match.
+prohibited_headers:
+  - vin
+  - vehicle_identification_number
+  - source_url
+  - url
+  - listing_url
+  - vdp_url
+  - dealer_name
+  - dealership_name
+  - street_address
+  - address
+  - stock_number
+
+# ---------------------------------------------------------------------------
+# 4. Controlled vocabularies
+# ---------------------------------------------------------------------------
+condition_values:
+  - New
+  - Used
+
+pricing_status_values:
+  - Listed
+  - Call for price
+  - Price not exposed
+
+# The pricing rule, stated once.
+#
+#   Listed             => advertised_price MUST be present and non-negative.
+#   Call for price     => advertised_price MUST be absent.
+#   Price not exposed  => advertised_price MUST be absent.
+#
+# `call_for_price_allows_price` is the explicit, documented switch section 5 of
+# the assignment requires. It is FALSE: a call-for-price row carrying a number
+# is a contradiction between the two columns, and admitting it would let a
+# pricing-completeness percentage count a vehicle in both buckets.
+#
+# WHY 'Price not exposed' IS NOT 'Call for price'
+# -----------------------------------------------
+# Both mean no price reached the warehouse, and it is tempting to collapse them.
+# They are not the same claim.
+#
+#   Call for price     the listing DISPLAYED a call-for-price treatment. The
+#                      dealer chose to withhold the number and invite contact.
+#   Price not exposed  the listing surface published no price field at all. No
+#                      choice by anyone is evidenced.
+#
+# Folding the second into the first would assert a merchandising decision the
+# data does not record, which is the class of claim this lane exists to refuse.
+# They are counted separately everywhere, and `unpriced_units` is the derived
+# total for anyone who genuinely wants both.
+#
+# `statuses_that_forbid_a_price` is the authoritative list. The two booleans
+# above are the declared switches, and load_contract() REFUSES a contract where
+# a switch and the list disagree -- so neither can drift into being decorative.
+pricing_rules:
+  listed_requires_price: true
+  call_for_price_allows_price: false
+  price_not_exposed_allows_price: false
+  statuses_that_forbid_a_price:
+    - Call for price
+    - Price not exposed
+
+# ---------------------------------------------------------------------------
+# 5. Governed numeric ranges
+# ---------------------------------------------------------------------------
+# The model-year window is deliberately wide. A listing snapshot legitimately
+# carries next year's models -- the committed Granite Chevrolet artifact holds
+# 2027 units captured in 2026 -- and an aged used unit can be old. The range
+# exists to catch a transposed or garbage year, not to express an opinion about
+# what a store should stock.
+model_year:
+  minimum: 1980
+  maximum: 2100
+  # A model year more than this many years beyond the snapshot year is refused.
+  # Two model years ahead of the capture year is normal ordering practice.
+  years_ahead_of_capture: 2
+
+odometer_miles:
+  minimum: 0
+  maximum: 1000000
+
+advertised_price:
+  minimum: 0
+  maximum: 10000000
+
+inventory_unit_count:
+  exactly: 1
+
+# ---------------------------------------------------------------------------
+# 6. Synthetic identity
+# ---------------------------------------------------------------------------
+# The group-stable identity algorithm, declared so the sanitizer, the validator
+# and the tests cannot disagree about it.
+#
+#   digest = SHA256(UTF8("ARPI|GSA|" + upper(trim(original VIN)))) rendered as
+#            UPPERCASE hexadecimal
+#   synthetic_vehicle_id = "VEH-" + digest[:12]
+#   synthetic_vin        = "ARPI" + digest[:13]
+#
+# The `ARPI` prefix is what makes the result provably NOT a real VIN: `I` is not
+# a permitted VIN character, so no ARPI-prefixed identifier can ever pass a real
+# VIN check-digit validation. That is the point -- see ADR-0005.
+identity:
+  namespace: "ARPI|GSA|"
+  vehicle_id_prefix: "VEH-"
+  vehicle_id_digest_length: 12
+  vin_prefix: ARPI
+  vin_digest_length: 13
+
+# ---------------------------------------------------------------------------
+# 7. The private input contract
+# ---------------------------------------------------------------------------
+# The shape the sanitizer accepts on the way IN. These headers name columns that
+# hold identifying values; nothing here is ever committed. The sanitizer reads
+# this to validate the private workbook before it transforms anything, so a
+# malformed private file fails with a redacted message rather than half-writing
+# a sanitized one.
+private_input_columns:
+  - header: Condition
+    role: condition
+    required: true
+  - header: Year
+    role: model_year
+    required: true
+  - header: Make
+    role: make
+    required: true
+  - header: Model
+    role: model
+    required: true
+  - header: Trim
+    role: trim
+    required: false
+  - header: Vehicle
+    role: vehicle_display
+    required: false
+  - header: Mileage
+    role: odometer_miles
+    required: true
+  - header: Price
+    role: advertised_price
+    required: false
+  - header: Price Status
+    role: pricing_status
+    required: true
+  - header: VIN
+    role: original_vin
+    required: true
+  - header: Source URL
+    role: source_url
+    required: false
+  - header: Captured
+    role: captured_at
+    required: false
+
+# ---------------------------------------------------------------------------
+# 8. File naming
+# ---------------------------------------------------------------------------
+# THE APPROVED ARPI PORTFOLIO CONVENTION, AND IT USES UNDERSCORES.
+#
+#   ARPI_<Store_Descriptor>_Inventory_Sanitized_<yyyy-mm-dd>.xlsx
+#
+# Underscores separate filename words. Hyphens appear ONLY inside the ISO date.
+# The canonical Granite Chevrolet artifact is
+# `ARPI_Granite_Chevrolet_Inventory_Sanitized_2026-08-02.xlsx` and that spelling
+# is final: it is not renamed, not lowercased, not hyphenated, and no duplicate
+# or alias copy of it exists. ADR-0011 section 8 records the decision, and
+# changing it requires an explicit migration rather than an informal rename.
+naming:
+  sanitized_pattern: "ARPI_{store_descriptor}_Inventory_Sanitized_{captured_at}.xlsx"
+  report_pattern: "ARPI_{store_descriptor}_Inventory_Report_{captured_at}.xlsx"
+  # Anchored regexes the CI check applies to every committed reference workbook.
+  #
+  # SINGLE-QUOTED on purpose. These are read by two parsers: PyYAML in the
+  # application, and the small line scanner in scripts/check_reference_data.py,
+  # which runs in CI on a bare interpreter with nothing installed. A
+  # double-quoted YAML scalar would need backslash unescaping that the second
+  # parser does not do, and the two would then compile different patterns while
+  # both looking correct. Single quotes are literal in YAML, so both read the
+  # same characters.
+  sanitized_regex: '^ARPI_[A-Za-z0-9]+(?:_[A-Za-z0-9]+)*_Inventory_Sanitized_\d{4}-\d{2}-\d{2}\.xlsx$'
+  report_regex: '^ARPI_[A-Za-z0-9]+(?:_[A-Za-z0-9]+)*_Inventory_Report_\d{4}-\d{2}-\d{2}\.xlsx$'
+  # data/reference/inventory/<dealership-id lowercased>/<yyyy-mm-dd>/<file>.xlsx
+  reference_root: data/reference/inventory
+  report_root: artifacts/inventory
+  date_format: "%Y-%m-%d"
+
+# The store descriptor used in a derived filename, per dealership. Taken from
+# the store's short name with spaces replaced by underscores, and declared here
+# so a rename in the registry cannot silently rename a committed artifact.
+store_descriptors:
+  GSA-001: Granite_Chevrolet
+  GSA-002: Granite_Subaru
+  GSA-003: Granite_Pre_Owned_Center
+
+# ---------------------------------------------------------------------------
+# 9. The canonical committed artifacts
+# ---------------------------------------------------------------------------
+# Every sanitized reference workbook that is committed, declared explicitly.
+# `scripts/check_reference_data.py` fails when a file exists under
+# `data/reference/inventory/` that is not listed here, and when a listed file is
+# missing -- so neither an undeclared duplicate nor a silent deletion can pass.
+# EVERY STORE HAS EXACTLY ONE DIRECTORY, AND IT IS ITS OWN.
+#
+#   GSA-001  data/reference/inventory/gsa-001/<yyyy-mm-dd>/ARPI_Granite_Chevrolet_Inventory_Sanitized_<yyyy-mm-dd>.xlsx
+#   GSA-002  data/reference/inventory/gsa-002/<yyyy-mm-dd>/ARPI_Granite_Subaru_Inventory_Sanitized_<yyyy-mm-dd>.xlsx
+#   GSA-003  data/reference/inventory/gsa-003/<yyyy-mm-dd>/ARPI_Granite_Pre_Owned_Center_Inventory_Sanitized_<yyyy-mm-dd>.xlsx
+#
+# A workbook filed under another store's directory is refused by
+# `scripts/check_reference_data.py` (rule `artifact-misfiled`) and by DQ-LST-011,
+# whether or not a second workbook is sitting beside it. The directory is part of
+# the artifact's identity, not a filing convenience.
+#
+# ONLY GSA-001 IS COMMITTED TODAY. The Subaru and Used Auto workbooks are not in
+# this repository and are not generated in advance -- ADR-0011 admits an artifact
+# only once a real capture has been sanitized and reviewed. Their paths above are
+# the convention their eventual artifacts must satisfy, not a promise that they
+# exist.
+canonical_artifacts:
+  - dealership_id: GSA-001
+    captured_at: "2026-08-02"
+    file_name: ARPI_Granite_Chevrolet_Inventory_Sanitized_2026-08-02.xlsx
+    path: >-
+      data/reference/inventory/gsa-001/2026-08-02/ARPI_Granite_Chevrolet_Inventory_Sanitized_2026-08-02.xlsx
+    row_count: 199
+    # SHA-256 of the committed bytes. Recorded so a silent replacement of the
+    # artifact is a test failure rather than a diff nobody reads.
+    #
+    # RE-DECLARED under ADR-0012. The workbook's embedded dealer-group name was
+    # corrected from the retired 'Granite Auto Group', and its stale
+    # 'Recommended repository path' cell was corrected to the approved underscore
+    # name at the same time. Both were string substitutions inside the package's
+    # XML parts; every ZIP entry was rewritten verbatim and the part count is
+    # asserted unchanged, so the conditional-formatting parts an openpyxl
+    # round-trip would have discarded are intact. That is the specific objection
+    # the previous declaration raised, and it does not apply to this method.
+    #
+    # `legacy_path_hint` is GONE rather than re-keyed to the new digest. The hint
+    # it excused no longer exists in the file, so DQ-LST-016 now holds for this
+    # artifact with no exception at all.
+    sha256: 9a0d38570cef95b2a34bb56c8743edc3d18dc9b8d9d21121c6c12de23be4c643
+
+  - dealership_id: GSA-002
+    captured_at: "2026-08-02"
+    file_name: ARPI_Granite_Subaru_Inventory_Sanitized_2026-08-02.xlsx
+    path: >-
+      data/reference/inventory/gsa-002/2026-08-02/ARPI_Granite_Subaru_Inventory_Sanitized_2026-08-02.xlsx
+    row_count: 24
+    # RE-DECLARED under ADR-0012: the embedded dealer-group name was corrected.
+    sha256: 4b3317ddbb6f2ded24bfb1ecf8a030849ceaebff366d475e0fcb11bab752adea
+    # DECLARED PARTIAL SAMPLE. The public source did not expose every listing
+    # through a reliably extractable path, so this artifact holds 24 visible
+    # indexed records out of a larger reported inventory.
+    #
+    # It is declared here, not just noted in the workbook, because the number is
+    # load-bearing: a unit count from this store is a count of what was VISIBLE,
+    # and reading it as the store's inventory would overstate a shortfall that
+    # only exists in the extraction. Every consumer that reports a store total
+    # must be able to see this without opening the file.
+    coverage: partial
+    coverage_note: >-
+      24 visible indexed listing records from a larger reported inventory. Not
+      the store's complete inventory, current market position, or performance.
+
+  - dealership_id: GSA-003
+    captured_at: "2026-08-02"
+    file_name: ARPI_Granite_Pre_Owned_Center_Inventory_Sanitized_2026-08-02.xlsx
+    path: >-
+      data/reference/inventory/gsa-003/2026-08-02/ARPI_Granite_Pre_Owned_Center_Inventory_Sanitized_2026-08-02.xlsx
+    row_count: 318
+    # RENAMED AND RE-DECLARED under ADR-0012. GSA-003's public name is now
+    # 'Granite Pre-Owned Center of Merrimack', and the artifact's filename is
+    # rendered on the public website as a source link, which makes it
+    # public-facing content rather than an internal path. The workbook's embedded
+    # store and group names were corrected in the same pass.
+    sha256: 5a8326f0523cc218263247dfe48e0577eb035452b3a032f3db611810aea9e770
+    # This store's listing surface publishes NEITHER mileage NOR price: every row
+    # carries an empty Odometer Miles and a Pricing Status of 'Price not exposed'.
+    # Both are why this contract's odometer column is optional and why
+    # 'Price not exposed' exists as a status distinct from 'Call for price'.
+    #
+    # The consequence is worth stating plainly: no price statistic, no total
+    # advertised value and no average odometer can be computed for GSA-003 from
+    # this capture. The lane reports that as a count of what was not published
+    # rather than as a zero, because zero is a number and a number gets averaged.
+    coverage: complete
+
+# ---------------------------------------------------------------------------
+# 10. Rejection codes
+# ---------------------------------------------------------------------------
+# Reused from the register in docs/source-to-target/README.md section 4 so the
+# listing lane reports rejections in the same vocabulary as every other entity.
+rejection_codes:
+  type: REJ-TYPE-001
+  null: REJ-NULL-001
+  domain: REJ-DOMAIN-001
+  key: REJ-KEY-001
+  referential: REJ-REF-001

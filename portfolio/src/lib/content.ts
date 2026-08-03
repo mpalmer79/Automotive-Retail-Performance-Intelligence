@@ -12,11 +12,25 @@
  * time, tree-shaken per route.
  */
 import dataModelJson from '@/content/data-model.json'
+import inventoryOperationsJson from '@/content/inventory-operations.json'
 import kpisJson from '@/content/kpis.json'
-import type { DataModelContent, KpiContent } from '@/types/content'
+import type {
+  DataModelContent,
+  InventoryOperationsContent,
+  KpiContent,
+} from '@/types/content'
 
 export const kpiContent = kpisJson as unknown as KpiContent
 export const dataModelContent = dataModelJson as unknown as DataModelContent
+
+/**
+ * The Inventory Operations page's authored content (ADR-0011).
+ *
+ * The `$comment` key in the JSON is documentation for a reader of the file and is not
+ * part of the typed shape, so the cast drops it.
+ */
+export const inventoryOperations =
+  inventoryOperationsJson as unknown as InventoryOperationsContent
 
 export const kpis = kpiContent.kpis
 export const deferredKpis = kpiContent.deferred

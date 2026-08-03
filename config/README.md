@@ -93,3 +93,35 @@ Export the variables yourself, for example `set -a; source .env; set +a`.
 
 `.env` is gitignored; `.env.example` in the repository root documents every supported
 variable with safe placeholder values.
+
+---
+
+## `reference/` — contracts, not profiles
+
+`reference/` holds versioned data contracts rather than run configuration. Nothing in it
+is a pydantic profile, nothing in it is selected by `ARPI_PROFILE`, and the generator
+never reads it.
+
+| File | What it governs |
+|---|---|
+| `reference/inventory_listing_contract.yaml` | The sanitized public dealership listing workbook: its sheets, its nineteen columns, its controlled vocabularies and governed ranges, its pricing rules, its identity algorithm, its file-naming patterns, its per-store directories, and the SHA-256 of every committed artifact |
+
+**One declaration, five readers.** The sanitizer writes to it, the validator checks
+against it, the importer derives its COPY column list from it, the exporter reads its
+store descriptors, and `scripts/check_reference_data.py` enforces it in CI. A contract
+restated in any of those five would be a second copy able to disagree with the first.
+
+**Why YAML for the contract and JSON for the capability register.** This file is read by
+the application, which has PyYAML. `config/project_capabilities.json` is read by the
+`repository-checks` CI job, which installs nothing.
+
+That split has one consequence worth knowing before editing this file: the CI checker
+parses it with a hand-written line scanner, so **its regular expressions are
+single-quoted**. In YAML a single-quoted scalar is literal, so PyYAML and the scanner
+receive identical characters; a double-quoted `"\\d"` would not survive both.
+`tests/unit/test_reference_data_check.py::test_the_two_parsers_agree_about_the_contract`
+fails if they ever diverge.
+
+The contract is described in full in
+[`../data/reference/README.md`](../data/reference/README.md) and decided in
+[ADR-0011](../docs/architecture-decisions/ADR-0011-sanitized-public-inventory-reference-data.md).

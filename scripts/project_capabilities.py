@@ -96,8 +96,15 @@ AUDIT_LAYERS = ("source", "raw", "staging", "warehouse", "rejected")
 #: Read as source rather than imported: this module runs on a bare interpreter with the
 #: package uninstalled.
 INGESTION_SPEC_SOURCE = REPO_ROOT / "src" / "arpi" / "ingestion" / "spec.py"
+INVENTORY_SPEC_SOURCE = REPO_ROOT / "src" / "arpi" / "inventory" / "spec.py"
 LOADER_SOURCE = REPO_ROOT / "src" / "arpi" / "ingestion" / "loader.py"
 FACT_SQL_DIR = REPO_ROOT / "sql" / "04_facts"
+
+#: The exporter behind ``deliverables.inventory_operating_report``. A separate deliverable
+#: from ``deliverables.excel_operating_report``, which is P2.4-03 -- the Power BI-reconciled
+#: workbook over the synthetic warehouse -- and is still deferred. Two Excel workbooks that
+#: answer different questions from different lanes; neither stands in for the other.
+INVENTORY_REPORT_SOURCE = REPO_ROOT / "src" / "arpi" / "inventory" / "report.py"
 
 #: The function whose failure mode this register guards.
 FACT_DISCOVERY_FUNCTION = "discover_fact_sql"
@@ -165,6 +172,15 @@ class DerivedEvidence:
     railway_database_job_config: bool
     deployment: DeploymentEvidence
     fabric_is_an_accepted_validation_path: bool
+    #: SQL files owned by the sanitized public listing lane (ADR-0011). Counted separately
+    #: from every field above, all of which describe the MVP warehouse the semantic model
+    #: reads. Defaulted so the fixtures in tests/unit/test_project_capabilities.py, which
+    #: build this record positionally to describe an MVP-shaped repository, keep doing so.
+    inventory_listing_sql_files: int = 0
+    inventory_listing_reporting_views: int = 0
+    #: Whether the sanitized-listing Excel exporter exists in source. Guards
+    #: ``deliverables.inventory_operating_report`` only, never ``excel_operating_report``.
+    inventory_report_exporter: bool = False
 
     @property
     def semantic_model_source_exists(self) -> bool:
@@ -311,28 +327,79 @@ def _count_audit_layers_recorded() -> int:
     return len(recorded)
 
 
-def _required_fact_load_scripts() -> tuple[str, ...]:
-    """The fact-load scripts the ingestion registry declares, read from its source.
+def _declared_strings(source: Path, keyword: str) -> set[str]:
+    """Every string literal a module passes to ``keyword=`` in a call.
 
     Parsed rather than grepped, so a script name mentioned in a comment or a docstring is
     not mistaken for a declaration.
     """
-    if not INGESTION_SPEC_SOURCE.is_file():
-        return ()
+    if not source.is_file():
+        return set()
     try:
-        tree = ast.parse(INGESTION_SPEC_SOURCE.read_text(encoding="utf-8"))
+        tree = ast.parse(source.read_text(encoding="utf-8"))
     except SyntaxError:
-        return ()
+        return set()
+    return {
+        node.value.value
+        for node in ast.walk(tree)
+        if isinstance(node, ast.keyword)
+        and node.arg == keyword
+        and isinstance(node.value, ast.Constant)
+        and isinstance(node.value.value, str)
+    }
+
+
+def _inventory_lane_sql_files() -> frozenset[str]:
+    """The SQL files the sanitized listing lane owns, read from its own declaration.
+
+    ``arpi.inventory.spec.INVENTORY_LANE_SQL_FILES`` is the single declaration. It is read
+    here rather than restated, because the counts this module derives -- five MVP facts,
+    eight dimensions, twenty-eight reporting views -- are measured against a baseline run
+    and must not move because a second, separately governed lane appeared beside them.
+    """
+    if not INVENTORY_SPEC_SOURCE.is_file():
+        return frozenset()
+    try:
+        tree = ast.parse(INVENTORY_SPEC_SOURCE.read_text(encoding="utf-8"))
+    except SyntaxError:
+        return frozenset()
+    # The declaration is annotated (`X: Final[tuple[str, ...]] = (...)`), so it is an
+    # AnnAssign rather than an Assign. Both are handled: an annotation is a style choice
+    # and this check must not depend on one.
+    for node in ast.walk(tree):
+        if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+            target, value = node.target.id, node.value
+        elif (
+            isinstance(node, ast.Assign) and node.targets and isinstance(node.targets[0], ast.Name)
+        ):
+            target, value = node.targets[0].id, node.value
+        else:
+            continue
+        if target != "INVENTORY_LANE_SQL_FILES" or value is None:
+            continue
+        if isinstance(value, (ast.Tuple, ast.List)):
+            return frozenset(
+                element.value
+                for element in value.elts
+                if isinstance(element, ast.Constant) and isinstance(element.value, str)
+            )
+    return frozenset()
+
+
+def _required_fact_load_scripts() -> tuple[str, ...]:
+    """Every fact-load script a registry declares, across BOTH ingestion registries.
+
+    ARPI has two: ``arpi.ingestion.spec`` for the generated CSV entities the pipeline runs
+    on every execution, and ``arpi.inventory.spec`` for the sanitized reference sources a
+    human imports on their own cadence. The contract this feeds -- that no script in
+    ``sql/04_facts`` is present without a registry naming it -- applies to both, because
+    the property it protects is the same in either case: a load script nobody executes is
+    an empty fact that looks loaded.
+    """
     return tuple(
         sorted(
-            {
-                node.value.value
-                for node in ast.walk(tree)
-                if isinstance(node, ast.keyword)
-                and node.arg == "fact_load_script"
-                and isinstance(node.value, ast.Constant)
-                and isinstance(node.value.value, str)
-            }
+            _declared_strings(INGESTION_SPEC_SOURCE, "fact_load_script")
+            | _declared_strings(INVENTORY_SPEC_SOURCE, "fact_load_script")
         )
     )
 
@@ -387,8 +454,28 @@ def derive_evidence() -> DerivedEvidence:
     reporting = sql / "05_reporting"
     migrations = sql / "09_migrations"
 
-    fact_scripts = sorted(facts.glob("*.sql")) if facts.is_dir() else []
-    dimension_scripts = sorted(dimensions.glob("*.sql")) if dimensions.is_dir() else []
+    # The sanitized public listing lane (ADR-0011) lives in the same directories as the
+    # MVP warehouse and is NOT part of it. Its files are subtracted here so that "five MVP
+    # facts", "eight conformed dimensions" and "twenty-eight reporting views" keep meaning
+    # what the semantic model and the SQL baseline were measured against, and are counted
+    # separately below so the lane is reported rather than hidden.
+    lane_files = _inventory_lane_sql_files()
+
+    def _in_lane(path: Path) -> bool:
+        return f"{path.parent.name}/{path.name}" in lane_files
+
+    all_fact_scripts = sorted(facts.glob("*.sql")) if facts.is_dir() else []
+    all_dimension_scripts = sorted(dimensions.glob("*.sql")) if dimensions.is_dir() else []
+    all_reporting_scripts = sorted(reporting.glob("*.sql")) if reporting.is_dir() else []
+
+    fact_scripts = [p for p in all_fact_scripts if not _in_lane(p)]
+    dimension_scripts = [p for p in all_dimension_scripts if not _in_lane(p)]
+    reporting_scripts = [
+        p
+        for p in all_reporting_scripts
+        if p.name[0].isdigit() and "scope" not in p.name and not _in_lane(p)
+    ]
+    lane_reporting_scripts = [p for p in all_reporting_scripts if _in_lane(p)]
 
     return DerivedEvidence(
         pbip_project_files=_count_files(PBIP_DIR, ".pbip")
@@ -405,16 +492,18 @@ def derive_evidence() -> DerivedEvidence:
         fact_ddl_scripts=sum(1 for p in fact_scripts if "_load" not in p.name),
         fact_load_scripts=sum(1 for p in fact_scripts if p.name.endswith("_load.sql")),
         required_fact_load_scripts=_required_fact_load_scripts(),
+        # EVERY load script in the directory, lane files included. The contract this feeds
+        # is "no script is present that no registry names", and subtracting the lane here
+        # would exempt it from the one check it most needs to satisfy.
         present_fact_load_scripts=tuple(
-            sorted(p.name for p in fact_scripts if p.name.endswith("_load.sql"))
+            sorted(p.name for p in all_fact_scripts if p.name.endswith("_load.sql"))
         ),
         fact_discovery_fails_closed=_fact_discovery_fails_closed(),
         dimension_merge_scripts=sum(1 for p in dimension_scripts if p.name.endswith("_merge.sql")),
-        reporting_views=sum(
-            1
-            for p in (sorted(reporting.glob("*.sql")) if reporting.is_dir() else [])
-            if p.name[0].isdigit() and "scope" not in p.name
-        ),
+        reporting_views=len(reporting_scripts),
+        inventory_listing_sql_files=len(lane_files),
+        inventory_listing_reporting_views=len(lane_reporting_scripts),
+        inventory_report_exporter=INVENTORY_REPORT_SOURCE.is_file(),
         audit_layers_recorded=_count_audit_layers_recorded(),
         migrations=sum(1 for p in migrations.glob("*.sql")) if migrations.is_dir() else 0,
         desktop=_engine_evidence(DESKTOP_EVIDENCE),
@@ -787,6 +876,34 @@ def check_declarations(declared: dict[str, Any], evidence: DerivedEvidence) -> l
                 location=DECLARED_PATH.relative_to(REPO_ROOT).as_posix(),
             )
         )
+    # Two Excel deliverables, and the register keeps them apart on purpose.
+    # `excel_operating_report` is P2.4-03: the Power BI-reconciled workbook over the
+    # synthetic warehouse, gated on a reconciliation that does not exist yet. This one is
+    # the sanitized-listing operating report (ADR-0011), which is built and does not
+    # reconcile to Power BI because no Power BI measure reads that lane. Declaring either
+    # one satisfies nothing about the other; a reader who conflated them would believe the
+    # deferred workbook had shipped.
+    if deliverables.get("inventory_operating_report") not in (
+        None,
+        "not-started",
+        "deferred",
+    ) and not (evidence.inventory_report_exporter and evidence.inventory_listing_reporting_views):
+        found.append(
+            Contradiction(
+                rule="inventory-report-needs-an-exporter",
+                claim=(
+                    "deliverables.inventory_operating_report = "
+                    f"{deliverables.get('inventory_operating_report')!r}"
+                ),
+                evidence=(
+                    f"{INVENTORY_REPORT_SOURCE.relative_to(REPO_ROOT).as_posix()} exists="
+                    f"{evidence.inventory_report_exporter}; listing reporting views="
+                    f"{evidence.inventory_listing_reporting_views}"
+                ),
+                location=DECLARED_PATH.relative_to(REPO_ROOT).as_posix(),
+            )
+        )
+
     if deliverables.get("dashboard") not in (None, "not-started") and evidence.report_pages == 0:
         found.append(
             Contradiction(

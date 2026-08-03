@@ -68,6 +68,12 @@ export const PRIMARY_ROUTES: readonly RouteUnderTest[] = [
   },
   { path: '/kpis', heading: 'A ratio without both sides', inNav: true, navLabel: 'KPIs' },
   {
+    path: '/inventory-operations',
+    heading: 'Ingesting something the project did not write',
+    inNav: true,
+    navLabel: 'Inventory Operations',
+  },
+  {
     path: '/governance',
     heading: 'The constraints are the design',
     inNav: true,
@@ -91,12 +97,12 @@ export const PRIMARY_ROUTES: readonly RouteUnderTest[] = [
 /**
  * The HEADER navigation, which is a different list from the routes above.
  *
- * Seven items for thirteen routes. Two of them are destination GROUPS:
- * "Platform" points at `/architecture` and is current on `/data-model` and
- * `/governance` too, and "Dealerships" points at `/dealerships` and is current on
- * all three store pages. Both groups carry a sub-navigation on the page itself.
- * `tests/unit/site.test.ts` asserts this list agrees with `PRIMARY_NAV`, so the
- * two cannot drift.
+ * Seven items for fourteen routes. Two of them are destination GROUPS:
+ * "Platform" points at `/architecture` and is current on `/data-model`,
+ * `/inventory-operations` and `/governance` too, and "Dealerships" points at
+ * `/dealerships` and is current on all three store pages. Both groups carry a
+ * sub-navigation on the page itself. `tests/unit/site.test.ts` asserts this list
+ * agrees with `PRIMARY_NAV`, so the two cannot drift.
  *
  * The case study is deliberately not here. It was a bordered control in the
  * header and is now in the footer, on the status page and in the home page's
@@ -125,17 +131,18 @@ export const HEADER_NAV: readonly HeaderNavItem[] = [
   {
     label: 'Platform',
     path: '/architecture',
-    currentOn: ['/architecture', '/data-model', '/governance'],
+    currentOn: ['/architecture', '/data-model', '/inventory-operations', '/governance'],
   },
   { label: 'KPIs', path: '/kpis', currentOn: ['/kpis'] },
   { label: 'Status', path: '/status', currentOn: ['/status'] },
   { label: 'About', path: '/about', currentOn: ['/about'] },
 ]
 
-/** The three routes that render the platform sub-navigation. */
+/** The four routes that render the platform sub-navigation. */
 export const PLATFORM_ROUTES: readonly { label: string; path: string }[] = [
   { label: 'Architecture', path: '/architecture' },
   { label: 'Data model', path: '/data-model' },
+  { label: 'Inventory operations', path: '/inventory-operations' },
   { label: 'Governance', path: '/governance' },
 ]
 

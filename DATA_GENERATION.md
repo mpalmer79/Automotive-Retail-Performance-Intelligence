@@ -761,43 +761,21 @@ No Kaggle dataset is used in ARPI today.
 
 ### 14.6 Sanitized public inventory reference data — **IN USE**
 
-Unlike everything above, this one is not a plan. Three sanitized inventory
-workbooks are committed under `data/reference/inventory/`, and the portfolio
-website renders them.
+Unlike everything above, this one is not a plan. Three sanitized inventory workbooks are
+committed under `data/reference/inventory/`, admitted by
+[ADR-0011](docs/architecture-decisions/ADR-0011-sanitized-public-inventory-reference-data.md).
+They are the exception to "every record in this project is synthetic", and the project
+states the exception rather than absorbing it: §20 below describes the lane, why it is not
+generated, and what is deterministic about it anyway.
 
-They are the single exception to "every record in this project is synthetic", and
-the project states the exception rather than absorbing it. They are vehicle
-listing attributes captured from a **public** listing source, de-identified, and
-reassigned to the fictional stores of Granite Auto Group. Model, trim, condition,
-mileage, advertised price and inventory mix are retained from that source; VINs,
-source URLs, source listing keys, street addresses and real dealership identity
-are not.
-
-**Why they are not in `data/sample/`.** That directory is reserved for fully
-machine-generated output and is the basis of the repository's privacy claim.
-Filing observed data there would make that claim untrue by directory listing.
-`data/reference/` is a separate class with separate rules, consistent with §14.3
-control 1 above.
-
-**How they reach the website.** Not through this Python package. A build-time
-TypeScript generator, `portfolio/scripts/generate-inventory-data.ts`, reads the
-workbooks and the store dimension in `data/sample/dim_dealership.csv`, drops every
-identifying column, derives every displayed figure, and writes three JSON
-artefacts under `portfolio/src/generated/`. No workbook is parsed in a browser.
-The generator refuses to write an artefact whose output still matches a URL, a
-domain, an email address, a telephone number or a VIN-shaped token.
-
-**What a row supports, and what it does not.** A row proves a listing was visible
-in the source at a capture date. It does not prove a sale, a delivery, physical
-on-ground status or dealer ownership. An advertised price is not a transaction
-price, an acquisition cost, an inventory investment, a manufacturer suggested
-price or a gross figure. A listing that later disappears has been removed from a
-feed, which is not the same as sold. Repeated snapshots could support days
-observed online; that must never be labelled days in stock.
-
-Full schema, sanitization controls, coverage limitations per store and the
-procedure for adding a snapshot are in
-[`data/reference/inventory/README.md`](data/reference/inventory/README.md).
+One consumer is worth naming here because it sits outside the Python package entirely.
+The portfolio website reads the same workbooks at **build time** through
+`portfolio/scripts/generate-inventory-data.ts`, which drops every identifying column,
+derives every figure the dealership and inventory pages display, and refuses to write a
+frontend artefact whose output still matches a URL, a domain, an email address, a
+telephone number or a VIN-shaped token. No workbook is parsed in a browser, and no
+inventory figure on the site is authored by hand. See
+[`data/reference/README.md`](data/reference/README.md) section 7.2.
 
 ---
 
@@ -888,3 +866,53 @@ Pytest markers: `integration` (requires PostgreSQL), `data_quality` (runs genera
 - Adding a **new generated entity** must not change any existing entity's digest. If it does, the
   per-entity seeding contract has been violated.
 - Adding a **new prohibited-field exception** is not permitted. The register in section 7.2 only grows.
+
+---
+
+## 20. Data ARPI does not generate: the sanitized public reference lane
+
+Every other section of this document describes something a generator produces. This one
+describes the exception, so that a reader looking for "how is the listing data generated"
+finds the answer *it is not* rather than an omission.
+
+[ADR-0011](docs/architecture-decisions/ADR-0011-sanitized-public-inventory-reference-data.md)
+admits one lane of data ARPI did not author: de-identified public dealership listing
+snapshots, under `data/reference/`. It is **sanitized public reference data**, not
+synthetic, and it is not produced by any generator in `arpi.generation`.
+
+### 20.1 Why it is not generated instead
+
+Generating a synthetic listing snapshot was considered seriously. It would have kept the
+policy intact and produced a workbook that looks identical. It was rejected because a
+generator that produces its own input proves nothing about handling somebody else's:
+every defect this lane exists to demonstrate — an unparseable price, a missing trim, a
+duplicated identifier, a condition value nobody anticipated — is a defect the generator
+would have to be *told* to produce.
+
+### 20.2 What is deterministic about it anyway
+
+The transformation is. The same private workbook sanitized twice produces the same
+identifiers, the same record and batch identifiers, and the same logical workbook:
+
+```
+digest = SHA256(UTF8("ARPI|GSA|" + upper(trim(original VIN)))).hex().upper()
+synthetic_vehicle_id = "VEH-" + digest[:12]
+synthetic_vin        = "ARPI" + digest[:13]
+```
+
+The namespace carries the **group**, not the store, so one physical vehicle observed at
+two stores resolves to one identity — which makes a cross-store appearance *detectable*.
+Detectable is not explained: ARPI holds no dealer-trade event and must never infer one.
+
+Byte identity is deliberately *not* claimed. The XLSX container records a creation
+timestamp, so two runs differ in bytes and agree in every value. The tests compare the
+logical workbook contract, not a digest of the file.
+
+### 20.3 The one thing an import generates
+
+`warehouse.dim_date` is conformed, so every date any fact references must be in it — and a
+capture date has no reason to fall inside the reporting window a synthetic dataset was
+generated for. An import therefore generates the calendar rows its own fact needs, using
+`arpi.generation.calendar.build_calendar_rows`, which is a pure function of the date and
+the holiday rules. A date added this way is identical to the same date produced by a
+pipeline run whose window did cover it.

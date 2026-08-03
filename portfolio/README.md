@@ -128,24 +128,31 @@ they are not on by default is in
 
 ## 5. Routes
 
-Thirteen indexable routes, plus one that is not.
+Fourteen indexable routes, plus one that is not.
 
-| Route                            | What it is for                                                                                                                     |
-| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `/`                              | Seven chapters: the hero, Granite Auto Group, the dealership problem, the Operating View, the platform story, the proof, the close |
-| `/dealerships`                   | The group: three stores, three operating models, the store comparison and the franchise-versus-independent argument                |
-| `/dealerships/granite-chevrolet` | GSA-001, the franchise volume store in Nashua                                                                                      |
-| `/dealerships/granite-subaru`    | GSA-002, the all-weather franchise in Manchester                                                                                   |
-| `/dealerships/granite-pre-owned` | GSA-003, the independent pre-owned center in Merrimack                                                                             |
-| `/inventory`                     | Every sanitized listing, filterable by store, condition, make, model, year, price and mileage                                      |
-| `/architecture`                  | Interactive explorer of the pipeline, from seeded generation to the semantic model                                                 |
-| `/data-model`                    | The 8 conformed dimensions and 5 facts, with declared grains, keys, history policy and privacy class                               |
-| `/kpis`                          | All 29 governed KPIs and 5 deferred ones, searchable and filterable                                                                |
-| `/governance`                    | Synthetic-only data, no PII by construction, lineage, reconciliation, scope gates                                                  |
-| `/status`                        | Every lifecycle phase, delivery increment, gate and engine path, from the manifest                                                 |
-| `/about`                         | The author, and why this project needs someone who has worked a dealership floor                                                   |
-| `/case-study`                    | The gated case study. Currently renders a locked state and its blocking reasons                                                    |
-| `/ui-lab`                        | Internal design-system reference. `noindex`, disallowed in `robots.txt`, not in navigation                                         |
+| Route                            | What it is for                                                                                                                                  |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/`                              | Seven chapters: the hero, Granite Auto Group, the dealership problem, the Operating View, the platform story, the proof, the close              |
+| `/dealerships`                   | The group: three stores, three operating models, the store comparison and the franchise-versus-independent argument                             |
+| `/dealerships/granite-chevrolet` | GSA-001, the franchise volume store in Nashua                                                                                                   |
+| `/dealerships/granite-subaru`    | GSA-002, the all-weather franchise in Manchester                                                                                                |
+| `/dealerships/granite-pre-owned` | GSA-003, the independent pre-owned center in Merrimack                                                                                          |
+| `/inventory`                     | Every sanitized listing, filterable by store, condition, make, model, year, price and mileage                                                   |
+| `/architecture`                  | Interactive explorer of the pipeline, from seeded generation to the semantic model                                                              |
+| `/data-model`                    | The 8 conformed dimensions and 5 facts, with declared grains, keys, history policy and privacy class                                            |
+| `/inventory-operations`          | The sanitized public listing lane: what the workbook is, what it may never be read as, and the warehouse objects and Excel report built from it |
+| `/kpis`                          | All 29 governed KPIs and 5 deferred ones, searchable and filterable                                                                             |
+| `/governance`                    | Synthetic-only data, no PII by construction, lineage, reconciliation, scope gates                                                               |
+| `/status`                        | Every lifecycle phase, delivery increment, gate and engine path, from the manifest                                                              |
+| `/about`                         | The author, and why this project needs someone who has worked a dealership floor                                                                |
+| `/case-study`                    | The gated case study. Currently renders a locked state and its blocking reasons                                                                 |
+| `/ui-lab`                        | Internal design-system reference. `noindex`, disallowed in `robots.txt`, not in navigation                                                      |
+
+**`/inventory-operations` and `/inventory` are different pages, on purpose.** The
+first is about the LANE: how a sanitized workbook becomes warehouse rows, what
+the sanitizer removed, and what the resulting data may never be read as. The
+second is about the VEHICLES: a filterable table of what the three stores had
+listed. One is the pipeline, the other is the lot, and each links to the other.
 
 Route metadata (titles, descriptions, indexability, sitemap priority) is declared once
 in [`src/lib/site.ts`](src/lib/site.ts) and consumed by the navigation, the sitemap, the
@@ -153,16 +160,17 @@ breadcrumbs and the accessibility sweep, so none of the four can drift from the 
 
 ### Navigation is a separate decision from the route map
 
-The header carries **seven** content destinations plus GitHub, not thirteen:
+The header carries **seven** content destinations plus GitHub, not fourteen:
 
 `Overview` · `Dealerships` · `Inventory` · `Platform` · `KPIs` · `Status` · `About`
 
 Two of the seven are destination GROUPS, and that is what keeps the count down.
-`Platform` points at `/architecture` and is the current item on `/data-model` and
-`/governance` too. `Dealerships` points at `/dealerships` and is the current item
-on all three store pages. Each group renders a shared sub-navigation -
-`PlatformNav` and `GroupNav` - that links its members with `aria-current`, so
-every route stays directly addressable, indexable and one click away.
+`Platform` points at `/architecture` and is the current item on `/data-model`,
+`/inventory-operations` and `/governance` too. `Dealerships` points at
+`/dealerships` and is the current item on all three store pages. Each group
+renders a shared sub-navigation - `PlatformNav` and `GroupNav` - that links its
+members with `aria-current`, so every route stays directly addressable, indexable
+and one click away.
 
 The locked case study is in the footer, on `/status` and in the home page's
 closing section rather than in the header, where it had been the only bordered

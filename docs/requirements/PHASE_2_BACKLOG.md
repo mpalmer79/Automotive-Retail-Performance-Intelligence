@@ -2,8 +2,8 @@
 
 **Project:** Automotive Retail Performance Intelligence (ARPI)
 **Owner:** Michael Palmer
-**Version:** 1.1
-**Last reviewed:** 2026-07-29
+**Version:** 1.2
+**Last reviewed:** 2026-08-02
 **Conventions:** [README.md](README.md) · **Parent documents:** [ARCHITECTURE.md](../../ARCHITECTURE.md) · [KPI_CATALOG.md](../../KPI_CATALOG.md) · [DATA_DICTIONARY.md](../../DATA_DICTIONARY.md) · [GATE_1_READINESS.md](GATE_1_READINESS.md)
 
 > **No item in this backlog carries an hour, day, week, or sprint estimate.** Complexity is recorded as
@@ -989,6 +989,71 @@ These seven apply identically to both paths. A run that satisfies six of them ha
 
 ---
 
+### `P2.1-16` — Semantic-model extension for the sanitized public listing lane
+
+| Field | Value |
+|---|---|
+| **Purpose** | Bring the sanitized public listing lane ([ADR-0011](../architecture-decisions/ADR-0011-sanitized-public-inventory-reference-data.md)) into the semantic model, so the twenty-four `KPI-LST-*` definitions in [KPI_CATALOG.md §38](../../KPI_CATALOG.md) are answerable in Power BI rather than only in SQL and Excel. The lane's warehouse objects, reporting views, KPI definitions and Excel export are **built**; the semantic model is the one layer it deliberately does not reach. |
+| **Dependencies** | **`P2.1-09` must have passed.** See the status field. |
+| **Estimated complexity** | **Medium** |
+| **Blocking gate** | Gate 1 is open. Gated on `P2.1-09` rather than on a scope gate. |
+| **Status** | **Not started, and deliberately so.** The listing lane increment added no TMDL table, no relationship and no DAX measure, and **left the model source hash unchanged**. The reason is `P2.1-09`: the model is awaiting its first real-engine validation, and adding tables before that run would change the thing being validated. A PENDING gate against a moving target never closes. |
+| **Architecture references** | §19.1–19.3 (connection mode, model design, measure groups), §25.4 (Power BI validation), §35.1 ([ADR-0011](../architecture-decisions/ADR-0011-sanitized-public-inventory-reference-data.md)), §37 (the listing lane) |
+
+**Acceptance criteria**
+
+- [ ] **`P2.1-09` has passed on one accepted path before any table is added**, and that result is current
+      for the pre-extension model. Extending an unvalidated model replaces one unanswered question with a
+      larger one.
+- [ ] Two imported tables — `vw_vehicle_listing_summary` and `vw_vehicle_listing_current` — join the model,
+      sourced from the `reporting` schema like every other table. The remaining four listing views stay out:
+      `vw_vehicle_listing_change` and `vw_vehicle_listing_observation_span` answer questions that need
+      careful wording, and a visual is not where that wording survives.
+- [ ] They relate to the **existing conformed** `vw_calendar` and `vw_dealership`. No second date table and
+      no second dealership table. A lane that brought its own conformed dimensions would fork the model.
+- [ ] The `KPI-LST-*` measures live in **their own measure table**, named so that no measure in it can be
+      mistaken for an owned-inventory measure. `Listing Unit Count` and `Inventory Unit Count` must not be
+      adjacent in a field list with nothing to tell them apart.
+- [ ] **Every semi-additive listing measure refuses to aggregate across capture dates.** `inventory_unit_count`,
+      `advertised_price` and `total_advertised_value` are additive across vehicle, store, make and model and
+      **never across captures**; a measure that sums two snapshots counts the same car twice and reads like
+      growth. This is the single highest-risk criterion in the item.
+- [ ] **No measure named or formatted as a sale, a sold unit, gross, profit, cost, or days in stock.** The
+      prohibited set is `PROHIBITED_LISTING_MEASURES` in `src/arpi/constants.py`, and the check reads that
+      constant rather than restating it.
+- [ ] Every visual built on these tables states, on the page, that the lane is **sanitized public reference
+      data** — not synthetic, not DMS data, and not current inventory. A page that shows listing counts
+      beside synthetic sales figures without saying so invites exactly the comparison ADR-0011 forbids.
+- [ ] `P2.1-09` is **re-run or explicitly marked STALE on both engines** in the same change, per §6.2. The
+      hash covers the model, and this item changes the model.
+- [ ] `powerbi/validation/sql_baseline.json` gains the listing measures' expected values, and the DAX
+      results reconcile to them.
+
+**Tests required**
+
+- `tests/unit/test_powerbi_model_structure.py` extensions — the two tables resolve, both relationships point
+  at the conformed dimensions, and every `KPI-LST-*` measure exists.
+- A test asserting **no measure name matches `PROHIBITED_LISTING_MEASURES`**, reading the constant.
+- A test asserting the semi-additive measures carry their capture-date guard, failing if one is written as a
+  plain `SUM` over an unfiltered fact.
+- `python3 scripts/check_powerbi_model.py`, `python3 scripts/check_real_engine_validation.py`.
+- `python3 scripts/check_reference_data.py` — unchanged by this item and must stay passing.
+
+**Explicit non-goals**
+
+- **No change to any existing table, relationship, measure or the marked date table.** The listing lane is
+  additive to the model or it does not land.
+- No relationship between the listing tables and `vw_vehicle`, `vw_sales_transaction`, or any owned-inventory
+  fact. There is no key that would justify one, and a modelled join would assert a connection ARPI cannot
+  make: a listing proves observation, not ownership and not a sale.
+- No calculated column or measure that infers a sale, a sale date, a days-in-stock figure, gross, or
+  acquisition cost from listing data. `vw_vehicle_listing_change` emits *Removed From Listing* precisely
+  because *Sold* would be a fabrication.
+- No listing page in `P2.2`'s seven. If a page is wanted it is a new `P2.2` item with its own review.
+- No change to the Excel operating report, which reads PostgreSQL directly and does not depend on this item.
+
+---
+
 ## 3. Delivery Increment P2.2 — MVP dashboard pages
 
 *Lifecycle Phase 6 ([ARCHITECTURE.md §27](../../ARCHITECTURE.md)).*
@@ -1869,6 +1934,7 @@ flowchart TB
         A13["P2.1-13<br/>Fabric deployment tooling"]
         A14["P2.1-14<br/>Fabric validation execution"]
         A15["P2.1-15<br/>CI policy for two engines"]
+        A16["P2.1-16<br/>Listing-lane model extension<br/>Not started, by decision"]
     end
 
     PA(["Path A — Power BI Desktop<br/>Windows machine, outside the repository"])
@@ -1929,6 +1995,8 @@ flowchart TB
 
     PA --> A9
     A14 --> A9
+
+    A9 --> A16
 
     A9 --> B1
     B1 --> B2
@@ -1992,21 +2060,34 @@ without them.
 because CI reporting the state of two engines does not depend on either having been run. In `P2.4`, only
 `P2.4-05` is gated by Gate 2; `P2.4-01` through `P2.4-04` follow their own dependencies.
 
+`P2.1-16` hangs off `P2.1-09` and is **not on the critical path in either direction**: nothing downstream
+waits for it, and the listing lane is already answerable through SQL and the Excel operating report without
+it. It is drawn here so the gate's dependents are complete — the sanitized listing lane is the second thing
+`P2.1-09` unblocks, and the first thing that was held back for it on purpose rather than for want of work.
+
 ---
 
 ## 8. Backlog summary
 
 | Delivery increment | Items | Small | Medium | Large | Delivered | Not started |
 |---|---:|---:|---:|---:|---:|---:|
-| `P2.1` | 15 | 2 | 9 | 4 | 11 | 4 |
+| `P2.1` | 16 | 2 | 10 | 4 | 11 | 5 |
 | `P2.2` | 10 | 0 | 9 | 1 | 0 | 10 |
 | `P2.3` | 4 | 1 | 2 | 1 | 0 | 4 |
 | `P2.4` | 6 | 1 | 3 | 2 | 1 | 5 |
-| **Total** | **35** | **4** | **23** | **8** | **12** | **23** |
+| **Total** | **36** | **4** | **24** | **8** | **12** | **24** |
 
-The four unmet `P2.1` items are `P2.1-09` (the gate), `P2.1-11` (a cloud database), `P2.1-12` (a Fabric
-tenant, workspace and connection) and `P2.1-14` (the Fabric run). Three of the four need something that does
-not live in a repository, which is the honest shape of the remaining work.
+The five unmet `P2.1` items are `P2.1-09` (the gate), `P2.1-11` (a cloud database), `P2.1-12` (a Fabric
+tenant, workspace and connection), `P2.1-14` (the Fabric run) and `P2.1-16` (the listing-lane model
+extension). Three of the five need something that does not live in a repository, which is the honest shape
+of the remaining work.
+
+`P2.1` gained `P2.1-16` when [ADR-0011](../architecture-decisions/ADR-0011-sanitized-public-inventory-reference-data.md)
+added the sanitized public listing lane. The item exists to record work that was **deliberately not done**:
+the lane's warehouse objects, reporting views, twenty-four KPI definitions and Excel export are built, and
+the semantic model was left untouched because `P2.1-09` has not passed and extending an unvalidated model
+moves the validation target. Adding the item rather than the tables is the point — a backlog entry says
+"not yet, and here is why"; an unrecorded omission says nothing at all.
 
 `P2.1` gained five items — `P2.1-11` through `P2.1-15` — when
 [ADR-0008](../architecture-decisions/ADR-0008-real-engine-validation-paths.md) added the Fabric validation
@@ -2040,6 +2121,14 @@ instance. Any Fabric tenant, workspace or connection. Any finding. Any report sc
 report, walkthrough video or case-study copy — the five packaging items that depend on the report layer
 or on Gate 2. The portfolio **website foundation** delivered by `P2.4-06` does exist, and it is the only
 packaged artefact that does.
+
+**One disambiguation, because two things are called an Excel operating report.** `P2.4-03`'s workbook — the
+one built over the synthetic warehouse whose reconciliation total must match PostgreSQL *and Power BI* — does
+not exist, and is what the paragraph above means. A **different** Excel operating report is built and does
+exist: the sanitized public listing report exported by `src/arpi/inventory/report.py` from the listing
+reporting views ([ADR-0011](../architecture-decisions/ADR-0011-sanitized-public-inventory-reference-data.md)).
+It reads PostgreSQL directly, reconciles to no Power BI measure, and is declared separately in
+`config/project_capabilities.json` for exactly this reason. Neither is evidence for the other.
 
 **The distinction that matters most in this table** is between machinery and evidence. `P2.1-13` and
 `P2.1-15` are Delivered and they produce no evidence at all; they are the means of producing it. Counting

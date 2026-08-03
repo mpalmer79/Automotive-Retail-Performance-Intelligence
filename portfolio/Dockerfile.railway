@@ -168,6 +168,11 @@ COPY docs/requirements ./docs/requirements
 RUN mkdir -p ./docs/findings
 # Script and DDL counts across the nine numbered build directories.
 COPY sql ./sql
+# The one declaration of which SQL files belong to the sanitized public listing lane
+# (ADR-0011) rather than to the MVP warehouse. The manifest generator reads it to
+# subtract the lane from the MVP counts, so without this file the build would count
+# six facts and thirty-four reporting views and fail its own drift assertions.
+COPY src/arpi/inventory/spec.py ./src/arpi/inventory/spec.py
 
 # --- Inventory evidence, read by generate-inventory-data.ts ----------------
 #

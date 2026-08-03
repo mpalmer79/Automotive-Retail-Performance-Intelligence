@@ -168,3 +168,31 @@ dependency tree, which keeps the attack surface and the upgrade burden small.
 
 Report a known-vulnerable dependency as a normal GitHub issue; it is not
 sensitive information.
+
+---
+
+## Sanitized reference artifacts
+
+`data/reference/` holds de-identified public dealership listing workbooks, governed by
+[ADR-0011](docs/architecture-decisions/ADR-0011-sanitized-public-inventory-reference-data.md).
+They are the only committed data in this repository that is not machine generated, and
+they carry their own controls.
+
+**Never commit** the original unsanitized workbook, an original VIN, a VIN mapping file or
+any reversible identity map, a row-level source URL, an original dealership identity, or a
+street address. The private source stays outside the repository, always.
+
+`scripts/check_reference_data.py` runs in the `repository-checks` CI job on a bare
+interpreter and fails the build when a committed artifact carries a URL or a value shaped
+like a real VIN, when an artifact is undeclared or its bytes no longer match its declared
+digest, when a workbook is filed under another store's directory, when a duplicate or
+alias copy exists, or when a workbook reaches `data/sample`.
+
+It is a safety net, not a guarantee — like `check_secrets.py`, it catches the mistakes
+that actually happen rather than everything that could. The controls that matter more are
+that the sanitizer's identity function is one-way by construction, and that the raw table
+declares no column an original identifier could occupy.
+
+**If an unsanitized workbook is committed by accident**, treat it exactly as a committed
+credential: it is disclosed. Remove it, rewrite history if it has been pushed, and tell
+the source. The procedure in *If a credential is committed by accident* applies unchanged.
