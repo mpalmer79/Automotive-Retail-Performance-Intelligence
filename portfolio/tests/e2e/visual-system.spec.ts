@@ -287,8 +287,12 @@ test.describe('typography is bundled, never fetched', () => {
     // first paragraph in the document is the eyebrow, which is deliberately
     // monospace, so the generic selector was testing the wrong of the three
     // families and reported the mono chain as a failure to be sans.
+    //
+    // Anchored on a phrase from the product hero. It used to anchor on "More than
+    // 25 years of automotive retail experience", which was the hero's first line
+    // until the home page stopped being about the author.
     const body = await page
-      .getByText('More than 25 years of automotive retail experience')
+      .getByText('operate under different inventory realities', { exact: false })
       .evaluate((el) => getComputedStyle(el).fontFamily)
 
     expect(headline, 'the headline and body share a family').not.toBe(body)

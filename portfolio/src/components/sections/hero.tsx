@@ -1,5 +1,5 @@
 /**
- * The hero. Chapter one of six.
+ * The hero. Chapter one.
  *
  * A server component. Nothing in it is interactive and its motion is CSS on an
  * SVG, so it ships no JavaScript at all - where the hero it replaces pulled the
@@ -9,27 +9,31 @@
  * -------------------------------
  * Six things, in this order, and nothing else:
  *
- *   1. what this is        the eyebrow, three words
- *   2. who built it        the headline, which leads with the differentiator
- *   3. what it does        two sentences naming the systems and the domains
- *   4. two ways in         one primary action, one secondary
- *   5. the trust position  one line, from <TrustLine>
+ *   1. whose business this is  the eyebrow, naming the group
+ *   2. what the problem is     the headline, three sentences of six words
+ *   3. why it is hard          two sentences naming the three stores
+ *   4. two ways in             one primary action, one secondary
+ *   5. the trust position      one line, from <TrustLine>
  *   6. the signature visual
  *
- * The previous hero had nine competing elements: an eyebrow, a headline, a
- * description, two status badges, a bordered validation caveat, a ruled
- * synthetic-data paragraph, two buttons, a diagram and a three-item legend. Its
- * first call to action sat roughly 550px down on a desktop and roughly 1,050px
- * down on a phone, below two separate risk disclosures. Findings A-01 and B-07.
+ * THE HEADLINE IS PRODUCT-FIRST, AND IT DID NOT USED TO BE
+ * -------------------------------------------------------
+ * It used to read "Dealership intelligence built by someone who has run the
+ * dealership." That is true, it is the strongest thing about the project, and it
+ * was the wrong first sentence: it made the author the subject of the product's
+ * home page. A visitor arrived, read a biography, and left without learning what
+ * ARPI models or why the modelling is difficult.
  *
- * THE HEADLINE
- * ------------
- * "Dealership intelligence built by someone who has run the dealership."
+ * The headline now states the problem the software exists for. "Three
+ * dealerships. Three operating models. One governed reporting layer." names the
+ * business, names the difficulty and names the answer, in that order, and every
+ * section below it expands one of the three.
  *
- * It leads with the one thing about this project that a better engineer cannot
- * replicate: twenty-five years of operating the business being modelled. Every
- * other analytics portfolio is built by somebody who learned the domain from a
- * dataset, and the sentence says so without saying it.
+ * The author positioning has not been deleted, it has been RELOCATED. It is the
+ * whole subject of `/about`, it is the closing argument of the domain-judgement
+ * chapter, and one clause of it survives here as supporting credibility rather
+ * than as the proposition. That is the distinction the information architecture
+ * turns on: experience is why the answers are good, not what the product is.
  *
  * WHAT IT DOES NOT SAY
  * --------------------
@@ -38,14 +42,15 @@
  * position is one line, and the detail is one click away on the page whose
  * subject it is.
  */
-import { ArrowRight, FolderGit2 } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
+import Link from 'next/link'
 
 import { LinkButton } from '@/components/ui/button'
 import { Container, Section } from '@/components/ui/layout'
 import { TrustLine } from '@/components/ui/trust-line'
 import { Eyebrow, Heading, Text } from '@/components/ui/typography'
 import { GovernedSignal } from '@/components/visuals/governed-signal'
-import { REPOSITORY_URL, ROUTES } from '@/lib/site'
+import { ROUTES } from '@/lib/site'
 import { cx } from '@/lib/utils'
 
 /**
@@ -59,10 +64,10 @@ export function HeroIdentity({ className }: { className?: string }) {
   return (
     <div className={cx('flex flex-col gap-5', className)}>
       <Eyebrow tone="accent" rule>
-        Automotive retail performance intelligence
+        Granite Auto Group
       </Eyebrow>
       <Heading level={1} size="hero" className="max-w-5xl text-balance">
-        Dealership intelligence built by someone who has run the dealership.
+        Three dealerships. Three operating models. One governed reporting layer.
       </Heading>
     </div>
   )
@@ -86,34 +91,38 @@ export function HeroEditorial({ className }: { className?: string }) {
   return (
     <div className={cx('flex flex-col gap-6', className)}>
       <Text size="body" tone="secondary" className="max-w-prose">
-        More than 25 years of automotive retail experience, joined to PostgreSQL, Python,
-        governed KPIs and Power BI architecture. Sales, gross, inventory, leads and
-        marketing each get one definition, and every number on this site links to the file
-        that proves it.
+        Granite Chevrolet of Nashua, Granite Subaru of Manchester and Granite Pre-Owned
+        Center of Merrimack operate under different inventory realities. ARPI preserves
+        those differences while giving the group one trusted analytical foundation.
       </Text>
 
-      {/* Two actions, and only two. The primary opens the product surface
-          further down the page, because a visitor who has read this far wants to
-          see the thing rather than read more about it. The secondary goes to the
-          source, because a reviewer who believes none of this wants the
-          repository and should not have to hunt for it. */}
+      {/* The author positioning, as one clause and in a recessive tone.
+          It is supporting credibility for the claim above it, not the claim
+          itself, and the page it is the subject of is one link away. */}
+      <Text size="sm" tone="muted" className="max-w-prose">
+        Built on more than 25 years in automotive retail, joined to PostgreSQL, Python,
+        governed KPI definitions and a source-controlled Power BI model.{' '}
+        <Link
+          href={ROUTES.about.href}
+          className="underline decoration-dotted underline-offset-4 transition-colors duration-(--arpi-motion-fast) hover:text-accent"
+        >
+          About the author
+        </Link>
+        .
+      </Text>
+
+      {/* Two actions, and only two. Both stay on this page, because this page is
+          now the group overview rather than an index of other pages: a visitor
+          who wants the stores wants them here, and a visitor who wants the
+          argument for the reporting layer wants that here too. The repository
+          link moved to the header icon and to the evidence chapter, where a
+          reviewer looking for source is already looking. */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <LinkButton
-          href="#operating-view"
-          variant="primary"
-          size="lg"
-          iconAfter={<ArrowRight />}
-        >
-          Explore the platform
+        <LinkButton href="#stores" variant="primary" size="lg" iconAfter={<ArrowRight />}>
+          Explore the three stores
         </LinkButton>
-        <LinkButton
-          href={REPOSITORY_URL}
-          variant="secondary"
-          size="lg"
-          external
-          iconBefore={<FolderGit2 />}
-        >
-          View engineering evidence
+        <LinkButton href="#governed-group" variant="secondary" size="lg">
+          See how ARPI works
         </LinkButton>
       </div>
 

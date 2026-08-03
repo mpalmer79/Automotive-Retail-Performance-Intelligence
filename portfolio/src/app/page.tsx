@@ -3,8 +3,17 @@ import type { Metadata } from 'next'
 import { DomainJudgement } from '@/components/sections/domain-judgement'
 import { EngineeringProof } from '@/components/sections/engineering-proof'
 import { FinalCta } from '@/components/sections/final-cta'
-import { GraniteGroup } from '@/components/sections/granite-group'
+import {
+  GovernedGroupView,
+  GroupIntroduction,
+  GroupInventory,
+  InventoryStrategy,
+  OperatingModels,
+  StoreCards,
+  StoreComparison,
+} from '@/components/sections/group-overview'
 import { Hero } from '@/components/sections/hero'
+import { InventoryOperationsPreview } from '@/components/sections/inventory-operations-preview'
 import { OperatingView } from '@/components/sections/operating-view'
 import { PlatformStory } from '@/components/sections/platform-story'
 import { Canvas } from '@/components/shell/field'
@@ -13,82 +22,86 @@ import { pageMetadata } from '@/lib/metadata'
 export const metadata: Metadata = pageMetadata('home')
 
 /**
- * The home page: seven chapters, each with a different job and a different ground.
+ * The home page: the Granite Auto Group and ARPI product overview.
  *
- *   1  Hero               cinematic  what it is, who built it, two ways in
- *   2  Granite Auto Group product    the business: three stores, three models
- *   3  Domain judgement   editorial  the problem, and why these answers differ
- *   4  Operating view     product    the signature surface: six domains
- *   5  Platform story     editorial  five stages, generate to serve
- *   6  Engineering proof  evidence   four counts, each linked to its source
- *   7  Closing            cinematic  two actions, and what is not finished
+ * WHAT THIS PAGE USED TO BE, AND WHY IT CHANGED
+ * ---------------------------------------------
+ * It used to open with "Dealership intelligence built by someone who has run the
+ * dealership" and then spend its first screen on twenty-five years of automotive
+ * retail career. That sentence is the strongest thing about this project and it
+ * was in the wrong place: it made the AUTHOR the subject of the PRODUCT's home
+ * page. A visitor arrived at ARPI, read a biography, and could leave without ever
+ * learning what ARPI models or why modelling it is hard.
  *
- * CHAPTER 2 WAS ADDED AFTER THE SIX-CHAPTER REDESIGN
- * --------------------------------------------------
- * The six chapters described a platform without ever describing what it was a
- * platform for. "A fictional three-store dealer group" appeared as a
- * subordinate clause in four of them and was never expanded, so a visitor could
- * finish the page without learning that one of those stores is an independent
- * that buys every car it sells. That fact is what makes a group-level number
- * misleading on its own, which is the argument chapter 3 then goes on to make.
+ * Meanwhile `/dealerships` - which introduced the group, its three stores, their
+ * different operating models, the inventory evidence and the reporting problem -
+ * was the natural beginning of the story and was buried one click in.
  *
- * It sits second rather than later for that reason: it is the setup for the
- * chapter after it, not an appendix to the page.
+ * So the two swapped. `/` is the group and product overview, `/about` is the
+ * canonical author page and keeps the career narrative at full length, and
+ * `/dealerships` is a permanent redirect here rather than a second page
+ * rendering the same content. The author positioning survives on this page as
+ * one clause in the hero and as the closing argument of chapter 7, where it
+ * reads as a summary of demonstrated judgement rather than as a boast made
+ * before any.
  *
- * WHAT CHANGED, AND WHY
- * ---------------------
- * Nine sections became six. The nine shared one container, one vertical rhythm,
- * one hairline rule and one reveal, so a reader had no signal about which of
- * them mattered - the page was 11.8 desktop screens and 23.4 phone screens of
- * undifferentiated blocks (finding A-03).
+ * THE ELEVEN CHAPTERS
+ * -------------------
+ *    1  Hero                  cinematic  the group, the problem, two ways in
+ *    2  Group introduction    editorial  who this group is
+ *    3  Operating models      product    the three models, one line each
+ *    4  Group inventory       evidence   the derived snapshot
+ *    5  Store cards           product    one card per store
+ *    6  Inventory strategy    editorial  allocation versus acquisition
+ *    7  Store comparison      evidence   the same columns, plus distribution
+ *    8  Domain judgement      editorial  why dealership systems disagree
+ *    9  Operating view        product    the six governed domains
+ *   10  Platform story        editorial  five stages, generate to serve
+ *   11  Inventory operations  evidence   where the listings came from
+ *   12  Engineering proof     evidence   four counts, each linked to its source
+ *   13  Closing               cinematic  two actions, and what is not finished
  *
- * The six alternate between four grounds, which is what carries the hierarchy
- * now that the borders are gone. Cinematic opens and closes the page; the two
- * editorial chapters are the reading; the product frame is the peak; the
- * evidence band is recessed instrumentation.
+ * The grounds still alternate, which is what carries the hierarchy now that the
+ * section borders are gone: cinematic opens and closes, editorial chapters are
+ * the reading, product frames are the peaks, evidence bands are recessed.
  *
- * Removed, and where each went:
+ * ONE IMPLEMENTATION OF THE GROUP OVERVIEW
+ * ----------------------------------------
+ * Chapters 2 to 7 come from `components/sections/group-overview.tsx`, which is
+ * where the old `/dealerships` body now lives. There is no second rendering of
+ * it anywhere: `/dealerships` redirects rather than re-renders, and
+ * `tests/unit/site.test.ts` asserts no route other than `/` composes those
+ * sections.
  *
- *   credibility strip     seven counts became four, inside chapter 5
- *   pipeline walkthrough  eight scrolling stages became five, in chapter 4
- *   domain cards          six expandable cards became the product frame, ch. 3
- *   evidence ledger       deleted. /status already carried the full ledger, and
- *                         the home page's copy of it was a second rendering of
- *                         the same manifest records
- *   lifecycle summary     deleted, for the same reason. /status has all eight
- *                         phases; chapter 6 states the one fact a home-page
- *                         reader needs, which is that the case study is locked
- *   author perspective    merged into chapter 2, which is where the argument is
- *   business problem      merged into chapter 2, ditto
- *
- * Two of the six are client components: the operating view holds a selection,
- * and the proof section holds a disclosure. The other four, including the hero
- * and its signature visual, are server-rendered with no client JavaScript at
- * all. Bundle accounting is in portfolio/docs/PERFORMANCE.md section 4.
- *
- * ONE CANVAS, NOT SIX PANELS
- * --------------------------
- * All six chapters sit inside a single `<Canvas>`. That is the selected layout
- * direction - "Floating Intelligence Canvas" - and it was chosen over two
- * alternatives that split the page into multiple floating panels. The scoring
- * is in portfolio/docs/EXPERIENCE_REDESIGN_V2.md section 9.
- *
- * The short version: splitting the hero into two panels (direction B) took the
- * headline's measure from 1,150px to 520px and set a ten-word sentence in five
- * lines, and floating the proof and judgement chapters as separate modules
- * (direction C) made the page 3,000px longer on a desktop and 7,600px longer at
- * 1024px, because a chapter written for a full-width canvas reflows badly into
- * a five-column module. The one-canvas reading is also the one the direction
- * actually asks for: subtle internal divisions instead of many separate cards.
+ * ONE CANVAS, NOT THIRTEEN PANELS
+ * -------------------------------
+ * All of it sits inside a single `<Canvas>`. That is the selected layout
+ * direction and the reasoning is in portfolio/docs/EXPERIENCE_REDESIGN_V2.md
+ * section 9.
  */
 export default function HomePage() {
   return (
     <Canvas>
       <Hero />
-      <GraniteGroup />
+
+      {/* The group overview. One implementation, composed here and nowhere
+          else. */}
+      <GroupIntroduction />
+      <OperatingModels />
+      <GroupInventory />
+      <StoreCards />
+      <InventoryStrategy />
+      <StoreComparison />
+
+      {/* The argument the overview sets up: three stores whose systems and
+          definitions disagree, and what a governed layer does about it. */}
       <DomainJudgement />
       <OperatingView />
       <PlatformStory />
+      <GovernedGroupView />
+
+      {/* Provenance, evidence, and the two actions that close the page. */}
+      <InventoryOperationsPreview />
       <EngineeringProof />
       <FinalCta />
     </Canvas>

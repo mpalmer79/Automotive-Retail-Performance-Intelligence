@@ -167,7 +167,15 @@ export function DomainJudgement() {
 
         {/* The positioning, stated once, after three demonstrations of it. A
             claim that follows its own evidence reads as a summary; the same
-            claim placed first reads as a boast. */}
+            claim placed first reads as a boast.
+
+            ONE SENTENCE, NOT A BIOGRAPHY. This block used to carry a second
+            paragraph listing sales, F&I, dealership management, CRM and DMS
+            administration, then the computer-science retraining and the
+            engineering. That is the career narrative, and it is now the subject
+            of `/about` at full length rather than a condensed copy here. Two
+            pages telling the same story at different lengths is how the shorter
+            one goes stale. */}
         <Reveal className="mt-16 flex flex-col gap-6 border-t border-line pt-10 lg:mt-20 lg:flex-row lg:items-start lg:gap-16">
           <div className="flex flex-col gap-4 lg:max-w-2xl">
             <span className="eyebrow text-2xs">Why these answers</span>
@@ -176,11 +184,8 @@ export function DomainJudgement() {
               departments and administering the systems the numbers come out of.
             </p>
             <Text size="body" tone="muted" className="max-w-prose">
-              Sales, F&amp;I, dealership management, CRM and DMS administration, inventory
-              and lead operations. Then computer science retraining, and the SQL,
-              PostgreSQL, Python, semantic modelling and TypeScript this repository is
-              made of. The domain came first, which is why the exclusion rules are the
-              interesting part of it.
+              The domain came first, which is why the exclusion rules above are the
+              interesting part of these definitions rather than a footnote to them.
             </Text>
           </div>
           <LinkButton

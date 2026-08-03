@@ -46,6 +46,17 @@ export interface PageHeaderProps {
    */
   groupNav?: boolean
   /**
+   * A crumb between "Overview" and this page.
+   *
+   * The three store routes use it. Their parent used to be `/dealerships`, which
+   * is now a permanent redirect to `/`, so the trail would have had two entries
+   * resolving to the same document - "Overview / Granite Auto Group / Granite
+   * Subaru of Manchester", where the first two are one page. Passing the parent
+   * explicitly lets a store page name its group without inventing a level that
+   * no longer exists.
+   */
+  parentCrumb?: { readonly href: string; readonly label: string }
+  /**
    * Which provenance the route's data has, passed through to `<TrustLine>`.
    * `inventory` on every route that renders a figure from the sanitized
    * reference workbooks rather than from the synthetic warehouse.
@@ -72,6 +83,7 @@ export function PageHeader({
   meta,
   platformNav = false,
   groupNav = false,
+  parentCrumb,
   trustScope = 'synthetic',
   trustHref = ROUTES.governance.href,
   suppressTrustLine = false,
@@ -92,6 +104,7 @@ export function PageHeader({
           <Breadcrumbs
             trail={[
               { href: '/', label: 'Overview' },
+              ...(parentCrumb ? [parentCrumb] : []),
               { href: '#', label: title },
             ]}
           />

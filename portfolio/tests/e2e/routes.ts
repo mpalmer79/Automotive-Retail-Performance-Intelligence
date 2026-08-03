@@ -20,15 +20,9 @@ export interface RouteUnderTest {
 export const PRIMARY_ROUTES: readonly RouteUnderTest[] = [
   {
     path: '/',
-    heading: 'Dealership intelligence built by someone who has run the dealership',
+    heading: 'Three dealerships. Three operating models. One governed reporting layer.',
     inNav: true,
     navLabel: 'Overview',
-  },
-  {
-    path: '/dealerships',
-    heading: 'Three stores, three operating models',
-    inNav: true,
-    navLabel: 'Dealerships',
   },
   {
     path: '/dealerships/granite-chevrolet',
@@ -87,7 +81,7 @@ export const PRIMARY_ROUTES: readonly RouteUnderTest[] = [
   },
   {
     path: '/about',
-    heading: 'Twenty-five years in dealerships',
+    heading: 'Dealership intelligence built by someone who has run the dealership',
     inNav: true,
     navLabel: 'About',
   },
@@ -97,12 +91,18 @@ export const PRIMARY_ROUTES: readonly RouteUnderTest[] = [
 /**
  * The HEADER navigation, which is a different list from the routes above.
  *
- * Seven items for fourteen routes. Two of them are destination GROUPS:
- * "Platform" points at `/architecture` and is current on `/data-model`,
- * `/inventory-operations` and `/governance` too, and "Dealerships" points at
- * `/dealerships` and is current on all three store pages. Both groups carry a
- * sub-navigation on the page itself. `tests/unit/site.test.ts` asserts this list
- * agrees with `PRIMARY_NAV`, so the two cannot drift.
+ * Six items for thirteen routes. One of them is a destination GROUP: "Platform"
+ * points at `/architecture` and is current on `/data-model`,
+ * `/inventory-operations` and `/governance` too, and those four carry a
+ * sub-navigation on the page itself.
+ *
+ * There is no "Dealerships" item. The group overview IS the home page now, so a
+ * Dealerships entry would be a second header link to the same document as
+ * Overview. The three store pages are reached from the home page's store cards,
+ * from `<GroupNav>`, and from the mobile drawer's expanded group.
+ *
+ * `tests/unit/site.test.ts` asserts this list agrees with `PRIMARY_NAV`, so the
+ * two cannot drift.
  *
  * The case study is deliberately not here. It was a bordered control in the
  * header and is now in the footer, on the status page and in the home page's
@@ -117,16 +117,6 @@ export interface HeaderNavItem {
 
 export const HEADER_NAV: readonly HeaderNavItem[] = [
   { label: 'Overview', path: '/', currentOn: ['/'] },
-  {
-    label: 'Dealerships',
-    path: '/dealerships',
-    currentOn: [
-      '/dealerships',
-      '/dealerships/granite-chevrolet',
-      '/dealerships/granite-subaru',
-      '/dealerships/granite-pre-owned',
-    ],
-  },
   { label: 'Inventory', path: '/inventory', currentOn: ['/inventory'] },
   {
     label: 'Platform',
@@ -146,9 +136,15 @@ export const PLATFORM_ROUTES: readonly { label: string; path: string }[] = [
   { label: 'Governance', path: '/governance' },
 ]
 
-/** The five routes that render the Granite Auto Group sub-navigation. */
+/**
+ * The five ITEMS the Granite Auto Group sub-navigation carries.
+ *
+ * "The group" points at `/` because the home page is the group overview. The old
+ * `/dealerships` path is a permanent redirect to it and is asserted as one in
+ * `navigation.spec.ts` rather than swept as a route.
+ */
 export const GROUP_ROUTES: readonly { label: string; path: string }[] = [
-  { label: 'The group', path: '/dealerships' },
+  { label: 'The group', path: '/' },
   { label: 'Granite Chevrolet', path: '/dealerships/granite-chevrolet' },
   { label: 'Granite Subaru', path: '/dealerships/granite-subaru' },
   { label: 'Granite Pre-Owned', path: '/dealerships/granite-pre-owned' },
@@ -159,6 +155,29 @@ export const GROUP_ROUTES: readonly { label: string; path: string }[] = [
 export const ALL_TESTED_ROUTES: readonly string[] = [
   ...PRIMARY_ROUTES.map((route) => route.path),
   '/ui-lab',
+]
+
+/**
+ * The routes that RENDER that sub-navigation.
+ *
+ * Four, not five: the home page is itself the group overview, so a sub-navigation
+ * bar on it would be a rail whose first item points at the document the reader is
+ * already on. The home page reaches every store through its store-cards section
+ * instead, which `inventory.spec.ts` asserts.
+ */
+export const GROUP_NAV_ROUTES: readonly { label: string; path: string }[] =
+  GROUP_ROUTES.filter((route) => route.path !== '/')
+
+/**
+ * Paths that must answer with a permanent redirect rather than a page.
+ *
+ * `/dealerships` was the group overview until the home page became it. It stays
+ * resolvable because it is bookmarked, linked from documentation and already in
+ * a fetched sitemap - and it must NOT take the store routes beneath it with it,
+ * which is why the redirect is declared on the exact path.
+ */
+export const PERMANENT_REDIRECTS: readonly { from: string; to: string }[] = [
+  { from: '/dealerships', to: '/' },
 ]
 
 /** The viewport matrix the responsive assertions run at. */

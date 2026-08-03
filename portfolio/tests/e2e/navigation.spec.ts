@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-import { gotoRendered } from './helpers'
+import { bodyText, gotoRendered } from './helpers'
 import { GROUP_ROUTES, HEADER_NAV, PLATFORM_ROUTES, PRIMARY_ROUTES } from './routes'
 
 /**
@@ -443,5 +443,127 @@ test.describe('the 404 page', () => {
       .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('content') ?? ''))
     expect(contents.length).toBeGreaterThan(0)
     expect(contents.every((content) => content.includes('noindex'))).toBe(true)
+  })
+})
+
+/* -------------------------------------------------------------------------- */
+/* The information architecture                                               */
+/* -------------------------------------------------------------------------- */
+
+test.describe('the group overview is the home page', () => {
+  test('the root route answers 200 and leads with the product', async ({ page }) => {
+    const response = await page.goto('/')
+    expect(response?.status()).toBe(200)
+    await expect(page.getByRole('heading', { level: 1 })).toContainText(
+      'Three dealerships. Three operating models. One governed reporting layer.'
+    )
+  })
+
+  test('the root heading is not the author headline', async ({ page }) => {
+    // The specific regression this guards: the two pages swapping back, or the
+    // author sentence being restored to `/` "as well".
+    await gotoRendered(page, '/')
+    const heading = await page.getByRole('heading', { level: 1 }).innerText()
+    expect(heading).not.toMatch(/built by someone who has run the dealership/i)
+  })
+
+  test('/about is where the author headline lives', async ({ page }) => {
+    await gotoRendered(page, '/about')
+    await expect(page.getByRole('heading', { level: 1 })).toContainText(
+      'Dealership intelligence built by someone who has run the dealership'
+    )
+  })
+
+  test('/about carries the career and technical-transition material', async ({
+    page,
+  }) => {
+    await gotoRendered(page, '/about')
+    const text = await bodyText(page)
+    expect(text, 'career length').toMatch(/more than 25 years/i)
+    expect(text, 'dealership systems').toMatch(/CRM and DMS administration/i)
+    expect(text, 'technical transition').toMatch(/computer science/i)
+    expect(text, 'analytical philosophy').toMatch(/analytical philosophy/i)
+  })
+
+  test('the home page carries no long-form author section', async ({ page }) => {
+    // One clause of credibility is allowed and is in the hero. A biography is
+    // not: the paragraphs listing sales, F&I and the systems administration live
+    // on `/about` and nowhere else, so the shorter copy cannot go stale against
+    // the longer one.
+    await gotoRendered(page, '/')
+    const text = await bodyText(page)
+    expect(text, 'the career systems list is duplicated on the home page').not.toMatch(
+      /CRM and DMS administration/i
+    )
+    expect(text, 'the retraining narrative is duplicated on the home page').not.toMatch(
+      /computer science retraining/i
+    )
+    // The permitted single clause, and the link out.
+    expect(text).toMatch(/more than 25 years in automotive retail/i)
+    await expect(page.getByRole('link', { name: 'About the author' })).toBeVisible()
+  })
+})
+
+test.describe('the retired /dealerships path', () => {
+  test('redirects permanently to the home page', async ({ page }) => {
+    const response = await page.goto('/dealerships')
+    expect(response?.status()).toBe(200)
+    expect(new URL(page.url()).pathname).toBe('/')
+
+    // The status of the redirect itself, not only where it landed. A 302 here
+    // would keep search engines re-fetching a path that is never coming back.
+    const chain = response?.request().redirectedFrom()
+    expect(chain, '/dealerships did not redirect at all').toBeTruthy()
+    const redirectResponse = await chain?.response()
+    expect([301, 308]).toContain(redirectResponse?.status())
+  })
+
+  test('does not take the store routes with it', async ({ page }) => {
+    // The whole reason the redirect is declared on the exact path. A prefix rule
+    // would send every deep link to the home page and silently break every
+    // bookmark into a store.
+    for (const route of PRIMARY_ROUTES.filter((entry) =>
+      entry.path.startsWith('/dealerships/')
+    )) {
+      const response = await page.goto(route.path)
+      expect(response?.status(), route.path).toBe(200)
+      expect(new URL(page.url()).pathname, route.path).toBe(route.path)
+    }
+  })
+
+  test('is absent from the sitemap, which lists the destination instead', async ({
+    request,
+  }) => {
+    const xml = await (await request.get('/sitemap.xml')).text()
+    expect(xml).not.toContain('<loc>http://127.0.0.1:3210/dealerships</loc>')
+    expect(xml).toMatch(/<loc>[^<]*\/dealerships\/granite-chevrolet<\/loc>/)
+  })
+})
+
+test.describe('breadcrumbs on a store page', () => {
+  test('name the group and resolve to the home page', async ({ page }) => {
+    await gotoRendered(page, '/dealerships/granite-subaru')
+    const crumbs = page.getByRole('navigation', { name: 'Breadcrumb' })
+    await expect(crumbs).toBeVisible()
+    const groupCrumb = crumbs.getByRole('link', { name: 'Granite Auto Group' })
+    await expect(groupCrumb).toHaveAttribute('href', '/')
+    // And the trail does not contain a link to the retired path.
+    const hrefs = await crumbs
+      .locator('a')
+      .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('href') ?? ''))
+    expect(hrefs).not.toContain('/dealerships')
+  })
+
+  test('the store links on the home page reach each store', async ({ page }) => {
+    await gotoRendered(page, '/')
+    for (const route of PRIMARY_ROUTES.filter((entry) =>
+      entry.path.startsWith('/dealerships/')
+    )) {
+      await gotoRendered(page, '/')
+      const link = page.locator(`main a[href="${route.path}"]`).first()
+      await link.scrollIntoViewIfNeeded()
+      await link.click()
+      await expect(page).toHaveURL(new RegExp(`${route.path}$`))
+    }
   })
 })

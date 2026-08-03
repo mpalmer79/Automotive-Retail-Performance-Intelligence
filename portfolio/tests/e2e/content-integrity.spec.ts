@@ -179,11 +179,13 @@ test.describe('honest status language reaches the screen', () => {
 /**
  * The routes that legitimately render an advertised price.
  *
- * `/` is on the list because its Granite Auto Group section carries the group
- * inventory snapshot. Everything else on the site still renders no currency at
- * all, and the two tests below enforce both halves of that.
+ * `/` is on the list because the home page IS the group overview: it carries the
+ * store cards, the group inventory snapshot and the store comparison. The three
+ * store routes are matched by the `/dealerships` prefix entry. Everything else on
+ * the site still renders no currency at all, and the two tests below enforce both
+ * halves of that.
  */
-const INVENTORY_BEARING = ['/', '/dealerships', '/inventory'] as const
+const INVENTORY_BEARING = ['/', '/inventory', '/dealerships'] as const
 
 /**
  * Whether a route is one of them.
@@ -653,10 +655,13 @@ test.describe('the hero stays a hero', () => {
     const fold = 844
     for (const [name, locator] of [
       ['the headline', page.getByRole('heading', { level: 1 })],
-      ['the primary action', page.getByRole('link', { name: /explore the platform/i })],
+      [
+        'the primary action',
+        page.getByRole('link', { name: /explore the three stores/i }),
+      ],
       [
         'the secondary action',
-        page.getByRole('link', { name: /view engineering evidence/i }).first(),
+        page.getByRole('link', { name: /see how ARPI works/i }).first(),
       ],
     ] as const) {
       const box = await locator.first().boundingBox()
@@ -665,7 +670,21 @@ test.describe('the hero stays a hero', () => {
     }
   })
 
-  test('names Michael Palmer’s dealership experience above the fold on a desktop', async ({
+  /**
+   * WHAT THE FIRST SCREEN HAS TO SAY, AND WHAT IT MUST NOT.
+   *
+   * This assertion used to require the author headline above the fold: "run the
+   * dealership" and "25 years" both had to be there, because the hero's whole job
+   * was the differentiator. That was the right test for a home page whose subject
+   * was the author.
+   *
+   * The subject is now the product, so the requirement inverts on the first half
+   * and survives on the second. The group and its three stores must be above the
+   * fold. The career claim must still be there, because it is real credibility
+   * and burying it entirely would be over-correcting - but as ONE CLAUSE, not as
+   * the proposition, and the headline must not be the author sentence.
+   */
+  test('names the group and its three stores above the fold on a desktop', async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1440, height: 900 })
@@ -680,10 +699,22 @@ test.describe('the hero stays a hero', () => {
       }
       return texts.join(' ')
     })
-    // The differentiator, not a generic platform claim. In the previous build
-    // this first appeared roughly 7,900px down the page.
-    expect(aboveFold).toMatch(/run the dealership/i)
-    expect(aboveFold).toMatch(/25 years/i)
+
+    expect(aboveFold, 'the group is not named').toContain('Granite Auto Group')
+    for (const store of [
+      'Granite Chevrolet of Nashua',
+      'Granite Subaru of Manchester',
+      'Granite Pre-Owned Center of Merrimack',
+    ]) {
+      expect(aboveFold, `${store} is not named above the fold`).toContain(store)
+    }
+
+    // The credibility clause survives, and stays a clause.
+    expect(aboveFold, 'the experience claim is gone entirely').toMatch(/25 years/i)
+
+    // The author sentence is not the headline. It is the h1 of `/about`.
+    const headline = await page.getByRole('heading', { level: 1 }).innerText()
+    expect(headline).not.toMatch(/run the dealership/i)
   })
 })
 

@@ -58,9 +58,10 @@ export default function AboutPage() {
   return (
     <Canvas>
       <PageHeader
-        eyebrow="About"
-        title="Twenty-five years in dealerships, then the technical work to model them properly"
-        lede="Most analytics portfolios are built by someone who learned the business from a dataset. This one is the other way round: the domain came first, and the technical decisions in it were made by someone who has had to defend a gross number to a general manager."
+        eyebrow="About the author"
+        title="Dealership intelligence built by someone who has run the dealership"
+        lede="Twenty-five years in dealerships, then the technical work to model them properly. Most analytics portfolios are built by someone who learned the business from a dataset. This one is the other way round: the domain came first, and the technical decisions in it were made by someone who has had to defend a gross number to a general manager."
+        supporting="That sentence was the ARPI home page's headline until the home page became the product overview it should always have been. It is the right claim in the wrong place there and the right claim in the right place here, which is why this page is where it now lives and where it is argued at length."
         meta={
           <>
             <SourceLink path="README.md" field="author" />
@@ -83,6 +84,11 @@ export default function AboutPage() {
                 deals in finance, managing departments, and administering the systems the
                 numbers come out of. Enough of it to know which reports get used and which
                 get closed without reading.
+              </Text>
+              <Text size="body" tone="muted" className="max-w-prose">
+                Sales, F&amp;I, dealership management, CRM and DMS administration,
+                inventory and lead operations. Four system families, each with its own
+                idea of what a unit is and when it counts.
               </Text>
               <Text size="body" tone="muted" className="max-w-prose">
                 That experience is why the management questions on this site read the way
