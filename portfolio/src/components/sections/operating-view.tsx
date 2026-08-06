@@ -56,6 +56,7 @@ import { useCallback, useId, useRef, useState } from 'react'
 import { LinkButton } from '@/components/ui/button'
 import { KpiChip, StatusBadge } from '@/components/ui/badge'
 import { SourceLink } from '@/components/ui/data-card'
+import { DOMAIN_ICON } from '@/components/ui/domain-icon'
 import { Container, Section, SectionHeader } from '@/components/ui/layout'
 import { CodeLabel, Text } from '@/components/ui/typography'
 import { DOMAINS, entities, kpis, type DomainId } from '@/lib/content'
@@ -179,6 +180,7 @@ export function OperatingView() {
               {DOMAINS.map((item) => {
                 const isSelected = item.id === domain.id
                 const count = kpis.filter((kpi) => kpi.domain === item.id).length
+                const DomainIcon = DOMAIN_ICON[item.id]
                 return (
                   <button
                     key={item.id}
@@ -210,7 +212,19 @@ export function OperatingView() {
                         isSelected ? 'bg-accent' : 'bg-transparent'
                       )}
                     />
-                    <span className="text-base">{item.label}</span>
+                    <span className="flex min-w-0 items-center gap-2.5 text-base">
+                      {/* Decorative: the label is right beside it, so a
+                          screen-reader user hears the domain once. */}
+                      <DomainIcon
+                        aria-hidden="true"
+                        strokeWidth={isSelected ? 2 : 1.75}
+                        className={cx(
+                          'size-4 shrink-0 transition-colors duration-(--arpi-motion-fast)',
+                          isSelected ? 'text-accent' : 'text-ink-faint'
+                        )}
+                      />
+                      {item.label}
+                    </span>
                     <span
                       className={cx(
                         'shrink-0 font-mono text-2xs',

@@ -27,6 +27,7 @@ import {
   resolvePortraitSource,
 } from '@/components/media/author-portrait'
 import { Badge, KpiChip, StatusBadge } from '@/components/ui/badge'
+import { DOMAIN_ICON, STORE_TYPE_ICON, SURFACE_ICON } from '@/components/ui/domain-icon'
 import { Button, IconButton, LinkButton } from '@/components/ui/button'
 import { SourceLink } from '@/components/ui/data-card'
 import { Breadcrumbs, EmptyState, LockedState, SkipLink } from '@/components/ui/states'
@@ -618,5 +619,40 @@ describe('the author portrait contract', () => {
     const source = resolvePortraitSource(publicDir)
     if (source === null) return
     expect(statSync(join(publicDir, source)).size).toBeLessThanOrEqual(PORTRAIT_MAX_BYTES)
+  })
+})
+
+/* -------------------------------------------------------------------------- */
+/* Iconography                                                                 */
+/* -------------------------------------------------------------------------- */
+
+describe('the icon map', () => {
+  it('covers every declared analytical domain', () => {
+    // A domain added to the KPI catalogue without an icon renders a gap in the
+    // rail. Failing here is cheaper than noticing it in a screenshot.
+    for (const domain of DOMAINS) {
+      expect(DOMAIN_ICON[domain.id], `${domain.id} has no icon`).toBeDefined()
+    }
+    expect(Object.keys(DOMAIN_ICON)).toHaveLength(DOMAINS.length)
+  })
+
+  it('declares an icon for each store type and each platform surface', () => {
+    expect(Object.keys(STORE_TYPE_ICON).sort()).toEqual(['franchise', 'independent'])
+    expect(Object.keys(SURFACE_ICON).sort()).toEqual([
+      'architecture',
+      'dataModel',
+      'inventory',
+      'kpiGovernance',
+    ])
+  })
+
+  it('maps every id to a component rather than to a string', () => {
+    for (const icon of [
+      ...Object.values(DOMAIN_ICON),
+      ...Object.values(STORE_TYPE_ICON),
+      ...Object.values(SURFACE_ICON),
+    ]) {
+      expect(typeof icon === 'function' || typeof icon === 'object').toBe(true)
+    }
   })
 })

@@ -150,6 +150,22 @@ export function AuthorPortrait({
       // `priority` already implies eager; stating the opposite explicitly keeps
       // the below-the-fold case from depending on a default.
       loading={priority ? undefined : 'lazy'}
+      /*
+       * UNOPTIMIZED, DELIBERATELY, AND IT IS NOT A SHORTCUT.
+       *
+       * This site builds with `output: 'standalone'` and declares no image
+       * loader - see portfolio/docs/PERFORMANCE.md section 7. Turning the
+       * optimizer on for one file would put a runtime `sharp` dependency inside
+       * the Railway standalone image, which is a deployment cost, in exchange
+       * for resizing an asset that the contract already requires to be supplied
+       * at exactly the size it is displayed at and already encoded as WebP or
+       * AVIF. There is nothing for the optimizer to do.
+       *
+       * What `next/image` is still doing here is the part that matters: it
+       * requires the intrinsic dimensions, so the box is reserved from the
+       * server-rendered markup and the photograph's arrival shifts nothing.
+       */
+      unoptimized
       className={cx(
         'aspect-4/5 w-full max-w-xs rounded-xl border border-line object-cover object-top',
         className
