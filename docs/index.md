@@ -48,6 +48,7 @@ flowchart TD
 | [`architecture-decisions/ADR-0001-project-identity.md`](architecture-decisions/ADR-0001-project-identity.md) | Fixes the project name, short identifier, package, config prefix, and database roles; retires the former working title and defines enforcement | Anyone touching a name, a path, or a role | Accepted |
 | [`architecture-decisions/ADR-0002-phase-0-technology-baseline.md`](architecture-decisions/ADR-0002-phase-0-technology-baseline.md) | Records the non-obvious Phase 0 engineering choices and their trade-offs | Technical reviewers, contributors | Accepted |
 | [`architecture-decisions/ADR-0009-portfolio-ui-foundation-before-gate-2.md`](architecture-decisions/ADR-0009-portfolio-ui-foundation-before-gate-2.md) | Separates the portfolio UI foundation, which may be built before Gate 2, from the public analytical case study, which may not; records the five controls that enforce the separation | Anyone reviewing the website, or wondering how it coexists with a closed Gate 2 | Accepted |
+| [`architecture-decisions/ADR-0013-governed-web-operating-console.md`](architecture-decisions/ADR-0013-governed-web-operating-console.md) | Authorizes the governed web operating console under fifteen binding conditions; keeps Power BI canonical, scopes ADR-0009's no-KPI-value control to the documentation routes, and leaves Gate 2 CLOSED | Anyone touching the dashboard program, or wondering how a console coexists with the second-dashboard exclusion | Accepted |
 | [`architecture-decisions/README.md`](architecture-decisions/README.md) | ADR format, `ADR-NNNN-kebab-title.md` convention, required sections, and the index of current records | Contributors writing a new ADR | Implemented |
 | [`../README.md`](../README.md) | Project entry point: value proposition, status, stack, structure, and how to run it | Everyone, first | Implemented |
 
@@ -81,6 +82,11 @@ The website under [`../portfolio/`](../portfolio/) is a presentation layer over 
 no API route, no database connection, no query interface and no charting library, it computes no KPI, and it
 displays no KPI value. It is governed by [`architecture-decisions/ADR-0009-portfolio-ui-foundation-before-gate-2.md`](architecture-decisions/ADR-0009-portfolio-ui-foundation-before-gate-2.md).
 Its own documentation lives beside it, in [`../portfolio/`](../portfolio/) and [`../portfolio/docs/`](../portfolio/docs/).
+[`architecture-decisions/ADR-0013-governed-web-operating-console.md`](architecture-decisions/ADR-0013-governed-web-operating-console.md)
+authorizes a future governed operating console under `/dashboard` that will render KPI values from versioned
+`reporting`-schema exports — planned in [`requirements/DASHBOARD_PROGRAM.md`](requirements/DASHBOARD_PROGRAM.md)
+and specified in [`dashboard/`](dashboard/); until those delivery increments land, the statements above remain
+literally true of the deployed site.
 
 | Document | Purpose | Audience | Status |
 |---|---|---|---|
@@ -135,6 +141,9 @@ is not a sale. Days observed online is not days in stock.
 | [`requirements/PHASE_2_BACKLOG.md`](requirements/PHASE_2_BACKLOG.md) | Task-level breakdown of delivery increments `P2.1` through `P2.4` — semantic model, dashboard pages, findings and the Gate 2 review, portfolio packaging — with the Gate 2 checklist | Contributors picking up work; reviewers checking Gate 2 | Implemented — `P2.1` delivered except its real-engine validation, **pending on both accepted paths**; `P2.2`–`P2.4` Not started |
 | [`requirements/STAKEHOLDER_QUESTIONS.md`](requirements/STAKEHOLDER_QUESTIONS.md) | Persona → business question → KPI → reporting view → report page traceability, including the four questions the MVP cannot answer | Reviewers checking Gate 4; anyone asking what the platform can answer | Implemented |
 | [`requirements/GATE_1_READINESS.md`](requirements/GATE_1_READINESS.md) | The formal Gate 1 evaluation: twenty-three conditions, each with evidence, a test or query, limitations, and a verdict | Anyone deciding whether Power BI work may begin | Implemented — verdict **OPEN** |
+| [`requirements/DASHBOARD_PROGRAM.md`](requirements/DASHBOARD_PROGRAM.md) | The master program for the ARPI Dealer Operations Command Center, the governed web operating console authorized by ADR-0013 | Contributors and reviewers of the dashboard program | Implemented as a plan — **no console feature is built** |
+| [`requirements/DASHBOARD_BACKLOG.md`](requirements/DASHBOARD_BACKLOG.md) | Delivery increments `DASH.0`–`DASH.13` with permanent item identifiers, acceptance criteria, tests and completion evidence | Contributors picking up dashboard work | Implemented — `DASH.0` delivered; `DASH.1`+ Planned |
+| [`dashboard/README.md`](dashboard/README.md) | The dashboard specification set: information architecture, data contract, KPI extension plan, Deal Jacket, action engine, test strategy, and seven diagrams | Anyone implementing or reviewing a dashboard increment | Implemented as planning contracts |
 | [`powerbi/POWER_BI_DESKTOP_HANDOFF.md`](powerbi/POWER_BI_DESKTOP_HANDOFF.md) | One of the two accepted routes through the `P2.1` real-engine validation gate: open, refresh, save and validate the semantic model in Power BI Desktop, which GitHub Actions cannot do. The other route is the Microsoft Fabric Service, per [`architecture-decisions/ADR-0008-real-engine-validation-paths.md`](architecture-decisions/ADR-0008-real-engine-validation-paths.md) | Whoever runs the Desktop validation | Implemented — the validation itself is **pending**, as is the Fabric path |
 | [`index.md`](index.md) | This page | Everyone | Implemented |
 
@@ -272,6 +281,17 @@ python scripts/check_secrets.py
 | [`requirements/DOCUMENTATION_BACKLOG.md`](requirements/DOCUMENTATION_BACKLOG.md) | Planning |
 | [`requirements/STAKEHOLDER_QUESTIONS.md`](requirements/STAKEHOLDER_QUESTIONS.md) | Planning |
 | [`requirements/GATE_1_READINESS.md`](requirements/GATE_1_READINESS.md) | Planning |
+| [`requirements/DASHBOARD_PROGRAM.md`](requirements/DASHBOARD_PROGRAM.md) | Planning |
+| [`requirements/DASHBOARD_BACKLOG.md`](requirements/DASHBOARD_BACKLOG.md) | Planning |
+| [`architecture-decisions/ADR-0013-governed-web-operating-console.md`](architecture-decisions/ADR-0013-governed-web-operating-console.md) | Governing |
+| [`dashboard/README.md`](dashboard/README.md) | Planning |
+| [`dashboard/INFORMATION_ARCHITECTURE.md`](dashboard/INFORMATION_ARCHITECTURE.md) | Planning |
+| [`dashboard/DATA_CONTRACT.md`](dashboard/DATA_CONTRACT.md) | Planning |
+| [`dashboard/KPI_EXTENSION_PLAN.md`](dashboard/KPI_EXTENSION_PLAN.md) | Planning |
+| [`dashboard/DEAL_JACKET_SPEC.md`](dashboard/DEAL_JACKET_SPEC.md) | Planning |
+| [`dashboard/ACTION_ENGINE_SPEC.md`](dashboard/ACTION_ENGINE_SPEC.md) | Planning |
+| [`dashboard/TEST_STRATEGY.md`](dashboard/TEST_STRATEGY.md) | Planning |
+| [`dashboard/diagrams/`](dashboard/diagrams/) | Planning |
 | [`powerbi/POWER_BI_DESKTOP_HANDOFF.md`](powerbi/POWER_BI_DESKTOP_HANDOFF.md) | Operations |
 | [`../powerbi/model_documentation/`](../powerbi/model_documentation/) | Design |
 | [`../portfolio/README.md`](../portfolio/README.md) | Implementation guides |

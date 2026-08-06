@@ -1014,6 +1014,17 @@ Two standing constraints apply when these are eventually specified:
 - **Target values will be fictional operating goals for a fictional group**, never industry benchmarks
   ([LIMITATIONS.md](LIMITATIONS.md)).
 
+**Reserved future families.** The dashboard program
+([ADR-0013](docs/architecture-decisions/ADR-0013-governed-web-operating-console.md)) reserves three
+KPI families — `KPI-TGT-001..010` (targets and pace), `KPI-FNI-001..022` (F&I detail), and
+`KPI-ACC-001..012` (accounting integrity) — specified field-by-field in
+[`docs/dashboard/KPI_EXTENSION_PLAN.md`](docs/dashboard/KPI_EXTENSION_PLAN.md). They enter this
+catalogue only when their source facts are promoted through Gate 4 by the owning
+[`DASHBOARD_BACKLOG.md`](docs/requirements/DASHBOARD_BACKLOG.md) increment, with every field in the
+template and a registered stakeholder question. The reserved identifiers are permanent from first
+mention. Back-end gross and back gross per retail unit deliberately keep their existing IDs
+(`KPI-GRS-002`, `KPI-GRS-005`).
+
 ---
 
 ## 36. Reconciliation register
