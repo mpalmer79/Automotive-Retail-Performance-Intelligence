@@ -26,11 +26,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import { TOUR_STEPS } from '@/components/sections/product-tour'
-import {
-  OG_IMAGE_HEIGHT,
-  OG_IMAGE_PATH,
-  OG_IMAGE_WIDTH,
-} from '@/lib/metadata'
+import { OG_IMAGE_HEIGHT, OG_IMAGE_PATH, OG_IMAGE_WIDTH } from '@/lib/metadata'
 
 const PUBLIC_DIR = join(process.cwd(), 'public')
 
@@ -105,9 +101,10 @@ describe('the product tour captures', () => {
       const file = join(PUBLIC_DIR, step.image.src)
 
       it('is committed to the repository', () => {
-        expect(existsSync(file), `${step.image.src} is referenced but not committed`).toBe(
-          true
-        )
+        expect(
+          existsSync(file),
+          `${step.image.src} is referenced but not committed`
+        ).toBe(true)
       })
 
       it('is a modern format', () => {

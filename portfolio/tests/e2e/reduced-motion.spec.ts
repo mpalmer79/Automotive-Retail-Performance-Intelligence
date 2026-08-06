@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Browser } from '@playwright/test'
 
 import { bodyText, gotoRendered, mainText, settle } from './helpers'
 import { PRIMARY_ROUTES } from './routes'
@@ -284,5 +284,157 @@ test.describe('the motion preference is respected from the first paint', () => {
       expect(html, `"${phrase}" is missing from the server response`).toContain(phrase)
       expect(rendered).toContain(phrase)
     }
+  })
+})
+
+/* -------------------------------------------------------------------------- */
+/* The architecture explorer's flow motion                                     */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The diagram gained two finite animations in this release: a one-time arrival
+ * sequence that draws the built edges in band order, and a selection wave that
+ * resolves the upstream path inward and the downstream path outward.
+ *
+ * Both are decoration in the strict sense - they add no information a static
+ * render withholds - and this suite is what holds them to that. The load-bearing
+ * assertion is the same one the rest of this file makes: the SEMANTIC state must
+ * not depend on the motion preference. What a node is called, which nodes are on
+ * its path, what the detail panel says and which option is selected are all
+ * properties of the graph, and a reader who asked for no animation is entitled to
+ * every one of them.
+ */
+test.describe('the architecture explorer communicates flow without depending on it', () => {
+  /** Select a node and read back everything that is supposed to be semantic. */
+  async function selectAndRead(
+    browser: Browser,
+    reducedMotion: 'reduce' | 'no-preference'
+  ) {
+    const context = await browser.newContext({ reducedMotion })
+    const page = await context.newPage()
+    await gotoRendered(page, '/architecture')
+
+    const option = page.getByRole('option', { name: /warehouse schema/i }).first()
+    await option.click()
+
+    const state = await page.evaluate(() => {
+      const options = [...document.querySelectorAll('[role="option"]')]
+      return {
+        names: options.map((node) => node.getAttribute('aria-label') ?? ''),
+        selected: options
+          .filter((node) => node.getAttribute('aria-selected') === 'true')
+          .map((node) => node.getAttribute('aria-label') ?? ''),
+        panel: (
+          document.querySelector('[aria-live="polite"]') as HTMLElement | null
+        )?.innerText
+          .replace(/\s+/g, ' ')
+          .trim(),
+      }
+    })
+
+    await context.close()
+    return state
+  }
+
+  test('reports the same selection, names and detail at both motion preferences', async ({
+    browser,
+  }) => {
+    const [moving, still] = await Promise.all([
+      selectAndRead(browser, 'no-preference'),
+      selectAndRead(browser, 'reduce'),
+    ])
+
+    expect(still.names).toEqual(moving.names)
+    expect(still.selected).toEqual(moving.selected)
+    expect(still.selected).toHaveLength(1)
+    expect(still.panel).toBe(moving.panel)
+    expect(still.panel, 'the detail panel rendered nothing').toBeTruthy()
+  })
+
+  test.describe('with motion suppressed', () => {
+    // `contextOptions`, which is the form the rest of this file uses and the
+    // form that actually emulates the preference here. The bare `reducedMotion`
+    // fixture did not take effect in a nested describe under this
+    // configuration, and the symptom was the worst kind: the tests ran with
+    // motion ENABLED and still passed the assertions that did not depend on it,
+    // so the suite looked like it was covering reduced motion and was not.
+    test.use({ contextOptions: { reducedMotion: 'reduce' } })
+
+    test('draws no edge, so nothing is left part-way along a path', async ({ page }) => {
+      await gotoRendered(page, '/architecture')
+      await page
+        .getByRole('option', { name: /warehouse schema/i })
+        .first()
+        .click()
+      await page.waitForTimeout(400)
+
+      // `pathLength` is implemented as a dash offset. A non-zero offset under
+      // reduced motion is an edge frozen half-drawn, which is the exact failure
+      // this rule exists to prevent - the reader would see a broken diagram
+      // rather than a still one.
+      const stranded = await page.evaluate(() =>
+        [...document.querySelectorAll('#architecture-explorer svg path')]
+          .map((node) => {
+            const style = getComputedStyle(node)
+            return {
+              offset: style.strokeDashoffset,
+              array: style.strokeDasharray,
+            }
+          })
+          .filter((entry) => {
+            const offset = Number.parseFloat(entry.offset)
+            return Number.isFinite(offset) && Math.abs(offset) > 0.01
+          })
+      )
+      expect(stranded, 'an edge is frozen part-drawn').toEqual([])
+    })
+
+    test('does not scale the selected node', async ({ page }) => {
+      await gotoRendered(page, '/architecture')
+      const option = page.getByRole('option', { name: /warehouse schema/i }).first()
+      await option.click()
+      await page.waitForTimeout(400)
+
+      const transform = await option.evaluate((node) => getComputedStyle(node).transform)
+      // `none` or the identity matrix. Anything else is a scale that a reader
+      // who asked for no movement did not ask for.
+      expect(
+        transform === 'none' || transform === 'matrix(1, 0, 0, 1, 0, 0)',
+        `selected node transform was ${transform}`
+      ).toBe(true)
+    })
+  })
+
+  test('lets a node be selected immediately, without waiting for the arrival sequence', async ({
+    page,
+  }) => {
+    // The sequence runs once on arrival and must never gate the controls. The
+    // click happens as soon as the option exists, which is well inside the
+    // sequence's own duration.
+    await gotoRendered(page, '/architecture')
+    const option = page.getByRole('option', { name: /warehouse schema/i }).first()
+    await option.click()
+    await expect(option).toHaveAttribute('aria-selected', 'true')
+    await expect(page.locator('[aria-live="polite"]')).toContainText(/warehouse/i)
+  })
+
+  test('does not replay the arrival sequence when a selection is cleared', async ({
+    page,
+  }) => {
+    await gotoRendered(page, '/architecture')
+    await page
+      .getByRole('option', { name: /warehouse schema/i })
+      .first()
+      .click()
+    await page.getByRole('button', { name: /reset selection/i }).click()
+
+    // Immediately after the reset every built edge must already be whole. If the
+    // intro replayed, the edges would be at zero length at this instant.
+    const drawn = await page.evaluate(() =>
+      [...document.querySelectorAll('#architecture-explorer svg path[data-arpi-draw]')]
+        .map((node) => Number.parseFloat(getComputedStyle(node).strokeDashoffset))
+        .filter((offset) => Number.isFinite(offset) && Math.abs(offset) > 0.01)
+    )
+    expect(drawn, 'clearing the selection replayed the arrival sequence').toEqual([])
   })
 })

@@ -47,7 +47,7 @@
  * could not see.
  */
 import { motion } from 'motion/react'
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowDown, ArrowUp, RotateCcw } from 'lucide-react'
 
 import { StatusBadge } from '@/components/ui/badge'
@@ -60,6 +60,7 @@ import {
   ARCHITECTURE_NODES,
   LAYER_LABEL,
   downstreamOf,
+  flowDistances,
   upstreamOf,
   type ArchitectureNode,
 } from '@/content/architecture'
@@ -124,10 +125,107 @@ function statusLabel(node: ArchitectureNode): string | undefined {
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/* Motion                                                                      */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * THE MOTION IN THIS DIAGRAM EXPLAINS SOMETHING, OR IT IS NOT HERE
+ * ----------------------------------------------------------------
+ * Before this release the only thing that moved was opacity: selecting a node
+ * dimmed the unrelated ones. That is a highlight, and a highlight is a fine
+ * answer to "which of these are related". It is not an answer to the question
+ * the diagram is actually making a claim about, which is DIRECTION - this data
+ * is generated, then persisted, then modelled, then presented, and a node's
+ * upstream is not the same kind of thing as its downstream.
+ *
+ * So there are exactly two animations, both finite:
+ *
+ *   1. On arrival, and once, the built edges draw themselves left to right in
+ *      band order: generate, then persist, then model, then present. It states
+ *      the direction of travel one time and stops. It does not loop, it does not
+ *      gate the controls - every node is selectable from the first frame - and
+ *      it never runs again, including when a selection is cleared.
+ *
+ *   2. On selection, the edges on the selected node's path redraw as a wave.
+ *      Upstream edges resolve INWARD, farthest first, so the flow arrives at the
+ *      node. Downstream edges leave OUTWARD, nearest first, so the flow departs
+ *      from it. Because every edge is drawn along its own direction of travel,
+ *      "toward" and "away" are properties of the drawing rather than a
+ *      convention a reader has to be told.
+ *
+ * What is deliberately absent: particles, arrows that travel continuously, any
+ * loop, and any animation of all sixteen edges at once. A diagram whose parts
+ * are permanently in motion is a diagram nobody reads twice.
+ *
+ * Planned edges never draw. They are the dashed ones, they represent work that
+ * has not been done, and `pathLength` and `strokeDasharray` are the same two
+ * SVG properties - so animating them would both fight the dash and imply flow
+ * through a stage that does not exist.
+ */
+
+/** Seconds between one band's edges drawing and the next band's, on arrival. */
+const INTRO_BAND_STEP = 0.16
+
+/** Seconds between one hop of the selection wave and the next. */
+const SELECT_HOP_STEP = 0.07
+
+/** The order the intro sequence walks: generate, persist, model, present. */
+const INTRO_BAND_ORDER: readonly NodeLayerGroup[] = [
+  'generate',
+  'persist',
+  'model',
+  'present',
+]
+
+type NodeLayerGroup = 'generate' | 'persist' | 'model' | 'present'
+
+/** Which of the four drawn bands a node sits in. */
+function bandOf(nodeId: string): NodeLayerGroup {
+  const node = ARCHITECTURE_NODES.find((entry) => entry.id === nodeId)
+  switch (node?.layer) {
+    case 'configuration':
+    case 'generation':
+    case 'validation':
+      return 'generate'
+    case 'database':
+      return 'persist'
+    case 'semantic':
+      return 'model'
+    default:
+      return 'present'
+  }
+}
+
 export function ArchitectureExplorer() {
   const prefersReducedMotion = usePrefersReducedMotion()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const listboxRef = useRef<SVGGElement | null>(null)
+
+  /**
+   * Whether the one-time arrival sequence has already played.
+   *
+   * A ref rather than state on purpose: nothing renders differently because of
+   * it, and a state update here would re-render fourteen nodes and sixteen edges
+   * to change a boolean no element reads during paint. It starts `true` under
+   * reduced motion, which is what makes the sequence never run at all rather
+   * than run instantly.
+   */
+  const introPlayed = useRef(false)
+  const [introRunning, setIntroRunning] = useState(false)
+
+  useEffect(() => {
+    if (prefersReducedMotion || introPlayed.current) return
+    setIntroRunning(true)
+    const total = (INTRO_BAND_ORDER.length * INTRO_BAND_STEP + DURATION.deliberate) * 1000
+    const timer = setTimeout(() => {
+      introPlayed.current = true
+      setIntroRunning(false)
+    }, total)
+    return () => {
+      clearTimeout(timer)
+    }
+  }, [prefersReducedMotion])
 
   const selected = useMemo(
     () => (selectedId ? ARCHITECTURE_NODES.find((n) => n.id === selectedId) : undefined),
@@ -138,6 +236,18 @@ export function ArchitectureExplorer() {
     if (!selectedId) return { upstream: new Set<string>(), downstream: new Set<string>() }
     return { upstream: upstreamOf(selectedId), downstream: downstreamOf(selectedId) }
   }, [selectedId])
+
+  /** Hop counts in both directions, used only to order the selection wave. */
+  const distances = useMemo(
+    () => (selectedId ? flowDistances(selectedId) : null),
+    [selectedId]
+  )
+
+  /** The farthest upstream hop, so the wave can start at the far end. */
+  const deepestUpstream = useMemo(() => {
+    if (!distances) return 0
+    return Math.max(0, ...[...distances.upstream.values()])
+  }, [distances])
 
   /** How a node should be drawn given the current selection. */
   const emphasis = useCallback(
@@ -314,23 +424,102 @@ export function ArchitectureExplorer() {
                   const x2 = to.x
                   const y2 = to.y + NODE_HEIGHT / 2
                   const mid = x1 + (x2 - x1) / 2
+                  const d = `M${String(x1)} ${String(y1)} C${String(mid)} ${String(y1)} ${String(mid)} ${String(y2)} ${String(x2 - 6)} ${String(y2)}`
+
+                  const opacity = selectedId && !onPath ? 0.22 : 0.85
+
+                  /*
+                   * A planned edge is never drawn: `pathLength` is implemented
+                   * with the same two dash properties that make it dashed, so
+                   * the two cannot coexist, and animating flow along a stage
+                   * that has not been built would be the diagram telling a lie
+                   * for the sake of a transition.
+                   */
+                  if (edge.kind === 'planned' || prefersReducedMotion) {
+                    return (
+                      <path
+                        key={`${edge.from}-${edge.to}`}
+                        d={d}
+                        stroke={
+                          onPath
+                            ? 'var(--color-accent)'
+                            : edge.kind === 'planned'
+                              ? 'var(--color-line-strong)'
+                              : 'var(--color-accent-muted)'
+                        }
+                        strokeWidth={onPath ? 2 : 1.3}
+                        strokeDasharray={edge.kind === 'planned' ? '4 4' : undefined}
+                        opacity={opacity}
+                        markerEnd="url(#arch-arrow)"
+                        className="transition-opacity duration-(--arpi-motion-base)"
+                      />
+                    )
+                  }
+
+                  /*
+                   * The draw order.
+                   *
+                   * Upstream: an edge whose SOURCE is n hops back from the
+                   * selection draws at position (deepest - n), so the outermost
+                   * feeder goes first and the direct one goes last - the flow
+                   * arrives.
+                   *
+                   * Downstream: an edge whose TARGET is n hops forward draws at
+                   * position (n - 1), so the one leaving the selected node goes
+                   * first - the flow departs.
+                   */
+                  let drawOrder: number | null = null
+                  if (selectedId !== null && onPath && distances) {
+                    const upFrom = distances.upstream.get(edge.from)
+                    const downTo = distances.downstream.get(edge.to)
+                    if (upFrom !== undefined && upFrom > 0) {
+                      drawOrder = deepestUpstream - upFrom
+                    } else if (downTo !== undefined && downTo > 0) {
+                      drawOrder = downTo - 1
+                    }
+                  } else if (selectedId === null && introRunning) {
+                    drawOrder = INTRO_BAND_ORDER.indexOf(bandOf(edge.from))
+                  }
+
+                  const draws = drawOrder !== null
+                  const step = selectedId === null ? INTRO_BAND_STEP : SELECT_HOP_STEP
 
                   return (
-                    <path
-                      key={`${edge.from}-${edge.to}`}
-                      d={`M${String(x1)} ${String(y1)} C${String(mid)} ${String(y1)} ${String(mid)} ${String(y2)} ${String(x2 - 6)} ${String(y2)}`}
+                    <motion.path
+                      /*
+                       * The selection is in the key so a new selection REMOUNTS
+                       * the path and replays its draw. The same idiom the hero's
+                       * product panel uses: `key` is what makes a once-only
+                       * animation run again on a genuinely new state, and
+                       * nothing else re-triggers a `pathLength` that is already
+                       * at 1.
+                       */
+                      key={`${edge.from}-${edge.to}-${selectedId ?? 'none'}`}
+                      // The reduced-motion stylesheet forces any element
+                      // carrying this attribute to its completed dash state, so
+                      // a preference change mid-animation cannot strand a
+                      // half-drawn edge.
+                      data-arpi-draw=""
+                      d={d}
                       stroke={
-                        onPath
-                          ? 'var(--color-accent)'
-                          : edge.kind === 'planned'
-                            ? 'var(--color-line-strong)'
-                            : 'var(--color-accent-muted)'
+                        onPath ? 'var(--color-accent)' : 'var(--color-accent-muted)'
                       }
                       strokeWidth={onPath ? 2 : 1.3}
-                      strokeDasharray={edge.kind === 'planned' ? '4 4' : undefined}
-                      opacity={selectedId && !onPath ? 0.22 : 0.85}
                       markerEnd="url(#arch-arrow)"
-                      className="transition-opacity duration-(--arpi-motion-base)"
+                      initial={draws ? { pathLength: 0, opacity: 0 } : false}
+                      animate={{ pathLength: 1, opacity }}
+                      transition={{
+                        pathLength: {
+                          duration: draws ? DURATION.deliberate : 0,
+                          delay: draws ? (drawOrder ?? 0) * step : 0,
+                          ease: EASE.out,
+                        },
+                        opacity: {
+                          duration: DURATION.base,
+                          delay: draws ? (drawOrder ?? 0) * step : 0,
+                          ease: EASE.standard,
+                        },
+                      }}
                     />
                   )
                 })}
@@ -368,7 +557,24 @@ export function ArchitectureExplorer() {
                         setSelectedId(node.id === selectedId ? null : node.id)
                       }
                       className="cursor-pointer"
-                      animate={{ opacity: state === 'dimmed' ? 0.3 : 1 }}
+                      /*
+                       * The selected node grows by four percent. Small enough
+                       * that it reads as emphasis rather than as a popped
+                       * element, and it is the one thing that separates "this is
+                       * the node you chose" from "this node is also on the
+                       * path", which stroke colour alone was carrying.
+                       *
+                       * `transformBox: fill-box` makes `transformOrigin: center`
+                       * mean the centre of this group's own bounding box. Its
+                       * absence is why an earlier attempt scaled every node
+                       * about the SVG's top-left corner and moved them across
+                       * the diagram.
+                       */
+                      style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
+                      animate={{
+                        opacity: state === 'dimmed' ? 0.3 : 1,
+                        scale: state === 'selected' && !prefersReducedMotion ? 1.04 : 1,
+                      }}
                       transition={
                         prefersReducedMotion
                           ? { duration: 0 }
@@ -461,7 +667,18 @@ export function ArchitectureExplorer() {
         <div className="xl:col-span-4">
           <div className="xl:sticky xl:top-[calc(var(--arpi-size-header)+2rem)]">
             {selected ? (
-              <NodeDetail node={selected} upstream={upstream} downstream={downstream} />
+              /*
+               * Keyed by node, so the panel replays its arrival on every new
+               * selection rather than reconciling silently into different text.
+               * The `wake` animation is CSS and the site-wide reduced-motion
+               * rule collapses it to 1ms, so a reader who asked for no animation
+               * gets the same panel instantly. It is also what makes assistive
+               * technology treat this as a new panel: the `aria-live` region
+               * inside it announces a replacement rather than an edit.
+               */
+              <div key={selected.id} className="animate-wake">
+                <NodeDetail node={selected} upstream={upstream} downstream={downstream} />
+              </div>
             ) : (
               <Card tone="sunken" className="flex flex-col gap-3">
                 {/* Level 2, not 3. This panel is the first heading after the page
