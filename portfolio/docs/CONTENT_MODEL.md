@@ -326,6 +326,40 @@ repository root enforces that), and no route displays a row.
 and `tests/e2e/content-integrity.spec.ts` asserts it route by route. It is also on the
 social-preview card, which is the one surface a reader sees before the site loads.
 
+**What may go behind a disclosure, and what may never.** The home page's
+default-visible prose was reduced from **1,931 words to 1,431** in the release
+pass by moving supplemental reasoning into native `<details>` through
+`src/components/ui/disclosure.tsx`. The line that governs it:
+
+| May be disclosed                                      | Must stay visible                                  |
+| ----------------------------------------------------- | -------------------------------------------------- |
+| Why a decision was made                               | The fictional-entity notice for Granite Auto Group |
+| The long form of an argument already stated in a line | The sanitized-public-reference-data statement      |
+| Background a reader may already have                  | Gate 2 status and the case-study lock              |
+| Repeated reasoning a tab set would show three times   | "Listings are not sales, gross or turn"            |
+|                                                       | Every `SourceLink` provenance path                 |
+
+The rule behind the table: **a caveat behind a control is a caveat the page is
+hoping nobody opens.** Anything that changes how a reader should interpret the
+artefact standing beside it is not supplemental, whatever its length.
+
+`tests/e2e/content-integrity.spec.ts` enforces this by reading only the text that
+is _not_ inside a collapsed `<details>` and asserting each qualification is still
+in it — so moving one behind a summary fails the suite rather than passing review.
+
+**A summary names what it opens.** "Learn more", "Read more", "Details" and
+"More" are rejected by the same suite. Labels state the question their contents
+answer — "Why these stores cannot share one operating model", "Why no KPI value
+appears anywhere in the catalogue" — because a reader deciding whether to open
+something needs to know what is in it, and four steps of a tour labelled "The
+decision behind it" are four labels nobody can choose between.
+
+Disclosures are `<details>` rather than a custom control so the contents are in
+the server-rendered document, the expanded state is reported by the element
+itself, and the whole thing works with scripting disabled. A print rule opens
+them, because a collapsed disclosure on paper is content that can never be
+reached.
+
 **Banned vocabulary.** The words _revolutionary, cutting-edge, game-changing, seamless,
 next-generation, unlocking insights, transforming the industry, leveraging data, robust
 solution, powerful platform_ do not appear on the site, and a content-integrity test

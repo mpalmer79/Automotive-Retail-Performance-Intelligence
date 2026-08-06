@@ -300,3 +300,71 @@ in a LinkedIn post.
 
 Do the six things in section 6, in order. Items 1 and 2 are the gate; item 5 is
 what makes the new social card appear on an existing post.
+
+---
+
+## 10. Final release hardening pass
+
+A second pass, on branch `claude/arpi-final-release-hardening`, cut from the
+branch above rather than from `origin/main` — the seven-chapter home page this
+document describes lives there and nowhere else.
+
+It began by treating a supplied audit as **hypotheses rather than findings** and
+checking each against the rendered production build. The reconciliation is in
+[FINAL_RELEASE_AUDIT.md](FINAL_RELEASE_AUDIT.md). Eleven of sixteen claims were
+rejected as already resolved or never true, which is the outcome worth recording:
+most of the work was confirming that work already done did not need doing again.
+
+### 10.1 The one confirmed defect
+
+The listing table's content is 1,028px wide inside a container that is 254px at a
+320px viewport. Eight of ten columns were outside it, **including the advertised
+price**, with nothing on screen indicating they existed. The page never scrolled
+sideways, so every overflow assertion passed — and one test actively certified
+the behaviour as correct.
+
+Below 1280px the listings are now stacked cards carrying every field the table
+carries; at 1280px and above the semantic table renders with no column outside
+its container at any width. Measured at 320, 375, 390, 768, 1024, 1280, 1440 and
+1920.
+
+### 10.2 What was preserved rather than rebuilt
+
+The seven chapters. The hero's live product surface and its lineage rail. The
+four real route captures and the script that makes them. The accessible SVG
+charts and their `<details>` table alternatives. The architecture explorer's
+listbox keyboard model and always-present component list. The store comparison
+table. `flags.ts`, `site-url.ts` and the preview notice. Every generated count.
+
+The product captures and the social card were both **regenerated and came back
+byte-identical**, which is the strongest available evidence that they were
+already current.
+
+### 10.3 What was added
+
+Purposeful motion in the architecture diagram — a one-time arrival sequence in
+band order and a selection wave that resolves upstream inward and downstream
+outward, with planned edges never drawing. A production-ready portrait contract
+that renders a photograph if one is committed and a designed placeholder if not.
+Native disclosures that cut default-visible home-page prose from 1,931 words to
+1,431 without hiding a single qualification. Domain and store-type iconography.
+
+### 10.4 External actions still outstanding
+
+Unchanged from section 6, plus one:
+
+7. **Supply the author portrait.** Commit
+   `portfolio/public/media/michael-palmer-portrait.webp` at 1000 × 1250, WebP,
+   under 180 kB. No code change is needed — the component resolves it from disk
+   at build time. Until then the designed placeholder renders at identical
+   geometry, so the page is not broken and no stock photograph is substituted.
+
+### 10.5 Launch recommendation, restated
+
+**Ready after Railway production verification.**
+
+Unchanged in substance from section 9, and unchanged for the same reason: the
+codebase is releasable and the blocker is configuration, not code. Nothing in
+this pass touched the preview logic, nothing hard-codes `production`, and staging
+correctly stays `noindex` with its unpublished notice until a Railway environment
+named `production` exists.

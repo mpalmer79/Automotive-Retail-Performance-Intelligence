@@ -237,8 +237,67 @@ them is **one**, not four:
   displays, so they stay sharp on a high-density display without a second
   candidate.
 
-`next.config.ts` still has **no image-loader configuration**, and these do not
-introduce one. They are served directly rather than through `next/image`: they
+### The author portrait, and why it is `unoptimized`
+
+`components/media/author-portrait.tsx` is the one place on the site that uses
+`next/image`. It renders the approved photograph if one is committed and a
+designed placeholder at identical geometry if not — there is none today, so it
+currently costs zero bytes.
+
+It is declared `unoptimized`, which is the same trade the frames above make and
+for the same reason: with `output: 'standalone'`, enabling the optimizer for one
+file puts a runtime `sharp` dependency inside the Railway image. The portrait
+contract already requires the file to be supplied at exactly 1000 × 1250 — twice
+its largest rendered width — already encoded as WebP or AVIF, and under 180 kB.
+There is nothing left for an optimizer to do.
+
+What `next/image` is still doing is the part that matters: it requires the
+intrinsic dimensions, so the box is reserved in the server-rendered markup and
+the photograph's eventual arrival shifts no layout. `/about` marks it `priority`
+because that page is its subject and it is the only placement that is an LCP
+candidate; the home page's builder chapter is the sixth section and lazy-loads it.
+
+### The HTML weight of the responsive listing presentation
+
+Making the listings readable below 1280px meant rendering both presentations —
+cards and table — with a media query choosing between them. A server component
+cannot know the viewport, so both are in the document.
+
+That is a real cost and it is not hidden here. Measured on
+`/dealerships/granite-pre-owned`, the page that renders its complete 318-listing
+snapshot:
+
+|                                          | Raw HTML | Compressed |
+| ---------------------------------------- | -------- | ---------- |
+| Before                                   | 932 kB   | 45.8 kB    |
+| Cards written as inline utility strings  | 2,463 kB | 75.8 kB    |
+| Cards written as CSS utilities (shipped) | 2,028 kB | 72.1 kB    |
+
+The middle row is why the nine card utilities in `globals.css` exist. Written as
+Tailwind utility strings each card carried about 1,270 characters of class
+attribute, and 318 of them is roughly 400 kB of repeated class names in one
+document.
+
+The remaining increase is accepted rather than engineered away. The alternative
+was to drop fields from the narrow presentation, and the field a phone was losing
+was the advertised price. Compressed transfer — which is what a visitor actually
+pays — grew by 26 kB on the heaviest route on the site. The other two store pages
+and `/inventory`, which paginates at 25, are unaffected at any scale that matters.
+
+**Layout cost, which is separate from transfer cost.** The card list shipped
+uncapped in its first form, and document height at a 320px viewport went from a
+short page to **105,036px** — the table had always carried `max-h-[40rem]` and
+scrolled inside its own box, and the cards did not. Applying the same cap brought
+it to **9,094px**. Bytes were not the problem there; a hundred and thirty screens
+of layout was.
+
+It is recorded here because of how it surfaced: two accessibility reflow tests
+started **timing out** rather than failing, since the sweep scrolls each route
+end to end and 105,000px is 219 scroll steps. A timeout is the weakest useful
+signal a suite can give, and this one was pointing at a real defect.
+
+`next.config.ts` still has **no image-loader configuration**, and the product-tour
+frames do not introduce one. They are served directly rather than through `next/image`: they
 are already the only size they are displayed at and already encoded, so the
 optimizer would add a runtime `sharp` dependency inside the Railway standalone
 image in exchange for nothing. The two things `next/image` would genuinely have

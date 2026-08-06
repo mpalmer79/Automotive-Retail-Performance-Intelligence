@@ -149,7 +149,60 @@ ARPI_MEDIA_BASE_URL=http://localhost:3111 npm run media
 
 The frames' pixel dimensions are declared in
 `src/components/sections/product-tour.tsx` so each reserves its box before the
-bytes arrive. If a re-capture changes a size, change it there too.
+bytes arrive. If a re-capture changes a size, change it there too — and you do
+not have to remember: `tests/unit/media.test.ts` reads the real dimensions out of
+each WebP header and fails if they disagree with the declaration, because a
+declared box that does not match the file is a layout shift the moment the bytes
+land.
+
+The capture is deterministic enough to review. Re-running it against an unchanged
+build reproduces the committed files byte for byte, so a diff in `public/media/`
+means a page changed rather than that the encoder felt different that day.
+
+### The author portrait, which is not committed
+
+There is **no photograph of Michael Palmer in this repository**, and this project
+does not put a stock image of a stranger on a page that names a real person. The
+slot is `src/components/media/author-portrait.tsx`, which renders the approved
+file if one exists and a designed placeholder at identical geometry if not. Both
+occupy the same box, so adding the photograph changes pixels and moves nothing.
+
+To supply it, commit one file — and nothing else:
+
+```
+portfolio/public/media/michael-palmer-portrait.webp
+```
+
+| Property     | Requirement                                                                    |
+| ------------ | ------------------------------------------------------------------------------ |
+| Aspect ratio | 4:5 portrait. Not 1:1, not 3:4 — the chapter reserves 4:5                      |
+| Dimensions   | 1000 × 1250, exactly                                                           |
+| Format       | WebP at about quality 82. `.avif` is accepted at the same stem and preferred   |
+| Maximum size | 180 kB                                                                         |
+| Crop         | Head and shoulders, eyes on the upper third, shoulders meeting the bottom edge |
+| Background   | Plain or quiet. No dealership signage, no vehicle, no logo, no other person    |
+
+No code change, no import and no flag: the component resolves the file from disk
+at build time. `.jpg` and `.png` are deliberately **not** accepted, so a stock
+photograph cannot arrive by dropping a file into the directory. The alt text is
+authored in the component and names the person rather than describing the
+photograph.
+
+### Running the responsive checks
+
+The listing presentation changes at 1280px — stacked cards below, the semantic
+table above — and the reflow matrix is asserted rather than eyeballed:
+
+```bash
+npm run build
+npx playwright test tests/e2e/inventory.spec.ts -g "listings are readable"
+npx playwright test tests/e2e/accessibility.spec.ts
+```
+
+The first covers 320, 375, 390, 768 and 1024 for the cards and 1280, 1440 and
+1920 for the table, checks that every field survives at every width, and that
+filtering, sorting and pagination stay usable at 320px. The second is the axe
+sweep and the page-level overflow matrix.
 
 ---
 

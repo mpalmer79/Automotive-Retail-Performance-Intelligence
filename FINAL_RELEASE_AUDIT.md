@@ -156,6 +156,7 @@ These cannot be completed from a coding environment and are **not** claimed as d
 | Confirm the Railway environment is named `production` | Michael Palmer | `resolveIsPreview` reads `RAILWAY_ENVIRONMENT_NAME` at run time. Any other name keeps the site `noindex` — correctly, but silently. |
 | Confirm the production URL and canonical origin | Michael Palmer | Resolved from `RAILWAY_PUBLIC_DOMAIN` at run time. |
 | Verify the live deployment matches this branch | Michael Palmer | The deployment is not reachable from here. |
+| — | — | **What the repository does say:** `npm run verify` at the root reports the declared Railway environment as **`staging`**, with services `arpi-portfolio`, `Postgres` and `arpi-database-setup`. That is the configuration under review, not an observation of a running deployment. |
 | Run the documented deployment-evidence workflow | Michael Palmer | `scripts/record_deployment_evidence.py` must observe a real deployment. Evidence was **not** edited by hand. |
 | Refresh the LinkedIn preview cache | Michael Palmer | Requires an authenticated LinkedIn session. |
 
@@ -163,4 +164,95 @@ These cannot be completed from a coding environment and are **not** claimed as d
 
 ## 6. Post-implementation record
 
-*Completed at the end of the release; see the final section of this document.*
+### 6.1 Visible prose, before and after
+
+Measured from the rendered production build at 1440px, counting words in `<p>` and `<li>`
+elements that have layout boxes. Text inside a collapsed `<details>` is excluded, which is
+the point of the measurement.
+
+| Section | Before | After | Change |
+|---|---|---|---|
+| Hero | 157 | 157 | unchanged — the first screen is the proposition |
+| Store story | 815 | 506 | −309 |
+| Product tour | 183 | 111 | −72 |
+| Operating view | 196 | 196 | unchanged — the interpretation cautions qualify the measures |
+| Engineering proof | 125 | 125 | unchanged |
+| Builder | 372 | 253 | −119 |
+| Closing | 83 | 83 | unchanged |
+| **Total prose** | **1,931** | **1,431** | **−25.9%** |
+| Total words in `<main>` | 2,601 | 2,132 | −18.0% |
+| Disclosures on the page | 2 | 10 | +8 |
+| Sections | 7 | 7 | unchanged |
+
+The 25% target is met at 25.9%. Nothing was deleted: every word moved is behind a
+`<details>` whose contents are in the server-rendered HTML.
+
+Five things were checked to be still readable **without opening anything**, and are
+asserted as such in `tests/e2e/content-integrity.spec.ts`: the fictional-entity notice,
+the synthetic-data statement, the sanitized-listing provenance, the "not a performance
+result" boundary and the Gate 2 position.
+
+### 6.2 What changed, by phase
+
+| Phase | Outcome |
+|---|---|
+| 1 — Inventory responsiveness | Cards below 1280px, table above. Every field at every width. No clipped column at any desktop width. |
+| 2 — Media | Captures regenerated: **byte-identical**, so already current and deterministic. Social card re-rendered: **byte-identical**. Portrait contract scaffolded. |
+| 3 — Architecture motion | One-time arrival sequence in band order; selection wave resolving inward and outward. Planned edges never draw. |
+| 4 — Progressive disclosure | Prose −25.9% through eight new native disclosures with concrete labels. |
+| 5 — Hierarchy and icons | Domain and store-type icons, decorative and hidden from assistive technology. CTA hierarchy and section rhythm already correct — preserved. |
+| 6 — Performance | HTML weight of the dual presentation measured and recorded rather than hidden. Portrait forced `unoptimized` to keep `sharp` out of the standalone image. |
+| 7–8 — Accessibility and tests | 39 new tests. No existing test weakened; one replaced and one convention corrected, both explained below. |
+| 9 — Deployment safety | Verified unchanged. Nothing hard-coded, staging protections intact. |
+
+### 6.3 Test rules that changed, and why
+
+Two, both explained rather than quietly adjusted.
+
+**Replaced.** `tests/e2e/inventory.spec.ts` asserted that at 375px the listing table
+scrolls inside its own container rather than scrolling the page. That was true, and it
+certified the defect: the container is 254px at 320px and the table is 1,028px, so the
+assertion passed on a page where a reader could not see what a car cost. There is no table
+at 375px now, so the assertion has nothing to bind to. Sixteen tests replace it.
+
+**Corrected.** A new reduced-motion block was first written with
+`test.use({ reducedMotion: 'reduce' })`. That form does **not** take effect in a nested
+describe under this configuration — the tests ran with motion fully enabled and still
+passed every assertion that did not depend on it. The rest of the file uses
+`test.use({ contextOptions: { reducedMotion: 'reduce' } })`, and it now does too. This is
+recorded in `portfolio/docs/MOTION_SYSTEM.md` section 9 because the failure mode is
+silent coverage loss, not a red test.
+
+### 6.4 Performance, measured
+
+`/dealerships/granite-pre-owned`, the heaviest route, rendering its complete 318-listing
+snapshot:
+
+| | Raw HTML | Compressed |
+|---|---|---|
+| Before | 932 kB | 45.8 kB |
+| After, cards as inline utility strings | 2,463 kB | 75.8 kB |
+| After, cards as CSS utilities (shipped) | 2,028 kB | 72.1 kB |
+
+Both presentations are in the document because a server component cannot know the
+viewport. The increase is real and is accepted: the alternative was to keep hiding the
+advertised price from a phone. No new dependency was added, no charting library was
+introduced, and the four product captures are unchanged.
+
+**Document height at 320px**, which is a separate cost from transfer and was the more
+serious of the two:
+
+| | `/dealerships/granite-pre-owned` |
+|---|---|
+| Cards shipped uncapped | 105,036px — about 130 screens |
+| Cards capped as the table already was | 9,094px |
+
+The table had carried `max-h-[40rem]` since it was written; the cards had not. The defect
+surfaced as a **timeout**, not an assertion failure: the reflow sweep scrolls each route
+end to end, and 105,000px is 219 scroll steps, which pushed the 320px and 375px tests past
+their 45-second budget. A timing-out test is the weakest signal a suite gives and it was
+pointing at something real.
+
+**Not measured, and not claimed:** first contentful paint, largest contentful paint and
+Lighthouse scores against the live deployment. No such figure appears in this document or
+on the site.
