@@ -45,6 +45,7 @@ export const TOUR_STEPS: readonly TourStep[] = [
     summary: `Every listing the three stores carry, filterable by store, condition, make, model, model year, advertised price and mileage, and sortable six ways. ${formatCount(inventorySummary.totalRecords)} rows, derived at build time from the workbooks in this repository.`,
     insight:
       'There is no request and no loading state. The record set was read from the workbooks at build time and ships as data, so a filter is a synchronous pass over rows that arrived with the page. Sorting by price puts an unpriced listing last in both directions rather than treating a missing price as zero, because a listing the source did not price is not the cheapest car on the lot.',
+    insightLabel: 'Why filtering this table never touches the network',
     cta: 'Open the inventory explorer',
     image: {
       src: '/media/inventory-explorer.webp',
@@ -65,6 +66,7 @@ export const TOUR_STEPS: readonly TourStep[] = [
       'Every component of the platform, from a seeded generator through the raw, staging, warehouse, reporting and audit schemas to the semantic model above them. Selecting one shows what owns it, what state it is in, which database role can reach it, and what it depends on.',
     insight:
       'The semantic model and both validation paths are drawn with dashed outlines because they are built and statically checked and no Microsoft engine has ever loaded them. The states are not authored in the component: they come from the generated manifest, so the diagram cannot claim a stage is finished after the evidence stops saying so.',
+    insightLabel: 'Why three components are drawn with dashed outlines',
     cta: 'Open the architecture explorer',
     image: {
       src: '/media/architecture-explorer.webp',
@@ -84,6 +86,7 @@ export const TOUR_STEPS: readonly TourStep[] = [
     summary: `${formatCount(counts.dimensions.value)} conformed dimensions and ${formatCount(counts.facts.value)} facts, each with its declared grain, its keys, how it handles change over time, and how it is classified for privacy. Selecting an entity highlights the relationships it participates in.`,
     insight:
       'The grain is the field worth reading first, and it is enforced by a UNIQUE constraint in DDL rather than promised in a document. Every relationship in the model is single-direction: there is no bidirectional filter and no many-to-many, and a static check fails the build if one appears.',
+    insightLabel: 'Why the grain is a database constraint, not a promise',
     cta: 'Open the data model explorer',
     image: {
       src: '/media/data-model-explorer.webp',
@@ -103,6 +106,7 @@ export const TOUR_STEPS: readonly TourStep[] = [
     summary: `Every governed KPI with its formula, both sides of its ratio, its grain, its date basis, its null rule, the reporting view that owns the SQL, and what a reader must not conclude from it. ${formatCount(counts.governedKpis.value)} of them, searchable and filterable by domain and implementation status.`,
     insight:
       'No value appears anywhere in the catalogue, and none will until an engine has returned one that reconciles. What is published instead is the part that is genuinely hard and genuinely rare: the exclusion rules, the denominators, and the interpretation caution that travels on the measure rather than in a footnote nobody reads.',
+    insightLabel: 'Why no KPI value appears anywhere in the catalogue',
     cta: 'Open the KPI catalogue',
     image: {
       src: '/media/kpi-catalogue.webp',

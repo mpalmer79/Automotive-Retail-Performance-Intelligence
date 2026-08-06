@@ -49,6 +49,7 @@ import {
 } from '@/components/media/application-frame'
 import { SegmentedTabs } from '@/components/media/segmented-tabs'
 import { LinkButton } from '@/components/ui/button'
+import { Disclosure } from '@/components/ui/disclosure'
 import { Heading, Text } from '@/components/ui/typography'
 import { cx } from '@/lib/utils'
 
@@ -70,6 +71,12 @@ export interface TourStep {
   readonly summary: string
   /** One decision a reader could not infer from the picture. */
   readonly insight: string
+  /**
+   * The summary the insight sits behind. Names the specific decision, not its
+   * category: four steps labelled "The decision behind it" are four labels a
+   * reader cannot choose between.
+   */
+  readonly insightLabel: string
   readonly cta: string
   readonly image: {
     readonly src: string
@@ -135,12 +142,15 @@ export function ProductTour({ steps, className }: ProductTourProps) {
             {step.summary}
           </Text>
 
-          <div className="flex flex-col gap-2 border-l-2 border-accent-muted/50 pl-4">
-            <span className="eyebrow text-2xs">The decision behind it</span>
+          {/* The decision behind the route, behind a summary that states which
+              decision. "The decision behind it" was an accurate eyebrow and a
+              useless label - it told a reader the kind of thing they would get
+              rather than which thing, so every step read the same. */}
+          <Disclosure label={step.insightLabel}>
             <Text size="sm" tone="secondary" className="max-w-prose">
               {step.insight}
             </Text>
-          </div>
+          </Disclosure>
 
           <div className="mt-1">
             <LinkButton href={step.href} variant="secondary" iconAfter={<ArrowRight />}>

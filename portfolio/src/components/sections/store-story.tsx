@@ -38,6 +38,7 @@ import { Reveal } from '@/components/motion/reveal'
 import { LinkButton } from '@/components/ui/button'
 import { Card } from '@/components/ui/card-static'
 import { SourceLink } from '@/components/ui/data-card'
+import { Disclosure } from '@/components/ui/disclosure'
 import { Container, Section, SectionHeader } from '@/components/ui/layout'
 import { Heading, Text } from '@/components/ui/typography'
 import { BarChart, StackedMixBar } from '@/components/visuals/inventory-charts'
@@ -94,17 +95,34 @@ export function StoreStory() {
           lede={dealershipGroup.introduction}
         />
 
-        <Text size="body" tone="muted" className="mt-6 max-w-prose">
-          {dealershipGroup.operatingModel}
-        </Text>
-
+        {/* The tab set comes FIRST now. The operating-model paragraph used to
+            sit between the lede and the artefact, which put roughly sixty words
+            of reasoning in front of the thing the reasoning is about. It has not
+            been deleted - it is the disclosure directly under the tabs, where a
+            reader who has just switched between three stores is the reader who
+            wants it. */}
         <StoreStoryTabs panels={storeStoryPanels} className="mt-10" />
+
+        <Disclosure
+          label="Why one reporting layer has to hold three different businesses"
+          className="mt-8"
+        >
+          <Text size="body" tone="muted" className="max-w-prose">
+            {dealershipGroup.operatingModel}
+          </Text>
+        </Disclosure>
 
         {/* 2. The contrast the tab set demonstrates one store at a time, stated
                once as the general case. This is the sentence a group-level
                report has to respect, and it is the reason the store dimension
                exists. */}
-        <Reveal className="mt-16 flex flex-col gap-6 border-t border-line pt-12">
+        {/* The contrast, stated once as the general case.
+            The finding is one sentence and it is visible. The four paragraphs
+            that argue it - what a franchise agreement is, what an independent
+            buyer does, and the two figures from this snapshot that show it -
+            are supplemental, and they are behind a summary that names the
+            question they answer. */}
+        <Reveal className="mt-16 flex flex-col gap-5 border-t border-line pt-12">
           <div className="flex flex-col gap-3">
             <span className="eyebrow text-2xs">Inventory strategy</span>
             <Heading level={3} size="h4">
@@ -112,41 +130,43 @@ export function StoreStory() {
             </Heading>
             <Text size="body" tone="muted" className="max-w-prose">
               The single most useful thing a group-level report can know about these three
-              stores is which of them chooses what it stocks.
+              stores is which of them chooses what it stocks. Two of them do not.
             </Text>
           </div>
 
-          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-            <Card className="flex flex-col gap-3">
-              <Heading level={4} size="h6">
-                {`Franchise: ${franchiseStores.map((store) => store.shortName).join(' and ')}`}
-              </Heading>
-              <Text size="sm" tone="secondary" className="max-w-prose">
-                A franchise rooftop sells a manufacturer&apos;s new vehicles under a sales
-                and service agreement, and what arrives is largely decided by allocation:
-                the store orders into a build schedule it does not control. Its levers are
-                pricing, merchandising and turn.
-              </Text>
-              <Text size="sm" tone="muted" className="max-w-prose">
-                {`In this snapshot the two franchise stores hold ${formatCount(summary.newRecords)} of the group's new listings and all of them. A group report that compares new-vehicle days supply across all three stores is comparing two stores and an empty set.`}
-              </Text>
-            </Card>
+          <Disclosure label="Why these stores cannot share one operating model">
+            <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+              <Card className="flex flex-col gap-3">
+                <Heading level={4} size="h6">
+                  {`Franchise: ${franchiseStores.map((store) => store.shortName).join(' and ')}`}
+                </Heading>
+                <Text size="sm" tone="secondary" className="max-w-prose">
+                  A franchise rooftop sells a manufacturer&apos;s new vehicles under a
+                  sales and service agreement, and what arrives is largely decided by
+                  allocation: the store orders into a build schedule it does not control.
+                  Its levers are pricing, merchandising and turn.
+                </Text>
+                <Text size="sm" tone="muted" className="max-w-prose">
+                  {`In this snapshot the two franchise stores hold ${formatCount(summary.newRecords)} of the group's new listings and all of them. A group report that compares new-vehicle days supply across all three stores is comparing two stores and an empty set.`}
+                </Text>
+              </Card>
 
-            <Card className="flex flex-col gap-3">
-              <Heading level={4} size="h6">
-                {`Independent: ${independentStores.map((store) => store.shortName).join(' and ')}`}
-              </Heading>
-              <Text size="sm" tone="secondary" className="max-w-prose">
-                An independent store has no franchise agreement, no allocation and no new
-                vehicle order bank. Every unit it lists was bought: at auction, from a
-                trade, from a lease return, or from another dealer. Its inventory is a
-                record of buying decisions in a way a franchise store&apos;s is not.
-              </Text>
-              <Text size="sm" tone="muted" className="max-w-prose">
-                {`It shows in the data. The independent store carries ${formatCount(independentStores[0]?.inventory.makeCount ?? 0)} makes against the Chevrolet store's ${formatCount(dealerships[0]?.inventory.makeCount ?? 0)}, and the widest model-year spread in the group. Neither is a performance result. Both are structural facts a report has to respect.`}
-              </Text>
-            </Card>
-          </div>
+              <Card className="flex flex-col gap-3">
+                <Heading level={4} size="h6">
+                  {`Independent: ${independentStores.map((store) => store.shortName).join(' and ')}`}
+                </Heading>
+                <Text size="sm" tone="secondary" className="max-w-prose">
+                  An independent store has no franchise agreement, no allocation and no
+                  new vehicle order bank. Every unit it lists was bought: at auction, from
+                  a trade, from a lease return, or from another dealer. Its inventory is a
+                  record of buying decisions in a way a franchise store&apos;s is not.
+                </Text>
+                <Text size="sm" tone="muted" className="max-w-prose">
+                  {`It shows in the data. The independent store carries ${formatCount(independentStores[0]?.inventory.makeCount ?? 0)} makes against the Chevrolet store's ${formatCount(dealerships[0]?.inventory.makeCount ?? 0)}, and the widest model-year spread in the group. Neither is a performance result. Both are structural facts a report has to respect.`}
+                </Text>
+              </Card>
+            </div>
+          </Disclosure>
         </Reveal>
 
         {/* 3. The comparison. A table, because eight columns across three stores
@@ -333,21 +353,38 @@ export function StoreStory() {
         {/* 4. The boundary. Stated where the evidence was just shown, rather
                than in a footer nobody reaches. */}
         <Reveal className="mt-16 grid grid-cols-1 gap-8 border-t border-line pt-12 lg:grid-cols-12 lg:gap-12">
+          {/* The three properties stay visible as titles - they are the claim.
+              Their explanations are behind one disclosure, because a reader who
+              accepts "one definition, conformed across stores" does not need the
+              paragraph and a reader who does not, does. The card beside this is
+              NOT a disclosure and must never become one: it is what a reader has
+              to know to interpret every figure above it. */}
           <div className="flex flex-col gap-5 lg:col-span-7">
             <span className="eyebrow text-2xs">Governed group reporting</span>
             <Heading level={3} size="h4">
               One number per question, and a store dimension under it
             </Heading>
-            <ul className="flex flex-col gap-4">
+            <ul className="flex flex-col gap-2">
               {CONFORMANCE.map((item) => (
-                <li key={item.title} className="flex flex-col gap-1">
-                  <span className="text-sm font-semibold text-ink">{item.title}</span>
-                  <Text size="sm" tone="muted" className="max-w-prose">
-                    {item.detail}
-                  </Text>
+                <li key={item.title} className="text-sm font-semibold text-ink">
+                  {item.title}
                 </li>
               ))}
             </ul>
+            <Disclosure label="What each of those three actually guarantees">
+              <dl className="flex flex-col gap-4">
+                {CONFORMANCE.map((item) => (
+                  <div key={item.title} className="flex flex-col gap-1">
+                    <dt className="text-sm font-semibold text-ink">{item.title}</dt>
+                    <dd>
+                      <Text size="sm" tone="muted" className="max-w-prose">
+                        {item.detail}
+                      </Text>
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </Disclosure>
           </div>
 
           <Card tone="pending" className="flex flex-col gap-3 lg:col-span-5">

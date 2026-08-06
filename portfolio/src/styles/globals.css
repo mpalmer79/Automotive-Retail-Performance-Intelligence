@@ -396,6 +396,41 @@
 }
 
 /* ==========================================================================
+   Disclosures in print
+   --------------------------------------------------------------------------
+   A printed page has no interaction, so a collapsed `<details>` on paper is
+   content the reader can see the label of and can never open. Every disclosure
+   on this site is opened for print.
+
+   The chart table alternatives are opened too, and they are the reason this
+   rule is worth having: on screen they are collapsed so five charts do not
+   become five tables on a phone, and on paper the table is the only readable
+   form of a bar whose length the reader cannot measure.
+   ========================================================================== */
+
+@media print {
+  /* `::details-content` is the only way CSS can open a `<details>`: the `open`
+     attribute is the state, and a stylesheet cannot set an attribute. Engines
+     that do not support the pseudo-element ignore this rule and print the
+     disclosure collapsed, which is the same behaviour as before it existed -
+     no regression, and the content is still in the document for anything that
+     reads the markup rather than the paint. */
+  details::details-content {
+    content-visibility: visible;
+    block-size: auto;
+  }
+
+  /* The chevron is an affordance for a control that paper does not have. */
+  details > summary {
+    list-style: none;
+  }
+
+  details > summary svg {
+    display: none;
+  }
+}
+
+/* ==========================================================================
    Inventory listing cards
    --------------------------------------------------------------------------
    The narrow-width presentation of `components/dealerships/inventory-table.tsx`,

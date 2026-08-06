@@ -39,6 +39,7 @@
 import { ArrowRight, FolderGit2 } from 'lucide-react'
 
 import { AuthorPortrait } from '@/components/media/author-portrait'
+import { Disclosure } from '@/components/ui/disclosure'
 import { Reveal } from '@/components/motion/reveal'
 import { LinkButton } from '@/components/ui/button'
 import { Container, Section, SectionHeader } from '@/components/ui/layout'
@@ -53,6 +54,14 @@ interface Judgement {
   readonly decision: string
   /** Why that decision needs someone who has worked the floor. */
   readonly judgement: string
+  /**
+   * The summary label the judgement sits behind.
+   *
+   * Written per item rather than generated, because "Why this matters" three
+   * times running is three labels that say nothing. Each one names the specific
+   * thing going wrong if the decision goes the other way.
+   */
+  readonly disclosure: string
   /** Where it lives in the repository. */
   readonly artefact: string
 }
@@ -69,6 +78,7 @@ const JUDGEMENTS: readonly Judgement[] = [
       'Front-end, back-end and total gross stay separate through the warehouse, the reporting views and the KPI layer. They are never summed early.',
     judgement:
       'A store holding total gross while front gross collapses is in a materially different position from one where both are steady. Combining them destroys the diagnosis, and the diagnosis is the entire reason a general manager opened the report.',
+    disclosure: 'Why summing the three gross figures destroys the diagnosis',
     artefact: 'KPI-GRS-001 / 002 / 003',
   },
   {
@@ -78,6 +88,7 @@ const JUDGEMENTS: readonly Judgement[] = [
       'Volume alone never ranks a person in this model. The employee measures carry an interpretation caution on the measure itself, not in a document.',
     judgement:
       'A leaderboard built on volume rewards whoever the lead routing favours and punishes whoever is closing hard deals slowly. Publishing one is how a reporting project loses the sales floor in a single week.',
+    disclosure: 'Why a volume leaderboard costs you the sales floor',
     artefact: 'KPI-SLS-001 interpretation caution',
   },
   {
@@ -87,6 +98,7 @@ const JUDGEMENTS: readonly Judgement[] = [
       'Daily snapshots at vehicle, store and day grain. Median age leads and the mean is published beside it, because the gap between them is the finding.',
     judgement:
       'Inventory age is right-skewed. A handful of two-hundred-day units drags the mean up and makes a healthy lot look sick, or hides a bad tail inside a comfortable average. Which one leads is a decision, and getting it wrong sends a manager after the wrong cars.',
+    disclosure: 'Why the median leads and the mean is published beside it',
     artefact: 'KPI-INV-003 and KPI-INV-004',
   },
 ]
@@ -239,13 +251,22 @@ export function Builder() {
                           <CodeLabel tone="accent">{item.artefact}</CodeLabel>
                         </div>
                       </div>
+                      {/* The question and the decision are visible: together
+                          they ARE the judgement, and the artefact beside them is
+                          checkable. What is behind the disclosure is the
+                          argument for why the decision needs someone who has
+                          worked a sales floor - which is worth reading and is
+                          not worth making every visitor read three times before
+                          reaching the closing section. */}
                       <div className="flex flex-col gap-2 lg:col-span-7">
                         <p className="text-sm leading-snug font-semibold text-ink">
                           {item.decision}
                         </p>
-                        <Text size="sm" tone="muted" className="max-w-prose">
-                          {item.judgement}
-                        </Text>
+                        <Disclosure label={item.disclosure}>
+                          <Text size="sm" tone="muted" className="max-w-prose">
+                            {item.judgement}
+                          </Text>
+                        </Disclosure>
                       </div>
                     </article>
                   </Reveal>
