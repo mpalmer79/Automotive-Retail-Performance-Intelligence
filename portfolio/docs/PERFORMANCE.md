@@ -255,7 +255,9 @@ What `next/image` is still doing is the part that matters: it requires the
 intrinsic dimensions, so the box is reserved in the server-rendered markup and
 the photograph's eventual arrival shifts no layout. `/about` marks it `priority`
 because that page is its subject and it is the only placement that is an LCP
-candidate; the home page's builder chapter is the sixth section and lazy-loads it.
+candidate. It is now the only placement at all: the home page's builder chapter
+was the second one, and the word-count pass moved that chapter to `/about`
+(`CONTENT_MODEL.md` section 12.4), so the portrait is requested on one route.
 
 ### The HTML weight of the responsive listing presentation
 

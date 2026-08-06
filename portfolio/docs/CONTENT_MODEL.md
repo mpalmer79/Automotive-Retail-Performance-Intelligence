@@ -581,10 +581,10 @@ candidates and two navigation items for the same content.
 
 ### 12.2 One implementation of the group overview
 
-The overview lives in `src/components/sections/group-overview.tsx` as seven
-exported sections, composed once by `src/app/page.tsx`. Nothing else renders
-them. That is what "no duplicate dealership overview is independently maintained"
-means in practice: not two copies kept in step, but one copy and a redirect.
+The overview is four section components under `src/components/sections/`,
+composed once by `src/app/page.tsx`. Nothing else renders them. That is what "no
+duplicate dealership overview is independently maintained" means in practice: not
+two copies kept in step, but one copy and a redirect.
 
 ### 12.3 What the home page may say about the author
 
@@ -594,7 +594,53 @@ analytical philosophy - is on `/about` and nowhere else, and
 `navigation.spec.ts` asserts the home page does not carry it. Two pages telling
 the same story at different lengths is how the shorter one goes stale.
 
-### 12.4 The header lost an item
+### 12.4 The home page's prose budget
+
+**450 words of visible prose, in four sections.** Both numbers are asserted by
+`tests/e2e/content-integrity.spec.ts` against a production build on every run.
+
+The page was measured at **1,132 words of visible paragraph text in 61 paragraphs
+across 7 sections**. A product landing page runs 300 to 500. Four working
+experiences were linked from it and it read as an essay with the software buried
+inside.
+
+| Section      | Prose | What it carries                                     |
+| ------------ | ----: | --------------------------------------------------- |
+| Hero         |    92 | the group, the problem, the working inventory frame |
+| Store story  |   170 | three rooftops as tabs, plus the comparison table   |
+| Product tour |    67 | four captures of four real routes                   |
+| Closing      |    95 | the four proof numerals, two actions, the lock      |
+| **Total**    |   424 | budget 450                                          |
+
+**The rule the budget encodes: reference material and disclosure live on the
+route whose subject they are.** Nothing was softened and almost nothing was
+deleted. The operating view is the first thing on `/kpis`. The author narrative
+and the three decisions that came from the floor are on `/about`. The two
+inventory disclaimers were already published in full on `/governance`, so the
+home page's copies went rather than moved. The engineering note about build-time
+data is on `/architecture`. The site says exactly as much as it said before; it
+stopped saying it all on the first screen.
+
+**What counts.** The visible text of every `<p>` inside `<main>`. Excluded:
+`.sr-only`, which is an alternative rendering of something already on the page;
+`<figcaption>`, which belongs to its figure; and table cells, which are data.
+Headings, labels, list items, badges and figures are not `<p>` elements and are
+not counted, and **none of them may be cut to meet the budget** - shortening a
+table column or a filter label to make a word count is the wrong reading of the
+rule.
+
+`innerText` is the measure, so a paragraph inside a collapsed `<details>`
+contributes nothing. That is not a hiding place: the
+`progressive disclosure withholds reasoning, never qualification` tests assert
+that every qualification survives a filter which strips the contents of every
+collapsed disclosure, so a caveat cannot be moved out of the count by folding it
+away.
+
+The one line a stranger who lands on `/` is owed is `TrustLine`: synthetic data,
+the fictional group, listings rather than sales, the derived real-engine state,
+and a link to `/governance`. It stays, it stays one line, and it does not grow.
+
+### 12.5 The header lost an item
 
 Six destinations, not seven. There is no "Dealerships" entry because the group
 overview is "Overview": a second header link to the same URL reads as a second
@@ -617,6 +663,7 @@ href.
 | Add a KPI                      | Add it to `KPI_CATALOG.md` first, then to `src/content/kpis.json`. The unit test asserts they agree. |
 | Publish the case study         | Open Gate 2. All five conditions, in order. The flag is last, not first.                             |
 | Add a colour, size or duration | Add it to `tokens.css`. Nothing else may introduce a raw value.                                      |
+| Add a paragraph to `/`         | Take one out, or put it on the route whose subject it is. The budget is 450 words. See 12.4.         |
 | Add an inventory snapshot      | Commit the sanitized workbook under `data/reference/inventory/`, then `npm run inventory`. See 11.9. |
 | Change a dealership's copy     | Edit `src/content/dealership-profiles.json`. Prose only: a digit there fails the build.              |
 | Change a dealership's identity | Change `data/sample/dim_dealership.csv`. The website reads the warehouse's own dimension.            |
