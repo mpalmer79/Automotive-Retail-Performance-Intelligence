@@ -50,6 +50,13 @@ import { useCallback, useMemo, useState } from 'react'
 
 import { InventoryTable } from '@/components/dealerships/inventory-table'
 import { Button, buttonClass } from '@/components/ui/button'
+import {
+  ControlHint,
+  ControlLabel,
+  Field,
+  SelectControl,
+  TextControl,
+} from '@/components/ui/control'
 import { Text } from '@/components/ui/typography'
 import {
   CONDITION_LABEL,
@@ -59,7 +66,7 @@ import {
   inventoryRecords,
   inventorySummary,
 } from '@/lib/inventory'
-import { cx, formatCount } from '@/lib/utils'
+import { formatCount } from '@/lib/utils'
 import type { InventoryRecord, VehicleCondition } from '@/types/inventory'
 
 /** Rows per page. */
@@ -308,9 +315,13 @@ export function InventoryExplorer() {
       {/* -------------------------------------------------------------- */}
       {/* Controls                                                        */}
       {/* -------------------------------------------------------------- */}
+      {/* The filters and the results were two bordered boxes of the same value
+          stacked on each other, so the page had no peak and the eye had nowhere
+          to land. The rail is now a well: a subtler border, a solid recessed
+          ground, and one radius step below the table it feeds. */}
       <section
         aria-labelledby="inventory-filters-heading"
-        className="flex flex-col gap-5 rounded-xl border border-line bg-surface-sunken/50 p-4 sm:p-5"
+        className="flex flex-col gap-5 rounded-lg border border-line-subtle bg-surface-sunken p-4 sm:p-5"
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 id="inventory-filters-heading" className="text-sm font-semibold text-ink">
@@ -449,13 +460,44 @@ export function InventoryExplorer() {
       {/* Result summary                                                  */}
       {/* -------------------------------------------------------------- */}
       <div className="flex flex-col gap-2">
-        <p role="status" className="text-sm text-ink-secondary">
-          {matches.length === 0
-            ? 'No listing in the snapshot matches this selection.'
-            : `${formatCount(matches.length)} of ${formatCount(inventoryRecords.length)} listings match. ` +
-              `${formatCount(newCount)} new, ${formatCount(matches.length - newCount)} pre-owned, ` +
-              `${formatCount(pricedCount)} with an advertised price.`}
-        </p>
+        {/*
+         * The count is the only figure on this page that changes as a reader
+         * works, which makes it the one thing on screen that proves the
+         * filtering is real. It was a 13px sentence between two boxes.
+         *
+         * The sentence is not replaced, it is split. The live region keeps the
+         * exact words it always announced; the visual band beside it is
+         * `aria-hidden`, so the same figures are not read out twice.
+         */}
+        {matches.length === 0 ? (
+          <p role="status" className="text-sm text-ink-secondary">
+            No listing in the snapshot matches this selection.
+          </p>
+        ) : (
+          <div className="flex flex-wrap items-baseline gap-x-5 gap-y-2 border-b border-line pb-3">
+            <p role="status" className="sr-only">
+              {`${formatCount(matches.length)} of ${formatCount(inventoryRecords.length)} listings match. ` +
+                `${formatCount(newCount)} new, ${formatCount(matches.length - newCount)} pre-owned, ` +
+                `${formatCount(pricedCount)} with an advertised price.`}
+            </p>
+            <p aria-hidden="true" className="flex flex-wrap items-baseline gap-x-2">
+              <span className="numeric font-display text-3xl font-semibold tracking-tighter text-ink">
+                {formatCount(matches.length)}
+              </span>
+              <span className="font-mono text-2xs tracking-wide text-ink-muted uppercase">
+                {`of ${formatCount(inventoryRecords.length)} listings`}
+              </span>
+            </p>
+            {/* The breakdown stays at label size. A second display numeral would
+                be a second peak, and there is one figure here that matters. */}
+            <p
+              aria-hidden="true"
+              className="numeric font-mono text-2xs tracking-wide text-ink-faint uppercase sm:ml-auto"
+            >
+              {`${formatCount(newCount)} new · ${formatCount(matches.length - newCount)} pre-owned · ${formatCount(pricedCount)} priced`}
+            </p>
+          </div>
+        )}
         {rangeFilterActive ? (
           <Text size="xs" tone="faint" className="max-w-prose">
             A price or mileage range excludes listings the source did not expose that
@@ -535,22 +577,23 @@ function SelectField({
   allLabel?: string
   className?: string
 }) {
+  /*
+   * A select sitting on its "all" value is filtering nothing, so it is not
+   * marked. The sort select has no "all" value at all - it is always set to one
+   * of six orders - so it is never marked, because a mark that is always lit
+   * reports nothing.
+   */
+  const active = allLabel !== undefined && value !== ''
+
   return (
-    <div className={cx('flex min-w-0 flex-col gap-1.5', className)}>
-      <label htmlFor={id} className="text-xs font-medium text-ink-muted">
-        {label}
-      </label>
-      <select
+    <Field id={id} label={label} active={active} className={className}>
+      <SelectControl
         id={id}
         value={value}
+        active={active}
         onChange={(event) => {
           onChange(event.target.value)
         }}
-        className={cx(
-          'min-h-touch w-full rounded-lg border border-line bg-canvas px-3 text-sm text-ink',
-          'transition-colors duration-(--arpi-motion-fast)',
-          'hover:border-line-strong focus-visible:border-accent-muted'
-        )}
       >
         {allLabel ? <option value="">{allLabel}</option> : null}
         {options.map((option) => (
@@ -558,8 +601,8 @@ function SelectField({
             {option.label}
           </option>
         ))}
-      </select>
-    </div>
+      </SelectControl>
+    </Field>
   )
 }
 
@@ -601,16 +644,22 @@ function RangeField({
 
   return (
     <fieldset className="flex flex-col gap-1.5">
-      <legend className="text-xs font-medium text-ink-muted">{legend}</legend>
+      {/* The pair is marked as a whole when either bound is set: one bound is
+          enough for the fieldset to be filtering. Each input then carries its
+          own mark, so the reader can see which of the two is doing it. */}
+      <ControlLabel as="legend" active={min !== null || max !== null}>
+        {legend}
+      </ControlLabel>
       <div className="flex items-center gap-2">
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <label htmlFor={`${idPrefix}-min`} className="sr-only">
             {`Minimum ${legend.toLowerCase()} in ${unit}`}
           </label>
-          <input
+          <TextControl
             id={`${idPrefix}-min`}
             type="number"
             inputMode="numeric"
+            active={min !== null}
             min={bounds?.min}
             max={bounds?.max}
             value={min === null ? '' : String(min)}
@@ -618,7 +667,6 @@ function RangeField({
             onChange={(event) => {
               onChange(parse(event.target.value), max)
             }}
-            className={INPUT}
           />
         </div>
         <span aria-hidden="true" className="text-xs text-ink-faint">
@@ -628,10 +676,11 @@ function RangeField({
           <label htmlFor={`${idPrefix}-max`} className="sr-only">
             {`Maximum ${legend.toLowerCase()} in ${unit}`}
           </label>
-          <input
+          <TextControl
             id={`${idPrefix}-max`}
             type="number"
             inputMode="numeric"
+            active={max !== null}
             min={bounds?.min}
             max={bounds?.max}
             value={max === null ? '' : String(max)}
@@ -639,21 +688,14 @@ function RangeField({
             onChange={(event) => {
               onChange(min, parse(event.target.value))
             }}
-            className={INPUT}
           />
         </div>
       </div>
       {bounds ? (
-        <p className="text-2xs text-ink-faint">
+        <ControlHint>
           {`Snapshot range ${format(bounds.min)} to ${format(bounds.max)}`}
-        </p>
+        </ControlHint>
       ) : null}
     </fieldset>
   )
 }
-
-const INPUT = cx(
-  'min-h-touch w-full min-w-0 rounded-lg border border-line bg-canvas px-3 text-sm text-ink',
-  'transition-colors duration-(--arpi-motion-fast)',
-  'hover:border-line-strong focus-visible:border-accent-muted'
-)

@@ -335,3 +335,10 @@ ARPI_REVIEW_BASE_URL=http://localhost:3111 npm run bundle
 Then work the fifteen questions again. The screenshots are the input to that
 judgement, not a substitute for it — which is the same reason there are no committed
 baselines.
+
+---
+
+> **Later pass, not an edit to this record.** The "filters applied" states captured
+> above predate the shared control vocabulary in `src/components/ui/control.tsx`, so
+> a fresh capture of the two explorers will not match what this review saw. See
+> `DESIGN_SYSTEM.md` section 6.3.

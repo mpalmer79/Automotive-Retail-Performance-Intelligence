@@ -407,9 +407,14 @@ function InventoryDataTable({
         </thead>
         <tbody>
           {presented.map((row) => (
+            /* The rows were already banded by a hairline, and a second band at
+               50% of the soft canvas doubled the striping without adding a
+               reading aid. A hover ground replaces it: it tells the reader which
+               row the pointer is on, which is information a stripe cannot
+               carry. */
             <tr
               key={row.key}
-              className="border-b border-line-subtle last:border-0 even:bg-surface/50"
+              className="border-b border-line-subtle transition-colors duration-(--arpi-motion-instant) last:border-0 hover:bg-surface-hover"
             >
               {showDealership ? (
                 <td className={cx(CELL, 'pl-4 text-ink-secondary')}>{row.store}</td>

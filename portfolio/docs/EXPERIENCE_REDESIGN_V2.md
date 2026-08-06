@@ -1067,3 +1067,11 @@ engine, and the four headline figures are still generated from the files that
 prove them. The preview-versus-production rules in `lib/flags.ts` and
 `lib/site-url.ts` were audited and left untouched; the audit is in
 `TODAY_RELEASE_PLAN.md` section 4.
+
+---
+
+> **Later pass, not an edit to this record.** The two explorers' form controls,
+> filter rails and inventory row banding were restyled after this document was
+> written, so where it describes them it describes the build it reviewed rather
+> than the current one. The vocabulary that replaced them is
+> `src/components/ui/control.tsx`, documented in `DESIGN_SYSTEM.md` section 6.3.

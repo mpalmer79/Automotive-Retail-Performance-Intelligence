@@ -399,6 +399,9 @@ that was not got deleted.
 
 **Controls** — `Button`, `LinkButton`, `IconButton` (all from one `buttonClass`)
 
+**Form controls**: `Field`, `ControlLabel`, `ControlHint`, `SelectControl`,
+`TextControl` (all from one control box; section 6.3)
+
 **Status** — `Badge`, `StatusBadge`, `KpiChip`
 
 **Surfaces** — `Card` (static), `InteractiveCard`
@@ -464,6 +467,53 @@ built-in, which is why the whole declaration set is restated there.
 **A wrapper that does not spread `...rest` swallows ARIA.** `Card` dropped an
 `aria-live` passed by a caller, silently. Every primitive now spreads its remaining
 props.
+
+### 6.3 The control vocabulary
+
+Every colour, radius and duration on this site is measured and enforced, and then the
+two surfaces a visitor actually touches, the inventory explorer and the KPI catalogue,
+handed their appearance to the browser. A native select draws its own chevron, its own
+padding and its own text metrics from the operating system, so the explorers rendered in
+a vocabulary the rest of the site does not use. That is the largest single reason those
+pages read as an internal admin tool rather than as an instrument.
+
+`src/components/ui/control.tsx` is the answer, and it is one shared box rather than one
+styled element per call site.
+
+**The box.** `min-h-touch`, `appearance-none`, `rounded-md`, `border-line` on
+`bg-canvas`, `hover:border-line-strong`, `focus:border-accent-muted`, and a
+`transition-[border-color,box-shadow]` at `--arpi-motion-fast`. A select, a number input
+and a search field are therefore the same object at the same height.
+
+**The radius is one step below the panel that contains it.** Controls are `radius-md`
+where the filter rails around them are `radius-lg`, so a control never reads as a card.
+The rails themselves moved from `rounded-xl border-line` on a half-opacity ground to
+`rounded-lg border-line-subtle` on a solid `surface-sunken`: filters and results were two
+bordered boxes of the same value stacked on each other, so the page had no peak.
+
+**The label is monospaced, uppercase, `text-xs`, `tracking-wide`.** Not `tracking-eyebrow`
+(0.16em pushes "Model year" onto a second line at 375px with four labels to a row) and not
+`text-2xs` (that step is reserved for alignment marks and axis labels, and uppercase
+monospace already costs legibility). The change is the face, not the scale.
+
+**A control carrying a value is marked twice.** A 2px inset rule down its leading edge
+(`shadow-[inset_2px_0_0_0_var(--color-accent)]` plus `border-accent-muted`) and a small
+square beside its label. Two marks rather than one, because colour is never the only
+carrier of state here, and a 2px rule survives 200% zoom where a small square is easy to
+miss. A select sitting on its "all" value is filtering nothing and is not marked; the sort
+select has no "all" value, so it is never marked, because a mark that is always lit
+reports nothing.
+
+**Semantics are the caller's and are never traded for appearance.** A `<select>` stays a
+`<select>` and its chevron is `pointer-events-none`, so the whole box remains the native
+hit area and the native listbox still opens, which on a phone is the operating system
+picker. There is no custom listbox. Search stays `type="search"`, the range bounds stay
+`type="number"`, and every control keeps the 44px floor.
+
+**The rule: no component styles a form control directly.** Anything that needs a labelled
+input composes `Field`, `ControlLabel`, `ControlHint`, `SelectControl` and `TextControl`.
+None of them declares a focus ring, because `globals.css` already gives every focusable
+element the same `outline` and a second one draws two.
 
 ---
 
