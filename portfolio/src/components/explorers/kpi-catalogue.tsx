@@ -37,6 +37,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button, IconButton, buttonClass } from '@/components/ui/button'
 import { Card } from '@/components/ui/card-static'
+import { ControlLabel, TextControl } from '@/components/ui/control'
 import { DefinitionList, SourceLink } from '@/components/ui/data-card'
 import { EmptyState } from '@/components/ui/states'
 import { CodeLabel, Heading, Text } from '@/components/ui/typography'
@@ -136,8 +137,12 @@ export function KpiCatalogue() {
     // See the note on the architecture explorer's root: the id is the capture
     // script's locator and a deep-link target, not styling.
     <div id="kpi-catalogue" className="flex flex-col gap-8">
-      {/* Controls */}
-      <div className="flex flex-col gap-4 rounded-xl border border-line bg-surface-sunken/50 p-4">
+      {/* Controls.
+          The filter rail and the results were two bordered boxes of the same
+          value stacked on each other, so the page had no peak. The rail is now a
+          well: a subtler border, a solid recessed ground, and one radius step
+          below the cards it filters. */}
+      <div className="flex flex-col gap-4 rounded-lg border border-line-subtle bg-surface-sunken p-4">
         <form
           role="search"
           onSubmit={(event) => {
@@ -145,31 +150,25 @@ export function KpiCatalogue() {
           }}
           className="flex flex-col gap-2"
         >
-          <label htmlFor="kpi-search" className="text-xs font-medium text-ink-muted">
+          <ControlLabel htmlFor="kpi-search" active={query !== ''}>
             Search by identifier, name, formula, grain or source view
-          </label>
+          </ControlLabel>
+          {/* The clear control stays an `IconButton` and stays a sibling, so it
+              is a real 44px button rather than an affordance drawn inside the
+              field. `pr-11` is the room the box leaves it. */}
           <div className="relative flex items-center">
-            <Search
-              aria-hidden="true"
-              className="pointer-events-none absolute left-3 size-4 text-ink-faint"
-              strokeWidth={2}
-            />
-            <input
+            <TextControl
               id="kpi-search"
               type="search"
               value={query}
+              active={query !== ''}
+              leadingIcon={<Search strokeWidth={2} />}
               placeholder="front gross, vw_lead_funnel, KPI-INV..."
               onChange={(event) => {
                 setQuery(event.target.value)
                 syncUrl({ q: event.target.value })
               }}
-              className={cx(
-                'min-h-touch w-full rounded-lg border border-line bg-canvas pr-11 pl-9',
-                'font-mono text-sm text-ink placeholder:text-ink-faint/70',
-                'transition-colors duration-(--arpi-motion-fast)',
-                'hover:border-line-strong focus:border-accent-muted focus:outline-none',
-                'focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus'
-              )}
+              className="pr-11 font-mono"
             />
             {query ? (
               <IconButton
