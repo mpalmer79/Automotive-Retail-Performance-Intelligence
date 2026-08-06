@@ -170,6 +170,7 @@ export function InventoryTable({
         presented={presented}
         caption={caption}
         countSentence={countSentence}
+        maxHeightClass={maxHeightClass}
       />
       <InventoryDataTable
         presented={presented}
@@ -213,13 +214,42 @@ function InventoryCards({
   presented,
   caption,
   countSentence,
+  maxHeightClass,
 }: {
   presented: readonly PresentedRecord[]
   caption: string
   countSentence: string
+  maxHeightClass: string
 }) {
   return (
-    <section aria-label={caption} className="xl:hidden">
+    /*
+     * THE CARD LIST IS CAPPED AND SCROLLS, EXACTLY AS THE TABLE DOES.
+     *
+     * The first version was not, and the store page it produced was 105,036px
+     * tall at a 320px viewport - about a hundred and thirty screens of listings,
+     * because the independent store's complete snapshot is 318 records and a
+     * card is taller than a table row. The table had never had that problem: it
+     * has carried `max-h-[40rem]` since it was written, so the page stayed short
+     * and the rows scrolled inside their own box.
+     *
+     * Applying the same cap to the cards keeps that decision intact at every
+     * width rather than only above 1280px. Nothing is dropped - all 318 are
+     * inside the region, which is what `a store page renders one card per
+     * listing` asserts - and the explorer, which paginates at 25 and is one tap
+     * away, is the surface built for reading a long set.
+     *
+     * The explorer passes `max-h-none`, so a paginated page of 25 is not put
+     * inside a second scroll box.
+     *
+     * `tabIndex` and a name for the same reason the table's container has them:
+     * a region that scrolls but cannot take focus is unreachable by keyboard,
+     * because its contents are text rather than controls.
+     */
+    <section
+      aria-label={caption}
+      tabIndex={0}
+      className={cx('overflow-y-auto overscroll-contain xl:hidden', maxHeightClass)}
+    >
       <p className="sr-only">{countSentence}</p>
       <ul className="flex flex-col gap-3">
         {presented.map((row) => (
