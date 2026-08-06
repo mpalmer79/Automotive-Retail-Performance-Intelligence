@@ -28,15 +28,17 @@
  *     and a portfolio page is not the place to introduce unverifiable specifics.
  *   - No proficiency bars. "SQL 85%" communicates nothing and invites a reader
  *     to wonder about the missing fifteen.
- *   - No photograph of a stranger. There is no approved portrait in this
- *     repository, so the slot renders a designed placeholder at the exact
- *     geometry the real file will occupy.
+ *   - No photograph of a stranger. The slot is `<AuthorPortrait>`, which renders
+ *     the approved file if one is committed and a designed placeholder at the
+ *     identical geometry if none is. There is none today. The contract for
+ *     supplying it - path, ratio, dimensions, crop, maximum size - is documented
+ *     on that component, and nothing here changes when the file arrives.
  *
  * Server component. Its only motion is the shared reveal.
  */
-import { ArrowRight, FolderGit2, UserRound } from 'lucide-react'
+import { ArrowRight, FolderGit2 } from 'lucide-react'
 
-import { MediaPlaceholder } from '@/components/media/media-placeholder'
+import { AuthorPortrait } from '@/components/media/author-portrait'
 import { Reveal } from '@/components/motion/reveal'
 import { LinkButton } from '@/components/ui/button'
 import { Container, Section, SectionHeader } from '@/components/ui/layout'
@@ -137,12 +139,9 @@ export function Builder() {
         <div className="mt-12 grid grid-cols-1 gap-10 lg:grid-cols-12 lg:gap-14">
           {/* The identity column. */}
           <Reveal className="flex flex-col gap-6 lg:col-span-4">
-            <MediaPlaceholder
-              label="Portrait pending"
-              detail="No approved photograph is committed to this repository, and this site does not use a stock image of a person on a page that names one."
-              mark={<UserRound strokeWidth={1.75} />}
-              className="max-w-xs"
-            />
+            {/* Not `priority`: this is the sixth chapter. `/about` carries the
+                same component above the fold and prioritises it there. */}
+            <AuthorPortrait />
 
             <div className="flex flex-col gap-2">
               <Heading level={3} size="h4">

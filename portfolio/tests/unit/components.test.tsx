@@ -10,10 +10,22 @@
  * has no layout engine, so a test asserting those here would pass without
  * checking them, which is worse than not having it. Those live in Playwright.
  */
+import { mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it } from 'vitest'
+import { afterAll, describe, expect, it } from 'vitest'
 
+import {
+  PORTRAIT_CANDIDATES,
+  PORTRAIT_DOCUMENTED_PATH,
+  PORTRAIT_HEIGHT,
+  PORTRAIT_MAX_BYTES,
+  PORTRAIT_WIDTH,
+  resolvePortraitSource,
+} from '@/components/media/author-portrait'
 import { Badge, KpiChip, StatusBadge } from '@/components/ui/badge'
 import { Button, IconButton, LinkButton } from '@/components/ui/button'
 import { SourceLink } from '@/components/ui/data-card'
@@ -533,5 +545,78 @@ describe('utilities', () => {
   it('clamps', () => {
     expect(clamp(5, 0, 3)).toBe(3)
     expect(clamp(-1, 0, 3)).toBe(0)
+  })
+})
+
+/* -------------------------------------------------------------------------- */
+/* The author portrait                                                         */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The portrait contract, exercised from both sides without a photograph.
+ *
+ * There is no approved image of Michael Palmer in this repository and this suite
+ * will not invent one. What it can do is prove the RESOLVER behaves correctly in
+ * both states, using a temporary directory as the public root: the present case
+ * is fixtured with a file at the contracted path whose contents are irrelevant,
+ * and the absent case is the empty directory. That covers the branch the site
+ * actually takes today and the branch it will take the moment the file lands,
+ * which is the pair that matters - a component that silently kept rendering the
+ * placeholder after the photograph arrived would be the expensive failure.
+ */
+describe('the author portrait contract', () => {
+  const roots: string[] = []
+
+  function makeRoot(): string {
+    const root = mkdtempSync(join(tmpdir(), 'arpi-portrait-'))
+    roots.push(root)
+    mkdirSync(join(root, 'media'), { recursive: true })
+    return root
+  }
+
+  afterAll(() => {
+    for (const root of roots) rmSync(root, { recursive: true, force: true })
+  })
+
+  it('resolves to null when no approved photograph is committed', () => {
+    expect(resolvePortraitSource(makeRoot())).toBeNull()
+  })
+
+  it('resolves the WebP at the documented path once it exists', () => {
+    const root = makeRoot()
+    writeFileSync(join(root, 'media/michael-palmer-portrait.webp'), 'not-a-real-image')
+    expect(resolvePortraitSource(root)).toBe('/media/michael-palmer-portrait.webp')
+  })
+
+  it('prefers AVIF over WebP when both are supplied', () => {
+    const root = makeRoot()
+    writeFileSync(join(root, 'media/michael-palmer-portrait.webp'), 'w')
+    writeFileSync(join(root, 'media/michael-palmer-portrait.avif'), 'a')
+    expect(resolvePortraitSource(root)).toBe('/media/michael-palmer-portrait.avif')
+  })
+
+  it('accepts no other format, so a stock JPEG cannot arrive by dropping a file', () => {
+    const root = makeRoot()
+    writeFileSync(join(root, 'media/michael-palmer-portrait.jpg'), 'j')
+    writeFileSync(join(root, 'media/michael-palmer-portrait.png'), 'p')
+    expect(resolvePortraitSource(root)).toBeNull()
+  })
+
+  it('reserves a 4:5 box, which is what makes the swap shift nothing', () => {
+    expect(PORTRAIT_WIDTH / PORTRAIT_HEIGHT).toBeCloseTo(4 / 5, 5)
+  })
+
+  it('states the documented path the two candidate paths agree with', () => {
+    expect(PORTRAIT_DOCUMENTED_PATH).toContain(PORTRAIT_CANDIDATES[1])
+  })
+
+  it('holds the committed portrait, if there is one, to the documented budget', () => {
+    // Today this asserts nothing, because there is no file. It is here so that
+    // the day one is committed, an oversized one fails the suite rather than the
+    // connection.
+    const publicDir = join(process.cwd(), 'public')
+    const source = resolvePortraitSource(publicDir)
+    if (source === null) return
+    expect(statSync(join(publicDir, source)).size).toBeLessThanOrEqual(PORTRAIT_MAX_BYTES)
   })
 })

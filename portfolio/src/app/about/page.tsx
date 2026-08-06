@@ -1,6 +1,7 @@
 import { ArrowRight, FolderGit2 } from 'lucide-react'
 import type { Metadata } from 'next'
 
+import { AuthorPortrait } from '@/components/media/author-portrait'
 import { Reveal } from '@/components/motion/reveal'
 import { LinkButton } from '@/components/ui/button'
 import { Card } from '@/components/ui/card-static'
@@ -100,6 +101,14 @@ export default function AboutPage() {
 
             <Reveal className="lg:col-span-5">
               <Card padding="lg" className="flex flex-col gap-5">
+                {/* The portrait, or the designed slot reserving its geometry.
+                    `priority` here and nowhere else: this is the page the
+                    photograph is the subject of, and it is the only placement
+                    that is a candidate for the largest contentful paint. The
+                    home page's builder chapter is six sections down and
+                    lazy-loads the same component. */}
+                <AuthorPortrait priority sizes="(min-width: 1024px) 24rem, 100vw" />
+
                 <div className="flex flex-col gap-1">
                   <h3 className="font-display text-2xl font-semibold tracking-tight text-ink">
                     {manifest.project.author}
