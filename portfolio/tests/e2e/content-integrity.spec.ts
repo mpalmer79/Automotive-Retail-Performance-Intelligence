@@ -1062,3 +1062,69 @@ test.describe('progressive disclosure withholds reasoning, never qualification',
     ])
   })
 })
+
+/* -------------------------------------------------------------------------- */
+/* Business-result language                                                   */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The existing sweep above catches a business-result FIGURE: a gross, a revenue,
+ * a margin with a number attached. This catches the sentence that makes the same
+ * claim without one.
+ *
+ * "ARPI improved inventory turn" needs no figure to be a lie, and it is the exact
+ * sentence a portfolio drifts toward under pressure to sound like it did
+ * something. No analysis has been run against this platform, no report page
+ * exists, Gate 2 is closed, and the inventory lane is a snapshot of what was
+ * advertised on a date. There is no result to report, so there is no phrasing of
+ * one that is honest.
+ *
+ * The patterns are deliberately narrow. `reduced` and `improved` are ordinary
+ * English and appear legitimately - the site says the home page reduced its own
+ * chapter count, and a KPI caution says a leaderboard "rewards whoever the lead
+ * routing favours". Only the constructions that attach a change to a dealership
+ * outcome are rejected.
+ */
+test.describe('no route claims a dealership result', () => {
+  const RESULT_CLAIMS: readonly { readonly label: string; readonly pattern: RegExp }[] = [
+    {
+      label: 'an asserted improvement in a retail outcome',
+      pattern:
+        /\b(increase[ds]?|improve[ds]?|lift(ed)?|boost(ed)?|grew|grow(th|n)?)\b[^.]{0,40}\b(sales|gross|revenue|profit|turn|days supply|close rate|conversion)\b/i,
+    },
+    {
+      label: 'an asserted reduction in a retail outcome',
+      pattern:
+        /\b(reduce[ds]?|cut|lower(ed)?|shrank|decreas(e|ed))\b[^.]{0,40}\b(aged inventory|aging|days supply|holding cost|cost per (sale|unit))\b/i,
+    },
+    {
+      label: 'a percentage change presented as an outcome',
+      pattern:
+        /\b\d+(\.\d+)?\s?%\s?(increase|improvement|lift|growth|reduction|uplift)\b/i,
+    },
+    {
+      label: 'a return-on-investment claim',
+      pattern: /\bROI\b|\breturn on (ad )?spend\b/i,
+    },
+    {
+      label: 'a production-adoption claim',
+      pattern:
+        /\b(used|deployed|running|in production) (at|by|across) \d+ (dealership|store|rooftop)/i,
+    },
+    { label: 'a testimonial', pattern: /["“][^"”]{20,}["”]\s*[-—]\s*[A-Z][a-z]+ [A-Z]/ },
+  ]
+
+  for (const route of PRIMARY_ROUTES) {
+    test(`${route.path} states no dealership outcome`, async ({ page }) => {
+      await gotoRendered(page, route.path)
+      const text = await bodyText(page)
+      for (const claim of RESULT_CLAIMS) {
+        const match = claim.pattern.exec(text)
+        expect(
+          match?.[0],
+          `${route.path} contains ${claim.label}: "${match?.[0] ?? ''}"`
+        ).toBeUndefined()
+      }
+    })
+  }
+})
