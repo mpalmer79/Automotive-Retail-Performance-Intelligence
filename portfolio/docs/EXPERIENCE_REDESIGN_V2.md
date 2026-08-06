@@ -1075,3 +1075,111 @@ prove them. The preview-versus-production rules in `lib/flags.ts` and
 > written, so where it describes them it describes the build it reviewed rather
 > than the current one. The vocabulary that replaced them is
 > `src/components/ui/control.tsx`, documented in `DESIGN_SYSTEM.md` section 6.3.
+
+---
+
+## 14. The word-count pass: seven chapters to four
+
+The next entry in this record, not a correction of it. Section 13 took the home
+page from thirteen chapters to seven and put the working software on the first
+screen. It did not count the words.
+
+### 14.1 The measurement
+
+Taken from the prerendered `/` of a production build, counting the visible text
+of every `<p>` inside `<main>`, excluding `.sr-only`, `<figcaption>` and table
+cells:
+
+| Section                                 |    Before |   After |
+| --------------------------------------- | --------: | ------: |
+| Hero                                    |       104 |      92 |
+| StoreStory, "One group, three business" |       375 |     170 |
+| ProductTour                             |       111 |      67 |
+| OperatingView                           |       156 |       0 |
+| EngineeringProof                        |       125 |      20 |
+| Builder                                 |       174 |       0 |
+| FinalCta / closing                      |        83 |      75 |
+| **Total**                               | **1,132** | **424** |
+| Paragraphs                              |        61 |      30 |
+| Top-level sections                      |         7 |       4 |
+
+Counting the same paragraphs including the ones inside collapsed disclosures, the
+page went from 1,652 words to 621, so the reduction is a reduction in text rather
+than in what is on screen.
+
+A product landing page runs 300 to 500 words. This one was roughly four times
+that: an essay with four working experiences buried inside it.
+
+### 14.2 Where each section went
+
+**Nothing was softened and no disclosure was weakened.** Every sentence removed
+from `/` either already existed on the route whose subject it is or moved there.
+
+| Section          | Outcome                                                                                                                             |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Hero             | kept, trimmed. The supporting paragraph lost a clause and the author clause lost its technology list, which `/about` maps to files. |
+| StoreStory       | kept: the tabs, the comparison table and both charts. The prose around them went from 375 words to 170.                             |
+| ProductTour      | kept. The lede lost its second sentence and the section lost its closing paragraph, both of which repeated the first sentence.      |
+| OperatingView    | **moved to `/kpis`**, above the catalogue it points into. Six domains with one definition each is reference material.               |
+| EngineeringProof | **folded into the closing section** as a strip. Four numerals and the evidence drawer stay; 214 words of justification do not.      |
+| Builder          | **moved to `/about`**. The three floor decisions are chapter four there; the rest was a second, shorter telling of that same page.  |
+| FinalCta         | kept, trimmed, and it now opens with the proof numerals so the page ends on evidence and an action rather than on a paragraph.      |
+
+The three disclaimers left `/` entirely:
+
+- the 82-word sanitized-reference-data statement and the 55-word "descriptive
+  evidence" boundary were **already published in full on `/governance`**, and the
+  second is on `/inventory` as well, so the home page's copies were deleted
+  rather than moved. Shipping the same sentence twice was the defect.
+- the 72-word note on there being no request and no loading state **moved to
+  `/architecture`**, where it sits beside the pipeline it describes. It is an
+  engineering note about the platform, not a decision about the inventory
+  surface.
+- the 50-word paragraph on what an independent store's acquisition model implies
+  was deleted from `/`, because `/dealerships/granite-pre-owned` already carries
+  that store's positioning and its inventory strategy in its own words.
+- the 47-word paragraph introducing Granite Auto Group as fictional was deleted
+  from the store chapter. The fictional-group disclosure is one line in
+  `TrustLine` in the hero and it is `/governance` at length.
+
+`TrustLine` is unchanged. It is one line, it is on every route, its validation
+clause is derived from the manifest, and it is the right amount of disclosure for
+a page a stranger lands on.
+
+### 14.3 The two new tests
+
+A budget in a document is a suggestion. These are in
+`tests/e2e/content-integrity.spec.ts`, in the same shape as the assertions
+already there:
+
+- **`renders at most 450 words of visible prose`** sums the visible text of every
+  `<p>` in `<main>`, excluding `.sr-only`, `<figcaption>` and table cells, and
+  fails with the actual count, the overage and the three longest paragraphs, so
+  the next person to exceed it is told by how much and where.
+- **`renders at most 4 top-level sections`** fails with the ids it found.
+
+The distinction they encode is the one that made the palette on this site
+trustworthy and the word count not: `tokens.test.ts` fails on a colour nobody
+measured, and until now nothing failed on a page nobody counted.
+
+### 14.4 The assertions that moved
+
+No assertion was deleted to make a suite green. Every one whose content left `/`
+was re-pointed at the route that now carries it:
+
+| Assertion                                                          | From | To                                              |
+| ------------------------------------------------------------------ | ---- | ----------------------------------------------- |
+| four operating-view tests (tabs, panel change, no value, chrome)   | `/`  | `/kpis`                                         |
+| two operating-view accessibility tests (click not hover, keyboard) | `/`  | `/kpis`                                         |
+| "no engine has evaluated these measures"                           | `/`  | `/kpis`, as its own test                        |
+| the "not a performance result" boundary is not behind a disclosure | `/`  | `/governance` and `/inventory`                  |
+| the three floor decisions and their artefacts                      | `/`  | `/about`                                        |
+| "the home page keeps its seven chapters"                           | `/`  | rewritten as four, plus `#proof` still present  |
+| "the home page carries no long-form author section"                | `/`  | kept on `/`, now asserting `#builder` is absent |
+
+### 14.5 What did not change
+
+Every gate, every verdict, every count, every data contract and every route. Gate
+2 is closed, the case study is locked, the semantic model is still reported as
+never evaluated by an engine, and the four headline figures are still generated
+from the files that prove them.

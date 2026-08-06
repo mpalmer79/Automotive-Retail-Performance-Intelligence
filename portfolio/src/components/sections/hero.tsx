@@ -119,15 +119,19 @@ export function HeroEditorial({ className }: { className?: string }) {
     <div className={cx('flex flex-col gap-6', className)}>
       <Text size="body" tone="secondary" className="max-w-prose">
         Granite Chevrolet of Nashua, Granite Subaru of Manchester and Granite Pre-Owned
-        Center of Merrimack operate under different inventory realities. ARPI preserves
-        those differences while giving the group one trusted analytical foundation.
+        Center of Merrimack operate under different inventory realities. ARPI holds all
+        three in one governed reporting layer.
       </Text>
 
       {/* The author positioning, as one clause and in a recessive tone. It is
           supporting credibility for the claim above it, not the claim itself,
-          and the page it is the subject of is one link away. */}
+          and the page it is the subject of is one link away.
+
+          The technology list that used to close this clause is gone. It named
+          four things this site can prove by being read, and `/about` maps eight
+          capabilities to the files that carry them. */}
       <Text size="sm" tone="muted" className="max-w-prose">
-        {`Built by ${SITE_AUTHOR} on more than 25 years in automotive retail, joined to PostgreSQL, Python, governed KPI definitions and a source-controlled Power BI model. `}
+        {`Built by ${SITE_AUTHOR} on more than 25 years in automotive retail. `}
         <Link
           href={ROUTES.about.href}
           className="underline decoration-dotted underline-offset-4 transition-colors duration-(--arpi-motion-fast) hover:text-accent"

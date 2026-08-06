@@ -5,6 +5,7 @@ import { StatusBadge } from '@/components/ui/badge'
 import { Container, Section } from '@/components/ui/layout'
 import { PageHeader } from '@/components/ui/page-header'
 import { SourceLink } from '@/components/ui/data-card'
+import { Heading, Text } from '@/components/ui/typography'
 import { pageMetadata } from '@/lib/metadata'
 import { counts } from '@/lib/manifest'
 import { Canvas } from '@/components/shell/field'
@@ -49,6 +50,29 @@ export default function ArchitecturePage() {
       <Section rhythm="tight" tone="panel">
         <Container width="full">
           <ArchitectureExplorer />
+        </Container>
+      </Section>
+
+      {/* HOW THE PIPELINE REACHES THE BROWSER.
+          Moved here from the home page's product tour, where it was a disclosure
+          under the inventory step. It is an engineering note about the platform
+          rather than a decision about the inventory surface, and this is the page
+          that carries the platform. */}
+      <Section rhythm="tight" tone="canvas">
+        <Container width="wide">
+          <div className="flex max-w-prose flex-col gap-3">
+            <Heading level={2} size="h4">
+              The last layer is a build step, not a server
+            </Heading>
+            <Text size="body" tone="muted">
+              There is no request and no loading state anywhere on this site. The record
+              set was read from the workbooks at build time and ships as data, so a filter
+              in the inventory explorer is a synchronous pass over rows that arrived with
+              the page. Sorting by price puts an unpriced listing last in both directions
+              rather than treating a missing price as zero, because a listing the source
+              did not price is not the cheapest car on the lot.
+            </Text>
+          </div>
         </Container>
       </Section>
 

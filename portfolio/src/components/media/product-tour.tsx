@@ -69,14 +69,21 @@ export interface TourStep {
   readonly provenanceNote: string
   /** One paragraph on what the route is for. */
   readonly summary: string
-  /** One decision a reader could not infer from the picture. */
-  readonly insight: string
+  /**
+   * One decision a reader could not infer from the picture.
+   *
+   * Optional, because a step whose decision is an engineering note about how the
+   * platform works belongs on `/architecture` rather than in a disclosure on the
+   * home page. The inventory step is that case: its paragraph on why filtering
+   * never touches the network moved there in the home page's word-count pass.
+   */
+  readonly insight?: string
   /**
    * The summary the insight sits behind. Names the specific decision, not its
    * category: four steps labelled "The decision behind it" are four labels a
    * reader cannot choose between.
    */
-  readonly insightLabel: string
+  readonly insightLabel?: string
   readonly cta: string
   readonly image: {
     readonly src: string
@@ -146,11 +153,13 @@ export function ProductTour({ steps, className }: ProductTourProps) {
               decision. "The decision behind it" was an accurate eyebrow and a
               useless label - it told a reader the kind of thing they would get
               rather than which thing, so every step read the same. */}
-          <Disclosure label={step.insightLabel}>
-            <Text size="sm" tone="secondary" className="max-w-prose">
-              {step.insight}
-            </Text>
-          </Disclosure>
+          {step.insight && step.insightLabel ? (
+            <Disclosure label={step.insightLabel}>
+              <Text size="sm" tone="secondary" className="max-w-prose">
+                {step.insight}
+              </Text>
+            </Disclosure>
+          ) : null}
 
           <div className="mt-1">
             <LinkButton href={step.href} variant="secondary" iconAfter={<ArrowRight />}>

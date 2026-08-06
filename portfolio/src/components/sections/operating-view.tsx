@@ -1,7 +1,17 @@
 'use client'
 
 /**
- * Chapter three: the ARPI Operating View.
+ * The ARPI Operating View.
+ *
+ * WHERE THIS RENDERS, AND WHY IT MOVED
+ * ------------------------------------
+ * It was chapter four of the home page. Six governed domains with one definition
+ * each is reference material: it is useful, it is correct, and it is the wrong
+ * thing to put in front of someone deciding whether to keep scrolling. It now
+ * opens `/kpis`, which is the page whose subject it is, directly above the
+ * catalogue that defines every measure it names. Nothing in it changed in the
+ * move except the destination of its closing link, which used to point at
+ * `/kpis` and now points at the catalogue below it.
  *
  * The signature product experience, and the visual centrepiece of the redesign.
  * It is the section that has to make a hiring manager think "this is a product"
@@ -367,7 +377,7 @@ export function OperatingView() {
             report has never been run.
           </Text>
           <LinkButton
-            href={ROUTES.kpis.href}
+            href={`${ROUTES.kpis.href}#kpi-catalogue`}
             variant="secondary"
             iconAfter={<ArrowRight />}
             className="shrink-0"
