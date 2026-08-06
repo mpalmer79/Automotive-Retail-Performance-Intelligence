@@ -1,9 +1,24 @@
 /**
  * The hero. Chapter one.
  *
- * A server component. Nothing in it is interactive and its motion is CSS on an
- * SVG, so it ships no JavaScript at all - where the hero it replaces pulled the
- * animation library onto the site's most-visited route to draw a diagram.
+ * WHAT CHANGED IN THIS RELEASE, AND WHY
+ * -------------------------------------
+ * The hero's dominant visual used to be `GovernedSignal`, an abstract diagram of
+ * six source systems converging on a governed stack. It is a good diagram. It is
+ * still on this page, one chapter down, where it explains the governed stack to
+ * a reader who has decided they care.
+ *
+ * What it could not do is answer the question that decides whether there is a
+ * second screen at all: does any of this run? A visitor arriving from LinkedIn
+ * met a headline, a paragraph and a drawing, and had to take the software on
+ * trust. Four working experiences were linked from this page and none of them
+ * was ever shown.
+ *
+ * The hero now opens with the product. `ProductShowcase` is a live surface over
+ * the real sanitized listing snapshot: choosing a store filters it, five derived
+ * figures change, four listings change, and the link into the explorer changes
+ * with them. Underneath it, `LineageRail` says in four nodes where those rows
+ * came from, so the demonstration and its provenance are on the same screen.
  *
  * WHAT IS ABOVE THE FOLD, AND WHY
  * -------------------------------
@@ -12,53 +27,66 @@
  *   1. whose business this is  the eyebrow, naming the group
  *   2. what the problem is     the headline, three sentences of six words
  *   3. why it is hard          two sentences naming the three stores
- *   4. two ways in             one primary action, one secondary
- *   5. the trust position      one line, from <TrustLine>
- *   6. the signature visual
+ *   4. who built it            one clause, naming Michael Palmer
+ *   5. two ways in             one primary action, one secondary
+ *   6. the trust position      one line, from <TrustLine>
+ *   7. the working product     the frame
  *
  * THE HEADLINE IS PRODUCT-FIRST, AND IT DID NOT USED TO BE
  * -------------------------------------------------------
  * It used to read "Dealership intelligence built by someone who has run the
  * dealership." That is true, it is the strongest thing about the project, and it
  * was the wrong first sentence: it made the author the subject of the product's
- * home page. A visitor arrived, read a biography, and left without learning what
- * ARPI models or why the modelling is difficult.
+ * home page. The headline now states the problem the software exists for.
+ * "Three dealerships. Three operating models. One governed reporting layer."
+ * names the business, names the difficulty and names the answer, in that order,
+ * and every chapter below expands one of the three.
  *
- * The headline now states the problem the software exists for. "Three
- * dealerships. Three operating models. One governed reporting layer." names the
- * business, names the difficulty and names the answer, in that order, and every
- * section below it expands one of the three.
+ * The author positioning has not been deleted, it has been RELOCATED: it is the
+ * whole subject of `/about`, it is chapter six of this page, and one clause of
+ * it survives here as supporting credibility rather than as the proposition.
  *
- * The author positioning has not been deleted, it has been RELOCATED. It is the
- * whole subject of `/about`, it is the closing argument of the domain-judgement
- * chapter, and one clause of it survives here as supporting credibility rather
- * than as the proposition. That is the distinction the information architecture
- * turns on: experience is why the answers are good, not what the product is.
+ * THE IMPLEMENTATION-STATUS INDICATOR IS ONE LINE
+ * ----------------------------------------------
+ * `TrustLine` carries the synthetic-data statement, the fictional group and the
+ * derived real-engine validation state, on a hairline rule. There is no status
+ * badge here and there must not be: a product page that opens by reporting its
+ * own risk has not said what it is yet, and the detail is one click away on the
+ * page whose subject it is.
  *
  * WHAT IT DOES NOT SAY
  * --------------------
  * No superlative, no "revolutionary", no "powerful platform", no "actionable
- * insights", no em dash. No status badge and no disclaimer panel: the trust
- * position is one line, and the detail is one click away on the page whose
- * subject it is.
+ * insights", no em dash, and no figure that describes a business result.
+ *
+ * A SERVER COMPONENT WITH ONE CLIENT ISLAND
+ * -----------------------------------------
+ * Everything here renders on the server except `ProductShowcase`, which holds
+ * the selection. It receives a preformatted payload of roughly two dozen rows
+ * from `lib/product-preview` rather than importing the 541-record set, so the
+ * home page's bundle carries the demonstration and not the dataset.
  */
 import { ArrowRight } from 'lucide-react'
 import Link from 'next/link'
 
+import { ApplicationFrame } from '@/components/media/application-frame'
+import { LineageRail } from '@/components/media/lineage-rail'
+import { ProductShowcase } from '@/components/media/product-showcase'
 import { LinkButton } from '@/components/ui/button'
 import { Container, Section } from '@/components/ui/layout'
 import { TrustLine } from '@/components/ui/trust-line'
 import { Eyebrow, Heading, Text } from '@/components/ui/typography'
-import { GovernedSignal } from '@/components/visuals/governed-signal'
-import { ROUTES } from '@/lib/site'
+import { inventoryPreviews } from '@/lib/product-preview'
+import { ROUTES, SITE_AUTHOR } from '@/lib/site'
 import { cx } from '@/lib/utils'
 
 /**
  * The hero's identity block: eyebrow and headline.
  *
- * Exported separately so a layout can place it without the rest. Layout B puts
- * it in an editorial panel beside the product; layout A keeps it spanning the
- * canvas above a two-column row.
+ * Exported separately so a layout can place it without the rest. The headline
+ * spans the canvas and the two-column row sits under it: an earlier attempt put
+ * it inside a five-column text block beside the visual, which at 1440px gave a
+ * ten-word sentence a 460px measure and six lines of 76px type.
  */
 export function HeroIdentity({ className }: { className?: string }) {
   return (
@@ -74,18 +102,17 @@ export function HeroIdentity({ className }: { className?: string }) {
 }
 
 /**
- * The hero's editorial block: supporting copy, two actions, one trust line.
+ * The hero's editorial block: supporting copy, attribution, two actions, one
+ * trust line.
  *
  * THE ORDER IS THE POINT
  * ----------------------
- * Copy, then actions, then the trust line. The disclosure comes AFTER the two
- * ways in, not before them. An earlier build put a bordered validation caveat
- * and a ruled synthetic-data paragraph above the buttons, which is how the
- * first call to action ended up roughly 1,050px down a phone screen: the page
- * asked the reader to accept two risk disclosures before it offered them
- * anything to do. The disclosure is still on the first screen and still one
- * line; it simply is not the thing standing between the headline and the
- * button.
+ * Copy, then attribution, then actions, then the trust line. The disclosure
+ * comes AFTER the two ways in, not before them. An earlier build put a bordered
+ * validation caveat and a ruled synthetic-data paragraph above the buttons,
+ * which is how the first call to action ended up roughly 1,050px down a phone
+ * screen: the page asked the reader to accept two risk disclosures before it
+ * offered them anything to do.
  */
 export function HeroEditorial({ className }: { className?: string }) {
   return (
@@ -96,12 +123,11 @@ export function HeroEditorial({ className }: { className?: string }) {
         those differences while giving the group one trusted analytical foundation.
       </Text>
 
-      {/* The author positioning, as one clause and in a recessive tone.
-          It is supporting credibility for the claim above it, not the claim
-          itself, and the page it is the subject of is one link away. */}
+      {/* The author positioning, as one clause and in a recessive tone. It is
+          supporting credibility for the claim above it, not the claim itself,
+          and the page it is the subject of is one link away. */}
       <Text size="sm" tone="muted" className="max-w-prose">
-        Built on more than 25 years in automotive retail, joined to PostgreSQL, Python,
-        governed KPI definitions and a source-controlled Power BI model.{' '}
+        {`Built by ${SITE_AUTHOR} on more than 25 years in automotive retail, joined to PostgreSQL, Python, governed KPI definitions and a source-controlled Power BI model. `}
         <Link
           href={ROUTES.about.href}
           className="underline decoration-dotted underline-offset-4 transition-colors duration-(--arpi-motion-fast) hover:text-accent"
@@ -111,39 +137,51 @@ export function HeroEditorial({ className }: { className?: string }) {
         .
       </Text>
 
-      {/* Two actions, and only two. Both stay on this page, because this page is
-          now the group overview rather than an index of other pages: a visitor
-          who wants the stores wants them here, and a visitor who wants the
-          argument for the reporting layer wants that here too. The repository
-          link moved to the header icon and to the evidence chapter, where a
-          reviewer looking for source is already looking. */}
+      {/* Two actions, and only two. The primary one opens the experience the
+          frame beside it is a slice of, because a visitor who has just watched a
+          store filter is one click from doing it properly. The secondary one
+          goes to the engineering, for the reader who wants to know how the rows
+          got there. */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <LinkButton href="#stores" variant="primary" size="lg" iconAfter={<ArrowRight />}>
-          Explore the three stores
+        <LinkButton
+          href={ROUTES.inventory.href}
+          variant="primary"
+          size="lg"
+          iconAfter={<ArrowRight />}
+        >
+          Open the inventory explorer
         </LinkButton>
-        <LinkButton href="#governed-group" variant="secondary" size="lg">
-          See how ARPI works
+        <LinkButton href={ROUTES.architecture.href} variant="secondary" size="lg">
+          See how it is built
         </LinkButton>
       </div>
 
-      <TrustLine variant="hero" href={ROUTES.governance.href} className="mt-1" />
+      <TrustLine variant="hero" scope="inventory" href={ROUTES.governance.href} />
     </div>
   )
 }
 
 /**
- * The signature visual.
+ * The signature product surface.
  *
- * Renders a portrait composition below `sm` and a landscape one above, rather
- * than one diagram scaled to both. See the comment at the top of
- * `governed-signal.tsx`: the first attempt let the landscape one bleed off the
- * right edge on a phone, which produced 85px of real horizontal page scroll at
- * 375px.
+ * A server-rendered frame around one client island. The chrome, the caption and
+ * the lineage rail cost no JavaScript; only the selection does.
  */
 export function HeroProduct({ className }: { className?: string }) {
   return (
     <div className={className}>
-      <GovernedSignal />
+      <ApplicationFrame
+        title="ARPI Inventory"
+        path={ROUTES.inventory.href}
+        provenance="live"
+        note="Sanitized reference data"
+        label="Live inventory surface for Granite Auto Group"
+        bodyClassName="flex flex-col"
+        caption="Choosing a store filters the sanitized listing snapshot this build derived from the workbooks in this repository. Every figure is counted from those rows. Listings are what a public source advertised at a capture date, not sales, deliveries or gross."
+      >
+        <ProductShowcase previews={inventoryPreviews} />
+        <LineageRail />
+      </ApplicationFrame>
     </div>
   )
 }
@@ -161,7 +199,7 @@ export function Hero() {
       id="hero"
       rhythm="none"
       tone="cinematic"
-      className="overflow-clip pt-12 pb-section-tight sm:pt-16"
+      className="overflow-clip pt-10 pb-section-tight sm:pt-14"
     >
       {/* The dimensional-grid ground. Decorative, pointer-transparent, and
           removed from the accessibility tree. */}
@@ -171,19 +209,9 @@ export function Hero() {
       />
 
       <Container width="wide">
-        {/*
-        The headline spans the canvas, and the two-column row sits under it.
-
-        The first attempt put the headline inside a five-column text block beside
-        the visual, which at 1440px gave a ten-word sentence a 460px measure: six
-        lines of 76px type filling the whole left half, with the diagram pushed
-        into the dead space beside it. Giving the sentence the full width lets it
-        set in three balanced lines at a size that still reads as a headline, and
-        gives the visual a column worth having.
-      */}
         <HeroIdentity />
 
-        <div className="mt-10 grid grid-cols-1 items-start gap-10 lg:mt-12 lg:grid-cols-12 lg:gap-12">
+        <div className="mt-8 grid grid-cols-1 items-start gap-8 lg:mt-10 lg:grid-cols-12 lg:gap-10">
           <HeroEditorial className="lg:col-span-5" />
           <HeroProduct className="lg:col-span-7" />
         </div>

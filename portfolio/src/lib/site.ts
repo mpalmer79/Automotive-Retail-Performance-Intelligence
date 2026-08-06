@@ -114,8 +114,21 @@ export const ROUTES = {
     href: '/',
     navLabel: 'Overview',
     title: 'Automotive Retail Performance Intelligence',
+    /*
+     * THE WORD "FICTIONAL" IS IN THE FIRST CLAUSE, AND THAT IS DELIBERATE.
+     *
+     * This string is the home page's meta description, which means it is the
+     * text under the link when the site is shared on LinkedIn or returned by a
+     * search engine. The previous version opened "Granite Auto Group runs three
+     * dealerships..." - true on the site, where the group is declared fictional
+     * six times, and misleading in a preview card read on its own, where it
+     * reads as a real dealer group and ARPI as its vendor.
+     *
+     * A disclosure that only holds inside its own page is not a disclosure. It
+     * has to survive being quoted.
+     */
     description:
-      'Granite Auto Group runs three dealerships under three different inventory realities: a Chevrolet franchise, a Subaru franchise, and an independent pre-owned center in Southern New Hampshire. ARPI preserves those differences while giving the group one governed reporting layer.',
+      'A portfolio data platform for Granite Auto Group, a fictional three-store dealer group: a Chevrolet franchise, a Subaru franchise and an independent pre-owned center. Seeded synthetic data in Python, a PostgreSQL warehouse, a governed KPI catalogue and a source-controlled Power BI model.',
     inPrimaryNav: true,
     indexable: true,
     priority: 1,

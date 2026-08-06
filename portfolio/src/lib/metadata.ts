@@ -25,6 +25,22 @@ export const OG_IMAGE_PATH = '/social-preview.png'
 export const OG_IMAGE_WIDTH = 1200
 export const OG_IMAGE_HEIGHT = 630
 
+/**
+ * The social card's alternative text.
+ *
+ * Written from what the card actually shows rather than from what the site is
+ * about, because that is what alternative text is for and because a preview
+ * card is exactly the context where a reader may get the text and not the
+ * image. Kept in one constant so the two places that reference the image cannot
+ * describe it differently, and updated whenever
+ * `public/brand/social-preview.svg` changes.
+ */
+export const OG_IMAGE_ALT =
+  `${SITE_TITLE}. A dark card carrying the ARPI mark, the project name, and the line "one governed view of dealership performance", ` +
+  'beside a wireframe of the inventory application showing its store, condition, year, make and price columns with no values in them, ' +
+  'and a diagram of four PostgreSQL layers converging on a governed model with a dashed semantic model and report layer above it. ' +
+  `A panel states that the data is synthetic only and that Granite Auto Group is fictional. Built by ${SITE_AUTHOR}.`
+
 /** The site-wide metadata, applied in the root layout. */
 export const rootMetadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -69,7 +85,7 @@ export const rootMetadata: Metadata = {
         url: OG_IMAGE_PATH,
         width: OG_IMAGE_WIDTH,
         height: OG_IMAGE_HEIGHT,
-        alt: `${SITE_TITLE} - a synthetic, reproducible dealership analytics platform by ${SITE_AUTHOR}`,
+        alt: OG_IMAGE_ALT,
       },
     ],
   },
@@ -77,7 +93,7 @@ export const rootMetadata: Metadata = {
     card: 'summary_large_image',
     title: SITE_TITLE,
     description: ROUTES.home.description,
-    images: [OG_IMAGE_PATH],
+    images: [{ url: OG_IMAGE_PATH, alt: OG_IMAGE_ALT }],
   },
   icons: {
     icon: [
@@ -116,12 +132,20 @@ export function pageMetadata(key: RouteKey, overrides: Partial<Metadata> = {}): 
       url,
       title: isHome ? SITE_TITLE : `${route.title} - ${SITE_NAME}`,
       description: route.description,
-      images: [{ url: OG_IMAGE_PATH, width: OG_IMAGE_WIDTH, height: OG_IMAGE_HEIGHT }],
+      images: [
+        {
+          url: OG_IMAGE_PATH,
+          width: OG_IMAGE_WIDTH,
+          height: OG_IMAGE_HEIGHT,
+          alt: OG_IMAGE_ALT,
+        },
+      ],
     },
     twitter: {
       card: 'summary_large_image',
       title: isHome ? SITE_TITLE : `${route.title} - ${SITE_NAME}`,
       description: route.description,
+      images: [{ url: OG_IMAGE_PATH, alt: OG_IMAGE_ALT }],
     },
     ...overrides,
   }

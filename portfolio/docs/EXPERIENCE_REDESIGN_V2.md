@@ -944,7 +944,7 @@ deploy.
 
 **The social preview still depicts the wordmark** (finding C-08), and it is now
 also the wrong palette: it was authored for the obsidian theme. Regenerating it
-is a separate change.
+is a separate change. **Superseded by section 13.5.**
 
 **`/architecture` is still the longest route on a phone** (finding C-01). The
 canvas does not change that; its explorer was not rewritten.
@@ -953,3 +953,117 @@ canvas does not change that; its explorer was not rewritten.
 in `portfolio/docs/VISUAL_REVIEW.md`: the review set is captured to a gitignored
 directory and attached to the pull request, because a baseline set nobody
 re-approves becomes a rubber stamp.
+
+---
+
+## 13. The release pass: from documentation site to product
+
+Everything above brought the site from nine repetitive sections to a coherent
+document with a design system, a motion budget and a tested accessibility floor.
+This section records the pass that came after it, whose problem was different and
+whose finding fits in one sentence.
+
+### 13.1 The finding
+
+**Four working experiences were linked from the home page and none of them was
+ever shown.** The inventory explorer, the architecture explorer, the data model
+explorer and the KPI catalogue are the strongest artefacts in this repository. A
+visitor arriving from LinkedIn met thirteen chapters of prose about software they
+had to take on trust, and the first screen's dominant visual was an abstract
+diagram of a pipeline rather than a piece of running software.
+
+The secondary finding was density. Six of the thirteen chapters described the
+same three rooftops in five different card layouts:
+
+| Chapter | What it was         | What it was about                       |
+| ------- | ------------------- | --------------------------------------- |
+| 2       | `GroupIntroduction` | the three rooftops                      |
+| 3       | `OperatingModels`   | the three rooftops, as three cards      |
+| 4       | `GroupInventory`    | the three rooftops, as a snapshot       |
+| 5       | `StoreCards`        | the three rooftops, as three more cards |
+| 6       | `InventoryStrategy` | the three rooftops, as two long cards   |
+| 7       | `StoreComparison`   | the three rooftops, as a table          |
+
+A reader scrolled roughly four thousand pixels and met Granite Chevrolet five
+times before there was anything to touch.
+
+### 13.2 The decision: seven chapters, and state instead of repetition
+
+| #   | Chapter                     | Component                        | Anchor            |
+| --- | --------------------------- | -------------------------------- | ----------------- |
+| 1   | Product hero                | `sections/hero.tsx`              | `#hero`           |
+| 2   | Three-store operating model | `sections/store-story.tsx`       | `#stores`         |
+| 3   | Interactive product tour    | `sections/product-tour.tsx`      | `#tour`           |
+| 4   | Governed analytical domains | `sections/operating-view.tsx`    | `#operating-view` |
+| 5   | Engineering evidence        | `sections/engineering-proof.tsx` | `#proof`          |
+| 6   | Builder credibility         | `sections/builder.tsx`           | `#builder`        |
+| 7   | Closing actions             | `sections/final-cta.tsx`         | `#review`         |
+
+Chapters 2 to 7 of the old composition became one tab set plus one comparison
+table. The tab set is the argument the section is making: these are three
+different businesses, and reading them as three instances of one business is the
+mistake the governed model exists to prevent. The table stayed a table, because
+simultaneous comparison across eight columns is the one job a table does better
+than a selection.
+
+`PlatformStory` left the home page entirely: `/architecture` already renders the
+same pipeline layer by layer, and a five-card summary of a page one click away is
+the duplication this document exists to remove. `DomainJudgement` became chapter
+six, compacted from nine editorial columns to three rows.
+
+### 13.3 The hero is now a working product surface
+
+`ProductShowcase` is a live client island over the real sanitized snapshot.
+Selecting a store filters it, five derived figures change, four listings change,
+and the link into the explorer changes with them. `LineageRail` states in four
+nodes where those rows came from, so the demonstration and its provenance are on
+the same screen.
+
+Two costs were controlled rather than accepted:
+
+- **Bundle.** The island receives a preformatted payload of roughly two dozen
+  rows as props from `lib/product-preview`, which runs on the server. Importing
+  `lib/inventory` into the island would have put all 541 records into the home
+  page's JavaScript to display four rows.
+- **Truth.** The surface shows counts, ranges and medians of advertised price,
+  all derived, and an observation sentence about the SHAPE of a listing snapshot.
+  It shows no sales figure, no gross figure, no turn rate and no trend, because a
+  listing snapshot cannot support one.
+
+`GovernedSignal` was not deleted. It is the composition the social card is drawn
+from and remains the site's signature abstract.
+
+### 13.4 The product tour, and the rule its media follows
+
+Four steps, each with a dominant frame, one paragraph, one technical decision and
+one way in. Every frame is a **straight capture of the route named on it**, taken
+from a production build by `scripts/capture-product-media.ts` and committed to
+`public/media/`. Nothing is composed, retouched, annotated or drawn.
+
+The rule is absolute and it is the same rule as everywhere else in this project:
+a mocked-up dashboard is indistinguishable to a reader from a real one, so the
+site does not publish one. If it is in a frame, it is on the route, and the route
+is one click away.
+
+### 13.5 The social preview, regenerated
+
+Finding C-08 is closed. `public/brand/social-preview.svg` now carries a wireframe
+of the inventory application beside the four-layer pipeline diagram, plus the
+synthetic-data panel and "Built by Michael Palmer". The interface panel contains
+**no value of any kind**: its cells are neutral bars, which is the only honest way
+to show an interface at 1200x630 without inventing the data inside it.
+
+The home page's meta description changed with it. It used to open "Granite Auto
+Group runs three dealerships..." - true on a page that declares the group
+fictional six times, and misleading in a preview card read on its own. The word
+"fictional" is now in the first clause, because a disclosure that only holds
+inside its own page is not a disclosure.
+
+### 13.6 What did not change
+
+Every gate, every disclosure and every derived count. Gate 2 is closed, the case
+study is locked, the semantic model is still reported as never evaluated by an
+engine, and the four headline figures are still generated from the files that
+prove them. The preview-versus-production rules in `lib/flags.ts` and
+`lib/site-url.ts` were audited and left untouched; the audit is in
+`TODAY_RELEASE_PLAN.md` section 4.

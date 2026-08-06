@@ -189,7 +189,11 @@ export function ArchitectureExplorer() {
   )
 
   return (
-    <div className="flex flex-col gap-6">
+    // The id is a contract, not decoration: `scripts/capture-product-media.ts`
+    // locates this explorer by it to photograph the running application for the
+    // home page's product tour, and a deep link can address it. A structural
+    // selector would be a guess about markup that the next layout change breaks.
+    <div id="architecture-explorer" className="flex flex-col gap-6">
       {/* Toolbar: the legend and the reset. Reset is always present rather than
           appearing only when something is selected, so its position never moves. */}
       <div className="flex flex-wrap items-center justify-between gap-4">

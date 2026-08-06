@@ -202,28 +202,52 @@ document. If the site ever grows past a dozen routes, this should be revisited.
 
 ## 7. Assets
 
-Every graphic on the site is SVG authored in this repository. No photography, no
-icon sprite sheet, no raster in the page.
+Every graphic the site DRAWS is SVG authored in this repository. There is no
+photography anywhere, no icon sprite sheet, and no decorative raster.
 
-| Asset                      | Bytes  | Where                                                       |
-| -------------------------- | ------ | ----------------------------------------------------------- |
-| `favicon.svg`              | 794    | tab icon                                                    |
-| `brand/monogram.svg`       | 887    | header, footer                                              |
-| `brand/wordmark.svg`       | 1,392  | brand contexts                                              |
-| `brand/social-preview.svg` | 7,618  | source for the share card                                   |
-| `favicon-32.png`           | 927    | legacy tab icon                                             |
-| `apple-touch-icon.png`     | 5,029  | iOS home screen                                             |
-| `social-preview.png`       | 78,175 | Open Graph / Twitter card — **never requested by the site** |
+| Asset                              | Bytes  | Where                                                       |
+| ---------------------------------- | ------ | ----------------------------------------------------------- |
+| `favicon.svg`                      | 794    | tab icon                                                    |
+| `brand/monogram.svg`               | 887    | header, footer                                              |
+| `brand/wordmark.svg`               | 1,392  | brand contexts                                              |
+| `brand/social-preview.svg`         | 13,858 | source for the share card                                   |
+| `favicon-32.png`                   | 927    | legacy tab icon                                             |
+| `apple-touch-icon.png`             | 5,029  | iOS home screen                                             |
+| `social-preview.png`               | 93,057 | Open Graph / Twitter card — **never requested by the site** |
+| `media/inventory-explorer.webp`    | 54,954 | home page product tour, step 1                              |
+| `media/kpi-catalogue.webp`         | 55,792 | home page product tour, step 4                              |
+| `media/data-model-explorer.webp`   | 64,280 | home page product tour, step 3                              |
+| `media/architecture-explorer.webp` | 64,368 | home page product tour, step 2                              |
 
-The 78 kB social preview is fetched by a crawler generating a share card, never by
+The 93 kB social preview is fetched by a crawler generating a share card, never by
 a visitor loading a page. It is the largest file in `public/` and costs a reader
 nothing.
 
-The two diagrams and the pipeline hero are inline SVG generated from data at build
-time — no request, and no icon library import for the shapes.
+### The four product-tour frames, and why they are affordable
 
-`next.config.ts` has no image-loader configuration, because there is no raster
-pipeline to configure.
+They are the only rasters a visitor ever downloads, and the home page's cost for
+them is **one**, not four:
+
+- The tour renders one step at a time, so only the selected frame is in the DOM.
+- Every frame carries `loading="lazy"`, and the tour is the third chapter. None
+  of them is on the critical path and none competes with LCP.
+- Every frame declares its intrinsic `width` and `height`, so the frame reserves
+  its own box and the swap between steps causes no layout shift.
+- They are WebP at 1,600px, which is twice the largest width the tour ever
+  displays, so they stay sharp on a high-density display without a second
+  candidate.
+
+`next.config.ts` still has **no image-loader configuration**, and these do not
+introduce one. They are served directly rather than through `next/image`: they
+are already the only size they are displayed at and already encoded, so the
+optimizer would add a runtime `sharp` dependency inside the Railway standalone
+image in exchange for nothing. The two things `next/image` would genuinely have
+done here - reserve the box, defer the fetch - are done explicitly in
+`components/media/application-frame.tsx`.
+
+The diagrams, the rooftop compositions and the hero's own surface are inline SVG
+or live DOM generated from data at build time — no request, and no icon library
+import for the shapes.
 
 ---
 

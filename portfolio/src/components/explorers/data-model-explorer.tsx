@@ -172,7 +172,9 @@ export function DataModelExplorer() {
   )
 
   return (
-    <div className="flex flex-col gap-8">
+    // See the note on the architecture explorer's root: the id is the capture
+    // script's locator and a deep-link target, not styling.
+    <div id="data-model-explorer" className="flex flex-col gap-8">
       {/* Filters */}
       <div className="flex flex-col gap-4 rounded-xl border border-line bg-surface-sunken/50 p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">

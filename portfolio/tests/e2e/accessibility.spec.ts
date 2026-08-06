@@ -400,8 +400,8 @@ test.describe('reflow and target size', () => {
     // The hero's two calls to action and the navigation trigger are the controls
     // a visitor must be able to hit on a phone.
     const controls: { role: 'link' | 'button'; name: RegExp }[] = [
-      { role: 'link', name: /explore the three stores/i },
-      { role: 'link', name: /see how ARPI works/i },
+      { role: 'link', name: /open the inventory explorer/i },
+      { role: 'link', name: /see how it is built/i },
       { role: 'button', name: /open navigation menu/i },
     ]
     for (const control of controls) {
@@ -448,9 +448,16 @@ test.describe('no hover-only or tooltip-only information', () => {
     await expect(inventory).toHaveAttribute('aria-selected', 'false')
 
     // Clicking must.
+    //
+    // The panel is located THROUGH `#operating-view` rather than by role alone.
+    // The home page now carries four tab sets - the hero's store switcher, the
+    // store chapter, the product tour and this rail - so a bare
+    // `getByRole('tabpanel')` resolves to four elements and fails strict mode
+    // before it ever checks the text. Scoping the locator is what keeps this
+    // assertion about the operating view specifically.
     await inventory.click()
     await expect(inventory).toHaveAttribute('aria-selected', 'true')
-    await expect(page.getByRole('tabpanel')).toContainText(
+    await expect(page.locator('#operating-view').getByRole('tabpanel')).toContainText(
       /lot turning|financially risky/i
     )
   })

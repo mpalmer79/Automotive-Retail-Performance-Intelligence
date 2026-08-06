@@ -8,14 +8,26 @@
     build artefact that exists because Open Graph consumers do not reliably
     render SVG.
 
-    Content requirements this file satisfies, from the brief:
+    Content requirements this file satisfies:
       - the ARPI identity
+      - a visible PRODUCT INTERFACE, so the card shows software rather than only
+        typography
+      - a visible ARCHITECTURE element, so it shows what is underneath it
       - PostgreSQL and Power BI positioning
       - the synthetic-data statement, prominent rather than in small print
-      - Michael Palmer
-      - the site's own visual system, not a stock template
+      - "Built by Michael Palmer"
+
+    WHAT THE INTERFACE PANEL MAY AND MAY NOT CONTAIN
+    -----------------------------------------------
+    Structure: yes. A chrome bar, column headers, row rules, the shape of a
+    listing table. A VALUE: no. Not a price, not a count, not a gross figure,
+    not a trend. The cells are neutral bars, which is what a wireframe of this
+    site's inventory table looks like and is the only honest way to show an
+    interface at 1200x630 without inventing the data inside it. The same rule
+    governs `components/visuals/governed-signal.tsx` and it is the whole reason
+    this project is worth reading.
   -->
-  <title>Automotive Retail Performance Intelligence - a synthetic, reproducible dealership analytics platform by Michael Palmer</title>
+  <title>Automotive Retail Performance Intelligence - a synthetic, reproducible dealership analytics platform built by Michael Palmer</title>
 
   <defs>
     <!-- The dimensional-grid motif, as a tile. Same 28px spacing as the
@@ -45,47 +57,31 @@
       <stop offset="0" stop-color="#6d55d1" stop-opacity="0" />
       <stop offset="1" stop-color="#ad9cf6" stop-opacity="0.7" />
     </linearGradient>
+    <!-- The interface panel's own ground, one step above the page ground so the
+         frame reads as a surface sitting on it. -->
+    <linearGradient id="panel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0d1219" />
+      <stop offset="1" stop-color="#090d14" />
+    </linearGradient>
   </defs>
 
   <!-- Ground -->
   <rect width="1200" height="630" fill="#05070b" />
   <rect width="1200" height="630" fill="url(#lattice)" mask="url(#latticeMask)" opacity="0.5" />
 
-  <!-- The right-hand data lanes. Four layers converging: source, warehouse,
-       reporting, semantic. Abstract, and deliberately not a chart. -->
-  <g transform="translate(690 118)" fill="none" stroke-linecap="round">
-    <path d="M0 30 C120 30 150 120 300 120" stroke="url(#lane)" stroke-width="2.5" />
-    <path d="M0 100 C130 100 140 120 300 120" stroke="url(#lane)" stroke-width="2.5" />
-    <path d="M0 170 C120 170 160 122 300 120" stroke="url(#lane)" stroke-width="2.5" />
-    <path d="M0 240 C110 240 170 126 300 120" stroke="url(#lane)" stroke-width="2.5" />
-    <path d="M300 120 C360 120 380 210 440 210" stroke="url(#laneModel)" stroke-width="2.5" />
-    <path d="M300 120 C360 120 380 34 440 34" stroke="url(#laneModel)" stroke-width="2.5" />
-
-    <!-- Layer nodes -->
-    <g fill="#080b11" stroke="#22c8e0" stroke-width="2">
-      <rect x="-8" y="20" width="20" height="20" rx="4" />
-      <rect x="-8" y="90" width="20" height="20" rx="4" />
-      <rect x="-8" y="160" width="20" height="20" rx="4" />
-      <rect x="-8" y="230" width="20" height="20" rx="4" />
-    </g>
-    <!-- The governed-model node: the point everything resolves through. -->
-    <circle cx="300" cy="120" r="15" fill="#06323d" stroke="#5fdcee" stroke-width="2.5" />
-    <circle cx="300" cy="120" r="5" fill="#5fdcee" stroke="none" />
-    <g fill="#241a4a" stroke="#ad9cf6" stroke-width="2">
-      <rect x="432" y="26" width="17" height="17" rx="3.5" />
-      <rect x="432" y="202" width="17" height="17" rx="3.5" />
-    </g>
-  </g>
-
-  <!-- Alignment marks, top left. A blueprint annotation, not decoration for its
-       own sake: it marks the content's left edge and cap height. -->
+  <!-- Alignment marks. A blueprint annotation, not decoration for its own sake:
+       they mark the content's left edge and cap height. -->
   <g stroke="#2f3a4d" stroke-width="1">
     <path d="M72 60 V78 M72 60 H90" />
     <path d="M1128 570 V552 M1128 570 H1110" />
   </g>
 
+  <!-- ================================================================== -->
+  <!-- Left column: identity, headline, stack, disclosure                 -->
+  <!-- ================================================================== -->
+
   <!-- Identity lockup -->
-  <g transform="translate(72 96)">
+  <g transform="translate(72 88)">
     <g transform="scale(1.35)">
       <g fill="#5fdcee" opacity="0.42">
         <circle cx="6" cy="6" r="1.15"/><circle cx="16" cy="6" r="1.15"/><circle cx="26" cy="6" r="1.15"/>
@@ -100,36 +96,160 @@
     <text x="58" y="34" fill="#f2f6fc" font-family="'Space Grotesk',ui-sans-serif,system-ui,sans-serif" font-size="30" font-weight="700" letter-spacing="-0.6">ARPI</text>
   </g>
 
-  <!-- Headline -->
-  <text x="72" y="248" fill="#f2f6fc" font-family="'Space Grotesk',ui-sans-serif,system-ui,sans-serif" font-size="55" font-weight="600" letter-spacing="-1.6">Automotive Retail</text>
-  <text x="72" y="310" fill="#f2f6fc" font-family="'Space Grotesk',ui-sans-serif,system-ui,sans-serif" font-size="55" font-weight="600" letter-spacing="-1.6">Performance Intelligence</text>
-
-  <!-- Positioning line -->
-  <text x="72" y="362" fill="#b3bfd4" font-family="ui-sans-serif,system-ui,'Segoe UI',sans-serif" font-size="21">One governed view of dealership performance.</text>
-
-  <!-- Stack. Pill widths are sized to the monospace advance at this size
-       (12.5px + 1px tracking, ~8.5px per character) plus 18px of padding each
-       side, so no label can overrun its container. -->
-  <g font-family="ui-monospace,'SF Mono',Menlo,monospace" font-size="12.5" letter-spacing="1">
-    <rect x="72" y="396" width="147" height="30" rx="15" fill="#0b0f16" stroke="#232c3c"/>
-    <text x="90" y="416" fill="#8b99b3">POSTGRESQL 16</text>
-    <rect x="231" y="396" width="215" height="30" rx="15" fill="#0b0f16" stroke="#232c3c"/>
-    <text x="249" y="416" fill="#8b99b3">POWER BI · TMDL · DAX</text>
-    <rect x="458" y="396" width="130" height="30" rx="15" fill="#0b0f16" stroke="#232c3c"/>
-    <text x="476" y="416" fill="#8b99b3">PYTHON 3.11</text>
+  <!-- Headline. Three lines rather than two: the left column is now 548px wide
+       because the right half carries the interface panel, and a 55px setting of
+       "Performance Intelligence" would run past it. -->
+  <g fill="#f2f6fc" font-family="'Space Grotesk',ui-sans-serif,system-ui,sans-serif" font-size="48" font-weight="600" letter-spacing="-1.4">
+    <text x="72" y="212">Automotive Retail</text>
+    <text x="72" y="264">Performance</text>
+    <text x="72" y="316">Intelligence</text>
   </g>
 
-  <!-- The synthetic-data statement. Given a bordered panel and warm accent
+  <!-- Positioning line -->
+  <text x="72" y="360" fill="#b3bfd4" font-family="ui-sans-serif,system-ui,'Segoe UI',sans-serif" font-size="20">One governed view of dealership performance.</text>
+
+  <!-- Stack. Pill widths are sized to the monospace advance at this size
+       (12.5px + 1px tracking, roughly 8.5px per character) plus 18px of padding
+       each side, so no label can overrun its container. -->
+  <g font-family="ui-monospace,'SF Mono',Menlo,monospace" font-size="12.5" letter-spacing="1">
+    <rect x="72" y="392" width="147" height="30" rx="15" fill="#0b0f16" stroke="#232c3c"/>
+    <text x="90" y="412" fill="#8b99b3">POSTGRESQL 16</text>
+    <rect x="231" y="392" width="215" height="30" rx="15" fill="#0b0f16" stroke="#232c3c"/>
+    <text x="249" y="412" fill="#8b99b3">POWER BI · TMDL · DAX</text>
+
+    <rect x="72" y="434" width="130" height="30" rx="15" fill="#0b0f16" stroke="#232c3c"/>
+    <text x="90" y="454" fill="#8b99b3">PYTHON 3.11</text>
+    <rect x="214" y="434" width="207" height="30" rx="15" fill="#0b0f16" stroke="#232c3c"/>
+    <text x="232" y="454" fill="#8b99b3">NEXT.JS · TYPESCRIPT</text>
+  </g>
+
+  <!-- The synthetic-data statement. Given a bordered panel and a warm accent
        rather than being tucked into a corner, because it is the single most
        important qualifier on the image. -->
   <g>
-    <rect x="72" y="466" width="700" height="60" rx="10" fill="#3d2a05" fill-opacity="0.4" stroke="#eaab2c" stroke-opacity="0.45"/>
-    <text x="94" y="492" fill="#f7c96a" font-family="ui-sans-serif,system-ui,sans-serif" font-size="15" font-weight="600">Synthetic data only. Granite Auto Group is fictional.</text>
-    <text x="94" y="513" fill="#fcdfa4" font-family="ui-sans-serif,system-ui,sans-serif" font-size="13.5">No real dealership, customer, employee or lending data exists in this project.</text>
+    <rect x="72" y="486" width="548" height="60" rx="10" fill="#3d2a05" fill-opacity="0.4" stroke="#eaab2c" stroke-opacity="0.45"/>
+    <text x="94" y="512" fill="#f7c96a" font-family="ui-sans-serif,system-ui,sans-serif" font-size="15" font-weight="600">Synthetic data only. Granite Auto Group is fictional.</text>
+    <text x="94" y="533" fill="#fcdfa4" font-family="ui-sans-serif,system-ui,sans-serif" font-size="13.5">No real dealership, customer or employee data exists in it.</text>
+  </g>
+
+  <!-- ================================================================== -->
+  <!-- Right column: the product interface, and the architecture under it -->
+  <!-- ================================================================== -->
+
+  <g>
+    <!-- The frame. -->
+    <rect x="660" y="88" width="468" height="270" rx="14" fill="url(#panel)" stroke="#232c3c" stroke-width="1.5"/>
+
+    <!-- Chrome: three dots, the surface name, the route. -->
+    <path d="M660 122 H1128" stroke="#1a212e" stroke-width="1"/>
+    <g fill="#3b4658">
+      <circle cx="682" cy="105" r="3.5" fill="#5fdcee" opacity="0.75"/>
+      <circle cx="695" cy="105" r="3.5" fill="#ad9cf6" opacity="0.6"/>
+      <circle cx="708" cy="105" r="3.5"/>
+    </g>
+    <text x="726" y="110" fill="#d5deec" font-family="'Space Grotesk',ui-sans-serif,system-ui,sans-serif" font-size="14.5" font-weight="600">ARPI Inventory</text>
+    <text x="1110" y="110" text-anchor="end" fill="#64748f" font-family="ui-monospace,'SF Mono',Menlo,monospace" font-size="11.5">/inventory</text>
+
+    <!-- Column headers. Real column names from the real table. -->
+    <g fill="#64748f" font-family="ui-monospace,'SF Mono',Menlo,monospace" font-size="10" letter-spacing="0.9">
+      <text x="682" y="148">STORE</text>
+      <text x="812" y="148">COND</text>
+      <text x="880" y="148">YEAR</text>
+      <text x="934" y="148">MAKE</text>
+      <text x="1106" y="148" text-anchor="end">PRICE</text>
+    </g>
+    <path d="M682 158 H1106" stroke="#1a212e" stroke-width="1"/>
+
+    <!-- Five rows. NEUTRAL BARS, NOT VALUES. The panel shows that a listing
+         table exists and what its columns are; it does not assert a single
+         figure, because no figure on this card could be checked against
+         anything. -->
+    <g fill="#1e2836">
+      <!-- row 1 -->
+      <rect x="682" y="176" width="104" height="9" rx="4.5"/>
+      <rect x="812" y="176" width="42" height="9" rx="4.5"/>
+      <rect x="880" y="176" width="30" height="9" rx="4.5"/>
+      <rect x="934" y="176" width="66" height="9" rx="4.5"/>
+      <rect x="1046" y="176" width="60" height="9" rx="4.5"/>
+      <!-- row 2 -->
+      <rect x="682" y="208" width="88" height="9" rx="4.5"/>
+      <rect x="812" y="208" width="42" height="9" rx="4.5"/>
+      <rect x="880" y="208" width="30" height="9" rx="4.5"/>
+      <rect x="934" y="208" width="52" height="9" rx="4.5"/>
+      <rect x="1056" y="208" width="50" height="9" rx="4.5"/>
+      <!-- row 3 -->
+      <rect x="682" y="240" width="112" height="9" rx="4.5"/>
+      <rect x="812" y="240" width="42" height="9" rx="4.5"/>
+      <rect x="880" y="240" width="30" height="9" rx="4.5"/>
+      <rect x="934" y="240" width="74" height="9" rx="4.5"/>
+      <rect x="1040" y="240" width="66" height="9" rx="4.5"/>
+      <!-- row 4 -->
+      <rect x="682" y="272" width="96" height="9" rx="4.5"/>
+      <rect x="812" y="272" width="42" height="9" rx="4.5"/>
+      <rect x="880" y="272" width="30" height="9" rx="4.5"/>
+      <rect x="934" y="272" width="60" height="9" rx="4.5"/>
+      <rect x="1052" y="272" width="54" height="9" rx="4.5"/>
+      <!-- row 5 -->
+      <rect x="682" y="304" width="120" height="9" rx="4.5"/>
+      <rect x="812" y="304" width="42" height="9" rx="4.5"/>
+      <rect x="880" y="304" width="30" height="9" rx="4.5"/>
+      <rect x="934" y="304" width="48" height="9" rx="4.5"/>
+      <rect x="1044" y="304" width="62" height="9" rx="4.5"/>
+    </g>
+    <g stroke="#141a25" stroke-width="1">
+      <path d="M682 192 H1106"/>
+      <path d="M682 224 H1106"/>
+      <path d="M682 256 H1106"/>
+      <path d="M682 288 H1106"/>
+    </g>
+
+    <!-- The panel's own footer: what the surface is, in the surface. -->
+    <path d="M660 326 H1128" stroke="#1a212e" stroke-width="1"/>
+    <text x="682" y="345" fill="#64748f" font-family="ui-monospace,'SF Mono',Menlo,monospace" font-size="10.5" letter-spacing="0.8">SANITIZED LISTING SNAPSHOT · NO VALUE SHOWN</text>
+  </g>
+
+  <!-- The architecture underneath it. Four PostgreSQL layers converging on a
+       governed model node, and two dashed outputs above and below it: the same
+       composition the site's signature visual uses, at card scale. -->
+  <g transform="translate(676 396)" fill="none" stroke-linecap="round">
+    <path d="M0 20 C70 20 90 62 170 62" stroke="url(#lane)" stroke-width="2.2" />
+    <path d="M0 48 C74 48 86 62 170 62" stroke="url(#lane)" stroke-width="2.2" />
+    <path d="M0 76 C70 76 96 63 170 62" stroke="url(#lane)" stroke-width="2.2" />
+    <path d="M0 104 C64 104 100 65 170 62" stroke="url(#lane)" stroke-width="2.2" />
+    <path d="M170 62 C220 62 236 24 288 24" stroke="url(#laneModel)" stroke-width="2.2" />
+    <path d="M170 62 C220 62 236 100 288 100" stroke="url(#laneModel)" stroke-width="2.2" />
+
+    <g fill="#080b11" stroke="#22c8e0" stroke-width="1.8">
+      <rect x="-7" y="13" width="14" height="14" rx="3.5" />
+      <rect x="-7" y="41" width="14" height="14" rx="3.5" />
+      <rect x="-7" y="69" width="14" height="14" rx="3.5" />
+      <rect x="-7" y="97" width="14" height="14" rx="3.5" />
+    </g>
+    <g fill="#8b99b3" font-family="ui-monospace,'SF Mono',Menlo,monospace" font-size="10" letter-spacing="0.6" stroke="none">
+      <text x="16" y="24">raw</text>
+      <text x="16" y="52">staging</text>
+      <text x="16" y="80">warehouse</text>
+      <text x="16" y="108">reporting</text>
+    </g>
+
+    <!-- The governed node: the point everything resolves through. -->
+    <circle cx="170" cy="62" r="13" fill="#06323d" stroke="#5fdcee" stroke-width="2.2" />
+    <circle cx="170" cy="62" r="4.5" fill="#5fdcee" stroke="none" />
+
+    <!-- The semantic model and the report layer above it, dashed because both
+         are written, statically checked, and never loaded by an engine. -->
+    <g fill="#241a4a" stroke="#ad9cf6" stroke-width="1.8" stroke-dasharray="4 3">
+      <rect x="288" y="14" width="16" height="16" rx="3.5" />
+      <rect x="288" y="90" width="16" height="16" rx="3.5" />
+    </g>
+    <g fill="#8b99b3" font-family="ui-monospace,'SF Mono',Menlo,monospace" font-size="10" letter-spacing="0.6" stroke="none">
+      <text x="312" y="26">semantic model</text>
+      <text x="312" y="102">report pages</text>
+    </g>
   </g>
 
   <!-- Author, on the baseline rule -->
-  <path d="M72 566 H1128" stroke="#1a212e" stroke-width="1"/>
-  <text x="72" y="592" fill="#8b99b3" font-family="ui-sans-serif,system-ui,sans-serif" font-size="15">Michael Palmer</text>
-  <text x="1128" y="592" text-anchor="end" fill="#64748f" font-family="ui-monospace,'SF Mono',Menlo,monospace" font-size="12.5" letter-spacing="0.8">PORTFOLIO DATA PLATFORM · MIT</text>
+  <path d="M72 568 H1128" stroke="#1a212e" stroke-width="1"/>
+  <text x="72" y="594" fill="#d5deec" font-family="ui-sans-serif,system-ui,sans-serif" font-size="15" font-weight="600">Built by Michael Palmer</text>
+  <text x="1128" y="594" text-anchor="end" fill="#64748f" font-family="ui-monospace,'SF Mono',Menlo,monospace" font-size="12.5" letter-spacing="0.8">PORTFOLIO DATA PLATFORM · MIT</text>
 </svg>
