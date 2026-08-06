@@ -643,15 +643,200 @@ test.describe('the inventory pages work at every breakpoint', () => {
     })
   }
 
-  test('the wide table scrolls inside its own container, not the page', async ({
+  /*
+   * WHY THE 375px TABLE TEST IS GONE
+   * --------------------------------
+   * It asserted that at 375px the listing table scrolls inside its own container
+   * rather than scrolling the page. That was true and it was the wrong thing to
+   * be satisfied with: the container at 320px is 254px wide, the table's natural
+   * width is about 1,030px, and eight of the ten columns - INCLUDING THE
+   * ADVERTISED PRICE - were therefore outside it with no affordance saying so.
+   * The test passed on a page where a reader could not see what a car cost.
+   *
+   * There is no table at 375px any more, so the assertion has nothing to bind
+   * to. What replaces it is stronger: that the cards ARE the presentation below
+   * 1280px, that they carry every field the table carries, and that the table is
+   * still the presentation above it. The scroll container still exists on the
+   * table and is still keyboard-reachable; `accessibility.spec.ts` covers that.
+   */
+  test('the desktop table renders no column outside its container', async ({ page }) => {
+    for (const width of [1280, 1440, 1920]) {
+      await page.setViewportSize({ width, height: 900 })
+      await gotoRendered(page, '/inventory')
+      const clipped = await page.evaluate(() => {
+        const table = [...document.querySelectorAll('table')].find((node) =>
+          node.innerText.includes('Stock reference')
+        )
+        if (!table) return ['no table']
+        const region = table.closest('[role="region"]')?.getBoundingClientRect()
+        if (!region) return ['no scroll region']
+        return [...table.querySelectorAll('th[scope="col"]')]
+          .filter((th) => {
+            const box = th.getBoundingClientRect()
+            return box.left < region.left - 1 || box.right > region.right + 1
+          })
+          .map((th) => (th as HTMLElement).innerText.trim())
+      })
+      expect(clipped, `columns outside the container at ${String(width)}px`).toEqual([])
+    }
+  })
+})
+
+/* -------------------------------------------------------------------------- */
+/* The narrow-width listing presentation                                      */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Widths at which the listings must be cards.
+ *
+ * 1024 is in the list on purpose. The table needs about 1,030px of content width
+ * and the page container gives it 891px there, so a table at 1024 clipped its
+ * last two columns - which is why the breakpoint is 1280 and not `md`.
+ */
+const CARD_WIDTHS = [320, 375, 390, 768, 1024] as const
+
+/** Widths at which the listings must be the semantic table. */
+const TABLE_WIDTHS = [1280, 1440, 1920] as const
+
+/** Every field the sanitized record type carries, as the card labels it. */
+const CARD_FIELDS = [
+  'Condition',
+  'Trim',
+  'Mileage',
+  'Stock reference',
+  'Snapshot',
+] as const
+
+test.describe('listings are readable at every width', () => {
+  for (const width of CARD_WIDTHS) {
+    test(`/inventory presents listings as cards at ${String(width)}px`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 900 })
+      await gotoRendered(page, '/inventory')
+
+      const card = page.locator('article[aria-labelledby^="listing-"]').first()
+      await expect(card).toBeVisible()
+
+      // The table is `display: none` here, so it is out of the accessibility
+      // tree as well as off the screen. Both presentations exposed at once would
+      // read every listing twice.
+      await expect(
+        page.locator('table').filter({ hasText: 'Stock reference' })
+      ).toBeHidden()
+
+      // The defect this whole change exists for: the price has to be readable
+      // without moving anything sideways, and it has to be the second thing in
+      // the card rather than the ninth.
+      const text = await card.innerText()
+      expect(text).toMatch(/Advertised price/i)
+      expect(text).toMatch(/\$[\d,]+|Not exposed/)
+
+      // And nothing was dropped to make the card shorter.
+      const terms = await card.locator('dt').allInnerTexts()
+      const normalised = terms.map((term) => term.trim().toLowerCase())
+      for (const field of CARD_FIELDS) {
+        expect(normalised, `${field} missing at ${String(width)}px`).toContain(
+          field.toLowerCase()
+        )
+      }
+      // The explorer spans all three stores, so it labels the store too.
+      expect(normalised).toContain('dealership')
+    })
+
+    test(`a store page presents listings as cards at ${String(width)}px`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 900 })
+      await gotoRendered(page, '/dealerships/granite-subaru')
+      const card = page.locator('article[aria-labelledby^="listing-"]').first()
+      await expect(card).toBeVisible()
+      const terms = (await card.locator('dt').allInnerTexts()).map((term) =>
+        term.trim().toLowerCase()
+      )
+      for (const field of CARD_FIELDS) {
+        expect(terms, `${field} missing at ${String(width)}px`).toContain(
+          field.toLowerCase()
+        )
+      }
+      // One store, so no dealership term: the column the table drops for the
+      // same reason.
+      expect(terms).not.toContain('dealership')
+    })
+  }
+
+  for (const width of TABLE_WIDTHS) {
+    test(`/inventory presents listings as a table at ${String(width)}px`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 900 })
+      await gotoRendered(page, '/inventory')
+      await expect(
+        page.locator('table').filter({ hasText: 'Stock reference' }).first()
+      ).toBeVisible()
+      // And the cards are the ones removed from the tree this time. `.first()`
+      // because the locator matches every card on the page, and a visibility
+      // assertion against twenty-five elements is a strict-mode violation
+      // rather than an assertion about any of them.
+      await expect(
+        page.locator('article[aria-labelledby^="listing-"]').first()
+      ).toBeHidden()
+    })
+  }
+
+  test('a store page renders one card per listing, not a truncated set', async ({
     page,
   }) => {
+    const store = STORES.find((entry) => entry.id === 'GSA-002')
+    expect(store, 'the Subaru store is in the generated set').toBeDefined()
     await page.setViewportSize({ width: 375, height: 812 })
+    await gotoRendered(page, store?.href ?? '/dealerships/granite-subaru')
+    await expect(page.locator('article[aria-labelledby^="listing-"]')).toHaveCount(
+      store?.inventory.totalRecords ?? 0
+    )
+  })
+
+  test('a card states a missing price as an absence, not as a number', async ({
+    page,
+  }) => {
+    // The independent store is the one whose source priced fewer than a tenth of
+    // its listings, which is the case the card has to render honestly.
+    await page.setViewportSize({ width: 375, height: 812 })
+    await gotoRendered(page, '/dealerships/granite-pre-owned')
+    const text = await page
+      .locator('article[aria-labelledby^="listing-"]')
+      .first()
+      .innerText()
+    // `\s+`, not a literal space: the "Advertised price" term is an `sr-only`
+    // span, which is `position: absolute`, so `innerText` treats it as a block
+    // and puts a newline between the term and the value.
+    expect(text).toMatch(/Advertised price\s+(\$[\d,]+|Not exposed)/i)
+    expect(text, 'a missing price never renders as zero').not.toMatch(/\$0(\D|$)/)
+  })
+
+  test('filters, sorting and pagination stay usable at 320px', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 800 })
     await gotoRendered(page, '/inventory')
-    const scroller = page
-      .locator('div')
-      .filter({ has: page.locator('table:has-text("Stock reference")') })
-      .last()
-    await expect(scroller).toHaveCSS('overflow-x', /auto|scroll/)
+
+    // Sorting.
+    await page.selectOption('#inventory-sort', 'price-asc')
+    // Filtering, through the control that is a chip rather than a select.
+    await page.getByRole('button', { name: 'New', exact: true }).click()
+    await expect(page.getByRole('button', { name: 'New', exact: true })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    )
+    // Pagination still announces its own position.
+    await expect(page.getByRole('navigation', { name: 'Inventory pages' })).toBeVisible()
+    await page.getByRole('button', { name: 'Next' }).click()
+    await expect(page.getByText(/Page 2 of/)).toBeVisible()
+
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth
+    )
+    expect(
+      overflow,
+      'interacting at 320px introduced sideways scroll'
+    ).toBeLessThanOrEqual(1)
   })
 })

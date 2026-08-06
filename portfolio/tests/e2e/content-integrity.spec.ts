@@ -930,3 +930,201 @@ test.describe('the operating view is a product surface, not a dashboard', () => 
     await expect(frame).toContainText(/no engine has evaluated these measures/i)
   })
 })
+
+/* -------------------------------------------------------------------------- */
+/* Progressive disclosure                                                     */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The home page's default-visible prose was reduced by roughly a quarter in this
+ * release by moving supplemental reasoning behind `<details>`.
+ *
+ * That is a good change and it is the exact change that turns into a bad one by
+ * degrees: the next paragraph somebody wants off the page is a caveat, and a
+ * caveat behind a control is a caveat the page is hoping nobody opens. These
+ * tests draw the line and hold it.
+ */
+test.describe('progressive disclosure withholds reasoning, never qualification', () => {
+  /** What must be readable without opening anything, on the home page. */
+  const ALWAYS_VISIBLE: readonly { readonly label: string; readonly pattern: RegExp }[] =
+    [
+      { label: 'the fictional-entity notice', pattern: /fictional/i },
+      { label: 'the synthetic-data statement', pattern: /synthetic/i },
+      { label: 'the sanitized-listing provenance', pattern: /sanitiz/i },
+      {
+        label: 'the "not a performance result" boundary',
+        pattern: /not (an? )?(analytical finding|performance)/i,
+      },
+      { label: 'the Gate 2 position', pattern: /Gate 2/ },
+    ]
+
+  for (const entry of ALWAYS_VISIBLE) {
+    test(`${entry.label} is readable without opening a disclosure`, async ({ page }) => {
+      await gotoRendered(page, '/')
+
+      // Read only the text that is NOT inside a collapsed <details>. If the
+      // statement survives that filter, a reader who opens nothing still sees it.
+      const openText = await page.evaluate(() => {
+        const main = document.querySelector('main')
+        if (!main) return ''
+        const clone = main.cloneNode(true) as HTMLElement
+        for (const details of clone.querySelectorAll('details:not([open])')) {
+          for (const child of [...details.children]) {
+            if (child.tagName.toLowerCase() !== 'SUMMARY'.toLowerCase()) child.remove()
+          }
+        }
+        return (clone.textContent ?? '').replace(/\s+/g, ' ')
+      })
+
+      expect(openText, `${entry.label} is only reachable behind a disclosure`).toMatch(
+        entry.pattern
+      )
+    })
+  }
+
+  test('every summary names what it opens rather than saying "learn more"', async ({
+    page,
+  }) => {
+    const vague =
+      /^(learn|read|see|show|view)( more| less| details?)?\.?$|^(more|details?|expand|additional information)\.?$/i
+
+    // The two routes that actually carry disclosures: the home page's
+    // supplemental reasoning, and the chart table alternatives on `/inventory`.
+    // `/architecture` has none - its long form is the always-present component
+    // list, which is a different and better answer to the same problem.
+    for (const path of ['/', '/inventory']) {
+      await gotoRendered(page, path)
+      const labels = await page.locator('main details > summary').allInnerTexts()
+      expect(labels.length, `${path} has no disclosures at all`).toBeGreaterThan(0)
+      for (const label of labels) {
+        const text = label.trim()
+        expect(text, `${path}: "${text}" is a vague summary`).not.toMatch(vague)
+        // Short enough to scan, long enough to be a question rather than a noun.
+        expect(
+          text.length,
+          `${path}: "${text}" is too short to be concrete`
+        ).toBeGreaterThan(12)
+      }
+    }
+  })
+
+  test('disclosure contents are server-rendered, not injected by script', async ({
+    request,
+  }) => {
+    // The whole argument for `<details>` over a custom control: the text is in
+    // the document whether or not JavaScript ran. A disclosure whose contents
+    // arrive with hydration is hidden content, not progressive disclosure.
+    const html = await (await request.get('/')).text()
+    expect(html).toContain('Why these stores cannot share one operating model')
+    // And the paragraph behind that summary, not merely the summary itself.
+    expect(html).toMatch(/allocation: the store orders into a build schedule/i)
+  })
+
+  test('a disclosure opens from the keyboard and reports its state', async ({ page }) => {
+    await gotoRendered(page, '/')
+    // Located from the OUTSIDE in: `filter({ has })` takes a locator relative to
+    // the element being filtered, so passing a page-rooted `main details >
+    // summary` into it resolves to nothing and every assertion then times out
+    // against an empty set.
+    const details = page
+      .locator('main details')
+      .filter({ hasText: 'Why these stores cannot share one operating model' })
+      .first()
+    const summary = details.locator('summary').first()
+
+    await expect(details).not.toHaveAttribute('open', /.*/)
+
+    await summary.focus()
+    await expect(summary).toBeFocused()
+    await page.keyboard.press('Enter')
+    await expect(details).toHaveAttribute('open', /.*/)
+
+    // And closes again, so the control is a toggle rather than a one-way reveal.
+    await page.keyboard.press('Enter')
+    await expect(details).not.toHaveAttribute('open', /.*/)
+  })
+
+  test('the home page keeps its seven chapters', async ({ page }) => {
+    // Disclosure reduces prose. It must not have been used to remove a chapter,
+    // and the composition is not to grow back either.
+    await gotoRendered(page, '/')
+    const ids = await page.evaluate(() =>
+      [...document.querySelectorAll('main section[id]')].map((node) => node.id)
+    )
+    expect(ids).toEqual([
+      'hero',
+      'stores',
+      'tour',
+      'operating-view',
+      'proof',
+      'builder',
+      'review',
+    ])
+  })
+})
+
+/* -------------------------------------------------------------------------- */
+/* Business-result language                                                   */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The existing sweep above catches a business-result FIGURE: a gross, a revenue,
+ * a margin with a number attached. This catches the sentence that makes the same
+ * claim without one.
+ *
+ * "ARPI improved inventory turn" needs no figure to be a lie, and it is the exact
+ * sentence a portfolio drifts toward under pressure to sound like it did
+ * something. No analysis has been run against this platform, no report page
+ * exists, Gate 2 is closed, and the inventory lane is a snapshot of what was
+ * advertised on a date. There is no result to report, so there is no phrasing of
+ * one that is honest.
+ *
+ * The patterns are deliberately narrow. `reduced` and `improved` are ordinary
+ * English and appear legitimately - the site says the home page reduced its own
+ * chapter count, and a KPI caution says a leaderboard "rewards whoever the lead
+ * routing favours". Only the constructions that attach a change to a dealership
+ * outcome are rejected.
+ */
+test.describe('no route claims a dealership result', () => {
+  const RESULT_CLAIMS: readonly { readonly label: string; readonly pattern: RegExp }[] = [
+    {
+      label: 'an asserted improvement in a retail outcome',
+      pattern:
+        /\b(increase[ds]?|improve[ds]?|lift(ed)?|boost(ed)?|grew|grow(th|n)?)\b[^.]{0,40}\b(sales|gross|revenue|profit|turn|days supply|close rate|conversion)\b/i,
+    },
+    {
+      label: 'an asserted reduction in a retail outcome',
+      pattern:
+        /\b(reduce[ds]?|cut|lower(ed)?|shrank|decreas(e|ed))\b[^.]{0,40}\b(aged inventory|aging|days supply|holding cost|cost per (sale|unit))\b/i,
+    },
+    {
+      label: 'a percentage change presented as an outcome',
+      pattern:
+        /\b\d+(\.\d+)?\s?%\s?(increase|improvement|lift|growth|reduction|uplift)\b/i,
+    },
+    {
+      label: 'a return-on-investment claim',
+      pattern: /\bROI\b|\breturn on (ad )?spend\b/i,
+    },
+    {
+      label: 'a production-adoption claim',
+      pattern:
+        /\b(used|deployed|running|in production) (at|by|across) \d+ (dealership|store|rooftop)/i,
+    },
+    { label: 'a testimonial', pattern: /["“][^"”]{20,}["”]\s*[-—]\s*[A-Z][a-z]+ [A-Z]/ },
+  ]
+
+  for (const route of PRIMARY_ROUTES) {
+    test(`${route.path} states no dealership outcome`, async ({ page }) => {
+      await gotoRendered(page, route.path)
+      const text = await bodyText(page)
+      for (const claim of RESULT_CLAIMS) {
+        const match = claim.pattern.exec(text)
+        expect(
+          match?.[0],
+          `${route.path} contains ${claim.label}: "${match?.[0] ?? ''}"`
+        ).toBeUndefined()
+      }
+    })
+  }
+})

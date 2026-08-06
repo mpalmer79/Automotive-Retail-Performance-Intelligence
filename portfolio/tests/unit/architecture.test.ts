@@ -20,6 +20,7 @@ import {
   LAYER_LABEL,
   architectureNode,
   downstreamOf,
+  flowDistances,
   upstreamOf,
   type NodeLayer,
 } from '../../src/content/architecture.ts'
@@ -426,5 +427,70 @@ describe('architectureNode', () => {
     // The explorer indexes into this from a selection, and a silent undefined
     // would render an empty panel instead of failing the build.
     expect(() => architectureNode('not-a-node')).toThrow()
+  })
+})
+
+/* -------------------------------------------------------------------------- */
+/* Flow distances                                                              */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The hop counts the explorer's selection wave is ordered by.
+ *
+ * These are not decoration even though the thing they drive is: an edge given
+ * the wrong hop count draws at the wrong moment, and the animation then says the
+ * data flows in an order it does not. The property worth asserting is that these
+ * are SHORTEST paths, because the graph has more than one route between some
+ * pairs and a depth-first walk would record whichever it happened to take.
+ */
+describe('flowDistances', () => {
+  it('puts the selected node at zero in both directions', () => {
+    const { upstream, downstream } = flowDistances('warehouse')
+    expect(upstream.get('warehouse')).toBe(0)
+    expect(downstream.get('warehouse')).toBe(0)
+  })
+
+  it('agrees with the set helpers about who is on the path', () => {
+    for (const node of ARCHITECTURE_NODES) {
+      const { upstream, downstream } = flowDistances(node.id)
+      const ups = new Set([...upstream.keys()].filter((id) => id !== node.id))
+      const downs = new Set([...downstream.keys()].filter((id) => id !== node.id))
+      expect(ups, `${node.id} upstream`).toEqual(upstreamOf(node.id))
+      expect(downs, `${node.id} downstream`).toEqual(downstreamOf(node.id))
+    }
+  })
+
+  it('counts the shortest route, not the first one found', () => {
+    // `validation` reaches `reporting` two ways: through `csv`, `raw`,
+    // `staging` and `warehouse`, and directly through `audit`. The shorter one
+    // is two hops, and a depth-first walk would have recorded five.
+    const { downstream } = flowDistances('validation')
+    expect(downstream.get('audit')).toBe(1)
+    expect(downstream.get('reporting')).toBe(2)
+  })
+
+  it('counts one hop per edge along the spine', () => {
+    const { upstream } = flowDistances('reporting')
+    expect(upstream.get('warehouse')).toBe(1)
+    expect(upstream.get('staging')).toBe(2)
+    expect(upstream.get('raw')).toBe(3)
+    expect(upstream.get('csv')).toBe(4)
+  })
+
+  it('gives an entry point no upstream and a terminal node no downstream', () => {
+    expect([...flowDistances('config').upstream.keys()]).toEqual(['config'])
+    expect([...flowDistances('case-study').downstream.keys()]).toEqual(['case-study'])
+  })
+
+  it('never reports a distance for a node that is not connected', () => {
+    for (const node of ARCHITECTURE_NODES) {
+      const { upstream, downstream } = flowDistances(node.id)
+      for (const map of [upstream, downstream]) {
+        for (const [id, hops] of map) {
+          expect(ids.has(id), `${id} is not a node`).toBe(true)
+          expect(hops).toBeGreaterThanOrEqual(0)
+        }
+      }
+    }
   })
 })

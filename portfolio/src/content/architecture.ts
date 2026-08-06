@@ -370,6 +370,57 @@ export const ARCHITECTURE_EDGES: readonly ArchitectureEdge[] = [
   { from: 'report-pages', to: 'case-study', kind: 'planned' },
 ]
 
+/**
+ * How many hops each node is from `id`, in each direction.
+ *
+ * `upstreamOf` and `downstreamOf` answer "is this node on the path", which is
+ * what the highlighting needs. The explorer's motion needs the stronger answer -
+ * HOW FAR along the path - because that is what turns sixteen edges lighting up
+ * at once into a flow with a direction: the upstream edges resolve inward from
+ * the farthest one, and the downstream edges leave outward from the nearest.
+ *
+ * Breadth-first rather than the depth-first walk the two set helpers use,
+ * because a depth-first walk records the distance of the route it happened to
+ * take rather than the shortest one, and the diagram has more than one route
+ * between some pairs of nodes: `validation` reaches `reporting` both through
+ * `csv` and through `audit`.
+ *
+ * `id` itself is at distance 0 in both maps.
+ */
+export function flowDistances(id: string): {
+  readonly upstream: ReadonlyMap<string, number>
+  readonly downstream: ReadonlyMap<string, number>
+} {
+  const walk = (direction: 'up' | 'down'): Map<string, number> => {
+    const distance = new Map<string, number>([[id, 0]])
+    let frontier = [id]
+    let depth = 0
+    while (frontier.length > 0) {
+      depth += 1
+      const next: string[] = []
+      for (const current of frontier) {
+        for (const edge of ARCHITECTURE_EDGES) {
+          const neighbour =
+            direction === 'up'
+              ? edge.to === current
+                ? edge.from
+                : null
+              : edge.from === current
+                ? edge.to
+                : null
+          if (neighbour === null || distance.has(neighbour)) continue
+          distance.set(neighbour, depth)
+          next.push(neighbour)
+        }
+      }
+      frontier = next
+    }
+    return distance
+  }
+
+  return { upstream: walk('up'), downstream: walk('down') }
+}
+
 export const LAYER_LABEL: Record<NodeLayer, string> = {
   configuration: 'Configuration',
   generation: 'Generation',

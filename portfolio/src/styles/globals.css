@@ -396,6 +396,153 @@
 }
 
 /* ==========================================================================
+   Disclosures in print
+   --------------------------------------------------------------------------
+   A printed page has no interaction, so a collapsed `<details>` on paper is
+   content the reader can see the label of and can never open. Every disclosure
+   on this site is opened for print.
+
+   The chart table alternatives are opened too, and they are the reason this
+   rule is worth having: on screen they are collapsed so five charts do not
+   become five tables on a phone, and on paper the table is the only readable
+   form of a bar whose length the reader cannot measure.
+   ========================================================================== */
+
+@media print {
+  /* `::details-content` is the only way CSS can open a `<details>`: the `open`
+     attribute is the state, and a stylesheet cannot set an attribute. Engines
+     that do not support the pseudo-element ignore this rule and print the
+     disclosure collapsed, which is the same behaviour as before it existed -
+     no regression, and the content is still in the document for anything that
+     reads the markup rather than the paint. */
+  details::details-content {
+    content-visibility: visible;
+    block-size: auto;
+  }
+
+  /* The chevron is an affordance for a control that paper does not have. */
+  details > summary {
+    list-style: none;
+  }
+
+  details > summary svg {
+    display: none;
+  }
+}
+
+/* ==========================================================================
+   Inventory listing cards
+   --------------------------------------------------------------------------
+   The narrow-width presentation of `components/dealerships/inventory-table.tsx`,
+   expressed as nine utilities rather than as inline utility strings.
+
+   WHY THESE ARE CLASSES AND NOT TAILWIND UTILITIES IN THE MARKUP
+   The rest of this site composes utilities in the component, which is right when
+   an element appears once. These appear three hundred and eighteen times on one
+   route: `/dealerships/granite-pre-owned` renders its complete snapshot, and the
+   card and the table row are both in the document because which one is displayed
+   is a media query, not a decision the server can make.
+
+   Written as utility strings, the card's nine elements carried about 1,270
+   characters of class attribute EACH, which is roughly 400 kB of repeated class
+   names on that one page. As classes it is about 210. The measured result is in
+   portfolio/docs/PERFORMANCE.md section 6.
+
+   Every value below is a token. Nothing here introduces a colour, a size or a
+   radius that the design system does not already define.
+   ========================================================================== */
+
+@utility listing-card {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--spacing) * 3);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--color-line);
+  background-color: var(--color-canvas);
+  padding: calc(var(--spacing) * 4);
+}
+
+@utility listing-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  column-gap: calc(var(--spacing) * 4);
+  row-gap: calc(var(--spacing) * 1);
+}
+
+@utility listing-title {
+  min-width: 0;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  line-height: 1.35;
+  text-wrap: balance;
+  color: var(--color-ink);
+}
+
+@utility listing-price {
+  flex-shrink: 0;
+  font-size: var(--text-base);
+  font-weight: 600;
+  line-height: 1;
+  color: var(--color-ink);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+/* A listing the source never priced. Recessive and smaller, so the eye does not
+   read "Not exposed" as a figure - the same rule the table cell follows. */
+@utility listing-price-missing {
+  font-size: var(--text-xs);
+  font-weight: 400;
+  color: var(--color-ink-faint);
+}
+
+@utility listing-fields {
+  display: grid;
+  grid-template-columns: 1fr;
+  column-gap: calc(var(--spacing) * 4);
+  row-gap: calc(var(--spacing) * 2);
+}
+
+/* Two columns as soon as there is room for them. 400px rather than a named
+   breakpoint: below it, a short term beside "Not exposed" wraps and costs more
+   height than the single column it saved. */
+@media (width >= 400px) {
+  .listing-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@utility listing-field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: calc(var(--spacing) * 0.5);
+}
+
+@utility listing-term {
+  font-size: var(--text-2xs);
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+
+@utility listing-value {
+  font-size: var(--text-sm);
+  line-height: 1.35;
+  color: var(--color-ink-secondary);
+}
+
+/* Stock reference and snapshot date: provenance, not content. */
+@utility listing-value-mono {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--color-ink-faint);
+}
+
+/* ==========================================================================
    sr-only, redefined
    --------------------------------------------------------------------------
    `@utility` REPLACES Tailwind's built-in `sr-only` rather than layering over

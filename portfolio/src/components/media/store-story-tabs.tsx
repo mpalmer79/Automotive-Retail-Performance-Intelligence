@@ -46,6 +46,8 @@ import { useId, useState } from 'react'
 
 import { RooftopVisual } from '@/components/media/rooftop-visual'
 import { SegmentedTabs } from '@/components/media/segmented-tabs'
+import { Disclosure } from '@/components/ui/disclosure'
+import { STORE_TYPE_ICON } from '@/components/ui/domain-icon'
 import { Badge } from '@/components/ui/badge'
 import { Heading, Text } from '@/components/ui/typography'
 import type { StoreStoryPanel } from '@/lib/product-preview'
@@ -66,6 +68,10 @@ export function StoreStoryTabs({ panels, className }: StoreStoryTabsProps) {
   const panel = panels.find((entry) => entry.dealershipId === selected) ?? panels[0]
 
   if (!panel) return null
+
+  const StoreTypeIcon = panel.isFranchise
+    ? STORE_TYPE_ICON.franchise
+    : STORE_TYPE_ICON.independent
 
   return (
     <div className={cx('flex flex-col gap-6', className)}>
@@ -92,7 +98,20 @@ export function StoreStoryTabs({ panels, className }: StoreStoryTabsProps) {
         <div className="flex flex-col gap-5 lg:col-span-7">
           <div className="flex flex-col gap-3">
             <div className="flex flex-wrap items-center gap-2">
-              <Badge tone="neutral">{panel.storeTypeLabel}</Badge>
+              {/* The store type carries a mark as well as a word. Franchise
+                  versus independent is the distinction this whole chapter is
+                  about, and it is the one a reader switching tabs is trying to
+                  hold in their head. The icon is decorative - the label is
+                  inside the same badge - so it is hidden from assistive
+                  technology rather than announced before the word it repeats. */}
+              <Badge tone="neutral">
+                <StoreTypeIcon
+                  aria-hidden="true"
+                  strokeWidth={1.75}
+                  className="mr-1.5 inline size-3.5 align-[-0.15em] text-ink-faint"
+                />
+                {panel.storeTypeLabel}
+              </Badge>
               <Badge tone="neutral" mono>
                 {panel.location}
               </Badge>
@@ -107,12 +126,16 @@ export function StoreStoryTabs({ panels, className }: StoreStoryTabsProps) {
             {panel.positioning}
           </Text>
 
-          <div className="flex flex-col gap-2 border-l-2 border-accent-muted/50 pl-4">
-            <span className="eyebrow text-2xs">How the inventory is decided</span>
+          {/* The label was already the concrete question this paragraph
+              answers, so it becomes the summary unchanged. Behind a disclosure
+              because it is the same argument for each of the three stores and a
+              reader switching tabs to compare figures is reading it three
+              times. */}
+          <Disclosure label="How this store's inventory is decided">
             <Text size="sm" tone="secondary" className="max-w-prose">
               {panel.inventoryStrategy}
             </Text>
-          </div>
+          </Disclosure>
 
           {/* The figures this store's own workbook supports, and the sentence
               they add up to. Both derived. */}

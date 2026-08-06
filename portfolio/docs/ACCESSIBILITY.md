@@ -159,6 +159,59 @@ permitted — a diagram is data requiring two-dimensional layout — and each is
 `overflow-x: auto` with a keyboard-reachable scroll region, with the full content
 also available as a definition list below it.
 
+### The listing table, and why "it scrolls in its container" was not good enough
+
+The inventory listings used the same answer as the diagrams: a table inside an
+`overflow-x: auto` region. The page never scrolled sideways, every automated
+overflow check passed, and a test asserted the behaviour as correct.
+
+It was still a reflow failure, and measuring it is what showed that. The table's
+natural content width is **1,028px**, and the region it sits in is as narrow as
+the page container makes it:
+
+| Viewport | Scroll region | Columns outside it                                                                |
+| -------- | ------------- | --------------------------------------------------------------------------------- |
+| 320px    | 254px         | Year, Make, Model, Trim, Mileage, **Advertised price**, Stock reference, Snapshot |
+| 375px    | 309px         | Make, Model, Trim, Mileage, **Advertised price**, Stock reference, Snapshot       |
+| 768px    | 668px         | **Advertised price**, Stock reference, Snapshot                                   |
+| 1024px   | 891px         | Stock reference, Snapshot                                                         |
+
+SC 1.4.10 is about loss of information, not about the presence of a scrollbar. A
+horizontal scroll region is a reasonable answer when a reader can see there is
+more to the right; it is not one when the price of a car is 500px past the edge
+of a phone screen and nothing indicates that the column exists.
+
+So below **1280px** the listings are stacked result cards, and at 1280px and
+above they are the semantic table with **no column outside its container at any
+tested width**. 1280 rather than a medium breakpoint because at 1024 the table
+still clipped two columns.
+
+The cards are not a reduced view. Every field the table carries is on every card
+— dealership where applicable, condition, model year, make, model, trim, mileage,
+advertised price, stock reference and snapshot date — and a store page renders
+one card per listing, which is asserted against the generated count so a
+truncated set fails the suite.
+
+Their semantics are `<article>` named by its own vehicle line through
+`aria-labelledby`, and a `<dl>` of the remaining fields. Not a grid of `<div>`s:
+each value is a labelled property of one listing, and a screen-reader user is
+told the term before the value. The heading level is deliberately not asserted —
+the component renders at three different depths, and a fixed level would skip one.
+
+The two presentations are `display: none` at each other's widths, so exactly one
+is in the accessibility tree and no listing is ever announced twice.
+
+Both are capped at the same height and scroll inside their own focusable, named
+region. The cards shipped uncapped first, and the store page that produced was
+**105,036px tall at a 320px viewport** — about a hundred and thirty screens,
+because the independent store's snapshot is 318 records and a card is taller than
+a row. With the cap it is 9,094px.
+
+That defect was found by a **timeout**, not by an assertion: the reflow sweep
+scrolls each route end to end, and 105,000px is 219 scroll steps, which pushed
+two tests past their 45-second budget. Worth recording, because a timing-out test
+is easy to read as a slow machine and dismiss.
+
 ### How overflow is measured, and why the obvious way is wrong
 
 The first version of the check was `scrollWidth - clientWidth`. It produced false

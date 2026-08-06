@@ -236,9 +236,49 @@ Every animation on the site. If it is not here, it does not exist.
 | 9   | Hover and press states  | CSS                              | fast / instant        | affordance                                       |
 | 10  | Mobile drawer and scrim | CSS transform and opacity        | base                  | where the drawer came from                       |
 | 11  | Focus ring              | none — instant                   | 0                     | never animated; a delayed focus ring is a bug    |
+| 12  | Architecture arrival    | Motion `pathLength`, band order  | deliberate, once      | the direction of travel: generate → present      |
+| 13  | Architecture flow wave  | Motion `pathLength`, hop order   | deliberate, per hop   | upstream resolving in, downstream leaving out    |
 
 Number 11 is a rule, not an omission. A focus indicator that fades in is a focus
 indicator that is briefly absent.
+
+### Numbers 12 and 13, and why a highlight was not enough
+
+Selecting a node in the architecture explorer used to animate one property:
+opacity, to dim the nodes that were not on the path. That is a highlight, and a
+highlight answers "which of these are related to this one".
+
+It does not answer what the diagram is actually claiming. The layout is
+left-to-right because the direction is the information — data is generated, then
+persisted, then modelled, then presented — and a node's upstream is not the same
+kind of thing as its downstream. Dimming says both are "related".
+
+So two finite animations carry direction:
+
+**12. Arrival.** Once, on mount, the built edges draw in band order: generate,
+persist, model, present. It states the direction of travel one time and stops. It
+never loops, it never replays when a selection is cleared, and it never gates the
+controls — a node is selectable from the first frame, which is asserted.
+
+**13. Selection.** The edges on the selected node's path redraw as a wave.
+Upstream edges resolve **inward**, farthest hop first, so the flow arrives at the
+node. Downstream edges leave **outward**, nearest first, so it departs. Every edge
+draws along its own direction of travel, so "toward" and "away" are properties of
+the drawing rather than a convention the reader has to be taught.
+
+The hop ordering comes from `flowDistances` in `src/content/architecture.ts`,
+which is breadth-first. Depth-first would record the length of whichever route it
+happened to walk, and the graph has more than one route between some pairs —
+`validation` reaches `reporting` through `csv` and through `audit` — so the wave
+would draw in an order the data does not flow in.
+
+**Planned edges never draw.** `pathLength` is implemented with the same two dash
+properties that make an edge dashed, so the two cannot coexist; and animating
+flow through a stage that has not been built would be the diagram asserting
+something untrue for the sake of a transition. They render dashed and static.
+
+What is deliberately absent: particles, arrows that travel continuously, any
+loop, and any animation of all sixteen edges at once.
 
 ### What is not on this list, and used to be
 
@@ -361,6 +401,26 @@ A site-wide block, deliberately blunt:
 It catches every CSS transition and animation, **including any a future component forgets
 to guard**. That is the point of making it blunt. A companion rule removes the reveal's
 `transform` entirely, so the element appears in place rather than sliding one millisecond.
+
+`[data-arpi-draw]` earns its `!important` twice over now. Motion implements
+`pathLength` by writing `stroke-dasharray` and `stroke-dashoffset` as **inline**
+styles, and an inline style loses to `!important`. So an architecture edge caught
+mid-draw by a preference change — a reader toggling the system setting with the
+page open — is forced to its completed state rather than stranded part-way along
+a path, which would read as a broken diagram rather than a still one.
+
+### A trap in testing this, found in this release
+
+The reduced-motion suite emulates the preference two ways: `browser.newContext({
+reducedMotion })` for the direct comparisons, and `test.use({ contextOptions: {
+reducedMotion: 'reduce' } })` for whole describe blocks.
+
+A block written as `test.use({ reducedMotion: 'reduce' })` — the bare fixture
+rather than `contextOptions` — **does not take effect** in a nested describe under
+this configuration. The failure mode is the expensive one: the tests run with
+motion fully enabled and still pass every assertion that does not depend on it,
+so the suite reports coverage of reduced motion that it does not have. Use
+`contextOptions`.
 
 `1ms` rather than `0s` because a zero-duration transition does not fire a
 `transitionend` event in every engine, and a component waiting on one would hang.
