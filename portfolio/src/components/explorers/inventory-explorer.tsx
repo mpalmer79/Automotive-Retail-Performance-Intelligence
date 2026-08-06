@@ -302,7 +302,9 @@ export function InventoryExplorer() {
   const pricedCount = matches.filter((record) => record.price !== null).length
 
   return (
-    <div className="flex flex-col gap-8">
+    // See the note on the architecture explorer's root: the id is the capture
+    // script's locator and a deep-link target, not styling.
+    <div id="inventory-explorer" className="flex flex-col gap-8">
       {/* -------------------------------------------------------------- */}
       {/* Controls                                                        */}
       {/* -------------------------------------------------------------- */}

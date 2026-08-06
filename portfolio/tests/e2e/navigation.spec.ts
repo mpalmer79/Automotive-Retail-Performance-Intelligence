@@ -486,21 +486,40 @@ test.describe('the group overview is the home page', () => {
   })
 
   test('the home page carries no long-form author section', async ({ page }) => {
-    // One clause of credibility is allowed and is in the hero. A biography is
-    // not: the paragraphs listing sales, F&I and the systems administration live
-    // on `/about` and nowhere else, so the shorter copy cannot go stale against
-    // the longer one.
+    // WHAT THIS RULE PROTECTS, AND WHAT CHANGED
+    //
+    // The concern has never been that the author is mentioned on the home page.
+    // It is that the same STORY gets told twice at two lengths, so the shorter
+    // copy quietly goes stale against the longer one. The rule used to enforce
+    // that by banning a phrase, which stopped being the right instrument when
+    // the home page grew a deliberate builder chapter: a scannable list of role
+    // functions is a fact set, and two pages agreeing on a fact set is
+    // consistency rather than drift.
+    //
+    // So the rule now names the NARRATIVE. The three long-form passages below
+    // are `/about`'s own prose, they are asserted present there by the test
+    // above, and none of them may appear here.
     await gotoRendered(page, '/')
     const text = await bodyText(page)
-    expect(text, 'the career systems list is duplicated on the home page').not.toMatch(
-      /CRM and DMS administration/i
-    )
-    expect(text, 'the retraining narrative is duplicated on the home page').not.toMatch(
-      /computer science retraining/i
-    )
-    // The permitted single clause, and the link out.
+    for (const [what, pattern] of [
+      [
+        'the career essay',
+        /which reports get used and which get closed without reading/i,
+      ],
+      ['the retraining narrative', /computer science retraining/i],
+      ['the analytical philosophy essay', /analytical philosophy/i],
+    ] as const) {
+      expect(text, `${what} is duplicated on the home page`).not.toMatch(pattern)
+    }
+
+    // The permitted clause, the link out, and the one section the author
+    // material is allowed to occupy.
     expect(text).toMatch(/more than 25 years in automotive retail/i)
     await expect(page.getByRole('link', { name: 'About the author' })).toBeVisible()
+    await expect(page.locator('#builder')).toHaveCount(1)
+    await expect(
+      page.locator('#builder').getByRole('link', { name: /the full background/i })
+    ).toBeVisible()
   })
 })
 

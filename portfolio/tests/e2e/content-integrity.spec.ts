@@ -656,12 +656,18 @@ test.describe('the hero stays a hero', () => {
     for (const [name, locator] of [
       ['the headline', page.getByRole('heading', { level: 1 })],
       [
+        // The primary action is the inventory explorer, and it did not used to
+        // be. The hero now opens with a working slice of that explorer, so the
+        // one thing a visitor is most likely to want next is the whole of it.
         'the primary action',
-        page.getByRole('link', { name: /explore the three stores/i }),
+        page.locator('#hero').getByRole('link', { name: /open the inventory explorer/i }),
       ],
       [
         'the secondary action',
-        page.getByRole('link', { name: /see how ARPI works/i }).first(),
+        page
+          .locator('#hero')
+          .getByRole('link', { name: /see how it is built/i })
+          .first(),
       ],
     ] as const) {
       const box = await locator.first().boundingBox()
@@ -877,7 +883,10 @@ test.describe('the operating view is a product surface, not a dashboard', () => 
   }) => {
     await gotoRendered(page, '/')
     const tablist = page.getByRole('tablist', { name: /analytical domain/i })
-    const panel = page.getByRole('tabpanel')
+    // Scoped to `#operating-view`, not located by role alone. The home page now
+    // carries four tab sets and a bare `getByRole('tabpanel')` resolves to all
+    // of them.
+    const panel = page.locator('#operating-view').getByRole('tabpanel')
 
     await tablist.getByRole('tab', { name: /inventory/i }).click()
     await expect(panel).toContainText(/financially risky|lot turning/i)
@@ -903,7 +912,10 @@ test.describe('the operating view is a product surface, not a dashboard', () => 
 
     for (const tab of tabs) {
       await tab.click()
-      const panel = await page.getByRole('tabpanel').innerText()
+      const panel = await page
+        .locator('#operating-view')
+        .getByRole('tabpanel')
+        .innerText()
       // No currency, no percentage, no thousands-separated figure. A KPI
       // identifier such as KPI-GRS-001 is not a value and is allowed.
       expect(panel, 'a currency value appeared').not.toMatch(/[$£€]\s?\d/)

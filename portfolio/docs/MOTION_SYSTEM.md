@@ -67,12 +67,19 @@ the ambient duration.
 | `base`       | 220ms | panel open, tab change, small position change |
 | `slow`       | 380ms | section reveal                                |
 | `slower`     | 620ms | large-surface transition                      |
-| `deliberate` | 900ms | the drawn pipeline, the counting number       |
-| `ambient`    | 14s   | the one slow signal pulse in the hero         |
+| `deliberate` | 900ms | the drawn pipeline                            |
+| `signal`     | 2.6s  | one dash travelling a path, once              |
+| `ambient`    | 14s   | nothing, currently                            |
 
-The scale stops at 900ms for anything a reader triggers. `ambient` is a separate class of
-thing: it is not a response to an action, it is a slow background state, and it is used
-twice on the entire site.
+The scale stops at 900ms for anything a reader triggers. `signal` is longer because it is
+not a response to an action: it is a path being traced once, on arrival.
+
+`ambient` is **declared and unused**, and that is deliberate rather than an oversight. It
+was the duration of a looping pulse on the hero diagram, and the loop was deleted because
+an animation with no end and no meaning is a repaint that never stops. The token stays so
+the constraint it encodes - "if something ever is genuinely ambient, this is how slow it
+has to be" - is recorded rather than re-derived, and `tests/unit/tokens.test.ts` keeps the
+CSS and JavaScript scales agreeing about it either way.
 
 ### Easing
 
@@ -125,11 +132,18 @@ It is now two CSS declarations and a class toggle driven by one `IntersectionObs
 The animation library loads on **three routes only**, for the three animations that
 genuinely need a JavaScript animator:
 
-| Route           | What needs the library                                                         |
-| --------------- | ------------------------------------------------------------------------------ |
-| `/`             | the hero's drawn SVG paths, and the scrollytelling diagram's width transitions |
-| `/architecture` | the explorer's node emphasis, driven by a spring against a moving target       |
-| `/data-model`   | the same                                                                       |
+| Route           | What needs the library                                                   |
+| --------------- | ------------------------------------------------------------------------ |
+| `/architecture` | the explorer's node emphasis, driven by a spring against a moving target |
+| `/data-model`   | the same                                                                 |
+
+**`/` is no longer on this list.** Both of its entries were removed: the hero's diagram
+became a server component whose motion is CSS on SVG attributes, and the scrollytelling
+walkthrough was deleted outright. The home page has since grown three tab sets, a lineage
+rail and a live inventory surface, and none of them re-imported it - every one of those
+animations is a CSS keyframe from the token scale.
+`tests/unit/motion.test.ts` asserts the list above is exactly two files, so the next reveal
+added to this site cannot quietly put it back.
 
 That is what a motion budget is for: spending the weight where the movement carries
 meaning, and not where it is decoration. Measured before and after figures are in
@@ -209,22 +223,53 @@ cloning children, and that breaks any child that is itself a component.
 
 Every animation on the site. If it is not here, it does not exist.
 
-| #   | Animation                   | Implementation            | Duration           | Carries                                         |
-| --- | --------------------------- | ------------------------- | ------------------ | ----------------------------------------------- |
-| 1   | Section reveal              | CSS + observer            | slow               | reading order and section boundaries            |
-| 2   | Group stagger               | CSS + one observer        | slow, 55ms offsets | that these items are peers in a sequence        |
-| 3   | Hero pipeline draw          | Motion, SVG dash offset   | deliberate         | the direction of data flow                      |
-| 4   | Ambient signal pulse        | CSS keyframes             | 14s                | that the pipeline is a live path, not a picture |
-| 5   | Counting numbers            | rAF interpolation         | deliberate         | that the number was computed                    |
-| 6   | Scrollytelling stage change | Motion, width and opacity | base               | which pipeline stage the prose is describing    |
-| 7   | Explorer node selection     | Motion spring             | spring             | which node is selected, against a moving target |
-| 8   | Explorer detail panel       | CSS, `panel` variant      | base               | that the panel is the selected node expanded    |
-| 9   | Hover and press states      | CSS                       | fast / instant     | affordance                                      |
-| 10  | Mobile drawer and scrim     | CSS transform and opacity | base               | where the drawer came from                      |
-| 11  | Focus ring                  | none — instant            | 0                  | never animated; a delayed focus ring is a bug   |
+| #   | Animation               | Implementation                   | Duration              | Carries                                          |
+| --- | ----------------------- | -------------------------------- | --------------------- | ------------------------------------------------ |
+| 1   | Section reveal          | CSS + observer                   | slow                  | reading order and section boundaries             |
+| 2   | Group stagger           | CSS + one observer               | slow, 55ms offsets    | that these items are peers in a sequence         |
+| 3   | Signature signal run    | CSS keyframes, SVG dash offset   | signal, once          | the direction of data flow, source to governed   |
+| 4   | Signature layer wake    | CSS keyframes, staggered         | slow, once            | a layer arriving as the signal reaches it        |
+| 5   | Lineage rail wake       | CSS keyframes, staggered         | slow, 90ms offsets    | the path the hero's rows actually took           |
+| 6   | Tab panel wake          | CSS keyframes, replayed by `key` | slow, once per change | that the selection changed what is on the screen |
+| 7   | Explorer node selection | Motion spring                    | spring                | which node is selected, against a moving target  |
+| 8   | Explorer detail panel   | CSS, `panel` variant             | base                  | that the panel is the selected node expanded     |
+| 9   | Hover and press states  | CSS                              | fast / instant        | affordance                                       |
+| 10  | Mobile drawer and scrim | CSS transform and opacity        | base                  | where the drawer came from                       |
+| 11  | Focus ring              | none — instant                   | 0                     | never animated; a delayed focus ring is a bug    |
 
 Number 11 is a rule, not an omission. A focus indicator that fades in is a focus
 indicator that is briefly absent.
+
+### What is not on this list, and used to be
+
+Three animations were removed and have not come back. They are recorded here
+because "it does not exist" is a claim a reader should be able to check against
+the reason:
+
+- **Ambient signal pulse**, a 14-second loop on the hero diagram. An animation
+  with no end and no meaning is a repaint that never stops.
+- **Counting numbers**, seven rAF interpolations on the home page. At the size
+  the engineering proof now sets its four figures, the motion drew the eye to the
+  movement rather than to the size, and it delayed the one thing the section is
+  for.
+- **Scrollytelling stage change**, eight `motion` width transitions. It
+  duplicated `/architecture` and animated `width` on an element that also
+  declared `width` as an attribute, which threw a console error eight times per
+  render.
+
+### Number 6, and the rule it is testing
+
+The home page carries three tab sets: the hero's store switcher, the store
+chapter, and the product tour. Each replays `wake` on its panel when the
+selection changes, because the panel is the ANSWER to a control the reader just
+operated, and an answer that appears with no transition reads as a page that
+jumped rather than as a surface that responded.
+
+It is `key` on the panel that replays it, and that attribute is doing two jobs.
+The second one is the important one: `key` forces a remount rather than a
+reconcile, which is what makes a screen reader announce the panel the reader just
+chose instead of staying silent on a mutated one. The motion is a side effect of
+an accessibility decision, not the reason for it.
 
 ---
 

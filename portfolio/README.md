@@ -117,12 +117,39 @@ Both are what CI runs, in the same order, so a green local run predicts a green 
 | `npm run test:e2e:a11y`           | The axe-core sweep alone                                                    |
 | `npm run verify`                  | Everything in the `quality` CI job                                          |
 | `npm run assets`                  | Re-render the raster favicon and social-preview PNGs from their SVG sources |
+| `npm run media`                   | Re-capture the home page's product-tour frames (needs a running server)     |
 | `npm run review:screenshots`      | Capture the adversarial visual-review set (needs a running server)          |
 | `npm run bundle`                  | Per-route transferred-bytes report (needs a running server)                 |
 
 `ARPI_E2E_ALL_BROWSERS=true` adds Firefox and WebKit to the Playwright run. The reason
 they are not on by default is in
 [docs/ACCESSIBILITY.md](docs/ACCESSIBILITY.md) section 7.
+
+### The committed product media
+
+`public/media/` holds four WebP frames: the inventory explorer, the architecture
+explorer, the data model explorer and the KPI catalogue. The home page's product
+tour renders them, because a portfolio that only links to its own work asks a
+reviewer to click four times before seeing anything.
+
+Every one is a **straight capture of the route named on it**, produced by
+`scripts/capture-product-media.ts` from a production build. Nothing is composed,
+retouched, annotated or drawn. If it is in a frame, it is on the route.
+
+They are committed rather than built, for the same reason the favicon is: they
+are content, and re-downloading a browser on every CI run to reproduce four
+unchanged files buys nothing. Re-capture them by hand whenever one of those four
+routes changes appearance:
+
+```bash
+npm run build
+npx next start -p 3111 &
+ARPI_MEDIA_BASE_URL=http://localhost:3111 npm run media
+```
+
+The frames' pixel dimensions are declared in
+`src/components/sections/product-tour.tsx` so each reserves its box before the
+bytes arrive. If a re-capture changes a size, change it there too.
 
 ---
 

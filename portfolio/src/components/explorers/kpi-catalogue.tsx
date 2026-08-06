@@ -133,7 +133,9 @@ export function KpiCatalogue() {
   const totalShown = matches.length + deferredMatches.length
 
   return (
-    <div className="flex flex-col gap-8">
+    // See the note on the architecture explorer's root: the id is the capture
+    // script's locator and a deep-link target, not styling.
+    <div id="kpi-catalogue" className="flex flex-col gap-8">
       {/* Controls */}
       <div className="flex flex-col gap-4 rounded-xl border border-line bg-surface-sunken/50 p-4">
         <form
