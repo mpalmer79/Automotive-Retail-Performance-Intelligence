@@ -139,7 +139,7 @@ describe('the product tour captures', () => {
       })
 
       it('claims no business result', () => {
-        const prose = `${step.summary} ${step.insight} ${step.provenanceNote}`
+        const prose = `${step.summary} ${step.insight ?? ''} ${step.provenanceNote}`
         for (const forbidden of [
           /\bgross profit of\b/i,
           /\bincreased? (sales|gross|revenue|profit|turn)\b/i,

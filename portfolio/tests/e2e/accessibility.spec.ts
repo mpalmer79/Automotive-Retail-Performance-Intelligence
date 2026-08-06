@@ -434,9 +434,13 @@ test.describe('no hover-only or tooltip-only information', () => {
   test('the operating view changes domain on click, not on hover', async ({ page }) => {
     // Replaces the same check against the six expandable domain cards this
     // section used to carry. The cards are gone; the rail that replaced them has
-    // the identical obligation, and it is the more important one because the
-    // rail IS the home page's product surface.
-    await gotoRendered(page, '/')
+    // the identical obligation.
+    //
+    // Loaded from `/kpis` rather than `/`. The rail moved there with the page's
+    // word-count pass, because six domains with one definition each is reference
+    // material and the catalogue is the page whose subject it is. The obligation
+    // travelled with it unchanged.
+    await gotoRendered(page, '/kpis')
     const tablist = page.getByRole('tablist', { name: /analytical domain/i })
     const inventory = tablist.getByRole('tab', { name: /inventory/i })
     await inventory.scrollIntoViewIfNeeded()
@@ -463,7 +467,7 @@ test.describe('no hover-only or tooltip-only information', () => {
   })
 
   test('the operating view is fully operable from the keyboard', async ({ page }) => {
-    await gotoRendered(page, '/')
+    await gotoRendered(page, '/kpis')
     const tablist = page.getByRole('tablist', { name: /analytical domain/i })
     // Roving tabindex: exactly one tab is in the tab order at a time, which is
     // what stops a six-item rail costing a keyboard user six tab stops.

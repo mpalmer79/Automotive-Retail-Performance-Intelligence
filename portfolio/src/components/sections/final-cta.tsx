@@ -1,11 +1,20 @@
 /**
- * Chapter six: where to go next.
+ * Chapter four: the evidence, then where to go next.
  *
  * Two actions, both concrete, and the honest state of the project stated once
  * more at the point where a reader has decided whether they care. Neither action
  * says "Get started" or "Learn more", because there is nothing to start and a
  * vague verb wastes the one place on the page where a visitor has already
  * committed their attention.
+ *
+ * THE PROOF NUMERALS OPEN IT
+ * --------------------------
+ * They were their own chapter, one section above this one, wrapped in 214 words
+ * explaining why each figure was worth reading. The figures are the argument;
+ * the paragraphs were justification. `EngineeringProof` now renders as a strip
+ * rather than as a section and it renders here, so the page ends on four counts
+ * generated from repository evidence and two ways in, rather than on a
+ * paragraph.
  *
  * THE CASE STUDY LIVES HERE NOW
  * -----------------------------
@@ -22,6 +31,7 @@ import { ArrowRight, FolderGit2, Lock } from 'lucide-react'
 import Link from 'next/link'
 
 import { Reveal } from '@/components/motion/reveal'
+import { EngineeringProof } from '@/components/sections/engineering-proof'
 import { LinkButton } from '@/components/ui/button'
 import { Container, Section } from '@/components/ui/layout'
 import { Eyebrow, Heading, Text } from '@/components/ui/typography'
@@ -38,6 +48,9 @@ export function FinalCta() {
         className="grid-motif pointer-events-none absolute inset-0 -z-10 [mask-image:radial-gradient(60%_70%_at_50%_100%,black,transparent)]"
       />
       <Container width="content">
+        {/* The evidence strip, before the heading that claims it. */}
+        <EngineeringProof className="mb-16 sm:mb-20" />
+
         <Reveal className="flex flex-col items-start gap-6 text-left sm:items-center sm:text-center">
           <Eyebrow tone="accent" rule>
             Review the work
@@ -46,9 +59,8 @@ export function FinalCta() {
             Every number on this site links to the file that proves it.
           </Heading>
           <Text size="body" className="max-w-prose">
-            Start with the architecture to see how a value gets from a seeded generator to
-            a governed measure. Start with the repository to read the SQL, the DAX and the
-            tests yourself.
+            The architecture shows how a value gets from a seeded generator to a governed
+            measure. The repository has the SQL, the DAX and the tests.
           </Text>
 
           <div className="mt-2 flex w-full flex-col gap-3 sm:w-auto sm:flex-row">

@@ -9,12 +9,23 @@
  * Chevrolet five times in five different card layouts across roughly four
  * thousand pixels, and a reader had touched nothing by the end of it.
  *
- * This is all six, as one chapter with three states:
+ * This is all six, as one chapter with four states:
  *
  *   1  the tab set        one store at a time, read properly
  *   2  the contrast       allocation versus acquisition, in two columns
  *   3  the comparison     the same eight columns for all three, plus the mix
- *   4  the boundary       what a listing snapshot is evidence of, and what it is not
+ *   4  the conformance    what a group total has to be true of
+ *
+ * WHAT THE WORD-COUNT PASS TOOK OUT
+ * ---------------------------------
+ * 375 words of visible prose became 170, and every sentence removed is still
+ * published on the route whose subject it is. The generated group introduction,
+ * the operating-model paragraph under the tabs, the independent store's
+ * acquisition model, the sanitized-reference-data statement and the
+ * "descriptive evidence" boundary all went; `/governance`,
+ * `/dealerships/granite-pre-owned` and the hero's trust line carry them. The
+ * tabs, the table, both charts and every derived figure stayed, because they are
+ * what this chapter is for.
  *
  * The tab set is where the operating models now live, because "these are three
  * different businesses" is an argument a reader has to make one store at a time.
@@ -44,14 +55,13 @@ import { Heading, Text } from '@/components/ui/typography'
 import { BarChart, StackedMixBar } from '@/components/visuals/inventory-charts'
 import {
   accentPresentation,
-  dealershipGroup,
   dealerships,
   formatPrice,
   formatRange,
   inventorySummary,
 } from '@/lib/inventory'
 import { storeStoryPanels } from '@/lib/product-preview'
-import { INVENTORY_DATA_STATEMENT, ROUTES } from '@/lib/site'
+import { ROUTES } from '@/lib/site'
 import { cx, formatCount, formatDate } from '@/lib/utils'
 
 const franchiseStores = dealerships.filter((dealership) => dealership.isFranchise)
@@ -88,29 +98,24 @@ export function StoreStory() {
   return (
     <Section id="stores" tone="panel" className="scroll-mt-24">
       <Container width="wide">
+        {/* ONE PARAGRAPH, THEN THE ARTEFACT.
+            The lede used to be the generated group introduction, which spent
+            forty-seven words establishing that the group is fictional. That
+            disclosure is the trust line in the hero and it is `/governance` at
+            length; repeating it here bought nothing and cost the reader the
+            first screen of the section that carries the strongest material on
+            the site. The paragraph below states only what the tabs are about.
+            The operating-model paragraph that used to sit under the tabs is
+            gone with it: it said the same thing a second time, one disclosure
+            lower. */}
         <SectionHeader
           layout="wide"
           eyebrow="The business being modelled"
           title="One group, three businesses"
-          lede={dealershipGroup.introduction}
+          lede="Three rooftops in Southern New Hampshire, reported through one governed layer. Two carry a manufacturer allocation; the third buys every unit it lists. Those differences are why a group total needs a store dimension under it."
         />
 
-        {/* The tab set comes FIRST now. The operating-model paragraph used to
-            sit between the lede and the artefact, which put roughly sixty words
-            of reasoning in front of the thing the reasoning is about. It has not
-            been deleted - it is the disclosure directly under the tabs, where a
-            reader who has just switched between three stores is the reader who
-            wants it. */}
         <StoreStoryTabs panels={storeStoryPanels} className="mt-10" />
-
-        <Disclosure
-          label="Why one reporting layer has to hold three different businesses"
-          className="mt-8"
-        >
-          <Text size="body" tone="muted" className="max-w-prose">
-            {dealershipGroup.operatingModel}
-          </Text>
-        </Disclosure>
 
         {/* 2. The contrast the tab set demonstrates one store at a time, stated
                once as the general case. This is the sentence a group-level
@@ -129,8 +134,8 @@ export function StoreStory() {
               Allocation is not acquisition
             </Heading>
             <Text size="body" tone="muted" className="max-w-prose">
-              The single most useful thing a group-level report can know about these three
-              stores is which of them chooses what it stocks. Two of them do not.
+              The most useful thing a group report can know about these three stores is
+              which of them chooses what it stocks. Two do not.
             </Text>
           </div>
 
@@ -151,16 +156,18 @@ export function StoreStory() {
                 </Text>
               </Card>
 
+              {/* The independent store's operating model is stated on its own
+                  page, which carries it as that store's positioning and its
+                  inventory strategy. The paragraph that used to open this card
+                  said the same thing in different words, so it is gone rather
+                  than moved: `/dealerships/granite-pre-owned` already says the
+                  store carries no franchise and buys every unit it sells. What
+                  stays here is the part that page cannot make, which is the
+                  comparison against the franchise rooftop beside it. */}
               <Card className="flex flex-col gap-3">
                 <Heading level={4} size="h6">
                   {`Independent: ${independentStores.map((store) => store.shortName).join(' and ')}`}
                 </Heading>
-                <Text size="sm" tone="secondary" className="max-w-prose">
-                  An independent store has no franchise agreement, no allocation and no
-                  new vehicle order bank. Every unit it lists was bought: at auction, from
-                  a trade, from a lease return, or from another dealer. Its inventory is a
-                  record of buying decisions in a way a franchise store&apos;s is not.
-                </Text>
                 <Text size="sm" tone="muted" className="max-w-prose">
                   {`It shows in the data. The independent store carries ${formatCount(independentStores[0]?.inventory.makeCount ?? 0)} makes against the Chevrolet store's ${formatCount(dealerships[0]?.inventory.makeCount ?? 0)}, and the widest model-year spread in the group. Neither is a performance result. Both are structural facts a report has to respect.`}
                 </Text>
@@ -178,7 +185,7 @@ export function StoreStory() {
             The same eight columns, for all three
           </Heading>
           <Text size="body" tone="muted" className="max-w-prose">
-            {`Every cell is computed from that store's own workbook. Where a store's source did not expose a value, the cell says so rather than showing a figure derived from a different population. Snapshot ${formatDate(summary.latestSnapshotDate)}.`}
+            {`Every cell is computed from that store's own workbook. Where the source exposed no value, the cell says so. Snapshot ${formatDate(summary.latestSnapshotDate)}.`}
           </Text>
         </div>
 
@@ -304,7 +311,7 @@ export function StoreStory() {
         </div>
 
         <Text size="sm" tone="muted" className="mt-4 max-w-prose">
-          {`Group price range across the ${formatCount(summary.pricedRecords)} priced listings: ${formatRange(summary.priceRange, formatPrice) ?? 'not exposed'}. A median is stated only where the source priced enough of that store to make one meaningful, and each store page names its own denominator.`}
+          {`Group price range across the ${formatCount(summary.pricedRecords)} priced listings: ${formatRange(summary.priceRange, formatPrice) ?? 'not exposed'}.`}
         </Text>
 
         {/* The provenance of every figure above, at the point the figures stop.
@@ -313,7 +320,7 @@ export function StoreStory() {
         <div className="mt-8 flex flex-col gap-2 border-t border-line-subtle pt-6">
           <span className="eyebrow text-2xs">Group inventory snapshot</span>
           <Text size="sm" tone="muted" className="max-w-prose">
-            {`Derived at build time from ${formatCount(summary.generatedFrom.length)} sanitized workbooks committed to this repository, covering ${formatCount(summary.totalRecords)} listings across ${formatCount(summary.dealershipCount)} stores. Snapshot date ${formatDate(summary.latestSnapshotDate)}. Median advertised price is computed over priced listings only, never over the whole set.`}
+            {`Derived at build time from ${formatCount(summary.generatedFrom.length)} sanitized workbooks committed to this repository: ${formatCount(summary.totalRecords)} listings across ${formatCount(summary.dealershipCount)} stores. Snapshot date ${formatDate(summary.latestSnapshotDate)}.`}
           </Text>
           <ul className="mt-1 flex flex-col gap-0.5">
             {summary.generatedFrom.map((path) => (
@@ -350,16 +357,26 @@ export function StoreStory() {
           />
         </div>
 
-        {/* 4. The boundary. Stated where the evidence was just shown, rather
-               than in a footer nobody reaches. */}
-        <Reveal className="mt-16 grid grid-cols-1 gap-8 border-t border-line pt-12 lg:grid-cols-12 lg:gap-12">
+        {/* 4. What a group total has to be true of, stated where the figures
+               stop.
+
+            THE DISCLAIMER CARD THAT USED TO SIT BESIDE THIS IS GONE.
+            It carried two paragraphs, 137 words between them: the sanitized
+            reference-data statement and the "an inventory summary is descriptive
+            evidence" boundary. Both are still published, in full, on
+            `/governance`, which is the page whose subject they are, and the
+            second is on `/inventory` as well. Nothing was softened and nothing
+            was deleted from the site; the home page stopped being the third
+            place to say it. The one-line form a stranger landing here needs is
+            the trust line in the hero.
+
+            The two destinations the card offered stay, as links. */}
+        <Reveal className="mt-16 flex flex-col gap-5 border-t border-line pt-12">
           {/* The three properties stay visible as titles - they are the claim.
               Their explanations are behind one disclosure, because a reader who
               accepts "one definition, conformed across stores" does not need the
-              paragraph and a reader who does not, does. The card beside this is
-              NOT a disclosure and must never become one: it is what a reader has
-              to know to interpret every figure above it. */}
-          <div className="flex flex-col gap-5 lg:col-span-7">
+              paragraph and a reader who does not, does. */}
+          <div className="flex flex-col gap-5">
             <span className="eyebrow text-2xs">Governed group reporting</span>
             <Heading level={3} size="h4">
               One number per question, and a store dimension under it
@@ -387,34 +404,19 @@ export function StoreStory() {
             </Disclosure>
           </div>
 
-          <Card tone="pending" className="flex flex-col gap-3 lg:col-span-5">
-            <Heading level={4} size="h6">
-              What this is evidence of, and what it is not
-            </Heading>
-            <Text size="sm" tone="secondary">
-              {INVENTORY_DATA_STATEMENT}
-            </Text>
-            <Text size="sm" tone="secondary">
-              An inventory summary is descriptive evidence. It describes a set of listings
-              that existed at a capture date. It is not an analytical finding about how
-              this group performs, and publishing it does not open Gate 2 or complete the
-              analytical case study, both of which remain closed for the reasons the
-              status page gives.
-            </Text>
-            <div className="mt-1 flex flex-wrap gap-3">
-              <LinkButton
-                href={ROUTES.governance.href}
-                variant="secondary"
-                size="sm"
-                iconAfter={<ArrowRight strokeWidth={2} />}
-              >
-                How this is governed
-              </LinkButton>
-              <LinkButton href={ROUTES.status.href} variant="ghost" size="sm">
-                What is finished
-              </LinkButton>
-            </div>
-          </Card>
+          <div className="flex flex-wrap gap-3">
+            <LinkButton
+              href={ROUTES.governance.href}
+              variant="secondary"
+              size="sm"
+              iconAfter={<ArrowRight strokeWidth={2} />}
+            >
+              How this is governed
+            </LinkButton>
+            <LinkButton href={ROUTES.status.href} variant="ghost" size="sm">
+              What is finished
+            </LinkButton>
+          </div>
         </Reveal>
       </Container>
     </Section>

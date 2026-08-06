@@ -530,11 +530,26 @@ test.describe('the trust model survives the new pages', () => {
     expect(await bodyText(page)).toMatch(/Gate 2 CLOSED/i)
   })
 
-  test('the home page says an inventory summary is not a finding', async ({ page }) => {
-    await gotoRendered(page, '/')
-    const text = await mainText(page)
-    expect(text).toMatch(/descriptive evidence/i)
-    expect(text).toMatch(/not an analytical finding/i)
+  test('the site says an inventory summary is not a finding', async ({ page }) => {
+    // This was asserted on `/`, which carried the paragraph in the store chapter
+    // while `/governance` and `/inventory` published the same boundary in full.
+    // The home page's word-count pass deleted the third copy rather than moving
+    // it, so the assertion moved to both routes that always owned it. The claim
+    // the test protects is unchanged, and it is now checked where the sentence
+    // actually lives.
+    //
+    // What `/` still carries is the one-line form, in the hero's trust line:
+    // "Listings, not sales results", asserted in content-integrity.spec.ts.
+    for (const path of ['/governance', '/inventory']) {
+      await gotoRendered(page, path)
+      const text = await mainText(page)
+      expect(text, `${path} does not call it descriptive evidence`).toMatch(
+        /descriptive evidence/i
+      )
+      expect(text, `${path} does not rule out an analytical finding`).toMatch(
+        /not an analytical finding/i
+      )
+    }
   })
 })
 

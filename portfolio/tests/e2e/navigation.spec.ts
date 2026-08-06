@@ -485,6 +485,30 @@ test.describe('the group overview is the home page', () => {
     expect(text, 'analytical philosophy').toMatch(/analytical philosophy/i)
   })
 
+  test('/about carries the three decisions that came from the floor', async ({
+    page,
+  }) => {
+    // These arrived with the home page's builder chapter. They were the strongest
+    // content on that page and they were told under a second, shorter version of
+    // the career narrative this page tells in full, which is the shape that goes
+    // stale. The assertion moved with them rather than being dropped: each
+    // decision, its artefact, and the argument that used to sit behind a
+    // disclosure are all readable here.
+    await gotoRendered(page, '/about')
+    const text = await bodyText(page)
+    expect(text, 'the section heading').toMatch(
+      /three decisions that came from the floor/i
+    )
+    expect(text, 'the gross decision').toMatch(/never summed early/i)
+    expect(text, 'the ranking decision').toMatch(/volume alone never ranks a person/i)
+    expect(text, 'the aged-inventory decision').toMatch(/median age leads/i)
+    expect(text, 'the artefact references').toMatch(/KPI-GRS-001/)
+    // The argument, not only the decision. On the home page this was behind a
+    // disclosure to keep the page short; this is the page where length is the
+    // point, so it is visible.
+    expect(text, 'the argument').toMatch(/destroys the diagnosis/i)
+  })
+
   test('the home page carries no long-form author section', async ({ page }) => {
     // WHAT THIS RULE PROTECTS, AND WHAT CHANGED
     //
@@ -499,6 +523,14 @@ test.describe('the group overview is the home page', () => {
     // So the rule now names the NARRATIVE. The three long-form passages below
     // are `/about`'s own prose, they are asserted present there by the test
     // above, and none of them may appear here.
+    //
+    // THE BUILDER CHAPTER IS GONE ENTIRELY, AND THE RULE GOT SIMPLER FOR IT.
+    // This test used to permit one section, `#builder`, and required its link
+    // out. The home page's word-count pass moved that chapter's three decisions
+    // to `/about` and deleted the rest as a second telling of a page one click
+    // away, so what is left here is the clause and the link - which is what this
+    // rule was protecting all along. The three decisions are asserted on
+    // `/about` by the test above.
     await gotoRendered(page, '/')
     const text = await bodyText(page)
     for (const [what, pattern] of [
@@ -508,18 +540,16 @@ test.describe('the group overview is the home page', () => {
       ],
       ['the retraining narrative', /computer science retraining/i],
       ['the analytical philosophy essay', /analytical philosophy/i],
+      ['the floor decisions, now on /about', /three decisions that came from the floor/i],
     ] as const) {
       expect(text, `${what} is duplicated on the home page`).not.toMatch(pattern)
     }
 
-    // The permitted clause, the link out, and the one section the author
-    // material is allowed to occupy.
+    // The permitted clause and the link out. Both stay: the claim is real
+    // credibility and burying it entirely would be over-correcting.
     expect(text).toMatch(/more than 25 years in automotive retail/i)
     await expect(page.getByRole('link', { name: 'About the author' })).toBeVisible()
-    await expect(page.locator('#builder')).toHaveCount(1)
-    await expect(
-      page.locator('#builder').getByRole('link', { name: /the full background/i })
-    ).toBeVisible()
+    await expect(page.locator('#builder')).toHaveCount(0)
   })
 })
 

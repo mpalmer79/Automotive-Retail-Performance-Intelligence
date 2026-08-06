@@ -60,15 +60,27 @@ test.describe('honest status language reaches the screen', () => {
     await gotoRendered(page, '/')
     const text = await bodyText(page)
     if (!realEnginePassed) {
-      // The home page states it in the trust line and again in the platform
-      // story and the proof section. It no longer carries the full paragraph:
-      // the hero's bordered caveat panel was one of seven disclosures on the
-      // page, which is what made a finished warehouse read as an apology
-      // (finding A-04). The paragraph now lives on the two pages whose subject
-      // it is, and the test below asserts it is still there.
+      // The home page states it in the trust line, which is derived from the
+      // manifest and appears on every route. It has never carried the full
+      // paragraph: the hero's bordered caveat panel was one of seven disclosures
+      // on the page, which is what made a finished warehouse read as an apology
+      // (finding A-04).
+      //
+      // The second assertion here used to be the operating view's chrome line,
+      // "no engine has evaluated these measures". That surface is now the first
+      // thing on `/kpis`, so the sentence is asserted below on the route that
+      // renders it rather than deleted.
       expect(text).toMatch(/real-engine validation pending/i)
-      expect(text).toMatch(/never been evaluated by an engine|no engine has evaluated/i)
     }
+  })
+
+  test('the surface that shows the measures says no engine has evaluated them', async ({
+    page,
+  }) => {
+    if (realEnginePassed) test.skip()
+    await gotoRendered(page, '/kpis')
+    const text = await bodyText(page)
+    expect(text).toMatch(/never been evaluated by an engine|no engine has evaluated/i)
   })
 
   test('the full explanation still exists, on the pages whose subject it is', async ({
@@ -602,6 +614,131 @@ test.describe('the site is not a second analytics application', () => {
 })
 
 /* -------------------------------------------------------------------------- */
+/* The home page's prose budget                                                */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The home page may not exceed 450 words of visible prose, in at most four
+ * sections.
+ *
+ * WHY THIS IS A TEST AND NOT A NOTE IN A DOCUMENT
+ * ----------------------------------------------
+ * Measured on the prerendered `/` of a production build, this page carried 1,132
+ * words of visible paragraph text in 61 paragraphs across 7 sections. A product
+ * landing page runs 300 to 500 words. The page had four working experiences
+ * linked from it and it read as an essay with the software buried inside.
+ *
+ * Every one of those words was true and almost none of them were deleted: the
+ * operating view is on `/kpis`, the author narrative is on `/about`, the two
+ * inventory disclaimers are on `/governance`, and the engineering note about
+ * build-time data is on `/architecture`. That is the rule this budget encodes -
+ * reference material and disclosure live on the route whose subject they are -
+ * and it is the rule a page drifts away from one honest paragraph at a time.
+ *
+ * A budget in a document is a suggestion. This is the same distinction that
+ * makes the colour palette on this site trustworthy and made the word count not:
+ * `tests/unit/tokens.test.ts` fails on a colour nobody measured, and nothing
+ * failed on a page nobody counted.
+ *
+ * WHAT COUNTS
+ * -----------
+ * The VISIBLE text of every `<p>` inside `<main>`. Visible is the operative
+ * word: `innerText` returns nothing for a paragraph inside a collapsed
+ * `<details>`, so supplemental reasoning behind a disclosure is not counted
+ * here. That is not a hiding place - `progressive disclosure withholds
+ * reasoning, never qualification` below is the test that stops it becoming one,
+ * and it is the reason this budget can be about what a reader actually meets.
+ *
+ * Excluded: `.sr-only` text, which is an alternative rendering of something
+ * already on the page rather than more of it; `<figcaption>`, which belongs to
+ * the figure and not to the prose; and table cells, because a cell of a
+ * comparison table is data. Headings, labels, list items, badges and figures are
+ * not `<p>` elements and are not counted. None of them may be cut to meet this
+ * budget: cutting a table column or a filter label to make a word count is the
+ * wrong reading of the rule.
+ *
+ * Documented in portfolio/docs/CONTENT_MODEL.md.
+ */
+test.describe('the home page stays inside its prose budget', () => {
+  const WORD_BUDGET = 450
+  const SECTION_BUDGET = 4
+
+  test(`renders at most ${String(WORD_BUDGET)} words of visible prose`, async ({
+    page,
+  }) => {
+    await gotoRendered(page, '/')
+    // Settle first: the reveal transitions are opacity only, but a paragraph
+    // that has not arrived yet still has its text, and this must count the whole
+    // page rather than the part above the fold.
+    await mainText(page)
+
+    const measured = await page.evaluate(() => {
+      const main = document.querySelector('main')
+      if (!main) return null
+
+      const paragraphs = [...main.querySelectorAll('p')].filter((paragraph) => {
+        // `.sr-only` is an alternative rendering, `<figcaption>` belongs to its
+        // figure, and a `<p>` inside a cell is table data.
+        if (paragraph.classList.contains('sr-only')) return false
+        return !paragraph.closest('.sr-only, figcaption, td, th, caption')
+      })
+
+      const words = (value: string) =>
+        value.split(/\s+/).filter((token) => /[\p{L}\p{N}]/u.test(token)).length
+
+      // `innerText`, not `textContent`: it is the rendered text, so a paragraph
+      // inside a collapsed disclosure contributes nothing.
+      const longest = paragraphs
+        .map((paragraph) => ({
+          words: words(paragraph.innerText),
+          text: paragraph.innerText.trim().slice(0, 60),
+        }))
+        .filter((entry) => entry.words > 0)
+        .sort((a, b) => b.words - a.words)
+        .slice(0, 3)
+
+      return {
+        total: paragraphs.reduce((sum, paragraph) => sum + words(paragraph.innerText), 0),
+        counted: paragraphs.filter((paragraph) => words(paragraph.innerText) > 0).length,
+        longest,
+      }
+    })
+
+    expect(measured, 'the home page has no <main>').not.toBeNull()
+    expect(
+      measured!.total,
+      `the home page renders ${String(measured!.total)} words of visible prose in ` +
+        `${String(measured!.counted)} paragraphs, which is ` +
+        `${String(measured!.total - WORD_BUDGET)} over the ${String(WORD_BUDGET)}-word budget. ` +
+        `The longest paragraphs are: ${measured!.longest
+          .map((entry) => `${String(entry.words)}w "${entry.text}"`)
+          .join('; ')}. ` +
+        'Move reference material or disclosure to the route whose subject it is ' +
+        'rather than shortening a heading, a label or a table to fit.'
+    ).toBeLessThanOrEqual(WORD_BUDGET)
+  })
+
+  test(`renders at most ${String(SECTION_BUDGET)} top-level sections`, async ({
+    page,
+  }) => {
+    await gotoRendered(page, '/')
+    const ids = await page.evaluate(() => {
+      const main = document.querySelector('main')
+      if (!main) return []
+      return [...main.querySelectorAll('section')]
+        .filter((section) => section.parentElement?.closest('section') === null)
+        .map((section) => section.id || '(unnamed)')
+    })
+
+    expect(
+      ids.length,
+      `the home page renders ${String(ids.length)} top-level sections (${ids.join(', ')}), ` +
+        `which is more than the ${String(SECTION_BUDGET)} the composition allows`
+    ).toBeLessThanOrEqual(SECTION_BUDGET)
+  })
+})
+
+/* -------------------------------------------------------------------------- */
 /* The redesign's own content rules                                            */
 /* -------------------------------------------------------------------------- */
 
@@ -868,9 +1005,18 @@ test.describe('public copy carries no em dash', () => {
   })
 })
 
+/**
+ * These four moved from `/` to `/kpis` with the component they are about.
+ *
+ * Six governed domains with one definition each is reference material, and the
+ * page whose subject it is was always the KPI catalogue. Nothing in the assertions
+ * changed except the route they load, which is the point: the surface still has to
+ * be a real tab set, still has to change its panel, and still has to show no value
+ * in any domain, wherever it renders.
+ */
 test.describe('the operating view is a product surface, not a dashboard', () => {
   test('offers six domains as real tabs', async ({ page }) => {
-    await gotoRendered(page, '/')
+    await gotoRendered(page, '/kpis')
     const tablist = page.getByRole('tablist', { name: /analytical domain/i })
     await expect(tablist).toBeVisible()
     await expect(tablist.getByRole('tab')).toHaveCount(6)
@@ -881,7 +1027,7 @@ test.describe('the operating view is a product surface, not a dashboard', () => 
   test('changes the panel when a domain is chosen, by click and by arrow key', async ({
     page,
   }) => {
-    await gotoRendered(page, '/')
+    await gotoRendered(page, '/kpis')
     const tablist = page.getByRole('tablist', { name: /analytical domain/i })
     // Scoped to `#operating-view`, not located by role alone. The home page now
     // carries four tab sets and a bare `getByRole('tabpanel')` resolves to all
@@ -906,7 +1052,7 @@ test.describe('the operating view is a product surface, not a dashboard', () => 
   })
 
   test('shows no value in any domain', async ({ page }) => {
-    await gotoRendered(page, '/')
+    await gotoRendered(page, '/kpis')
     const tablist = page.getByRole('tablist', { name: /analytical domain/i })
     const tabs = await tablist.getByRole('tab').all()
 
@@ -925,7 +1071,7 @@ test.describe('the operating view is a product surface, not a dashboard', () => 
   })
 
   test('states that no engine has evaluated the measures it shows', async ({ page }) => {
-    await gotoRendered(page, '/')
+    await gotoRendered(page, '/kpis')
     const frame = page.locator('#operating-view')
     await expect(frame).toContainText(/no engine has evaluated these measures/i)
   })
@@ -945,22 +1091,50 @@ test.describe('the operating view is a product surface, not a dashboard', () => 
  * tests draw the line and hold it.
  */
 test.describe('progressive disclosure withholds reasoning, never qualification', () => {
-  /** What must be readable without opening anything, on the home page. */
-  const ALWAYS_VISIBLE: readonly { readonly label: string; readonly pattern: RegExp }[] =
-    [
-      { label: 'the fictional-entity notice', pattern: /fictional/i },
-      { label: 'the synthetic-data statement', pattern: /synthetic/i },
-      { label: 'the sanitized-listing provenance', pattern: /sanitiz/i },
-      {
-        label: 'the "not a performance result" boundary',
-        pattern: /not (an? )?(analytical finding|performance)/i,
-      },
-      { label: 'the Gate 2 position', pattern: /Gate 2/ },
-    ]
+  /**
+   * What must be readable without opening anything, and where.
+   *
+   * The route is part of the rule now. The home page's word-count pass moved the
+   * two long inventory disclaimers to `/governance`, which is the page whose
+   * subject they are and which already published both, so the sentence "an
+   * inventory summary is descriptive evidence ... not an analytical finding" is
+   * asserted there and on `/inventory` rather than on a home page that no longer
+   * says it. What the home page still owes a stranger who lands on it is the
+   * trust line, and every clause of it is checked below.
+   *
+   * The property is identical on every row: the statement survives a filter that
+   * strips the contents of every collapsed `<details>`. A qualification a reader
+   * has to open is a qualification the page is hoping they will not.
+   */
+  const ALWAYS_VISIBLE: readonly {
+    readonly label: string
+    readonly path: string
+    readonly pattern: RegExp
+  }[] = [
+    { label: 'the fictional-entity notice', path: '/', pattern: /fictional/i },
+    { label: 'the synthetic-data statement', path: '/', pattern: /synthetic/i },
+    { label: 'the sanitized-listing provenance', path: '/', pattern: /sanitiz/i },
+    {
+      label: 'the "listings are not sales" boundary',
+      path: '/',
+      pattern: /listings, not sales results/i,
+    },
+    { label: 'the Gate 2 position', path: '/', pattern: /Gate 2/ },
+    {
+      label: 'the "not a performance result" boundary on /governance',
+      path: '/governance',
+      pattern: /not (an? )?(analytical finding|performance)/i,
+    },
+    {
+      label: 'the "not a performance result" boundary on /inventory',
+      path: '/inventory',
+      pattern: /not (an? )?(analytical finding|performance)/i,
+    },
+  ]
 
   for (const entry of ALWAYS_VISIBLE) {
     test(`${entry.label} is readable without opening a disclosure`, async ({ page }) => {
-      await gotoRendered(page, '/')
+      await gotoRendered(page, entry.path)
 
       // Read only the text that is NOT inside a collapsed <details>. If the
       // statement survives that filter, a reader who opens nothing still sees it.
@@ -1044,22 +1218,21 @@ test.describe('progressive disclosure withholds reasoning, never qualification',
     await expect(details).not.toHaveAttribute('open', /.*/)
   })
 
-  test('the home page keeps its seven chapters', async ({ page }) => {
+  test('the home page keeps its four chapters', async ({ page }) => {
     // Disclosure reduces prose. It must not have been used to remove a chapter,
     // and the composition is not to grow back either.
+    //
+    // Four, not seven. `operating-view` is the first thing on `/kpis`,
+    // `builder`'s three floor decisions are chapter four of `/about`, and
+    // `proof` is no longer a section: its four numerals open the closing
+    // chapter, so the page ends on evidence and an action. The id survives on
+    // the strip, because it is a deep-link target and three tests locate by it.
     await gotoRendered(page, '/')
     const ids = await page.evaluate(() =>
       [...document.querySelectorAll('main section[id]')].map((node) => node.id)
     )
-    expect(ids).toEqual([
-      'hero',
-      'stores',
-      'tour',
-      'operating-view',
-      'proof',
-      'builder',
-      'review',
-    ])
+    expect(ids).toEqual(['hero', 'stores', 'tour', 'review'])
+    await expect(page.locator('#proof')).toHaveCount(1)
   })
 })
 

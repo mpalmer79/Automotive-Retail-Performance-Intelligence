@@ -8,7 +8,7 @@ import { Card } from '@/components/ui/card-static'
 import { SourceLink } from '@/components/ui/data-card'
 import { Container, Section, SectionHeader } from '@/components/ui/layout'
 import { PageHeader } from '@/components/ui/page-header'
-import { Eyebrow, Heading, Text } from '@/components/ui/typography'
+import { CodeLabel, Eyebrow, Heading, Text } from '@/components/ui/typography'
 import { counts, manifest } from '@/lib/manifest'
 import { pageMetadata } from '@/lib/metadata'
 import { REPOSITORY_URL, ROUTES } from '@/lib/site'
@@ -30,8 +30,11 @@ export const metadata: Metadata = pageMetadata('about')
  *   6  the fictional dealer group, stated once more
  *   7  where to go next
  *
- * The six domain decisions that came from the floor are on the home page, in
- * chapter two, where they do the most work. This page does not repeat them.
+ * The three decisions that came from the floor arrived in chapter four with the
+ * home page's builder chapter. They used to be told there, under a second,
+ * shorter version of the career narrative this page tells in full - which is
+ * exactly the shape that goes stale, because the short copy is the one nobody
+ * remembers to update. There is now one telling, and it is here.
  *
  * WHAT THE REDESIGN CHANGED
  * -------------------------
@@ -229,6 +232,59 @@ export default function AboutPage() {
               detail="This project reports pending as pending. Static validation proves the model's shape and is never presented as proving its arithmetic, because the difference between those two claims is the difference between careful and careless."
             />
           </ul>
+
+          {/* THE THREE DECISIONS, MOVED HERE FROM THE HOME PAGE.
+              They were the home page's sixth chapter, where they sat under a
+              second telling of the career narrative this page tells at length.
+              They belong beside the four positions above rather than in a
+              chapter of their own: the positions are what this project holds,
+              these are the three places it cost something to hold them, and each
+              one names the artefact a reviewer can open.
+
+              They are visible here rather than behind a disclosure. On the home
+              page the argument was folded away to keep the page short; this is
+              the page where the length is the point. */}
+          <div className="mt-16 flex flex-col gap-5 border-t border-line pt-12">
+            <Heading level={2} size="h3">
+              Three decisions that came from the floor, not from a dataset
+            </Heading>
+            <Text size="body" tone="muted" className="max-w-prose">
+              Anyone can describe fragmented dealership data. These are the calls that
+              cannot be made by someone who has not had to defend a gross number to a
+              general manager.
+            </Text>
+            <ol className="flex flex-col divide-y divide-line border-y border-line">
+              {JUDGEMENTS.map((item) => (
+                <Reveal key={item.ordinal} as="li" className="py-7 first:pt-6">
+                  <article className="grid grid-cols-1 gap-5 lg:grid-cols-12 lg:gap-8">
+                    <div className="flex flex-col gap-2 lg:col-span-5">
+                      <div className="flex items-baseline gap-3">
+                        <span className="numeric font-mono text-2xs tracking-wide text-accent">
+                          {item.ordinal}
+                        </span>
+                        <span className="eyebrow text-2xs">A manager asks</span>
+                      </div>
+                      <h3 className="text-base leading-snug font-semibold text-balance text-ink">
+                        {item.question}
+                      </h3>
+                      <div className="mt-1 flex flex-wrap items-center gap-2">
+                        <span className="eyebrow text-2xs">In the repository</span>
+                        <CodeLabel tone="accent">{item.artefact}</CodeLabel>
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-2 lg:col-span-7">
+                      <p className="text-sm leading-snug font-semibold text-ink">
+                        {item.decision}
+                      </p>
+                      <Text size="sm" tone="muted" className="max-w-prose">
+                        {item.judgement}
+                      </Text>
+                    </div>
+                  </article>
+                </Reveal>
+              ))}
+            </ol>
+          </div>
         </Container>
       </Section>
 
@@ -341,6 +397,56 @@ export default function AboutPage() {
 /* -------------------------------------------------------------------------- */
 /* Internals                                                                   */
 /* -------------------------------------------------------------------------- */
+
+interface Judgement {
+  readonly ordinal: string
+  /** What a manager asks. In their words, not a BI use case. */
+  readonly question: string
+  /** What ARPI does about it. */
+  readonly decision: string
+  /** Why that decision needs someone who has worked the floor. */
+  readonly judgement: string
+  /** Where it lives in the repository. */
+  readonly artefact: string
+}
+
+/**
+ * Three, not six. A fourth would be a fourth variation on the same argument, and
+ * the argument is already made by the third.
+ *
+ * Moved here with the home page's builder chapter. The `disclosure` label each
+ * one used to carry came with it and was dropped: it named the summary a reader
+ * had to open on a page that was trying to be short, and this page is not.
+ */
+const JUDGEMENTS: readonly Judgement[] = [
+  {
+    ordinal: '01',
+    question: 'Why is total gross holding while front-end gross is collapsing?',
+    decision:
+      'Front-end, back-end and total gross stay separate through the warehouse, the reporting views and the KPI layer. They are never summed early.',
+    judgement:
+      'A store holding total gross while front gross collapses is in a materially different position from one where both are steady. Combining them destroys the diagnosis, and the diagnosis is the entire reason a general manager opened the report.',
+    artefact: 'KPI-GRS-001 / 002 / 003',
+  },
+  {
+    ordinal: '02',
+    question: 'Which of my salespeople are actually performing?',
+    decision:
+      'Volume alone never ranks a person in this model. The employee measures carry an interpretation caution on the measure itself, not in a document.',
+    judgement:
+      'A leaderboard built on volume rewards whoever the lead routing favours and punishes whoever is closing hard deals slowly. Publishing one is how a reporting project loses the sales floor in a single week.',
+    artefact: 'KPI-SLS-001 interpretation caution',
+  },
+  {
+    ordinal: '03',
+    question: 'How much aged inventory am I actually carrying?',
+    decision:
+      'Daily snapshots at vehicle, store and day grain. Median age leads and the mean is published beside it, because the gap between them is the finding.',
+    judgement:
+      'Inventory age is right-skewed. A handful of two-hundred-day units drags the mean up and makes a healthy lot look sick, or hides a bad tail inside a comfortable average. Which one leads is a decision, and getting it wrong sends a manager after the wrong cars.',
+    artefact: 'KPI-INV-003 and KPI-INV-004',
+  },
+]
 
 function PhilosophyItem({ claim, detail }: { claim: string; detail: string }) {
   return (

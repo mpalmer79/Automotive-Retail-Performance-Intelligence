@@ -46,7 +46,6 @@ import { useId, useState } from 'react'
 
 import { RooftopVisual } from '@/components/media/rooftop-visual'
 import { SegmentedTabs } from '@/components/media/segmented-tabs'
-import { Disclosure } from '@/components/ui/disclosure'
 import { STORE_TYPE_ICON } from '@/components/ui/domain-icon'
 import { Badge } from '@/components/ui/badge'
 import { Heading, Text } from '@/components/ui/typography'
@@ -126,16 +125,14 @@ export function StoreStoryTabs({ panels, className }: StoreStoryTabsProps) {
             {panel.positioning}
           </Text>
 
-          {/* The label was already the concrete question this paragraph
-              answers, so it becomes the summary unchanged. Behind a disclosure
-              because it is the same argument for each of the three stores and a
-              reader switching tabs to compare figures is reading it three
-              times. */}
-          <Disclosure label="How this store's inventory is decided">
-            <Text size="sm" tone="secondary" className="max-w-prose">
-              {panel.inventoryStrategy}
-            </Text>
-          </Disclosure>
+          {/* THE INVENTORY-STRATEGY PARAGRAPH IS NOT HERE ANY MORE.
+              It was a disclosure under this paragraph, and it was the same
+              argument three times: a reader switching tabs to compare figures
+              read how allocation works, then how a narrow new line works, then
+              how acquisition works. Each store's page carries its own strategy
+              in full, linked from this panel, so the tab keeps the positioning
+              and the figures and sends the reader to the page whose subject the
+              rest is. */}
 
           {/* The figures this store's own workbook supports, and the sentence
               they add up to. Both derived. */}

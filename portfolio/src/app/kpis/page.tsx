@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Suspense } from 'react'
 
 import { KpiCatalogue } from '@/components/explorers/kpi-catalogue'
+import { OperatingView } from '@/components/sections/operating-view'
 import { StatusBadge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card-static'
 import { SourceLink } from '@/components/ui/data-card'
@@ -78,6 +79,13 @@ export default function KpisPage() {
           </div>
         </Container>
       </Section>
+
+      {/* The operating view, moved here from the home page.
+          Six domains with one definition each is reference material, and this is
+          the page whose subject it is. It sits directly above the catalogue it
+          points into: a reader who has just seen which measures answer a
+          management question is the reader who wants their definitions. */}
+      <OperatingView />
 
       <Section rhythm="none" tone="panel" className="pt-section-tight pb-section">
         <Container width="wide">

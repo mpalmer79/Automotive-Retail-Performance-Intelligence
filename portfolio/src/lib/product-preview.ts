@@ -94,7 +94,6 @@ export interface StoreStoryPanel extends InventoryPreview {
   readonly franchiseBrand: string | null
   readonly tagline: string
   readonly positioning: string
-  readonly inventoryStrategy: string
   readonly analyticsFocus: string
   readonly accent: DealershipAccent
   /** The store's own page. */
@@ -297,7 +296,6 @@ export const storeStoryPanels: readonly StoreStoryPanel[] = dealerships
       franchiseBrand: store.franchiseBrand,
       tagline: store.tagline,
       positioning: store.positioning,
-      inventoryStrategy: store.inventoryStrategy,
       analyticsFocus: store.analyticsFocus,
       storeHref: store.href,
     }
