@@ -1,7 +1,38 @@
-import { dirname } from 'node:path'
+import { existsSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import type { NextConfig } from 'next'
+
+import { PORTRAIT_CANDIDATES, PORTRAIT_ENV_VARIABLE } from './src/lib/portrait.ts'
+
+const HERE = dirname(fileURLToPath(import.meta.url))
+
+/**
+ * Resolve the approved author portrait, once, at build time.
+ *
+ * WHY THIS LIVES IN THE CONFIG AND NOT IN THE COMPONENT
+ * ----------------------------------------------------
+ * `AuthorPortrait` needs to know whether a photograph is committed. It must not
+ * find out by asking the file system, because a server component that calls
+ * `existsSync` on a path built from `process.cwd()` gives the output tracer
+ * nothing it can resolve statically - and the tracer then fails safe by copying
+ * the ENTIRE working directory into `.next/standalone`.
+ *
+ * That happened: the standalone output grew from three entries to the whole
+ * `portfolio/` tree, and the Railway image job failed with "/app/tests is
+ * present in the runtime image". The fix is not to exclude `tests/` - it is to
+ * stop asking the question from inside the traced graph.
+ *
+ * This file runs in Node at build time and is not part of that graph, so the
+ * check is free here. The answer is inlined through `env` below.
+ */
+function resolvePortraitSource(): string {
+  for (const candidate of PORTRAIT_CANDIDATES) {
+    if (existsSync(join(HERE, 'public', candidate))) return candidate
+  }
+  return ''
+}
 
 /**
  * ARPI portfolio site build configuration.
@@ -42,7 +73,39 @@ const nextConfig: NextConfig = {
   //
   // Setting it explicitly makes the layout a property of this file rather than
   // of what happens to be in the build context.
-  outputFileTracingRoot: dirname(fileURLToPath(import.meta.url)),
+  outputFileTracingRoot: HERE,
+
+  /*
+   * Nothing outside the application belongs in the runtime image.
+   *
+   * Belt and braces rather than the fix: the real defect was a server component
+   * asking the file system a question the tracer could not answer, and that is
+   * fixed at its source in `src/lib/portrait.ts`. This is the guard for the next
+   * one. The CI job asserts `/app/tests`, `/app/sql`, `/app/powerbi`,
+   * `/app/docs` and `/app/.git` are absent from the image; declaring the same
+   * thing here means a stray trace is dropped at build time instead of failing
+   * a job after the image is built.
+   */
+  outputFileTracingExcludes: {
+    '*': [
+      './tests/**',
+      './docs/**',
+      './scripts/**',
+      './playwright*.config.ts',
+      './vitest.config.ts',
+      './eslint.config.mjs',
+      './Dockerfile.railway',
+    ],
+  },
+
+  /*
+   * The portrait, resolved above and inlined here.
+   *
+   * `env` is a build-time substitution: Next replaces the reference with a
+   * literal, so this is not a variable an operator can set in a deployment
+   * dashboard to make the site claim a photograph it does not have.
+   */
+  env: { [PORTRAIT_ENV_VARIABLE]: resolvePortraitSource() },
 
   // Fail the production build on a type error rather than shipping a site whose
   // type check only passes in a separate CI step. Linting is a separate command

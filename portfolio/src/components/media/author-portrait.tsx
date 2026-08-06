@@ -41,8 +41,8 @@
  *                  dealership signage, no vehicle, no logo, and no other person.
  *
  * Nothing else changes. There is no code edit, no import to add and no flag to
- * flip: {@link resolvePortraitSource} reads the file system at build time, so
- * committing the file is the whole procedure.
+ * flip: `next.config.ts` looks for the file at build time and inlines the
+ * answer, so committing the file is the whole procedure.
  *
  * ALT TEXT
  * --------
@@ -52,58 +52,27 @@
  * also does not repeat the visible name printed directly beneath it, because a
  * reader would then hear it twice.
  *
- * A server component. It reads the file system at module scope, which is
- * evaluated once at build time for these statically generated routes.
+ * WHY IT DOES NOT ASK THE FILE SYSTEM ITSELF
+ * ------------------------------------------
+ * It used to, and that was a real defect rather than a style point. A server
+ * component calling `existsSync` on a path built from `process.cwd()` gives
+ * Next's output tracer nothing it can resolve, and the tracer fails safe by
+ * copying the whole working directory into `.next/standalone` - which took the
+ * standalone output from three entries to the entire `portfolio/` tree and made
+ * the Railway image job fail with "/app/tests is present in the runtime image".
+ *
+ * The check now happens once in `next.config.ts`, which runs outside the traced
+ * graph, and arrives here as an inlined string. See `lib/portrait.ts`.
+ *
+ * A server component. No state, no motion, no file system.
  */
-import { existsSync } from 'node:fs'
-import { join } from 'node:path'
-
 import Image from 'next/image'
 import { UserRound } from 'lucide-react'
 
 import { MediaPlaceholder } from '@/components/media/media-placeholder'
+import { PORTRAIT_HEIGHT, PORTRAIT_WIDTH, portraitSourceFrom } from '@/lib/portrait'
 import { SITE_AUTHOR } from '@/lib/site'
 import { cx } from '@/lib/utils'
-
-/** The reserved geometry. Both the real asset and the placeholder occupy it. */
-export const PORTRAIT_WIDTH = 1000
-export const PORTRAIT_HEIGHT = 1250
-
-/** The maximum the contract allows, in bytes. Asserted by the unit suite. */
-export const PORTRAIT_MAX_BYTES = 180 * 1024
-
-/**
- * The public paths that count as an approved portrait, in preference order.
- *
- * Two, not one, so a better format can be supplied without a code change. There
- * is deliberately no `.jpg` and no `.png`: this site serves modern formats for
- * every other image it has, and a portrait is not the place to make an
- * exception.
- */
-export const PORTRAIT_CANDIDATES = [
-  '/media/michael-palmer-portrait.avif',
-  '/media/michael-palmer-portrait.webp',
-] as const
-
-/** The path documented for the person supplying the file. */
-export const PORTRAIT_DOCUMENTED_PATH =
-  'portfolio/public/media/michael-palmer-portrait.webp'
-
-/**
- * Resolve the approved portrait, or `null`.
- *
- * Exported so `tests/unit/components.test.tsx` can exercise both branches
- * without a committed photograph, and so the check is one function rather than
- * an `existsSync` call repeated per caller.
- */
-export function resolvePortraitSource(
-  publicDir: string = join(process.cwd(), 'public')
-): string | null {
-  for (const candidate of PORTRAIT_CANDIDATES) {
-    if (existsSync(join(publicDir, candidate))) return candidate
-  }
-  return null
-}
 
 export interface AuthorPortraitProps {
   /**
@@ -125,7 +94,21 @@ export function AuthorPortrait({
   sizes = '(min-width: 1024px) 20rem, (min-width: 640px) 20rem, 100vw',
   className,
 }: AuthorPortraitProps) {
-  const source = resolvePortraitSource()
+  /*
+   * WRITTEN OUT IN FULL, AND IT HAS TO BE.
+   *
+   * Next's `env` option is a TEXTUAL substitution on `process.env.NAME`. A
+   * computed lookup - `process.env[PORTRAIT_ENV_VARIABLE]`, which reads better -
+   * is not a form it recognises, so nothing is inlined, the value is `undefined`
+   * at render time, and the page silently keeps showing the placeholder after
+   * the photograph has been committed. That is the failure this exact line was
+   * caught making, and it is silent in both directions: the build succeeds and
+   * the only symptom is a portrait that never appears.
+   *
+   * `tests/unit/components.test.tsx` asserts the constant and this literal
+   * agree, so the two cannot drift.
+   */
+  const source = portraitSourceFrom(process.env.ARPI_PORTRAIT_SOURCE)
 
   if (source === null) {
     return (

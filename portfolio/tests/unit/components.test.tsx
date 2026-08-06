@@ -10,22 +10,22 @@
  * has no layout engine, so a test asserting those here would pass without
  * checking them, which is worse than not having it. Those live in Playwright.
  */
-import { mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { existsSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterAll, describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
 import {
   PORTRAIT_CANDIDATES,
   PORTRAIT_DOCUMENTED_PATH,
+  PORTRAIT_ENV_VARIABLE,
   PORTRAIT_HEIGHT,
   PORTRAIT_MAX_BYTES,
   PORTRAIT_WIDTH,
-  resolvePortraitSource,
-} from '@/components/media/author-portrait'
+  portraitSourceFrom,
+} from '@/lib/portrait'
 import { Badge, KpiChip, StatusBadge } from '@/components/ui/badge'
 import { DOMAIN_ICON, STORE_TYPE_ICON, SURFACE_ICON } from '@/components/ui/domain-icon'
 import { Button, IconButton, LinkButton } from '@/components/ui/button'
@@ -557,68 +557,107 @@ describe('utilities', () => {
  * The portrait contract, exercised from both sides without a photograph.
  *
  * There is no approved image of Michael Palmer in this repository and this suite
- * will not invent one. What it can do is prove the RESOLVER behaves correctly in
- * both states, using a temporary directory as the public root: the present case
- * is fixtured with a file at the contracted path whose contents are irrelevant,
- * and the absent case is the empty directory. That covers the branch the site
- * actually takes today and the branch it will take the moment the file lands,
- * which is the pair that matters - a component that silently kept rendering the
- * placeholder after the photograph arrived would be the expensive failure.
+ * will not invent one. What it can prove is that the RESOLUTION RULE behaves
+ * correctly in both states, and that the rule fails closed.
+ *
+ * The check itself moved out of the component in the release pass. A server
+ * component calling `existsSync` on a `process.cwd()` path defeated Next's
+ * output tracer, which then copied the whole working directory into
+ * `.next/standalone` - so `next.config.ts` now looks for the file at build time
+ * and inlines the answer, and the component interprets a string. These tests
+ * follow it: they exercise the interpretation, which is the part that can be
+ * wrong in a way nothing else would catch.
  */
 describe('the author portrait contract', () => {
-  const roots: string[] = []
-
-  function makeRoot(): string {
-    const root = mkdtempSync(join(tmpdir(), 'arpi-portrait-'))
-    roots.push(root)
-    mkdirSync(join(root, 'media'), { recursive: true })
-    return root
-  }
-
-  afterAll(() => {
-    for (const root of roots) rmSync(root, { recursive: true, force: true })
+  it('resolves to null when nothing is inlined', () => {
+    expect(portraitSourceFrom(undefined)).toBeNull()
+    expect(portraitSourceFrom('')).toBeNull()
+    expect(portraitSourceFrom('   ')).toBeNull()
   })
 
-  it('resolves to null when no approved photograph is committed', () => {
-    expect(resolvePortraitSource(makeRoot())).toBeNull()
+  it('accepts either committed candidate path', () => {
+    for (const candidate of PORTRAIT_CANDIDATES) {
+      expect(portraitSourceFrom(candidate)).toBe(candidate)
+    }
   })
 
-  it('resolves the WebP at the documented path once it exists', () => {
-    const root = makeRoot()
-    writeFileSync(join(root, 'media/michael-palmer-portrait.webp'), 'not-a-real-image')
-    expect(resolvePortraitSource(root)).toBe('/media/michael-palmer-portrait.webp')
+  it('tolerates the whitespace a build environment collects', () => {
+    expect(portraitSourceFrom('  /media/michael-palmer-portrait.webp  ')).toBe(
+      '/media/michael-palmer-portrait.webp'
+    )
   })
 
-  it('prefers AVIF over WebP when both are supplied', () => {
-    const root = makeRoot()
-    writeFileSync(join(root, 'media/michael-palmer-portrait.webp'), 'w')
-    writeFileSync(join(root, 'media/michael-palmer-portrait.avif'), 'a')
-    expect(resolvePortraitSource(root)).toBe('/media/michael-palmer-portrait.avif')
+  it('fails closed on anything that is not a candidate path', () => {
+    // The rule lib/flags.ts applies to every other build input: a variable may
+    // withhold, never invent. A stock JPEG cannot arrive by setting a variable
+    // any more than by dropping a file into the directory.
+    for (const rejected of [
+      '/media/michael-palmer-portrait.jpg',
+      '/media/michael-palmer-portrait.png',
+      '/media/someone-else.webp',
+      'https://example.com/portrait.webp',
+      'true',
+    ]) {
+      expect(portraitSourceFrom(rejected), rejected).toBeNull()
+    }
   })
 
-  it('accepts no other format, so a stock JPEG cannot arrive by dropping a file', () => {
-    const root = makeRoot()
-    writeFileSync(join(root, 'media/michael-palmer-portrait.jpg'), 'j')
-    writeFileSync(join(root, 'media/michael-palmer-portrait.png'), 'p')
-    expect(resolvePortraitSource(root)).toBeNull()
+  it('prefers AVIF over WebP in the declared order', () => {
+    expect(PORTRAIT_CANDIDATES[0]).toMatch(/\.avif$/)
+    expect(PORTRAIT_CANDIDATES[1]).toMatch(/\.webp$/)
   })
 
   it('reserves a 4:5 box, which is what makes the swap shift nothing', () => {
     expect(PORTRAIT_WIDTH / PORTRAIT_HEIGHT).toBeCloseTo(4 / 5, 5)
   })
 
-  it('states the documented path the two candidate paths agree with', () => {
+  it('documents a path the candidate list agrees with', () => {
     expect(PORTRAIT_DOCUMENTED_PATH).toContain(PORTRAIT_CANDIDATES[1])
   })
 
+  it('names a build-time variable, not a NEXT_PUBLIC one', () => {
+    // `env` in next.config.ts is a build-time substitution. A NEXT_PUBLIC_ name
+    // would suggest something an operator sets at deploy time, which is exactly
+    // what this must not be.
+    expect(PORTRAIT_ENV_VARIABLE).toBe('ARPI_PORTRAIT_SOURCE')
+    expect(PORTRAIT_ENV_VARIABLE).not.toMatch(/^NEXT_PUBLIC_/)
+  })
+
+  it('reads the variable through the literal form Next actually inlines', () => {
+    /*
+     * Next's `env` option is a TEXTUAL substitution on `process.env.NAME`. The
+     * component originally used `process.env[PORTRAIT_ENV_VARIABLE]`, which
+     * reads better and is not a form Next recognises - so nothing was inlined
+     * and the page kept rendering the placeholder after a photograph had been
+     * committed. The build succeeded; the only symptom was a portrait that
+     * never appeared.
+     *
+     * Asserted against the source text because that is where the defect lives.
+     * Rendering the component cannot catch it: under vitest the variable is
+     * genuinely undefined either way.
+     */
+    const source = readFileSync(
+      join(process.cwd(), 'src/components/media/author-portrait.tsx'),
+      'utf8'
+    )
+    // Comments stripped first: the component's own note explains the broken
+    // form by name, and matching that would fail on the explanation rather than
+    // on the code.
+    const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
+    expect(code).toContain(`process.env.${PORTRAIT_ENV_VARIABLE}`)
+    expect(code, 'the computed form is not inlined by Next').not.toMatch(/process\.env\[/)
+  })
+
   it('holds the committed portrait, if there is one, to the documented budget', () => {
-    // Today this asserts nothing, because there is no file. It is here so that
-    // the day one is committed, an oversized one fails the suite rather than the
+    // Asserts nothing today, because there is no file. It is here so that the
+    // day one is committed, an oversized one fails the suite rather than the
     // connection.
     const publicDir = join(process.cwd(), 'public')
-    const source = resolvePortraitSource(publicDir)
-    if (source === null) return
-    expect(statSync(join(publicDir, source)).size).toBeLessThanOrEqual(PORTRAIT_MAX_BYTES)
+    for (const candidate of PORTRAIT_CANDIDATES) {
+      const file = join(publicDir, candidate)
+      if (!existsSync(file)) continue
+      expect(statSync(file).size).toBeLessThanOrEqual(PORTRAIT_MAX_BYTES)
+    }
   })
 })
 
