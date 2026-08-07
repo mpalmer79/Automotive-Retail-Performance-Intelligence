@@ -125,6 +125,18 @@ The following are explicitly excluded from the core project:
 - A second complete dashboard in Tableau
 - A second complete dashboard in React or Next.js
 
+**The second-dashboard exclusion is likewise narrower than it reads, by decision of record.**
+[ADR-0013](docs/architecture-decisions/ADR-0013-governed-web-operating-console.md) authorizes a
+**governed web operating console** — the ARPI Dealer Operations Command Center, planned in
+[`docs/requirements/DASHBOARD_PROGRAM.md`](docs/requirements/DASHBOARD_PROGRAM.md) — under fifteen
+binding conditions: it consumes SQL-validated, versioned, synthetic exports from the `reporting`
+schema; it never redefines a KPI formula, never queries `raw`, `staging`, `warehouse`, or `audit`,
+never holds a database credential, never claims to validate Power BI, and never substitutes for the
+Power BI report, which remains the canonical analytical product. What stays excluded is what this
+line always meant: a duplicate analytics implementation that recomputes the KPIs and competes with
+the Power BI deliverable for analytical authority. A console that forks a KPI formula or opens a
+database connection from the browser violates this architecture regardless of ADR-0013.
+
 **The Fabric exclusion is narrower than it reads, and the distinction is load-bearing.** ARPI's warehouse is PostgreSQL and stays PostgreSQL; no analytical storage or transformation moves into Fabric. But the **Fabric Service** is one of the two accepted real-engine validation paths for the semantic model under [ADR-0008](docs/architecture-decisions/ADR-0008-real-engine-validation-paths.md), of equal standing with Power BI Desktop, and it is the path this project can reach without Windows. Deploying the committed TMDL to a Fabric workspace, refreshing it against the `reporting` schema and evaluating the governed DAX is **in scope**. Building analytics *in* Fabric is not. An unqualified exclusion fails `scripts/check_project_capabilities.py`, because this list went on excluding Fabric outright after ADR-0008 had made it a required path, and nothing failed.
 
 A public case-study page may be added after the analytical system is complete, but it must not duplicate the Power BI report.

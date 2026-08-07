@@ -22,6 +22,14 @@ the data model. Read 04 when you are about to change something. Read 05 only whe
 second data lane; it is deliberately separate from 02, because the two lanes share a `sql/` tree and
 nothing else.
 
+**Dashboard program diagrams.** The seven diagrams for the planned ARPI Dealer Operations Command
+Center ([ADR-0013](../architecture-decisions/ADR-0013-governed-web-operating-console.md)) live with
+their specification set in [`../dashboard/diagrams/`](../dashboard/diagrams/): source-to-dashboard
+lineage, expanded fact constellation, export and build pipeline, route and drill-through flow, Deal
+Jacket relationships, management-action generation, and the SQL / Power BI / web ownership
+boundaries. They follow the same conventions as this directory — Mermaid in Markdown, no binary
+images — and describe planned components, marked as such.
+
 ---
 
 ## Why Mermaid in Markdown rather than binary images
