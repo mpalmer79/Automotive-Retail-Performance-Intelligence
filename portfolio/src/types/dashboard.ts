@@ -226,6 +226,16 @@ export const DASHBOARD_DATASETS = [
     chunked: true,
   },
   {
+    // The second deal-grain dataset, and the presentation-complete one. It carries
+    // the cost components `deal-explorer` deliberately omits, and is read only by
+    // the Deal Jacket route: an index must not ship the whole population's cost
+    // structure, and a jacket must show the arithmetic behind its front gross.
+    name: 'deal-jacket',
+    businessKey: ['sale_id'],
+    dateBasis: 'sale date',
+    chunked: true,
+  },
+  {
     name: 'reconciliation-status',
     businessKey: ['reconciliation_id'],
     dateBasis: null,

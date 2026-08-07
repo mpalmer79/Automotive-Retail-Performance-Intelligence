@@ -428,6 +428,35 @@
   details > summary svg {
     display: none;
   }
+
+  /* ------------------------------------------------------------------------
+     The Deal Jacket's paper recap (`DASH.4`, DEAL_JACKET_SPEC.md section 17).
+
+     A printed deal recap is a document somebody puts in a folder, so what it
+     must carry is the transaction: the synthetic disclosure first, then
+     identity, vehicle, the front-gross arithmetic, trade, total gross, the
+     integrity checks and the data's own as-of date.
+
+     What it must NOT carry is navigation. A site header, a console
+     sub-navigation bar and a filter form are affordances for a surface that
+     can be clicked; on paper they are a masthead the reader has to look past
+     to reach the deal. They are hidden by attribute rather than by class, so
+     a component that changes its styling cannot silently start printing its
+     navigation.
+
+     The disclosures are NOT hidden: the rule above opens them, and on this
+     route they are the lineage and the KPI definitions, which are exactly what
+     makes a printed figure checkable.
+     ---------------------------------------------------------------------- */
+  [data-arpi-print='omit'] {
+    display: none !important;
+  }
+
+  /* Paper has no hover, no focus ring and no dark mode. The jacket prints its
+     rules as hairlines so the arithmetic blocks stay legible in monochrome. */
+  [data-arpi-print='calculation'] {
+    break-inside: avoid;
+  }
 }
 
 /* ==========================================================================

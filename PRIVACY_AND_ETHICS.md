@@ -656,6 +656,44 @@ both stages and again over the committed files by the portfolio boundary suite. 
 declares no database dependency at all, so a runtime connection is impossible rather than merely
 absent.
 
+### 17.5a Deal grain, and why it does not change the posture (`DASH.3`, `DASH.4`)
+
+`DASH.3` and `DASH.4` added the project's first **deal-grain** exports: one row per finalized
+transaction, 650 of them, and the Deal Jacket renders more of a single transaction than anything
+else in the project. That is the moment a privacy posture is worth re-examining rather than
+restating, so it was.
+
+**Nothing changed, and the reason it did not is structural.** A deal row is a row about a
+TRANSACTION, not about a person. The two datasets carry the vehicle, the money, the dates, the staff
+roles as synthetic identifiers and the lead's paper trail as flags — and no customer key, no customer
+attribute, and no join to `vw_customer`, which is not in the allowlist and never has been. There is
+no field for a person to arrive in.
+
+Four things were tightened because deal grain makes them testable in a way aggregate grain did not:
+
+1. **Column names are asserted against a prohibited register at the view.** The integration suites
+   check both deal views for forty-odd spellings — customer, name, email, phone, address, birth date,
+   SSN, credit score, bank and card details, lender, APR, rate, term, payment, notes, message — and
+   for the surrogate `sale_key`, which would leak load order.
+2. **Only two `*_name` columns are permitted,** `model_name` and `lead_source_name`, and both name a
+   THING rather than a person. The allowlist is asserted, so a third has to be argued for.
+3. **Every staff code is asserted to match the synthetic `EMP-` shape, on values rather than on
+   column names.** A human name reaching a public lane through a differently-named column is exactly
+   the failure a name scan cannot see.
+4. **The console runs a value-level scan of its own.** Every string in all 650 rendered jackets is
+   checked against the shapes of an email address, a telephone number, an SSN, a payment card and a
+   street address. §10's stated gap — that the tripwire inspects names rather than values — is
+   narrower on this lane than anywhere else in the project as a result.
+
+**The Deal Jacket publishes no rate mechanics of any kind.** §7 places lender, APR, term, payment,
+buy rate, sell rate and rate spread outside what this project publishes, and the page names each as
+not modelled rather than omitting it silently, so a reader can see the boundary rather than assume
+an oversight. `finance_structure` is derived from `sale_type` and `amount_financed` alone, and the
+derivation is published beside the label.
+
+**The odometer stays banded and the VIN stays synthetic** on the one page that shows a specific
+vehicle in detail, both asserted at the view and again at the page.
+
 ### 17.6 The lane makes no claim it cannot support
 
 Every artifact states in its own manifest that the data is synthetic, that the dealer group is

@@ -723,6 +723,40 @@ One naming rule came out of the data rather than the design: **the console does 
 `vehicle_code` a stock number.** The warehouse has no stock number, and captioning the
 vehicle identifier as one would invent a dealership artefact the data does not contain.
 
+### 12.8 What `DASH.4` added: the vocabulary of absence
+
+The Deal Jacket renders more of a single transaction than anything else in the project,
+which means it meets more absences than anything else. The §12.6 rule — say what is
+missing and why — needed a vocabulary rather than a habit, because four different things
+were all being written as "N/A" and they are not the same thing.
+
+| Word               | Means                                                                  | Example on the page                                                             |
+| ------------------ | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| **Not applicable** | Structurally absent. The thing cannot exist for this deal.             | A used unit has no MSRP; a cash deal has no lender because nothing was financed |
+| **Not modelled**   | Out of scope. The thing exists in the world and not in this warehouse. | Trade payoff and equity; APR, term and payment; F&I product itemization         |
+| **Unattributed**   | A role that could have been filled and was not.                        | A deal with no BDC employee recorded                                            |
+| **No linked lead** | Walk-in business. A real outcome, not missing data.                    | A deal the store earned without a CRM lead behind it                            |
+
+**A zero is a real zero and nothing else.** A cash deal shows `$0.00` financed, because
+that is a measured fact about the transaction. An absent MSRP shows the words, not `$0.00`,
+because a discount from a price that does not exist is a fiction.
+
+Three further rules the jacket sharpened:
+
+- **A check that cannot fail is not shown as passing.** The integrity checklist carries the
+  five checks this increment can actually perform. Back-gross reconciliation, product
+  eligibility and product-adjustment validity need the F&I model, and they are named as
+  absent rather than rendered green — a green row for an unperformed check asserts that
+  something was verified when nothing was.
+- **A verification states what it compared.** Where the page says "Verified to the cent" it
+  has recomputed the identity from the components displayed directly above it. Where it
+  cannot, it says so with both figures and the words "this difference is a defect, not a
+  rounding artefact", because a reader deserves to know which of the two numbers to doubt.
+- **A figure that is deliberately outside a formula says so where it is shown.** Trade
+  variance sits beside the front-gross block with a sentence explaining that it is not part
+  of it. Moving it into the formula would redefine `KPI-GRS-001`, and the reader who is
+  most likely to expect it there is exactly the reader who needs to be told.
+
 ---
 
 ## 14. The dashboard data lane (`DASH.1`)

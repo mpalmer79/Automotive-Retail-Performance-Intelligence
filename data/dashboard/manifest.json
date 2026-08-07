@@ -1,13 +1,13 @@
 {
   "schema": "arpi.dashboard_export/1",
   "contract_version": 1,
-  "contract_sha256": "801895e62434f348bec3a3f76f3126779768273f970c7f104b85cd27781eea06",
-  "dataset_version": 2,
-  "generated_at": "2026-08-07T15:40:51+00:00",
+  "contract_sha256": "8cb74151d610652c4da1e37ef4bb8cd835d3868fe7ebf92291aad8244745f495",
+  "dataset_version": 3,
+  "generated_at": "2026-08-07T17:08:36+00:00",
   "as_of_date": "2025-12-31",
   "profile": "development",
   "random_seed": 20250701,
-  "source_commit": "f36a5a1d3d1586f14df2d3c75ccb41b5097a7a9b",
+  "source_commit": "603f473777258eb4f24509be5b9cef535b4b1b2a",
   "exporter_version": "0.1.0",
   "query_normalisation": "arpi.sql_whitespace_canonical/1",
   "reporter_role": "arpi_reporter",
@@ -24,6 +24,7 @@
     "reporting.vw_days_supply",
     "reporting.vw_days_to_sale",
     "reporting.vw_deal_explorer",
+    "reporting.vw_deal_jacket",
     "reporting.vw_dealership",
     "reporting.vw_gross_change_bridge",
     "reporting.vw_gross_summary",
@@ -3441,6 +3442,705 @@
       "file_bytes": 538387
     },
     {
+      "name": "deal-jacket",
+      "source_view": "reporting.vw_deal_jacket",
+      "join_views": [
+        "reporting.vw_dealership"
+      ],
+      "grain": "One row per finalized vehicle transaction.",
+      "business_key": [
+        "sale_id"
+      ],
+      "date_basis": "sale date",
+      "sort_keys": [
+        "sale_id"
+      ],
+      "chunked": true,
+      "kpi_ids": [
+        "KPI-SLS-001",
+        "KPI-GRS-001",
+        "KPI-GRS-002",
+        "KPI-GRS-003",
+        "KPI-INV-007"
+      ],
+      "columns": [
+        {
+          "name": "sale_id",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.sale_id"
+        },
+        {
+          "name": "sale_date",
+          "type": "date",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.sale_date"
+        },
+        {
+          "name": "delivery_date",
+          "type": "date",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.delivery_date"
+        },
+        {
+          "name": "dealership_id",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_dealership.dealership_code"
+        },
+        {
+          "name": "sale_type",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "New Retail",
+            "Used Retail",
+            "Certified Retail",
+            "Lease",
+            "Wholesale",
+            "Dealer Trade"
+          ],
+          "source_column": "reporting.vw_deal_jacket.sale_type"
+        },
+        {
+          "name": "is_retail",
+          "type": "boolean",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.is_retail"
+        },
+        {
+          "name": "finance_structure",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "Cash",
+            "Retail Finance",
+            "Lease"
+          ],
+          "source_column": "reporting.vw_deal_jacket.finance_structure"
+        },
+        {
+          "name": "finance_structure_basis",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.finance_structure_basis"
+        },
+        {
+          "name": "vehicle_code",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.vehicle_code"
+        },
+        {
+          "name": "synthetic_vin",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.synthetic_vin"
+        },
+        {
+          "name": "model_year",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "year",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.model_year"
+        },
+        {
+          "name": "make",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.make"
+        },
+        {
+          "name": "model_name",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.model_name"
+        },
+        {
+          "name": "trim_level",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.trim_level"
+        },
+        {
+          "name": "vehicle_display",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.vehicle_display"
+        },
+        {
+          "name": "body_style",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.body_style"
+        },
+        {
+          "name": "condition_type",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "New",
+            "Used",
+            "Certified"
+          ],
+          "source_column": "reporting.vw_deal_jacket.condition_type"
+        },
+        {
+          "name": "condition_group",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "New",
+            "Used"
+          ],
+          "source_column": "reporting.vw_deal_jacket.condition_group"
+        },
+        {
+          "name": "odometer_band",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.odometer_band"
+        },
+        {
+          "name": "acquisition_source",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.acquisition_source"
+        },
+        {
+          "name": "days_in_inventory_at_sale",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "days",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.days_in_inventory_at_sale"
+        },
+        {
+          "name": "sale_price",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.sale_price"
+        },
+        {
+          "name": "msrp",
+          "type": "currency",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.msrp"
+        },
+        {
+          "name": "original_asking_price",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.original_asking_price"
+        },
+        {
+          "name": "final_asking_price",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.final_asking_price"
+        },
+        {
+          "name": "acquisition_cost",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.acquisition_cost"
+        },
+        {
+          "name": "reconditioning_cost",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.reconditioning_cost"
+        },
+        {
+          "name": "pack_amount",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.pack_amount"
+        },
+        {
+          "name": "front_end_gross",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.front_end_gross"
+        },
+        {
+          "name": "discount_from_original",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.discount_from_original"
+        },
+        {
+          "name": "discount_from_final",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.discount_from_final"
+        },
+        {
+          "name": "discount_from_msrp",
+          "type": "currency",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.discount_from_msrp"
+        },
+        {
+          "name": "has_trade",
+          "type": "boolean",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.has_trade"
+        },
+        {
+          "name": "trade_allowance",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.trade_allowance"
+        },
+        {
+          "name": "trade_acv",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.trade_acv"
+        },
+        {
+          "name": "trade_variance",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.trade_variance"
+        },
+        {
+          "name": "cash_down",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.cash_down"
+        },
+        {
+          "name": "amount_financed",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.amount_financed"
+        },
+        {
+          "name": "back_end_gross",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.back_end_gross"
+        },
+        {
+          "name": "total_gross",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.total_gross"
+        },
+        {
+          "name": "salesperson_code",
+          "type": "string",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.salesperson_code"
+        },
+        {
+          "name": "salesperson_role",
+          "type": "string",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.salesperson_role"
+        },
+        {
+          "name": "desk_manager_code",
+          "type": "string",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.desk_manager_code"
+        },
+        {
+          "name": "desk_manager_role",
+          "type": "string",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.desk_manager_role"
+        },
+        {
+          "name": "finance_manager_code",
+          "type": "string",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.finance_manager_code"
+        },
+        {
+          "name": "finance_manager_role",
+          "type": "string",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.finance_manager_role"
+        },
+        {
+          "name": "bdc_employee_code",
+          "type": "string",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.bdc_employee_code"
+        },
+        {
+          "name": "is_lead_attributed",
+          "type": "boolean",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.is_lead_attributed"
+        },
+        {
+          "name": "lead_id",
+          "type": "string",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.lead_id"
+        },
+        {
+          "name": "lead_created_date",
+          "type": "date",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.lead_created_date"
+        },
+        {
+          "name": "lead_source_code",
+          "type": "string",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.lead_source_code"
+        },
+        {
+          "name": "lead_source_name",
+          "type": "string",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.lead_source_name"
+        },
+        {
+          "name": "first_response_seconds",
+          "type": "integer",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": "seconds",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.first_response_seconds"
+        },
+        {
+          "name": "lead_contacted",
+          "type": "boolean",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.lead_contacted"
+        },
+        {
+          "name": "lead_appointment_set",
+          "type": "boolean",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.lead_appointment_set"
+        },
+        {
+          "name": "lead_days_to_sale",
+          "type": "integer",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": "days",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.lead_days_to_sale"
+        },
+        {
+          "name": "has_appointment",
+          "type": "boolean",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.has_appointment"
+        },
+        {
+          "name": "appointment_id",
+          "type": "string",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.appointment_id"
+        },
+        {
+          "name": "appointment_scheduled_date",
+          "type": "date",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.appointment_scheduled_date"
+        },
+        {
+          "name": "appointment_show_date",
+          "type": "date",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.appointment_show_date"
+        },
+        {
+          "name": "appointment_shown",
+          "type": "boolean",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.appointment_shown"
+        },
+        {
+          "name": "appointment_test_drive",
+          "type": "boolean",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.appointment_test_drive"
+        },
+        {
+          "name": "appointment_write_up",
+          "type": "boolean",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.appointment_write_up"
+        },
+        {
+          "name": "delivery_on_or_after_sale",
+          "type": "boolean",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.delivery_on_or_after_sale"
+        },
+        {
+          "name": "inventory_snapshot_count",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "snapshots",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.inventory_snapshot_count"
+        }
+      ],
+      "notes": "The presentation-complete record of ONE deal, and the second deal-grain dataset. It carries the cost components deal-explorer deliberately omits, because a jacket must show the arithmetic behind its front gross and an index must not ship the whole population's cost structure. The two ARITHMETIC identities are NOT exported as flags: the route recomputes front gross and total gross from the displayed components with exact-decimal arithmetic, because a verification that reads a flag verifies nothing. trade_variance is published beside the front-gross components and is deliberately not one of them. back_end_gross is aggregate: no finance-product fact exists until DASH.7, and the route labels it as aggregate rather than implying an itemization. No customer attribute is exported at any grain; staff are synthetic codes and roles with no name; the lead timeline is flags and dates with no message, note or free text, because none exists in the model.",
+      "query_sha256": "e989016c138ae991da8d8158137e20042e9251ba47f8060dfa3ca71aff7cc2ba",
+      "row_count": 650,
+      "file": "deal-jacket.json",
+      "file_sha256": "0106adcb6fc561d12768b7c4494564112043528f38ab95f181a4457b507c5fa1",
+      "file_bytes": 1190877
+    },
+    {
       "name": "reconciliation-status",
       "source_view": "reporting.vw_reconciliation_status",
       "join_views": [],
@@ -4023,7 +4723,7 @@
   "privacy_scan": {
     "status": "passed",
     "prohibited_hits": 0,
-    "columns_scanned": 307,
+    "columns_scanned": 372,
     "primary_control": "contract allowlist",
     "secondary_control": "arpi.validation.privacy prohibited-name tripwire"
   },
@@ -4035,7 +4735,7 @@
     "reconciliations_failed": 0
   },
   "sizes": {
-    "dataset_bytes_total": 8467638,
+    "dataset_bytes_total": 9658515,
     "largest_dataset": {
       "name": "lead-response",
       "bytes": 2269345,

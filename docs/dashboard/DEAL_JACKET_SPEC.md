@@ -1,7 +1,8 @@
 # Deal Jacket Specification — `/dashboard/deals/[saleId]`
 
-**Status:** Planning contract; `DASH.4` implements the base jacket, `DASH.7` itemizes F&I,
-`DASH.O-1` would add multi-trade detail.
+**Status:** **As-built for `DASH.4`.** Sections 1–19 are the planning contract; §20 records what
+was built, every divergence from the plan and its reason, and the evidence for each. `DASH.7`
+itemizes F&I, `DASH.O-1` would add multi-trade detail.
 **Parents:** [DASHBOARD_PROGRAM.md](../requirements/DASHBOARD_PROGRAM.md) ·
 [DATA_CONTRACT.md](DATA_CONTRACT.md) · [KPI_EXTENSION_PLAN.md](KPI_EXTENSION_PLAN.md) ·
 [PRIVACY_AND_ETHICS.md](../../PRIVACY_AND_ETHICS.md)
@@ -181,3 +182,74 @@ landmarks via headings; print view retains reading order.
 | Invalid `saleId` | 404 with return link |
 | Corrupted fixture (broken identity) | Verification failure state renders; page does not hide it |
 | Print mode | §17 include/exclude list |
+
+---
+
+## 20. As-built (`DASH.4`)
+
+Written after implementation, against the code and the measurements rather than against the plan.
+Sections 1–19 above are unchanged: what the increment did differently is recorded here, so a reader
+can see both the intent and the outcome.
+
+### 20.1 What was built
+
+| Piece | Where |
+|---|---|
+| Reporting view | [`sql/05_reporting/43_vw_deal_jacket.sql`](../../sql/05_reporting/43_vw_deal_jacket.sql) — one row per finalized transaction, seven joins, no fan-out |
+| Export contract | `_DEAL_JACKET` in [`src/arpi/dashboard/contract.py`](../../src/arpi/dashboard/contract.py) — 65 columns, chunked by store × sale month |
+| Partition module | [`portfolio/src/lib/dashboard/jacket-chunks.ts`](../../portfolio/src/lib/dashboard/jacket-chunks.ts) — 18 static imports, read by one route |
+| View model | [`portfolio/src/lib/dashboard/deal-jacket.ts`](../../portfolio/src/lib/dashboard/deal-jacket.ts) — lookup, both recomputations, the absence vocabulary, the checklist |
+| Sections | [`portfolio/src/components/dashboard/deal-jacket-sections.tsx`](../../portfolio/src/components/dashboard/deal-jacket-sections.tsx) |
+| Route | [`portfolio/src/app/dashboard/deals/[saleId]/page.tsx`](../../portfolio/src/app/dashboard/deals/%5BsaleId%5D/page.tsx) |
+| View tests | [`tests/integration/test_deal_jacket_reporting_view.py`](../../tests/integration/test_deal_jacket_reporting_view.py) — 34 assertions including two seeded defects |
+| Page tests | [`portfolio/tests/unit/dashboard-deal-jacket.test.tsx`](../../portfolio/tests/unit/dashboard-deal-jacket.test.tsx) — 43, including the corrupted-fixture block |
+| Browser tests | [`portfolio/tests/e2e/dashboard-deal-jacket.spec.ts`](../../portfolio/tests/e2e/dashboard-deal-jacket.spec.ts) — 31, including the paper recap |
+
+### 20.2 The `DASH.4-01` rendering decision, measured
+
+Full static generation would prerender 650 documents at roughly 190 kB of uncompressed HTML each —
+on the order of **120 MB** carried in `.next` and into the deployment image, growing with every
+increment that grows the deal population. Server rendering from the statically imported partitions
+costs **443,448 bytes** of data, resolved by the output tracer as graph edges, with no file read at
+runtime and no database.
+
+Server rendering was chosen. Neither option introduces an API or a runtime database, so both satisfy
+ADR-0013; the measurement is what decides. The page is complete HTML without JavaScript either way,
+which is the property the choice was not allowed to cost. See `DATA_CONTRACT.md` §9 and
+`portfolio/docs/PERFORMANCE.md` §9.4.
+
+### 20.3 Divergences from sections 1–19, and why
+
+| Planned | Built | Why |
+|---|---|---|
+| §4 "synthetic stock number" | **Vehicle code, not captioned as a stock number** | `dim_vehicle` records no stock number. The model contains none, so publishing `vehicle_code` under that caption would be inventing a DMS field. The column is labelled as the unit identifier and the limitation is stated on the page. |
+| §4 "acquisition date" | **Days in inventory at sale** | `dim_vehicle` records no acquisition date either. `fact_vehicle_sale.days_in_inventory_at_sale` is the modelled fact, it answers the same question a reader asks, and it is what `KPI-INV-007` is built from. |
+| §12 back-gross reconciliation, product eligibility, product-adjustment validity | **Absent, not shown as passing** | All three need the F&I model (`DASH.7`). A check that cannot fail is not a check, and a green row for one is worse than no row: it asserts that something was verified when nothing was. The checklist says why they are absent. |
+| §12 "chunk hash matches manifest" for source lineage | **Dataset version, contract fingerprint and as-of date** | The generated tree carries no per-chunk hash the runtime can read; the contract SHA-256 and dataset version are what the manifest publishes, and they identify the export the figures came from just as specifically. |
+| §13 "the source reporting view" as page copy | **Resolved from the manifest at build time** | The console names no database object in its own source — `dashboard-boundaries.test.ts` fails the build over one — because a view name in dashboard code is how somebody starts writing a query. The name is looked up in the list of views the exporter published, so the lineage states what was actually read and cannot drift. |
+| §14 "reconciliation state chip" | **Built, wording "All checks passed" / "N checks need review"** | As specified. It reports §12's outcome, and the corrupted-fixture tests prove the second wording is reachable. |
+| §17 print: "not printed … dashboard navigation" | **Built, and it needed three attributes that did not exist** | `data-arpi-print="omit"` now marks the site header, the site footer and the console navigation. The first attempt put it on the `<Section>` primitive, which takes a declared prop list and silently dropped it; the paper recap printed its navigation until the Playwright print assertion caught it. `dashboard-boundaries.test.ts` now fails the build if the attribute is placed on a component that would swallow it. |
+| §19 "multiple products incl. a cancelled contract" | **Not testable and not tested** | No finance-product fact exists. The row remains in §19 as a `DASH.7` obligation rather than being deleted. |
+
+### 20.4 Evidence
+
+- **Both identities hold on all 650 deals**, asserted twice and differently: in SQL, over the view
+  (`test_the_front_gross_identity_holds_on_every_deal`, `test_the_total_gross_identity_holds_on_every_deal`),
+  and in the console, which recomputes them from the components it displays rather than reading a
+  flag. The export deliberately publishes no verification flag, so the second check cannot degenerate
+  into reading the first one's answer.
+- **The identity assertions can fail.** Four seeded defects prove it: a one-cent mutation of the
+  front gross and of the total gross, applied in SQL inside a rolled-back transaction, and the same
+  two applied to a corrupted partition table that the console then renders. The console tests assert
+  the failure surfaces in words, that the checklist raises it for review, and that the figures are
+  still shown as exported rather than a broken deal being hidden.
+- **Trade variance is outside the front-gross formula**, asserted three ways: the view test folds it
+  in and requires the identity to break; the unit test pins the five calculation lines by name; the
+  browser test reads the sentence that says so.
+- **No fan-out across seven joins.** 650 view rows against 650 fact rows, plus direct assertions that
+  at most one lead and at most one appointment link to a sale — the only two joins that could widen
+  the grain.
+- **Privacy.** No prohibited column name, no `*_name` column but the two that name a thing, every
+  staff code matching the synthetic `EMP-` shape, every synthetic VIN matching the ADR-0005 shape,
+  and a value-level scan over every string in all 650 jackets for anything shaped like an email,
+  telephone number, SSN, payment card or street address.

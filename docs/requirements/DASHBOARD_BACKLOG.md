@@ -41,7 +41,7 @@
 | `DASH.1` | Existing-KPI dashboard export foundation | Large | **Implemented** |
 | `DASH.2` | Dashboard shell and Executive Overview | Large | **Implemented** |
 | `DASH.3` | Sales, Gross, and Deal Explorer | Large | **Implemented** |
-| `DASH.4` | Basic Deal Jacket | Large | Planned |
+| `DASH.4` | Basic Deal Jacket | Large | **Implemented** |
 | `DASH.5` | Targets and pace | Large | Planned |
 | `DASH.6` | F&I model | Large | Planned |
 | `DASH.7` | F&I dashboard and expanded Deal Jacket | Large | Planned |
@@ -364,21 +364,59 @@ Evidence: index handles the full development-profile deal set in CI.
 | **Dependencies** | `DASH.3` |
 | **Estimated complexity** | Large |
 | **Blocking gate** | None |
-| **Architecture references** | `DEAL_JACKET_SPEC.md` (the route contract in full) |
-| **Status** | Planned |
+| **Architecture references** | `DEAL_JACKET_SPEC.md` (the route contract in full, plus §20 as-built) |
+| **Status** | **Implemented** |
 
 ### `DASH.4-01` — `vw_deal_jacket`, per-deal export chunks, and the rendering decision
 
-Large; Planned. Adds the deal-jacket view (one row per deal, presentation-complete, exportable
-columns only), per-deal chunk export keyed by `sale_id`, and records the measured decision between
-full static generation and server-rendered dynamic loading (build-duration and payload measurements
-in the PR; either choice satisfies ADR-0013 — no API, no runtime database). Tests: integration
-(view grain and identity checks), export chunk integrity. Evidence: measured decision recorded in
-`DATA_CONTRACT.md §9` as-built.
+Large; **Implemented.** `reporting.vw_deal_jacket` publishes one row per finalized transaction —
+650 rows against 650 fact rows across seven joins — carrying the cost components behind the front
+gross in the order `KPI-GRS-001` states them, the trade context published *separately* from that
+formula, the finance amounts, the four staff roles as synthetic identifiers, the lead's paper trail,
+and three supporting facts the page's checklist needs. It publishes **no** verification flag,
+deliberately: the console recomputes both identities, and a verification that reads a flag verifies
+nothing.
+
+`finance_structure` is derived in SQL (`Lease` → `Cash` when nothing was financed → `Retail
+Finance`) and published beside `finance_structure_basis`, so a reader can see what the label was
+decided from rather than being asked to trust it.
+
+**Chunking is store × sale month, not per-deal.** The planned "per-deal chunk keyed by `sale_id`"
+would have produced 650 files to serve one page each: 18 partitions of 443 kB total, largest 34 kB,
+is an order of magnitude inside the ceiling and needs no index to keep in sync. The partitions live
+in their own module (`jacket-chunks.ts`) so that 443 kB does not enter the server graph of
+`/dashboard/deals`, which shows none of it.
+
+**The rendering decision was measured.** 650 prerendered documents ≈ 120 MB of HTML in `.next` and
+the deployment image, against 443 kB of statically packaged data server-rendered on demand. Server
+rendering was chosen; both options satisfy ADR-0013, and both produce complete HTML without
+JavaScript. Recorded in `DATA_CONTRACT.md §9`, `PERFORMANCE.md §9.4` and `DEAL_JACKET_SPEC.md §20.2`.
+
+Evidence: 34 integration assertions in `tests/integration/test_deal_jacket_reporting_view.py`,
+including **two seeded defects** — a one-cent mutation of the front gross and of the total gross —
+that prove the identity assertions can fail rather than passing vacuously.
+
+The reporting schema now holds **38 views in three declared lanes**; **no Power BI evidence
+changed.**
 
 ### `DASH.4-02` — Deal Jacket route
 
-Large; Planned. Renders per `DEAL_JACKET_SPEC.md`: header with persistent synthetic disclosure;
+Large; **Implemented.** Renders per `DEAL_JACKET_SPEC.md`, with §20.3 recording each divergence and
+its reason. Three are worth naming here: the vehicle section publishes days-in-inventory rather than
+an acquisition date and never captions `vehicle_code` a stock number, because the model contains
+neither; the checklist omits the three checks that need the F&I model rather than showing them
+green, because a check that cannot fail is not a check; and the lineage names its source view from
+the export manifest rather than from a literal in the code, so the console still names no database
+object of its own.
+
+The deal id on `/dashboard/deals` became a link in this same diff — the only order in which shipping
+an anchor to it is honest — and the e2e guard that asserted the *absence* of that link was re-aimed
+to assert every row resolves.
+
+Evidence: 43 unit assertions and 31 browser assertions, all green; axe-clean; complete without
+JavaScript; the paper recap asserted under `media: 'print'`.
+
+Originally specified as: header with persistent synthetic disclosure;
 vehicle; front-gross calculation block exactly as ARPI computes it, with discounts and verification
 state; trade section with variance and N/A semantics; finance amounts without rate mechanics;
 aggregate back gross (labelled as aggregate until `DASH.7` itemizes it); total-gross identity;
@@ -390,9 +428,25 @@ stylesheet per spec §17. Tests: unit for every section incl. N/A states; e2e in
 
 ### `DASH.4-03` — Deal Jacket test cases
 
-Medium; Planned. Implements the spec §19 case matrix (no-trade, trade-with-variance, negative front
-gross, cash, lease, wholesale excluded from index? — wholesale deals render with retail-only
-sections N/A, used-without-MSRP, unlinked lead) as fixtures asserted in unit and e2e suites.
+Medium; **Implemented.** Every §19 case has a test. The deal shapes are selected by PREDICATE over
+the whole 650-deal population rather than by hard-coded id, so a case that stops existing in the
+export fails loudly ("no deal in the export is a cash deal; the rendering rule for it is untestable")
+instead of silently testing nothing.
+
+The two cases that carry the most weight are the ones that had to be manufactured:
+
+- **Corrupted fixture.** The unit suite rebuilds the view model against a partition table whose first
+  deal has been mutated by one cent, and requires the failure to surface: the verification reports
+  it in words with both figures, the checklist raises it for review, and the page still shows the
+  figures as exported rather than hiding a broken deal. Without this, a `verify()` that returned
+  `true` unconditionally would pass every other test in the file. The fixtures exist only in the test
+  — nothing in `data/dashboard/` or `src/generated/` is touched.
+- **Print mode.** Asserted in Playwright under `media: 'print'`, which is the only place the
+  `@media print` block applies. It caught a real defect: `data-arpi-print="omit"` had been passed to
+  the `<Section>` primitive, which takes a declared prop list and dropped it, so the paper recap was
+  printing its navigation. A boundary test now fails the build if that attribute is placed on a
+  component that would swallow it.
+
 Evidence: each named case has a test that fails when its rendering rule breaks.
 
 ---

@@ -762,6 +762,7 @@ DASHBOARD_PROGRAM_VIEWS: Final[tuple[str, ...]] = (
     "vw_sales_gross_trend",
     "vw_gross_change_bridge",
     "vw_deal_explorer",
+    "vw_deal_jacket",
 )
 
 #: Every view the ``reporting`` schema is expected to contain, and nothing else.

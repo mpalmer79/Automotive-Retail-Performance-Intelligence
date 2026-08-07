@@ -106,7 +106,15 @@ export function SiteHeader() {
        * hazard is now gone at the source, though the scrim stays a sibling
        * because the structure is correct on its own merits.
        */}
+      {/*
+        `data-arpi-print="omit"`: a masthead is an affordance for a surface that can be
+        clicked, and on paper it is something the reader has to look past to reach the
+        content. The rule lives in the print block of `globals.css`. It is set on the
+        element rather than through a class so a restyle cannot silently start printing
+        the navigation again.
+      */}
       <header
+        data-arpi-print="omit"
         className={cx(
           'sticky top-0 z-(--arpi-z-header) w-full',
           'border-b border-line bg-canvas'

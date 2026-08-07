@@ -36,7 +36,7 @@ export function DashboardNav({ className }: { className?: string }) {
   const pathname = usePathname()
 
   return (
-    <nav aria-label="Dashboard" className={className}>
+    <nav aria-label="Dashboard" data-arpi-print="omit" className={className}>
       <ul
         className={cx(
           'inline-flex max-w-full flex-wrap items-center gap-1 rounded-xl',

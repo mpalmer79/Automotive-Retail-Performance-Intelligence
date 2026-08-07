@@ -470,6 +470,27 @@ bounds, and [PRIVACY_AND_ETHICS.md §11.1](PRIVACY_AND_ETHICS.md) gives worked e
 Each of these is documented at the KPI where it applies, and each is a deliberate, recorded boundary rather
 than an oversight.
 
+### 6.3 What the Deal Jacket can and cannot explain about one transaction
+
+`/dashboard/deals/[saleId]` (`DASH.4`) makes the most specific claim in the project: that one
+transaction is explained **to the cent**. That claim is exactly bounded, and the page states each
+boundary on itself rather than only here.
+
+| The jacket shows | It cannot show, and says so |
+|---|---|
+| Sale price less acquisition, reconditioning and pack — the ARPI front-end gross, recomputed on the page from the components displayed | Manufacturer holdback, dealer cash, stair-step money, floorplan credits and unposted accounting adjustments. None is modelled, so front-end gross is **understated by design** in the same way §6.2 records for new-vehicle gross |
+| Trade allowance, actual cash value and their variance, published beside the front-gross formula | Trade payoff, equity, and the trade vehicle itself. No trade fact exists (§4.5) |
+| Cash down and amount financed, and a finance structure derived from sale type and amount financed | Lender, APR, term, payment, buy rate, sell rate, rate spread. None exists anywhere in ARPI, by policy (`PRIVACY_AND_ETHICS.md` §7), not merely by omission |
+| Aggregate back-end gross | Reserve, VSC, GAP, tire-and-wheel or any product-level figure. The F&I fact is Deferred (§4.5), so **no product-mix statement about a deal is supportable** |
+| Four staff roles as synthetic identifiers | Any name, any pay, any performance judgement. §5 of `PRIVACY_AND_ETHICS.md` governs employee presentation |
+| The lead's stages and dates where one links | Any message, note, email or free text. None exists in the model |
+| Days in inventory at sale | An acquisition date or a stock number. `dim_vehicle` records neither, so the page publishes the vehicle code as itself and never captions it a stock number |
+| Five integrity checks it can actually perform | Back-gross reconciliation, product eligibility and product-adjustment validity. All three need the F&I model and are named as **absent** rather than shown as passing, because a check that cannot fail is not a check |
+
+**A verified jacket is a statement about internal consistency, not about reality.** "Verified to the
+cent" means the exported components recompute the exported gross exactly. It does not mean the deal
+happened — §3.1 applies without exception, and every jacket carries that disclosure in its body.
+
 ---
 
 ## 7. Privacy and security limitations

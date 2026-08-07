@@ -2,7 +2,12 @@ import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 
 import { gotoRendered } from './helpers'
-import { ALL_TESTED_ROUTES, PRIMARY_ROUTES, VIEWPORTS } from './routes'
+import {
+  ALL_TESTED_ROUTES,
+  DRILL_THROUGH_ROUTES,
+  PRIMARY_ROUTES,
+  VIEWPORTS,
+} from './routes'
 
 /**
  * Accessibility tests.
@@ -51,7 +56,7 @@ test.describe('axe-core', () => {
    */
   test.slow()
 
-  for (const route of ALL_TESTED_ROUTES) {
+  for (const route of [...ALL_TESTED_ROUTES, ...DRILL_THROUGH_ROUTES]) {
     test(`${route} has no critical or serious violation`, async ({ page }) => {
       await page.goto(route)
       await settle(page)

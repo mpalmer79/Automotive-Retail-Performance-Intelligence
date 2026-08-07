@@ -17,7 +17,7 @@ portfolio [`CONTENT_MODEL.md`](../../portfolio/docs/CONTENT_MODEL.md) / `lib/sit
 | `/dashboard` | Dealer Operations Command Center | **Built (`DASH.2`)** | `ROUTES.dashboard` in `portfolio/src/lib/site.ts`, mirrored in `tests/e2e/routes.ts` |
 | `/dashboard/sales-gross` | Sales and gross | **Built (`DASH.3`)** | `ROUTES.dashboardSalesGross`, mirrored in `tests/e2e/routes.ts` |
 | `/dashboard/deals` | Deal Explorer | **Built (`DASH.3`)** | `ROUTES.dashboardDeals`, mirrored in `tests/e2e/routes.ts` |
-| `/dashboard/deals/[saleId]` | Deal Jacket (dynamic; title carries the synthetic deal id) | Planned (DASH.4) | dynamic — excluded from `inPrimaryNav`, sitemap lists the index route only |
+| `/dashboard/deals/[saleId]` | Deal Jacket (dynamic; title carries the synthetic deal id) | **Implemented (DASH.4)** | dynamic — excluded from `inPrimaryNav`, sitemap lists the index route only, and each jacket asks not to be indexed. Marks Deal Explorer current via `NavItem.matchPrefixes`: nobody navigates to "a deal", so it is a drill-through rather than a navigation destination |
 | `/dashboard/inventory` | Inventory operations | Planned (DASH.9) | ” |
 | `/dashboard/fi` | F&I performance | Planned (DASH.7) | ” |
 | `/dashboard/leads-marketing` | Leads and marketing | Planned (DASH.10) | ” |

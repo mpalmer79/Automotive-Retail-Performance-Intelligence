@@ -300,6 +300,7 @@ DASHBOARD_LANE_SQL_FILES: Final[tuple[str, ...]] = (
     "05_reporting/40_vw_sales_gross_trend.sql",
     "05_reporting/41_vw_gross_change_bridge.sql",
     "05_reporting/42_vw_deal_explorer.sql",
+    "05_reporting/43_vw_deal_jacket.sql",
 )
 
 #: The vehicle condition vocabulary, exactly as ``warehouse.dim_vehicle`` constrains it.
@@ -317,6 +318,11 @@ _SALE_TYPES: Final[tuple[str, ...]] = (
     "Wholesale",
     "Dealer Trade",
 )
+
+#: The finance structures the Deal Jacket derives. Closed, because the derivation has
+#: exactly three branches: a lease sale type, nothing financed, or something financed.
+#: No lender, rate, term or payment is modelled until DASH.6.
+_FINANCE_STRUCTURES: Final[tuple[str, ...]] = ("Cash", "Retail Finance", "Lease")
 
 #: The bridge's three components. A fourth (a mix effect) may not be added until its
 #: position in the sequence and its exact reconciliation are documented, so the closed
@@ -1557,6 +1563,131 @@ _DEAL_EXPLORER = DatasetContract(
     ),
 )
 
+_DEAL_JACKET = DatasetContract(
+    name="deal-jacket",
+    source_view="vw_deal_jacket",
+    grain="One row per finalized vehicle transaction.",
+    business_key=("sale_id",),
+    date_basis="sale date",
+    sort_keys=("sale_id",),
+    join_views=("vw_dealership",),
+    chunked=True,
+    kpi_ids=("KPI-SLS-001", "KPI-GRS-001", "KPI-GRS-002", "KPI-GRS-003", "KPI-INV-007"),
+    columns=(
+        _attribute("sale_id", "string", view="vw_deal_jacket"),
+        # sale_date must remain the FIRST date column: the transformer partitions a
+        # chunked dataset by the first one it finds, and the governed partition key
+        # is the sale month.
+        _attribute("sale_date", "date", view="vw_deal_jacket"),
+        _attribute("delivery_date", "date", view="vw_deal_jacket"),
+        _store_id(),
+        _attribute("sale_type", "string", view="vw_deal_jacket", enumeration=_SALE_TYPES),
+        _attribute("is_retail", "boolean", view="vw_deal_jacket"),
+        _attribute(
+            "finance_structure",
+            "string",
+            view="vw_deal_jacket",
+            enumeration=_FINANCE_STRUCTURES,
+        ),
+        _attribute("finance_structure_basis", "string", view="vw_deal_jacket"),
+        # Vehicle
+        _attribute("vehicle_code", "string", view="vw_deal_jacket"),
+        _attribute("synthetic_vin", "string", view="vw_deal_jacket"),
+        _measure("model_year", "integer", unit="year", view="vw_deal_jacket"),
+        _attribute("make", "string", view="vw_deal_jacket"),
+        _attribute("model_name", "string", view="vw_deal_jacket"),
+        _attribute("trim_level", "string", view="vw_deal_jacket"),
+        _attribute("vehicle_display", "string", view="vw_deal_jacket"),
+        _attribute("body_style", "string", view="vw_deal_jacket"),
+        _attribute(
+            "condition_type",
+            "string",
+            view="vw_deal_jacket",
+            enumeration=_VEHICLE_CONDITION_TYPES,
+        ),
+        _condition_group("vw_deal_jacket"),
+        _attribute("odometer_band", "string", view="vw_deal_jacket"),
+        _attribute("acquisition_source", "string", view="vw_deal_jacket"),
+        _measure("days_in_inventory_at_sale", "integer", unit="days", view="vw_deal_jacket"),
+        # Price
+        _measure("sale_price", "currency", unit="USD", view="vw_deal_jacket"),
+        _measure("msrp", "currency", nullable=True, unit="USD", view="vw_deal_jacket"),
+        _measure("original_asking_price", "currency", unit="USD", view="vw_deal_jacket"),
+        _measure("final_asking_price", "currency", unit="USD", view="vw_deal_jacket"),
+        # The front-gross components, in formula order
+        _measure("acquisition_cost", "currency", unit="USD", view="vw_deal_jacket"),
+        _measure("reconditioning_cost", "currency", unit="USD", view="vw_deal_jacket"),
+        _measure("pack_amount", "currency", unit="USD", view="vw_deal_jacket"),
+        _measure("front_end_gross", "currency", unit="USD", view="vw_deal_jacket"),
+        _measure("discount_from_original", "currency", unit="USD", view="vw_deal_jacket"),
+        _measure("discount_from_final", "currency", unit="USD", view="vw_deal_jacket"),
+        _measure(
+            "discount_from_msrp", "currency", nullable=True, unit="USD", view="vw_deal_jacket"
+        ),
+        # Trade
+        _attribute("has_trade", "boolean", view="vw_deal_jacket"),
+        _measure("trade_allowance", "currency", unit="USD", view="vw_deal_jacket"),
+        _measure("trade_acv", "currency", unit="USD", view="vw_deal_jacket"),
+        _measure("trade_variance", "currency", unit="USD", view="vw_deal_jacket"),
+        # Finance amounts
+        _measure("cash_down", "currency", unit="USD", view="vw_deal_jacket"),
+        _measure("amount_financed", "currency", unit="USD", view="vw_deal_jacket"),
+        # Gross
+        _measure("back_end_gross", "currency", unit="USD", view="vw_deal_jacket"),
+        _measure("total_gross", "currency", unit="USD", view="vw_deal_jacket"),
+        # Staff, synthetic codes and roles only
+        _attribute("salesperson_code", "string", nullable=True, view="vw_deal_jacket"),
+        _attribute("salesperson_role", "string", nullable=True, view="vw_deal_jacket"),
+        _attribute("desk_manager_code", "string", nullable=True, view="vw_deal_jacket"),
+        _attribute("desk_manager_role", "string", nullable=True, view="vw_deal_jacket"),
+        _attribute("finance_manager_code", "string", nullable=True, view="vw_deal_jacket"),
+        _attribute("finance_manager_role", "string", nullable=True, view="vw_deal_jacket"),
+        _attribute("bdc_employee_code", "string", nullable=True, view="vw_deal_jacket"),
+        # Lead timeline
+        _attribute("is_lead_attributed", "boolean", view="vw_deal_jacket"),
+        _attribute("lead_id", "string", nullable=True, view="vw_deal_jacket"),
+        _attribute("lead_created_date", "date", nullable=True, view="vw_deal_jacket"),
+        _attribute("lead_source_code", "string", nullable=True, view="vw_deal_jacket"),
+        _attribute("lead_source_name", "string", nullable=True, view="vw_deal_jacket"),
+        _measure(
+            "first_response_seconds",
+            "integer",
+            nullable=True,
+            unit="seconds",
+            view="vw_deal_jacket",
+        ),
+        _attribute("lead_contacted", "boolean", nullable=True, view="vw_deal_jacket"),
+        _attribute("lead_appointment_set", "boolean", nullable=True, view="vw_deal_jacket"),
+        _measure("lead_days_to_sale", "integer", nullable=True, unit="days", view="vw_deal_jacket"),
+        # Appointment
+        _attribute("has_appointment", "boolean", view="vw_deal_jacket"),
+        _attribute("appointment_id", "string", nullable=True, view="vw_deal_jacket"),
+        _attribute("appointment_scheduled_date", "date", nullable=True, view="vw_deal_jacket"),
+        _attribute("appointment_show_date", "date", nullable=True, view="vw_deal_jacket"),
+        _attribute("appointment_shown", "boolean", nullable=True, view="vw_deal_jacket"),
+        _attribute("appointment_test_drive", "boolean", nullable=True, view="vw_deal_jacket"),
+        _attribute("appointment_write_up", "boolean", nullable=True, view="vw_deal_jacket"),
+        # Supporting fact for the page's integrity checklist
+        _attribute("delivery_on_or_after_sale", "boolean", view="vw_deal_jacket"),
+        _measure("inventory_snapshot_count", "integer", unit="snapshots", view="vw_deal_jacket"),
+    ),
+    notes=(
+        "The presentation-complete record of ONE deal, and the second deal-grain dataset. "
+        "It carries the cost components deal-explorer deliberately omits, because a jacket "
+        "must show the arithmetic behind its front gross and an index must not ship the "
+        "whole population's cost structure. The two ARITHMETIC identities are NOT exported "
+        "as flags: the route recomputes front gross and total gross from the displayed "
+        "components with exact-decimal arithmetic, because a verification that reads a flag "
+        "verifies nothing. trade_variance is published beside the front-gross components "
+        "and is deliberately not one of them. back_end_gross is aggregate: no "
+        "finance-product fact exists until DASH.7, and the route labels it as aggregate "
+        "rather than implying an itemization. No customer attribute is exported at any "
+        "grain; staff are synthetic codes and roles with no name; the lead timeline is "
+        "flags and dates with no message, note or free text, because none exists in the "
+        "model."
+    ),
+)
+
 #: Every dataset, in export order. This tuple is the allowlist.
 DATASETS: Final[tuple[DatasetContract, ...]] = (
     _STORES,
@@ -1577,6 +1708,7 @@ DATASETS: Final[tuple[DatasetContract, ...]] = (
     _SALES_GROSS_TREND,
     _GROSS_CHANGE_BRIDGE,
     _DEAL_EXPLORER,
+    _DEAL_JACKET,
     _RECONCILIATION_STATUS,
     _PIPELINE_RUN,
 )

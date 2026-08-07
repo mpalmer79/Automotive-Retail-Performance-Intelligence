@@ -249,27 +249,41 @@ test.describe('search', () => {
   })
 })
 
-test.describe('no dead drill-through link ships before DASH.4', () => {
-  test('renders the deal id as text and links to no jacket route', async ({ page }) => {
+test.describe('the drill-through goes somewhere real', () => {
+  /*
+   * Through `DASH.3` this block asserted the OPPOSITE: that no row linked to
+   * `/dashboard/deals/[saleId]`, because the route did not exist and an anchor would
+   * have been a link to a 404. `DASH.4` delivers the route, so the assertion is
+   * re-aimed in the same diff that makes the destination real — every deal id is now
+   * a link, and every one of them has to resolve.
+   */
+  test('links every deal id at its own jacket', async ({ page }) => {
     await gotoRendered(page, ROUTE)
     const hrefs = await page
-      .locator('main a')
+      .locator('main tbody th a')
       .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('href') ?? ''))
+    expect(hrefs.length).toBe(25)
     for (const href of hrefs) {
-      expect(
-        /^\/dashboard\/deals\/[^?#]/.test(href),
-        `a row links to the unbuilt Deal Jacket: ${href}`
-      ).toBe(false)
+      expect(href, `a row links somewhere other than a Deal Jacket: ${href}`).toMatch(
+        /^\/dashboard\/deals\/SLE-\d{8}$/
+      )
     }
   })
 
-  test('says where the drill-through is going and which increment delivers it', async ({
-    page,
-  }) => {
+  test('the first row link resolves to that deal jacket', async ({ page }) => {
+    await gotoRendered(page, ROUTE)
+    const first = page.locator('main tbody th a').first()
+    const saleId = ((await first.textContent()) ?? '').trim()
+    await first.click()
+    await page.waitForURL(`**/dashboard/deals/${saleId}`)
+    await expect(page.locator('h1')).toContainText(saleId)
+  })
+
+  test('says what the drill-through leads to', async ({ page }) => {
     await gotoRendered(page, ROUTE)
     const text = await mainTextContent(page)
     expect(text).toMatch(/Deal Jacket/i)
-    expect(text).toContain('DASH.4')
+    expect(text).toMatch(/explained to the cent/i)
   })
 })
 
