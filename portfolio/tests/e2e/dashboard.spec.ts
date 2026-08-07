@@ -17,6 +17,7 @@ import { expect, test } from '@playwright/test'
 import { bodyText, gotoRendered, mainText, mainTextContent } from './helpers'
 import {
   DASHBOARD_NAV_ROUTES,
+  DASHBOARD_ROUTES,
   DASHBOARD_VIEWPORTS,
   UNBUILT_DASHBOARD_ROUTES,
 } from './routes'
@@ -395,15 +396,37 @@ test.describe('KPI methodology', () => {
   })
 
   test('drill-throughs point at destinations that exist', async ({ page }) => {
+    /*
+     * THIS ASSERTION CHANGED WITH `DASH.3`, AND THAT IS THE MECHANISM WORKING.
+     *
+     * At `DASH.2` it read "no link matches /dashboard/anything", because no console
+     * sub-route existed and the cheapest way to prove no dead link shipped was to
+     * forbid the shape entirely. `DASH.3` delivers two of them, so the guard is
+     * re-aimed at what it was always for: every console link must resolve to a route
+     * an increment has actually built.
+     *
+     * It is not weaker. The old form could not have caught a link to
+     * `/dashboard/inventory` once ANY sub-route was allowed; this one does, because
+     * the allowed set is the delivered set rather than the empty set.
+     */
     await gotoRendered(page, ROUTE)
     const hrefs = await page.$$eval('main a[href]', (nodes) =>
       nodes.map((node) => node.getAttribute('href') ?? '')
     )
     expect(hrefs.length).toBeGreaterThan(5)
-    for (const href of hrefs) {
+    const consoleLinks = hrefs
+      .filter((href) => /^\/dashboard\/./.test(href))
+      .map((href) => href.split('?')[0] ?? href)
+    for (const href of consoleLinks) {
       expect(
-        /^\/dashboard\/./.test(href),
-        `${href} points at a console route that does not exist`
+        DASHBOARD_ROUTES.includes(href),
+        `${href} points at a console route no increment has delivered`
+      ).toBe(true)
+    }
+    for (const unbuilt of UNBUILT_DASHBOARD_ROUTES) {
+      expect(
+        consoleLinks.includes(unbuilt),
+        `the overview links to the unbuilt ${unbuilt}`
       ).toBe(false)
     }
     expect(hrefs.some((href) => href.startsWith('/kpis#KPI-'))).toBe(true)
