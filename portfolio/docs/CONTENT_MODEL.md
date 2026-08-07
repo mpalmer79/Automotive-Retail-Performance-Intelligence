@@ -651,19 +651,137 @@ href.
 
 ---
 
+## 14. The dashboard data lane (`DASH.1`)
+
+A third generated lane, alongside the project manifest and the inventory artefacts, and the
+first one whose source is the PostgreSQL warehouse rather than a file a person committed.
+
+### 14.1 What it is, and what it is not yet
+
+[ADR-0013](../../docs/architecture-decisions/ADR-0013-governed-web-operating-console.md)
+authorizes a governed public operating console under `/dashboard`. Delivery increment
+`DASH.1` builds **only its data lane**: the export, the validation, the typed contracts and
+the boundary controls. **There is no `/dashboard` route, no dashboard component, no chart and
+no navigation entry**, and `tests/unit/dashboard-boundaries.test.ts` asserts all of that.
+The console's pages arrive with `DASH.2` and later.
+
+Nothing in `src/` imports the generated dashboard data today, and that is asserted too — so
+the first import will appear in the same diff as the expectation change, where a reviewer
+can see it.
+
+### 14.2 The two stages
+
+```text
+PostgreSQL reporting views
+  └─ scripts/export_dashboard_dataset.py        (root, runs as arpi_reporter)
+       └─ data/dashboard/                       committed, versioned, manifest-carrying
+            └─ portfolio/scripts/generate-dashboard-data.ts
+                 └─ portfolio/src/generated/dashboard/
+```
+
+| Stage               | Needs PostgreSQL | Commands                                                                                          |
+| ------------------- | ---------------- | ------------------------------------------------------------------------------------------------- |
+| Root export         | yes, to generate | `python scripts/export_dashboard_dataset.py` · `--check` (offline) · `--check --against-database` |
+| Portfolio transform | never            | `npm run dashboard` · `npm run dashboard:check`                                                   |
+
+`dashboard:check` runs in `prebuild`, in `verify`, in CI and inside `Dockerfile.railway`, so
+a stale artefact fails the deployment rather than reaching the site. **The portfolio build
+never opens a database connection**, which is the whole reason the export is committed.
+
+### 14.3 What the transform may and may not do
+
+It validates and reshapes. It does **not** recompute a KPI: not one division, not one
+average, not one rounding. ADR-0013 condition 2 forbids a second definition of a governed
+formula, and a "convenience" aggregate in TypeScript would be exactly that.
+
+It does sum additive columns — but only to compare them against the root manifest's
+reconciliation block and fail on a mismatch. Arithmetic used as a check, never as a
+published figure, and done with `bigint` minor units so no float ever touches a gross
+figure.
+
+What it refuses: an unknown schema or contract version, a file whose bytes do not hash to
+the manifest's record, a row count or column list or type or nullability or enumeration that
+disagrees with the manifest, a repeated business key, a store or lead source or campaign
+reference nothing defines, a date the exported calendar does not contain, a reconciliation
+total it cannot re-derive, connection detail, an internal schema reference, an email
+address, a URL, or a VIN-shaped token.
+
+### 14.4 The generated layout
+
+```text
+src/generated/dashboard/
+  manifest.json                                  client-safe manifest (the trust surface)
+  datasets/<name>.json                           one file per unchunked dataset
+  datasets/<name>/<GSA-00#>/<yyyy-mm>.json        store × month partitions
+```
+
+Seventeen datasets. Five are chunked by store and month — `inventory-health`,
+`inventory-aging`, `days-supply`, `lead-funnel`, `lead-response` — at 18 partitions each,
+because a page that wants one month should not load six.
+
+The dataset files are **columnar**: `{ dataset, rowCount, columns, rows: [[…], …] }`, one row
+array per line. The reviewable artefact is `data/dashboard/`, where every row is an object
+with its keys spelled out, because that is the file a human reads in a diff to see which
+measure moved. Repeating seventeen column names on sixteen thousand rows costs about four
+bytes of key for every byte of value, and paying it twice would have added 5 MB to the
+repository to say the same thing again in the same words. Measured: 7.5 MB of export becomes
+2.3 MB of generated tree.
+
+### 14.5 Currency is a string, and stays one
+
+A monetary value is `"-2529.18"`: an exact two-place decimal, sign preserved, carried as a
+**string** so that no JavaScript number ever touches a gross figure. A ratio is also a
+string, exact and unrounded at whatever scale the reporting view produced, with
+`displayPrecision` beside it so a component can round for display without the value having
+been rounded on the way here. A median or a percentile is a `number`, because PostgreSQL
+computed it as a double and claiming decimal precision it never had would be a statement
+about the data that is not true.
+
+`src/types/dashboard.ts` is the contract. It has no `any`, and it asserts no type onto
+external JSON — every value the generator reads starts as `unknown` and is narrowed by a
+check that can fail with the field named.
+
+### 14.6 Chunks are server-only
+
+`next.config.ts` pins `outputFileTracingRoot` to `portfolio/`, and a module-scope JSON
+import from a `'use client'` module lands in the browser bundle. The inventory explorer does
+that deliberately for 541 records; the dashboard chunks are an order of magnitude larger and
+must not. Whole-dataset files may be imported by server components; chunks are read by a
+server component and never imported from a client module, and the boundary suite asserts it.
+
+### 14.7 The trust surface carries no Power BI claim
+
+The client manifest carries dataset version, contract fingerprint, as-of date, profile,
+source views, reconciliation status and totals, privacy-scan status, validation counts,
+staleness and limitations. It carries **no Power BI field at all**: that state comes from
+`powerbi/validation/*.json` and is merged by the trust panel `DASH.2` owns, so there is
+exactly one place a "validated" claim could ever be written. Both ADR-0008 real-engine
+validation paths remain pending, and Gate 2 remains CLOSED.
+
+### 14.8 Adding a snapshot of the warehouse
+
+Regenerating is a deliberate act, not a scheduled one. Load a warehouse, run the root
+export, run `npm run dashboard`, and commit both trees together. The manifest's
+`dataset_version` bumps only if bytes changed, so a regeneration that changes nothing leaves
+no diff.
+
+---
+
 ## 13. Adding to the site without breaking the contract
 
-| You want to                    | Do this                                                                                              |
-| ------------------------------ | ---------------------------------------------------------------------------------------------------- |
-| Change a count                 | Change the evidence file, then `npm run manifest`. Never edit the manifest.                          |
-| Add a count                    | Add a `SourcedCount` to the generator with at least one source path.                                 |
-| Change a status                | Change the evidence. The generator will refuse an unsupported status.                                |
-| Add a route                    | Add it to `ROUTES`. Nav, sitemap, breadcrumbs and the a11y sweep follow.                             |
-| Retire a route                 | Remove it from `ROUTES` and add a permanent redirect in `next.config.ts`. See section 12.            |
-| Add a KPI                      | Add it to `KPI_CATALOG.md` first, then to `src/content/kpis.json`. The unit test asserts they agree. |
-| Publish the case study         | Open Gate 2. All five conditions, in order. The flag is last, not first.                             |
-| Add a colour, size or duration | Add it to `tokens.css`. Nothing else may introduce a raw value.                                      |
-| Add a paragraph to `/`         | Take one out, or put it on the route whose subject it is. The budget is 450 words. See 12.4.         |
-| Add an inventory snapshot      | Commit the sanitized workbook under `data/reference/inventory/`, then `npm run inventory`. See 11.9. |
-| Change a dealership's copy     | Edit `src/content/dealership-profiles.json`. Prose only: a digit there fails the build.              |
-| Change a dealership's identity | Change `data/sample/dim_dealership.csv`. The website reads the warehouse's own dimension.            |
+| You want to                    | Do this                                                                                                                                  |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Change a count                 | Change the evidence file, then `npm run manifest`. Never edit the manifest.                                                              |
+| Add a count                    | Add a `SourcedCount` to the generator with at least one source path.                                                                     |
+| Change a status                | Change the evidence. The generator will refuse an unsupported status.                                                                    |
+| Add a route                    | Add it to `ROUTES`. Nav, sitemap, breadcrumbs and the a11y sweep follow.                                                                 |
+| Retire a route                 | Remove it from `ROUTES` and add a permanent redirect in `next.config.ts`. See section 12.                                                |
+| Add a KPI                      | Add it to `KPI_CATALOG.md` first, then to `src/content/kpis.json`. The unit test asserts they agree.                                     |
+| Publish the case study         | Open Gate 2. All five conditions, in order. The flag is last, not first.                                                                 |
+| Add a colour, size or duration | Add it to `tokens.css`. Nothing else may introduce a raw value.                                                                          |
+| Add a paragraph to `/`         | Take one out, or put it on the route whose subject it is. The budget is 450 words. See 12.4.                                             |
+| Add an inventory snapshot      | Commit the sanitized workbook under `data/reference/inventory/`, then `npm run inventory`. See 11.9.                                     |
+| Change a dealership's copy     | Edit `src/content/dealership-profiles.json`. Prose only: a digit there fails the build.                                                  |
+| Change a dealership's identity | Change `data/sample/dim_dealership.csv`. The website reads the warehouse's own dimension.                                                |
+| Refresh the dashboard data     | Load a warehouse, `python scripts/export_dashboard_dataset.py`, then `npm run dashboard`. See 14.8.                                      |
+| Add a dashboard dataset        | Add it to `arpi.dashboard.contract` and to `DATA_CONTRACT.md §3` in one change, then to the pinned registry in `src/types/dashboard.ts`. |

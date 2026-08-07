@@ -1,0 +1,31 @@
+{
+  "dataset": "campaigns",
+  "rowCount": 24,
+  "columns": ["campaign_code","campaign_name","channel","vendor_name","lead_source_code","is_cost_attributable","start_date","end_date","is_open_ended","target_department","target_vehicle_category"],
+  "rows": [
+    ["CMP-00001","Model Year Close-Out 2025 - Paid Search","Paid Search","Souhegan Media Partners","LDS-007",true,"2025-07-01",null,true,"Sales","Both"],
+    ["CMP-00002","Summer Clearance 2025 - Paid Social","Paid Social","Souhegan Media Partners","LDS-008",true,"2025-08-01","2025-09-30",false,"Sales","Both"],
+    ["CMP-00003","Labor Day Sales Drive 2025 - Paid Search","Paid Search","Granite Ridge Digital","LDS-006",true,"2025-07-01",null,true,"Both","New"],
+    ["CMP-00004","Year-End Sales Event 2025 - Radio","Radio","Millyard Broadcast Sales","LDS-012",true,"2025-10-15",null,true,"Sales","Used"],
+    ["CMP-00005","Summer Clearance 2025 - Third-Party Listings","Third-Party Listings","Riverwalk Listings Network","LDS-010",true,"2025-07-01",null,true,"Sales","New"],
+    ["CMP-00006","Year-End Sales Event 2025 - Television","Television","North Bank Broadcast Group","LDS-014",true,"2025-10-15","2025-11-30",false,"Sales","Used"],
+    ["CMP-00007","Service Retention Drive 2025 - Direct Mail","Direct Mail","Sable Peak Direct Marketing","LDS-013",true,"2025-09-01","2025-11-30",false,"Service","Both"],
+    ["CMP-00008","Labor Day Sales Drive 2025 - Third-Party Listings","Third-Party Listings","Kearsarge Auto Marketplace","LDS-011",true,"2025-07-01",null,true,"Sales","Both"],
+    ["CMP-00009","Year-End Sales Event 2025 - Direct Mail","Direct Mail","Sable Peak Direct Marketing","LDS-013",true,"2025-11-15",null,true,"Both","New"],
+    ["CMP-00010","Summer Clearance 2025 - Paid Search","Paid Search","Granite Ridge Digital","LDS-006",true,"2025-07-01",null,true,"Sales","Used"],
+    ["CMP-00011","Model Year Close-Out 2025 - Paid Search","Paid Search","Granite Ridge Digital","LDS-006",true,"2025-07-01",null,true,"Sales","Used"],
+    ["CMP-00012","Certified Used Push 2025 - Direct Mail","Direct Mail","Sable Peak Direct Marketing","LDS-013",true,"2025-10-01","2025-10-31",false,"Sales","Used"],
+    ["CMP-00013","Labor Day Sales Drive 2025 - Third-Party Listings","Third-Party Listings","Kearsarge Auto Marketplace","LDS-010",true,"2025-07-01",null,true,"Sales","New"],
+    ["CMP-00014","Owner Loyalty Service Offer 2025 - Television","Television","North Bank Broadcast Group","LDS-014",true,"2025-07-15","2025-09-30",false,"Service","Both"],
+    ["CMP-00015","Summer Clearance 2025 - Email","Email","In-House Marketing Team","LDS-003",true,"2025-07-01",null,true,"Sales","New"],
+    ["CMP-00016","Summer Clearance 2025 - Paid Search","Paid Search","Souhegan Media Partners","LDS-006",true,"2025-07-01",null,true,"Both","New"],
+    ["CMP-00017","Service Retention Drive 2025 - Email","Email","In-House Marketing Team","LDS-003",true,"2025-08-01","2025-10-31",false,"Service","Both"],
+    ["CMP-00018","Model Year Close-Out 2025 - Paid Search","Paid Search","Souhegan Media Partners","LDS-006",true,"2025-07-01",null,true,"Sales","Used"],
+    ["CMP-00019","Model Year Close-Out 2025 - Radio","Radio","North Bank Broadcast Group","LDS-012",true,"2025-09-08","2025-10-31",false,"Both","New"],
+    ["CMP-00020","Certified Used Push 2025 - Paid Social","Paid Social","Souhegan Media Partners","LDS-008",true,"2025-10-01","2025-11-30",false,"Sales","Both"],
+    ["CMP-00021","Model Year Close-Out 2025 - Paid Search","Paid Search","Souhegan Media Partners","LDS-007",true,"2025-07-01",null,true,"Both","Used"],
+    ["CMP-00022","Certified Used Push 2025 - Paid Social","Paid Social","Granite Ridge Digital","LDS-008",true,"2025-11-01",null,true,"Sales","Used"],
+    ["CMP-00023","Labor Day Sales Drive 2025 - Paid Search","Paid Search","Souhegan Media Partners","LDS-007",true,"2025-07-01",null,true,"Sales","Used"],
+    ["CMP-00024","Model Year Close-Out 2025 - Third-Party Listings","Third-Party Listings","Riverwalk Listings Network","LDS-011",true,"2025-07-01",null,true,"Sales","New"]
+  ]
+}

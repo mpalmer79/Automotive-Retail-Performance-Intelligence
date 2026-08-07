@@ -362,6 +362,42 @@ routes that legitimately need the animator have grown to four.
 
 ---
 
+## 9.1 The dashboard data lane, measured (`DASH.1`)
+
+A build-time cost, not a visitor-facing one — **no route ships any of it today**, and a unit
+test asserts that nothing under `src/` imports it. Recorded now because the baseline has to
+exist before `DASH.2` puts a page on top of it, and because a number measured after the fact
+is a number chosen to fit.
+
+| Artifact                                         |     Bytes | Notes                                   |
+| ------------------------------------------------ | --------: | --------------------------------------- |
+| `data/dashboard/` (committed governed export)    | 7,660,811 | 18 files, 17 datasets, 18,148 rows      |
+| — largest, `lead-response.json`                  | 2,269,345 | 4,099 rows × 17 columns                 |
+| `src/generated/dashboard/` (build product)       | 2,303,951 | 102 data files                          |
+| — largest, `datasets/marketing-performance.json` |    78,932 | whole dataset, unchunked                |
+| — largest chunk, `lead-funnel/GSA-001/2025-07`   |    47,325 | 90 chunks total, all ≤ 256 kB           |
+| `src/generated/dashboard/manifest.json`          |    83,452 | client-safe manifest; the trust surface |
+
+Two decisions those numbers drove:
+
+**The export stays row-object shaped; the generated tree is columnar.** A per-row JSON object
+repeats every column name, which for seventeen columns over sixteen thousand rows is roughly
+four bytes of key per byte of value. That cost is worth paying once, in `data/dashboard/`,
+because it is the artifact a reviewer reads in a diff to see which measure moved. Paying it
+twice bought nothing: re-encoding the generated tree as `rows: [[…]]` took it from 7.7 MB to
+2.3 MB with every value preserved exactly.
+
+**The single-export-file ceiling moved from a guessed 2 MB to a measured 3 MB.** The
+provisional figure in the data contract predated any export; `lead-response.json` is 2.16 MB.
+Raising it from the measurement with ~30% headroom is the honest response; failing the build
+against a number nobody had checked is not.
+
+Nothing is budgeted against the generated tree beyond the 256 kB chunk ceiling, which it sits
+an order of magnitude inside. A budget with 5× headroom catches nothing, and the real ones
+come from the route payload measurements `DASH.2-04` will record and `DASH.13-02` will enforce.
+
+---
+
 ## 10. What has not been measured
 
 Stated rather than implied.
@@ -376,6 +412,12 @@ Stated rather than implied.
 - **No cache-hit figures.** Every table is a cold first load, which is the
   pessimistic case and the right one to budget against, but it means the repeat-visit
   cost is unquantified.
+- **No dashboard route payload.** Section 9.1 measures the build-time data lane, not a
+  page: no `/dashboard` route exists, so there is no initial payload, no route JS figure
+  and no render cost to report. `DASH.2-04` measures the first one.
+- **No compression figures for the dashboard artefacts.** The sizes in 9.1 are uncompressed
+  bytes on disk. Nothing serves them to a browser yet, so there was no transfer to measure,
+  and quoting a `gzip -9` number would describe a request that does not happen.
 
 Once a preview deployment exists, a Lighthouse run against it is the first thing to
 add here.

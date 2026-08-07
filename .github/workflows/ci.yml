@@ -17,7 +17,8 @@
 #   database-setup-image  builds the Railway provisioning image AND rehearses the
 #                       provisioning run twice against Railway's postgres-ssl image
 #   repository-checks   naming, documentation links, secret safety net,
-#                       Power BI model structure, real-engine validation evidence
+#                       Power BI model structure, real-engine validation evidence,
+#                       dashboard export freshness (offline, no database)
 #   deployment-tooling  Railway deployment specification, IaC declaration and the
 #                       tooling's own tests — all offline, no credential
 #   integration         PostgreSQL DDL + integration tests against a container
@@ -677,6 +678,13 @@ jobs:
       - name: Reference-data governance
         run: python scripts/check_reference_data.py
 
+      # The committed dashboard export, verified offline. No database, no credential:
+      # the check re-derives every hash, row count, contract conformance, reconciliation
+      # total and size ceiling from the committed tree alone, which is exactly what makes
+      # the portfolio build able to depend on it.
+      - name: Dashboard export is current and internally consistent
+        run: python3 scripts/export_dashboard_dataset.py --check --sizes
+
       # Fails when the semantic model departs from the register in
       # powerbi/model_documentation/ -- a table, relationship, hidden column or
       # measure that the specification does not describe, a bidirectional
@@ -957,6 +965,20 @@ jobs:
       - name: Run integration tests
         if: steps.guard.outputs.run == 'true'
         run: uv run pytest -m integration -v --no-cov
+
+      # The dashboard export against the database that was just built.
+      #
+      # `--check --against-database` re-exports and byte-compares. The database here is
+      # loaded by the integration suite's own fixture rather than by this step, so the
+      # comparison is meaningful only when the run identities match; when they do not, the
+      # check says so explicitly instead of reporting a byte difference. The offline check in
+      # `repository-checks` is the gating one.
+      - name: Dashboard export round-trips against the built database
+        if: steps.guard.outputs.run == 'true'
+        continue-on-error: true
+        run: |
+          uv run pytest -m integration -v --no-cov \
+            tests/integration/test_dashboard_export.py
 
       - name: Report a skipped run
         if: steps.guard.outputs.run != 'true'

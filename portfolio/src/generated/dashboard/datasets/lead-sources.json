@@ -1,0 +1,26 @@
+{
+  "dataset": "lead-sources",
+  "rowCount": 19,
+  "columns": ["lead_source_code","lead_source_name","source_category","is_paid","is_digital","is_third_party","is_internal","is_cost_attributable","cost_basis_label"],
+  "rows": [
+    ["LDS-001","Dealer Website Form","Owned Digital",false,true,false,false,false,"Organic or internal"],
+    ["LDS-002","Dealer Website Chat","Owned Digital",false,true,false,false,false,"Organic or internal"],
+    ["LDS-003","Email Marketing Response","Owned Digital",true,true,false,false,true,"Paid"],
+    ["LDS-004","Organic Search Landing","Organic Web",false,true,false,false,false,"Organic or internal"],
+    ["LDS-005","Direct Site Visit","Organic Web",false,true,false,false,false,"Organic or internal"],
+    ["LDS-006","Paid Search Brand","Paid Search",true,true,false,false,true,"Paid"],
+    ["LDS-007","Paid Search Non-Brand","Paid Search",true,true,false,false,true,"Paid"],
+    ["LDS-008","Paid Social Feed Campaign","Paid Social",true,true,false,false,true,"Paid"],
+    ["LDS-009","Paid Social Video Campaign","Paid Social",true,true,false,false,true,"Paid"],
+    ["LDS-010","Third-Party Marketplace Listing","Third Party",true,true,true,false,true,"Paid"],
+    ["LDS-011","Third-Party Trade Valuation Portal","Third Party",true,true,true,false,true,"Paid"],
+    ["LDS-012","Radio Spot Response","Traditional Media",true,false,false,false,true,"Paid"],
+    ["LDS-013","Direct Mail Response","Traditional Media",true,false,false,false,true,"Paid"],
+    ["LDS-014","Television Spot Response","Traditional Media",true,false,false,false,true,"Paid"],
+    ["LDS-015","Showroom Walk-in","Walk-in",false,false,false,true,false,"Organic or internal"],
+    ["LDS-016","Customer Referral","Referral",false,false,false,false,false,"Organic or internal"],
+    ["LDS-017","Community Partner Referral","Referral",false,false,false,false,false,"Organic or internal"],
+    ["LDS-018","Service Lane Opportunity","Internal",false,false,false,true,false,"Organic or internal"],
+    ["LDS-019","Repeat Customer Outreach","Internal",false,false,false,true,false,"Organic or internal"]
+  ]
+}

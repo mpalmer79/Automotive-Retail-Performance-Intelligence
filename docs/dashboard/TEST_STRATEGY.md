@@ -55,6 +55,80 @@ failing reconciliations, drifted schema); prohibited-column refusal; decimal str
 file-size ceilings with measured values in failures; chunk indexes complete, no missing or duplicate
 chunk keys, no duplicate natural identifiers.
 
+### 3.1 As-built at `DASH.1`
+
+**Delivered: 135 Python unit tests, 43 PostgreSQL integration tests, 96 TypeScript tests.**
+
+`tests/unit/test_export_dashboard_dataset.py` runs without a database, against a double that answers
+exactly the statements the exporter issues and raises on any statement it does not model — so a new
+query cannot be silently unexercised. It covers: contract self-consistency (no surrogate key
+exported, every business and sort key declared, every reconciliation total additive); allowlist
+enforcement for all four prohibited schemas and for an unlisted `reporting` view; query hashing
+(reindentation-stable, CRLF-stable, sensitive to a column or sort change, comment markers refused);
+exact money across ten cases including zero, negative, cent precision and eight figures, with a
+`float` refused outright and a third decimal place treated as schema drift rather than a rounding
+opportunity; null semantics including the assertion that every ratio over a possibly-empty
+denominator is declared nullable; enumerations; canonical serialisation; determinism over a double
+export; dataset-version monotonicity; the whole manifest; the reporter-role entry and both of its
+failure modes; refusal on a failed run, failing reconciliations and critical validation failures;
+five schema-drift modes; both row identities; the privacy tripwire over twenty-one prohibited
+spellings; the no-secrets scan over produced bytes; measured size ceilings; and seventeen distinct
+check-mode failures.
+
+`tests/integration/test_dashboard_export.py` adds what a double cannot: every allowlisted view
+exists, declares its grain in a `COMMENT`, and is unique at the grain the contract claims (checked on
+the *source* surrogate columns via `arpi.dashboard.contract.source_grain_columns`, so a duplicate is
+attributed to the view rather than to the exporter); `arpi_reporter` can run every generated query
+and holds no privilege on any object in `raw`, `staging`, `warehouse` or `audit` (swept over
+`pg_class`, with a guard test proving the sweep is looking at real objects, plus one deny-path read
+per schema); **every exported cell equals the value the view produced**; the group totals equal
+independent SQL derivations from the row-grain fact views; empty denominators stay null through the
+chain; and a one-cent mutation is caught three ways — by the file hash, by reconciliation after the
+hash is restamped, and by comparison against the database.
+
+`tests/integration/test_dashboard_export.py::test_export_totals_match_reporting` exists at module
+level, under exactly the node id `DASH.1-03` names.
+
+### 3.2 A guard drawn where the risk is, not where the words were
+
+`DASH.1-03` asks for a portfolio test that fails if any file under `portfolio/src` references
+`raw.`, `staging.`, `warehouse.` or `audit.`. Taken literally that criterion cannot be satisfied by
+this repository and never could have been: `/data-model` and `/kpis` exist to explain the data model,
+and `src/lib/content.ts` names `warehouse.fact_vehicle_sale` because that is the table it is
+describing. `src/content/architecture.ts` names `ARPI_DATABASE__` and `PGPASSWORD` in the sentence
+explaining where configuration comes from. A guard that fired on those files would be removed within
+a week, which is worse than one drawn correctly.
+
+As built, `portfolio/tests/unit/dashboard-boundaries.test.ts`:
+
+- enforces the schema rule over the whole tree except three named prose files, matching a
+  schema-qualified ARPI object (`warehouse.fact_vehicle_sale`) rather than ordinary member access on
+  a variable called `raw` (`raw.trim()` is not a query, and a guard that says it is teaches people to
+  ignore it);
+- separately asserts each exempted file constructs no query, imports no client and carries no
+  connection string;
+- applies the **literal** substring rule, with no exemption, to the dashboard lane's own files;
+- asserts no credential value is assigned or read anywhere, including in the exempted files;
+- asserts no database dependency is declared, so a connection is impossible rather than merely
+  absent;
+- asserts no `/dashboard` route, no dashboard component directory, no navigation entry and no API
+  route exists;
+- asserts nothing in `src` imports the generated dashboard data yet — matching an import statement
+  rather than a mention, so the test does not fire on its own documentation — and that if anything
+  ever does, it is not a client module;
+- asserts no `any` type, and no type assertion onto external JSON, in the dashboard contract;
+- scans every generated file for connection detail, internal schema references, absolute paths,
+  email addresses, URLs, VIN-shaped tokens and prohibited field names. A bare `5432` is deliberately
+  **not** on that list: it is an ordinary inventory investment figure, and a privacy guard that fails
+  on correct data is a privacy guard somebody deletes.
+
+`portfolio/tests/unit/dashboard-data.test.ts` covers the committed artefacts and the failure modes:
+schema and contract version, hashes, row counts, closed file set, exact currency shape on every
+monetary column, the front + back = total identity on every gross row, order statistics as numbers,
+reconciliation re-derived by exact `bigint` arithmetic over the committed rows, the columnar
+re-encoding preserving every value, chunk integrity and size, and eighteen corrupted-export cases
+each driven through the real generator in a sandbox and each observed failing.
+
 ## 4. TypeScript unit (vitest, `portfolio/tests/unit/`)
 
 Filter parsing/serialization round-trips; invalid-filter fallback with notice flag; currency,
@@ -100,10 +174,17 @@ reconciliation status chips; action evidence rendering and threshold disclosure.
 
 Asserted at the narrowest layer that can observe each equality:
 
-1. UI executive totals = generated page payload totals (component tests).
-2. Generated payload totals = root export totals (generator unit tests).
-3. Root export totals = reporting-view totals (Python integration).
+1. UI executive totals = generated page payload totals (component tests). **Arrives with `DASH.2`.**
+2. Generated payload totals = root export totals (generator unit tests). **Live at `DASH.1`:**
+   `dashboard-data.test.ts` re-derives every manifest total by exact `bigint` summation over the
+   committed rows, and asserts the columnar re-encoding preserved every value.
+3. Root export totals = reporting-view totals (Python integration). **Live at `DASH.1`:**
+   `test_export_totals_match_reporting`, plus per-cell equality across every dataset.
 4. Reporting-view totals = independent warehouse derivations (existing KPI verification).
+   **Already live**, and `DASH.1` adds a second independent path: the gross, unit, funnel,
+   appointment and marketing totals are re-derived from the row-grain fact views
+   (`vw_vehicle_sales`, `vw_leads`, `vw_appointments`, `vw_marketing_spend`) rather than from the
+   aggregates the export read, so agreement is evidence rather than tautology.
 5. Front gross and total gross reconcile on every exported deal (export test + jacket check).
 6. Back gross = reserve + net product gross + 0.00 on every deal (`DASH.6`+).
 7. Product net gross = original − adjustments on every contract.
@@ -139,6 +220,11 @@ dashboard routes to the adversarial screenshot sweep (`review:screenshots`), rev
 per the established VISUAL_REVIEW.md process; no committed baseline images.
 
 ## 11. Power BI alignment
+
+**`DASH.1` changed no TMDL, no `powerbi/` file and no validation evidence.** The client-safe manifest
+carries no Power BI field at all, so the export lane cannot become a second place a "validated" claim
+is written; the trust panel that merges the real ADR-0008 state is `DASH.2-04`'s. Both real-engine
+validation paths remain pending and Gate 2 remains CLOSED.
 
 No TMDL change in this program's increments ships without: `scripts/check_powerbi_model.py` green
 against updated `model_documentation`; the source-hash staleness consequence stated in the PR; and

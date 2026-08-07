@@ -217,8 +217,10 @@ python scripts/validate_inventory_workbook.py \
 
 ## The generators and the Desktop validator
 
-These two are **not** CI checks. They are run by hand, they need things CI does
-not have, and they write artefacts that are then committed and checked.
+These three are **not** CI checks in their generating mode. They are run by hand,
+they need things CI does not have, and they write artefacts that are then
+committed and checked. `export_dashboard_dataset.py --check` is the exception: it
+needs no database and does run in CI.
 
 ### `generate_sql_baseline.py`
 
@@ -249,6 +251,65 @@ Requires `psycopg` and a database built from `sql/` and loaded with the
 ```bash
 python scripts/generate_sql_baseline.py
 ```
+
+### `export_dashboard_dataset.py`
+
+The governed exit from PostgreSQL to the public operating console's data lane
+(ADR-0013, delivery increment `DASH.1`). Reads an explicit allowlist of
+`reporting` views as `arpi_reporter` and writes `data/dashboard/`: seventeen
+deterministic JSON datasets plus a manifest carrying the field-level contract,
+query hashes, row counts, reconciliation totals, privacy-scan status and the
+pipeline-run identity.
+
+It is a selection, a validation and a serialisation — never a second semantic
+layer. The contract it obeys is `docs/dashboard/DATA_CONTRACT.md`, whose
+machine-readable form is `src/arpi/dashboard/contract.py`; this script adds no
+field, no filter and no arithmetic of its own.
+
+Six controls, each with a test that proves it can fail:
+
+- **Reporter identity.** `SET ROLE arpi_reporter` before anything is read, with
+  the effective role confirmed afterwards. A grant that looks right and a query
+  that actually succeeds under the console's own privilege are different facts.
+- **Allowlist, not discovery.** Every object reference in every generated query
+  is checked; a `reporting` view the contract does not name is unreadable even
+  though the role could select it.
+- **Refusal on a failing warehouse.** A failed run, failing reconciliations or
+  critical data-quality failures stop the export. A failing warehouse cannot
+  produce a passing artefact.
+- **Grain guard.** The exported row count must equal the source view's own count,
+  so a key-resolution join that fanned out fails here rather than doubling a
+  total downstream.
+- **Prohibited-column tripwire.** `arpi.validation.privacy` over every exported
+  header, behind the allowlist.
+- **No connection detail, ever.** The script scans its own produced bytes for
+  credentials, hosts, ports, absolute paths and any reference to `raw`,
+  `staging`, `warehouse` or `audit`, and refuses to write on a hit. That control
+  is what found the three internal-object columns now excluded from
+  `vw_reconciliation_status`.
+
+Generation needs `psycopg` and a database built from `sql/` and loaded with the
+`development` profile. **Checking needs nothing but the repository**, which is
+what lets an offline portfolio build depend on the committed export.
+
+```bash
+# Generate. Needs a loaded warehouse; the connecting role needs membership of
+# arpi_reporter and nothing more.
+python scripts/export_dashboard_dataset.py
+
+# Verify the committed export. Offline. This is what CI runs.
+python scripts/export_dashboard_dataset.py --check
+
+# Verify it still equals a fresh export of the same pipeline run.
+python scripts/export_dashboard_dataset.py --check --against-database
+
+# Report every measured artefact size, for the data contract's size table.
+python scripts/export_dashboard_dataset.py --check --sizes
+```
+
+The second stage is `portfolio/scripts/generate-dashboard-data.ts`, run as
+`npm run dashboard` / `npm run dashboard:check` from `portfolio/`. It never opens
+a database.
 
 ### `validate_powerbi_model.ps1`
 
@@ -291,6 +352,7 @@ python scripts/check_secrets.py
 python scripts/check_reference_data.py
 python scripts/check_powerbi_model.py
 python scripts/check_desktop_validation_freshness.py
+python scripts/export_dashboard_dataset.py --check
 ```
 
 Or all of them, stopping at the first failure:

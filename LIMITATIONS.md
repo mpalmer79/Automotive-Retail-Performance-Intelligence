@@ -932,6 +932,86 @@ review notes cite the previous numbering:
 
 ---
 
+## 14. What the governed dashboard export lane cannot support (ADR-0013, `DASH.1`)
+
+The export lane exists; the console does not. `DASH.1` built the data path, its manifest and its
+controls, and stopped there deliberately. What follows is what the lane genuinely cannot do today, so
+that nobody reads its existence as more than it is.
+
+### 14.1 There is no dashboard
+
+No `/dashboard` route, no dashboard component, no chart, no filter, no navigation entry. The
+artifacts under `data/dashboard/` and `portfolio/src/generated/dashboard/` are consumed by nothing,
+and a test asserts that. Anyone visiting the site sees exactly what they saw before.
+
+### 14.2 The export covers the 29 implemented KPIs and nothing else
+
+No targets, no itemized F&I products, no finance reserve, no product penetration, no chargebacks or
+cancellations, no inventory accounting, no GL control balances, no management actions, no employee
+performance, no deal-level detail. Those need warehouse entities that do not exist yet
+([DATA_DICTIONARY.md Part G](DATA_DICTIONARY.md); increments `DASH.5` through `DASH.12`). No dataset
+here stands in for one, and no placeholder file was created — a fabricated empty dataset would look
+like implementation without being it.
+
+### 14.3 Group figures exist only where the measure is additive
+
+The manifest publishes group totals for units, gross, leads, appointments, spend and attributed
+gross, and numerator/denominator pairs for the ratios built from them. It publishes **nothing** for
+median inventory age, median or percentile days-to-sale, response-time medians, days supply, or
+inventory turn — because a group median is not the average of store medians and a group turn is not
+the average of monthly turns. Those figures are valid at the grain the reporting view computed them
+at, and a period-level figure needs the view evaluated over that period. The evidence for them is
+row-level equality with the source view, not a total.
+
+### 14.4 The export describes one pipeline run, and byte-stability is relative to it
+
+Determinism means: same database state plus same contract produces identical bytes. A rebuilt
+warehouse is a different execution with a different `run_uuid`, so `--check --against-database`
+against a rebuilt warehouse reports a different run rather than a byte defect. `--check` offline is
+unaffected and is what CI runs.
+
+### 14.5 `logical_run_key` is unavailable to the export
+
+[ADR-0010](docs/architecture-decisions/ADR-0010-execution-identity-and-logical-run-key.md)'s logical
+run key — which groups equivalent reruns — is recorded in the audit layer. The reporting layer does
+not publish it and the exporter may not read that schema, so the manifest carries `null`. Grouping
+equivalent reruns in the console is therefore not possible until some increment adds it to a
+reporting view.
+
+### 14.6 The privacy tripwire inspects names, not values
+
+Unchanged from §7 and stated again because this lane is public: a column called `market_region`
+holding an email address would pass the header check. The compensating controls in this lane are the
+allowlist (a field reaches an export only by being declared), the output-byte scan in both stages
+(email, URL, VIN-shaped token, connection detail, internal object path), and the fact that no dataset
+is at customer grain at all. The tripwire also deliberately permits `vin` as a name, because ARPI's
+VINs are synthetic by policy (ADR-0005); the dashboard lane's protection there is structural — no
+dataset declares a vehicle identifier of any spelling.
+
+### 14.7 Front gross remains understated by construction
+
+Manufacturer incentives, holdback and floorplan credits are excluded from front gross. Every gross
+figure the export carries inherits that, and the manifest says so in its own limitations block. It is
+a modelling boundary, not a finding.
+
+### 14.8 The export proves nothing about Power BI
+
+Rendering a number in JSON says nothing about a DAX measure. Both
+[ADR-0008](docs/architecture-decisions/ADR-0008-real-engine-validation-paths.md) real-engine
+validation paths remain pending, **Gate 2 remains CLOSED**, and no artifact from this lane may be
+cited as evidence toward either. The client-safe manifest carries no Power BI field at all, so the
+lane cannot become a second place a "validated" claim is written.
+
+### 14.9 Sizes are measured for one profile only
+
+The recorded figures — 7,660,811 B of export, 2,387,403 B of generated tree — are the `development`
+profile. The `portfolio` profile's 24-month window has never been exported, and its sizes are
+unknown. Regenerating at that tier requires re-measuring against
+[`docs/dashboard/DATA_CONTRACT.md` §10](docs/dashboard/DATA_CONTRACT.md) before the result is
+committed.
+
+---
+
 ## 13. What the sanitized public listing lane cannot support (ADR-0011)
 
 This lane exists to demonstrate ingestion, sanitization, validation, warehouse modelling

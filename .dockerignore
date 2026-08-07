@@ -114,12 +114,14 @@ venv
 # -----------------------------------------------------------------------------
 # Generated data
 # -----------------------------------------------------------------------------
-# `data/sample/` and `data/reference/` are deliberately tracked in git — they are
-# what make the repository reviewable. The website reads exactly two things from
-# them: `data/sample/dim_dealership.csv`, which is the store registry the
-# dealership pages derive identity from, and the sanitized inventory workbooks
-# under `data/reference/inventory/`. Both are copied by name in
-# `portfolio/Dockerfile.railway`; nothing else in either tree is, and neither
+# `data/sample/`, `data/reference/` and `data/dashboard/` are deliberately tracked
+# in git — they are what make the repository reviewable. The website reads exactly
+# three things from them: `data/sample/dim_dealership.csv`, which is the store
+# registry the dealership pages derive identity from; the sanitized inventory
+# workbooks under `data/reference/inventory/`; and the governed dashboard export
+# under `data/dashboard/`, which `portfolio/scripts/generate-dashboard-data.ts`
+# validates and transforms at build time. All three are copied by name in
+# `portfolio/Dockerfile.railway`; nothing else in those trees is, and none of them
 # reaches the runtime image.
 #
 # `data/raw/` and `data/external/` are excluded outright. Raw generator output is
