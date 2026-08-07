@@ -17,6 +17,31 @@ import { PRIMARY_ROUTES } from './routes'
  * docs/architecture-decisions/ADR-0009-portfolio-ui-foundation-before-gate-2.md.
  */
 
+/**
+ * Twice the default timeout, for the whole file, because the site got bigger.
+ *
+ * Most tests here sweep EVERY route and read its settled text. `settle()` walks a
+ * page top to bottom in 60%-viewport steps so that every viewport-triggered reveal
+ * has fired, which costs roughly 70ms per step. The console is about twenty
+ * thousand pixels tall - the longest document on the site by a wide margin - so
+ * adding it as a fourteenth route added about three seconds to every sweep.
+ *
+ * Two of those sweeps then crossed the 45-second default and failed as TIMEOUTS.
+ * A timeout is the least informative way for a content check to fail: it says
+ * nothing about the content, and the obvious readings of it are all wrong.
+ *
+ * The alternative considered and rejected was making `settle()` stop early once no
+ * unrevealed element remains. It would be faster, and it would couple this helper
+ * to three CSS class names in `reveal.tsx`; if one of those were renamed, `settle`
+ * would return early, every content sweep would read an unsettled page, and they
+ * would all still pass. A guard whose failure mode is silently weaker assertions is
+ * the wrong trade for a few seconds. These tests do more work because there is more
+ * site, so they are given more time.
+ */
+test.beforeEach(({}, testInfo) => {
+  testInfo.setTimeout(testInfo.timeout * 2)
+})
+
 test.describe('the synthetic-data statement', () => {
   for (const route of PRIMARY_ROUTES) {
     test(`${route.path} states it in the page body, not only in the footer`, async ({
