@@ -170,11 +170,35 @@ reconciliation status chips; action evidence rendering and threshold disclosure.
 - Synthetic disclosure on every route body; Power BI pending disclosure in the trust panel while the
   evidence files say pending.
 
+### 6.1 As-built at `DASH.2`
+
+The console suites are `portfolio/tests/e2e/dashboard.spec.ts` (81 assertions with
+`dashboard-filters.spec.ts`) and the three unit suites named in the backlog. Three things differ from
+the plan above and each is a scope decision rather than a shortfall:
+
+- **The viewport matrix is dashboard-local.** 320/375/**390**/768/1024/1280/1440/1920 live in
+  `DASHBOARD_VIEWPORTS` in `tests/e2e/routes.ts`. `DASH.13-01` still owns adding 390 to the shared
+  `VIEWPORTS` list, which would change the runtime of every existing responsive test; the console
+  needs the width now, because its scoreboard decides between presentations between 375 and 430.
+- **The axe sweep covers the console through the existing route sweep**, which iterates
+  `routes.ts` and therefore picked up `/dashboard` when it was mirrored there. No suppressed rules.
+- **Two ADR-0009 C5 assertions are scoped rather than weakened.** ADR-0013 supersedes ADR-0009 §4 "for
+  the `/dashboard` route family only", so the "no gross figure" and "no currency figure" rules in
+  `content-integrity.spec.ts` name `/dashboard` in an explicit exemption list. The documentation
+  routes keep C5 unchanged, and the console gets a stronger rule in its place: every figure it renders
+  must reconcile to the export exactly, proved selector by selector in
+  `dashboard-executive.test.tsx`.
+
 ## 7. Cross-layer reconciliation (the chain that makes the console honest)
 
 Asserted at the narrowest layer that can observe each equality:
 
-1. UI executive totals = generated page payload totals (component tests). **Arrives with `DASH.2`.**
+1. UI executive totals = generated page payload totals (component tests). **Live at `DASH.2`:**
+   there is no generated page payload, so the link is proved one step earlier and more strictly —
+   `dashboard-executive.test.tsx` evaluates every selector that declares a `reconciliationKey` over the
+   whole reporting window at group scope and compares the result to the manifest's published figure
+   **character for character**, dividing the published numerator by the published denominator for a
+   ratio rather than reading a quotient the export deliberately does not publish.
 2. Generated payload totals = root export totals (generator unit tests). **Live at `DASH.1`:**
    `dashboard-data.test.ts` re-derives every manifest total by exact `bigint` summation over the
    committed rows, and asserts the columnar re-encoding preserved every value.
@@ -220,6 +244,13 @@ dashboard routes to the adversarial screenshot sweep (`review:screenshots`), rev
 per the established VISUAL_REVIEW.md process; no committed baseline images.
 
 ## 11. Power BI alignment
+
+**`DASH.2` changed no TMDL, no `powerbi/` file and no validation evidence either.** The trust panel it
+adds derives its state from `powerbi/validation/*_validation_results.json` through the project
+manifest; `dashboard-trust.test.ts` drives that derivation with pending, stale, failed and passed
+**fixtures**, reads the committed evidence files to assert both accepted paths still say `pending`,
+and asserts structurally that the dashboard export manifest carries no Power BI key and that nothing
+assigns the derived `validated` flag a literal.
 
 **`DASH.1` changed no TMDL, no `powerbi/` file and no validation evidence.** The client-safe manifest
 carries no Power BI field at all, so the export lane cannot become a second place a "validated" claim

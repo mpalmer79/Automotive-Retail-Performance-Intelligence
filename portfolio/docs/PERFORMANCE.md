@@ -16,7 +16,8 @@ route makes. Nothing here is estimated.
 > is almost always a finding recorded there.
 
 **Measured after the redesign**, against a production build served locally,
-because this environment cannot reach the deployment (see section 10):
+because this environment cannot reach the deployment (see section 10). The console's own
+baseline is section 9.2:
 
 | Route           | JS before |     JS after |       change |
 | --------------- | --------: | -----------: | -----------: |
@@ -398,6 +399,77 @@ come from the route payload measurements `DASH.2-04` will record and `DASH.13-02
 
 ---
 
+## 9.2 The console route, measured (`DASH.2` baseline)
+
+The first console route. Measured by `npm run bundle` against a production build served
+locally, cold, compressed, on 7 August 2026. **These are a baseline, not a budget.**
+`DASH.13-02` sets budgets from measurements; recording them now is what makes that possible
+without anybody choosing a number to fit.
+
+`/dashboard` is measured twice, because it is the first route on this site whose output
+depends on its query string. One measurement would describe one filter state rather than the
+route.
+
+| Route                                                    |     HTML |       JS |    Total |
+| -------------------------------------------------------- | -------: | -------: | -------: |
+| `/dashboard`                                             | 111.4 kB | 162.5 kB | 403.6 kB |
+| `/dashboard?store=GSA-001&period=2025-11&condition=Used` | 109.1 kB | 162.5 kB | 401.4 kB |
+| `/case-study` (the lightest route: shell only)           |  26.3 kB | 160.9 kB | 316.8 kB |
+| `/data-model` (the heaviest JS on the site)              |  24.5 kB | 231.3 kB | 385.5 kB |
+
+CSS is 14.1 kB and fonts are 114.3 kB on every route, unchanged.
+
+**The console's own client JavaScript is about 1.6 kB.** `/dashboard` costs 162.5 kB of
+script against `/case-study`'s 160.9 kB, and `/case-study` is the site's shell with no
+interactive content at all. The route has exactly one client island — the filter bar — and its
+chunk measures 12 kB uncompressed on disk. Everything else on the page is a server component:
+seven KPI cards, a ten-column scoreboard in two presentations, an inventory summary, a funnel,
+a trust panel and sixteen methodology disclosures, all rendered as HTML.
+
+**The HTML is the cost, and it is the right one to pay.** 111.4 kB compressed is the largest
+document on the site by a factor of three, and 544 kB uncompressed. Two thirds of it is the
+KPI methodology: every card carries the governed definition, formula, numerator, denominator,
+grain, date basis, null rule, source view and interpretation caution, inside a `<details>`.
+That is a deliberate trade, and it is the trade that makes the no-JavaScript guarantee real —
+the disclosures are in the document rather than fetched, so a reader with scripting off has the
+full methodology and a reader with scripting on pays for it once, compressed, on a document
+that is otherwise static. If it becomes a problem, the fix is to deduplicate definitions shared
+by more than one card, not to move them behind a request.
+
+**The filtered view is not more expensive.** Its HTML is 2.3 kB smaller, because a
+single-store scope renders one scoreboard row rather than three. The payload does not grow with
+the filter, which is the property worth watching as the console gains pages.
+
+Two figures the route table does not show:
+
+| Measurement                                        |  Value | Notes                                                            |
+| -------------------------------------------------- | -----: | ---------------------------------------------------------------- |
+| React Server Component payload for `/dashboard`    | 287 kB | uncompressed flight data; the hydration input                    |
+| Client components in `src/`, whole site            |     20 | one of them added by `DASH.2` (`filter-bar.tsx`)                 |
+| Client components on `/dashboard`                  |      1 | plus the shared header and motion boundary                       |
+| `.next/standalone` runtime image                   |  50 MB | 22 MB of `.next`, the rest traced `node_modules`                 |
+| Generated dashboard JSON as separate runtime files |      0 | inlined into server chunks by the bundler, never read at runtime |
+
+That last row is the one worth keeping. The console's server module graph holds **2,231,525
+bytes** of governed data — six whole datasets (116,978 bytes), all 90 store × month chunks
+(2,031,095 bytes) and the client-safe manifest (83,452 bytes) — and it reads **zero files at
+runtime**. Every dataset is a static import, so the output tracer resolves it as a graph edge and
+the bundler inlines it into the server chunk. `next.config.ts` records what the alternative cost
+this repository: a `process.cwd()`-based file read the tracer could not resolve, which made it
+fail safe by copying the entire working directory into the image.
+
+The six datasets it does **not** import are the point of that first figure. `campaigns`,
+`days-to-sale`, `appointment-funnel`, `marketing-performance`, `reconciliation-status` and
+`pipeline-run` are exported, validated and committed, and no route reads them yet — so importing
+them "for later" would have put 155,878 bytes into every build to be summed by nothing. They
+arrive with the pages that need them.
+
+**Not measured, and not claimed.** No Lighthouse run, no LCP, no CLS, no INP, no
+throttled-network profile, and no field data for this route. See section 10, which is unchanged
+by this increment except that the "no dashboard route payload" entry is now answered.
+
+---
+
 ## 10. What has not been measured
 
 Stated rather than implied.
@@ -412,12 +484,15 @@ Stated rather than implied.
 - **No cache-hit figures.** Every table is a cold first load, which is the
   pessimistic case and the right one to budget against, but it means the repeat-visit
   cost is unquantified.
-- **No dashboard route payload.** Section 9.1 measures the build-time data lane, not a
-  page: no `/dashboard` route exists, so there is no initial payload, no route JS figure
-  and no render cost to report. `DASH.2-04` measures the first one.
-- **No compression figures for the dashboard artefacts.** The sizes in 9.1 are uncompressed
-  bytes on disk. Nothing serves them to a browser yet, so there was no transfer to measure,
-  and quoting a `gzip -9` number would describe a request that does not happen.
+- ~~**No dashboard route payload.**~~ **Answered by `DASH.2-04`**, in section 9.2: HTML, route
+  JS, the client-island count and the RSC payload for `/dashboard`, measured in both the default
+  and a filtered state. Still unmeasured for that route: render cost, LCP, and anything requiring
+  a deployment.
+- **No compression figures for the dashboard artefacts on disk.** The sizes in 9.1 are
+  uncompressed bytes in the repository. Nothing serves those files to a browser — they are
+  inlined into server chunks — so there is no transfer to measure and a `gzip -9` number would
+  describe a request that does not happen. The transfer that _does_ happen is the console's HTML,
+  and section 9.2 measures it compressed.
 
 Once a preview deployment exists, a Lighthouse run against it is the first thing to
 add here.

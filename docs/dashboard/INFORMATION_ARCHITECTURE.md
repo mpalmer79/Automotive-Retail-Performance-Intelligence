@@ -1,6 +1,8 @@
 # Information Architecture — ARPI Dealer Operations Command Center
 
-**Status:** Planning contract; becomes as-built with `DASH.2` onward.
+**Status:** As-built for `/dashboard` (`DASH.2`); planning contract for every route below it.
+Sections marked **As-built** record what shipped and where it diverges from the plan, with the
+reason. Nothing in this document was quietly rewritten to match the code.
 **Parents:** [DASHBOARD_PROGRAM.md](../requirements/DASHBOARD_PROGRAM.md) ·
 [ADR-0013](../architecture-decisions/ADR-0013-governed-web-operating-console.md) ·
 portfolio [`CONTENT_MODEL.md`](../../portfolio/docs/CONTENT_MODEL.md) / `lib/site.ts` conventions
@@ -9,23 +11,31 @@ portfolio [`CONTENT_MODEL.md`](../../portfolio/docs/CONTENT_MODEL.md) / `lib/sit
 
 ## 1. Primary routes
 
-| Route | Title | Registered in |
-|---|---|---|
-| `/dashboard` | Command center | `ROUTES` in `portfolio/src/lib/site.ts`, mirrored in `tests/e2e/routes.ts` |
-| `/dashboard/sales-gross` | Sales and gross | ” |
-| `/dashboard/deals` | Deal explorer | ” |
-| `/dashboard/deals/[saleId]` | Deal Jacket (dynamic; title carries the synthetic deal id) | dynamic — excluded from `inPrimaryNav`, sitemap lists the index route only |
-| `/dashboard/inventory` | Inventory operations | ” |
-| `/dashboard/fi` | F&I performance | ” |
-| `/dashboard/leads-marketing` | Leads and marketing | ” |
-| `/dashboard/employees` | Employee performance | ” |
-| `/dashboard/accounting` | Accounting integrity | ” |
-| `/dashboard/actions` | Management actions | ” |
+| Route | Title | Status | Registered in |
+|---|---|---|---|
+| `/dashboard` | Dealer Operations Command Center | **Built (`DASH.2`)** | `ROUTES.dashboard` in `portfolio/src/lib/site.ts`, mirrored in `tests/e2e/routes.ts` |
+| `/dashboard/sales-gross` | Sales and gross | Planned (DASH.3) | ” |
+| `/dashboard/deals` | Deal explorer | Planned (DASH.3) | ” |
+| `/dashboard/deals/[saleId]` | Deal Jacket (dynamic; title carries the synthetic deal id) | Planned (DASH.4) | dynamic — excluded from `inPrimaryNav`, sitemap lists the index route only |
+| `/dashboard/inventory` | Inventory operations | Planned (DASH.9) | ” |
+| `/dashboard/fi` | F&I performance | Planned (DASH.7) | ” |
+| `/dashboard/leads-marketing` | Leads and marketing | Planned (DASH.10) | ” |
+| `/dashboard/employees` | Employee performance | Planned (DASH.11) | ” |
+| `/dashboard/accounting` | Accounting integrity | Planned (DASH.9) | ” |
+| `/dashboard/actions` | Management actions | Planned (DASH.12) | ” |
 
 The public header gains exactly one destination: **Dashboard → `/dashboard`** — the seventh
 `PRIMARY_NAV` item, at the existing `MAX_PRIMARY_NAV_ITEMS = 7` cap. Its `matches` array covers the
 whole `/dashboard` family so the header marks it current on every dashboard route. No other public
 header change.
+
+**As-built (`DASH.2`).** Only `/dashboard` is registered in `ROUTES`. The nine routes above it in
+this table are *not* registered, because a route entry is what puts a destination into the footer
+index, the sitemap and the navigation sweep — and a sitemap entry for a page that 404s is a promise
+the project does not make. The Dashboard item sits **second** in the header, after Overview: it is
+the product the project builds toward, and placing it after four documentation destinations would
+have made the header disagree with what the site is for. `dashboard.spec.ts` asserts each of the nine
+unbuilt routes answers 404 and that no anchor anywhere on the console points at one.
 
 ## 2. Internal dashboard navigation
 
@@ -43,6 +53,24 @@ Inventory · F&I · Leads and marketing · Employees · Accounting · Actions.
   parameter, and silently dropped where it does not (with the target page's filter summary making
   the active set visible).
 
+**As-built (`DASH.2`).** `DashboardNav` follows `PlatformNav` exactly — `<nav aria-label="Dashboard">`,
+plain links, `aria-current="page"`, explicitly not `role="tablist"` — and carries **only implemented
+destinations**, which today means one. The other nine are rendered on the page as text under "What
+this console does not do yet", each beside the increment that delivers it, so a reader can check the
+claim against the backlog rather than take "coming soon" on trust.
+
+Two divergences from the plan above, both because the list is one item long:
+
+- **The mobile `<details>` presentation was not built.** Its purpose is to stop ten destinations
+  rendering as a horizontally scrolling strip. With one destination it would be a disclosure a reader
+  has to open to find the page they are already on, and the wrapping row it replaces cannot overflow
+  at 320px at this length (asserted at eight widths). It arrives with the increment that makes the
+  list long enough to need it.
+- **Filter preservation across internal navigation is untestable and unbuilt**, because there is no
+  second console route to navigate to. The mechanism it needs already exists — `filtersHref()` in
+  `lib/dashboard/filters.ts` serializes a state onto any pathname — and the first route that ships
+  beside this one will use it.
+
 ## 3. Page hierarchy
 
 Every dashboard page:
@@ -51,6 +79,13 @@ Every dashboard page:
    scope) → `DashboardNav` → context header (§7 of the program: selected period, comparison period,
    store scope, as-of date, dataset version) → filter bar → content sections (h2) → drill-through
    detail (h3).
+
+**As-built (`DASH.2`).** `/dashboard` renders, in order: context rail (six facts) → active-filter
+summary with per-chip removal → filter bar → the full synthetic statement → primary KPI row (seven
+governed cards in two ranks) → store scoreboard → sales and gross in brief → inventory risk → lead
+funnel → trust and evidence → what is not built. The KPI row is set in two ranks rather than seven
+equal cards, because an operating meeting does not treat volume, gross and gross per unit as equal in
+weight to the four figures that qualify them.
 2. One `h1` per route; no skipped heading level (existing sweep rule).
 3. Section order is fixed per page and documented in that page's increment item — summary first,
    analysis second, detail tables last.
@@ -78,6 +113,12 @@ and copy-link behave.
 `Dashboard → <Page>` and `Dashboard → Deal explorer → SLE-00001234`. The current page is text, not a
 link. Breadcrumbs never encode filters.
 
+**As-built (`DASH.2`).** `/dashboard` is the root of the family, so its trail is the site's standard
+`Overview / <page>`. `PageHeader` gained a `crumbLabel` prop for it: the h1 is a sentence — "How the
+group is performing, and which store needs attention" — and a trail that repeated it would be a trail
+nobody reads, so the crumb reads "Dealer Operations Command Center". The current crumb is a `<span
+aria-current="page">`, not a link, and carries no query string.
+
 ## 6. URL filter contract
 
 Filter state lives in the query string; a copied URL reproduces the view exactly.
@@ -98,6 +139,35 @@ Filter state lives in the query string; a copied URL reproduces the view exactly
 | `product` | F&I category slug | After `DASH.6` |
 | Page-specific | declared per route (e.g. `unit=`, `severity=`, `rule=`, `q=`, `sort=`, `page=`) | Extend, never override, the global set |
 
+**As-built (`DASH.2`).** All thirteen parameters parse, validate, serialize and round-trip in
+`portfolio/src/lib/dashboard/filters.ts`, whatever the route can act on. Canonical serialization is
+`FILTER_KEYS` order with defaults omitted and a store list sorted, so two equivalent states produce
+byte-identical query strings and the empty string is the default state — which is what makes "Reset
+filters" a link to the bare route.
+
+Four things the as-built adds to the table above:
+
+- **Route support is declared, not implied.** `EXECUTIVE_OVERVIEW_SUPPORT` gives every parameter one
+  of `applied`, `partial` or `not-applicable`, with a note. `/dashboard` applies `period`, `compare`
+  and `store` to everything; applies `condition` and `source` to the measure families whose exported
+  datasets carry the attribute, and says which; and states in words that the remaining eight describe
+  attributes or domains this route has no dataset for. An active filter the route cannot apply still
+  appears in the summary, marked "not applied here" — a filter that is in the URL and not in the
+  summary is a filter the reader believes is working.
+- **A partial filter is applied per dataset, from the manifest's own column list.** The first
+  implementation applied `condition` to every dataset, which matched zero rows in `gross-summary` and
+  made the gross card report "no matching records" for a month with plenty. Silently zeroing an
+  unrelated card is the worst of the three available behaviours.
+- **The control surface is narrower than the grammar, deliberately.** The bar offers period presets,
+  comparison, one store, one condition and one lead source. A custom date range and a multi-store list
+  are fully supported in the URL and documented with copyable examples in a disclosure beside the bar:
+  a two-input range composed into one parameter cannot be expressed by a native GET form without
+  scripting, and a control that only works with JavaScript would be the one part of this page that
+  breaks when the rest does not.
+- **`condition=Certified` parses but is not offered.** It is part of the console-wide vocabulary; the
+  warehouse models New and Used only, and the control reads its options from the export's declared
+  enumeration rather than from this table.
+
 Rules (binding): unknown keys ignored; invalid values fall back to defaults **with a visible "some
 filters were reset" notice**; filters use native controls (`SelectControl`, `TextControl`); active
 filters render as text chips with per-chip remove and a "Reset filters" control; the selected and
@@ -115,6 +185,16 @@ basis, and limitations); "Why did this change?" panels per the driver spec; ever
 data-table alternative; stable back-button behavior (filter changes push history entries at most once
 per discrete change); loading is not applicable at runtime (data is build-packaged), so there are no
 spinners — only rendered states.
+
+**As-built (`DASH.2`).** Filter changes push history entries — `router.push`, not `replace` — so Back
+returns the previous view and Forward the next; the explorers use `replace` for the opposite and
+equally deliberate reason, that they filter on every keystroke. Click-to-filter on a table cell and
+sortable columns are not built: neither is needed by an executive summary, and both belong with the
+pages that have long tables. Every KPI surface carries a "How is this calculated?" `Disclosure` naming
+the governed KPI id, its formula, numerator, denominator, grain, date basis, unit, null behaviour,
+source reporting view and interpretation caution — read from `src/content/kpis.json`, the same
+machine-readable extract of KPI_CATALOG.md that `/kpis` renders — plus one row the catalogue cannot
+supply: which exported columns *this page* summed to get the figure above it.
 
 Excluded, permanently: fake refresh, fake notifications, fake saved/assigned actions, fake
 collaboration, fake write-back, any control that pretends to mutate dealership data.
@@ -137,7 +217,35 @@ collaboration, fake write-back, any control that pretends to mutate dealership d
   route renders a "figures failed reconciliation" banner and the trust panel details it (this state
   is producible only with a deliberately corrupted fixture — and the e2e suite does exactly that).
 
+**As-built (`DASH.2`).** Six states, and each renders different words, because collapsing any two of
+them into a dash is how a console becomes untrustworthy in a way nobody can point at:
+
+| State | What the reader sees | When |
+|---|---|---|
+| A value | The figure, formatted for its unit | The selector resolved |
+| `Not applicable` | The words, with the structural reason one tap away | The store cannot have the measure — the independent centre's new-vehicle cells |
+| `No matching records` | The words, plus which scope selected nothing | The filter matched no exported row |
+| `No eligible denominator` | The words, plus which denominator was zero | A governed NULL: KPI_CATALOG's zero-denominator rule |
+| `Not derivable at this scope` | The words, the reason, and the filter that *would* resolve it | An order statistic above its published grain |
+| Stale / reconciliation failed | A banner above everything, not dismissible | The manifest says so |
+
+A seventh state the plan implied and the as-built makes explicit: a **period outside the export** is
+substituted or trimmed with a visible notice naming the reporting window, never rendered as a screen
+of zeroes. A period the export partially covers is trimmed and said so; a comparison window that
+falls outside it is **withheld rather than clamped**, because comparing December against the five days
+of November an export happened to contain produces a difference that is arithmetically correct and
+operationally meaningless.
+
 ## 9. No-JavaScript behavior
+
+**As-built (`DASH.2`).** `/dashboard` has exactly one client island: the filter controls. Everything
+else — every figure, table, funnel, disclosure and trust check — is a server component, and the
+no-JavaScript e2e block asserts the KPI values, the scoreboard including its `Not applicable` cell,
+the inventory summary, the funnel, the trust state, the synthetic statement and the methodology
+inside the closed disclosures are all in the document with scripting off. The filter form is a real
+`<form method="get">`, so it degrades by doing exactly what it already does; with scripting on, the
+submit handler builds the canonical URL instead of letting the browser serialize five controls
+including the empty ones.
 
 Server-rendered content — KPI values, tables, captions, disclosure text — is complete without
 JavaScript, matching the site's existing no-JS guarantee. Filter forms degrade to native form
@@ -152,3 +260,9 @@ navigation) at the tested widths and assert identical content to the navigated s
 Jacket accepts only the business `sale_id` form (`SLE-########`); anything else 404s. Sitemap lists
 the nine navigable routes; `[saleId]` pages are crawlable but unlisted (development-profile scale
 keeps this tractable; revisit in the `portfolio`-profile refresh).
+
+**As-built (`DASH.2`).** The sitemap lists `/dashboard` and nothing beneath it, because nothing
+beneath it exists. Deep links are exercised cold in `dashboard-filters.spec.ts` — store, month,
+arbitrary range, multi-store, comparison mode, and the store-source-day scope at which an order
+statistic resolves — and one test asserts the navigated view and the deep-linked view produce
+identical text, which is the claim "a copied URL reproduces the view" stated as an equality.

@@ -66,8 +66,14 @@ export interface TrustLineProps {
    * render sanitized public reference data instead - a different provenance with
    * a different limitation, and one that would be misdescribed by the word
    * "synthetic". See `INVENTORY_DATA_STATEMENT` in `lib/site.ts`.
+   *
+   * `dashboard` is the console. Same synthetic warehouse, and one clause the
+   * other routes do not need: the figures are read from a versioned SQL export,
+   * and a number rendered in HTML is not a Power BI result. ADR-0013 condition 5
+   * says the console may not claim to validate Power BI, and a reader who lands
+   * on an operating console has more reason than most to assume it does.
    */
-  scope?: 'synthetic' | 'inventory'
+  scope?: 'synthetic' | 'inventory' | 'dashboard'
   /**
    * Where the reader is sent for the detail. Governance is the default because
    * it is the page whose subject this is; the status page is the right target
@@ -85,6 +91,7 @@ export function TrustLine({
 }: TrustLineProps) {
   const isHero = variant === 'hero'
   const isInventory = scope === 'inventory'
+  const isDashboard = scope === 'dashboard'
 
   return (
     <p
@@ -111,6 +118,7 @@ export function TrustLine({
       </span>
       <Clause>Granite Auto Group is fictional.</Clause>
       {isInventory ? <Clause>Listings, not sales results.</Clause> : null}
+      {isDashboard ? <Clause>Exported SQL figures, not a Power BI result.</Clause> : null}
       <Clause tone={realEngineValidated ? undefined : 'pending'}>
         {validationClause()}
       </Clause>

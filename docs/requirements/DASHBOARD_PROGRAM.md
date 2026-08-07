@@ -141,6 +141,15 @@ header does not grow into an application menu):
 | `/dashboard/accounting` | Subledger vs GL controls, variances, deal identities, exceptions |
 | `/dashboard/actions` | Deterministic action queue with severity, evidence, owner role, drill-through |
 
+**As-built at `DASH.2`.** One of the ten routes exists: `/dashboard`. It carries the executive
+overview — context rail, global filter bar, seven governed KPI cards, the store scoreboard, a compact
+sales-and-gross composition, the inventory risk summary, the lead funnel, and the trust panel. Pace,
+the gross-change bridge and top actions are listed above and are **not** built: pace needs
+`fact_sales_target` (`DASH.5`), a bridge needs the driver model and deal-grain view `DASH.3` builds,
+and an action is a recommendation, which Gate 2 does not permit this console to publish. The nine
+remaining routes are named on the page as text beside the increment that owns each, and are not
+registered, not linked and not in the sitemap.
+
 Details, navigation, breadcrumbs, URL filter contract, and state handling:
 [`docs/dashboard/INFORMATION_ARCHITECTURE.md`](../dashboard/INFORMATION_ARCHITECTURE.md).
 
@@ -156,6 +165,12 @@ The console consumes only exported artifacts. Two governed stages:
 2. **Portfolio transformer** `portfolio/scripts/generate-dashboard-data.ts` — validates schemas,
    transforms to page payloads, generates typed contracts, preaggregates summaries, chunks deal and
    inventory detail, fails on staleness, duplicates, or unresolved relationships, and reports sizes.
+   **As-built:** it does not transform to page payloads or preaggregate summaries, and `DASH.2`
+   confirmed that decision rather than reversing it. A page payload is a presentation decision owned
+   by its route, and a precomputed KPI value in a generated file would be a second place that value is
+   written. The console instead reads the exported datasets through one server-owned data module and
+   aggregates them in one declared selector registry, whose every entry names the manifest
+   reconciliation key it must reproduce exactly. `DATA_CONTRACT.md` §14 holds the full rationale.
    Wired as `dashboard`/`dashboard:check` scripts into `prebuild`, CI, and `Dockerfile.railway`
    exactly as the manifest and inventory generators are today, with `railway.json` watch patterns
    extended to the new inputs.

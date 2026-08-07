@@ -146,6 +146,46 @@ changing the list beneath them.
 
 ---
 
+### The console
+
+`/dashboard` adds three patterns, all of them variations on ones the site already
+had rather than new machinery.
+
+**The filter bar is a real form.** Five native `<select>`s, each with a visible
+`<label>` and each carrying the parameter's own name. There is no combobox, no
+listbox and no custom menu, so the on-screen keyboard, the operating-system picker
+and every assistive technology behave the way the reader already expects. Changing a
+control navigates; the submit button stays visible with scripting on because a
+control that disappears when a script loads is a control a reader cannot rely on,
+and because some browsers do not fire `change` on a keyboard selection until blur.
+
+**The active-filter summary is links, not buttons.** Removing a filter is
+navigation, so each chip is an `<a>` to the same view without that parameter, with a
+visually-hidden "Remove this filter" completing its accessible name. That is also
+what makes the summary work with scripting off.
+
+**The scoreboard has two presentations and exposes one.** Ten columns of figures do
+not fit a phone, and the inventory table already taught this repository what happens
+when a wide table is left to scroll inside its own container. Below 1280px the
+scoreboard is a stack of store cards carrying every column; at and above it, the
+semantic table. Each is `hidden` at the other's widths, which is `display: none` and
+therefore removes the inactive one from the accessibility tree - assistive technology
+is never offered both readings of the same row, and `dashboard.spec.ts` asserts
+exactly one is present at 390px and at 1440px.
+
+Two smaller rules the console inherits and had to honour explicitly:
+
+- **The wide table's scroll container takes focus.** `role="region"`, an accessible
+  name from the caption, and `tabIndex={0}`, because a region that scrolls but cannot
+  receive focus is unreachable by keyboard when its contents are text rather than
+  controls. axe reports it as a serious WCAG 2.1.1 violation, and it did, on three
+  store pages, before the inventory table grew this pair.
+- **No state is carried by colour alone.** A trust check renders a glyph that differs
+  per verdict _and_ the verdict word; an unresolved metric renders words rather than a
+  dash; a chip the route cannot apply says "not applied here" in text. The bars in the
+  age distribution and the funnel are `aria-hidden` decoration beside a real table,
+  which is also the data-table alternative the chart rules require.
+
 ## 4. Reflow, zoom and small viewports
 
 WCAG 2.2 SC 1.4.10 requires content to reflow to a 320px-equivalent width without
@@ -354,6 +394,22 @@ Full detail in [MOTION_SYSTEM.md](MOTION_SYSTEM.md) section 9. The summary:
 ---
 
 ## 9. The site works without JavaScript
+
+### The console, specifically
+
+`/dashboard` is the site's first route whose subject is figures, so "works without
+JavaScript" needed to mean more than "renders something". The no-JavaScript block in
+`dashboard.spec.ts` asserts, with scripting disabled, that the document contains: the
+KPI values and their governed identifiers, the store scoreboard including its
+`Not applicable` cell, the inventory summary and its age-distribution table, the
+funnel stages, the trust state including the real Power BI verdict, the full synthetic
+statement, and the methodology inside the closed `<details>` elements. It then submits
+the filter form natively and asserts the filtered view rendered.
+
+The methodology assertions read `textContent` rather than `innerText`, and the
+distinction is the point: a closed `<details>` renders nothing, so `innerText` would
+report the disclosures as absent. The claim being tested is that they are in the
+document without scripting, not that they are expanded before a click.
 
 Not a nice-to-have. A document that cannot be read when its bundle fails is not a
 document.

@@ -1,9 +1,12 @@
 /**
- * The ADR-0013 boundary controls, as failing tests, before the first console route ships.
+ * The ADR-0013 boundary controls, now enforced over a console that exists.
  *
- * `DASH.1` builds the data lane and nothing else. These assertions are the controls that
- * have to exist first, because a route that violates one of them is much harder to
- * withdraw than one that never merged:
+ * `DASH.1` wrote these assertions before there was a route to break them, because a
+ * route that violates one of them is much harder to withdraw than one that never
+ * merged. `DASH.2` ships the first route, and each control that was phrased as
+ * "nothing does this yet" has been re-aimed at the boundary the route actually
+ * creates - one console route, one data door, one arithmetic registry, one client
+ * island. The conditions themselves are unchanged:
  *
  *   condition 2   the frontend does not redefine a KPI formula
  *   condition 8   the frontend never references raw, staging, warehouse or audit
@@ -21,6 +24,8 @@ import { dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { describe, expect, it } from 'vitest'
+
+import { MAX_PRIMARY_NAV_ITEMS, PRIMARY_NAV, ROUTES } from '../../src/lib/site.ts'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const PORTFOLIO = resolve(HERE, '../..')
@@ -58,6 +63,18 @@ function sourceFiles(): { path: string; relative: string; text: string }[] {
 }
 
 const files = sourceFiles()
+
+/**
+ * Source with comments removed.
+ *
+ * Several of these modules name, in prose, the thing they refuse to do — a storage
+ * API, an arithmetic helper, a schema. A guard that fires on its own documentation
+ * is a guard somebody deletes, which is the reasoning already recorded above for
+ * the schema-name scan.
+ */
+function stripComments(text: string): string {
+  return text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, '')
+}
 
 /**
  * An import of the generated dashboard data, as opposed to a mention of it.
@@ -277,19 +294,61 @@ describe('the frontend holds no credential and can open no connection', () => {
 /* No dashboard route or feature UI exists yet                                  */
 /* -------------------------------------------------------------------------- */
 
-describe('DASH.1 ships no route and no component', () => {
-  it('has no /dashboard route', () => {
-    expect(existsSync(join(SRC, 'app/dashboard'))).toBe(false)
+describe('DASH.2 ships exactly one console route', () => {
+  /*
+   * THIS BLOCK CHANGED WITH `DASH.2`, AND THAT IS THE MECHANISM WORKING.
+   *
+   * At `DASH.1` these three assertions read "no route", "no component directory",
+   * "no navigation entry" - written that way deliberately, so that the first route
+   * would arrive in the same diff as the expectation change and a reviewer would
+   * see both. This is that diff. What replaces them is not a weaker check: it is
+   * the same guard aimed at the new boundary, which is that the console has ONE
+   * route and the nine others in `INFORMATION_ARCHITECTURE.md` §1 do not exist.
+   */
+  it('has the /dashboard route and no other console route', () => {
+    const root = join(SRC, 'app/dashboard')
+    expect(existsSync(root)).toBe(true)
+    expect(existsSync(join(root, 'page.tsx'))).toBe(true)
+    const nested = readdirSync(root, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name)
+    expect(nested, 'DASH.3 onward own the other console routes').toEqual([])
   })
 
-  it('has no dashboard component directory', () => {
-    expect(existsSync(join(SRC, 'components/dashboard'))).toBe(false)
+  it('has a dashboard component directory whose components are server-first', () => {
+    const directory = join(SRC, 'components/dashboard')
+    expect(existsSync(directory)).toBe(true)
+    const clientComponents = readdirSync(directory)
+      .filter((name) => /\.tsx$/.test(name))
+      .filter((name) =>
+        /^\s*['"]use client['"]/m.test(readFileSync(join(directory, name), 'utf8'))
+      )
+    // One island, and it is the filter bar. A second one arriving without a
+    // decision is what this assertion exists to catch.
+    expect(clientComponents).toEqual(['filter-bar.tsx'])
   })
 
-  it('adds no dashboard entry to the primary navigation', () => {
-    const site = readFileSync(join(SRC, 'lib/site.ts'), 'utf8')
-    const nav = site.slice(site.indexOf('PRIMARY_NAV'))
-    expect(nav).not.toContain('/dashboard')
+  it('adds exactly one dashboard entry to the primary navigation', () => {
+    /*
+     * Asserted against the exported value rather than against the source text. The
+     * first version of this check sliced `site.ts` between `PRIMARY_NAV` and
+     * `MAX_PRIMARY_NAV_ITEMS`, and the new entry's own comment mentions the cap by
+     * name — so the slice ended inside the comment and the guard failed on prose it
+     * should have been reading past. The data cannot be misread that way.
+     */
+    const dashboardItems = PRIMARY_NAV.filter((item) =>
+      item.href.startsWith(ROUTES.dashboard.href)
+    )
+    expect(dashboardItems).toHaveLength(1)
+    expect(dashboardItems[0]?.href).toBe(ROUTES.dashboard.href)
+    expect(PRIMARY_NAV.length).toBeLessThanOrEqual(MAX_PRIMARY_NAV_ITEMS)
+
+    // No console sub-route reaches the public header; `DashboardNav` carries them.
+    for (const item of PRIMARY_NAV) {
+      for (const match of item.matches) {
+        expect(/^\/dashboard\/./.test(match), match).toBe(false)
+      }
+    }
   })
 
   it('adds no API route', () => {
@@ -320,16 +379,19 @@ describe('the generated dashboard data stays out of the existing route bundles',
    */
   const importers = files.filter((file) => IMPORTS_GENERATED_DASHBOARD.test(file.text))
 
-  it('is imported by nothing in src today', () => {
+  it('is imported by exactly one module, which is the server data layer', () => {
     /*
-     * `DASH.1` ships the lane, not its consumers. Asserting zero importers now is what
-     * makes the next assertion meaningful when `DASH.2` adds the first one: the reviewer
-     * will see this expectation change in the same diff as the route.
+     * `DASH.1` asserted zero importers so that the first one would arrive in a diff a
+     * reviewer could see. `DASH.2` adds it, and the guard becomes the stronger one:
+     * the generated tree has exactly ONE door. `lib/dashboard/data.ts` reads the
+     * whole-file datasets and the manifest, `lib/dashboard/chunks.ts` holds the
+     * static partition table, and no component, no route and no other library
+     * module reaches past them.
      */
     expect(
-      importers.map((file) => file.relative),
-      'no route consumes the dashboard data in this increment'
-    ).toEqual([])
+      importers.map((file) => file.relative).sort(),
+      'the generated dashboard data has exactly one door'
+    ).toEqual(['lib/dashboard/chunks.ts', 'lib/dashboard/data.ts'])
   })
 
   it('is never imported from a client component, if it is ever imported at all', () => {
@@ -363,15 +425,65 @@ describe('the generated dashboard data stays out of the existing route bundles',
 /* -------------------------------------------------------------------------- */
 
 describe('ADR-0013 condition 2: no frontend redefines a KPI', () => {
-  it('does no arithmetic on an exported monetary or ratio value', () => {
+  it('does every aggregation in one declared registry and nowhere else', () => {
     /*
-     * A structural check rather than a semantic one: nothing in `src/` imports the dashboard
-     * data at all yet, so nothing can divide it. The assertion is written so it starts
-     * mattering the moment a component does import it, and it is paired with the importer
-     * assertion above.
+     * The `DASH.1` form of this check was structural and easy: nothing imported the
+     * data, so nothing could divide it. `DASH.2` renders values, so the check has to
+     * become the real one - WHERE the arithmetic is allowed to live.
+     *
+     * `decimal.ts` owns the operations. `selectors.ts` owns the decisions about which
+     * governed columns may be combined and how, as data, each entry carrying the
+     * reconciliation key that proves it reproduces the export. Everything else -
+     * every component, every route, the view model - may only call a selector.
      */
-    const readers = files.filter((file) => IMPORTS_GENERATED_DASHBOARD.test(file.text))
-    expect(readers.map((file) => file.relative)).toEqual([])
+    const ALLOWED = new Set(['lib/dashboard/decimal.ts', 'lib/dashboard/selectors.ts'])
+    const offenders = files
+      .filter((file) => !ALLOWED.has(file.relative))
+      .filter(
+        (file) =>
+          file.relative.startsWith('lib/dashboard/') ||
+          file.relative.startsWith('components/dashboard/') ||
+          file.relative.startsWith('app/dashboard/')
+      )
+      .filter((file) =>
+        /\b(addExact|subtractExact|divideExact|sumExact|multiplyByInteger)\s*\(/.test(
+          stripComments(file.text)
+        )
+      )
+      .map((file) => file.relative)
+    expect(
+      offenders,
+      'exact arithmetic outside decimal.ts and the governed selector registry'
+    ).toEqual(['lib/dashboard/executive.ts'])
+  })
+
+  it('confines the view model to summing one exported count column', () => {
+    /*
+     * `executive.ts` is the single exception above, and it is a narrow one: it adds
+     * `units_in_bucket` across the exported age buckets so the aging profile can be
+     * drawn. That is a sum of one additive exported column - the same operation
+     * `SELECTORS.activeInventory` performs - and the executive suite asserts the
+     * bucket total equals the active-inventory KPI. It performs no division, so it
+     * cannot form a ratio, which is where a redefined KPI would actually live.
+     */
+    const text = stripComments(
+      readFileSync(join(SRC, 'lib/dashboard/executive.ts'), 'utf8')
+    )
+    expect(/\bdivideExact\s*\(/.test(text), 'the view model divides').toBe(false)
+    expect(/\bmultiplyByInteger\s*\(/.test(text), 'the view model scales').toBe(false)
+    expect(/\bsubtractExact\s*\(/.test(text), 'the view model differences').toBe(false)
+  })
+
+  it('lets no React component call an arithmetic helper at all', () => {
+    const offenders = files
+      .filter((file) => /\.tsx$/.test(file.relative))
+      .filter((file) =>
+        /\b(addExact|subtractExact|divideExact|sumExact|multiplyByInteger|parseExact)\s*\(/.test(
+          stripComments(file.text)
+        )
+      )
+      .map((file) => file.relative)
+    expect(offenders, 'a component doing exact arithmetic').toEqual([])
   })
 
   it('keeps the exact-decimal contract documented where a future component will look', () => {

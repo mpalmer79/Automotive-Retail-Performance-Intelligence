@@ -640,7 +640,7 @@ The one line a stranger who lands on `/` is owed is `TrustLine`: synthetic data,
 the fictional group, listings rather than sales, the derived real-engine state,
 and a link to `/governance`. It stays, it stays one line, and it does not grow.
 
-### 12.5 The header lost an item
+### 12.5 The header lost an item, then spent the slot
 
 Six destinations, not seven. There is no "Dealerships" entry because the group
 overview is "Overview": a second header link to the same URL reads as a second
@@ -648,6 +648,51 @@ destination. The stores are reached from the home page's store cards, from
 `GroupNav` on every store page and on `/inventory`, and from the mobile drawer's
 expanded group. `tests/unit/site.test.ts` asserts no two header items share an
 href.
+
+`DASH.2` spends the seventh and last slot on **Dashboard**, placed second. ADR-0013
+authorizes exactly one new public destination for the console and
+`INFORMATION_ARCHITECTURE.md` §1 says the header gains that one and no more: the
+console's own nine routes live in `DashboardNav` on the page rather than in the
+site header, which is the whole reason the header could take a new product without
+becoming an application menu.
+
+The position is deliberate. The console is what the project builds toward, and
+placing it after four documentation destinations would have made the header
+disagree with what the site is for. `PRIMARY_NAV` is now exactly
+`MAX_PRIMARY_NAV_ITEMS` long, so an eighth item requires a decision to raise the cap
+or to group two existing destinations - which is what the assertion is for.
+
+### 12.6 The console's content rules
+
+`/dashboard` is the one route on this site whose job is to render figures, and the
+content rules that follow from that are different from the documentation routes':
+
+- **The home page's prose budget does not apply.** That budget exists because the
+  home page was nine sections of narrative; the console is an operating surface and
+  its copy is labels, units, scope statements and disclosure text. What replaces the
+  budget is a density rule with teeth: deeper methodology lives behind "How is this
+  calculated?", the context rail leads with scope rather than with a headline, and
+  `dashboard.spec.ts` asserts the absence of the vocabulary an operating console
+  drifts toward - "at a glance", "unlock", "empower", "real time", "live data".
+- **ADR-0009 C5 is scoped, not weakened.** ADR-0013 supersedes it "for the
+  `/dashboard` route family only", so the "no gross figure" and "no currency figure"
+  rules in `content-integrity.spec.ts` carry an explicit exemption list naming
+  `/dashboard`. Every other route keeps the rule unchanged, and the console gets a
+  stricter one in exchange: every figure must reconcile to the export exactly.
+- **A number never appears without its unit, its governed KPI id, and its scope.**
+  A card carries the KPI identifier, the unit in words, the comparison period by
+  name, and a disclosure resolving to `src/content/kpis.json`.
+- **Direction is stated, judgement is not.** "+12 units, higher than November 2025",
+  never "improved". A lower median inventory age is usually desirable, a lower gross
+  is not, and a falling aged percentage can be a store quietly wholesaling its
+  mistakes. There is no governed favourable direction for these measures, so the
+  console does not invent one; `DASH.5` brings the targets that make a direction
+  assessable.
+- **Nothing that does not exist is drawn.** The nine unbuilt console sections are
+  text with their delivery increment beside them, not links and not placeholder
+  cards. Management actions in particular stay absent until the rules that produce
+  them exist and can show their evidence, because an action is a recommendation and
+  Gate 2 does not permit one.
 
 ---
 
@@ -758,6 +803,41 @@ staleness and limitations. It carries **no Power BI field at all**: that state c
 exactly one place a "validated" claim could ever be written. Both ADR-0008 real-engine
 validation paths remain pending, and Gate 2 remains CLOSED.
 
+### 14.9 What `DASH.2` added, and what it deliberately did not
+
+The lane gained exactly one consumer and no new generation stage.
+
+**One door.** `src/lib/dashboard/data.ts` is the only module in `src/` that imports
+`@/generated/dashboard/*`, apart from `chunks.ts`, which holds the static partition
+table. Everything else - the view model, every component, the route - goes through
+it. `tests/unit/dashboard-boundaries.test.ts` asserts that importer list exactly, in
+both directions, so a second door is a failing test rather than a review comment.
+
+**Ninety static imports, not a file-system read.** `chunks.ts` imports all 90 store x
+month partitions by name. The alternative is the pattern `next.config.ts` already
+records the cost of: a server component asking the file system a question built at
+runtime, which the output tracer cannot resolve, so it fails safe by copying the
+entire working directory into `.next/standalone`. A static import is a graph edge the
+tracer resolves. The table is asserted against the manifest's chunk index in both
+directions, so a seventh month in the export is a failing test rather than an empty
+section.
+
+**No page payload, and no preaggregation.** `DATA_CONTRACT.md` §8 originally listed
+`executive-summary.json` and three siblings. `DASH.1` did not create them, and
+`DASH.2` confirmed that rather than reversing it: a precomputed KPI value in a
+generated file is a second place that value is written, and the reproduction check
+would then be against the payload rather than against the export. What exists instead
+is `lib/dashboard/selectors.ts` - a registry that declares each permitted aggregation
+**as data**, naming the dataset, the columns, the basis, the governed KPI, and the
+manifest reconciliation key the selector must reproduce exactly.
+
+**Arithmetic lives in two files.** `decimal.ts` owns the operations, on `bigint`, so
+no JavaScript number ever touches a gross figure. `selectors.ts` owns the decisions.
+The boundary suite asserts no React component calls an arithmetic helper at all, and
+that the view model divides nothing - it sums one exported count column, for the age
+distribution, and the executive suite asserts that total equals the active-inventory
+KPI.
+
 ### 14.8 Adding a snapshot of the warehouse
 
 Regenerating is a deliberate act, not a scheduled one. Load a warehouse, run the root
@@ -769,19 +849,22 @@ no diff.
 
 ## 13. Adding to the site without breaking the contract
 
-| You want to                    | Do this                                                                                                                                  |
-| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| Change a count                 | Change the evidence file, then `npm run manifest`. Never edit the manifest.                                                              |
-| Add a count                    | Add a `SourcedCount` to the generator with at least one source path.                                                                     |
-| Change a status                | Change the evidence. The generator will refuse an unsupported status.                                                                    |
-| Add a route                    | Add it to `ROUTES`. Nav, sitemap, breadcrumbs and the a11y sweep follow.                                                                 |
-| Retire a route                 | Remove it from `ROUTES` and add a permanent redirect in `next.config.ts`. See section 12.                                                |
-| Add a KPI                      | Add it to `KPI_CATALOG.md` first, then to `src/content/kpis.json`. The unit test asserts they agree.                                     |
-| Publish the case study         | Open Gate 2. All five conditions, in order. The flag is last, not first.                                                                 |
-| Add a colour, size or duration | Add it to `tokens.css`. Nothing else may introduce a raw value.                                                                          |
-| Add a paragraph to `/`         | Take one out, or put it on the route whose subject it is. The budget is 450 words. See 12.4.                                             |
-| Add an inventory snapshot      | Commit the sanitized workbook under `data/reference/inventory/`, then `npm run inventory`. See 11.9.                                     |
-| Change a dealership's copy     | Edit `src/content/dealership-profiles.json`. Prose only: a digit there fails the build.                                                  |
-| Change a dealership's identity | Change `data/sample/dim_dealership.csv`. The website reads the warehouse's own dimension.                                                |
-| Refresh the dashboard data     | Load a warehouse, `python scripts/export_dashboard_dataset.py`, then `npm run dashboard`. See 14.8.                                      |
-| Add a dashboard dataset        | Add it to `arpi.dashboard.contract` and to `DATA_CONTRACT.md §3` in one change, then to the pinned registry in `src/types/dashboard.ts`. |
+| You want to                    | Do this                                                                                                                                                                                                                                 |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Change a count                 | Change the evidence file, then `npm run manifest`. Never edit the manifest.                                                                                                                                                             |
+| Add a count                    | Add a `SourcedCount` to the generator with at least one source path.                                                                                                                                                                    |
+| Change a status                | Change the evidence. The generator will refuse an unsupported status.                                                                                                                                                                   |
+| Add a route                    | Add it to `ROUTES`. Nav, sitemap, breadcrumbs and the a11y sweep follow.                                                                                                                                                                |
+| Retire a route                 | Remove it from `ROUTES` and add a permanent redirect in `next.config.ts`. See section 12.                                                                                                                                               |
+| Add a KPI                      | Add it to `KPI_CATALOG.md` first, then to `src/content/kpis.json`. The unit test asserts they agree.                                                                                                                                    |
+| Publish the case study         | Open Gate 2. All five conditions, in order. The flag is last, not first.                                                                                                                                                                |
+| Add a colour, size or duration | Add it to `tokens.css`. Nothing else may introduce a raw value.                                                                                                                                                                         |
+| Add a paragraph to `/`         | Take one out, or put it on the route whose subject it is. The budget is 450 words. See 12.4.                                                                                                                                            |
+| Add an inventory snapshot      | Commit the sanitized workbook under `data/reference/inventory/`, then `npm run inventory`. See 11.9.                                                                                                                                    |
+| Change a dealership's copy     | Edit `src/content/dealership-profiles.json`. Prose only: a digit there fails the build.                                                                                                                                                 |
+| Change a dealership's identity | Change `data/sample/dim_dealership.csv`. The website reads the warehouse's own dimension.                                                                                                                                               |
+| Refresh the dashboard data     | Load a warehouse, `python scripts/export_dashboard_dataset.py`, then `npm run dashboard`. See 14.8.                                                                                                                                     |
+| Add a dashboard dataset        | Add it to `arpi.dashboard.contract` and to `DATA_CONTRACT.md §3` in one change, then to the pinned registry in `src/types/dashboard.ts`.                                                                                                |
+| Show a figure on the console   | Add a selector to `src/lib/dashboard/selectors.ts` naming its governed KPI, its exported columns, and its manifest reconciliation key. A figure that cannot be written in those terms is a new formula and belongs in a reporting view. |
+| Add a console filter           | Add it to `INFORMATION_ARCHITECTURE.md` §6 and to `FILTER_KEYS`, then declare each route's support for it. A parameter with no declared support is a parameter a reader believes is working.                                            |
+| Add a console route            | Add it to `ROUTES`, to `DASHBOARD_NAV`, to `tests/e2e/routes.ts`, and remove it from `PLANNED_DASHBOARD_SECTIONS` and `UNBUILT_DASHBOARD_ROUTES` in the same change.                                                                    |

@@ -253,6 +253,31 @@ export const ROUTES = {
     indexable: true,
     priority: 0.6,
   },
+  /*
+   * THE CONSOLE.
+   *
+   * `/dashboard` is the ARPI Dealer Operations Command Center, admitted by
+   * ADR-0013 under fifteen binding conditions and delivered by the `DASH.*`
+   * increments. It is the only dashboard route that exists today: the nine
+   * others in `INFORMATION_ARCHITECTURE.md` §1 arrive with the increments that
+   * own them, and a route entry here for a page that does not exist would put a
+   * dead link in the footer, the sitemap and the navigation sweep.
+   *
+   * `indexable`, deliberately. The console renders published, reconciled,
+   * synthetic figures and states its own provenance in the page body; there is
+   * nothing here that a crawler may not read, and the alternative - a noindex
+   * flagship - would say the opposite of what the trust panel says.
+   */
+  dashboard: {
+    href: '/dashboard',
+    navLabel: 'Dashboard',
+    title: 'Dealer Operations Command Center',
+    description:
+      'The ARPI operating console: group and store performance from the governed SQL export: retail units, gross and per-unit gross, inventory risk, the lead funnel, and the evidence behind every figure. Synthetic data for a fictional dealer group.',
+    inPrimaryNav: true,
+    indexable: true,
+    priority: 0.9,
+  },
   uiLab: {
     href: '/ui-lab',
     navLabel: 'UI lab',
@@ -344,6 +369,25 @@ export const PRIMARY_NAV: readonly NavItem[] = [
    * and on the inventory explorer, and the mobile drawer expands the group in
    * full. What is gone is a redundant header entry, not a route.
    */
+  /*
+   * The seventh item, and the last one this header will take.
+   *
+   * `MAX_PRIMARY_NAV_ITEMS` is 7 and this reaches it exactly, which is why the
+   * console's own ten destinations live in `DASHBOARD_NAV` on the page rather
+   * than in the header: the public site gains one destination, not an
+   * application menu. `matches` covers the whole `/dashboard` family so the
+   * header marks Dashboard current on every console route as they land.
+   *
+   * Placed second, ahead of Inventory: it is the product this project builds
+   * toward, and burying it after four documentation destinations would make the
+   * header disagree with what the site is for.
+   */
+  {
+    href: ROUTES.dashboard.href,
+    label: 'Dashboard',
+    matches: [ROUTES.dashboard.href],
+    purpose: 'The operating console: units, gross, inventory risk and the funnel',
+  },
   {
     href: ROUTES.inventory.href,
     label: 'Inventory',
@@ -424,6 +468,94 @@ export const PLATFORM_NAV: readonly NavItem[] = [
     label: 'Governance',
     matches: [ROUTES.governance.href],
     purpose: 'Synthetic data, privacy, metric governance and the gates',
+  },
+]
+
+/**
+ * The console's internal navigation.
+ *
+ * ONLY IMPLEMENTED DESTINATIONS APPEAR HERE, and today that is one.
+ * `INFORMATION_ARCHITECTURE.md` §1 lists ten console routes; nine of them arrive
+ * with the increments that own them, and listing them now would put nine dead
+ * links into the navigation sweep, the sitemap and a reader's expectations. The
+ * planned sections are named on the page instead, as text, beside the increment
+ * that delivers each — a roadmap a reader can read is not a menu a reader can
+ * click, and conflating the two is how a portfolio starts promising features.
+ *
+ * `DashboardNav` grows as they land. The rendering follows `PlatformNav`: a
+ * `<nav>` of plain links with `aria-current`, explicitly not `role="tablist"`,
+ * because it navigates between documents rather than switching panels inside one.
+ */
+export const DASHBOARD_NAV: readonly NavItem[] = [
+  {
+    href: ROUTES.dashboard.href,
+    label: 'Command center',
+    matches: [ROUTES.dashboard.href],
+    purpose: 'Group and store operating performance on one screen',
+  },
+]
+
+/** A console section that does not exist yet, and the increment that delivers it. */
+export interface PlannedDashboardSection {
+  readonly label: string
+  /** The delivery increment, so the claim is checkable against the backlog. */
+  readonly increment: string
+  readonly purpose: string
+}
+
+/**
+ * The console sections that are not built.
+ *
+ * Rendered as text on `/dashboard`, never as links. Each names its increment so a
+ * reader can check the claim against `docs/requirements/DASHBOARD_BACKLOG.md`
+ * rather than take "coming soon" on trust — and so that this list cannot quietly
+ * outlive the work it describes.
+ */
+export const PLANNED_DASHBOARD_SECTIONS: readonly PlannedDashboardSection[] = [
+  {
+    label: 'Sales and gross',
+    increment: 'DASH.3',
+    purpose: 'Trend, mix, gross decomposition and the deal explorer',
+  },
+  {
+    label: 'Deal Jacket',
+    increment: 'DASH.4',
+    purpose: 'One sanitized deal end to end, with its lineage',
+  },
+  {
+    label: 'Targets and pace',
+    increment: 'DASH.5',
+    purpose: 'Attainment against a target fact that is not modelled yet',
+  },
+  {
+    label: 'F&I performance',
+    increment: 'DASH.7',
+    purpose: 'Reserve, product gross and penetration on eligible denominators',
+  },
+  {
+    label: 'Inventory operations',
+    increment: 'DASH.9',
+    purpose: 'Unit-level aging, price-to-market and stock drill-through',
+  },
+  {
+    label: 'Accounting integrity',
+    increment: 'DASH.9',
+    purpose: 'Subledger against GL controls, and the variances between them',
+  },
+  {
+    label: 'Leads and marketing',
+    increment: 'DASH.10',
+    purpose: 'Source quality, campaign cost and lost-stage analysis',
+  },
+  {
+    label: 'Employee performance',
+    increment: 'DASH.11',
+    purpose: 'Role-aware views with minimum-sample discipline',
+  },
+  {
+    label: 'Management actions',
+    increment: 'DASH.12',
+    purpose: 'A deterministic action queue with evidence and drill-through',
   },
 ]
 

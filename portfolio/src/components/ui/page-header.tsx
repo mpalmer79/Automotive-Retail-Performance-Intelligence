@@ -20,6 +20,7 @@
  */
 import type { ReactNode } from 'react'
 
+import { DashboardNav } from '@/components/shell/dashboard-nav'
 import { GroupNav } from '@/components/shell/group-nav'
 import { PlatformNav } from '@/components/shell/platform-nav'
 import { Container, Section } from '@/components/ui/layout'
@@ -35,10 +36,29 @@ export interface PageHeaderProps {
   lede: string
   /** A second paragraph, where the lede alone would overrun a sensible length. */
   supporting?: string
+  /**
+   * The breadcrumb's own label for this page.
+   *
+   * Defaults to `title`, which is right for every route whose h1 is a name. The
+   * console's h1 is a sentence - "How the group is performing, and which store
+   * needs attention" - and a trail reading "Overview / How the group is
+   * performing..." is a trail nobody reads. `INFORMATION_ARCHITECTURE.md` §5 asks
+   * for the destination name, so a page whose heading is a sentence supplies one.
+   */
+  crumbLabel?: string
   /** Status badges, source links, or a jump list. */
   meta?: ReactNode
   /** Render the platform sub-navigation. Set by the three platform routes. */
   platformNav?: boolean
+  /**
+   * Render the console sub-navigation. Set by every `/dashboard` route.
+   *
+   * A third flag rather than one `subNav` prop naming a group: the three
+   * navigations have different contents, different labels and different
+   * membership rules, and a route belongs to exactly one of them. Collapsing them
+   * would let a page ask for two.
+   */
+  dashboardNav?: boolean
   /**
    * Render the Granite Auto Group sub-navigation. Set by `/dealerships`, the
    * three store routes and `/inventory`. Mutually exclusive with `platformNav`
@@ -61,7 +81,7 @@ export interface PageHeaderProps {
    * `inventory` on every route that renders a figure from the sanitized
    * reference workbooks rather than from the synthetic warehouse.
    */
-  trustScope?: 'synthetic' | 'inventory'
+  trustScope?: 'synthetic' | 'inventory' | 'dashboard'
   /**
    * Where the trust line sends a reader for detail. Governance by default;
    * `/status` from routes that are themselves about progress.
@@ -80,9 +100,11 @@ export function PageHeader({
   title,
   lede,
   supporting,
+  crumbLabel,
   meta,
   platformNav = false,
   groupNav = false,
+  dashboardNav = false,
   parentCrumb,
   trustScope = 'synthetic',
   trustHref = ROUTES.governance.href,
@@ -105,7 +127,7 @@ export function PageHeader({
             trail={[
               { href: '/', label: 'Overview' },
               ...(parentCrumb ? [parentCrumb] : []),
-              { href: '#', label: title },
+              { href: '#', label: crumbLabel ?? title },
             ]}
           />
 
@@ -132,6 +154,7 @@ export function PageHeader({
 
           {platformNav ? <PlatformNav className="pt-1" /> : null}
           {groupNav ? <GroupNav className="pt-1" /> : null}
+          {dashboardNav ? <DashboardNav className="pt-1" /> : null}
 
           {meta ? <div className="flex flex-wrap items-center gap-3">{meta}</div> : null}
 

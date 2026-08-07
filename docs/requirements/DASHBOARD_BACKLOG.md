@@ -39,7 +39,7 @@
 |---|---|---|---|
 | `DASH.0` | Architecture and program contract | Large | **Implemented** — delivered by the change that introduces this document |
 | `DASH.1` | Existing-KPI dashboard export foundation | Large | **Implemented** |
-| `DASH.2` | Dashboard shell and Executive Overview | Large | Planned |
+| `DASH.2` | Dashboard shell and Executive Overview | Large | **Implemented** |
 | `DASH.3` | Sales, Gross, and Deal Explorer | Large | Planned |
 | `DASH.4` | Basic Deal Jacket | Large | Planned |
 | `DASH.5` | Targets and pace | Large | Planned |
@@ -183,7 +183,7 @@ program. Evidence: the diagram files and index diffs in this change.
 | **Estimated complexity** | Large |
 | **Blocking gate** | None |
 | **Architecture references** | ADR-0013 conditions 11–14; `INFORMATION_ARCHITECTURE.md` |
-| **Status** | Planned |
+| **Status** | **Implemented** |
 | **Inherited from `DASH.1`** | The page-shaped payloads `DATA_CONTRACT.md §8` originally listed (`executive-summary.json`, `store-scoreboard.json`, `sales-gross.json`, `inventory-health.json`) were deliberately not created by `DASH.1`, because a page payload is a presentation decision owned by its route and preaggregating KPI values in TypeScript would violate ADR-0013 condition 2. `DASH.2-03` builds the executive payload from the exported datasets that already exist, and `DASH.2-04` adds the trust panel that merges the real ADR-0008 Power BI state — the export lane carries no Power BI field, by design. |
 
 ### `DASH.2-01` — Shell, navigation, and disclosure
@@ -193,7 +193,7 @@ program. Evidence: the diagram files and index diffs in this change.
 | Purpose | One new primary-nav destination and an internal dashboard navigation that keeps the public header small. |
 | Dependencies | `DASH.1` |
 | Complexity | Medium |
-| Status | Planned |
+| Status | **Implemented** |
 | Architecture references | `INFORMATION_ARCHITECTURE.md §2–3`; `lib/site.ts` route registry conventions |
 | Data-grain impact | None |
 | Acceptance criteria | `Dashboard` added to `PRIMARY_NAV` (seventh item, within `MAX_PRIMARY_NAV_ITEMS`); dashboard routes registered in `ROUTES` and mirrored in `tests/e2e/routes.ts`; internal `DashboardNav` follows the `PlatformNav` pattern (`aria-current`, no tablist); breadcrumbs per IA §5; `TrustLine` scope `dashboard` renders in the body of every dashboard route with the synthetic statement and the real Power BI validation state; mobile nav has no horizontal overflow at 320px. |
@@ -201,6 +201,7 @@ program. Evidence: the diagram files and index diffs in this change.
 | Documentation updates | `portfolio/docs/CONTENT_MODEL.md` §12; `INFORMATION_ARCHITECTURE.md` as-built. |
 | Explicit non-goals | No page content beyond the shell. |
 | Completion evidence | Routes render; nav/e2e suites green. |
+| As-built notes | **One console route exists, not ten.** `Dashboard` is the seventh `PRIMARY_NAV` item, exactly at `MAX_PRIMARY_NAV_ITEMS`, and `ROUTES.dashboard` is mirrored in `tests/e2e/routes.ts`. `DashboardNav` follows `PlatformNav` (a `<nav aria-label="Dashboard">` of links with `aria-current`, explicitly not a tablist) and carries **only implemented destinations** — one today. The other nine IA §1 routes are rendered on the page as *text*, each beside the increment that delivers it (`PLANNED_DASHBOARD_SECTIONS` in `lib/site.ts`), because a navigation item that goes nowhere is worse than a one-item bar; `dashboard.spec.ts` asserts each of the nine answers 404 and that no anchor on the page points at one. The IA's `<details>` mobile presentation for `DashboardNav` was **not** built: with one destination it would be a disclosure a reader opens to find the page they are on, and the wrapping row cannot overflow at 320px at this length. It arrives with the increment that makes the list long enough to need it (IA §2 as-built). `PageHeader` gained `dashboardNav` and a `crumbLabel`, and `TrustLine` gained a `dashboard` scope carrying the clause "Exported SQL figures, not a Power BI result." |
 
 ### `DASH.2-02` — Global URL filter contract
 
@@ -209,14 +210,15 @@ program. Evidence: the diagram files and index diffs in this change.
 | Purpose | One filter grammar for every dashboard page, in the URL, safe against garbage. |
 | Dependencies | `DASH.2-01` |
 | Complexity | Large |
-| Status | Planned |
+| Status | **Implemented** |
 | Architecture references | `INFORMATION_ARCHITECTURE.md §6` |
 | Data-grain impact | None (filters select, never redefine) |
 | Acceptance criteria | Typed parser/serializer for the IA §6 parameter set (date range, comparison, store, condition/sale-type scope, department, employee, lead source, campaign, make, model, condition, finance structure, product category); a copied URL reproduces the view; unknown/invalid values fall back safely with a visible notice; native controls; active filters visible as text; reset control; selected and comparison periods always visible; page-specific extensions declared per route; filters never alter KPI definitions; back/forward stable. |
 | Required tests | `portfolio/tests/unit/dashboard-filters.test.ts` (parse/serialize round-trip, invalid input, defaults); `portfolio/tests/e2e/dashboard-filters.spec.ts` (deep link, back button, reset, mobile overflow). |
 | Documentation updates | IA §6 as-built. |
 | Explicit non-goals | No saved views, no server persistence. |
-| Completion evidence | Named suites green; deep-link e2e passes at all seven tested widths. |
+| Completion evidence | Named suites green; deep-link e2e passes at all eight tested widths. |
+| As-built notes | All thirteen IA §6 parameters parse, validate, serialize and round-trip; canonical order is `FILTER_KEYS` order and a store list is sorted, so two equivalent states produce byte-identical query strings. **Route support is declared rather than implied**: `EXECUTIVE_OVERVIEW_SUPPORT` marks `period`/`compare`/`store` `applied`, `condition`/`source` `partial` with a note naming the measure family each scopes, and the remaining eight `not-applicable` with the reason (no such attribute in the export, or the domain arrives with `DASH.6`). A partial filter is applied only to datasets whose manifest column list carries the attribute — the first version applied `condition` everywhere and silently zeroed the gross card, which is the worst of the three available behaviours. The control surface offers presets only: a custom range and a multi-store list are part of the URL contract and are documented with copyable examples in a disclosure beside the bar, because a two-input range composed into one parameter cannot be expressed by a native GET form without scripting. `Certified` parses (IA §6 vocabulary) but is not offered as a control, because the warehouse models New and Used only. Filters push history entries, so Back and Forward are the undo stack; the widths tested are 320/375/**390**/768/1024/1280/1440/1920 from a dashboard-local list, since `DASH.13-01` owns adding 390 to the shared matrix. |
 
 ### `DASH.2-03` — Executive Overview page
 
@@ -225,7 +227,7 @@ program. Evidence: the diagram files and index diffs in this change.
 | Purpose | The highest-value operating answers on one screen from existing data: context header, primary KPI row (retail units, total gross, total PVR, lead-to-sale, median age, aged %, back PVR — reconciliation variance card arrives with `DASH.9`), store scoreboard respecting operating-model differences, inventory risk summary, funnel summary, placeholder-free actions area deferred to `DASH.12`. |
 | Dependencies | `DASH.2-01`, `DASH.2-02` |
 | Complexity | Large |
-| Status | Planned |
+| Status | **Implemented** |
 | Architecture references | `DASHBOARD_PROGRAM.md §7`; KPI_CATALOG.md (existing 29) |
 | Data-grain impact | None |
 | Acceptance criteria | Every card shows current value, prior-period difference, unit, drill-through, and a "How is this calculated?" disclosure resolving to the governed KPI id; scoreboard never penalizes the pre-owned store for absent new-vehicle metrics (cells render "Not applicable"); all values equal the exported values exactly; no decorative sparkline without a data-table alternative; empty and stale states per IA §8. |
@@ -233,6 +235,7 @@ program. Evidence: the diagram files and index diffs in this change.
 | Documentation updates | IA and program as-built notes. |
 | Explicit non-goals | No targets/pace (DASH.5), no bridge (DASH.3 logic arrives with its page), no actions (DASH.12). |
 | Completion evidence | Route live in CI e2e with cross-checked totals. |
+| As-built notes | **No generated page payload was created.** `DATA_CONTRACT.md` §8 originally listed `executive-summary.json`; a deterministic server-side selector layer replaces it, because a precomputed payload would be a second place a KPI value is written and the measured cost of computing on the server is an array pass over data the process already holds. `lib/dashboard/selectors.ts` declares every permitted aggregation **as data** — dataset, columns, basis, governed KPI id, and the manifest reconciliation key the selector must reproduce exactly — and `dashboard-executive.test.tsx` walks the registry and compares each against the committed manifest character for character. **Two KPIs decline at group scope, deliberately.** Median inventory age (KPI-INV-004) and median response time (KPI-FUN-008) are order statistics; the catalogue states outright that a group median is not derivable from subgroup medians, and the export publishes them at store × snapshot × condition group and at store × source × day respectively. Both cards render `Not derivable at this scope`, name the filter that resolves them, and **do** resolve when the URL narrows to the published grain — which the e2e suite exercises in both directions. The inventory section shows every governed median it has, at that grain, as the "available valid scope". The scoreboard therefore carries **average** response time (KPI-FUN-007, a ratio of two additive columns and exact at any scope) where the plan listed the median, with a column note explaining the substitution; the median is on the page in the funnel section. `New units` was added as a scoreboard column because it is where the structural-absence rule actually bites: the independent store renders `Not applicable`, never `0`. |
 
 ### `DASH.2-04` — Trust panel and measured baseline
 
@@ -241,7 +244,7 @@ program. Evidence: the diagram files and index diffs in this change.
 | Purpose | The console states its own evidence: SQL reconciliation state, export dataset version/date, privacy-scan status, and Power BI validation state (pending/stale/passed from the evidence files) — and the performance baseline is measured before budgets are set. |
 | Dependencies | `DASH.2-03` |
 | Complexity | Medium |
-| Status | Planned |
+| Status | **Implemented** |
 | Architecture references | ADR-0013 conditions 5–6; ADR-0008 freshness states |
 | Data-grain impact | None |
 | Acceptance criteria | Trust panel renders manifest-derived states only; a Power BI "validated" claim is impossible while evidence files say pending (unit-tested); `report-bundle.ts` route list extended to the dashboard routes; measured route JS / HTML / payload sizes recorded in `portfolio/docs/PERFORMANCE.md` as the dashboard baseline. |
@@ -249,6 +252,7 @@ program. Evidence: the diagram files and index diffs in this change.
 | Documentation updates | PERFORMANCE.md baseline table. |
 | Explicit non-goals | No budget enforcement yet (budgets set from these measurements in `DASH.13`). |
 | Completion evidence | Panel renders the current real states; baseline table committed. |
+| As-built notes | Two lanes with two sources and no path between them. The export lane reads `src/generated/dashboard/manifest.json`; the Power BI lane reads the ADR-0008 evidence through the project manifest, which `generate-project-manifest.ts` builds from `powerbi/validation/*_validation_results.json` and nothing else. `powerBiTrust()` takes the evidence as an argument and derives `validated` from it, so `dashboard-trust.test.ts` drives it with pending, stale, failed and passed **fixtures** and asserts the claim in each case — no real evidence file is touched. The suite also asserts structurally that the dashboard manifest carries no Power BI key, that nothing assigns `validated` a literal, and that the panel renders `state.claim` rather than a sentence of its own. `report-bundle.ts` gained `/dashboard` and a filtered `/dashboard?…` entry, because this is the first route whose output depends on its query string and one measurement would describe one filter state. |
 
 ---
 

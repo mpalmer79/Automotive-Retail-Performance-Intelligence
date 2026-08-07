@@ -47,6 +47,22 @@ export async function mainText(page: Page): Promise<string> {
   return (await page.locator('main').innerText()).replace(/\s+/g, ' ')
 }
 
+/**
+ * The text of `<main>` INCLUDING content inside a closed `<details>`.
+ *
+ * `innerText` reports what is rendered, and a closed disclosure renders nothing -
+ * which is the right answer for a reading-order assertion and the wrong one for
+ * "is the methodology in the document at all". The console's KPI definitions are
+ * server-rendered inside `<details>`, and the claim worth testing is that they are
+ * present without JavaScript, not that they are visible before a click.
+ */
+export async function mainTextContent(page: Page): Promise<string> {
+  return (await page.locator('main').evaluate((node) => node.textContent ?? '')).replace(
+    /\s+/g,
+    ' '
+  )
+}
+
 /** The rendered text of the whole document, with reveals settled. */
 export async function bodyText(page: Page): Promise<string> {
   await settle(page)

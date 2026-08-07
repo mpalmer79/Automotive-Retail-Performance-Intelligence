@@ -238,8 +238,27 @@ test.describe('no KPI value appears anywhere', () => {
    *
    * The percentage and turn bans are unchanged and still apply everywhere.
    */
+  /**
+   * THE CONSOLE IS EXEMPT, AND THE EXEMPTION IS AN ADR RATHER THAN A WORKAROUND.
+   *
+   * ADR-0013 supersedes ADR-0009 §4 in scope "for the `/dashboard` route family
+   * only": the console may render KPI values from versioned exports, under fifteen
+   * binding conditions, and the documentation routes keep C5 unchanged. So this rule
+   * is not weakened - it is scoped to the routes it was written for, and the console
+   * gets a stronger rule of its own (`dashboard.spec.ts`): every figure it renders
+   * must reconcile to the export, exactly, and `dashboard-executive.test.tsx` proves
+   * it selector by selector.
+   *
+   * Naming the exemption rather than inferring it from a path prefix means a second
+   * route that started rendering gross would fail this test until somebody added it
+   * here on purpose.
+   */
+  const KPI_VALUE_EXEMPT: readonly string[] = ['/dashboard']
+
   test('no route renders a gross, revenue or profit figure', async ({ page }) => {
-    for (const route of PRIMARY_ROUTES) {
+    for (const route of PRIMARY_ROUTES.filter(
+      (candidate) => !KPI_VALUE_EXEMPT.includes(candidate.path)
+    )) {
       await gotoRendered(page, route.path)
       const text = await bodyText(page)
       // A currency amount within 60 characters of a performance word.
@@ -267,6 +286,7 @@ test.describe('no KPI value appears anywhere', () => {
     // advertised price included.
     for (const route of PRIMARY_ROUTES) {
       if (isInventoryBearing(route.path)) continue
+      if (KPI_VALUE_EXEMPT.includes(route.path)) continue
       await gotoRendered(page, route.path)
       const text = await bodyText(page)
       expect(text, `${route.path} renders a currency figure`).not.toMatch(
@@ -566,6 +586,15 @@ test.describe('the copy makes claims with referents', () => {
   })
 
   test('no route claims a completed degree or a certification', async ({ page }) => {
+    /*
+     * The rule is about the author's credentials, and "certified" has a second sense
+     * in this domain: a certified pre-owned vehicle. The console's filter grammar
+     * carries `condition=Certified` as part of the console-wide vocabulary
+     * (`INFORMATION_ARCHITECTURE.md` §6), and the warehouse models New and Used only,
+     * so the control offers neither - which is why no dashboard route trips this
+     * today. If a future increment does surface the word in its vehicle sense, the
+     * fix is to narrow this pattern to the credential sense, not to delete it.
+     */
     for (const route of PRIMARY_ROUTES) {
       await gotoRendered(page, route.path)
       const text = await bodyText(page)
