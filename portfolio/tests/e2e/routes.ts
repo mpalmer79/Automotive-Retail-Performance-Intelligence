@@ -43,6 +43,12 @@ export const PRIMARY_ROUTES: readonly RouteUnderTest[] = [
     navLabel: 'Granite Pre-Owned',
   },
   {
+    path: '/dashboard',
+    heading: 'How the group is performing, and which store needs attention',
+    inNav: true,
+    navLabel: 'Dashboard',
+  },
+  {
     path: '/inventory',
     heading: 'Every listing the three stores carried',
     inNav: true,
@@ -91,7 +97,7 @@ export const PRIMARY_ROUTES: readonly RouteUnderTest[] = [
 /**
  * The HEADER navigation, which is a different list from the routes above.
  *
- * Six items for thirteen routes. One of them is a destination GROUP: "Platform"
+ * Seven items for fourteen routes, at the declared cap. One of them is a destination GROUP: "Platform"
  * points at `/architecture` and is current on `/data-model`,
  * `/inventory-operations` and `/governance` too, and those four carry a
  * sub-navigation on the page itself.
@@ -117,6 +123,7 @@ export interface HeaderNavItem {
 
 export const HEADER_NAV: readonly HeaderNavItem[] = [
   { label: 'Overview', path: '/', currentOn: ['/'] },
+  { label: 'Dashboard', path: '/dashboard', currentOn: ['/dashboard'] },
   { label: 'Inventory', path: '/inventory', currentOn: ['/inventory'] },
   {
     label: 'Platform',
@@ -127,6 +134,58 @@ export const HEADER_NAV: readonly HeaderNavItem[] = [
   { label: 'Status', path: '/status', currentOn: ['/status'] },
   { label: 'About', path: '/about', currentOn: ['/about'] },
 ]
+
+/**
+ * The console's own internal navigation.
+ *
+ * One destination. `INFORMATION_ARCHITECTURE.md` §1 lists ten console routes and
+ * `DASH.2` builds the first; the other nine are named on the page as text beside the
+ * increment that delivers each, and are deliberately not links. A navigation item
+ * that goes nowhere is worse than a navigation bar with one item in it.
+ */
+export const DASHBOARD_NAV_ROUTES: readonly { label: string; path: string }[] = [
+  { label: 'Command center', path: '/dashboard' },
+]
+
+/** Every route that renders the console sub-navigation. */
+export const DASHBOARD_ROUTES: readonly string[] = ['/dashboard']
+
+/**
+ * The console sections that must NOT be reachable, because they do not exist.
+ *
+ * Asserted as a negative in `dashboard.spec.ts`: no anchor on any dashboard route
+ * points at one of these, and each 404s if fetched directly.
+ */
+export const UNBUILT_DASHBOARD_ROUTES: readonly string[] = [
+  '/dashboard/sales-gross',
+  '/dashboard/deals',
+  '/dashboard/inventory',
+  '/dashboard/fi',
+  '/dashboard/leads-marketing',
+  '/dashboard/employees',
+  '/dashboard/accounting',
+  '/dashboard/actions',
+]
+
+/**
+ * The widths the console's responsive assertions run at.
+ *
+ * The shared `VIEWPORTS` list is the site-wide matrix and `DASH.13-01` owns adding
+ * 390 to it. The console needs it now — 390 is the modern iPhone width and the
+ * scoreboard's card presentation is decided between 375 and 430 — so the dashboard
+ * suites carry their own list rather than changing the runtime of every existing
+ * responsive test ahead of the increment that owns that change.
+ */
+export const DASHBOARD_VIEWPORTS = [
+  { name: '320', width: 320, height: 800 },
+  { name: '375', width: 375, height: 812 },
+  { name: '390', width: 390, height: 844 },
+  { name: '768', width: 768, height: 1024 },
+  { name: '1024', width: 1024, height: 800 },
+  { name: '1280', width: 1280, height: 800 },
+  { name: '1440', width: 1440, height: 900 },
+  { name: '1920', width: 1920, height: 1080 },
+] as const
 
 /** The four routes that render the platform sub-navigation. */
 export const PLATFORM_ROUTES: readonly { label: string; path: string }[] = [

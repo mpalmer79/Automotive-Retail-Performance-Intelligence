@@ -98,6 +98,7 @@ describe('the thirteen primary routes exist and the lab is not one of them', () 
     '/status',
     '/about',
     '/case-study',
+    '/dashboard',
   ]
 
   /** Routes that exist and are indexed but are not navigation destinations. */
@@ -108,13 +109,13 @@ describe('the thirteen primary routes exist and the lab is not one of them', () 
     '/dealerships/granite-pre-owned',
   ]
 
-  it('declares exactly the thirteen primary routes plus the lab', () => {
+  it('declares exactly the fourteen primary routes plus the lab', () => {
     expect(ALL_ROUTES.map((route) => route.href).sort()).toEqual(
       [...PRIMARY, '/ui-lab'].sort()
     )
   })
 
-  it("keeps nine routes reachable from the site's own navigation", () => {
+  it("keeps ten routes reachable from the site's own navigation", () => {
     // The case study is deliberately absent: it is locked, and it is reached from
     // the footer, the status page and the home page's closing section rather than
     // from a navigation surface.
@@ -203,15 +204,28 @@ describe('the primary navigation stays inside its budget', () => {
     expect(PRIMARY_NAV.length).toBeLessThanOrEqual(MAX_PRIMARY_NAV_ITEMS)
   })
 
-  it('offers exactly the six agreed destinations, in order', () => {
+  it('offers exactly the seven agreed destinations, in order', () => {
+    /*
+     * Seven, and the cap is seven. `DASH.2` spends the last slot on the console —
+     * ADR-0013 authorizes one new public destination and `INFORMATION_ARCHITECTURE.md`
+     * §1 says the header gains exactly that one; the other nine console routes live
+     * in `DASHBOARD_NAV` on the page. An eighth item now requires either a decision
+     * to raise the cap or a decision to group two existing destinations, which is
+     * what this assertion is for.
+     */
     expect(PRIMARY_NAV.map((item) => item.label)).toEqual([
       'Overview',
+      'Dashboard',
       'Inventory',
       'Platform',
       'KPIs',
       'Status',
       'About',
     ])
+  })
+
+  it('spends the last slot deliberately, at the declared ceiling', () => {
+    expect(PRIMARY_NAV).toHaveLength(MAX_PRIMARY_NAV_ITEMS)
   })
 
   it('never lists two header items pointing at the same document', () => {

@@ -51,8 +51,8 @@ import { clamp, cx, formatCount, formatDate, groupBy, slugify } from '@/lib/util
 /* -------------------------------------------------------------------------- */
 
 describe('the route map', () => {
-  it('holds the thirteen documented routes plus the internal UI lab', () => {
-    expect(ALL_ROUTES).toHaveLength(14)
+  it('holds the fourteen documented routes plus the internal UI lab', () => {
+    expect(ALL_ROUTES).toHaveLength(15)
     const hrefs = ALL_ROUTES.map((r) => r.href)
     expect(hrefs).toEqual([
       '/',
@@ -68,19 +68,21 @@ describe('the route map', () => {
       '/status',
       '/about',
       '/case-study',
+      '/dashboard',
       '/ui-lab',
     ])
   })
 
-  it('puts six content destinations in the header and excludes the case study', () => {
-    // Six, not thirteen. One of the six is a destination GROUP: "Platform" covers
-    // Architecture, Data Model, Inventory operations and Governance. There is no
-    // "Dealerships" item, because the group overview is the home page and a
-    // second header link to it would be a duplicate destination. The full
-    // navigation contract is covered in tests/unit/site.test.ts; this is the
-    // component suite's own check that the list it renders from has not quietly
-    // grown.
-    expect(PRIMARY_NAV).toHaveLength(6)
+  it('puts seven content destinations in the header and excludes the case study', () => {
+    // Seven, not fourteen, and seven is the declared ceiling. One of them is a
+    // destination GROUP: "Platform" covers Architecture, Data Model, Inventory
+    // operations and Governance. There is no "Dealerships" item, because the group
+    // overview is the home page and a second header link to it would be a duplicate
+    // destination. The console takes the last slot, and its own nine routes live in
+    // `DASHBOARD_NAV` on the page rather than in the header. The full navigation
+    // contract is covered in tests/unit/site.test.ts; this is the component suite's
+    // own check that the list it renders from has not quietly grown.
+    expect(PRIMARY_NAV).toHaveLength(7)
     expect(PRIMARY_NAV.map((r) => r.href)).not.toContain('/case-study')
     expect(PRIMARY_NAV.map((r) => r.href)).not.toContain('/ui-lab')
   })

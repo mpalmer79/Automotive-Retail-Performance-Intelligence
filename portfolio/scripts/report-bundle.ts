@@ -44,8 +44,24 @@ interface RouteReport extends Transfer {
 
 const BASE = process.env.ARPI_REVIEW_BASE_URL ?? 'http://localhost:3111'
 
+/*
+ * The routes measured, and why the console appears twice.
+ *
+ * `/dashboard` is the first route on this site whose output depends on its query
+ * string, so a single measurement would describe one filter state rather than the
+ * route. The filtered entry is the more expensive of the two in principle - it is
+ * server-rendered per request with a narrower store scope - and measuring both is
+ * what makes "the payload does not grow with the filter" a checkable claim rather
+ * than an assumption.
+ *
+ * `DASH.2-04` adds them and records the numbers in `portfolio/docs/PERFORMANCE.md`
+ * as the console baseline. No budget is enforced from them yet: `DASH.13-02` sets
+ * the budgets, from measurements rather than from invented figures.
+ */
 const ROUTES = [
   '/',
+  '/dashboard',
+  '/dashboard?store=GSA-001&period=2025-11&condition=Used',
   '/architecture',
   '/data-model',
   '/kpis',
@@ -152,19 +168,19 @@ async function collect(
 function printTable(title: string, rows: RouteReport[]): void {
   console.log('')
   console.log(title)
-  console.log('='.repeat(78))
+  console.log('='.repeat(106))
   console.log(
-    pad('Route', 18) +
+    pad('Route', 46) +
       padStart('HTML', 10) +
       padStart('JS', 11) +
       padStart('CSS', 10) +
       padStart('Fonts', 10) +
       padStart('Total', 11)
   )
-  console.log('-'.repeat(78))
+  console.log('-'.repeat(106))
   for (const row of [...rows].sort((a, b) => b.total - a.total)) {
     console.log(
-      pad(row.route, 18) +
+      pad(row.route, 46) +
         padStart(kb(row.document), 10) +
         padStart(kb(row.script), 11) +
         padStart(kb(row.stylesheet), 10) +
