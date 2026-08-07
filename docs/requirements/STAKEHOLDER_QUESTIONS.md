@@ -45,13 +45,13 @@ works is a marketing document.
 
 | Check | Result |
 |---|---|
-| Questions recorded | 39 |
+| Questions recorded | 41 |
 | Personas covered | 12 of 12 from `docs/research.md` §11.3 |
-| Questions the MVP can answer today | 35 |
+| Questions the MVP can answer today | 37 |
 | Questions the MVP cannot answer, recorded with the blocking fact | 4 |
 | MVP KPIs traced to at least one question | **29 of 29** — no unattributed KPI |
 | Inventory Listings KPIs traced to at least one question | **22 of 22** — no unattributed KPI |
-| Reporting views supporting at least one question | **34 of 34** — no orphan view |
+| Reporting views supporting at least one question | **37 of 37** — no orphan view |
 
 ### 3.1 Reconciling the two persona lists
 
@@ -79,7 +79,7 @@ list the acceptance criteria bind to.
 | **Required dimensions** | `dim_date`, `dim_dealership` |
 | **Required facts** | `fact_vehicle_sale` |
 | **KPI IDs** | `KPI-GRS-003`, `KPI-GRS-006`, `KPI-SLS-001` |
-| **Reporting view** | `reporting.vw_gross_summary`, `reporting.vw_sales_summary`, `reporting.vw_calendar`, `reporting.vw_dealership` |
+| **Reporting view** | `reporting.vw_gross_summary`, `reporting.vw_sales_summary`, `reporting.vw_sales_gross_trend`, `reporting.vw_calendar`, `reporting.vw_dealership` |
 | **Intended future report page** | 1. Executive Overview |
 | **Decision enabled** | Whether to intervene at group level at all, and in which direction: a volume problem and a margin problem need opposite responses. |
 | **Interpretation caution** | Total gross conceals the trade-off between front and back. A flat total with a collapsing front offset by rising F&I is a materially different and usually less durable business, so `KPI-GRS-001` and `KPI-GRS-002` must be on the same visual. ARPI publishes no benchmark for what good looks like. |
@@ -159,7 +159,7 @@ list the acceptance criteria bind to.
 | **Required dimensions** | `dim_date`, `dim_dealership`, `dim_vehicle`, `dim_vehicle_model` |
 | **Required facts** | `fact_vehicle_sale` |
 | **KPI IDs** | `KPI-SLS-002`, `KPI-SLS-003` |
-| **Reporting view** | `reporting.vw_sales_summary`, `reporting.vw_vehicle`, `reporting.vw_vehicle_model` |
+| **Reporting view** | `reporting.vw_sales_summary`, `reporting.vw_sales_gross_trend`, `reporting.vw_vehicle`, `reporting.vw_vehicle_model` |
 | **Intended future report page** | 2. Sales and Gross |
 | **Decision enabled** | Where to focus desk attention and acquisition spend. |
 | **Interpretation caution** | **Certified pre-owned units are used units** and are counted in `KPI-SLS-003`, never in `KPI-SLS-002`. Any report showing "used" and "certified" separately must say whether the used figure includes certified, because both conventions exist in the industry and mixing them silently double-counts. New-vehicle gross also excludes manufacturer incentives, so new-versus-used gross comparisons are not like-for-like. |
@@ -175,7 +175,7 @@ list the acceptance criteria bind to.
 | **Required dimensions** | `dim_date`, `dim_dealership`, `dim_vehicle_model` |
 | **Required facts** | `fact_vehicle_sale` |
 | **KPI IDs** | `KPI-GRS-001`, `KPI-GRS-004` |
-| **Reporting view** | `reporting.vw_gross_summary`, `reporting.vw_vehicle_sales` |
+| **Reporting view** | `reporting.vw_gross_summary`, `reporting.vw_sales_gross_trend`, `reporting.vw_deal_explorer`, `reporting.vw_vehicle_sales` |
 | **Intended future report page** | 2. Sales and Gross |
 | **Decision enabled** | Whether to tighten desking policy, and on which model lines. |
 | **Interpretation caution** | A rising per-unit gross with falling volume is not automatically good: it often means the store stopped chasing marginal deals, which can be correct or can be lost market share. Negative-front deals are real outcomes and must stay visible rather than being averaged away. |
@@ -690,6 +690,39 @@ list the acceptance criteria bind to.
 | **Intended future report page** | 8. Inventory Operations |
 | **Decision enabled** | Which advertised units to review first for merchandising attention. |
 | **Interpretation caution** | **Days observed online is not days in stock.** Days in stock runs from acquisition, is recorded by the DMS, and lives on `warehouse.fact_vehicle_inventory_snapshot`; this lane cannot produce it because it never sees an acquisition. The span is bounded below by the capture cadence — a vehicle seen once has a span of zero, meaning "seen once", not "listed for no time" — and above by when observation began. It must be read with `snapshot_count` and `observation_gap_days`, because a 30-day span built from two captures is not the evidence a 30-day span built from thirty captures is. |
+| **Implementation status** | **Implemented** |
+
+
+
+### SQ-40 — General sales manager
+
+| Field | Value |
+|---|---|
+| **Persona** | General sales manager |
+| **Business question** | *Total gross moved against last month: was that units, or was it what we earned per unit?* |
+| **Required dimensions** | `dim_date`, `dim_dealership` |
+| **Required facts** | `fact_vehicle_sale` |
+| **KPI IDs** | `KPI-GRS-003`, `KPI-GRS-004`, `KPI-GRS-005`, `KPI-GRS-006` |
+| **Reporting view** | `reporting.vw_gross_change_bridge`, `reporting.vw_sales_gross_trend` |
+| **Intended future report page** | 2. Sales and Gross |
+| **Decision enabled** | Which lever to pull. A volume shortfall and a rate shortfall need opposite responses, and a month that sold more units at a worse rate looks identical to a good month in the total alone. |
+| **Interpretation caution** | **This is an attribution under a documented arithmetic order, not a cause.** The bridge assigns the change to volume, front PVR and back PVR by pricing the volume change at the comparison period's rate and then valuing each rate change at the current period's volume; a different order assigns different amounts for the same total, which is why the order is fixed and published. It does not know why volume or rate moved, and nothing derived from it may implicate a person, a department, an inventory position or a marketing spend. A month whose comparison period sold no retail units has **no baseline rate and therefore no decomposition** — the view returns the period change with the components withheld and a reason, rather than substituting a zero rate. No mix effect is published: it is a legitimate fourth term, but only once its place in the sequence is documented. |
+| **Implementation status** | **Implemented** |
+
+
+### SQ-41 — General sales manager
+
+| Field | Value |
+|---|---|
+| **Persona** | General sales manager |
+| **Business question** | *Which individual deals produced this result, and which of them lost money on the front?* |
+| **Required dimensions** | `dim_date`, `dim_dealership`, `dim_vehicle`, `dim_vehicle_model`, `dim_employee`, `dim_lead_source` |
+| **Required facts** | `fact_vehicle_sale`, `fact_lead` |
+| **KPI IDs** | `KPI-SLS-001`, `KPI-GRS-001`, `KPI-GRS-002`, `KPI-GRS-003`, `KPI-INV-007` |
+| **Reporting view** | `reporting.vw_deal_explorer` |
+| **Intended future report page** | 2. Sales and Gross / 2a. Deal Explorer |
+| **Decision enabled** | Which deals to review individually. An aggregate says a month was weak; only the deal list says whether that was three catastrophic transactions or forty ordinary ones, and those need entirely different responses. |
+| **Interpretation caution** | **A negative front-end gross is a real dealership outcome, not a data defect**, and the index shows it with its sign rather than suppressing it: a store may knowingly take a loss on the front to hold a customer, move an aged unit or earn back-end. Wholesale disposals and dealer trades appear in the list and are labelled as not retail — they are real transactions, and judging them by retail measures is the error, not showing them. Lead attribution is resolved through the lead linked to the deal, so a deal with no linked lead is genuine walk-in or unattributed business rather than missing data, and the two are never collapsed. The index carries **no customer attribute of any kind** and no cost structure; the deal's cost components belong to the Deal Jacket. |
 | **Implementation status** | **Implemented** |
 
 ---
