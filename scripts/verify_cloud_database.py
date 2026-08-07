@@ -151,6 +151,7 @@ EXPECTED_FACT_TABLES: tuple[str, ...] = (
     "fact_appointment",
     "fact_lead",
     "fact_marketing_spend",
+    "fact_sales_target",
     "fact_vehicle_inventory_snapshot",
     "fact_vehicle_sale",
 )
@@ -207,16 +208,22 @@ EXPECTED_REPORTING_ROW_COUNTS: dict[str, int] = {
 #: fails a run that recorded 57 of its 58 reconciliations, which is the defect
 #: these expectations exist to catch; it just no longer fails a run for the fact
 #: that an earlier one is still on record.
+#: `DASH.5` moved two of these, and the movement is the increment's own arithmetic
+#: rather than a loosened expectation: the target lane registers fourteen `DQ-TGT-*`
+#: checks plus one ingestion schema check (114 -> 129), and eleven reconciliations --
+#: ten `RECON-TGT-*` / `RECON-FACT-SALES-TARGET-*` plus the ingestion chain
+#: `RECON-INGEST-SALES-TARGET-CHAIN` (58 -> 69). Both were verified against a real
+#: load before being written here, not inferred from a failing run.
 EXPECTED_REPORTING_ROW_COUNTS_PER_RUN: dict[str, int] = {
     "vw_data_quality_trend": 9,
-    "vw_reconciliation_status": 58,
+    "vw_reconciliation_status": 69,
     "vw_pipeline_run_summary": 1,
-    "vw_data_quality_summary": 114,
+    "vw_data_quality_summary": 129,
 }
 
 #: Reconciliations the loader records on every run, and how many may fail.
 #: Per run, for the reason recorded above.
-EXPECTED_RECONCILIATION_COUNT_PER_RUN: int = 58
+EXPECTED_RECONCILIATION_COUNT_PER_RUN: int = 69
 EXPECTED_FAILING_RECONCILIATION_COUNT: int = 0
 
 #: The profile and seed the cloud database must have been loaded from.
