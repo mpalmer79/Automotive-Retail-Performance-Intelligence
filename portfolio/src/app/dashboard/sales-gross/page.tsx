@@ -156,7 +156,9 @@ export default async function SalesGrossPage({
                     <span className="text-ink">{chip.value}</span>
                     {chip.support === 'applied' ? null : (
                       <span className="text-ink-faint">
-                        {chip.support === 'partial' ? '· partly applied' : '· not applied here'}
+                        {chip.support === 'partial'
+                          ? '· partly applied'
+                          : '· not applied here'}
                       </span>
                     )}
                   </li>
@@ -309,8 +311,8 @@ export default async function SalesGrossPage({
           <Section rhythm="default" id="next">
             <Container width="content">
               <Text size="sm" tone="muted">
-                Every figure on this page is the sum of finalized transactions. To see
-                the transactions themselves, open the{' '}
+                Every figure on this page is the sum of finalized transactions. To see the
+                transactions themselves, open the{' '}
                 <a
                   href={ROUTES.dashboardDeals.href}
                   className="inline-flex min-h-6 items-center underline decoration-line underline-offset-2 transition-colors duration-(--arpi-motion-fast) hover:text-accent"

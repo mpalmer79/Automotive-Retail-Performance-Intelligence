@@ -90,9 +90,10 @@ function firstValue(value: string | string[] | undefined): string | undefined {
  * is clamped later and reported there. Splitting it that way keeps this function a
  * pure parse.
  */
-export function parseListState(
-  query: Record<string, string | string[] | undefined>
-): { readonly state: DealListState; readonly reset: readonly ListReset[] } {
+export function parseListState(query: Record<string, string | string[] | undefined>): {
+  readonly state: DealListState
+  readonly reset: readonly ListReset[]
+} {
   const reset: ListReset[] = []
   let sort: DealSortKey = DEFAULT_LIST_STATE.sort
   let direction: SortDirection = DEFAULT_LIST_STATE.direction
@@ -146,7 +147,8 @@ export function listStateQuery(state: DealListState): string {
   const parts: string[] = []
   if (state.query !== '') parts.push(`q=${encodeURIComponent(state.query)}`)
   if (state.sort !== DEFAULT_LIST_STATE.sort) parts.push(`sort=${state.sort}`)
-  if (state.direction !== DEFAULT_LIST_STATE.direction) parts.push(`dir=${state.direction}`)
+  if (state.direction !== DEFAULT_LIST_STATE.direction)
+    parts.push(`dir=${state.direction}`)
   if (state.page !== DEFAULT_LIST_STATE.page) parts.push(`page=${String(state.page)}`)
   return parts.join('&')
 }
@@ -157,7 +159,10 @@ export function listStateQuery(state: DealListState): string {
 
 const reportingCalendar = calendarWindow(dashboardCalendar, dashboardManifest.asOfDate)
 
-function decode(file: { columns: readonly string[]; rows: readonly (readonly unknown[])[] }) {
+function decode(file: {
+  columns: readonly string[]
+  rows: readonly (readonly unknown[])[]
+}) {
   const rows: DashboardRow[] = []
   for (const values of file.rows) {
     const row: Record<string, unknown> = {}
@@ -256,8 +261,10 @@ function toDealRow(row: DashboardRow): DealRow {
     daysInInventory: typeof days === 'number' ? days : Number(days ?? 0),
     leadSource: typeof source === 'string' ? source : null,
     isLeadAttributed: row.is_lead_attributed === true,
-    salespersonCode: typeof row.salesperson_code === 'string' ? row.salesperson_code : null,
-    deskManagerCode: typeof row.desk_manager_code === 'string' ? row.desk_manager_code : null,
+    salespersonCode:
+      typeof row.salesperson_code === 'string' ? row.salesperson_code : null,
+    deskManagerCode:
+      typeof row.desk_manager_code === 'string' ? row.desk_manager_code : null,
     financeManagerCode:
       typeof row.finance_manager_code === 'string' ? row.finance_manager_code : null,
     hasTrade: row.has_trade === true,
@@ -327,10 +334,7 @@ export interface DealsView {
  * global filters, apply the search, sort into a total order, THEN page. Paging before
  * sorting would produce a different page-one for the same query.
  */
-export function buildDeals(
-  filters: DashboardFilters,
-  state: DealListState
-): DealsView {
+export function buildDeals(filters: DashboardFilters, state: DealListState): DealsView {
   const periodContext = resolvePeriod(filters.period, 'none', reportingCalendar)
   const period = periodContext.period
   const storeIds = filters.store.length === 0 ? dashboardStoreIds : filters.store
@@ -357,7 +361,10 @@ export function buildDeals(
           if (row.lead_source_code !== filters.source) continue
         }
         if (filters.make !== null && !equalsIgnoringCase(row.make, filters.make)) continue
-        if (filters.model !== null && !equalsIgnoringCase(row.model_name, filters.model)) {
+        if (
+          filters.model !== null &&
+          !equalsIgnoringCase(row.model_name, filters.model)
+        ) {
           continue
         }
         if (!matchesQuery(row, state.query)) continue
@@ -401,7 +408,8 @@ export function buildDeals(
     asOfDate: dashboardManifest.asOfDate,
     retailCount: retailRows.length,
     totalGrossDisplay: totalGross === null ? null : formatCurrencyExact(totalGross),
-    negativeFrontCount: collected.filter((row) => row.is_negative_front_gross === true).length,
+    negativeFrontCount: collected.filter((row) => row.is_negative_front_gross === true)
+      .length,
   }
 }
 

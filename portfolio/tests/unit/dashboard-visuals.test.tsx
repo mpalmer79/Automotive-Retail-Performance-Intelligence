@@ -28,10 +28,30 @@ import {
 import { parseExact } from '../../src/lib/dashboard/decimal.ts'
 
 const POINTS = [
-  { key: '2025-12-01', label: '1 December', value: parseExact('1000.00'), display: '$1,000' },
-  { key: '2025-12-02', label: '2 December', value: parseExact('2500.00'), display: '$2,500' },
-  { key: '2025-12-03', label: '3 December', value: null, display: 'No eligible denominator' },
-  { key: '2025-12-04', label: '4 December', value: parseExact('-400.00'), display: '-$400' },
+  {
+    key: '2025-12-01',
+    label: '1 December',
+    value: parseExact('1000.00'),
+    display: '$1,000',
+  },
+  {
+    key: '2025-12-02',
+    label: '2 December',
+    value: parseExact('2500.00'),
+    display: '$2,500',
+  },
+  {
+    key: '2025-12-03',
+    label: '3 December',
+    value: null,
+    display: 'No eligible denominator',
+  },
+  {
+    key: '2025-12-04',
+    label: '4 December',
+    value: parseExact('-400.00'),
+    display: '-$400',
+  },
 ]
 
 describe('TrendChart', () => {

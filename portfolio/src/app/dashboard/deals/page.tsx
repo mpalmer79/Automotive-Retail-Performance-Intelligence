@@ -150,7 +150,10 @@ export default async function DealExplorerPage({
                   not silently discard the period or store the reader chose. */}
               {hiddenFilterFields(filterQuery)}
               <div className="flex min-w-0 flex-1 flex-col gap-1">
-                <label htmlFor="deal-search" className="text-xs font-medium text-ink-muted">
+                <label
+                  htmlFor="deal-search"
+                  className="text-xs font-medium text-ink-muted"
+                >
                   Search deals
                 </label>
                 <input

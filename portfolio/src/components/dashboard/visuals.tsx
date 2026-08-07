@@ -120,7 +120,9 @@ function ChartFrame({
     <figure className={cx('flex flex-col gap-4', className)}>
       <figcaption className="flex flex-col gap-1.5">
         <Heading className="text-base font-semibold text-ink">{title}</Heading>
-        {caption ? <p className="text-sm leading-normal text-ink-muted">{caption}</p> : null}
+        {caption ? (
+          <p className="text-sm leading-normal text-ink-muted">{caption}</p>
+        ) : null}
         <p className="text-sm leading-normal text-ink-secondary">{summary}</p>
       </figcaption>
       {children}
@@ -265,7 +267,10 @@ export function TrendChart({
           </thead>
           <tbody>
             {points.map((point) => (
-              <tr key={point.key} className="border-b border-line-subtle/60 last:border-0">
+              <tr
+                key={point.key}
+                className="border-b border-line-subtle/60 last:border-0"
+              >
                 <th scope="row" className="py-1.5 pr-3 font-normal text-ink-secondary">
                   {point.label}
                 </th>
@@ -535,7 +540,10 @@ export function DistributionStrip({
             </div>
             <div className="h-2 w-full overflow-hidden rounded-pill bg-surface-sunken">
               <div
-                className={cx('h-full', bucket.isNegative ? 'bg-ink-faint' : 'bg-accent/70')}
+                className={cx(
+                  'h-full',
+                  bucket.isNegative ? 'bg-ink-faint' : 'bg-accent/70'
+                )}
                 style={{ width: `${String((bucket.count / largest) * 100)}%` }}
               />
             </div>
@@ -558,11 +566,16 @@ export function DistributionStrip({
           </thead>
           <tbody>
             {buckets.map((bucket) => (
-              <tr key={bucket.key} className="border-b border-line-subtle/60 last:border-0">
+              <tr
+                key={bucket.key}
+                className="border-b border-line-subtle/60 last:border-0"
+              >
                 <th scope="row" className="py-1.5 pr-3 font-normal text-ink-secondary">
                   {bucket.label}
                 </th>
-                <td className="numeric py-1.5 text-right text-ink">{String(bucket.count)}</td>
+                <td className="numeric py-1.5 text-right text-ink">
+                  {String(bucket.count)}
+                </td>
               </tr>
             ))}
           </tbody>

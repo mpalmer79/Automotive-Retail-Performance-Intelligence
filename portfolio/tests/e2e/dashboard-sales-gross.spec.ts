@@ -22,10 +22,14 @@ test.describe('the route exists and states its context', () => {
   test('answers 200 and renders its heading', async ({ page }) => {
     const response = await page.goto(ROUTE)
     expect(response?.status()).toBe(200)
-    await expect(page.locator('h1')).toHaveText(/What sold, what it made, and what changed/)
+    await expect(page.locator('h1')).toHaveText(
+      /What sold, what it made, and what changed/
+    )
   })
 
-  test('names the period, the comparison, the scope and the as-of date', async ({ page }) => {
+  test('names the period, the comparison, the scope and the as-of date', async ({
+    page,
+  }) => {
     await gotoRendered(page, ROUTE)
     const text = await mainText(page)
     expect(text).toContain('December 2025')
@@ -48,7 +52,9 @@ test.describe('the route exists and states its context', () => {
 })
 
 test.describe('the governed figures reach the screen', () => {
-  test('renders the nine performance measures with their KPI identifiers', async ({ page }) => {
+  test('renders the nine performance measures with their KPI identifiers', async ({
+    page,
+  }) => {
     await gotoRendered(page, ROUTE)
     const text = await mainTextContent(page)
     for (const label of [
@@ -87,7 +93,9 @@ test.describe('the governed figures reach the screen', () => {
     expect(text).toContain('$321,935')
   })
 
-  test('carries a methodology disclosure for every governed measure', async ({ page }) => {
+  test('carries a methodology disclosure for every governed measure', async ({
+    page,
+  }) => {
     await gotoRendered(page, ROUTE)
     const summaries = page.locator('summary', { hasText: 'How is this calculated?' })
     expect(await summaries.count()).toBeGreaterThanOrEqual(9)
@@ -140,7 +148,9 @@ test.describe('the gross change bridge', () => {
     expect(text).toMatch(/single whole month/i)
   })
 
-  test('withholds itself for the first month of the window and says why', async ({ page }) => {
+  test('withholds itself for the first month of the window and says why', async ({
+    page,
+  }) => {
     await gotoRendered(page, `${ROUTE}?period=2025-07`)
     const text = await mainTextContent(page)
     expect(text).toContain('Bridge not comparable for this period')
@@ -186,7 +196,9 @@ test.describe('filters', () => {
     expect(newOnly).toContain('Condition')
   })
 
-  test('summarises a filter it cannot apply rather than ignoring it', async ({ page }) => {
+  test('summarises a filter it cannot apply rather than ignoring it', async ({
+    page,
+  }) => {
     await gotoRendered(page, `${ROUTE}?source=LDS-001`)
     const text = await mainTextContent(page)
     expect(text).toMatch(/Lead source/i)
@@ -232,11 +244,14 @@ test.describe('without JavaScript', () => {
 
 test.describe('responsive presentation', () => {
   for (const viewport of DASHBOARD_VIEWPORTS) {
-    test(`does not scroll horizontally at ${String(viewport.width)}px`, async ({ page }) => {
+    test(`does not scroll horizontally at ${String(viewport.width)}px`, async ({
+      page,
+    }) => {
       await page.setViewportSize(viewport)
       await gotoRendered(page, ROUTE)
       const overflow = await page.evaluate(
-        () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+        () =>
+          document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
       )
       expect(overflow).toBe(false)
     })

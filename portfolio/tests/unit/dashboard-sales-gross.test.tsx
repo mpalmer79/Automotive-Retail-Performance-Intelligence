@@ -15,7 +15,11 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { exactToString, parseExact, divideExact } from '../../src/lib/dashboard/decimal.ts'
+import {
+  exactToString,
+  parseExact,
+  divideExact,
+} from '../../src/lib/dashboard/decimal.ts'
 import { DEFAULT_FILTERS, SALES_GROSS_SUPPORT } from '../../src/lib/dashboard/filters.ts'
 import { dashboardManifest } from '../../src/lib/dashboard/data.ts'
 import { buildSalesGross, type Figure } from '../../src/lib/dashboard/sales-gross.ts'
@@ -55,7 +59,8 @@ function manifestTotal(key: string): { numerator: string; denominator: string | 
   const entry = totals[key]
   if (entry === undefined) throw new Error(`manifest has no reconciliation total ${key}`)
   const numerator = entry.total ?? entry.numerator
-  if (numerator === undefined) throw new Error(`${key} publishes neither total nor numerator`)
+  if (numerator === undefined)
+    throw new Error(`${key} publishes neither total nor numerator`)
   return { numerator, denominator: entry.denominator ?? null }
 }
 
@@ -326,17 +331,16 @@ describe('the deal-level distribution', () => {
     )
   })
 
-  it("has a mean equal to the governed total gross per retail unit", () => {
+  it('has a mean equal to the governed total gross per retail unit', () => {
     /*
      * Over a retail population these are the same quantity by definition. They are
      * computed by two independent paths -- one sums a store-day column, the other
      * averages deal-grain rows -- so their agreement is evidence, not tautology.
      */
     const pvr = Number(value(metric(view, 'total-pvr').figure.current))
-    expect(Number(view.distribution.mean ? exactToString(view.distribution.mean) : NaN)).toBeCloseTo(
-      pvr,
-      1
-    )
+    expect(
+      Number(view.distribution.mean ? exactToString(view.distribution.mean) : NaN)
+    ).toBeCloseTo(pvr, 1)
   })
 
   it('has a median below its mean, which is why both are shown', () => {

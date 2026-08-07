@@ -672,15 +672,40 @@ class TestDeterminism:
 
         assert _export(connection, tmp_path).manifest["dataset_version"] == 2
 
+    #: Where a dataset sorts by an ORDERING PROXY rather than by the business-key column
+    #: itself: ``dataset -> {sort column: the key column it orders}``.
+    #:
+    #: Both entries exist because the business-key column is a label whose alphabetical
+    #: order is not its meaningful order. ``age_bucket`` would sort "0-30", "31-60",
+    #: "61-90", "91-120", "Over 120" as text; ``component_code`` would sort the bridge
+    #: "back_pvr", "front_pvr", "volume", which reverses a decomposition whose reading
+    #: order -- volume first, priced at the baseline rate, then the rate effects -- is
+    #: part of what it means.
+    #:
+    #: A proxy is only acceptable when it is one-to-one with the column it stands for,
+    #: which the test below asserts rather than assumes.
+    ORDERING_PROXIES = {
+        "inventory-aging": {"age_bucket_sort_order": "age_bucket"},
+        "gross-change-bridge": {"component_ordinal": "component_code"},
+    }
+
     def test_every_dataset_declares_a_sort_that_matches_its_business_key(self) -> None:
         """Deterministic ordering must uniquely order the rows, not merely group them."""
         for entry in spec.DATASETS:
             keys = set(entry.business_key)
             sort = set(entry.sort_keys)
-            # age_bucket_sort_order stands in for age_bucket, which it orders correctly.
-            if entry.name == "inventory-aging":
-                sort.add("age_bucket")
+            for proxy, stands_for in self.ORDERING_PROXIES.get(entry.name, {}).items():
+                assert proxy in sort, f"{entry.name} does not sort by its proxy {proxy}"
+                sort.add(stands_for)
             assert keys <= sort, f"{entry.name} sorts by {sort}, which does not fix {keys}"
+
+    def test_every_ordering_proxy_is_declared_by_the_dataset_it_names(self) -> None:
+        """A proxy that is not a column of its own dataset would silently do nothing."""
+        for name, proxies in self.ORDERING_PROXIES.items():
+            columns = set(spec.dataset(name).column_names)
+            for proxy, stands_for in proxies.items():
+                assert proxy in columns, f"{name} declares no column {proxy}"
+                assert stands_for in columns, f"{name} declares no column {stands_for}"
 
 
 # =======================================================================================
@@ -1082,6 +1107,18 @@ class TestPrivacyControls:
         structural instead: no dataset here declares a vehicle identifier of any spelling,
         so there is no field for one to arrive in, and the portfolio generator additionally
         scans its output bytes for a VIN-shaped token.
+
+        THIS LIST CHANGED WITH ``DASH.3``, AND THAT IS THE MECHANISM WORKING. At ``DASH.1``
+        it also prohibited ``sale_id``, because no deal-grain dataset existed and the
+        cheapest protection was to leave no field for one to arrive in. ``DASH.3`` ships
+        that dataset, and ``sale_id`` is its business key, its route parameter and the only
+        identity it publishes (``DEAL_JACKET_SPEC.md`` section 1).
+
+        So the rule is narrowed rather than dropped, and the narrowing is asserted below:
+        ``sale_id`` is permitted ONLY on a deal-grain dataset and ONLY as its business key.
+        Every VIN spelling, every stock-number spelling and every surrogate key stays
+        prohibited everywhere, ``sale_key`` included -- a URL carrying a surrogate would
+        leak warehouse load order and break when the fact is rebuilt.
         """
         prohibited = {
             "vin",
@@ -1091,12 +1128,23 @@ class TestPrivacyControls:
             "vehicle_key",
             "stock_number",
             "stock_reference",
-            "sale_id",
             "sale_key",
         }
         for entry in spec.DATASETS:
             offending = sorted(prohibited & set(entry.column_names))
             assert offending == [], f"{entry.name} declares {offending}"
+
+        #: The deal-grain datasets, which are the only ones that may publish ``sale_id``.
+        deal_grain = {"deal-explorer"}
+        for entry in spec.DATASETS:
+            if "sale_id" not in entry.column_names:
+                continue
+            assert entry.name in deal_grain, (
+                f"{entry.name} declares sale_id but is not a deal-grain dataset"
+            )
+            assert entry.business_key == ("sale_id",), (
+                f"{entry.name} declares sale_id as something other than its business key"
+            )
         # `campaigns.target_vehicle_category` names a campaign's audience (New / Used /
         # Both), not a vehicle. Kept as a reminder that this test is about identifiers,
         # not about the word.

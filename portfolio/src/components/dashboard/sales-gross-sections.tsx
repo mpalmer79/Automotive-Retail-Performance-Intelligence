@@ -260,7 +260,10 @@ export function MixSection({ mixes }: { readonly mixes: readonly MixBreakdown[] 
                 <th scope="col" className="py-1.5 pr-2 font-medium text-ink-muted">
                   Segment
                 </th>
-                <th scope="col" className="py-1.5 pr-2 text-right font-medium text-ink-muted">
+                <th
+                  scope="col"
+                  className="py-1.5 pr-2 text-right font-medium text-ink-muted"
+                >
                   Units
                 </th>
                 <th scope="col" className="py-1.5 text-right font-medium text-ink-muted">
@@ -270,7 +273,10 @@ export function MixSection({ mixes }: { readonly mixes: readonly MixBreakdown[] 
             </thead>
             <tbody>
               {mix.rows.map((row) => (
-                <tr key={row.key} className="border-b border-line-subtle/60 last:border-0">
+                <tr
+                  key={row.key}
+                  className="border-b border-line-subtle/60 last:border-0"
+                >
                   <th scope="row" className="py-1.5 pr-2 font-normal text-ink-secondary">
                     {row.label}
                     {row.share ? (
@@ -278,7 +284,9 @@ export function MixSection({ mixes }: { readonly mixes: readonly MixBreakdown[] 
                     ) : null}
                   </th>
                   <td className="numeric py-1.5 pr-2 text-right text-ink">{row.units}</td>
-                  <td className="numeric py-1.5 text-right text-ink">{row.grossDisplay}</td>
+                  <td className="numeric py-1.5 text-right text-ink">
+                    {row.grossDisplay}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -318,14 +326,20 @@ export function ContributionSection({
           </dt>
           <dd className="numeric text-2xl font-semibold text-ink">{figureText(front)}</dd>
           <dd className="text-xs text-ink-faint">
-            {frontShare === null ? 'Share undefined on a zero total.' : `${frontShare} of total gross`}
+            {frontShare === null
+              ? 'Share undefined on a zero total.'
+              : `${frontShare} of total gross`}
           </dd>
         </div>
         <div className="flex flex-col gap-1">
-          <dt className="text-xs uppercase tracking-wide text-ink-muted">Back-end gross</dt>
+          <dt className="text-xs uppercase tracking-wide text-ink-muted">
+            Back-end gross
+          </dt>
           <dd className="numeric text-2xl font-semibold text-ink">{figureText(back)}</dd>
           <dd className="text-xs text-ink-faint">
-            {backShare === null ? 'Share undefined on a zero total.' : `${backShare} of total gross`}
+            {backShare === null
+              ? 'Share undefined on a zero total.'
+              : `${backShare} of total gross`}
           </dd>
         </div>
       </dl>
@@ -372,9 +386,10 @@ export function DistributionSection({
         </Text>
         <Text size="xs" tone="faint" className="pt-2">
           The median is computed from the deal-level values themselves, never from store
-          medians: an order statistic cannot be recomputed from an aggregate. The mean over
-          a retail population is total gross divided by retail units, which is KPI-GRS-006
-          by definition, so it is the same figure the performance summary shows.
+          medians: an order statistic cannot be recomputed from an aggregate. The mean
+          over a retail population is total gross divided by retail units, which is
+          KPI-GRS-006 by definition, so it is the same figure the performance summary
+          shows.
         </Text>
       </div>
     </div>
@@ -472,8 +487,8 @@ export function BridgeSection({ bridge }: { readonly bridge: BridgeState }) {
           The bridge attributes change under a documented arithmetic order: volume priced
           at the comparison period rate, then each rate change valued at the current
           period volume. It is an attribution, not a cause. Nothing here identifies why
-          volume or rate moved, and no person, department, inventory position or
-          marketing spend is implicated by it.
+          volume or rate moved, and no person, department, inventory position or marketing
+          spend is implicated by it.
         </Text>
       </div>
     </div>

@@ -112,7 +112,9 @@ test.describe('the index shows the deal, not the customer', () => {
     expect(text).toContain('loss')
   })
 
-  test('shows a walk-in deal as walk-in rather than as missing data', async ({ page }) => {
+  test('shows a walk-in deal as walk-in rather than as missing data', async ({
+    page,
+  }) => {
     await gotoRendered(page, ROUTE)
     const text = await mainTextContent(page)
     expect(text).toMatch(/Walk-in or unattributed/i)
@@ -133,7 +135,9 @@ test.describe('sorting is links, and works without JavaScript', () => {
     expect(await sorted.count()).toBeGreaterThanOrEqual(1)
   })
 
-  test('every sortable header is an anchor carrying a real sort state', async ({ page }) => {
+  test('every sortable header is an anchor carrying a real sort state', async ({
+    page,
+  }) => {
     await gotoRendered(page, ROUTE)
     const hrefs = await page
       .locator('thead a')
@@ -235,7 +239,9 @@ test.describe('search', () => {
     expect(text).toMatch(/No finalized transaction matches this combination/i)
   })
 
-  test('reports an unusable route parameter and keeps the page intact', async ({ page }) => {
+  test('reports an unusable route parameter and keeps the page intact', async ({
+    page,
+  }) => {
     await gotoRendered(page, `${ROUTE}?sort=nonsense&page=0`)
     const text = await mainTextContent(page)
     expect(text).toMatch(/was not usable and was reset/i)
@@ -246,9 +252,9 @@ test.describe('search', () => {
 test.describe('no dead drill-through link ships before DASH.4', () => {
   test('renders the deal id as text and links to no jacket route', async ({ page }) => {
     await gotoRendered(page, ROUTE)
-    const hrefs = await page.locator('main a').evaluateAll((nodes) =>
-      nodes.map((node) => node.getAttribute('href') ?? '')
-    )
+    const hrefs = await page
+      .locator('main a')
+      .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('href') ?? ''))
     for (const href of hrefs) {
       expect(
         /^\/dashboard\/deals\/[^?#]/.test(href),
@@ -268,7 +274,9 @@ test.describe('no dead drill-through link ships before DASH.4', () => {
 })
 
 test.describe('responsive presentation', () => {
-  test('shows the table at 1280px and the cards below it, never both', async ({ page }) => {
+  test('shows the table at 1280px and the cards below it, never both', async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: 1440, height: 900 })
     await gotoRendered(page, ROUTE)
     await expect(page.locator('main table').first()).toBeVisible()
@@ -284,11 +292,14 @@ test.describe('responsive presentation', () => {
   })
 
   for (const viewport of DASHBOARD_VIEWPORTS) {
-    test(`does not scroll horizontally at ${String(viewport.width)}px`, async ({ page }) => {
+    test(`does not scroll horizontally at ${String(viewport.width)}px`, async ({
+      page,
+    }) => {
       await page.setViewportSize(viewport)
       await gotoRendered(page, ROUTE)
       const overflow = await page.evaluate(
-        () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+        () =>
+          document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
       )
       expect(overflow).toBe(false)
     })
@@ -298,7 +309,9 @@ test.describe('responsive presentation', () => {
 test.describe('without JavaScript', () => {
   test.use({ javaScriptEnabled: false })
 
-  test('renders the index, the position and working navigation links', async ({ page }) => {
+  test('renders the index, the position and working navigation links', async ({
+    page,
+  }) => {
     await page.goto(ROUTE)
     const text = (await page.locator('main').textContent()) ?? ''
     expect(text).toMatch(/Showing 1 to 25 of \d+ deals/)

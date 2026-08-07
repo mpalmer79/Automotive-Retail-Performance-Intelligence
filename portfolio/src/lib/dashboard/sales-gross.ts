@@ -53,11 +53,7 @@ import {
   sumExact,
 } from './decimal'
 import type { DashboardFilters } from './filters'
-import {
-  activeFilterChips,
-  SALES_GROSS_SUPPORT,
-  type ActiveFilterChip,
-} from './filters'
+import { activeFilterChips, SALES_GROSS_SUPPORT, type ActiveFilterChip } from './filters'
 import {
   dashboardCalendar,
   dashboardManifest,
@@ -78,7 +74,12 @@ import {
   formatPerUnitExact,
   formatRatioAsPercent,
 } from './format'
-import { calendarWindow, resolvePeriod, type PeriodContext, type ResolvedPeriod } from './periods'
+import {
+  calendarWindow,
+  resolvePeriod,
+  type PeriodContext,
+  type ResolvedPeriod,
+} from './periods'
 import { grossChangeBridgeRows, salesGrossTrendRows } from './sales-gross-data'
 
 /* -------------------------------------------------------------------------- */
@@ -621,10 +622,17 @@ function buildBridgeStatement(
   components: readonly BridgeComponent[],
   monthLabel: string
 ): string {
-  const direction = isNegative(change) ? 'decreased' : isZero(change) ? 'was unchanged' : 'increased'
+  const direction = isNegative(change)
+    ? 'decreased'
+    : isZero(change)
+      ? 'was unchanged'
+      : 'increased'
   const magnitude = formatCurrencyExact(absolute(change))
   const parts = components
-    .map((component) => `${component.display} to ${BRIDGE_PHRASE[component.code] ?? component.label}`)
+    .map(
+      (component) =>
+        `${component.display} to ${BRIDGE_PHRASE[component.code] ?? component.label}`
+    )
     .join(', ')
   const opening = isZero(change)
     ? `Total gross was unchanged against the month before.`
@@ -796,32 +804,86 @@ export function buildSalesGross(filters: DashboardFilters): SalesGrossView {
       : trendRowsFor(trend, scope.ids, periodContext.comparison)
 
   const performance: PerformanceMetric[] = [
-    metric('retail-units', 'Retail units', 'KPI-SLS-001', 'units', current, comparison, (rows) =>
-      countFigure(rows, unitsColumn)
+    metric(
+      'retail-units',
+      'Retail units',
+      'KPI-SLS-001',
+      'units',
+      current,
+      comparison,
+      (rows) => countFigure(rows, unitsColumn)
     ),
-    metric('new-units', 'New units', 'KPI-SLS-002', 'units', current, comparison, (rows) =>
-      countFigure(rows, 'new_units_sold')
+    metric(
+      'new-units',
+      'New units',
+      'KPI-SLS-002',
+      'units',
+      current,
+      comparison,
+      (rows) => countFigure(rows, 'new_units_sold')
     ),
-    metric('used-units', 'Used units', 'KPI-SLS-003', 'units', current, comparison, (rows) =>
-      countFigure(rows, 'used_units_sold')
+    metric(
+      'used-units',
+      'Used units',
+      'KPI-SLS-003',
+      'units',
+      current,
+      comparison,
+      (rows) => countFigure(rows, 'used_units_sold')
     ),
-    metric('front-gross', 'Front gross', 'KPI-GRS-001', 'USD', current, comparison, (rows) =>
-      currencyFigure(rows, frontColumn)
+    metric(
+      'front-gross',
+      'Front gross',
+      'KPI-GRS-001',
+      'USD',
+      current,
+      comparison,
+      (rows) => currencyFigure(rows, frontColumn)
     ),
-    metric('back-gross', 'Back gross', 'KPI-GRS-002', 'USD', current, comparison, (rows) =>
-      currencyFigure(rows, backColumn)
+    metric(
+      'back-gross',
+      'Back gross',
+      'KPI-GRS-002',
+      'USD',
+      current,
+      comparison,
+      (rows) => currencyFigure(rows, backColumn)
     ),
-    metric('total-gross', 'Total gross', 'KPI-GRS-003', 'USD', current, comparison, (rows) =>
-      currencyFigure(rows, totalColumn)
+    metric(
+      'total-gross',
+      'Total gross',
+      'KPI-GRS-003',
+      'USD',
+      current,
+      comparison,
+      (rows) => currencyFigure(rows, totalColumn)
     ),
-    metric('front-pvr', 'Front PVR', 'KPI-GRS-004', 'USD per unit', current, comparison, (rows) =>
-      rateFigure(rows, frontColumn, unitsColumn)
+    metric(
+      'front-pvr',
+      'Front PVR',
+      'KPI-GRS-004',
+      'USD per unit',
+      current,
+      comparison,
+      (rows) => rateFigure(rows, frontColumn, unitsColumn)
     ),
-    metric('back-pvr', 'Back PVR', 'KPI-GRS-005', 'USD per unit', current, comparison, (rows) =>
-      rateFigure(rows, backColumn, unitsColumn)
+    metric(
+      'back-pvr',
+      'Back PVR',
+      'KPI-GRS-005',
+      'USD per unit',
+      current,
+      comparison,
+      (rows) => rateFigure(rows, backColumn, unitsColumn)
     ),
-    metric('total-pvr', 'Total PVR', 'KPI-GRS-006', 'USD per unit', current, comparison, (rows) =>
-      rateFigure(rows, totalColumn, unitsColumn)
+    metric(
+      'total-pvr',
+      'Total PVR',
+      'KPI-GRS-006',
+      'USD per unit',
+      current,
+      comparison,
+      (rows) => rateFigure(rows, totalColumn, unitsColumn)
     ),
   ]
 
@@ -844,9 +906,13 @@ export function buildSalesGross(filters: DashboardFilters): SalesGrossView {
     front,
     back,
     frontShare:
-      front.kind === 'value' && total.kind === 'value' ? shareOf(front.value, total.value) : null,
+      front.kind === 'value' && total.kind === 'value'
+        ? shareOf(front.value, total.value)
+        : null,
     backShare:
-      back.kind === 'value' && total.kind === 'value' ? shareOf(back.value, total.value) : null,
+      back.kind === 'value' && total.kind === 'value'
+        ? shareOf(back.value, total.value)
+        : null,
   }
 
   const discounts: PerformanceMetric[] = [
@@ -935,10 +1001,12 @@ function metric(
   compute: (rows: readonly DashboardRow[]) => Figure
 ): PerformanceMetric {
   const currentFigure = compute(current)
-  const comparisonFigure = comparison.length === 0 ? { kind: 'no-rows' as const } : compute(comparison)
+  const comparisonFigure =
+    comparison.length === 0 ? { kind: 'no-rows' as const } : compute(comparison)
   const format =
     unit === 'units'
-      ? (value: Exact) => `${isNegative(value) ? '' : '+'}${formatCountExact(value)} units`
+      ? (value: Exact) =>
+          `${isNegative(value) ? '' : '+'}${formatCountExact(value)} units`
       : unit === 'USD per unit'
         ? (value: Exact) => formatPerUnitDifference(value)
         : (value: Exact) => formatCurrencyDifference(value)

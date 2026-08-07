@@ -482,14 +482,14 @@ deliberately a DEEP page of the largest possible result set — every deal in th
 window, sorted by gross, page 12 of 26 — because "page one is cheap" is not the claim
 worth making about a paginated index.
 
-| Route                                                                | HTML     | JS       | Total    |
-| -------------------------------------------------------------------- | -------: | -------: | -------: |
-| `/dashboard`                                                         | 111.3 kB | 164.0 kB | 405.2 kB |
-| `/dashboard/sales-gross`                                             |  59.3 kB | 164.0 kB | 353.1 kB |
-| `/dashboard/sales-gross?store=GSA-001&period=2025-11&condition=New`  |  57.1 kB | 164.0 kB | 350.9 kB |
-| `/dashboard/deals`                                                   |  55.8 kB | 164.0 kB | 349.6 kB |
-| `/dashboard/deals?period=…&sort=total_gross&dir=desc&page=12`        |  56.1 kB | 164.0 kB | 349.9 kB |
-| `/case-study` (the lightest route: shell only)                       |  26.3 kB | 162.3 kB | 318.5 kB |
+| Route                                                               |     HTML |       JS |    Total |
+| ------------------------------------------------------------------- | -------: | -------: | -------: |
+| `/dashboard`                                                        | 111.3 kB | 164.0 kB | 405.2 kB |
+| `/dashboard/sales-gross`                                            |  59.3 kB | 164.0 kB | 353.1 kB |
+| `/dashboard/sales-gross?store=GSA-001&period=2025-11&condition=New` |  57.1 kB | 164.0 kB | 350.9 kB |
+| `/dashboard/deals`                                                  |  55.8 kB | 164.0 kB | 349.6 kB |
+| `/dashboard/deals?period=…&sort=total_gross&dir=desc&page=12`       |  56.1 kB | 164.0 kB | 349.9 kB |
+| `/case-study` (the lightest route: shell only)                      |  26.3 kB | 162.3 kB | 318.5 kB |
 
 **Two new routes, no new client JavaScript.** All three console routes report the same
 164.0 kB of script, and `/case-study` — the site's shell with no interactive content —

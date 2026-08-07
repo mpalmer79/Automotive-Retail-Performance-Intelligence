@@ -30,5 +30,8 @@ export function salesGrossTrendRows(): readonly DashboardRow[] {
 
 /** Every store-month-component row of the gross change bridge. */
 export function grossChangeBridgeRows(): readonly DashboardRow[] {
-  return decodeDataset('gross-change-bridge', bridgeFile as unknown as DashboardDatasetFile)
+  return decodeDataset(
+    'gross-change-bridge',
+    bridgeFile as unknown as DashboardDatasetFile
+  )
 }

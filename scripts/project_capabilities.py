@@ -499,9 +499,7 @@ def derive_evidence() -> DerivedEvidence:
         if p.name[0].isdigit() and "scope" not in p.name and not _in_lane(p)
     ]
     lane_reporting_scripts = [
-        p
-        for p in all_reporting_scripts
-        if f"{p.parent.name}/{p.name}" in lane_files
+        p for p in all_reporting_scripts if f"{p.parent.name}/{p.name}" in lane_files
     ]
 
     return DerivedEvidence(

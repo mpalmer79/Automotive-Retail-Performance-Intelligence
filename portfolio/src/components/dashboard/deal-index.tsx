@@ -23,7 +23,12 @@
  * page says where the drill-through is going and which increment delivers it.
  */
 import { Text } from '@/components/ui/typography'
-import type { DealRow, DealListState, DealSortKey, SortDirection } from '@/lib/dashboard/deals'
+import type {
+  DealRow,
+  DealListState,
+  DealSortKey,
+  SortDirection,
+} from '@/lib/dashboard/deals'
 import { listStateQuery } from '@/lib/dashboard/deals'
 import { cx } from '@/lib/utils'
 
@@ -62,12 +67,20 @@ function sortHref(
       : 'desc'
   // Sorting always returns to page one: staying on page 7 of a different order shows
   // a reader rows they did not ask for and cannot explain.
-  const listQuery = listStateQuery({ ...state, sort: key, direction: nextDirection, page: 1 })
+  const listQuery = listStateQuery({
+    ...state,
+    sort: key,
+    direction: nextDirection,
+    page: 1,
+  })
   const parts = [filterQuery, listQuery].filter((part) => part !== '')
   return parts.length === 0 ? route : `${route}?${parts.join('&')}`
 }
 
-function ariaSort(state: DealListState, key: DealSortKey): 'ascending' | 'descending' | 'none' {
+function ariaSort(
+  state: DealListState,
+  key: DealSortKey
+): 'ascending' | 'descending' | 'none' {
   if (state.sort !== key) return 'none'
   return state.direction === 'asc' ? 'ascending' : 'descending'
 }
@@ -180,16 +193,23 @@ export function DealIndex({ route, filterQuery, state, rows }: DealIndexProps) {
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={row.saleId} className="border-b border-line-subtle/60 last:border-0">
+              <tr
+                key={row.saleId}
+                className="border-b border-line-subtle/60 last:border-0"
+              >
                 <th scope="row" className="numeric py-2 pr-3 font-normal text-ink">
                   {row.saleId}
                 </th>
                 <td className="py-2 pr-3 text-ink-secondary">{row.saleDateDisplay}</td>
                 <td className="py-2 pr-3 text-ink-secondary">{row.storeName}</td>
-                <td className="numeric py-2 pr-3 text-ink-secondary">{row.vehicleCode}</td>
+                <td className="numeric py-2 pr-3 text-ink-secondary">
+                  {row.vehicleCode}
+                </td>
                 <td className="py-2 pr-3 text-ink">
                   {row.vehicle}
-                  <span className="ml-1.5 text-xs text-ink-faint">{row.conditionType}</span>
+                  <span className="ml-1.5 text-xs text-ink-faint">
+                    {row.conditionType}
+                  </span>
                 </td>
                 <td className="py-2 pr-3 text-ink-secondary">
                   {row.saleType}
