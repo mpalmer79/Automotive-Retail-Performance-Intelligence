@@ -173,6 +173,10 @@ COPY sql ./sql
 # subtract the lane from the MVP counts, so without this file the build would count
 # six facts and thirty-four reporting views and fail its own drift assertions.
 COPY src/arpi/inventory/spec.py ./src/arpi/inventory/spec.py
+# The same declaration for the dashboard program's own reporting views (DASH.3).
+# Without it the build counts thirty-one MVP reporting views against a Power BI
+# baseline that measured twenty-eight, and fails its own drift assertion.
+COPY src/arpi/dashboard/contract.py ./src/arpi/dashboard/contract.py
 
 # --- Inventory evidence, read by generate-inventory-data.ts ----------------
 #

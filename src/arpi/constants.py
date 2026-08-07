@@ -742,9 +742,31 @@ INVENTORY_LISTING_VIEWS: Final[tuple[str, ...]] = (
     "vw_vehicle_listing_change",
 )
 
+#: The dashboard-program views, added by the Dealer Operations Command Center increments.
+#:
+#: Held separate from :data:`MVP_REPORTING_VIEWS` for the same reason
+#: :data:`INVENTORY_LISTING_VIEWS` is: that tuple is what
+#: ``powerbi/validation/sql_baseline_metadata.json`` describes and what the semantic
+#: model binds to, and folding new views into it would silently change a number measured
+#: against a specific baseline run -- while the semantic model, which is awaiting
+#: real-engine validation, gained nothing.
+#:
+#: These views read the same warehouse facts as the MVP surface and add no new fact.
+#: They exist because the console needs volume and gross on one row with their condition
+#: components (``vw_sales_gross_trend``), a decomposition of gross change whose
+#: arithmetic order is fixed in SQL rather than in TypeScript
+#: (``vw_gross_change_bridge``), and a public-safe deal-grain projection
+#: (``vw_deal_explorer``). ADR-0013 condition 2 is what makes them views rather than
+#: console code.
+DASHBOARD_PROGRAM_VIEWS: Final[tuple[str, ...]] = (
+    "vw_sales_gross_trend",
+    "vw_gross_change_bridge",
+    "vw_deal_explorer",
+)
+
 #: Every view the ``reporting`` schema is expected to contain, and nothing else.
 REPORTING_VIEWS: Final[tuple[str, ...]] = tuple(
-    sorted({*MVP_REPORTING_VIEWS, *INVENTORY_LISTING_VIEWS})
+    sorted({*MVP_REPORTING_VIEWS, *INVENTORY_LISTING_VIEWS, *DASHBOARD_PROGRAM_VIEWS})
 )
 
 # ---------------------------------------------------------------------------------------

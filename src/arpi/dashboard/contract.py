@@ -284,6 +284,54 @@ _AGE_BUCKETS: Final[tuple[str, ...]] = ("0-30", "31-60", "61-90", "91-120", "Ove
 #: The reconciliation outcome vocabulary (``sql/08_validation/05_reconciliation_helpers.sql``).
 _RECONCILIATION_STATUSES: Final[tuple[str, ...]] = ("passed", "failed", "skipped")
 
+#: The SQL files that create the dashboard program's own reporting views.
+#:
+#: Declared here for the same reason ``INVENTORY_LANE_SQL_FILES`` is declared in
+#: ``arpi.inventory.spec``: ``powerbi/validation/sql_baseline_metadata.json`` records
+#: that the SQL baseline was measured against 28 reporting views, and the portfolio's
+#: manifest generator counts the files in ``sql/05_reporting/`` to prove that claim is
+#: still true. A lane that is not part of the semantic model must therefore be
+#: subtractable from that count, or adding a view to it would look like drift in a
+#: number that has nothing to do with it.
+#:
+#: The generator READS this tuple rather than restating the list, because a second
+#: hand-written copy is exactly what would drift away from the first.
+DASHBOARD_LANE_SQL_FILES: Final[tuple[str, ...]] = (
+    "05_reporting/40_vw_sales_gross_trend.sql",
+    "05_reporting/41_vw_gross_change_bridge.sql",
+    "05_reporting/42_vw_deal_explorer.sql",
+)
+
+#: The vehicle condition vocabulary, exactly as ``warehouse.dim_vehicle`` constrains it.
+#: Distinct from :data:`_CONDITION_GROUPS`: a certified unit is its own condition and a
+#: Used condition *group*, and collapsing the two would lose the distinction the deal lane
+#: needs in order to show a Certified Retail deal as what it is.
+_VEHICLE_CONDITION_TYPES: Final[tuple[str, ...]] = ("New", "Used", "Certified")
+
+#: The sale-type vocabulary, exactly as ``warehouse.fact_vehicle_sale`` constrains it.
+_SALE_TYPES: Final[tuple[str, ...]] = (
+    "New Retail",
+    "Used Retail",
+    "Certified Retail",
+    "Lease",
+    "Wholesale",
+    "Dealer Trade",
+)
+
+#: The bridge's three components. A fourth (a mix effect) may not be added until its
+#: position in the sequence and its exact reconciliation are documented, so the closed
+#: enumeration is the guard: an undeclared component fails the export rather than
+#: appearing in a decomposition whose remaining terms silently changed meaning.
+_BRIDGE_COMPONENTS: Final[tuple[str, ...]] = ("volume", "front_pvr", "back_pvr")
+
+#: Why a bridge row carries no decomposition. Two distinct facts, never collapsed: the
+#: comparison month may precede the reporting window, or it may be inside it and have sold
+#: nothing.
+_BRIDGE_NOT_COMPARABLE_REASONS: Final[tuple[str, ...]] = (
+    "comparison-period-outside-window",
+    "comparison-period-no-retail-units",
+)
+
 
 # ---------------------------------------------------------------------------------------
 # Key resolution helpers
@@ -1268,6 +1316,247 @@ _PIPELINE_RUN = DatasetContract(
     ),
 )
 
+# ---------------------------------------------------------------------------------------
+# DASH.3 datasets
+# ---------------------------------------------------------------------------------------
+# Three datasets over the dashboard-program views. They add no measure the reporting layer
+# did not already own: the trend dataset is volume and gross on one row with their
+# condition components, the bridge dataset is a decomposition whose arithmetic order is
+# fixed in SQL, and the deal dataset is the first deal-grain export in the project.
+
+_SALES_GROSS_TREND = DatasetContract(
+    name="sales-gross-trend",
+    source_view="vw_sales_gross_trend",
+    grain="One row per store per sale date on which at least one transaction was finalized.",
+    business_key=("dealership_id", "sale_date"),
+    date_basis="sale date",
+    sort_keys=("dealership_id", "sale_date"),
+    join_views=("vw_dealership", "vw_calendar"),
+    kpi_ids=(
+        "KPI-SLS-001",
+        "KPI-SLS-002",
+        "KPI-SLS-003",
+        "KPI-GRS-001",
+        "KPI-GRS-002",
+        "KPI-GRS-003",
+        "KPI-GRS-004",
+        "KPI-GRS-005",
+        "KPI-GRS-006",
+    ),
+    columns=(
+        _store_id(),
+        _resolved_date("sale_date", "sale_date", basis="sale date"),
+        _measure("units_sold_all_types", "integer", unit="units", view="vw_sales_gross_trend"),
+        _measure("retail_units_sold", "integer", unit="units", view="vw_sales_gross_trend"),
+        _measure("new_units_sold", "integer", unit="units", view="vw_sales_gross_trend"),
+        _measure("used_units_sold", "integer", unit="units", view="vw_sales_gross_trend"),
+        _measure("wholesale_units", "integer", unit="units", view="vw_sales_gross_trend"),
+        _measure("dealer_trade_units", "integer", unit="units", view="vw_sales_gross_trend"),
+        _measure("lease_units", "integer", unit="units", view="vw_sales_gross_trend"),
+        _measure("certified_retail_units", "integer", unit="units", view="vw_sales_gross_trend"),
+        _measure("retail_sale_price_total", "currency", unit="USD", view="vw_sales_gross_trend"),
+        _measure("front_end_gross", "currency", unit="USD", view="vw_sales_gross_trend"),
+        _measure("back_end_gross", "currency", unit="USD", view="vw_sales_gross_trend"),
+        _measure("total_gross", "currency", unit="USD", view="vw_sales_gross_trend"),
+        _measure("front_end_gross_all_types", "currency", unit="USD", view="vw_sales_gross_trend"),
+        _measure("back_end_gross_all_types", "currency", unit="USD", view="vw_sales_gross_trend"),
+        _measure("total_gross_all_types", "currency", unit="USD", view="vw_sales_gross_trend"),
+        _measure("new_front_end_gross", "currency", unit="USD", view="vw_sales_gross_trend"),
+        _measure("new_back_end_gross", "currency", unit="USD", view="vw_sales_gross_trend"),
+        _measure("new_total_gross", "currency", unit="USD", view="vw_sales_gross_trend"),
+        _measure("used_front_end_gross", "currency", unit="USD", view="vw_sales_gross_trend"),
+        _measure("used_back_end_gross", "currency", unit="USD", view="vw_sales_gross_trend"),
+        _measure("used_total_gross", "currency", unit="USD", view="vw_sales_gross_trend"),
+        _measure(
+            "front_gross_per_retail_unit",
+            "exact",
+            nullable=True,
+            unit="USD per unit",
+            precision=2,
+            view="vw_sales_gross_trend",
+        ),
+        _measure(
+            "back_gross_per_retail_unit",
+            "exact",
+            nullable=True,
+            unit="USD per unit",
+            precision=2,
+            view="vw_sales_gross_trend",
+        ),
+        _measure(
+            "total_gross_per_retail_unit",
+            "exact",
+            nullable=True,
+            unit="USD per unit",
+            precision=2,
+            view="vw_sales_gross_trend",
+        ),
+        _measure(
+            "negative_front_gross_units", "integer", unit="units", view="vw_sales_gross_trend"
+        ),
+        _measure(
+            "discount_from_original_total", "currency", unit="USD", view="vw_sales_gross_trend"
+        ),
+        _measure("discount_from_final_total", "currency", unit="USD", view="vw_sales_gross_trend"),
+        _measure("discount_from_msrp_total", "currency", unit="USD", view="vw_sales_gross_trend"),
+        _measure("msrp_eligible_units", "integer", unit="units", view="vw_sales_gross_trend"),
+    ),
+    notes=(
+        "The condition breakdown is columns, not rows: new_* + used_* equals the retail total "
+        "on every row, so the store-day grain is never inflated by a dimension. lease_units and "
+        "certified_retail_units are sale-type mix components already counted inside "
+        "retail_units_sold, not additional units, and summing them with it would double-count. "
+        "discount_from_msrp_total divides by msrp_eligible_units and never by retail_units_sold, "
+        "because a used unit legitimately has no MSRP."
+    ),
+)
+
+_GROSS_CHANGE_BRIDGE = DatasetContract(
+    name="gross-change-bridge",
+    source_view="vw_gross_change_bridge",
+    grain="One row per store per comparison-period pair per bridge component.",
+    business_key=("dealership_id", "month_start_date", "component_code"),
+    date_basis="sale date, aggregated to calendar month",
+    sort_keys=("dealership_id", "month_start_date", "component_ordinal"),
+    join_views=("vw_dealership",),
+    kpi_ids=("KPI-GRS-003", "KPI-GRS-004", "KPI-GRS-005", "KPI-GRS-006"),
+    columns=(
+        _store_id(),
+        _attribute("month_start_date", "date", view="vw_gross_change_bridge"),
+        _attribute("comparison_month_start_date", "date", view="vw_gross_change_bridge"),
+        _measure("component_ordinal", "integer", view="vw_gross_change_bridge"),
+        _attribute(
+            "component_code",
+            "string",
+            view="vw_gross_change_bridge",
+            enumeration=_BRIDGE_COMPONENTS,
+        ),
+        _attribute("component_label", "string", view="vw_gross_change_bridge"),
+        _measure("retail_units_sold", "integer", unit="units", view="vw_gross_change_bridge"),
+        _measure(
+            "comparison_retail_units_sold", "integer", unit="units", view="vw_gross_change_bridge"
+        ),
+        _measure("front_end_gross", "currency", unit="USD", view="vw_gross_change_bridge"),
+        _measure(
+            "comparison_front_end_gross", "currency", unit="USD", view="vw_gross_change_bridge"
+        ),
+        _measure("back_end_gross", "currency", unit="USD", view="vw_gross_change_bridge"),
+        _measure(
+            "comparison_back_end_gross", "currency", unit="USD", view="vw_gross_change_bridge"
+        ),
+        _measure("total_gross", "currency", unit="USD", view="vw_gross_change_bridge"),
+        _measure("comparison_total_gross", "currency", unit="USD", view="vw_gross_change_bridge"),
+        _measure("total_gross_change", "currency", unit="USD", view="vw_gross_change_bridge"),
+        _attribute("is_comparable", "boolean", view="vw_gross_change_bridge"),
+        _attribute(
+            "not_comparable_reason",
+            "string",
+            nullable=True,
+            view="vw_gross_change_bridge",
+            enumeration=_BRIDGE_NOT_COMPARABLE_REASONS,
+        ),
+        _measure(
+            "effect_numerator",
+            "currency",
+            nullable=True,
+            unit="USD x units",
+            view="vw_gross_change_bridge",
+        ),
+        _measure(
+            "effect_denominator",
+            "integer",
+            nullable=True,
+            unit="units",
+            view="vw_gross_change_bridge",
+        ),
+        _measure(
+            "effect_amount",
+            "exact",
+            nullable=True,
+            unit="USD",
+            precision=2,
+            view="vw_gross_change_bridge",
+        ),
+    ),
+    notes=(
+        "ATTRIBUTION UNDER A DOCUMENTED ORDER, NOT CAUSATION. The three effect_numerator values "
+        "for one store-month sum identically to effect_denominator * total_gross_change, in "
+        "exact arithmetic with no division on either side; that identity is what a consumer "
+        "must verify. effect_amount is the convenience quotient and carries the rounding "
+        "division implies, so three rounded amounts need not sum to a rounded "
+        "total_gross_change and a consumer displaying dollars must show the residual rather "
+        "than hiding it. A row with is_comparable false has NULL components and a populated "
+        "total_gross_change: the period change stays well defined when its decomposition is "
+        "not."
+    ),
+)
+
+_DEAL_EXPLORER = DatasetContract(
+    name="deal-explorer",
+    source_view="vw_deal_explorer",
+    grain="One row per finalized vehicle transaction.",
+    business_key=("sale_id",),
+    date_basis="sale date",
+    sort_keys=("sale_id",),
+    join_views=("vw_dealership",),
+    chunked=True,
+    kpi_ids=("KPI-SLS-001", "KPI-GRS-001", "KPI-GRS-002", "KPI-GRS-003", "KPI-INV-007"),
+    columns=(
+        _attribute("sale_id", "string", view="vw_deal_explorer"),
+        # sale_date must remain the FIRST date column: the portfolio transformer
+        # partitions a chunked dataset by the first one it finds, and the governed
+        # partition key is the sale month, never the delivery month.
+        _attribute("sale_date", "date", view="vw_deal_explorer"),
+        _attribute("delivery_date", "date", view="vw_deal_explorer"),
+        _store_id(),
+        _attribute("vehicle_code", "string", view="vw_deal_explorer"),
+        _measure("model_year", "integer", unit="year", view="vw_deal_explorer"),
+        _attribute("make", "string", view="vw_deal_explorer"),
+        _attribute("model_name", "string", view="vw_deal_explorer"),
+        _attribute("trim_level", "string", view="vw_deal_explorer"),
+        _attribute("vehicle_display", "string", view="vw_deal_explorer"),
+        _attribute("body_style", "string", view="vw_deal_explorer"),
+        _attribute(
+            "condition_type",
+            "string",
+            view="vw_deal_explorer",
+            enumeration=_VEHICLE_CONDITION_TYPES,
+        ),
+        _condition_group("vw_deal_explorer"),
+        _attribute("sale_type", "string", view="vw_deal_explorer", enumeration=_SALE_TYPES),
+        _attribute("is_retail", "boolean", view="vw_deal_explorer"),
+        _measure("sale_price", "currency", unit="USD", view="vw_deal_explorer"),
+        _measure("msrp", "currency", nullable=True, unit="USD", view="vw_deal_explorer"),
+        _measure("original_asking_price", "currency", unit="USD", view="vw_deal_explorer"),
+        _measure("final_asking_price", "currency", unit="USD", view="vw_deal_explorer"),
+        _measure("front_end_gross", "currency", unit="USD", view="vw_deal_explorer"),
+        _measure("back_end_gross", "currency", unit="USD", view="vw_deal_explorer"),
+        _measure("total_gross", "currency", unit="USD", view="vw_deal_explorer"),
+        _attribute("is_negative_front_gross", "boolean", view="vw_deal_explorer"),
+        _measure("days_in_inventory_at_sale", "integer", unit="days", view="vw_deal_explorer"),
+        _attribute("has_trade", "boolean", view="vw_deal_explorer"),
+        _attribute("is_lead_attributed", "boolean", view="vw_deal_explorer"),
+        _attribute("lead_source_code", "string", nullable=True, view="vw_deal_explorer"),
+        _attribute("lead_source_name", "string", nullable=True, view="vw_deal_explorer"),
+        _attribute("salesperson_code", "string", nullable=True, view="vw_deal_explorer"),
+        _attribute("desk_manager_code", "string", nullable=True, view="vw_deal_explorer"),
+        _attribute("finance_manager_code", "string", nullable=True, view="vw_deal_explorer"),
+    ),
+    notes=(
+        "The project's first deal-grain export, and the first chunked dataset whose business "
+        "key is not a date. Identity is the business code sale_id; the surrogate sale_key is "
+        "absent, so no URL can carry warehouse load order. Deliberately compact -- no "
+        "acquisition, reconditioning, pack, trade or finance amount appears, because an index "
+        "carrying them would ship the whole deal population's cost structure to render a list. "
+        "No customer attribute is exported at any grain, banded or otherwise, and staff appear "
+        "as synthetic employee codes with no name. lead_source_code is resolved through the "
+        "linked lead rather than through fact_vehicle_sale.lead_source_key, which the generator "
+        "never populates; is_lead_attributed distinguishes genuine walk-in business from "
+        "missing data. vehicle_code is NOT a stock number -- the model contains none -- and is "
+        "never captioned as one."
+    ),
+)
+
 #: Every dataset, in export order. This tuple is the allowlist.
 DATASETS: Final[tuple[DatasetContract, ...]] = (
     _STORES,
@@ -1285,6 +1574,9 @@ DATASETS: Final[tuple[DatasetContract, ...]] = (
     _APPOINTMENT_FUNNEL,
     _LEAD_RESPONSE,
     _MARKETING_PERFORMANCE,
+    _SALES_GROSS_TREND,
+    _GROSS_CHANGE_BRIDGE,
+    _DEAL_EXPLORER,
     _RECONCILIATION_STATUS,
     _PIPELINE_RUN,
 )

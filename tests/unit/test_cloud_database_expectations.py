@@ -28,6 +28,7 @@ if str(SCRIPTS) not in sys.path:
 import verify_cloud_database as verifier  # noqa: E402  (path set above)
 
 from arpi.constants import (  # noqa: E402
+    DASHBOARD_PROGRAM_VIEWS,
     INVENTORY_LISTING_VIEWS,
     MVP_REPORTING_VIEWS,
     REPORTING_VIEWS,
@@ -42,14 +43,20 @@ def test_the_listing_lane_view_count_matches_the_constant() -> None:
     assert len(INVENTORY_LISTING_VIEWS) == verifier.EXPECTED_LISTING_REPORTING_VIEW_COUNT
 
 
-def test_the_total_is_every_reporting_view_and_the_two_lanes_do_not_overlap() -> None:
+def test_the_dashboard_lane_view_count_matches_the_constant() -> None:
+    assert len(DASHBOARD_PROGRAM_VIEWS) == verifier.EXPECTED_DASHBOARD_REPORTING_VIEW_COUNT
+
+
+def test_the_total_is_every_reporting_view_and_the_three_lanes_do_not_overlap() -> None:
     """The sum has to be the whole schema, or the exact check is not exact.
 
-    Asserted against `REPORTING_VIEWS` rather than against the sum of the two lengths,
-    which would pass even if a view were declared in both registers.
+    Asserted against `REPORTING_VIEWS` rather than against the sum of the three lengths,
+    which would pass even if a view were declared in two registers.
     """
     assert len(REPORTING_VIEWS) == verifier.EXPECTED_REPORTING_VIEW_COUNT
     assert set(MVP_REPORTING_VIEWS) & set(INVENTORY_LISTING_VIEWS) == set()
+    assert set(MVP_REPORTING_VIEWS) & set(DASHBOARD_PROGRAM_VIEWS) == set()
+    assert set(INVENTORY_LISTING_VIEWS) & set(DASHBOARD_PROGRAM_VIEWS) == set()
 
 
 def test_the_reporting_view_count_matches_the_sql_that_creates_them() -> None:

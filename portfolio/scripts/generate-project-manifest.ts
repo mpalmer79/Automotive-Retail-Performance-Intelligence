@@ -372,6 +372,35 @@ function inLane(dir: string, name: string): boolean {
   return inventoryLaneSqlFiles.has(`${dir}/${name}`)
 }
 
+// The dashboard program's own reporting views, subtracted from the MVP count for the
+// same reason the listing lane is: `sql_baseline_metadata.json` records the surface the
+// SQL baseline and the semantic model were measured against, and a `DASH.*` view is not
+// part of it. Read from the Python declaration rather than restated here.
+const dashboardLaneSqlFiles = readDashboardLaneSqlFiles()
+
+function readDashboardLaneSqlFiles(): Set<string> {
+  const source = readText('src/arpi/dashboard/contract.py')
+  const block = /DASHBOARD_LANE_SQL_FILES[^=]*=\s*\(([\s\S]*?)\)/.exec(source)
+  if (!block) {
+    fail(
+      'src/arpi/dashboard/contract.py no longer declares DASHBOARD_LANE_SQL_FILES. The ' +
+        'manifest cannot tell the MVP reporting surface and the dashboard program lane ' +
+        'apart without it.'
+    )
+    return new Set()
+  }
+  const names = [...block[1]!.matchAll(/"([^"]+\.sql)"/g)].map((m) => m[1]!)
+  if (names.length === 0) {
+    fail('DASHBOARD_LANE_SQL_FILES is declared but empty.')
+  }
+  return new Set(names)
+}
+
+/** Whether a file under `sql/<dir>/` belongs to the dashboard program lane. */
+function inDashboardLane(dir: string, name: string): boolean {
+  return dashboardLaneSqlFiles.has(`${dir}/${name}`)
+}
+
 const dimensionDdl = listFiles('sql/03_dimensions', '.sql').filter(
   (f) => !f.includes('_merge') && !inLane('03_dimensions', f)
 )
@@ -379,7 +408,13 @@ const factDdl = listFiles('sql/04_facts', '.sql').filter(
   (f) => !f.includes('_load') && !inLane('04_facts', f)
 )
 const reportingViewFiles = listFiles('sql/05_reporting', '.sql').filter(
-  (f) => !f.includes('reporting_scope') && !inLane('05_reporting', f)
+  (f) =>
+    !f.includes('reporting_scope') &&
+    !inLane('05_reporting', f) &&
+    !inDashboardLane('05_reporting', f)
+)
+const dashboardReportingViewFiles = listFiles('sql/05_reporting', '.sql').filter((f) =>
+  inDashboardLane('05_reporting', f)
 )
 const listingReportingViewFiles = listFiles('sql/05_reporting', '.sql').filter((f) =>
   inLane('05_reporting', f)
@@ -412,6 +447,13 @@ requireTrue(
   listingReportingViewFiles.length === 6,
   `Expected six Inventory Operations reporting views under sql/05_reporting/, found ` +
     `${listingReportingViewFiles.length}.`
+)
+requireTrue(
+  dashboardReportingViewFiles.length === 3,
+  `Expected three dashboard program reporting views under sql/05_reporting/, found ` +
+    `${dashboardReportingViewFiles.length}. A DASH.* view added to the tree and not to ` +
+    'DASHBOARD_LANE_SQL_FILES would be counted against the Power BI SQL baseline, which ' +
+    'never measured it.'
 )
 requireTrue(
   !baseline.credentials_recorded,

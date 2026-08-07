@@ -653,3 +653,128 @@ export function activeFilterChips(
   }
   return chips
 }
+
+/**
+ * The Sales and Gross page's declaration.
+ *
+ * Two entries differ from the Executive Overview's, and both differences are real
+ * rather than cosmetic.
+ *
+ * `condition` is APPLIED here. The Executive Overview marks it partial because the
+ * datasets it reads carry retail totals with no condition split, so narrowing them
+ * would have been a filter that changed nothing or a figure that was wrong. This
+ * page reads `sales-gross-trend`, which publishes `new_*` and `used_*` gross as
+ * additive columns, so selecting New reads a different governed column rather than
+ * re-filtering a total that cannot be split. `Certified` remains partial: it is a
+ * condition TYPE, and the export splits gross by condition GROUP, in which a
+ * certified unit is Used.
+ *
+ * `scope` is PARTIAL rather than not-applicable, for the same reason in reverse: the
+ * trend dataset publishes per-sale-type unit COUNTS but no per-sale-type gross, so a
+ * sale-type selection can narrow the mix and cannot narrow a gross figure.
+ */
+export const SALES_GROSS_SUPPORT: RouteFilterSupport = {
+  period: { support: 'applied', label: 'Period' },
+  compare: { support: 'applied', label: 'Comparison' },
+  store: { support: 'applied', label: 'Store' },
+  condition: {
+    support: 'applied',
+    label: 'Condition',
+    note: 'New and Used select the exported condition split of units and gross. Certified narrows the deal-level distribution only: the export splits gross by condition group, and a certified unit is Used inside it.',
+  },
+  scope: {
+    support: 'partial',
+    label: 'Sale-type scope',
+    note: 'Narrows the sale-type mix, which the export publishes as unit counts. No gross figure changes: the export publishes no per-sale-type gross, and apportioning the retail total would invent a measure the reporting layer does not own.',
+  },
+  source: {
+    support: 'not-applicable',
+    label: 'Lead source',
+    note: 'The store-day trend dataset carries no lead-source attribute; lead-source analysis is the Leads and marketing page (DASH.10). The Deal Explorer carries attribution at deal grain.',
+  },
+  dept: {
+    support: 'not-applicable',
+    label: 'Department',
+    note: 'No department-grain reporting view exists yet.',
+  },
+  employee: {
+    support: 'not-applicable',
+    label: 'Employee',
+    note: 'Employee performance arrives with DASH.11; no employee-grain dataset is exported.',
+  },
+  campaign: {
+    support: 'not-applicable',
+    label: 'Campaign',
+    note: 'Campaign analysis is the Leads and marketing page (DASH.10).',
+  },
+  make: {
+    support: 'not-applicable',
+    label: 'Make',
+    note: 'Vehicle-attribute filters apply to the Deal Explorer, not to the store-day trend.',
+  },
+  model: {
+    support: 'not-applicable',
+    label: 'Model',
+    note: 'Vehicle-attribute filters apply to the Deal Explorer, not to the store-day trend.',
+  },
+  structure: {
+    support: 'not-applicable',
+    label: 'Finance structure',
+    note: 'Deal structure is not modelled in the warehouse until DASH.6, so no dataset carries it.',
+  },
+  product: {
+    support: 'not-applicable',
+    label: 'F&I product category',
+    note: 'F&I products are not modelled in the warehouse until DASH.6, so no dataset carries them.',
+  },
+}
+
+/**
+ * The Deal Explorer's declaration.
+ *
+ * The deal-grain dataset carries vehicle attributes and lead attribution, so this is
+ * the route where `make`, `model` and `source` finally do something.
+ */
+export const DEAL_EXPLORER_SUPPORT: RouteFilterSupport = {
+  period: { support: 'applied', label: 'Period' },
+  compare: {
+    support: 'not-applicable',
+    label: 'Comparison',
+    note: 'An index lists the deals in one period. There is no figure here for a comparison period to change.',
+  },
+  store: { support: 'applied', label: 'Store' },
+  condition: { support: 'applied', label: 'Condition' },
+  scope: { support: 'applied', label: 'Sale-type scope' },
+  source: {
+    support: 'applied',
+    label: 'Lead source',
+    note: 'Resolved through the lead linked to the deal. A deal with no linked lead is walk-in or unattributed business and is excluded when a source is selected.',
+  },
+  make: { support: 'applied', label: 'Make' },
+  model: { support: 'applied', label: 'Model' },
+  dept: {
+    support: 'not-applicable',
+    label: 'Department',
+    note: 'No department-grain reporting view exists yet.',
+  },
+  employee: {
+    support: 'not-applicable',
+    label: 'Employee',
+    note: 'Employee performance arrives with DASH.11. The index shows the synthetic ids on each deal but does not filter by them.',
+  },
+  campaign: {
+    support: 'not-applicable',
+    label: 'Campaign',
+    note: 'The deal dataset carries the linked lead source but not its campaign.',
+  },
+  structure: {
+    support: 'not-applicable',
+    label: 'Finance structure',
+    note: 'Deal structure is not modelled in the warehouse until DASH.6, so no dataset carries it.',
+  },
+  product: {
+    support: 'not-applicable',
+    label: 'F&I product category',
+    note: 'F&I products are not modelled in the warehouse until DASH.6, so no dataset carries them.',
+  },
+}

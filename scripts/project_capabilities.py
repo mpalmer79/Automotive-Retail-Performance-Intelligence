@@ -97,6 +97,7 @@ AUDIT_LAYERS = ("source", "raw", "staging", "warehouse", "rejected")
 #: package uninstalled.
 INGESTION_SPEC_SOURCE = REPO_ROOT / "src" / "arpi" / "ingestion" / "spec.py"
 INVENTORY_SPEC_SOURCE = REPO_ROOT / "src" / "arpi" / "inventory" / "spec.py"
+DASHBOARD_CONTRACT_SOURCE = REPO_ROOT / "src" / "arpi" / "dashboard" / "contract.py"
 LOADER_SOURCE = REPO_ROOT / "src" / "arpi" / "ingestion" / "loader.py"
 FACT_SQL_DIR = REPO_ROOT / "sql" / "04_facts"
 
@@ -350,17 +351,37 @@ def _declared_strings(source: Path, keyword: str) -> set[str]:
 
 
 def _inventory_lane_sql_files() -> frozenset[str]:
-    """The SQL files the sanitized listing lane owns, read from its own declaration.
+    """The SQL files the sanitized listing lane owns, read from its own declaration."""
+    return _declared_lane_sql_files(INVENTORY_SPEC_SOURCE, "INVENTORY_LANE_SQL_FILES")
 
-    ``arpi.inventory.spec.INVENTORY_LANE_SQL_FILES`` is the single declaration. It is read
-    here rather than restated, because the counts this module derives -- five MVP facts,
-    eight dimensions, twenty-eight reporting views -- are measured against a baseline run
-    and must not move because a second, separately governed lane appeared beside them.
+
+def _dashboard_lane_sql_files() -> frozenset[str]:
+    """The SQL files the dashboard program lane owns, read from its own declaration."""
+    return _declared_lane_sql_files(DASHBOARD_CONTRACT_SOURCE, "DASHBOARD_LANE_SQL_FILES")
+
+
+def _declared_lane_sql_files(source: Path, name: str) -> frozenset[str]:
+    """The SQL files a separately governed lane owns, read from its own declaration.
+
+    Each lane declares its own files once, in Python; this reads that declaration rather
+    than restating it, because the counts this module derives -- five MVP facts, eight
+    dimensions, twenty-eight reporting views -- are measured against a baseline run and
+    must not move because a separately governed lane appeared beside them.
+
+    Two lanes exist: the sanitized public listing lane (ADR-0011) and the dashboard
+    program lane (`DASH.3` onward). Neither is part of the semantic model's surface.
+
+    Args:
+        source: The module declaring the tuple.
+        name: The tuple's name.
+
+    Returns:
+        The declared file names, or an empty set when the declaration is unreadable.
     """
-    if not INVENTORY_SPEC_SOURCE.is_file():
+    if not source.is_file():
         return frozenset()
     try:
-        tree = ast.parse(INVENTORY_SPEC_SOURCE.read_text(encoding="utf-8"))
+        tree = ast.parse(source.read_text(encoding="utf-8"))
     except SyntaxError:
         return frozenset()
     # The declaration is annotated (`X: Final[tuple[str, ...]] = (...)`), so it is an
@@ -375,7 +396,7 @@ def _inventory_lane_sql_files() -> frozenset[str]:
             target, value = node.targets[0].id, node.value
         else:
             continue
-        if target != "INVENTORY_LANE_SQL_FILES" or value is None:
+        if target != name or value is None:
             continue
         if isinstance(value, (ast.Tuple, ast.List)):
             return frozenset(
@@ -460,9 +481,11 @@ def derive_evidence() -> DerivedEvidence:
     # what the semantic model and the SQL baseline were measured against, and are counted
     # separately below so the lane is reported rather than hidden.
     lane_files = _inventory_lane_sql_files()
+    dashboard_lane_files = _dashboard_lane_sql_files()
 
     def _in_lane(path: Path) -> bool:
-        return f"{path.parent.name}/{path.name}" in lane_files
+        key = f"{path.parent.name}/{path.name}"
+        return key in lane_files or key in dashboard_lane_files
 
     all_fact_scripts = sorted(facts.glob("*.sql")) if facts.is_dir() else []
     all_dimension_scripts = sorted(dimensions.glob("*.sql")) if dimensions.is_dir() else []
@@ -475,7 +498,9 @@ def derive_evidence() -> DerivedEvidence:
         for p in all_reporting_scripts
         if p.name[0].isdigit() and "scope" not in p.name and not _in_lane(p)
     ]
-    lane_reporting_scripts = [p for p in all_reporting_scripts if _in_lane(p)]
+    lane_reporting_scripts = [
+        p for p in all_reporting_scripts if f"{p.parent.name}/{p.name}" in lane_files
+    ]
 
     return DerivedEvidence(
         pbip_project_files=_count_files(PBIP_DIR, ".pbip")

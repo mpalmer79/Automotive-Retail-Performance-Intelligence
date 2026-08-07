@@ -145,10 +145,16 @@ export const HEADER_NAV: readonly HeaderNavItem[] = [
  */
 export const DASHBOARD_NAV_ROUTES: readonly { label: string; path: string }[] = [
   { label: 'Command center', path: '/dashboard' },
+  { label: 'Sales and gross', path: '/dashboard/sales-gross' },
+  { label: 'Deal Explorer', path: '/dashboard/deals' },
 ]
 
 /** Every route that renders the console sub-navigation. */
-export const DASHBOARD_ROUTES: readonly string[] = ['/dashboard']
+export const DASHBOARD_ROUTES: readonly string[] = [
+  '/dashboard',
+  '/dashboard/sales-gross',
+  '/dashboard/deals',
+]
 
 /**
  * The console sections that must NOT be reachable, because they do not exist.
@@ -157,8 +163,13 @@ export const DASHBOARD_ROUTES: readonly string[] = ['/dashboard']
  * points at one of these, and each 404s if fetched directly.
  */
 export const UNBUILT_DASHBOARD_ROUTES: readonly string[] = [
-  '/dashboard/sales-gross',
-  '/dashboard/deals',
+  /*
+   * `/dashboard/deals/[saleId]` -- the Deal Jacket -- is `DASH.4` and is deliberately
+   * on this list. `DASH.3` renders each deal id as TEXT rather than as a link for
+   * exactly that reason: an anchor here would point at a 404, and the negative
+   * assertion below is what proves none was shipped.
+   */
+  '/dashboard/deals/SLE-00000001',
   '/dashboard/inventory',
   '/dashboard/fi',
   '/dashboard/leads-marketing',
@@ -213,6 +224,11 @@ export const GROUP_ROUTES: readonly { label: string; path: string }[] = [
 /** Every route the accessibility sweep covers, including the internal lab. */
 export const ALL_TESTED_ROUTES: readonly string[] = [
   ...PRIMARY_ROUTES.map((route) => route.path),
+  // The console's own sections. They are real routes with real content and are in
+  // `ROUTES`, but they are NOT primary navigation destinations: the header carries
+  // `Dashboard`, and the console's own bar carries its sections.
+  '/dashboard/sales-gross',
+  '/dashboard/deals',
   '/ui-lab',
 ]
 

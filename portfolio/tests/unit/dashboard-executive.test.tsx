@@ -32,6 +32,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import { KpiStrip } from '../../src/components/dashboard/kpi-strip.tsx'
 import { StoreScoreboard } from '../../src/components/dashboard/store-scoreboard.tsx'
+import { dealChunkFile, dealChunkKeys } from '../../src/lib/dashboard/deal-chunks.ts'
 import { CHUNK_TABLES, chunkKey } from '../../src/lib/dashboard/chunks.ts'
 import {
   calendarBounds,
@@ -225,18 +226,31 @@ describe('the selector registry is governed', () => {
   })
 })
 
-describe('the static chunk table matches the manifest chunk index', () => {
+describe('the static chunk tables match the manifest chunk index', () => {
+  /*
+   * TWO tables, not one, since `DASH.3`. `CHUNK_TABLES` holds the five date-grained
+   * partitions the Executive Overview reads; the 18 deal partitions live in their own
+   * module so that importing them does not put 221 kB of transaction records into the
+   * server graph of a route that shows none.
+   *
+   * Both are checked against the manifest in both directions here, because a
+   * partition present in the export and missing from a table is an empty section on a
+   * page rather than an error, and the split must not become a place for one to hide.
+   */
   it('carries exactly the partitions the export declares, in both directions', () => {
     for (const dataset of dashboardManifest.datasets) {
       if (dataset.chunks === null) continue
-      const table = CHUNK_TABLES[dataset.name as keyof typeof CHUNK_TABLES]
-      expect(table, `no chunk table for ${dataset.name}`).toBeDefined()
-      if (table === undefined) continue
-
       const declared = dataset.chunks
         .map((chunk) => chunkKey(chunk.dealershipId, chunk.month))
         .sort()
-      expect(Object.keys(table).sort(), dataset.name).toEqual(declared)
+      const keys =
+        dataset.name === 'deal-explorer'
+          ? [...dealChunkKeys()].sort()
+          : Object.keys(
+              CHUNK_TABLES[dataset.name as keyof typeof CHUNK_TABLES] ?? {}
+            ).sort()
+      expect(keys.length, `no chunk table for ${dataset.name}`).toBeGreaterThan(0)
+      expect(keys, dataset.name).toEqual(declared)
     }
   })
 
@@ -245,7 +259,20 @@ describe('the static chunk table matches the manifest chunk index', () => {
       .filter((dataset) => dataset.chunks !== null)
       .map((dataset) => dataset.name)
       .sort()
-    expect(Object.keys(CHUNK_TABLES).sort()).toEqual(chunked)
+    const tabled = [...Object.keys(CHUNK_TABLES), 'deal-explorer'].sort()
+    expect(tabled).toEqual(chunked)
+  })
+
+  it('resolves every declared deal partition to a real file', () => {
+    const dataset = dashboardManifest.datasets.find(
+      (entry) => entry.name === 'deal-explorer'
+    )
+    expect(dataset?.chunks).not.toBeNull()
+    for (const chunk of dataset!.chunks!) {
+      const file = dealChunkFile(chunk.dealershipId, chunk.month)
+      expect(file, `${chunk.dealershipId}/${chunk.month}`).toBeDefined()
+      expect(file!.rows.length).toBe(chunk.rowCount)
+    }
   })
 })
 

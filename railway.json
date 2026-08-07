@@ -20,6 +20,7 @@
       "data/sample/dim_dealership.csv",
       "data/dashboard/**",
       "src/arpi/inventory/spec.py",
+      "src/arpi/dashboard/contract.py",
       "scripts/check_secrets.py",
       "railway.json",
       ".dockerignore",

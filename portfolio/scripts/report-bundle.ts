@@ -62,6 +62,10 @@ const ROUTES = [
   '/',
   '/dashboard',
   '/dashboard?store=GSA-001&period=2025-11&condition=Used',
+  '/dashboard/sales-gross',
+  '/dashboard/sales-gross?store=GSA-001&period=2025-11&condition=New',
+  '/dashboard/deals',
+  '/dashboard/deals?period=2025-07-01..2025-12-31&sort=total_gross&dir=desc&page=12',
   '/architecture',
   '/data-model',
   '/kpis',
@@ -168,19 +172,19 @@ async function collect(
 function printTable(title: string, rows: RouteReport[]): void {
   console.log('')
   console.log(title)
-  console.log('='.repeat(106))
+  console.log('='.repeat(122))
   console.log(
-    pad('Route', 46) +
+    pad('Route', 62) +
       padStart('HTML', 10) +
       padStart('JS', 11) +
       padStart('CSS', 10) +
       padStart('Fonts', 10) +
       padStart('Total', 11)
   )
-  console.log('-'.repeat(106))
+  console.log('-'.repeat(122))
   for (const row of [...rows].sort((a, b) => b.total - a.total)) {
     console.log(
-      pad(row.route, 46) +
+      pad(row.route, 62) +
         padStart(kb(row.document), 10) +
         padStart(kb(row.script), 11) +
         padStart(kb(row.stylesheet), 10) +

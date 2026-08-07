@@ -40,7 +40,7 @@
 | `DASH.0` | Architecture and program contract | Large | **Implemented** — delivered by the change that introduces this document |
 | `DASH.1` | Existing-KPI dashboard export foundation | Large | **Implemented** |
 | `DASH.2` | Dashboard shell and Executive Overview | Large | **Implemented** |
-| `DASH.3` | Sales, Gross, and Deal Explorer | Large | Planned |
+| `DASH.3` | Sales, Gross, and Deal Explorer | Large | **Implemented** |
 | `DASH.4` | Basic Deal Jacket | Large | Planned |
 | `DASH.5` | Targets and pace | Large | Planned |
 | `DASH.6` | F&I model | Large | Planned |
@@ -265,7 +265,7 @@ program. Evidence: the diagram files and index diffs in this change.
 | **Estimated complexity** | Large |
 | **Blocking gate** | None |
 | **Architecture references** | §12 (sale fact), §18; `KPI_EXTENSION_PLAN.md` (bridge is deterministic, not causal) |
-| **Status** | Planned |
+| **Status** | **Implemented** |
 
 ### `DASH.3-01` — Reporting views for trend, bridge, and deal index
 
@@ -274,7 +274,7 @@ program. Evidence: the diagram files and index diffs in this change.
 | Purpose | SQL owns the arithmetic: `vw_sales_gross_trend` (store × day), `vw_gross_change_bridge` (store × period pair × component; volume, front-PVR, back-PVR effects with documented sequential order and an exact-reconciliation guarantee), `vw_deal_explorer` (deal-grain projection of `vw_vehicle_sales` limited to exportable columns). |
 | Dependencies | `DASH.2` |
 | Complexity | Large |
-| Status | Planned |
+| Status | **Implemented** |
 | Architecture references | §18.2 (view ownership); reporting-view plan §15 of the program |
 | Data-grain impact | New views; no fact change |
 | Acceptance criteria | Each view documents grain, date basis, null behaviour, and export eligibility in `COMMENT`s; bridge components sum exactly to the period delta on every store row (integration-tested); views readable by `arpi_reporter`; sequence files follow `sql/05_reporting/` numbering. |
@@ -283,6 +283,42 @@ program. Evidence: the diagram files and index diffs in this change.
 | Explicit non-goals | No mix-effect component until its order is documented (may land as a follow-up inside this increment or be recorded Deferred). |
 | Completion evidence | Views + tests green on the built database. |
 
+### `DASH.3-01` as-built notes
+
+**Three views, and one of them is shaped by an arithmetic problem.** `vw_sales_gross_trend` sits
+beside `vw_sales_summary` and `vw_gross_summary` at the same store-day grain rather than replacing
+them; the integration suite asserts it agrees with both on every row. Its condition and sale-type
+breakdowns are additive COLUMNS that are zero on excluded rows, never extra rows, so the declared
+grain and the actual grain cannot diverge.
+
+`vw_gross_change_bridge` publishes **exact numerators over a shared denominator and never divides**.
+Computing three dollar effects from rounded per-unit rates and then asserting they sum to the period
+delta asserts something that is not quite true, and the residual lands wherever the rounding fell.
+Publishing `(U1-U0)*TG0`, `U0*FG1-U1*FG0` and `U0*BG1-U1*BG0` over `U0` makes the sum identically
+`U0*(TG1-TG0)` in exact numeric — the reconciliation holds to the last digit, not to the cent. The
+console divides for display and shows the rounding residual (at most a cent or two) rather than
+absorbing it into a component. Non-comparable months are emitted with `is_comparable = false`, a
+reason, NULL components and a populated `total_gross_change`, because the period change is well
+defined even when its decomposition is not.
+
+**Two findings changed the plan, both from reading the physical SQL rather than the documentation:**
+
+- `warehouse.fact_vehicle_sale.lead_source_key` exists and the generator never populates it — it is
+  NULL on all 650 transactions. Reading it would have reported "no source recorded" on every deal in
+  the console. Attribution is therefore resolved through `fact_lead.sale_key` (at most one lead per
+  sale, asserted), and `is_lead_attributed` distinguishes genuine walk-in business from missing
+  data. An integration test asserts the column is still empty, so if the generator ever starts
+  filling it the rationale is re-examined rather than two sources silently disagreeing.
+- **No stock number and no acquisition date exist in the model.** `dim_vehicle` publishes
+  `vehicle_id` and a synthetic VIN, and nothing else identifies a unit. `vehicle_code` is therefore
+  published as itself and is never captioned "stock number"; the Deal Jacket will render acquisition
+  date as not modelled.
+
+The three views are held in a new `DASHBOARD_PROGRAM_VIEWS` register, separate from
+`MVP_REPORTING_VIEWS`, for the same reason the listing lane is: `sql_baseline_metadata.json` records
+the surface the Power BI semantic model was measured against, and a `DASH.*` view is not part of it.
+The reporting schema now holds 37 views in three declared lanes; **no Power BI evidence changed.**
+
 ### `DASH.3-02` — Visualization primitives
 
 | Field | Value |
@@ -290,7 +326,7 @@ program. Evidence: the diagram files and index diffs in this change.
 | Purpose | The chart decision is made from evidence, not habit: documented chart-type needs vs the existing hand-built primitives (`BarChart`, `StackedMixBar`), bundle impact, accessibility, server-rendering, and no-JS fallback — then the needed primitives (trend line, pace/bullet bar, bridge/waterfall, funnel, distribution strip) are built as server-rendered SVG with data-table alternatives, **or** a library is adopted with the evaluation recorded. |
 | Dependencies | `DASH.2` |
 | Complexity | Large |
-| Status | Planned |
+| Status | **Implemented** |
 | Architecture references | Program §16; DESIGN_SYSTEM.md register |
 | Data-grain impact | None |
 | Acceptance criteria | Written evaluation in the PR; every primitive has an accessible name, text summary, direct labels where practical, keyboard path for any interaction, data-table alternative, reduced-motion behaviour, and no color-only meaning; no raw hex/shadow/radius/duration outside tokens; measured bundle delta recorded. |
@@ -301,7 +337,7 @@ program. Evidence: the diagram files and index diffs in this change.
 
 ### `DASH.3-03` — `/dashboard/sales-gross`
 
-Large; Planned. Performance block (units by type, gross, PVRs), trends (daily/weekly/monthly, vs
+Large; **Implemented**. Performance block (units by type, gross, PVRs), trends (daily/weekly/monthly, vs
 comparison), mix (new/used, store, sale type, source), gross analysis (front/back contribution,
 discount vs asking, negative-gross counts, distribution with median and mean paired per
 KPI_CATALOG.md §5), and the volume/rate bridge rendered with its documented order and exact totals.
@@ -311,7 +347,7 @@ axe clean; filters apply. Tests: `dashboard-sales-gross` unit + e2e. Non-goals: 
 
 ### `DASH.3-04` — `/dashboard/deals` index
 
-Large; Planned. Chunked deal index (per `DATA_CONTRACT.md` chunking) with search (id, stock, model),
+Large; **Implemented**. Chunked deal index (per `DATA_CONTRACT.md` chunking) with search (id, stock, model),
 sort, filters, pagination; desktop table ↔ mobile cards with exactly one representation in the
 accessibility tree (the established 1280px pattern); columns per program §7; every row links to the
 Deal Jacket; compact index fields never duplicate the full jacket payload. Tests: unit (chunk

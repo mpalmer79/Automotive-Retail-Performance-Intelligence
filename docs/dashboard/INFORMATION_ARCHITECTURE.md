@@ -1,6 +1,7 @@
 # Information Architecture — ARPI Dealer Operations Command Center
 
-**Status:** As-built for `/dashboard` (`DASH.2`); planning contract for every route below it.
+**Status:** As-built for `/dashboard` (`DASH.2`), `/dashboard/sales-gross` and `/dashboard/deals`
+(`DASH.3`); planning contract for every route below them.
 Sections marked **As-built** record what shipped and where it diverges from the plan, with the
 reason. Nothing in this document was quietly rewritten to match the code.
 **Parents:** [DASHBOARD_PROGRAM.md](../requirements/DASHBOARD_PROGRAM.md) ·
@@ -14,8 +15,8 @@ portfolio [`CONTENT_MODEL.md`](../../portfolio/docs/CONTENT_MODEL.md) / `lib/sit
 | Route | Title | Status | Registered in |
 |---|---|---|---|
 | `/dashboard` | Dealer Operations Command Center | **Built (`DASH.2`)** | `ROUTES.dashboard` in `portfolio/src/lib/site.ts`, mirrored in `tests/e2e/routes.ts` |
-| `/dashboard/sales-gross` | Sales and gross | Planned (DASH.3) | ” |
-| `/dashboard/deals` | Deal explorer | Planned (DASH.3) | ” |
+| `/dashboard/sales-gross` | Sales and gross | **Built (`DASH.3`)** | `ROUTES.dashboardSalesGross`, mirrored in `tests/e2e/routes.ts` |
+| `/dashboard/deals` | Deal Explorer | **Built (`DASH.3`)** | `ROUTES.dashboardDeals`, mirrored in `tests/e2e/routes.ts` |
 | `/dashboard/deals/[saleId]` | Deal Jacket (dynamic; title carries the synthetic deal id) | Planned (DASH.4) | dynamic — excluded from `inPrimaryNav`, sitemap lists the index route only |
 | `/dashboard/inventory` | Inventory operations | Planned (DASH.9) | ” |
 | `/dashboard/fi` | F&I performance | Planned (DASH.7) | ” |

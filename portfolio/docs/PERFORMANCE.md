@@ -470,6 +470,60 @@ by this increment except that the "no dashboard route payload" entry is now answ
 
 ---
 
+## 9.3 The two `DASH.3` routes, measured (baseline)
+
+Measured by `npm run bundle` against a production build served locally, cold, compressed,
+on 7 August 2026. **A baseline, not a budget.** `DASH.13-02` sets budgets from
+measurements.
+
+Both new routes are measured twice, filtered and unfiltered, for the reason `/dashboard`
+is: their output depends on the query string. The Deal Explorer's second measurement is
+deliberately a DEEP page of the largest possible result set — every deal in the reporting
+window, sorted by gross, page 12 of 26 — because "page one is cheap" is not the claim
+worth making about a paginated index.
+
+| Route                                                               |     HTML |       JS |    Total |
+| ------------------------------------------------------------------- | -------: | -------: | -------: |
+| `/dashboard`                                                        | 111.3 kB | 164.0 kB | 405.2 kB |
+| `/dashboard/sales-gross`                                            |  59.3 kB | 164.0 kB | 353.1 kB |
+| `/dashboard/sales-gross?store=GSA-001&period=2025-11&condition=New` |  57.1 kB | 164.0 kB | 350.9 kB |
+| `/dashboard/deals`                                                  |  55.8 kB | 164.0 kB | 349.6 kB |
+| `/dashboard/deals?period=…&sort=total_gross&dir=desc&page=12`       |  56.1 kB | 164.0 kB | 349.9 kB |
+| `/case-study` (the lightest route: shell only)                      |  26.3 kB | 162.3 kB | 318.5 kB |
+
+**Two new routes, no new client JavaScript.** All three console routes report the same
+164.0 kB of script, and `/case-study` — the site's shell with no interactive content —
+reports 162.3 kB. The two pages added by this increment therefore cost about **1.7 kB of
+route-owned script between them**, which is the filter bar they share with the Executive
+Overview. Everything else on both pages is a server component: nine KPI tiles, four trend
+charts, three mix tables, a distribution strip, a waterfall, a 13-column deal table and a
+25-card mobile alternative, all rendered as HTML.
+
+The three visualisation primitives contribute **zero bytes**. That is the measured result
+of the `DASH.3-02` evaluation recorded in `DESIGN_SYSTEM.md` §6.0a, and it is the number
+that decided it: the smallest charting library considered is two orders of magnitude
+larger than the console's entire route-owned payload.
+
+**Payload does not grow with the size of the result set.** `/dashboard/deals` at page 1
+is 55.8 kB and at page 12 of 26 — over the whole six-month window, 650 deals filtered and
+sorted — is 56.1 kB. The 0.3 kB is the longer query string echoed into the pagination
+links. The index reads every partition the scope covers on the SERVER and ships one page
+of rows as HTML; there is no client-side dataset and nothing fetches more. This is the
+property worth watching as the deal population grows, and it is the one a client-side
+table would have lost.
+
+**The new pages are half the Executive Overview's HTML.** 59.3 kB and 55.8 kB against
+111.3 kB. The overview carries sixteen methodology disclosures; these carry nine and none
+respectively, and the Deal Explorer's largest single contributor is the deal table itself
+— 25 rows in two responsive presentations, both in the document so that exactly one is in
+the accessibility tree at any width.
+
+**Server graph.** The Deal Explorer's route graph holds the 18 deal partitions, 221,386
+bytes of transaction records, as static imports. They are in `lib/dashboard/deal-chunks.ts`
+rather than in the shared `chunks.ts` precisely so they do **not** enter `/dashboard`'s
+graph, which shows no deal-level content; `dashboard-boundaries.test.ts` asserts the
+importer set in both directions. Nothing is read from the file system at runtime.
+
 ## 10. What has not been measured
 
 Stated rather than implied.

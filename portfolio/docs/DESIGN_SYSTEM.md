@@ -418,6 +418,44 @@ that was not got deleted.
 
 **Explorers** — `ArchitectureExplorer`, `DataModelExplorer`, `KpiCatalogue`
 
+**Visualisation** — `BarChart`, `StackedMixBar` (inventory); `TrendChart`, `BridgeChart`,
+`DistributionStrip` (console, `DASH.3`)
+
+### 6.0a The visualisation primitives, and why there is no chart library
+
+`DASH.3-02` required the chart decision to be made from evidence. A library was compared
+against extending the two hand-built inventory primitives, and lost on four measurements and
+one principle.
+
+**Bundle.** The console ships about 1.6 kB of route-owned client JavaScript, because one
+component is a client island. The smallest of the candidate libraries is two orders of
+magnitude larger than that before a chart is drawn, and it is a cost that never comes back off.
+
+**Server rendering.** Each of them needs a measured container to lay out, so the useful
+configurations are client components. The console's guarantee is that every figure is in the
+HTML; a chart that paints after hydration breaks it for the no-JavaScript reader the e2e suite
+tests.
+
+**Accessibility.** They render to canvas, or to SVG whose values live in `<path>` coordinates.
+Either way the numbers leave the DOM, where a screen reader and a browser text search can both
+currently find them.
+
+**Maintenance.** A chart library is a second design system — its own spacing, type scale and
+colour API. Reconciling it with these tokens costs more than the drawing does.
+
+Measured delta for the three primitives that shipped instead: **zero bytes of client
+JavaScript.** They are server components.
+
+The shape every one of them follows: a `<figure>` with a heading and a one-sentence summary,
+bars that are `aria-hidden` decoration, every encoded value printed as text beside its label,
+and a real `<table>` inside a `<details>` — present in the document, and therefore in reading
+order and in a text search, whether or not it is opened. Direction is a glyph and a sign, never
+colour alone. A null renders as a gap with a stated reason, never as a zero-height bar.
+
+Two primitives the backlog reserved were **not** built. A pace/bullet bar encodes a target, and
+`DASH.5` owns targets; a funnel already exists on the Executive Overview as its own component.
+An abstraction built for a page that does not exist is a guess about that page.
+
 ### 6.1 Why there is no headless component library
 
 `radix-ui` was a dependency, and `ui/overlays.tsx` wrapped it as `Tooltip`, `Popover`,
