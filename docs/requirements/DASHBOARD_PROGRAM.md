@@ -65,11 +65,12 @@ Verified during the program audit (2026-08-06, commit `3c8295b`):
 - **Reporting:** 34 views (28 MVP + 6 listing-lane); `arpi_reporter` can read exactly these and nothing
   else. All 29 MVP KPIs computable and verified against independent warehouse derivations; 58
   reconciliations recorded per run, only tolerances 0 and 0.01 exist.
-- **Deferred entities (10):** `dim_finance_product`, `dim_lender`, `dim_sale_type`,
-  `dim_inventory_source`, `dim_geography`, `fact_lead_activity`, `fact_inventory_price_history`,
-  `fact_finance_product_sale`, `fact_service_visit`, `fact_sales_target`. None has SQL, generation,
-  loading, validation, reporting, or tests today; none may be described as anything but Deferred until
-  all of those exist.
+- **Deferred entities (10 at program start, 9 today):** `dim_finance_product`, `dim_lender`,
+  `dim_sale_type`, `dim_inventory_source`, `dim_geography`, `fact_lead_activity`,
+  `fact_inventory_price_history`, `fact_finance_product_sale`, `fact_service_visit`. None has SQL,
+  generation, loading, validation, reporting, or tests today; none may be described as anything but
+  Deferred until all of those exist. **`fact_sales_target` was the tenth and is now Implemented** — see
+  §9.8 — which is exactly the transition this program was written to schedule.
 - **Power BI:** TMDL semantic model (26 tables, 42 relationships, 49 measures) statically validated by
   9,452 assertions; **no engine has ever loaded it**; both ADR-0008 paths PENDING; the report is a PBIR
   shell with zero pages; Gate 1 OPEN, Gate 2 CLOSED.
@@ -144,9 +145,11 @@ header does not grow into an application menu):
 **As-built at `DASH.2`.** One of the ten routes exists: `/dashboard`. It carries the executive
 overview — context rail, global filter bar, seven governed KPI cards, the store scoreboard, a compact
 sales-and-gross composition, the inventory risk summary, the lead funnel, and the trust panel. Pace,
-the gross-change bridge and top actions are listed above and are **not** built: pace needs
-`fact_sales_target` (`DASH.5`), a bridge needs the driver model and deal-grain view `DASH.3` builds,
-and an action is a recommendation, which Gate 2 does not permit this console to publish. The nine
+the gross-change bridge and top actions are listed above and were **not** built at `DASH.2`: pace needed
+`fact_sales_target` (`DASH.5`), a bridge needed the driver model and deal-grain view `DASH.3` builds,
+and an action is a recommendation, which Gate 2 does not permit this console to publish. **`DASH.3`
+built the bridge and `DASH.5` built pace**; the recommendation is still refused, and always will be
+under the current gate. The nine
 remaining routes are named on the page as text beside the increment that owns each, and are not
 registered, not linked and not in the sitemap.
 
@@ -249,12 +252,22 @@ deterministically: `Lease` → Lease; `Wholesale`/`Dealer Trade` → non-retail;
 finance-structure attribute (values Cash, Retail Finance, Lease, Wholesale, Dealer Trade); changing
 `sale_type` itself requires a separate ADR and migration plan and is **not** assumed.
 
-### 9.8 `warehouse.fact_sales_target` — promote (DASH.5)
+### 9.8 `warehouse.fact_sales_target` — promote (DASH.5) — **DONE**
 
-Grain: **one row per dealership × optional employee-or-department scope × KPI id × calendar month.**
+Grain **as built**: one row per dealership, target month, targeted KPI, and target scope (scope type +
+scope id), enforced by `uq_fact_sales_target_grain` over five `NOT NULL` columns. The program's phrasing
+was "optional employee-or-department scope"; *optional* cannot be enforced, because PostgreSQL treats
+NULLs as distinct in a `UNIQUE` constraint, so the scope carries its own non-null identity instead
+([DATA_DICTIONARY.md §41.3](../../DATA_DICTIONARY.md)).
+
 Measures: `target_value`, `stretch_target_value`. Synthetic internal operating goals, never industry
-benchmarks; never hardcoded in React or DAX. Supports attainment, selling-day pace, and pace
-projection per [`KPI_EXTENSION_PLAN.md §3`](../dashboard/KPI_EXTENSION_PLAN.md).
+benchmarks; **never hardcoded in React or DAX** — and a source-scanning test asserts the React half.
+Supports attainment, selling-day pace, and pace projection per
+[`KPI_EXTENSION_PLAN.md §3`](../dashboard/KPI_EXTENSION_PLAN.md).
+
+`kpi_id` names the **metric being targeted** (`KPI-SLS-001`, `KPI-GRS-001`, `KPI-GRS-002`,
+`KPI-GRS-003`), never a `KPI-TGT-*` identifier. Scope rules, the department partition of total gross, and
+the no-outcome-leakage rule are in [STM-016](../source-to-target/STM-016-fact-sales-target.md).
 
 ### 9.9 `warehouse.fact_inventory_accounting_snapshot` — new (DASH.8)
 
@@ -369,7 +382,7 @@ and never one giant mixed-grain denormalization):
 | `reporting.vw_accounting_exceptions` | one row per exception | DASH.8 |
 | `reporting.vw_employee_performance` | employee × role × period | DASH.11 |
 | `reporting.vw_management_action` | one row per generated action | DASH.12 |
-| `reporting.vw_target_attainment` | store × KPI × month (already named Deferred in `00_reporting_scope.sql`) | DASH.5 |
+| `reporting.vw_target_attainment` | **Implemented.** As built: store × target month × target scope × targeted KPI — one grain wider than planned, because department attainment is half of SQ-31 and a store-grain view could not carry it | DASH.5 |
 
 ## 16. Accessibility, performance, testing
 

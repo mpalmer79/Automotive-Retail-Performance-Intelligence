@@ -1,18 +1,22 @@
 """The ARPI vertical slice: generate, validate, write, optionally load, audit.
 
-This orchestrator is the whole implemented pipeline. It generates all fourteen entities
-in :data:`GENERATION_ORDER` -- the eight conformed dimensions plus the six pre-warehouse
-source entities -- and hands them to the ingestion loader.
+This orchestrator is the whole implemented pipeline. It generates all fifteen entities
+in :data:`GENERATION_ORDER` -- the eight conformed dimensions, the six pre-warehouse
+source entities, and the dashboard program's operating-plan entity -- and hands them to
+the ingestion loader.
 
 WHAT REACHES WHERE
 ------------------
-All fourteen generated entities reach ``raw`` and ``staging``. Eight of them are loaded
+All fifteen generated entities reach ``raw`` and ``staging``. Eight of them are loaded
 into the warehouse as dimensions, by the merge scripts under ``sql/03_dimensions/``. The
 five MVP facts are then loaded by the fact-load scripts under ``sql/04_facts/``:
 ``fact_vehicle_sale``, ``fact_vehicle_inventory_snapshot``, ``fact_lead``,
-``fact_appointment`` and ``fact_marketing_spend``. The fact scripts run after every
-dimension merge, because a fact resolves its surrogate keys through the conformed
-dimensions and would resolve nothing before they exist.
+``fact_appointment`` and ``fact_marketing_spend``. ``fact_sales_target`` is loaded by the
+same mechanism and is deliberately counted separately: it is the dashboard program's
+first fact (``DASH.5``), not a sixth MVP fact, and the MVP baseline the semantic model
+was measured against still describes five. The fact scripts run after every dimension
+merge, because a fact resolves its surrogate keys through the conformed dimensions and
+would resolve nothing before they exist.
 
 ``acquisition_event`` is the one source entity with no fact of its own: an acquisition is
 an attribute of the vehicle and a term of the sale, so it is consumed in staging.
@@ -97,6 +101,11 @@ from arpi.generation.sale import (
     generate_sale_dataset,
     validate_sale_dataset,
 )
+from arpi.generation.sales_target import (
+    ENTITY_SALES_TARGET,
+    generate_sales_target_dataset,
+    validate_sales_target_dataset,
+)
 from arpi.generation.vehicle import (
     ENTITY_DIM_VEHICLE,
     generate_vehicle_dataset,
@@ -155,6 +164,7 @@ GENERATION_ORDER: tuple[str, ...] = (
     ENTITY_LEAD_EVENT,
     ENTITY_APPOINTMENT_EVENT,
     ENTITY_MARKETING_SPEND,
+    ENTITY_SALES_TARGET,
 )
 
 
@@ -354,6 +364,7 @@ def generate_all_datasets(config: ArpiConfig) -> tuple[GeneratedDataset, ...]:
         generate_lead_dataset(config),
         generate_appointment_dataset(config),
         generate_marketing_spend_dataset(config),
+        generate_sales_target_dataset(config),
     )
     produced = tuple(dataset.entity_name for dataset in datasets)
     if produced != GENERATION_ORDER:
@@ -400,6 +411,7 @@ def validate_all_datasets(
         validate_lead_dataset(by_entity[ENTITY_LEAD_EVENT], config),
         validate_appointment_dataset(by_entity[ENTITY_APPOINTMENT_EVENT], config),
         validate_marketing_spend_dataset(by_entity[ENTITY_MARKETING_SPEND], config),
+        validate_sales_target_dataset(by_entity[ENTITY_SALES_TARGET], config),
         validate_generation(datasets, config),
     )
     return ensure_registry_coverage(report, entities=tuple(by_entity))

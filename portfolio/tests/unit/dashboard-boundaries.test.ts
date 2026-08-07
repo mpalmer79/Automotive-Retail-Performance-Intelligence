@@ -413,21 +413,25 @@ describe('the generated dashboard data stays out of the existing route bundles',
      *   lib/dashboard/jacket-chunks.ts the 18 deal RECORD partitions -- 443 kB against
      *                                  the index's 221 kB for the same 650 deals --
      *                                  which only /dashboard/deals/[saleId] reads
+     *   lib/dashboard/targets-data.ts  the 17 kB operating-plan set (`DASH.5`), read by
+     *                                  /dashboard and /dashboard/sales-gross and by
+     *                                  neither deal route
      *
-     * Folding any of the last three into `data.ts` would have put deal-level records
-     * and a 95 kB trend into `/dashboard`'s graph, which has no use for either. Five
+     * Folding any of the last four into `data.ts` would have put deal-level records
+     * and a 95 kB trend into `/dashboard`'s graph, which has no use for either. Six
      * narrow doors is a stronger boundary than two wide ones, and the list is
-     * exhaustive: a sixth importer fails here.
+     * exhaustive: a seventh importer fails here.
      */
     expect(
       importers.map((file) => file.relative).sort(),
-      'the generated dashboard data has exactly five declared doors'
+      'the generated dashboard data has exactly six declared doors'
     ).toEqual([
       'lib/dashboard/chunks.ts',
       'lib/dashboard/data.ts',
       'lib/dashboard/deal-chunks.ts',
       'lib/dashboard/jacket-chunks.ts',
       'lib/dashboard/sales-gross-data.ts',
+      'lib/dashboard/targets-data.ts',
     ])
   })
 
@@ -542,7 +546,7 @@ describe('ADR-0013 condition 2: no frontend redefines a KPI', () => {
       .map((file) => file.relative)
       .sort()
     /*
-     * Four view models, and the list is exhaustive. Each is a VIEW MODEL: it sums
+     * Five view models, and the list is exhaustive. Each is a VIEW MODEL: it sums
      * additive exported columns and divides one summed column by another, which is
      * the operation the reporting layer already publishes numerator and denominator
      * for. None of them defines what a measure means.
@@ -563,8 +567,16 @@ describe('ADR-0013 condition 2: no frontend redefines a KPI', () => {
      * requires the failure to surface. A module that had quietly invented a formula
      * would fail there with a wrong number rather than pass here on a filename.
      *
-     * `visuals.tsx` is NOT on this list and must not be: a chart primitive receives
-     * resolved values and turns them into geometry.
+     * `targets.ts` (`DASH.5`) is a view model of the same kind as `executive.ts`: it
+     * sums the numerator and denominator columns the target reporting view publishes
+     * SEPARATELY for exactly this reason, and divides once. It defines no measure --
+     * `KPI-TGT-001` through `KPI-TGT-010` are stated in the catalogue and computed in
+     * SQL -- and `dashboard-targets.test.ts` reconciles what it produces against the
+     * export manifest's own published target totals, so a module that had invented a
+     * formula would fail there with a wrong number rather than pass here on a filename.
+     *
+     * `visuals.tsx` and `pace-bar.tsx` are NOT on this list and must not be: a chart or
+     * bar primitive receives resolved values and turns them into geometry.
      */
     expect(
       offenders,
@@ -574,6 +586,7 @@ describe('ADR-0013 condition 2: no frontend redefines a KPI', () => {
       'lib/dashboard/deals.ts',
       'lib/dashboard/executive.ts',
       'lib/dashboard/sales-gross.ts',
+      'lib/dashboard/targets.ts',
     ])
   })
 

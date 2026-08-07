@@ -1,17 +1,17 @@
 {
   "schema": "arpi.dashboard_client/1",
-  "datasetVersion": 3,
+  "datasetVersion": 4,
   "contractVersion": 1,
-  "contractSha256": "8cb74151d610652c4da1e37ef4bb8cd835d3868fe7ebf92291aad8244745f495",
-  "generatedAt": "2026-08-07T17:08:36+00:00",
+  "contractSha256": "d2f90edc9c1c776623cd787994a76529c65ff0a965f03d7ff18e1879228b98c0",
+  "generatedAt": "2026-08-07T20:32:01+00:00",
   "asOfDate": "2025-12-31",
   "profile": "development",
   "randomSeed": 20250701,
-  "sourceCommit": "603f473777258eb4f24509be5b9cef535b4b1b2a",
+  "sourceCommit": "1b9be8c339c0cb85d0e1e700c54d396ffb7cc555",
   "exporterVersion": "0.1.0",
   "syntheticData": true,
   "fictionalDealerGroup": true,
-  "pipelineRunUuid": "7e4849be-6dfe-4841-bdc0-6de8b04a54bf",
+  "pipelineRunUuid": "2e878277-7633-40ec-a575-0a099b1dc142",
   "pipelineRunStatus": "succeeded",
   "sourceViews": [
     "reporting.vw_appointment_funnel",
@@ -34,7 +34,8 @@
     "reporting.vw_pipeline_run_summary",
     "reporting.vw_reconciliation_status",
     "reporting.vw_sales_gross_trend",
-    "reporting.vw_sales_summary"
+    "reporting.vw_sales_summary",
+    "reporting.vw_target_attainment"
   ],
   "reconciliationStatus": "passed",
   "reconciliationMethod": "Every total is an exact sum over an additive exported column. A ratio publishes its numerator sum and its denominator sum and no quotient: the reporting layer's rule 7 puts division in the consumer, which is also what makes an average of store averages impossible to form from this block and what lets a consumer in any language reproduce the figure without first agreeing on a rounding convention. Non-additive figures -- medians, percentiles, days supply, inventory turn -- carry no group total by design, because a group median is not the average of store medians; their evidence is row-level equality with the source view, asserted by tests/integration/test_dashboard_export.py.",
@@ -44,6 +45,7 @@
       "kpi_id": null,
       "unit": "leads",
       "display_precision": null,
+      "subset": null,
       "column": "appointment_set_leads",
       "total": "1473"
     },
@@ -52,6 +54,7 @@
       "kpi_id": "KPI-FUN-003",
       "unit": "ratio",
       "display_precision": 3,
+      "subset": null,
       "numerator_column": "appointment_set_leads",
       "denominator_column": "leads_received",
       "numerator": "1473",
@@ -62,6 +65,7 @@
       "kpi_id": null,
       "unit": "USD",
       "display_precision": 2,
+      "subset": null,
       "column": "attributed_total_gross",
       "total": "1402668.95"
     },
@@ -70,6 +74,7 @@
       "kpi_id": "KPI-FUN-007",
       "unit": "seconds",
       "display_precision": 1,
+      "subset": null,
       "numerator_column": "response_seconds_total",
       "denominator_column": "responded_leads",
       "numerator": "22920787",
@@ -80,14 +85,28 @@
       "kpi_id": "KPI-GRS-002",
       "unit": "USD",
       "display_precision": 2,
+      "subset": null,
       "column": "back_end_gross",
       "total": "666073.33"
+    },
+    "back_end_gross_target": {
+      "dataset": "target-attainment",
+      "kpi_id": null,
+      "unit": "USD",
+      "display_precision": 2,
+      "subset": {
+        "target_scope_type": "Department",
+        "department_name": "Finance"
+      },
+      "column": "target_value",
+      "total": "720280.50"
     },
     "back_gross_per_retail_unit": {
       "dataset": "gross-summary",
       "kpi_id": "KPI-GRS-005",
       "unit": "USD per unit",
       "display_precision": 2,
+      "subset": null,
       "numerator_column": "back_end_gross",
       "denominator_column": "retail_units_sold",
       "numerator": "666073.33",
@@ -98,6 +117,7 @@
       "kpi_id": "KPI-FUN-002",
       "unit": "ratio",
       "display_precision": 3,
+      "subset": null,
       "numerator_column": "contacted_leads",
       "denominator_column": "leads_received",
       "numerator": "3982",
@@ -108,6 +128,7 @@
       "kpi_id": null,
       "unit": "leads",
       "display_precision": null,
+      "subset": null,
       "column": "contacted_leads",
       "total": "3982"
     },
@@ -116,6 +137,7 @@
       "kpi_id": "KPI-MKT-001",
       "unit": "USD per lead",
       "display_precision": 2,
+      "subset": null,
       "numerator_column": "spend_amount",
       "denominator_column": "attributed_leads",
       "numerator": "53272.78",
@@ -126,6 +148,7 @@
       "kpi_id": "KPI-MKT-002",
       "unit": "USD per sale",
       "display_precision": 2,
+      "subset": null,
       "numerator_column": "spend_amount",
       "denominator_column": "attributed_retail_units",
       "numerator": "53272.78",
@@ -136,14 +159,28 @@
       "kpi_id": "KPI-GRS-001",
       "unit": "USD",
       "display_precision": 2,
+      "subset": null,
       "column": "front_end_gross",
       "total": "1270498.26"
+    },
+    "front_end_gross_target": {
+      "dataset": "target-attainment",
+      "kpi_id": null,
+      "unit": "USD",
+      "display_precision": 2,
+      "subset": {
+        "target_scope_type": "Department",
+        "department_name": "Sales"
+      },
+      "column": "target_value",
+      "total": "1364099.29"
     },
     "front_gross_per_retail_unit": {
       "dataset": "gross-summary",
       "kpi_id": "KPI-GRS-004",
       "unit": "USD per unit",
       "display_precision": 2,
+      "subset": null,
       "numerator_column": "front_end_gross",
       "denominator_column": "retail_units_sold",
       "numerator": "1270498.26",
@@ -154,6 +191,7 @@
       "kpi_id": "KPI-MKT-003",
       "unit": "ratio",
       "display_precision": 2,
+      "subset": null,
       "numerator_column": "attributed_total_gross",
       "denominator_column": "spend_amount",
       "numerator": "1402668.95",
@@ -164,6 +202,7 @@
       "kpi_id": "KPI-FUN-006",
       "unit": "ratio",
       "display_precision": 3,
+      "subset": null,
       "numerator_column": "sold_leads",
       "denominator_column": "leads_received",
       "numerator": "400",
@@ -174,6 +213,7 @@
       "kpi_id": "KPI-FUN-001",
       "unit": "leads",
       "display_precision": null,
+      "subset": null,
       "column": "leads_received",
       "total": "5538"
     },
@@ -182,6 +222,7 @@
       "kpi_id": null,
       "unit": "USD",
       "display_precision": 2,
+      "subset": null,
       "column": "spend_amount",
       "total": "53272.78"
     },
@@ -190,14 +231,42 @@
       "kpi_id": "KPI-SLS-002",
       "unit": "units",
       "display_precision": null,
+      "subset": null,
       "column": "new_units_sold",
       "total": "202"
+    },
+    "retail_unit_target": {
+      "dataset": "target-attainment",
+      "kpi_id": "KPI-TGT-001",
+      "unit": "units",
+      "display_precision": 0,
+      "subset": {
+        "target_scope_type": "Store",
+        "target_kpi_id": "KPI-SLS-001"
+      },
+      "column": "target_value",
+      "total": "592.00"
+    },
+    "retail_unit_target_attainment": {
+      "dataset": "target-attainment",
+      "kpi_id": "KPI-TGT-002",
+      "unit": "ratio",
+      "display_precision": 4,
+      "subset": {
+        "target_scope_type": "Store",
+        "target_kpi_id": "KPI-SLS-001"
+      },
+      "numerator_column": "attainment_numerator",
+      "denominator_column": "attainment_denominator",
+      "numerator": "558",
+      "denominator": "592.00"
     },
     "retail_units": {
       "dataset": "sales-summary",
       "kpi_id": "KPI-SLS-001",
       "unit": "units",
       "display_precision": null,
+      "subset": null,
       "column": "retail_units_sold",
       "total": "558"
     },
@@ -206,6 +275,7 @@
       "kpi_id": "KPI-FUN-004",
       "unit": "ratio",
       "display_precision": 3,
+      "subset": null,
       "numerator_column": "shown_appointments",
       "denominator_column": "eligible_appointments",
       "numerator": "1025",
@@ -216,6 +286,7 @@
       "kpi_id": "KPI-FUN-005",
       "unit": "ratio",
       "display_precision": 3,
+      "subset": null,
       "numerator_column": "shown_and_sold_appointments",
       "denominator_column": "shown_appointments_on_show_date",
       "numerator": "225",
@@ -226,6 +297,7 @@
       "kpi_id": null,
       "unit": "appointments",
       "display_precision": null,
+      "subset": null,
       "column": "shown_appointments",
       "total": "1025"
     },
@@ -234,6 +306,7 @@
       "kpi_id": null,
       "unit": "leads",
       "display_precision": null,
+      "subset": null,
       "column": "sold_leads",
       "total": "400"
     },
@@ -242,6 +315,7 @@
       "kpi_id": "KPI-GRS-003",
       "unit": "USD",
       "display_precision": 2,
+      "subset": null,
       "column": "total_gross",
       "total": "1936571.59"
     },
@@ -250,16 +324,44 @@
       "kpi_id": "KPI-GRS-006",
       "unit": "USD per unit",
       "display_precision": 2,
+      "subset": null,
       "numerator_column": "total_gross",
       "denominator_column": "retail_units_sold",
       "numerator": "1936571.59",
       "denominator": "558"
+    },
+    "total_gross_target": {
+      "dataset": "target-attainment",
+      "kpi_id": "KPI-TGT-003",
+      "unit": "USD",
+      "display_precision": 2,
+      "subset": {
+        "target_scope_type": "Store",
+        "target_kpi_id": "KPI-GRS-003"
+      },
+      "column": "target_value",
+      "total": "2084379.79"
+    },
+    "total_gross_target_attainment": {
+      "dataset": "target-attainment",
+      "kpi_id": "KPI-TGT-004",
+      "unit": "ratio",
+      "display_precision": 4,
+      "subset": {
+        "target_scope_type": "Store",
+        "target_kpi_id": "KPI-GRS-003"
+      },
+      "numerator_column": "attainment_numerator",
+      "denominator_column": "attainment_denominator",
+      "numerator": "1936571.59",
+      "denominator": "2084379.79"
     },
     "used_units": {
       "dataset": "sales-summary",
       "kpi_id": "KPI-SLS-003",
       "unit": "units",
       "display_precision": null,
+      "subset": null,
       "column": "used_units_sold",
       "total": "356"
     }
@@ -267,7 +369,7 @@
   "privacyScanStatus": "passed",
   "validationCriticalFailures": 0,
   "validationWarnings": 0,
-  "reconciliationsEvaluated": 58,
+  "reconciliationsEvaluated": 69,
   "reconciliationsFailed": 0,
   "stale": false,
   "limitations": [
@@ -3228,6 +3330,245 @@
       "chunks": null
     },
     {
+      "name": "target-attainment",
+      "grain": "One row per store per target scope (type and identity) per targeted KPI per calendar month, with the governed as-of context.",
+      "businessKey": [
+        "dealership_id",
+        "target_month",
+        "target_scope_type",
+        "target_scope_id",
+        "target_kpi_id"
+      ],
+      "dateBasis": "target month for the plan; sale date for every actual",
+      "kpiIds": [
+        "KPI-TGT-001",
+        "KPI-TGT-002",
+        "KPI-TGT-003",
+        "KPI-TGT-004",
+        "KPI-TGT-005",
+        "KPI-TGT-006",
+        "KPI-TGT-007",
+        "KPI-TGT-008",
+        "KPI-TGT-009",
+        "KPI-TGT-010"
+      ],
+      "rowCount": 72,
+      "columns": [
+        {
+          "name": "dealership_id",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "target_month",
+          "type": "date",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "target_scope_type",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": [
+            "Store",
+            "Department",
+            "Employee"
+          ]
+        },
+        {
+          "name": "target_scope_id",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "department_name",
+          "type": "string",
+          "nullable": true,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": [
+            "Sales",
+            "Finance"
+          ]
+        },
+        {
+          "name": "target_kpi_id",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": [
+            "KPI-SLS-001",
+            "KPI-GRS-001",
+            "KPI-GRS-002",
+            "KPI-GRS-003"
+          ]
+        },
+        {
+          "name": "target_kpi_label",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "measure_unit",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": [
+            "units",
+            "USD"
+          ]
+        },
+        {
+          "name": "actual_date_basis",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "is_target_present",
+          "type": "boolean",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "target_value",
+          "type": "exact",
+          "nullable": true,
+          "unit": "units or USD",
+          "displayPrecision": 2,
+          "enumeration": null
+        },
+        {
+          "name": "actual_mtd_value",
+          "type": "exact",
+          "nullable": false,
+          "unit": "units or USD",
+          "displayPrecision": 2,
+          "enumeration": null
+        },
+        {
+          "name": "attainment_numerator",
+          "type": "exact",
+          "nullable": false,
+          "unit": "units or USD",
+          "displayPrecision": 2,
+          "enumeration": null
+        },
+        {
+          "name": "attainment_denominator",
+          "type": "exact",
+          "nullable": true,
+          "unit": "units or USD",
+          "displayPrecision": 2,
+          "enumeration": null
+        },
+        {
+          "name": "selling_days_in_month",
+          "type": "integer",
+          "nullable": false,
+          "unit": "days",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "selling_days_elapsed",
+          "type": "integer",
+          "nullable": false,
+          "unit": "days",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "selling_days_remaining",
+          "type": "integer",
+          "nullable": false,
+          "unit": "days",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "pace_numerator",
+          "type": "exact",
+          "nullable": false,
+          "unit": "units or USD",
+          "displayPrecision": 2,
+          "enumeration": null
+        },
+        {
+          "name": "pace_denominator",
+          "type": "integer",
+          "nullable": false,
+          "unit": "days",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "projection_numerator",
+          "type": "exact",
+          "nullable": false,
+          "unit": "units or USD x days",
+          "displayPrecision": 2,
+          "enumeration": null
+        },
+        {
+          "name": "projection_denominator",
+          "type": "integer",
+          "nullable": false,
+          "unit": "days",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "as_of_date",
+          "type": "date",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "effective_as_of_date",
+          "type": "date",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "month_state",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": [
+            "Not started",
+            "In progress",
+            "Complete"
+          ]
+        }
+      ],
+      "chunks": null
+    },
+    {
       "name": "deal-explorer",
       "grain": "One row per finalized vehicle transaction.",
       "businessKey": [
@@ -4327,7 +4668,7 @@
       ],
       "dateBasis": null,
       "kpiIds": [],
-      "rowCount": 58,
+      "rowCount": 69,
       "columns": [
         {
           "name": "reconciliation_id",
@@ -4592,12 +4933,12 @@
     }
   ],
   "sizes": {
-    "totalBytes": 3075560,
-    "fileCount": 140,
+    "totalBytes": 3093028,
+    "fileCount": 141,
     "largestFile": {
       "file": "datasets/sales-gross-trend.json",
       "bytes": 95189
     },
-    "rootExportBytes": 9658515
+    "rootExportBytes": 9710354
   }
 }

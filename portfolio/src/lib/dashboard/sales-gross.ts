@@ -81,6 +81,7 @@ import {
   type ResolvedPeriod,
 } from './periods'
 import { grossChangeBridgeRows, salesGrossTrendRows } from './sales-gross-data'
+import { buildTargetContext, type TargetContext } from './targets'
 
 /* -------------------------------------------------------------------------- */
 /* Shared shapes                                                               */
@@ -674,6 +675,16 @@ export interface SalesGrossView {
   readonly distribution: GrossDistribution
   readonly bridge: BridgeState
   readonly conditionFilterApplied: boolean
+  /**
+   * Targets, attainment and the selling-day clock for the selected scope.
+   *
+   * Built by the same module the Executive Overview uses, so the two routes cannot
+   * disagree about a store's attainment. Deliberately NOT folded into the gross-change
+   * bridge: the bridge decomposes a period-over-period change and a plan variance is a
+   * different question, so a fourth "plan" effect there would change what the
+   * decomposition means.
+   */
+  readonly targets: TargetContext
 }
 
 const reportingCalendar = calendarWindow(dashboardCalendar, dashboardManifest.asOfDate)
@@ -796,6 +807,8 @@ export function buildSalesGross(filters: DashboardFilters): SalesGrossView {
   const frontColumn = `${conditionPrefix}front_end_gross`
   const backColumn = `${conditionPrefix}back_end_gross`
   const totalColumn = `${conditionPrefix}total_gross`
+
+  const targets = buildTargetContext(filters, periodContext.period, scope.ids)
 
   const current = trendRowsFor(trend, scope.ids, periodContext.period)
   const comparison =
@@ -968,6 +981,7 @@ export function buildSalesGross(filters: DashboardFilters): SalesGrossView {
     distribution,
     bridge,
     conditionFilterApplied,
+    targets,
   }
 }
 

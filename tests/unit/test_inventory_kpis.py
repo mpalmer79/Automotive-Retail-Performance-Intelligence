@@ -186,24 +186,27 @@ def test_the_listing_views_are_not_part_of_the_mvp_reporting_surface() -> None:
 
 
 def test_the_dashboard_program_views_are_not_part_of_the_mvp_reporting_surface() -> None:
-    """`DASH.3` added three views, and none of them may enlarge the semantic-model surface.
+    """The console's own views may never enlarge the semantic-model surface.
 
     ``MVP_REPORTING_VIEWS`` is what ``sql_baseline_metadata.json`` describes and what the
-    Power BI model binds to. The console's own views read the same warehouse facts and add
-    no new fact, so folding them in would change a number measured against a specific
-    baseline run while the model -- still awaiting real-engine validation -- gained
-    nothing.
+    Power BI model binds to. ``DASH.3`` added three views over the same warehouse facts;
+    ``DASH.5`` added a fourth, and it is the first that reads a NEW fact
+    (``fact_sales_target``). That makes the separation more important rather than less:
+    folding any of them in would change a number measured against a specific baseline
+    run while the model -- still awaiting real-engine validation -- gained nothing, and
+    the target family would arrive in the model's expectation file as ten measures that
+    have never been written.
     """
     assert set(MVP_REPORTING_VIEWS) & set(DASHBOARD_PROGRAM_VIEWS) == set()
     assert set(INVENTORY_LISTING_VIEWS) & set(DASHBOARD_PROGRAM_VIEWS) == set()
-    assert len(DASHBOARD_PROGRAM_VIEWS) == 4
+    assert len(DASHBOARD_PROGRAM_VIEWS) == 5
 
 
 def test_the_full_reporting_surface_is_the_union_of_the_three() -> None:
     assert set(REPORTING_VIEWS) == (
         set(MVP_REPORTING_VIEWS) | set(INVENTORY_LISTING_VIEWS) | set(DASHBOARD_PROGRAM_VIEWS)
     )
-    assert len(REPORTING_VIEWS) == 38
+    assert len(REPORTING_VIEWS) == 39
     assert list(REPORTING_VIEWS) == sorted(REPORTING_VIEWS)
 
 

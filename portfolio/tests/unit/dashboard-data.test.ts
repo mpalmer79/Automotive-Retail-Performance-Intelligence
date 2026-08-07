@@ -421,9 +421,32 @@ describe('the manifest reconciliation totals re-derive from the committed rows',
 
   it('re-derives every component by exact summation of the committed rows', () => {
     for (const [name, total] of Object.entries(exportManifest.reconciliation.totals)) {
-      const rows = rowsByDataset.get(String(total['dataset']))
-      expect(rows, `${name} names an unknown dataset`).toBeDefined()
-      if (!rows) continue
+      const all = rowsByDataset.get(String(total['dataset']))
+      expect(all, `${name} names an unknown dataset`).toBeDefined()
+      if (!all) continue
+
+      /*
+       * A total may declare a SUBSET, and `target-attainment` is why. That dataset
+       * carries unit targets and currency targets in one column, and store plans beside
+       * the department refinements of them, so a total over every row would add units to
+       * dollars AND count the same gross twice. The subset is part of the exporter's
+       * contract declaration and therefore part of the contract fingerprint; this test
+       * re-derives over exactly the declared rows rather than guessing which ones the
+       * exporter meant.
+       */
+      const subset = total['subset']
+      const rows =
+        subset && typeof subset === 'object'
+          ? all.filter((row) =>
+              Object.entries(subset as Record<string, unknown>).every(
+                ([column, value]) => row[column] === value
+              )
+            )
+          : all
+      expect(
+        rows.length,
+        `${name} selected no row from its declared subset`
+      ).toBeGreaterThan(0)
 
       const components =
         typeof total['total'] === 'string'

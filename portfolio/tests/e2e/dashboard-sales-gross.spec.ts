@@ -257,3 +257,94 @@ test.describe('responsive presentation', () => {
     })
   }
 })
+
+/* -------------------------------------------------------------------------- */
+/* Targets and selling-day pace (DASH.5)                                       */
+/* -------------------------------------------------------------------------- */
+
+test.describe('targets and pace on the sales and gross page', () => {
+  test('renders the plan beside the totals, with the clock and the projection', async ({
+    page,
+  }) => {
+    await gotoRendered(page, ROUTE)
+    const text = await mainText(page)
+    expect(text).toMatch(/targets and pace/i)
+    expect(text).toMatch(/Target\s+[\d,$]/)
+    expect(text).toMatch(/of target/)
+    expect(text).toMatch(/selling days/i)
+    expect(text).toContain('Selling-day pace projection')
+  })
+
+  test('states the plan as a reference rather than drawing it onto the daily trend', async ({
+    page,
+  }) => {
+    /*
+     * A monthly plan is a single number for the month. Drawing it as a flat daily line
+     * would state a per-day target the reporting layer does not define, and dividing the
+     * month by its days to obtain one would be the console inventing a measure. The page
+     * says which decision it took.
+     */
+    await gotoRendered(page, ROUTE)
+    const text = await mainText(page)
+    expect(text).toMatch(/reference beside the totals/i)
+    expect(text).toMatch(/flat daily target line/i)
+  })
+
+  test('never calls the projection a forecast', async ({ page }) => {
+    await gotoRendered(page, ROUTE)
+    const text = await mainText(page)
+    for (const match of text.matchAll(/\b(forecast\w*|predicted|prediction)\b/gi)) {
+      const before = text.slice(Math.max(0, (match.index ?? 0) - 60), match.index ?? 0)
+      expect(before.toLowerCase()).toMatch(/not a|never a|rather than a|neither a|nor a/)
+    }
+  })
+
+  test('states the synthetic-target disclosure', async ({ page }) => {
+    await gotoRendered(page, ROUTE)
+    const text = await mainText(page)
+    expect(text).toContain('synthetic internal operating goals')
+    expect(text).toContain('not industry benchmarks')
+  })
+
+  test('withholds the comparison under a condition filter', async ({ page }) => {
+    await gotoRendered(page, `${ROUTE}?condition=Used`)
+    const text = await mainText(page)
+    expect(text).toContain('Target context is not comparable')
+  })
+
+  test('withholds the comparison under a sale-type scope', async ({ page }) => {
+    await gotoRendered(page, `${ROUTE}?scope=used`)
+    const text = await mainText(page)
+    expect(text).toContain('Target context is not comparable')
+  })
+
+  test('keeps the gross-change bridge free of any plan variance', async ({ page }) => {
+    /*
+     * The bridge decomposes a period-over-period CHANGE into volume, front-rate and
+     * back-rate effects. Plan variance answers a different question, and a fourth effect
+     * would change what the other three mean.
+     */
+    await gotoRendered(page, ROUTE)
+    const bridge = await page.locator('#bridge').innerText()
+    expect(bridge).not.toMatch(/\btarget\b/i)
+    expect(bridge).not.toMatch(/plan variance/i)
+  })
+
+  test('changes the plan when the store changes', async ({ page }) => {
+    await gotoRendered(page, `${ROUTE}?store=GSA-001`)
+    const first = await mainText(page)
+    await gotoRendered(page, `${ROUTE}?store=GSA-003`)
+    const second = await mainText(page)
+    expect(second).not.toBe(first)
+  })
+
+  test('is present without scripting', async ({ browser }) => {
+    const context = await browser.newContext({ javaScriptEnabled: false })
+    const page = await context.newPage()
+    await page.goto(ROUTE)
+    const text = await mainTextContent(page)
+    expect(text).toContain('Selling-day pace projection')
+    expect(text).toContain('synthetic internal operating goals')
+    await context.close()
+  })
+})

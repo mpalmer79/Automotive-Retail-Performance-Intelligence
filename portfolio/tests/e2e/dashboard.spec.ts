@@ -223,20 +223,157 @@ test.describe('the figures on the screen are the exported figures', () => {
     }
   })
 
-  test('carries no target, pace, forecast or accounting-variance figure', async ({
+  test('carries no F&I or accounting figure, which no fact supports yet', async ({
+    page,
+  }) => {
+    /*
+     * `DASH.5` moved target attainment and selling-day pace OFF this list: the plan fact
+     * exists, the KPIs are governed, and the section below asserts them positively. The
+     * two that remain are still blocked by Deferred facts (`DASH.6` and `DASH.8`), so
+     * their absence is still the correct state.
+     */
+    await gotoRendered(page, ROUTE)
+    const text = await mainText(page)
+    for (const absent of [
+      /\bgl variance\b/i,
+      /\bproduct penetration\b/i,
+      /\bchargeback\b/i,
+    ]) {
+      expect(text, String(absent)).not.toMatch(absent)
+    }
+  })
+})
+
+/* -------------------------------------------------------------------------- */
+/* Targets and selling-day pace (DASH.5)                                       */
+/* -------------------------------------------------------------------------- */
+
+test.describe('targets and selling-day pace', () => {
+  test('renders the plan beside the actual, with the attainment and the clock', async ({
     page,
   }) => {
     await gotoRendered(page, ROUTE)
     const text = await mainText(page)
-    for (const absent of [
-      /\btarget attainment\b/i,
-      /\bpace to\b/i,
-      /\bforecast\b/i,
-      /\bgl variance\b/i,
-      /\bproduct penetration\b/i,
+    expect(text).toMatch(/targets and pace/i)
+    expect(text).toMatch(/Target\s+[\d,$]/)
+    expect(text).toMatch(/of target/)
+    expect(text).toMatch(/selling days/i)
+    expect(text).toMatch(/per selling day/i)
+  })
+
+  test('names the governed target KPI identifiers', async ({ page }) => {
+    await gotoRendered(page, ROUTE)
+    const text = await mainText(page)
+    for (const identifier of [
+      'KPI-TGT-005',
+      'KPI-TGT-006',
+      'KPI-TGT-007',
+      'KPI-TGT-008',
+      'KPI-TGT-009',
+      'KPI-TGT-010',
     ]) {
-      expect(text, String(absent)).not.toMatch(absent)
+      expect(text, identifier).toContain(identifier)
     }
+  })
+
+  test('labels every projected figure "Selling-day pace projection"', async ({
+    page,
+  }) => {
+    await gotoRendered(page, ROUTE)
+    const text = await mainText(page)
+    expect(text).toContain('Selling-day pace projection')
+  })
+
+  test('never calls the projection a forecast or a prediction', async ({ page }) => {
+    /*
+     * The arithmetic is linear extrapolation over a calendar. Every sentence on the page
+     * that uses the word must be denying it, and this is what proves the denial rather
+     * than the claim survived.
+     */
+    await gotoRendered(page, ROUTE)
+    const text = await mainText(page)
+    for (const match of text.matchAll(/\b(forecast\w*|predicted|prediction)\b/gi)) {
+      const before = text.slice(Math.max(0, (match.index ?? 0) - 60), match.index ?? 0)
+      expect(
+        before.toLowerCase(),
+        `the page used "${match[0]}" as a claim rather than a denial`
+      ).toMatch(/not a|never a|rather than a|neither a|nor a/)
+    }
+  })
+
+  test('states that the goals are synthetic and not benchmarks', async ({ page }) => {
+    await gotoRendered(page, ROUTE)
+    const text = await mainText(page)
+    expect(text).toContain('synthetic internal operating goals')
+    expect(text).toContain('not industry benchmarks')
+  })
+
+  test('says a completed month is complete rather than projecting it forward', async ({
+    page,
+  }) => {
+    await gotoRendered(page, ROUTE)
+    const text = await mainText(page)
+    expect(text).toContain('Month complete')
+  })
+
+  test('changes the plan when the store changes', async ({ page }) => {
+    await gotoRendered(page, ROUTE)
+    const group = await mainText(page)
+    await gotoRendered(page, `${ROUTE}?store=GSA-003`)
+    const single = await mainText(page)
+    expect(single).not.toBe(group)
+    expect(single).toMatch(/Target\s+[\d,$]/)
+  })
+
+  test('changes the plan when the period changes', async ({ page }) => {
+    await gotoRendered(page, `${ROUTE}?period=2025-07`)
+    const july = await mainText(page)
+    await gotoRendered(page, `${ROUTE}?period=2025-11`)
+    const november = await mainText(page)
+    expect(november).not.toBe(july)
+  })
+
+  test('withholds the comparison when a filter changes the actual population', async ({
+    page,
+  }) => {
+    /*
+     * A Used-only actual against an all-retail plan is a percentage that is
+     * arithmetically valid and business-invalid. The page says so instead of printing it.
+     */
+    await gotoRendered(page, `${ROUTE}?condition=Used`)
+    const text = await mainText(page)
+    expect(text).toContain('Target context is not comparable')
+    expect(text).not.toMatch(/Selling-day pace projection:/)
+  })
+
+  test('withholds pace and projection across several months but keeps the totals', async ({
+    page,
+  }) => {
+    await gotoRendered(page, `${ROUTE}?period=2025-07-01..2025-12-31`)
+    const text = await mainText(page)
+    expect(text).toMatch(/Target\s+[\d,$]/)
+    expect(text).toMatch(/single-month arithmetic/i)
+  })
+
+  test('renders the scoreboard pace column for every store', async ({ page }) => {
+    await gotoRendered(page, ROUTE)
+    const text = await mainText(page)
+    expect(text).toContain('Pace against plan')
+    expect(text).toMatch(/projected \//)
+  })
+
+  test('survives a browser back and forward across a target filter change', async ({
+    page,
+  }) => {
+    await gotoRendered(page, ROUTE)
+    await gotoRendered(page, `${ROUTE}?store=GSA-002`)
+    await page.goBack()
+    await page.locator('h1').first().waitFor({ state: 'visible' })
+    expect(page.url()).not.toContain('store=GSA-002')
+    await page.goForward()
+    await page.locator('h1').first().waitFor({ state: 'visible' })
+    expect(page.url()).toContain('store=GSA-002')
+    expect(await mainText(page)).toMatch(/Target\s+[\d,$]/)
   })
 })
 
@@ -533,6 +670,22 @@ test.describe('without JavaScript', () => {
     expect(text).toContain('Every warehouse record in this project is synthetic')
     // Methodology, which is inside `<details>` and therefore in the document.
     expect(text).toContain('reporting.vw_sales_summary')
+    // Targets and pace: every part of it, including the states and the disclosure.
+    expect(text).toMatch(/targets and pace/i)
+    expect(text).toContain('Selling-day pace projection')
+    expect(text).toContain('selling days')
+    expect(text).toContain('per selling day')
+    expect(text).toContain('of target')
+    expect(text).toContain('synthetic internal operating goals')
+    expect(text).toContain('Pace against plan')
+  })
+
+  test('the incomparable-filter state is present without scripting too', async ({
+    page,
+  }) => {
+    await page.goto(`${ROUTE}?condition=Used`)
+    const text = await mainTextContent(page)
+    expect(text).toContain('Target context is not comparable')
   })
 
   test('a deep-linked filter still renders the filtered view', async ({ page }) => {

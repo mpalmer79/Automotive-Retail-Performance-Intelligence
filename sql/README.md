@@ -6,15 +6,19 @@ objects, reporting views, indexes, roles, grants and data-quality checks.
 
 Everything here is **Implemented** and has been executed against PostgreSQL 16. All eight
 MVP dimensions and all five MVP facts are built, constrained and loaded; the reporting
-layer above them is twenty-eight views, and the validation layer includes seven
-reconciliation views the loader evaluates and records on every run.
+layer above them is twenty-eight views, and the loader evaluates and records the
+reconciliations in `audit.vw_recon_all` on every run.
 
-A **second lane** also lives in these directories: the sanitized public dealership listing
-snapshots of [ADR-0011](../docs/architecture-decisions/ADR-0011-sanitized-public-inventory-reference-data.md),
-which add one fact, one non-conformed dimension, six reporting views and their own
-reconciliation view. They are **not** counted in the numbers above, they load on a workbook
-cadence rather than on every pipeline run, and the semantic model does not read them.
-§1.1 gives the arithmetic and §2.1 names the files.
+**Two further lanes** also live in these directories, and neither is counted in the
+numbers above. The sanitized public dealership listing snapshots of
+[ADR-0011](../docs/architecture-decisions/ADR-0011-sanitized-public-inventory-reference-data.md)
+add one fact, one non-conformed dimension, six reporting views and their own reconciliation
+view; they load on a workbook cadence rather than on every pipeline run. The Dealer
+Operations Command Center of
+[ADR-0013](../docs/architecture-decisions/ADR-0013-governed-web-operating-console.md) adds
+five reporting views and — from `DASH.5` — one fact, `warehouse.fact_sales_target`, which
+is the monthly operating plan and loads on every run like the MVP facts. The semantic model
+reads neither lane. §1.1 gives the arithmetic and §2.1 names the files.
 
 - Target: **PostgreSQL 16** or later.
 - Every script is **idempotent**: running the whole sequence twice produces the
@@ -60,14 +64,20 @@ Two lanes share these directories, and the headline numbers describe one of them
 |---|---|---|
 | **5** facts | The MVP facts the pipeline loads from generated data | `fact_vehicle_listing_snapshot` |
 | **8** conformed dimensions | The dimensions the semantic model relates to | `dim_observed_vehicle` |
-| **28** reporting views | The views the SQL baseline and the semantic model were measured against | the six `vw_vehicle_listing_*` views |
-| **34** reporting views | Every view in `05_reporting/`, both lanes | nothing |
-| **7** reconciliation views in `audit.vw_recon_all` | The set the loader evaluates on **every pipeline run** | `audit.vw_recon_inventory_listing`, which runs on a workbook cadence |
+| **28** reporting views | The views the SQL baseline and the semantic model were measured against | the six `vw_vehicle_listing_*` views and the five dashboard-program views |
+| **39** reporting views | Every view in `05_reporting/`, all three lanes | nothing |
+| **6** component views in `audit.vw_recon_all` | Ingestion, gross, funnel, marketing, reporting and target — the set the loader evaluates on **every pipeline run** | `audit.vw_recon_inventory_listing`, which runs on a workbook cadence |
 
 None of these is a judgement about importance. The listing lane is excluded from the MVP
 counts because it is loaded on a different cadence from a different kind of source, and a
-number that silently absorbed it would stop meaning what the semantic model bound to. §2.1
-records which files belong to it.
+number that silently absorbed it would stop meaning what the semantic model bound to. The
+dashboard-program lane is excluded for the same reason, and `DASH.5` makes that separation
+matter more rather than less: it is the first dashboard increment to add a fact table, so
+the tree now holds **seven** fact DDL scripts while the MVP baseline still describes five —
+five MVP facts, one listing fact, one target fact. §2.1 records which files belong to each
+lane, and the declarations `arpi.inventory.spec.INVENTORY_LANE_SQL_FILES` and
+`arpi.dashboard.contract.DASHBOARD_LANE_SQL_FILES` are what the tests read rather than a
+restated list.
 
 ---
 
@@ -96,77 +106,82 @@ header block.
 | 16 | `01_raw/12_raw_marketing_spend_load.sql` | Creates `raw.marketing_spend_load` + batch index |
 | 17 | `01_raw/13_raw_inventory_snapshot_load.sql` | Creates `raw.inventory_snapshot_load` + batch index |
 | 18 | `01_raw/14_raw_inventory_listing_snapshot_load.sql` | **Listing lane.** Creates `raw.inventory_listing_snapshot_load` + batch index. No original VIN column and no source-URL column exists to land |
-| 19 | `02_staging/00_stg_calendar_date.sql` | Creates `staging.stg_calendar_date` |
-| 20 | `02_staging/01_stg_dealership.sql` | Creates `staging.stg_dealership` |
-| 21 | `02_staging/02_stg_cast_functions.sql` | Creates the non-throwing `staging.fn_try_*` cast helpers |
-| 22 | `02_staging/03_stg_vehicle_model.sql` | Creates `staging.stg_vehicle_model_typed`, `staging.stg_vehicle_model`, `staging.stg_vehicle_model_rejected` |
-| 23 | `02_staging/04_stg_vehicle.sql` | Creates `staging.stg_vehicle_typed`, `staging.stg_vehicle`, `staging.stg_vehicle_rejected` |
-| 24 | `02_staging/05_stg_employee.sql` | Creates `staging.stg_employee_typed`, `staging.stg_employee`, `staging.stg_employee_rejected` |
-| 25 | `02_staging/06_stg_customer.sql` | Creates `staging.stg_customer_typed`, `staging.stg_customer`, `staging.stg_customer_rejected` |
-| 26 | `02_staging/07_stg_lead_source.sql` | Creates `staging.stg_lead_source_typed`, `staging.stg_lead_source`, `staging.stg_lead_source_rejected` |
-| 27 | `02_staging/08_stg_marketing_campaign.sql` | Creates `staging.stg_marketing_campaign_typed`, `staging.stg_marketing_campaign`, `staging.stg_marketing_campaign_rejected` |
-| 28 | `02_staging/09_stg_acquisition_event.sql` | Creates `staging.stg_acquisition_event_typed`, `staging.stg_acquisition_event`, `staging.stg_acquisition_event_rejected` |
-| 29 | `02_staging/10_stg_sale_event.sql` | Creates `staging.stg_sale_event_typed`, `staging.stg_sale_event`, `staging.stg_sale_event_rejected` |
-| 30 | `02_staging/11_stg_lead.sql` | Creates `staging.stg_lead_typed`, `staging.stg_lead`, `staging.stg_lead_rejected` |
-| 31 | `02_staging/12_stg_appointment.sql` | Creates `staging.stg_appointment_typed`, `staging.stg_appointment`, `staging.stg_appointment_rejected` |
-| 32 | `02_staging/13_stg_marketing_spend.sql` | Creates `staging.stg_marketing_spend_typed`, `staging.stg_marketing_spend`, `staging.stg_marketing_spend_rejected` |
-| 33 | `02_staging/14_stg_inventory_snapshot.sql` | Creates `staging.stg_inventory_snapshot_typed`, `staging.stg_inventory_snapshot`, `staging.stg_inventory_snapshot_rejected` |
-| 34 | `02_staging/15_stg_inventory_listing_snapshot.sql` | **Listing lane.** Creates `staging.stg_inventory_listing_snapshot_typed`, `staging.stg_inventory_listing_snapshot`, `staging.stg_inventory_listing_snapshot_rejected`, plus `staging.fn_dealership_exists` and `staging.fn_dealership_named` — plpgsql because a view resolves its tables at creation time and staging is built before dimensions |
-| 35 | `03_dimensions/00_dim_date.sql` | Creates `warehouse.dim_date` |
-| 36 | `03_dimensions/01_dim_dealership.sql` | Creates `warehouse.dim_dealership` + current-row unique index |
-| 37 | `03_dimensions/02_dim_vehicle_model.sql` | Creates `warehouse.dim_vehicle_model` |
-| 38 | `03_dimensions/03_dim_vehicle.sql` | Creates `warehouse.dim_vehicle` |
-| 39 | `03_dimensions/04_dim_employee.sql` | Creates `warehouse.dim_employee` |
-| 40 | `03_dimensions/05_dim_customer.sql` | Creates `warehouse.dim_customer` |
-| 41 | `03_dimensions/06_dim_lead_source.sql` | Creates `warehouse.dim_lead_source` |
-| 42 | `03_dimensions/07_dim_marketing_campaign.sql` | Creates `warehouse.dim_marketing_campaign` |
-| 43 | `03_dimensions/08_dim_observed_vehicle.sql` | **Listing lane.** Creates `warehouse.dim_observed_vehicle` — a **ninth** dimension that is deliberately not conformed and not one of the eight. A listing proves observation, not ownership, so it carries none of `dim_vehicle`'s acquisition, cost, colour or disposition attributes |
-| 44 | `03_dimensions/10_dim_date_merge.sql` | **Runtime.** Upserts staging into `dim_date` |
-| 45 | `03_dimensions/11_dim_dealership_merge.sql` | **Runtime.** SCD Type 2 merge into `dim_dealership` |
-| 46 | `03_dimensions/12_dim_vehicle_model_merge.sql` | **Runtime.** Type 1 merge into `warehouse.dim_vehicle_model` |
-| 47 | `03_dimensions/13_dim_vehicle_merge.sql` | **Runtime.** Type 1 merge into `warehouse.dim_vehicle` |
-| 48 | `03_dimensions/14_dim_employee_merge.sql` | **Runtime.** SCD Type 2 merge into `warehouse.dim_employee` |
-| 49 | `03_dimensions/15_dim_customer_merge.sql` | **Runtime.** Type 1 merge into `warehouse.dim_customer` |
-| 50 | `03_dimensions/16_dim_lead_source_merge.sql` | **Runtime.** Type 1 merge into `warehouse.dim_lead_source` |
-| 51 | `03_dimensions/17_dim_marketing_campaign_merge.sql` | **Runtime.** Type 1 merge into `warehouse.dim_marketing_campaign` |
-| 52 | `03_dimensions/18_dim_observed_vehicle_load.sql` | **Listing lane. Workbook cadence, not runtime.** Type 1 merge into `warehouse.dim_observed_vehicle`. Named `_load` rather than `_merge` **on purpose**: the pipeline discovers dimension work with a `*_merge.sql` glob, and a listing dimension swept into an ordinary generated-data run would look for a workbook nobody supplied |
-| 53 | `04_facts/00_fact_vehicle_sale.sql` | Creates `warehouse.fact_vehicle_sale` |
-| 54 | `04_facts/01_fact_vehicle_inventory_snapshot.sql` | Creates `warehouse.fact_vehicle_inventory_snapshot` |
-| 55 | `04_facts/02_fact_lead.sql` | Creates `warehouse.fact_lead` |
-| 56 | `04_facts/03_fact_appointment.sql` | Creates `warehouse.fact_appointment` |
-| 57 | `04_facts/04_fact_marketing_spend.sql` | Creates `warehouse.fact_marketing_spend` |
-| 58 | `04_facts/05_fact_vehicle_listing_snapshot.sql` | **Listing lane.** Creates `warehouse.fact_vehicle_listing_snapshot` — a **sixth** fact that is not one of the five MVP facts and is not read by the semantic model |
-| 59–63 | `04_facts/10_fact_vehicle_sale_load.sql` … `14_fact_marketing_spend_load.sql` | **Runtime.** The five MVP fact load scripts, one per fact above, each guarded by `ON CONFLICT ... DO UPDATE` |
-| 64 | `04_facts/15_fact_vehicle_listing_snapshot_load.sql` | **Listing lane. Workbook cadence.** Insert-only: `ON CONFLICT DO NOTHING` with **no UPDATE path at all**, because a capture records what somebody observed at a moment that has passed and cannot be recomputed |
-| 65 | `05_reporting/00_reporting_scope.sql` | Documents which reporting views exist and which are deliberately absent |
-| 66–69 | `05_reporting/01_vw_calendar.sql` … `04_vw_data_quality_summary.sql` | The four Phase 0 views: `vw_calendar`, `vw_dealership`, `vw_pipeline_run_summary`, `vw_data_quality_summary` |
-| 70–75 | `05_reporting/05_vw_vehicle_model.sql` … `10_vw_marketing_campaign.sql` | The six remaining **dimension** views: `vw_vehicle_model`, `vw_vehicle`, `vw_employee`, `vw_customer`, `vw_lead_source`, `vw_marketing_campaign` |
-| 76–80 | `05_reporting/11_vw_vehicle_sales.sql` … `15_vw_marketing_spend.sql` | The five **fact** views, each preserving its fact's grain exactly: `vw_vehicle_sales`, `vw_inventory_snapshots`, `vw_leads`, `vw_appointments`, `vw_marketing_spend` |
-| 81–93 | `05_reporting/20_vw_sales_summary.sql` … `32_vw_reconciliation_status.sql` | The thirteen governed **analytical** views: sales, gross, inventory health, inventory aging, days to sale, inventory turn, days supply, lead funnel, appointment funnel, lead response, marketing performance, data-quality trend, reconciliation status |
-| 94–99 | `05_reporting/33_vw_vehicle_listing_current.sql` … `38_vw_vehicle_listing_change.sql` | **Listing lane.** The six listing views: `vw_vehicle_listing_current`, `vw_vehicle_listing_summary`, `vw_vehicle_listing_model_mix`, `vw_vehicle_listing_price_completeness`, `vw_vehicle_listing_observation_span`, `vw_vehicle_listing_change`. Counted **apart from the twenty-eight**; see §1.1 |
-| 100–103 | `05_reporting/40_vw_sales_gross_trend.sql` … `43_vw_deal_jacket.sql` | **Dashboard program lane.** The three `DASH.3` views plus one from `DASH.4`: `vw_sales_gross_trend` (store × sale date, volume and gross with their condition components as additive columns), `vw_gross_change_bridge` (store × month pair × component, published as exact numerators over a shared denominator so the reconciliation needs no division), `vw_deal_explorer` (one row per finalized transaction, public-safe and compact, for the index), `vw_deal_jacket` (the same grain, presentation-complete: the cost components behind the front gross, the trade context, the finance amounts, the people and the lead's paper trail, for the record view). Counted **apart from the twenty-eight**; see §1.1 |
-| 104 | `06_indexes/00_indexes.sql` | Creates the Phase 0 justified secondary indexes |
-| 105 | `06_indexes/01_phase1_indexes.sql` | Creates the Phase 1 justified secondary indexes |
-| 106 | `06_indexes/02_inventory_listing_indexes.sql` | **Listing lane.** Secondary indexes for the listing fact and its dimension |
-| 107 | `07_security/00_roles.sql` | Creates `arpi_admin`, `arpi_loader`, `arpi_reporter` (NOLOGIN) |
-| 108 | `07_security/01_grants.sql` | Moves ownership to `arpi_admin`; applies the grant model; asserts it object by object |
-| 109 | `08_validation/00_validation_helpers.sql` | Result-shape template view + `audit.fn_record_validation_result` |
-| 110 | `08_validation/01_dim_date_checks.sql` | Creates `audit.vw_dq_dim_date` (`DQ-DATE-001..005`) |
-| 111 | `08_validation/02_dim_dealership_checks.sql` | Creates `audit.vw_dq_dim_dealership` (`DQ-DLR-001..005`) |
-| 112 | `08_validation/03_referential_checks.sql` | Creates `audit.vw_dq_referential` (`DQ-REF-001..005`) |
-| 113 | `08_validation/04_audit_checks.sql` | Creates `audit.vw_dq_audit` (`DQ-AUD-001..005`), `audit.vw_dq_all`, `audit.fn_record_all_dq_checks` |
-| 114 | `08_validation/05_reconciliation_helpers.sql` | Creates `audit.vw_recon_result_template`, the uniform reconciliation result shape |
-| 115 | `08_validation/06_recon_ingestion.sql` | Creates `audit.vw_recon_ingestion` — the five facts' staging-to-warehouse counts, and snapshot continuity |
-| 116 | `08_validation/07_recon_gross.sql` | Creates `audit.vw_recon_gross` — `RECON-GROSS-001`, `RECON-GROSS-002`, `RECON-UNITS-001`, `RECON-REPORT-SALES` |
-| 117 | `08_validation/08_recon_funnel.sql` | Creates `audit.vw_recon_funnel` — `RECON-LEAD-001`, duplicates, funnel bounds, sold path, funnel chain |
-| 118 | `08_validation/09_recon_marketing.sql` | Creates `audit.vw_recon_marketing` — spend, attributed leads, sales and gross, and the cost-attributability rule |
-| 119 | `08_validation/10_recon_reporting.sql` | Creates `audit.vw_recon_reporting` — every reporting view reconciled to the fact it projects |
-| 120 | `08_validation/11_recon_all.sql` | Creates `audit.vw_recon_all` and `audit.fn_record_all_reconciliations` |
-| 121 | `08_validation/12_recon_inventory_listing.sql` | **Listing lane.** Creates `audit.vw_recon_inventory_listing` — `RECON-LISTING-001..010`. Deliberately **not** unioned into `audit.vw_recon_all`, which is the pipeline's per-run set with an asserted per-run count; this lane runs on a workbook cadence |
-| 122–124 | `09_migrations/0000_migration_history.sql` … `0002_add_inventory_listing_objects.sql` | The migration ledger and the two recorded migrations. Each is idempotent and records itself |
-| 125 | `07_security/01_grants.sql` **(again)** | Privilege-normalisation pass over the objects created in the validation and migration steps |
+| 19 | `01_raw/15_raw_sales_target_load.sql` | **Dashboard program lane.** Creates `raw.sales_target_load` + batch index — the monthly operating plan, landed like every other entity |
+| 20 | `02_staging/00_stg_calendar_date.sql` | Creates `staging.stg_calendar_date` |
+| 21 | `02_staging/01_stg_dealership.sql` | Creates `staging.stg_dealership` |
+| 22 | `02_staging/02_stg_cast_functions.sql` | Creates the non-throwing `staging.fn_try_*` cast helpers |
+| 23 | `02_staging/03_stg_vehicle_model.sql` | Creates `staging.stg_vehicle_model_typed`, `staging.stg_vehicle_model`, `staging.stg_vehicle_model_rejected` |
+| 24 | `02_staging/04_stg_vehicle.sql` | Creates `staging.stg_vehicle_typed`, `staging.stg_vehicle`, `staging.stg_vehicle_rejected` |
+| 25 | `02_staging/05_stg_employee.sql` | Creates `staging.stg_employee_typed`, `staging.stg_employee`, `staging.stg_employee_rejected` |
+| 26 | `02_staging/06_stg_customer.sql` | Creates `staging.stg_customer_typed`, `staging.stg_customer`, `staging.stg_customer_rejected` |
+| 27 | `02_staging/07_stg_lead_source.sql` | Creates `staging.stg_lead_source_typed`, `staging.stg_lead_source`, `staging.stg_lead_source_rejected` |
+| 28 | `02_staging/08_stg_marketing_campaign.sql` | Creates `staging.stg_marketing_campaign_typed`, `staging.stg_marketing_campaign`, `staging.stg_marketing_campaign_rejected` |
+| 29 | `02_staging/09_stg_acquisition_event.sql` | Creates `staging.stg_acquisition_event_typed`, `staging.stg_acquisition_event`, `staging.stg_acquisition_event_rejected` |
+| 30 | `02_staging/10_stg_sale_event.sql` | Creates `staging.stg_sale_event_typed`, `staging.stg_sale_event`, `staging.stg_sale_event_rejected` |
+| 31 | `02_staging/11_stg_lead.sql` | Creates `staging.stg_lead_typed`, `staging.stg_lead`, `staging.stg_lead_rejected` |
+| 32 | `02_staging/12_stg_appointment.sql` | Creates `staging.stg_appointment_typed`, `staging.stg_appointment`, `staging.stg_appointment_rejected` |
+| 33 | `02_staging/13_stg_marketing_spend.sql` | Creates `staging.stg_marketing_spend_typed`, `staging.stg_marketing_spend`, `staging.stg_marketing_spend_rejected` |
+| 34 | `02_staging/14_stg_inventory_snapshot.sql` | Creates `staging.stg_inventory_snapshot_typed`, `staging.stg_inventory_snapshot`, `staging.stg_inventory_snapshot_rejected` |
+| 35 | `02_staging/15_stg_inventory_listing_snapshot.sql` | **Listing lane.** Creates `staging.stg_inventory_listing_snapshot_typed`, `staging.stg_inventory_listing_snapshot`, `staging.stg_inventory_listing_snapshot_rejected`, plus `staging.fn_dealership_exists` and `staging.fn_dealership_named` — plpgsql because a view resolves its tables at creation time and staging is built before dimensions |
+| 36 | `02_staging/16_stg_sales_target.sql` | **Dashboard program lane.** Creates `staging.stg_sales_target_typed`, `staging.stg_sales_target`, `staging.stg_sales_target_rejected`. Enforces the one scope rule a CHECK cannot express: a Store-scope target must name its own store |
+| 37 | `03_dimensions/00_dim_date.sql` | Creates `warehouse.dim_date` |
+| 38 | `03_dimensions/01_dim_dealership.sql` | Creates `warehouse.dim_dealership` + current-row unique index |
+| 39 | `03_dimensions/02_dim_vehicle_model.sql` | Creates `warehouse.dim_vehicle_model` |
+| 40 | `03_dimensions/03_dim_vehicle.sql` | Creates `warehouse.dim_vehicle` |
+| 41 | `03_dimensions/04_dim_employee.sql` | Creates `warehouse.dim_employee` |
+| 42 | `03_dimensions/05_dim_customer.sql` | Creates `warehouse.dim_customer` |
+| 43 | `03_dimensions/06_dim_lead_source.sql` | Creates `warehouse.dim_lead_source` |
+| 44 | `03_dimensions/07_dim_marketing_campaign.sql` | Creates `warehouse.dim_marketing_campaign` |
+| 45 | `03_dimensions/08_dim_observed_vehicle.sql` | **Listing lane.** Creates `warehouse.dim_observed_vehicle` — a **ninth** dimension that is deliberately not conformed and not one of the eight. A listing proves observation, not ownership, so it carries none of `dim_vehicle`'s acquisition, cost, colour or disposition attributes |
+| 46 | `03_dimensions/10_dim_date_merge.sql` | **Runtime.** Upserts staging into `dim_date` |
+| 47 | `03_dimensions/11_dim_dealership_merge.sql` | **Runtime.** SCD Type 2 merge into `dim_dealership` |
+| 48 | `03_dimensions/12_dim_vehicle_model_merge.sql` | **Runtime.** Type 1 merge into `warehouse.dim_vehicle_model` |
+| 49 | `03_dimensions/13_dim_vehicle_merge.sql` | **Runtime.** Type 1 merge into `warehouse.dim_vehicle` |
+| 50 | `03_dimensions/14_dim_employee_merge.sql` | **Runtime.** SCD Type 2 merge into `warehouse.dim_employee` |
+| 51 | `03_dimensions/15_dim_customer_merge.sql` | **Runtime.** Type 1 merge into `warehouse.dim_customer` |
+| 52 | `03_dimensions/16_dim_lead_source_merge.sql` | **Runtime.** Type 1 merge into `warehouse.dim_lead_source` |
+| 53 | `03_dimensions/17_dim_marketing_campaign_merge.sql` | **Runtime.** Type 1 merge into `warehouse.dim_marketing_campaign` |
+| 54 | `03_dimensions/18_dim_observed_vehicle_load.sql` | **Listing lane. Workbook cadence, not runtime.** Type 1 merge into `warehouse.dim_observed_vehicle`. Named `_load` rather than `_merge` **on purpose**: the pipeline discovers dimension work with a `*_merge.sql` glob, and a listing dimension swept into an ordinary generated-data run would look for a workbook nobody supplied |
+| 55 | `04_facts/00_fact_vehicle_sale.sql` | Creates `warehouse.fact_vehicle_sale` |
+| 56 | `04_facts/01_fact_vehicle_inventory_snapshot.sql` | Creates `warehouse.fact_vehicle_inventory_snapshot` |
+| 57 | `04_facts/02_fact_lead.sql` | Creates `warehouse.fact_lead` |
+| 58 | `04_facts/03_fact_appointment.sql` | Creates `warehouse.fact_appointment` |
+| 59 | `04_facts/04_fact_marketing_spend.sql` | Creates `warehouse.fact_marketing_spend` |
+| 60 | `04_facts/05_fact_vehicle_listing_snapshot.sql` | **Listing lane.** Creates `warehouse.fact_vehicle_listing_snapshot` — a **sixth** fact that is not one of the five MVP facts and is not read by the semantic model |
+| 61 | `04_facts/06_fact_sales_target.sql` | **Dashboard program lane.** Creates `warehouse.fact_sales_target` — a **seventh** fact table, and the second that is not one of the five MVP facts and is not read by the semantic model. The monthly operating PLAN: store, department or employee scope × targeted KPI × month, with the grain enforced over five NOT NULL columns |
+| 62–66 | `04_facts/10_fact_vehicle_sale_load.sql` … `14_fact_marketing_spend_load.sql` | **Runtime.** The five MVP fact load scripts, one per fact above, each guarded by `ON CONFLICT ... DO UPDATE` |
+| 67 | `04_facts/15_fact_vehicle_listing_snapshot_load.sql` | **Listing lane. Workbook cadence.** Insert-only: `ON CONFLICT DO NOTHING` with **no UPDATE path at all**, because a capture records what somebody observed at a moment that has passed and cannot be recomputed |
+| 68 | `04_facts/16_fact_sales_target_load.sql` | **Dashboard program lane. Runtime.** Idempotent load of the operating plan, conflict-targeted on the declared grain. A later planning revision replaces the row rather than adding one: a plan is a current statement, not an event log |
+| 69 | `05_reporting/00_reporting_scope.sql` | Documents which reporting views exist and which are deliberately absent |
+| 70–73 | `05_reporting/01_vw_calendar.sql` … `04_vw_data_quality_summary.sql` | The four Phase 0 views: `vw_calendar`, `vw_dealership`, `vw_pipeline_run_summary`, `vw_data_quality_summary` |
+| 74–79 | `05_reporting/05_vw_vehicle_model.sql` … `10_vw_marketing_campaign.sql` | The six remaining **dimension** views: `vw_vehicle_model`, `vw_vehicle`, `vw_employee`, `vw_customer`, `vw_lead_source`, `vw_marketing_campaign` |
+| 80–84 | `05_reporting/11_vw_vehicle_sales.sql` … `15_vw_marketing_spend.sql` | The five **fact** views, each preserving its fact's grain exactly: `vw_vehicle_sales`, `vw_inventory_snapshots`, `vw_leads`, `vw_appointments`, `vw_marketing_spend` |
+| 85–97 | `05_reporting/20_vw_sales_summary.sql` … `32_vw_reconciliation_status.sql` | The thirteen governed **analytical** views: sales, gross, inventory health, inventory aging, days to sale, inventory turn, days supply, lead funnel, appointment funnel, lead response, marketing performance, data-quality trend, reconciliation status |
+| 98–103 | `05_reporting/33_vw_vehicle_listing_current.sql` … `38_vw_vehicle_listing_change.sql` | **Listing lane.** The six listing views: `vw_vehicle_listing_current`, `vw_vehicle_listing_summary`, `vw_vehicle_listing_model_mix`, `vw_vehicle_listing_price_completeness`, `vw_vehicle_listing_observation_span`, `vw_vehicle_listing_change`. Counted **apart from the twenty-eight**; see §1.1 |
+| 104–108 | `05_reporting/40_vw_sales_gross_trend.sql` … `44_vw_target_attainment.sql` | **Dashboard program lane.** The three `DASH.3` views, one from `DASH.4` and one from `DASH.5`: `vw_sales_gross_trend` (store × sale date, volume and gross with their condition components as additive columns), `vw_gross_change_bridge` (store × month pair × component, published as exact numerators over a shared denominator so the reconciliation needs no division), `vw_deal_explorer` (one row per finalized transaction, public-safe and compact, for the index), `vw_deal_jacket` (the same grain, presentation-complete: the cost components behind the front gross, the trade context, the finance amounts, the people and the lead's paper trail, for the record view), `vw_target_attainment` (store × target scope × targeted KPI × month: the operating plan beside the month-to-date actual, with the selling-day arithmetic `KPI-TGT-001..010` are computed from, published as numerators and denominators so no consumer can average a percentage). Counted **apart from the twenty-eight**; see §1.1 |
+| 109 | `06_indexes/00_indexes.sql` | Creates the Phase 0 justified secondary indexes |
+| 110 | `06_indexes/01_phase1_indexes.sql` | Creates the Phase 1 justified secondary indexes |
+| 111 | `06_indexes/02_inventory_listing_indexes.sql` | **Listing lane.** Secondary indexes for the listing fact and its dimension |
+| 112 | `07_security/00_roles.sql` | Creates `arpi_admin`, `arpi_loader`, `arpi_reporter` (NOLOGIN) |
+| 113 | `07_security/01_grants.sql` | Moves ownership to `arpi_admin`; applies the grant model; asserts it object by object |
+| 114 | `08_validation/00_validation_helpers.sql` | Result-shape template view + `audit.fn_record_validation_result` |
+| 115 | `08_validation/01_dim_date_checks.sql` | Creates `audit.vw_dq_dim_date` (`DQ-DATE-001..005`) |
+| 116 | `08_validation/02_dim_dealership_checks.sql` | Creates `audit.vw_dq_dim_dealership` (`DQ-DLR-001..005`) |
+| 117 | `08_validation/03_referential_checks.sql` | Creates `audit.vw_dq_referential` (`DQ-REF-001..005`) |
+| 118 | `08_validation/04_audit_checks.sql` | Creates `audit.vw_dq_audit` (`DQ-AUD-001..005`), `audit.vw_dq_all`, `audit.fn_record_all_dq_checks` |
+| 119 | `08_validation/05_reconciliation_helpers.sql` | Creates `audit.vw_recon_result_template`, the uniform reconciliation result shape |
+| 120 | `08_validation/06_recon_ingestion.sql` | Creates `audit.vw_recon_ingestion` — the five facts' staging-to-warehouse counts, and snapshot continuity |
+| 121 | `08_validation/07_recon_gross.sql` | Creates `audit.vw_recon_gross` — `RECON-GROSS-001`, `RECON-GROSS-002`, `RECON-UNITS-001`, `RECON-REPORT-SALES` |
+| 122 | `08_validation/08_recon_funnel.sql` | Creates `audit.vw_recon_funnel` — `RECON-LEAD-001`, duplicates, funnel bounds, sold path, funnel chain |
+| 123 | `08_validation/09_recon_marketing.sql` | Creates `audit.vw_recon_marketing` — spend, attributed leads, sales and gross, and the cost-attributability rule |
+| 124 | `08_validation/10_recon_reporting.sql` | Creates `audit.vw_recon_reporting` — every reporting view reconciled to the fact it projects |
+| 125 | `08_validation/11_recon_target.sql` | **Dashboard program lane.** Creates `audit.vw_recon_target` — the target chain, the declared grain, the department partition of the store gross plan, the store and month totals through reporting, and the fan-out guard on `reporting.vw_target_attainment`. Unioned into `audit.vw_recon_all`, which is why it is numbered before it |
+| 126 | `08_validation/12_recon_inventory_listing.sql` | **Listing lane.** Creates `audit.vw_recon_inventory_listing` — `RECON-LISTING-001..010`. Deliberately **not** unioned into `audit.vw_recon_all`, which is the pipeline's per-run set with an asserted per-run count; this lane runs on a workbook cadence |
+| 127 | `08_validation/13_recon_all.sql` | Creates `audit.vw_recon_all` and `audit.fn_record_all_reconciliations`. Renumbered from 11 by `DASH.5` so `audit.vw_recon_target` exists before this file unions it |
+| 128–130 | `09_migrations/0000_migration_history.sql` … `0002_add_inventory_listing_objects.sql` | The migration ledger and the two recorded migrations. Each is idempotent and records itself |
+| 131 | `07_security/01_grants.sql` **(again)** | Privilege-normalisation pass over the objects created in the validation and migration steps |
 
-The sequence is **125 files** in total; the table groups consecutive files of one kind
+The sequence is **131 files** in total; the table groups consecutive files of one kind
 rather than listing all of them, and the grouped ranges are contiguous. The count and the
 order are both derived from the directory by
 `tests/integration/conftest.py::init_sequence_files`, and
@@ -231,7 +246,7 @@ exist, so the file is absent rather than empty. The numbering gap is intentional
 
 ### 3.1 As a loop
 
-The sequence is 104 files, so pasting each one is not the readable option.
+The sequence is 131 files, so pasting each one is not the readable option.
 It does not need to be: the numeric directory and file prefixes are designed so
 that plain sorted order **is** the correct order. Section 2 above lists every step
 explicitly if you want to see them.
@@ -259,9 +274,9 @@ Run it a second time to confirm idempotency. The output is a series of
 
 ```bash
 psql -d arpi_dev -c '\dn'                         # five schemas
-psql -d arpi_dev -c '\dt warehouse.*'             # 8 dimensions + 5 (empty) facts
+psql -d arpi_dev -c '\dt warehouse.*'             # 8 dimensions + 7 facts (5 MVP + listing + target)
 psql -d arpi_dev -c '\dv staging.*'               # 3 views per Phase 1 entity
-psql -d arpi_dev -c '\dv reporting.*'             # exactly twenty-eight views
+psql -d arpi_dev -c '\dv reporting.*'             # 39 views: 28 MVP + 6 listing + 5 dashboard
 psql -d arpi_dev -c 'SELECT count(*) FROM warehouse.dim_date'
 psql -d arpi_dev -c 'SELECT * FROM audit.vw_dq_all ORDER BY check_id'
 psql -d arpi_dev -P pager=off -f sql/07_security/02_role_verification.sql

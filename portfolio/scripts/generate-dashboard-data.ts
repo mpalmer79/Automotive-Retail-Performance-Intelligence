@@ -354,6 +354,36 @@ function readDatasetManifest(
   }
 }
 
+/**
+ * The declared row subset a total is computed over, or `null` for the whole dataset.
+ *
+ * `target-attainment` carries unit targets and currency targets in one column, and store
+ * plans beside department refinements of them. A total over the whole dataset would add
+ * units to dollars and count the same gross twice, so the exporter declares which rows it
+ * meant and this consumer re-derives the total over exactly those rows rather than
+ * guessing. An unreadable subset is a failure, never an empty filter: silently summing
+ * everything would turn a governed total into a wrong one that still validated.
+ */
+function readSubset(
+  raw: unknown,
+  where: string
+): Readonly<Record<string, string>> | null {
+  if (raw === undefined || raw === null) return null
+  if (!isRecord(raw)) {
+    fail(`${where} carries a subset that is not an object.`)
+    return null
+  }
+  const subset: Record<string, string> = {}
+  for (const [column, value] of Object.entries(raw)) {
+    if (typeof value !== 'string') {
+      fail(`${where} subset column ${column} is not a string.`)
+      continue
+    }
+    subset[column] = value
+  }
+  return subset
+}
+
 function readReconciliationTotals(
   raw: unknown
 ): Readonly<Record<string, DashboardReconciliationTotal>> {
@@ -378,6 +408,7 @@ function readReconciliationTotals(
       kpi_id: typeof kpiId === 'string' ? kpiId : null,
       unit: typeof unit === 'string' ? unit : null,
       display_precision: typeof precision === 'number' ? precision : null,
+      subset: readSubset(entry['subset'], where),
     }
     if (typeof entry['total'] === 'string') {
       totals[name] = {
@@ -962,6 +993,26 @@ function sameExactValue(left: string, right: string): boolean {
   return rescale(a, scale) === rescale(b, scale)
 }
 
+/** Restrict rows to a declared subset, ANDing every column/value pair. */
+function subsetRows(
+  rows: readonly DashboardRow[],
+  subset: Readonly<Record<string, string>> | null,
+  totalName: string
+): readonly DashboardRow[] {
+  if (!subset) return rows
+  const entries = Object.entries(subset)
+  for (const [column] of entries) {
+    if (rows.length > 0 && !(column in (rows[0] as DashboardRow))) {
+      fail(
+        `reconciliation total ${totalName} filters on column ${column}, which the ` +
+          'committed rows do not carry.'
+      )
+      return []
+    }
+  }
+  return rows.filter((row) => entries.every(([column, value]) => row[column] === value))
+}
+
 function checkReconciliation(
   manifest: DashboardExportManifest,
   loaded: ReadonlyMap<DashboardDatasetName, LoadedDataset>
@@ -990,8 +1041,10 @@ function checkReconciliation(
             },
           ]
 
+    const rows = subsetRows(dataset.rows, total.subset, name)
+
     for (const { label, column, expected } of components) {
-      const { units, scale } = sumColumn(dataset.rows, column)
+      const { units, scale } = sumColumn(rows, column)
       const actual = render(units, scale)
       requireTrue(
         sameExactValue(actual, expected),

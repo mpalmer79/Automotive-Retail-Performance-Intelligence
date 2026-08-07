@@ -87,6 +87,15 @@ governed cards in two ranks) → store scoreboard → sales and gross in brief �
 funnel → trust and evidence → what is not built. The KPI row is set in two ranks rather than seven
 equal cards, because an operating meeting does not treat volume, gross and gross per unit as equal in
 weight to the four figures that qualify them.
+
+**As-built (`DASH.5`).** A **targets and pace** section (`#targets`) is inserted after the primary KPI
+row and before the store scoreboard, and the scoreboard gains **one** compact pace column.
+`/dashboard/sales-gross` gains the same section after its performance block. The placement is
+deliberate: **the actual is the business result and the plan is the management context beside it**, so
+target context never displaces or outranks the figure it qualifies. The section carries, for retail
+units and total gross: actual month-to-date, target, attainment, the selling-day clock ("Day 14 of 26
+selling days"), the rate per selling day, and the **selling-day pace projection** — always beside the
+actual and the target, never alone.
 2. One `h1` per route; no skipped heading level (existing sweep rule).
 3. Section order is fixed per page and documented in that page's increment item — summary first,
    analysis second, detail tables last.
@@ -229,6 +238,18 @@ them into a dash is how a console becomes untrustworthy in a way nobody can poin
 | `No eligible denominator` | The words, plus which denominator was zero | A governed NULL: KPI_CATALOG's zero-denominator rule |
 | `Not derivable at this scope` | The words, the reason, and the filter that *would* resolve it | An order statistic above its published grain |
 | Stale / reconciliation failed | A banner above everything, not dismissible | The manifest says so |
+
+**As-built (`DASH.5`) — three more states, and they are not the same state.** Target context adds
+distinctions a dash would destroy:
+
+| State | What the reader sees | When |
+|---|---|---|
+| `No target set` | The words, never `0` and never `0%` | No target row exists for that store, month and metric. **A missing planning record and a goal of zero are different statements** |
+| `Pace not available before the first selling day` | The words, in place of a rate and a projection | Zero selling days have elapsed. Never `∞`, never `NaN`, never a division |
+| `Target context is not comparable` | The words, plus **which filter** made it so | The active filter changed the actual population but no target exists at that scope — a Used-only actual against an all-retail target is arithmetically valid and operationally false |
+
+A `Month complete` marker sits beside the clock once every selling day has elapsed, and the projection
+is stated to equal the final actual rather than presented as forward-looking.
 
 A seventh state the plan implied and the as-built makes explicit: a **period outside the export** is
 substituted or trimmed with a visible notice naming the reporting window, never rendered as a screen

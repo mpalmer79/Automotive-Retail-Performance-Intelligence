@@ -24,7 +24,9 @@
 > half-promoted entity, no route shipped before the control that governs it. One increment per pull
 > request; no thousand-line omnibus changes.
 
-> **Source-to-target reservations.** `STM-016` `fact_sales_target` · `STM-017` `dim_finance_product`
+> **Source-to-target reservations.**
+> [`STM-016` `fact_sales_target`](../source-to-target/STM-016-fact-sales-target.md) — **written by
+> `DASH.5`** · `STM-017` `dim_finance_product`
 > · `STM-018` `dim_lender` · `STM-019` `fact_finance_product_sale` · `STM-020`
 > `fact_finance_product_adjustment` · `STM-021` `dim_finance_product_provider` (only if promoted) ·
 > `STM-022` `fact_inventory_accounting_snapshot` · `STM-023` `dim_gl_account` · `STM-024`
@@ -42,7 +44,7 @@
 | `DASH.2` | Dashboard shell and Executive Overview | Large | **Implemented** |
 | `DASH.3` | Sales, Gross, and Deal Explorer | Large | **Implemented** |
 | `DASH.4` | Basic Deal Jacket | Large | **Implemented** |
-| `DASH.5` | Targets and pace | Large | Planned |
+| `DASH.5` | Targets and pace | Large | **Implemented** |
 | `DASH.6` | F&I model | Large | Planned |
 | `DASH.7` | F&I dashboard and expanded Deal Jacket | Large | Planned |
 | `DASH.8` | Inventory accounting and GL controls | Large | Planned |
@@ -233,7 +235,7 @@ program. Evidence: the diagram files and index diffs in this change.
 | Acceptance criteria | Every card shows current value, prior-period difference, unit, drill-through, and a "How is this calculated?" disclosure resolving to the governed KPI id; scoreboard never penalizes the pre-owned store for absent new-vehicle metrics (cells render "Not applicable"); all values equal the exported values exactly; no decorative sparkline without a data-table alternative; empty and stale states per IA §8. |
 | Required tests | `portfolio/tests/unit/dashboard-executive.test.tsx` (values match fixture export, N/A semantics); `portfolio/tests/e2e/dashboard.spec.ts` (renders, drill-throughs, disclosure, axe via the a11y sweep). |
 | Documentation updates | IA and program as-built notes. |
-| Explicit non-goals | No targets/pace (DASH.5), no bridge (DASH.3 logic arrives with its page), no actions (DASH.12). |
+| Explicit non-goals | No targets/pace (DASH.5), no bridge (DASH.3 logic arrives with its page), no actions (DASH.12). **`DASH.5` has since added a targets-and-pace section to this route and one pace column to the scoreboard; the non-goal above records what `DASH.2` shipped, not what the route contains today.** |
 | Completion evidence | Route live in CI e2e with cross-checked totals. |
 | As-built notes | **No generated page payload was created.** `DATA_CONTRACT.md` §8 originally listed `executive-summary.json`; a deterministic server-side selector layer replaces it, because a precomputed payload would be a second place a KPI value is written and the measured cost of computing on the server is an array pass over data the process already holds. `lib/dashboard/selectors.ts` declares every permitted aggregation **as data** — dataset, columns, basis, governed KPI id, and the manifest reconciliation key the selector must reproduce exactly — and `dashboard-executive.test.tsx` walks the registry and compares each against the committed manifest character for character. **Two KPIs decline at group scope, deliberately.** Median inventory age (KPI-INV-004) and median response time (KPI-FUN-008) are order statistics; the catalogue states outright that a group median is not derivable from subgroup medians, and the export publishes them at store × snapshot × condition group and at store × source × day respectively. Both cards render `Not derivable at this scope`, name the filter that resolves them, and **do** resolve when the URL narrows to the published grain — which the e2e suite exercises in both directions. The inventory section shows every governed median it has, at that grain, as the "available valid scope". The scoreboard therefore carries **average** response time (KPI-FUN-007, a ratio of two additive columns and exact at any scope) where the plan listed the median, with a column note explaining the substitution; the median is on the page in the funnel section. `New units` was added as a scoreboard column because it is where the structural-absence rule actually bites: the independent store renders `Not applicable`, never `0`. |
 
@@ -343,7 +345,10 @@ discount vs asking, negative-gross counts, distribution with median and mean pai
 KPI_CATALOG.md §5), and the volume/rate bridge rendered with its documented order and exact totals.
 Acceptance: every figure equals the export; bridge language is non-causal ("the bridge attributes…");
 axe clean; filters apply. Tests: `dashboard-sales-gross` unit + e2e. Non-goals: target overlays
-(`DASH.5`). Evidence: route green in CI.
+(`DASH.5`). Evidence: route green in CI. **`DASH.5` has since added a targets-and-pace section to this
+route** — as a reference beside the totals, not as a line drawn onto the daily trend, and not as a fourth
+effect in the bridge: the bridge decomposes a period-over-period change, and plan variance answers a
+different question.
 
 ### `DASH.3-04` — `/dashboard/deals` index
 
@@ -458,34 +463,68 @@ Evidence: each named case has a test that fails when its rendering rule breaks.
 | **Purpose** | Promote `fact_sales_target` end-to-end and light up attainment and selling-day pace. |
 | **Dependencies** | `DASH.2`; Gate 4 satisfied by the registered stakeholder question |
 | **Estimated complexity** | Large |
-| **Blocking gate** | Gate 4 (new domain) — satisfied within the increment |
+| **Blocking gate** | Gate 4 (new domain) — **satisfied within the increment and recorded** in [STAKEHOLDER_QUESTIONS.md §5](STAKEHOLDER_QUESTIONS.md) |
 | **Architecture references** | §12 (fact grains), §28 Gate 4; KPI_EXTENSION_PLAN §3 |
-| **Status** | Planned |
+| **Anchoring question** | **SQ-31** — "Are we hitting our operating targets, by store and by department?" — promoted Deferred → Implemented, with the department half proved supportable before promotion rather than reworded to fit |
+| **Status** | **Implemented** |
+| **Evidence** | `warehouse.fact_sales_target` + `reporting.vw_target_attainment` exist and load; `KPI-TGT-001..010` in [KPI_CATALOG.md §39](../../KPI_CATALOG.md); fact contract in [DATA_DICTIONARY.md §41](../../DATA_DICTIONARY.md); mapping in [STM-016](../source-to-target/STM-016-fact-sales-target.md); 14 `DQ-TGT-*` checks; 10 target reconciliations, 3 with seeded corruptions; dataset `target-attainment` exported and reconciled; console sections on `/dashboard` and `/dashboard/sales-gross` |
+| **Deliberately not done** | No employee-scope target rows (`DASH.11` owns that surface), no target-editing or approval path, no target-revision history fact, no Power BI measure group — **no TMDL file was modified and Gate 2 remains CLOSED** |
 
 ### `DASH.5-01` — `fact_sales_target` end-to-end
 
-Large; Planned. Generator (seeded per-store/per-month targets varying plausibly, employee-scope rows
-where sample rules permit), raw/staging/warehouse SQL at the declared grain with a grain-enforcing
-UNIQUE constraint, loader wiring, `DQ-TGT-*` checks registered, `RECON-*` rowcount/chain entries,
-`STM-016`, DATA_DICTIONARY.md promotion from Part G, `dim_date` selling-day reuse. Data-grain
-impact: **new fact table** (ADR not required beyond ADR-0013's program authorization? — no: adding a
-fact table requires an ADR per §35.2; ADR-0013 records the program-level authorization and this
-backlog is its schedule; the increment PR must cite ADR-0013 §Decision and the program §9.8 as the
-recorded decision). Tests: unit (generator determinism, Decimal exactness, scope rules), integration
-(grain, load counts, reconciliation). Evidence: all layers green.
+Large; **Implemented**. Generator (`src/arpi/generation/sales_target.py`), raw
+(`sql/01_raw/15_raw_sales_target_load.sql`), staging (`sql/02_staging/16_stg_sales_target.sql`),
+fact (`sql/04_facts/06_fact_sales_target.sql`) at the declared grain with a grain-enforcing UNIQUE
+constraint over five `NOT NULL` columns, loader wiring
+(`sql/04_facts/16_fact_sales_target_load.sql` + `src/arpi/ingestion/spec.py`), fourteen `DQ-TGT-*`
+checks registered, ten reconciliations in `audit.vw_recon_target`, `STM-016`, DATA_DICTIONARY.md
+promotion from Part G to §41, `dim_date` selling-day reuse. Data-grain impact: **new fact table**;
+adding a fact table requires an ADR per §35.2, and this increment cites
+[ADR-0013 §Decision](../architecture-decisions/ADR-0013-governed-web-operating-console.md) plus
+program §9.8 as the recorded decision. Tests: unit (generator determinism, `Decimal` exactness,
+scope rules, **and two no-outcome-leakage guards** — an AST walk over the import graph and a
+sale-generator-removed run), integration (grain, load counts, idempotency, staging rejections,
+reconciliation). Evidence: all layers green.
+
+**Two divergences from the plan above, stated rather than smoothed over.** *(a)* **No employee-scope
+rows were generated.** The scope is physically supported — vocabulary, `CHECK` constraints and a
+foreign key to `dim_employee` — and deliberately unpopulated: no registered stakeholder question
+requires employee-scope targets, `DASH.11` owns the employee-performance surface, and the
+minimum-sample rule that would govern such a surface is defined but not yet implemented. *(b)* the
+grain carries an explicit **scope key** rather than "optional employee-or-department scope", because
+PostgreSQL treats NULLs as distinct in a `UNIQUE` constraint and a nullable scope column would have
+made the grain constraint decorative.
 
 ### `DASH.5-02` — `vw_target_attainment` and KPI promotion
 
-Medium; Planned. The view (store × KPI × month with MTD actuals, targets, selling-day arithmetic),
-`KPI-TGT-001..010` moved into KPI_CATALOG.md with full fields, the stakeholder question registered,
-`test_kpi_verification.py` extended so each new KPI checks against an independent warehouse
-derivation and NULL-safe denominators. Evidence: catalogue diff + green verification suite.
+Medium; **Implemented**. `reporting.vw_target_attainment`
+(`sql/05_reporting/44_vw_target_attainment.sql`), `KPI-TGT-001..010` moved into
+[KPI_CATALOG.md §39](../../KPI_CATALOG.md) with every field, **SQ-31** promoted to Implemented, and
+`tests/integration/test_kpi_verification.py` extended by 22 tests so each new KPI checks against an
+independent warehouse derivation with NULL-safe denominators. Evidence: catalogue diff + green
+verification suite.
+
+**Divergence:** the view's grain is **store × month × scope × targeted KPI**, not store × KPI ×
+month. Department attainment is half of SQ-31, and a store-grain view could not carry it. The view
+also publishes attainment and pace as **numerator and denominator pairs**, never as a bare ratio, so
+a group figure is `SUM(numerator) / SUM(denominator)`; the verification suite asserts that this
+disagrees with the average of store percentages on the committed dataset, so the correct rule cannot
+be silently replaced by the wrong one.
 
 ### `DASH.5-03` — Console integration
 
-Medium; Planned. Export slice, executive pace bars and scoreboard pace column, sales-gross target
-overlays, "Selling-day pace projection" labelling everywhere a projection renders; no target
-hardcoded in React. Tests: unit fixture assertions + e2e label checks. Evidence: routes green.
+Medium; **Implemented**. Export slice (`target-attainment`, one unchunked file, reconciled against
+the database), executive pace bars, one scoreboard pace column, sales-gross target section,
+**"Selling-day pace projection"** labelling everywhere a projection renders, and a filter-comparability
+layer that refuses to compare a filtered actual against a full-store target. No target is hardcoded in
+React, and a source-scanning test asserts it. Tests: 36 unit assertions + 22 e2e checks including the
+no-JS and responsive paths. Evidence: routes green.
+
+**Divergence:** the scoreboard gained **one** pace column, not four. A target column, an attainment
+column, a pace column and a projection column would have taken the table from ten columns to fourteen.
+The sales-gross page shows the plan as a **reference beside the totals**, not as a line drawn onto the
+daily trend: a monthly plan is a single-month figure, and a flat daily target line would state a number
+the reporting layer does not define.
 
 ---
 

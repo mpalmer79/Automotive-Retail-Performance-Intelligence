@@ -1,6 +1,6 @@
 {
   "dataset": "reconciliation-status",
-  "rowCount": 58,
+  "rowCount": 69,
   "columns": ["reconciliation_id","left_value","right_value","difference","absolute_difference","tolerance","status","is_passing","is_critical","severity_rank"],
   "rows": [
     ["RECON-DIM-CUSTOMER-ROWCOUNT","2500","2500","0","0","0","passed",true,true,0],
@@ -15,6 +15,7 @@
     ["RECON-FACT-INVENTORY-SNAPSHOT-WAREHOUSE","45754","45754","0","0","0","passed",true,true,0],
     ["RECON-FACT-LEAD-WAREHOUSE","6000","6000","0","0","0","passed",true,true,0],
     ["RECON-FACT-MARKETING-SPEND-WAREHOUSE","212","212","0","0","0","passed",true,true,0],
+    ["RECON-FACT-SALES-TARGET-WAREHOUSE","72","72","0","0","0","passed",true,true,0],
     ["RECON-FACT-VEHICLE-SALE-WAREHOUSE","650","650","0","0","0","passed",true,true,0],
     ["RECON-FUNNEL-BOUNDS","4419","4419","0","0","0","passed",true,true,0],
     ["RECON-FUNNEL-CHAIN","0.036942","0.040628","-0.003686","0.003686","0.01","passed",true,false,0],
@@ -44,6 +45,7 @@
     ["RECON-INGEST-LEAD-EVENT-CHAIN","6000","6000","0","0","0","passed",true,true,0],
     ["RECON-INGEST-MARKETING-SPEND-EVENT-CHAIN","212","212","0","0","0","passed",true,true,0],
     ["RECON-INGEST-SALE-EVENT-CHAIN","650","650","0","0","0","passed",true,true,0],
+    ["RECON-INGEST-SALES-TARGET-CHAIN","72","72","0","0","0","passed",true,true,0],
     ["RECON-INV-001","45754","45754","0","0","0","passed",true,true,0],
     ["RECON-INV-CONTINUITY","0","0","0","0","0","passed",true,true,0],
     ["RECON-LEAD-001","6000","6000","0","0","0","passed",true,true,0],
@@ -60,6 +62,15 @@
     ["RECON-REPORT-SALES","558","558","0","0","0","passed",true,true,0],
     ["RECON-REPORT-SALES-ROWS","650","650","0","0","0","passed",true,true,0],
     ["RECON-REPORT-SPEND-ROWS","212","212","0","0","0","passed",true,true,0],
+    ["RECON-REPORT-TARGET-ROWS","72","72","0","0","0","passed",true,true,0],
+    ["RECON-TGT-ACTUAL-GROSS","1936571.59","1936571.59","0.00","0.00","0.01","passed",true,true,0],
+    ["RECON-TGT-ACTUAL-UNITS","558","558","0","0","0","passed",true,true,0],
+    ["RECON-TGT-DEPT-SPLIT","18","18","0","0","0","passed",true,true,0],
+    ["RECON-TGT-GRAIN","72","72","0","0","0","passed",true,true,0],
+    ["RECON-TGT-GROSS","2084379.79","2084379.79","0.00","0.00","0.01","passed",true,true,0],
+    ["RECON-TGT-MONTH-TOTALS","6","6","0","0","0","passed",true,true,0],
+    ["RECON-TGT-STORE-TOTALS","3","3","0","0","0","passed",true,true,0],
+    ["RECON-TGT-UNITS","592.00","592.00","0.00","0.00","0","passed",true,true,0],
     ["RECON-UNITS-001","357","357","0","0","0","passed",true,true,0]
   ]
 }

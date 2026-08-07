@@ -17,6 +17,7 @@ import {
   PerformanceGrid,
   TrendSection,
 } from '@/components/dashboard/sales-gross-sections'
+import { TargetPaceSection } from '@/components/dashboard/target-context'
 import { Badge } from '@/components/ui/badge'
 import { Container, Section, SectionHeader } from '@/components/ui/layout'
 import { PageHeader } from '@/components/ui/page-header'
@@ -210,6 +211,31 @@ export default async function SalesGrossPage({
                   metrics={view.performance}
                   comparisonLabel={comparisonLabel}
                 />
+              </div>
+            </Container>
+          </Section>
+
+          {/* -------------------------------------------------------------- */}
+          {/* Targets and selling-day pace                                    */}
+          {/* -------------------------------------------------------------- */}
+          {/*
+            Placed after the totals and before the trend, which is the order a GSM
+            reads: what happened, what was committed to, then how it accumulated.
+
+            The plan is deliberately NOT part of the gross-change bridge further down.
+            The bridge decomposes a period-over-period CHANGE into volume, front-rate
+            and back-rate effects; plan variance answers a different question, and
+            adding it as a fourth effect would change what the other three mean.
+          */}
+          <Section rhythm="default" id="targets">
+            <Container width="full">
+              <SectionHeader
+                eyebrow="Targets and pace"
+                title="Against the month's plan"
+                lede="Units and gross beside the month's committed goal, with the selling days elapsed, the current rate per selling day and where the rate lands the month. A monthly plan is a single-month figure, so it is shown as a reference beside the totals rather than drawn onto the daily trend below. A flat daily target line would state a number the reporting layer does not define."
+              />
+              <div className="pt-6">
+                <TargetPaceSection context={view.targets} />
               </div>
             </Container>
           </Section>

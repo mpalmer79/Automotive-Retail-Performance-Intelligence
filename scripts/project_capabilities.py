@@ -107,6 +107,10 @@ FACT_SQL_DIR = REPO_ROOT / "sql" / "04_facts"
 #: answer different questions from different lanes; neither stands in for the other.
 INVENTORY_REPORT_SOURCE = REPO_ROOT / "src" / "arpi" / "inventory" / "report.py"
 
+#: The constants module the dashboard program's KPI register lives in. Read as source for
+#: the same reason as every path above: this module runs on a bare interpreter.
+CONSTANTS_SOURCE = REPO_ROOT / "src" / "arpi" / "constants.py"
+
 #: The function whose failure mode this register guards.
 FACT_DISCOVERY_FUNCTION = "discover_fact_sql"
 
@@ -179,6 +183,19 @@ class DerivedEvidence:
     #: build this record positionally to describe an MVP-shaped repository, keep doing so.
     inventory_listing_sql_files: int = 0
     inventory_listing_reporting_views: int = 0
+    #: SQL files owned by the dashboard program lane (ADR-0013), counted the same way and
+    #: for the same reason: so that "five MVP facts" and "twenty-eight reporting views" keep
+    #: describing the baseline the semantic model and the SQL baseline were measured
+    #: against, while the lane beside them is reported rather than hidden. ``DASH.5`` made
+    #: these non-zero in a way the listing lane never did: it added a FACT.
+    dashboard_program_sql_files: int = 0
+    dashboard_program_reporting_views: int = 0
+    dashboard_program_fact_ddl_scripts: int = 0
+    #: The dashboard program's own KPI register, read from ``arpi.constants``. Counted apart
+    #: from ``governed_kpis`` (the 29 the semantic model was measured against) so that
+    #: "29 MVP KPIs plus 10 target KPIs" is derived rather than asserted, and so that
+    #: promoting a KPI family can never silently restate the MVP number.
+    dashboard_program_kpis: int = 0
     #: Whether the sanitized-listing Excel exporter exists in source. Guards
     #: ``deliverables.inventory_operating_report`` only, never ``excel_operating_report``.
     inventory_report_exporter: bool = False
@@ -360,6 +377,17 @@ def _dashboard_lane_sql_files() -> frozenset[str]:
     return _declared_lane_sql_files(DASHBOARD_CONTRACT_SOURCE, "DASHBOARD_LANE_SQL_FILES")
 
 
+def _dashboard_program_kpi_ids() -> frozenset[str]:
+    """The dashboard program's own KPI identifiers, read from ``arpi.constants``.
+
+    Deliberately NOT added to ``governed_kpis``. That count answers "how many KPIs did the
+    semantic model bind and the SQL baseline measure", and the answer is still 29; these
+    ten are computed in SQL and rendered on the web console and no DAX measure reads them.
+    Summing the two would produce a number that is true of nothing.
+    """
+    return _declared_lane_sql_files(CONSTANTS_SOURCE, "TARGET_KPI_IDS")
+
+
 def _declared_lane_sql_files(source: Path, name: str) -> frozenset[str]:
     """The SQL files a separately governed lane owns, read from its own declaration.
 
@@ -501,6 +529,14 @@ def derive_evidence() -> DerivedEvidence:
     lane_reporting_scripts = [
         p for p in all_reporting_scripts if f"{p.parent.name}/{p.name}" in lane_files
     ]
+    dashboard_lane_reporting_scripts = [
+        p for p in all_reporting_scripts if f"{p.parent.name}/{p.name}" in dashboard_lane_files
+    ]
+    dashboard_lane_fact_scripts = [
+        p
+        for p in all_fact_scripts
+        if f"{p.parent.name}/{p.name}" in dashboard_lane_files and "_load" not in p.name
+    ]
 
     return DerivedEvidence(
         pbip_project_files=_count_files(PBIP_DIR, ".pbip")
@@ -528,6 +564,10 @@ def derive_evidence() -> DerivedEvidence:
         reporting_views=len(reporting_scripts),
         inventory_listing_sql_files=len(lane_files),
         inventory_listing_reporting_views=len(lane_reporting_scripts),
+        dashboard_program_sql_files=len(dashboard_lane_files),
+        dashboard_program_reporting_views=len(dashboard_lane_reporting_scripts),
+        dashboard_program_fact_ddl_scripts=len(dashboard_lane_fact_scripts),
+        dashboard_program_kpis=len(_dashboard_program_kpi_ids()),
         inventory_report_exporter=INVENTORY_REPORT_SOURCE.is_file(),
         audit_layers_recorded=_count_audit_layers_recorded(),
         migrations=sum(1 for p in migrations.glob("*.sql")) if migrations.is_dir() else 0,

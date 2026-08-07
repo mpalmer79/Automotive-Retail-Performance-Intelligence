@@ -21,9 +21,11 @@ from arpi.pipeline import GENERATION_ORDER, SKIP_REASON_NOT_REQUESTED, run_found
 #: checks, with one ``DQ-GEN-001`` schema result per entity.
 #:
 #: Raised from 80 when the inventory snapshot, lead, appointment and marketing spend
-#: entities joined the generation order. Deriving this from the registry would defeat the
-#: assertion, so it is updated deliberately whenever the emitted set genuinely changes.
-EXPECTED_CHECK_COUNT = 114
+#: entities joined the generation order, and from 114 when ``DASH.5`` added the
+#: ``sales_target`` entity: fourteen ``DQ-TGT-*`` checks plus its own ``DQ-GEN-001``
+#: schema result. Deriving this from the registry would defeat the assertion, so it is
+#: updated deliberately whenever the emitted set genuinely changes.
+EXPECTED_CHECK_COUNT = 129
 
 
 @pytest.fixture

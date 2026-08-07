@@ -663,9 +663,42 @@ is being refreshed.
 | Price history | `warehouse.fact_inventory_price_history` | — | Deferred | |
 | F&I product sale | `warehouse.fact_finance_product_sale` | — | Deferred | |
 | Service visit | `warehouse.fact_service_visit` | — | Deferred | |
-| Sales target | `warehouse.fact_sales_target` | — | Deferred | |
+| Sales target | `warehouse.fact_sales_target` | `sales_target.csv` | **Implemented** | `DASH.5`. 11 columns; the monthly operating **plan**, generated from exogenous planning inputs only. |
 
 **Two of nineteen generators exist.** Both produce dimensions. **No generator produces a fact table.**
+
+> **This table is stale and the staleness is not `DASH.5`'s to fix.** The paragraph above describes the
+> Phase 0 slice; fourteen generator modules exist in `src/arpi/generation/` today. `DASH.5` updated the
+> one row it owns — leaving it saying *Deferred* while [DATA_DICTIONARY.md §41](DATA_DICTIONARY.md) says
+> *Implemented* would be exactly the kind of divergence this repository refuses — and deliberately did not
+> rewrite the other seventeen rows, because a delivery increment that quietly restates unrelated baselines
+> is harder to review, not easier. Recorded for the documentation backlog.
+
+### 12.1 The sales-target generator, and the rule it obeys
+
+`src/arpi/generation/sales_target.py` writes the monthly operating **plan**: four rows per store-month —
+the store's retail-unit goal (`KPI-SLS-001`), the store's total-gross goal (`KPI-GRS-003`), and the two
+department goals that partition the gross exactly (`Sales` → `KPI-GRS-001`, `Finance` → `KPI-GRS-002`).
+
+**Its inputs are exogenous, and that is the whole point.** A per-store planning baseline (units per selling
+day, gross per unit, front-gross share), the governed calendar's selling-day count for the month, a
+seasonality shape that is deliberately smoother than the sale generator's, and a seeded planning draw from
+the `sales_target` namespace. **It reads no realized sale.**
+
+A target derived from the month it targets is not a target — it is the answer, written down after the fact
+and relabelled. Every attainment ratio would be a tautology and the whole surface would be theatre. Two
+tests hold the line rather than trusting the convention: one walks the generator's import graph with the
+`ast` module and asserts that no path, direct or one level transitive, reaches the sale generator or the
+sale fact; the other replaces `arpi.generation.sale` with `None` in `sys.modules` and asserts the generated
+plan is unchanged.
+
+Values are `Decimal` throughout, quantized to two places, and reach PostgreSQL as `numeric(14,2)`. No float
+exists anywhere in the lane, which `DQ-TGT-011` asserts on every run.
+
+The plan is **calibrated, not fitted**: the baselines were chosen so the committed development profile
+shows both beats and misses in both units and gross, because a demonstration surface where every store
+beats every target proves nothing about the arithmetic. That calibration was done by adjusting exogenous
+inputs and regenerating, never by reading the results and adjusting the plan to match.
 
 ---
 

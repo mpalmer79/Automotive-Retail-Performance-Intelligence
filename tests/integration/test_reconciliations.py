@@ -439,6 +439,47 @@ DATA_CORRUPTIONS: dict[str, tuple[str, ...]] = {
         ORDER BY m.lead_source_key LIMIT 1)
             """,
     ),
+    # ----------------------------------------------------------------------------------
+    # Targets and pace (DASH.5)
+    # ----------------------------------------------------------------------------------
+    # A target is a DENOMINATOR. Losing one does not make a number look empty -- it makes
+    # every attainment percentage on the console LARGER, and larger reads as good news.
+    # These three are the seeded defects that prove the guard is alive.
+    "RECON-FACT-SALES-TARGET-WAREHOUSE": (
+        "DELETE FROM warehouse.fact_sales_target WHERE sales_target_key = "
+        "(SELECT min(sales_target_key) FROM warehouse.fact_sales_target)",
+    ),
+    "RECON-TGT-GRAIN": (
+        # The grain is enforced by uq_fact_sales_target_grain, so a duplicate cannot be
+        # inserted while the constraint is on the table. Dropping it first is the point:
+        # the reconciliation exists to prove the constraint is STILL THERE rather than to
+        # trust that it is, and this is the only way to seed the defect it guards against.
+        "ALTER TABLE warehouse.fact_sales_target DROP CONSTRAINT uq_fact_sales_target_grain",
+        """
+        INSERT INTO warehouse.fact_sales_target (
+            sales_target_key, target_month_date_key, dealership_key, target_scope_type,
+            target_scope_id, department_name, employee_key, kpi_id, target_value,
+            stretch_target_value, source_system)
+        SELECT (SELECT max(x.sales_target_key) FROM warehouse.fact_sales_target AS x) + 1,
+               t.target_month_date_key, t.dealership_key, t.target_scope_type,
+               t.target_scope_id, t.department_name, t.employee_key, t.kpi_id,
+               t.target_value, t.stretch_target_value, t.source_system
+        FROM warehouse.fact_sales_target AS t
+        WHERE t.sales_target_key =
+              (SELECT min(y.sales_target_key) FROM warehouse.fact_sales_target AS y)
+        """,
+    ),
+    "RECON-TGT-DEPT-SPLIT": (
+        # ONE TARGET, CHANGED BY 1.00. The Sales and Finance department gross plans are a
+        # partition of the store's total-gross plan, mirroring total = front + back on the
+        # sale fact. A single cent of drift breaks the identity, and a department view and
+        # a store view would then disagree about the same month with neither obviously
+        # wrong. One dollar is used rather than one cent so the failure is unambiguous
+        # against the 0.01 currency tolerance the rule carries.
+        "UPDATE warehouse.fact_sales_target SET target_value = target_value + 1.00 "
+        "WHERE sales_target_key = (SELECT min(sales_target_key) "
+        "FROM warehouse.fact_sales_target WHERE department_name = 'Sales')",
+    ),
 }
 
 #: Reconciliations that no data change can break, and the view substitution that does.
@@ -471,6 +512,63 @@ VIEW_CORRUPTIONS: dict[str, tuple[str, str, str]] = {
         "FROM warehouse.fact_marketing_spend m "
         "WHERE m.marketing_spend_key <> "
         "(SELECT min(x.marketing_spend_key) FROM warehouse.fact_marketing_spend x)",
+    ),
+    # ----------------------------------------------------------------------------------
+    # Targets and pace (DASH.5)
+    # ----------------------------------------------------------------------------------
+    # Each of these compares the target reporting view against the warehouse objects it
+    # projects. Both sides read the same rows, so no data change can separate them: the
+    # regression they guard against is a change to the view's own expression, and that is
+    # what is seeded here.
+    "RECON-TGT-UNITS": (
+        "vw_target_attainment",
+        "FROM assembled a;",
+        "FROM assembled a WHERE NOT (a.target_scope_type::text = 'Store'::text "
+        "AND a.target_kpi_id::text = 'KPI-SLS-001'::text "
+        "AND a.target_month = (SELECT min(x.target_month) FROM assembled x));",
+    ),
+    "RECON-TGT-GROSS": (
+        "vw_target_attainment",
+        "FROM assembled a;",
+        "FROM assembled a WHERE NOT (a.target_scope_type::text = 'Store'::text "
+        "AND a.target_kpi_id::text = 'KPI-GRS-003'::text "
+        "AND a.target_month = (SELECT min(x.target_month) FROM assembled x));",
+    ),
+    "RECON-TGT-STORE-TOTALS": (
+        "vw_target_attainment",
+        "FROM assembled a;",
+        "FROM assembled a WHERE NOT (a.target_scope_type::text = 'Store'::text "
+        "AND a.dealership_key = (SELECT min(x.dealership_key) FROM assembled x));",
+    ),
+    "RECON-TGT-MONTH-TOTALS": (
+        "vw_target_attainment",
+        "FROM assembled a;",
+        "FROM assembled a WHERE NOT (a.target_scope_type::text = 'Store'::text "
+        "AND a.target_month = (SELECT max(x.target_month) FROM assembled x));",
+    ),
+    "RECON-REPORT-TARGET-ROWS": (
+        # A FAN-OUT, which is the failure this rule exists for: the view joins four
+        # aggregates and a LEFT JOIN to the plan, and a duplicated join key would double
+        # both the target and the actual -- invisible in a percentage, and fatal in a
+        # total.
+        "vw_target_attainment",
+        "FROM assembled a;",
+        "FROM assembled a CROSS JOIN (VALUES (1), (2)) AS dup(n);",
+    ),
+    "RECON-TGT-ACTUAL-UNITS": (
+        # The attainment numerator must BE KPI-SLS-001, not a second count that resembles
+        # it. One unit removed per row is enough to prove the rule reads the governed
+        # actual rather than whatever the view happens to publish.
+        "vw_target_attainment",
+        "    actual_mtd_value,\n    actual_mtd_value AS attainment_numerator,",
+        "    actual_mtd_value - 1::numeric AS actual_mtd_value,"
+        "\n    actual_mtd_value AS attainment_numerator,",
+    ),
+    "RECON-TGT-ACTUAL-GROSS": (
+        "vw_target_attainment",
+        "    actual_mtd_value,\n    actual_mtd_value AS attainment_numerator,",
+        "    actual_mtd_value - 0.01::numeric AS actual_mtd_value,"
+        "\n    actual_mtd_value AS attainment_numerator,",
     ),
 }
 

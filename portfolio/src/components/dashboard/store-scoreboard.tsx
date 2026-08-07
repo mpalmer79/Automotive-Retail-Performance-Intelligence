@@ -34,9 +34,11 @@
 import { Card } from '@/components/ui/card-static'
 import { Text } from '@/components/ui/typography'
 import type { ScoreboardColumn, ScoreboardRow } from '@/lib/dashboard/executive'
+import { PACE_PROJECTION_LABEL, TARGET_DISCLOSURE } from '@/lib/dashboard/targets'
 import { cx } from '@/lib/utils'
 
 import { MetricValue, unitLabel, valueCarriesUnit } from './metric'
+import { ScoreboardPaceCell } from './target-context'
 
 const HEAD =
   'px-3 py-2.5 font-mono text-2xs font-medium tracking-wide text-ink-muted uppercase align-bottom'
@@ -107,6 +109,19 @@ function TableView({
                 )}
               </th>
             ))}
+            {/*
+             * ONE pace column, not four. A target column, an attainment column, a pace
+             * column and a projection column would take this table from ten columns to
+             * fourteen and push it off every laptop, and the card view below 1280px
+             * would grow by the same four. Two compact lines carry the same information
+             * in the order a GM reads it.
+             */}
+            <th scope="col" className={cx(HEAD, 'text-right')}>
+              <span className="block">Pace against plan</span>
+              <span className="block font-normal text-ink-faint">
+                KPI-TGT-009 · KPI-TGT-010
+              </span>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -126,6 +141,9 @@ function TableView({
                   <MetricValue selector={cell.column.selector} result={cell.result} />
                 </td>
               ))}
+              <td className={cx(CELL, 'pr-4 text-right')}>
+                <ScoreboardPaceCell measures={row.target.measures} />
+              </td>
             </tr>
           ))}
         </tbody>
@@ -171,6 +189,14 @@ function CardView({
                 </div>
               ))}
             </dl>
+            <div className="border-t border-line-subtle pt-3">
+              <p className="font-mono text-2xs tracking-wide text-ink-muted uppercase">
+                Pace against plan
+              </p>
+              <div className="pt-1 text-left">
+                <ScoreboardPaceCell measures={row.target.measures} />
+              </div>
+            </div>
           </Card>
         </li>
       ))}
@@ -191,7 +217,6 @@ function CardView({
  */
 function Notes({ columns }: { columns: readonly ScoreboardColumn[] }) {
   const noted = columns.filter((column) => column.note !== undefined)
-  if (noted.length === 0) return null
   return (
     <ul className="flex flex-col gap-1.5">
       {noted.map((column) => (
@@ -202,6 +227,14 @@ function Notes({ columns }: { columns: readonly ScoreboardColumn[] }) {
           </Text>
         </li>
       ))}
+      <li>
+        <Text size="xs" tone="muted">
+          <span className="font-medium text-ink-secondary">Pace against plan.</span> The{' '}
+          {PACE_PROJECTION_LABEL.toLowerCase()} beside the month&rsquo;s target, per
+          store. It is linear arithmetic over the governed selling-day calendar, not a
+          forecast. {TARGET_DISCLOSURE}
+        </Text>
+      </li>
     </ul>
   )
 }

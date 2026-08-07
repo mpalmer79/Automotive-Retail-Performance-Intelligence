@@ -90,6 +90,12 @@
       "row_count": 212,
       "column_count": 12,
       "content_digest": "a459a872e28e45f2a485ad4ef09dc4cbb03ec18193f5edeec1f792a2dfd7842c"
+    },
+    {
+      "entity": "sales_target",
+      "row_count": 72,
+      "column_count": 11,
+      "content_digest": "b2dea9696a1f5f952de7d163306bc0c61deba6ef8d596a65e9296dda4aefaf7a"
     }
   ],
   "synthetic_data_notice": "SYNTHETIC DATA -- 100% machine generated. Granite Auto Group and every store, employee role and transaction referenced by this project are fictional. No real customer, employee, dealership or vendor data is present, and no record here describes a real person or a real business.",

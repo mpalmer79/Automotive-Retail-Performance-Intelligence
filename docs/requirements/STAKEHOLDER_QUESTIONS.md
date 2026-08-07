@@ -45,13 +45,22 @@ works is a marketing document.
 
 | Check | Result |
 |---|---|
-| Questions recorded | 41 |
+| Questions recorded | 42 |
 | Personas covered | 12 of 12 from `docs/research.md` §11.3 |
-| Questions the MVP can answer today | 37 |
-| Questions the MVP cannot answer, recorded with the blocking fact | 4 |
+| Questions answerable today | 39 |
+| Questions that cannot be answered, recorded with the blocking fact | 3 |
 | MVP KPIs traced to at least one question | **29 of 29** — no unattributed KPI |
-| Inventory Listings KPIs traced to at least one question | **22 of 22** — no unattributed KPI |
-| Reporting views supporting at least one question | **37 of 37** — no orphan view |
+| Inventory Listings KPIs traced to at least one question | **24 of 24** — no unattributed KPI |
+| Targets and pace KPIs traced to at least one question | **10 of 10** — all anchored by `SQ-31` |
+| Reporting views supporting at least one question | **39 of 39** — no orphan view |
+
+The recorded count was stated as 41 against 42 questions and the answerable count as 37; both were
+one behind the document beneath them before this change, and are corrected here. The answerable count
+then moved again, and the blocked count from 4 to 3, for one reason: `DASH.5`
+promoted `warehouse.fact_sales_target` and **`SQ-31` became answerable** (§6). The three KPI registers
+are counted on their own rows rather than summed, because `29 of 29` is the MVP baseline the semantic
+model was measured against and folding two more families into it would restate history rather than
+record a capability (§5).
 
 ### 3.1 Reconciling the two persona lists
 
@@ -557,13 +566,56 @@ list the acceptance criteria bind to.
 | **Persona** | Dealer principal |
 | **Business question** | *Are we hitting our operating targets, by store and by department?* |
 | **Required dimensions** | `dim_date`, `dim_dealership`, `dim_employee` |
-| **Required facts** | `fact_sales_target` (Deferred) |
-| **KPI IDs** | None -- target attainment is Deferred |
-| **Reporting view** | None. **The MVP cannot answer this question.** |
-| **Intended future report page** | 1. Executive Overview (component blocked) |
-| **Decision enabled** | None today. Recorded because [ARCHITECTURE.md §19.4](../../ARCHITECTURE.md) lists target attainment as an Executive Overview component, and its absence would otherwise read as an oversight. |
-| **Interpretation caution** | Target values would be **fictional operating goals for a fictional group**, never industry benchmarks. The component stays absent until the fact exists and the fiction is labelled. |
-| **Implementation status** | **Deferred** |
+| **Required facts** | `warehouse.fact_sales_target` (Implemented, `DASH.5`), `warehouse.fact_vehicle_sale` |
+| **KPI IDs** | `KPI-TGT-001`, `KPI-TGT-002`, `KPI-TGT-003`, `KPI-TGT-004`, `KPI-TGT-005`, `KPI-TGT-006`, `KPI-TGT-007`, `KPI-TGT-008`, `KPI-TGT-009`, `KPI-TGT-010` |
+| **Reporting view** | `reporting.vw_target_attainment` |
+| **Intended future report page** | 1. Executive Overview (targets and pace section) / 2. Sales and Gross |
+| **Decision enabled** | Whether to change desk strategy, staffing or marketing spend with selling days still left in the month — and, at month end, whether the plan itself was set at the right level. The selling-day pace projection answers "are we going to make it" without pretending to be a forecast. |
+| **Interpretation caution** | **Every target is a synthetic internal operating goal for the fictional Granite Auto Group.** It is not an industry benchmark, a manufacturer objective, a market standard or any real dealership's plan, and no reader may treat an attainment percentage here as evidence about real-world performance. The projected month-end figure is a **selling-day pace projection**: linear arithmetic over the governed selling-day calendar, never a forecast, a prediction, AI, machine learning or a probability — and it ignores within-month trading shape by construction, so an early-month figure moves more than a late-month one. On the committed `development` profile the dataset's as-of date is the last day of the last month in the window, so **every month is complete**: attainment is final, no selling days remain, and the projection equals the actual. The console says so rather than presenting a completed month as forward-looking. Department attainment is answered for GROSS only, by the exact front/back partition described below; retail units are store-scope, because a unit is delivered once and attributing it to two departments would count the same car twice. |
+| **Implementation status** | **Implemented** (`DASH.5`) |
+
+**How the question's two halves are answered, and where one of them stops.**
+
+*The selling-day clock.* `KPI-TGT-005` (selling days elapsed) and `KPI-TGT-006` (selling days
+remaining) come from `warehouse.dim_date.is_selling_day` and nothing else. `KPI-TGT-007` and
+`KPI-TGT-008` divide the month-to-date actual by the elapsed days to give a run rate per selling
+day, and `KPI-TGT-009` and `KPI-TGT-010` multiply that rate by the month's selling days to give the
+**selling-day pace projection**. All six answer the second half of what a dealer principal actually
+means by "are we hitting our targets": not only whether the month is behind, but whether there is
+enough selling capacity left to catch up.
+
+*By store.* `warehouse.fact_sales_target` carries a Store-scope plan row per store-month for
+retail units (`KPI-SLS-001`) and total gross (`KPI-GRS-003`). `KPI-TGT-001` and `KPI-TGT-003`
+are those plans; `KPI-TGT-002` and `KPI-TGT-004` divide the month-to-date actual by them, from
+summed numerators and summed denominators over the same subset of stores rather than by
+averaging store percentages.
+
+*By department.* A department target needs a department **actual**, and the actual has to be
+attributable without double counting. `warehouse.fact_vehicle_sale` enforces
+`total_gross = front_end_gross + back_end_gross` as a CHECK constraint, so front and back are an
+exact partition of the store's total gross: the **Sales** department owns the front end
+(`KPI-GRS-001`) and the **Finance** department owns the back end (`KPI-GRS-002`), and the two
+together are the store total with no overlap and no gap. That is also how a dealership plans —
+total gross forecast = vehicle gross + F&I gross — so the model matches the operating reality
+rather than the other way round. `DQ-TGT-012` and `RECON-TGT-DEPT-SPLIT` assert that the two
+department plans sum to the store plan to the cent.
+
+*Where it stops, stated rather than hand-waved.* Three of the five values of
+`dim_employee.department` own no component of that identity. **BDC** is measured in the lead
+funnel and produces no gross line of its own; **Management** is accountable for the store line
+rather than a separate one; **Service** has no fact at all (`warehouse.fact_service_visit` is
+Deferred, and `SQ-29` records that gap). A target for any of them would have a numerator that
+does not exist, so none is permitted — the fact's `ck_fact_sales_target_scope_metric` constraint
+refuses one. **Retail units are store-scope only** for the same class of reason: a retail unit
+is delivered once, a Sales-department unit target would reproduce the store target, and a
+Finance-department one would count the same car a second time. F&I measures are computed *per*
+the sales department's unit count, never on a second unit count of their own.
+
+*Employee scope* is part of the permanent vocabulary and is physically supported by the fact —
+nullable `employee_key`, CHECK-coupled to the scope type, foreign key to `warehouse.dim_employee`
+— and is deliberately **not populated** by `DASH.5`. No registered question requires
+employee-scope targets, `DASH.11` owns the employee-performance surface, and Gate 4 forbids
+adding data no question requires. No exported column identifies an employee.
 
 
 ### SQ-32 — General manager
@@ -744,12 +796,19 @@ list the acceptance criteria bind to.
 
 ## 5. Unattributed KPIs and orphan views
 
-**None.** All 29 MVP KPI identifiers and all 22 Inventory Listings KPI identifiers in
-[KPI_CATALOG.md](../../KPI_CATALOG.md) are cited by at least one question above, and all 38 views in the
-`reporting` schema support at least one. Both directions are asserted by
+**None.** All 29 MVP KPI identifiers, all 24 Inventory Listings KPI identifiers and all 10 Targets and
+pace KPI identifiers in [KPI_CATALOG.md](../../KPI_CATALOG.md) are cited by at least one question above,
+and all 39 views in the `reporting` schema support at least one. Both directions are asserted by
 `tests/integration/test_stakeholder_question_traceability.py`, which reads `arpi.constants.KPI_IDS`,
-`arpi.constants.INVENTORY_LISTING_KPI_IDS` and `arpi.constants.REPORTING_VIEWS` and fails if any of them
-gains a member this document does not cite.
+`arpi.constants.INVENTORY_LISTING_KPI_IDS`, `arpi.constants.TARGET_KPI_IDS` and
+`arpi.constants.REPORTING_VIEWS` and fails if any of them gains a member this document does not cite.
+
+**The three KPI registers are counted separately and deliberately.** `29/29` is the MVP coverage
+baseline the semantic model was measured against and it is unchanged. The Inventory Listings family
+and the Targets and pace family are governed, documented and computed in SQL, and neither is a
+semantic-model measure: folding either into the MVP figure would restate a historical baseline
+rather than record a new capability. `SQ-31` is the only question the Targets and pace family
+anchors, and it anchors all ten.
 
 Eight dimension views and four operational views own no KPI. They are cited here through the questions they
 make answerable — a dimension supplies grain and context, and the data-quality views answer the question
@@ -760,16 +819,27 @@ that has to be settled before any other page is read. The reasoning is recorded 
 
 ## 6. Questions the MVP cannot answer
 
-Four, listed above with full detail: `SQ-21` (F&I product penetration), `SQ-29` (service-to-sales
-opportunities), `SQ-31` (target attainment), `SQ-32` (customer retention). Each is blocked by a **Deferred
-fact**, not by a gap in the reporting layer:
+Three, listed above with full detail: `SQ-21` (F&I product penetration), `SQ-29` (service-to-sales
+opportunities), `SQ-32` (customer retention). Each is blocked by a **Deferred fact**, not by a gap in
+the reporting layer:
 
 | Question | Blocked by | Status in [DATA_DICTIONARY.md](../../DATA_DICTIONARY.md) |
 |---|---|---|
 | `SQ-21` | `warehouse.fact_finance_product_sale` | Deferred |
 | `SQ-29` | `warehouse.fact_service_visit` | Deferred |
-| `SQ-31` | `warehouse.fact_sales_target` | Deferred |
 | `SQ-32` | Full purchase history beyond the generated window | Deferred |
+
+**`SQ-31` was the fourth and is no longer blocked.** `DASH.5` promoted
+`warehouse.fact_sales_target` from Deferred through the four Gate 4 conditions
+([ARCHITECTURE.md §28](../../ARCHITECTURE.md)), and the evidence for each is recorded rather than
+asserted: the question above required the domain and predates the increment; the fact's grain is
+declared in [DATA_DICTIONARY.md](../../DATA_DICTIONARY.md) and enforced physically by
+`uq_fact_sales_target_grain` over five NOT NULL columns; KPI ownership is
+`KPI-TGT-001`…`KPI-TGT-010` in [KPI_CATALOG.md](../../KPI_CATALOG.md), each naming
+`reporting.vw_target_attainment` as its SQL owner; and the testing requirements are the `DQ-TGT-*`
+family, the `RECON-TGT-*` family with a seeded corruption case per critical rule, and an independent
+warehouse derivation per KPI in `tests/integration/test_kpi_verification.py`. The promotion happened
+in the same change that made the KPIs computable, which is what §7 requires.
 
 Adding any of these domains requires Gate 4 ([ARCHITECTURE.md §28](../../ARCHITECTURE.md)): a stakeholder
 question must require it, the fact grain must be defined, KPI ownership must be defined, and testing

@@ -216,6 +216,27 @@ export const DASHBOARD_DATASETS = [
     chunked: false,
   },
   {
+    // The operating plan beside the actual (`DASH.5`). Deliberately NOT chunked: three
+    // stores x six months x four scope-metric combinations is 72 rows, two orders of
+    // magnitude inside the single-file ceiling, and partitioning it would add eighteen
+    // files and a chunk table to save nothing.
+    //
+    // The business key carries the target SCOPE as well as the store, month and metric,
+    // because a department row and a store row exist for the same month and are
+    // different plans: the department rows are refinements of the store plan and are
+    // never added to it.
+    name: 'target-attainment',
+    businessKey: [
+      'dealership_id',
+      'target_month',
+      'target_scope_type',
+      'target_scope_id',
+      'target_kpi_id',
+    ],
+    dateBasis: 'target month for the plan; sale date for every actual',
+    chunked: false,
+  },
+  {
     // The first chunked dataset whose business key is not a date. It partitions by
     // store and SALE month, which is `sale_date` - the first date column the dataset
     // declares, and the one the transformer partitions on. Delivery month is a
@@ -311,6 +332,16 @@ export type DashboardReconciliationTotal =
       readonly kpi_id: string | null
       readonly unit: string | null
       readonly display_precision: number | null
+      /**
+       * The declared row subset the total covers, or `null` for the whole dataset.
+       *
+       * `target-attainment` carries unit targets and currency targets in one column, and
+       * store plans beside department refinements of them, so a total over the whole
+       * dataset would add units to dollars and count the same gross twice. The subset is
+       * part of the exporter's contract declaration, so it moves the contract
+       * fingerprint when it changes.
+       */
+      readonly subset: Readonly<Record<string, string>> | null
       readonly column: string
       readonly total: ExactDecimalString
     }
@@ -319,6 +350,7 @@ export type DashboardReconciliationTotal =
       readonly kpi_id: string | null
       readonly unit: string | null
       readonly display_precision: number | null
+      readonly subset: Readonly<Record<string, string>> | null
       readonly numerator_column: string
       readonly denominator_column: string
       readonly numerator: ExactDecimalString

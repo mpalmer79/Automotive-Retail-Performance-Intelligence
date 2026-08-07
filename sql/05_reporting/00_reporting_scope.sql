@@ -9,8 +9,8 @@
 -- =============================================================================
 --
 -- =============================================================================
--- WHAT THE REPORTING LAYER CONTAINS  (status: Implemented — 38 views:
--- 28 MVP + 6 sanitized public listing lane + 4 dashboard program)
+-- WHAT THE REPORTING LAYER CONTAINS  (status: Implemented — 39 views:
+-- 28 MVP + 6 sanitized public listing lane + 5 dashboard program)
 -- =============================================================================
 -- DIMENSION VIEWS — one per MVP dimension. Each relates one-to-many into the
 -- facts, in a single direction, and each dimension key is unique so no
@@ -75,10 +75,11 @@
 --   vw_vehicle_listing_observation_span    the window each vehicle was observed
 --   vw_vehicle_listing_change              listing-to-listing change
 --
--- DASHBOARD PROGRAM LANE — four views added by DASH.3 and DASH.4 for the Dealer
--- Operations Command Center. They read the same warehouse facts as the MVP surface
--- and add no new fact; they exist because ADR-0013 condition 2 puts analytical
--- arithmetic in SQL rather than in the console.
+-- DASHBOARD PROGRAM LANE — five views added by DASH.3, DASH.4 and DASH.5 for the
+-- Dealer Operations Command Center. Four of them read the same warehouse facts as
+-- the MVP surface and add no new fact; the fifth reads warehouse.fact_sales_target,
+-- the one fact this lane owns. They exist because ADR-0013 condition 2 puts
+-- analytical arithmetic in SQL rather than in the console.
 --
 --   vw_sales_gross_trend      store x sale date: volume and gross on one row, with
 --                             their condition and sale-type components as additive
@@ -93,8 +94,19 @@
 --                             complete: the cost components behind the front gross,
 --                             the trade context, the finance amounts, the people and
 --                             the lead's paper trail, for the Deal Jacket route
+--   vw_target_attainment      store x target month x target scope x targeted KPI:
+--                             the monthly operating PLAN beside the month-to-date
+--                             ACTUAL, with the selling-day arithmetic KPI-TGT-001
+--                             through KPI-TGT-010 are computed from. Attainment and
+--                             pace are published as numerator and denominator pairs,
+--                             never as a bare ratio, so a group figure is
+--                             SUM(numerator) / SUM(denominator) and no consumer can
+--                             average a percentage. The selling-day denominator
+--                             comes from warehouse.dim_date.is_selling_day and from
+--                             nowhere else (ADR-0002), and the as-of date is the
+--                             governed dataset as-of, never current_date
 --
--- arpi_reporter can read these thirty-eight views and nothing else. The expected
+-- arpi_reporter can read these thirty-nine views and nothing else. The expected
 -- set is fixed in arpi.constants.REPORTING_VIEWS, and
 -- tests/integration/test_reporting_layer_completeness.py asserts the schema
 -- contains exactly those and no others — a view added here and not declared there
@@ -104,10 +116,14 @@
 -- WHAT IS DELIBERATELY ABSENT  (status: Deferred)
 -- =============================================================================
 --   reporting.vw_service_summary        needs warehouse.fact_service_visit
---   reporting.vw_target_attainment      needs warehouse.fact_sales_target
 --   an F&I product-detail view          needs warehouse.fact_finance_product_sale
 --
--- REASON. All three underlying facts are Deferred (DATA_DICTIONARY.md section 27).
+-- reporting.vw_target_attainment WAS on this list and is no longer: DASH.5 promoted
+-- warehouse.fact_sales_target from Deferred to Implemented and built the view over
+-- it. See DATA_DICTIONARY.md section 41.
+--
+-- REASON. Both remaining underlying facts are Deferred (DATA_DICTIONARY.md
+-- section 27).
 -- A view over a non-existent table cannot be created at all, and a view returning
 -- a correctly-shaped but permanently empty result set would be worse than nothing:
 -- it would let a Power BI model bind to a KPI that has never been computed. The
@@ -143,13 +159,14 @@
 
 COMMENT ON SCHEMA reporting IS
     'ARPI reporting layer. The only schema Power BI, Excel and arpi_reporter may read, and the only schema '
-    'they need: 38 views in three lanes. The MVP surface is 28 -- all eight MVP dimensions, all five MVP '
+    'they need: 39 views in three lanes. The MVP surface is 28 -- all eight MVP dimensions, all five MVP '
     'facts at their own grain, thirteen governed analytical views owning the SQL side of all 29 KPIs, and '
     'two operational views -- and it is what the SQL baseline was measured against and what the semantic '
-    'model binds to. Beside it sit six sanitized public listing views (ADR-0011) and four dashboard '
-    'program views (DASH.3, DASH.4), both lanes held apart from the MVP count on purpose so that adding them '
+    'model binds to. Beside it sit six sanitized public listing views (ADR-0011) and five dashboard '
+    'program views (DASH.3, DASH.4, DASH.5), both lanes held apart from the MVP count on purpose so that adding them '
     'cannot silently move a measured baseline. Every view '
     'declares its grain and comments every column; every ratio publishes its numerator and denominator as '
     'separate additive columns and returns NULL on an empty denominator; row-level values are exposed '
-    'wherever a median is specified. Service, target-attainment and F&I product views are deliberately '
-    'absent because their facts are Deferred. See sql/05_reporting/00_reporting_scope.sql.';
+    'wherever a median is specified. Service and F&I product views are deliberately '
+    'absent because their facts are Deferred; target attainment was on that list until DASH.5 promoted '
+    'warehouse.fact_sales_target. See sql/05_reporting/00_reporting_scope.sql.';

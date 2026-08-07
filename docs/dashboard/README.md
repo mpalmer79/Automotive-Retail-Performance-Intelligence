@@ -11,7 +11,7 @@ The specification set for the governed web operating console authorized by
 | [`../requirements/DASHBOARD_BACKLOG.md`](../requirements/DASHBOARD_BACKLOG.md) | The `DASH.0`–`DASH.13` delivery increments and permanent item identifiers |
 | [`INFORMATION_ARCHITECTURE.md`](INFORMATION_ARCHITECTURE.md) | Routes, navigation, breadcrumbs, the URL filter contract, drill-throughs, empty/error/freshness states, no-JS and deep-link behavior |
 | [`DATA_CONTRACT.md`](DATA_CONTRACT.md) | The two-stage export pipeline: view allowlist, dataset grains and columns, manifest, versioning, chunking, staleness, size ceilings, privacy classification |
-| [`KPI_EXTENSION_PLAN.md`](KPI_EXTENSION_PLAN.md) | The reserved `KPI-TGT` / `KPI-FNI` / `KPI-ACC` families and `DIAG-DEAL` diagnostics, field-complete, with eligibility rules and promotion protocol |
+| [`KPI_EXTENSION_PLAN.md`](KPI_EXTENSION_PLAN.md) | The `KPI-TGT` / `KPI-FNI` / `KPI-ACC` families and `DIAG-DEAL` diagnostics, field-complete, with eligibility rules and promotion protocol. **`KPI-TGT` is Implemented** — promoted by `DASH.5` into [`KPI_CATALOG.md` §39](../../KPI_CATALOG.md), with the as-built divergences recorded in §3.0 rather than edited away; the other two families are still reserved |
 | [`DEAL_JACKET_SPEC.md`](DEAL_JACKET_SPEC.md) | The full sanitized Deal Jacket: sections, formulas, states, responsive and print behavior, test cases |
 | [`ACTION_ENGINE_SPEC.md`](ACTION_ENGINE_SPEC.md) | The deterministic management-action engine and the "Why did this change?" driver bridge |
 | [`TEST_STRATEGY.md`](TEST_STRATEGY.md) | Tests across Python, SQL, export, TypeScript, React, e2e, and the cross-layer reconciliation chain |

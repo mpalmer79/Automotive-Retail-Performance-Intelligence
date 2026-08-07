@@ -338,6 +338,17 @@ ENTITY_SPECS: Final[tuple[EntityIngestionSpec, ...]] = (
         fact_table="fact_marketing_spend",
         fact_load_script="14_fact_marketing_spend_load.sql",
     ),
+    # The dashboard program's operating-plan entity (DASH.5). Registered here like any
+    # other, because the loader must treat it identically: same raw landing table, same
+    # staging accept/reject split, same five-layer row-count chain. It is deliberately
+    # NOT counted among the five MVP facts -- see arpi.constants.TARGET_KPI_IDS for the
+    # same separation on the KPI side.
+    _source_entity(
+        "sales_target",
+        natural_key=("sales_target_id",),
+        fact_table="fact_sales_target",
+        fact_load_script="16_fact_sales_target_load.sql",
+    ),
 )
 
 #: The registry keyed by entity name.

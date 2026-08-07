@@ -151,6 +151,12 @@ gate.
 
 **29 KPIs specified. All 29 Implemented — computable from `reporting` and verified against an independent derivation from `warehouse`. Deferred KPIs are listed separately in section 35.**
 
+**This index is the MVP register, and `DASH.5` did not change it.** Two further governed families live in
+their own sections and are deliberately counted apart, because this figure is what the Power BI semantic
+model was measured against and neither family is a DAX measure: 24 Inventory Listings KPIs
+(`KPI-LST-001..024`, §38) and 10 Targets and pace KPIs (`KPI-TGT-001..010`, §39). The accurate statement is
+**29 MVP KPIs + 24 Inventory Listings KPIs + 10 implemented Target and pace KPIs**, never "63 MVP KPIs".
+
 ---
 
 ## 5. Average and median governance
@@ -1005,19 +1011,23 @@ under Gate 4 ([ARCHITECTURE.md §28](ARCHITECTURE.md)).
 | Products per retail unit — `total eligible products sold / eligible retail units` | Store × period | `warehouse.fact_finance_product_sale` | Strong portfolio release — F&I product analysis | **Deferred** |
 | Repeat-customer rate — `customers with a prior completed purchase / customers with a completed purchase in the period` | Store × period | `warehouse.dim_customer`, `warehouse.fact_vehicle_sale` with full history | Strong portfolio release — customer retention | **Deferred** |
 | Service-to-sales conversion — `replacement-opportunity service customers linked to a finalized retail sale / qualified replacement-opportunity service customers` | Store × period | `warehouse.fact_service_visit` | Strong portfolio release — service-to-sales opportunities | **Deferred** |
-| Target attainment — `actual KPI value / target value` | Store × employee or department × KPI × month | `warehouse.fact_sales_target` | Strong portfolio release — target attainment | **Deferred** |
 
-Two standing constraints apply when these are eventually specified:
+One standing constraint applies when these are eventually specified:
 
 - **Service-to-sales opportunity logic must be presented as decision support, not as a guarantee of
   customer purchase intent** (`docs/research.md` §4.13).
-- **Target values will be fictional operating goals for a fictional group**, never industry benchmarks
-  ([LIMITATIONS.md](LIMITATIONS.md)).
+
+**Target attainment has left this table.** It was listed here as Deferred, blocked by
+`warehouse.fact_sales_target`. `DASH.5` promoted that fact through Gate 4 and the family is now specified
+in full in §39 as `KPI-TGT-001` … `KPI-TGT-010`. Its standing constraint travelled with it and is stated
+at the top of that section: **target values are fictional operating goals for a fictional group, never
+industry benchmarks** ([LIMITATIONS.md](LIMITATIONS.md)).
 
 **Reserved future families.** The dashboard program
-([ADR-0013](docs/architecture-decisions/ADR-0013-governed-web-operating-console.md)) reserves three
-KPI families — `KPI-TGT-001..010` (targets and pace), `KPI-FNI-001..022` (F&I detail), and
-`KPI-ACC-001..012` (accounting integrity) — specified field-by-field in
+([ADR-0013](docs/architecture-decisions/ADR-0013-governed-web-operating-console.md)) reserved three
+KPI families. `KPI-TGT-001..010` (targets and pace) **is no longer reserved: it is Implemented and
+specified in §39**. The remaining two — `KPI-FNI-001..022` (F&I detail) and
+`KPI-ACC-001..012` (accounting integrity) — are still reserved and are specified field-by-field in
 [`docs/dashboard/KPI_EXTENSION_PLAN.md`](docs/dashboard/KPI_EXTENSION_PLAN.md). They enter this
 catalogue only when their source facts are promoted through Gate 4 by the owning
 [`DASHBOARD_BACKLOG.md`](docs/requirements/DASHBOARD_BACKLOG.md) increment, with every field in the
@@ -1608,3 +1618,233 @@ There is **no** sold-units KPI, no inventory turn, no days in stock, no front, b
 | **Status** | Implemented |
 | **Owner** | Michael Palmer |
 
+
+---
+
+## 39. Targets and pace domain — the operating plan
+
+This domain is governed by [ADR-0013](docs/architecture-decisions/ADR-0013-governed-web-operating-console.md),
+delivered by increment `DASH.5`, and is **separate from the 29 MVP KPIs above** in exactly the way §38's
+listing domain is. Everything here is computed by `reporting.vw_target_attainment` over
+`warehouse.fact_sales_target`, `warehouse.fact_vehicle_sale` and `warehouse.dim_date`. The identifiers were
+reserved from first mention in
+[`docs/dashboard/KPI_EXTENSION_PLAN.md §3`](docs/dashboard/KPI_EXTENSION_PLAN.md) and are permanent.
+
+### 39.1 The standing constraint, before any definition
+
+> **Every target in ARPI is a synthetic internal operating goal for the fictional Granite Auto Group.**
+> It is not an industry benchmark, not a manufacturer objective, not a market standard and not any real
+> dealership's plan. No surface may describe a target — or an attainment against one — as good, average,
+> standard or recommended, and no reader may treat a figure here as evidence about real-world performance.
+
+> **A projected month-end figure is a *selling-day pace projection*.** That exact phrase is used wherever
+> one is presented. It is linear arithmetic over the governed selling-day calendar: pace × selling days in
+> the month. It is **not** a forecast, a prediction, AI, machine learning, a probability or a benchmark, and
+> it deliberately ignores within-month trading shape — the generator weights Saturdays heavily and Sundays
+> almost to nothing — so an early-month projection is structurally more volatile than a late-month one.
+> Once every selling day of a month has elapsed the projection **equals the final actual**, and the console
+> says so rather than presenting a completed month as forward-looking.
+
+### 39.2 Shared fields
+
+| Field | Value for every KPI in this domain |
+|---|---|
+| **Status** | **Implemented** (`DASH.5`) — computable from the `reporting` schema, and independently re-derived from `warehouse` by `tests/integration/test_kpi_verification.py`. |
+| **Business owner persona** | Dealer principal, general manager, general sales manager. |
+| **Stakeholder question** | [`SQ-31`](docs/requirements/STAKEHOLDER_QUESTIONS.md) — *Are we hitting our operating targets, by store and by department?* All ten anchor to it. |
+| **Source fact** | `warehouse.fact_sales_target` (the plan), `warehouse.fact_vehicle_sale` (the actual), `warehouse.dim_date` (the selling-day calendar). |
+| **Reporting-view owner** | `reporting.vw_target_attainment`. |
+| **Future Power BI measure owner** | **None yet, deliberately.** The plan names a *Target Measures* group ([`powerbi/model_documentation/03-measure-groups.md`](powerbi/model_documentation/03-measure-groups.md)) as the future owner; that is ownership planning, not implementation. The current semantic model is awaiting real-engine validation, and adding measures before that validation would change what is being validated. **No TMDL was written for this domain, no relationship to `fact_sales_target` exists, and no DAX has ever computed one of these ten.** |
+| **Reconciliation** | `RECON-TGT-*` and `RECON-FACT-SALES-TARGET-WAREHOUSE` in `audit.vw_recon_target`, unioned into `audit.vw_recon_all` and recorded on every pipeline run. |
+| **Date basis** | Sale date for every actual; target month for every plan; calendar date for the selling-day clock. |
+| **As-of rule** | The dataset's own as-of date — the last day any measured thing happened — constrained to the row's month. **No wall-clock read exists anywhere in the chain.** |
+| **Project-default thresholds** | None. This domain defines no threshold, no rating, no grade and no favourable direction. |
+
+### 39.3 The scope rule, which every total here depends on
+
+`warehouse.fact_sales_target` carries three scope types. **A store total reads `Store`-scope rows only.**
+`Department` rows carry the two components that partition total gross exactly — the Sales department owns
+front-end gross (`KPI-GRS-001`) and the Finance department owns back-end gross (`KPI-GRS-002`), because the
+sale fact enforces `total_gross = front_end_gross + back_end_gross` — so adding a department row to its
+store row counts the same gross twice. `Employee` scope is physically supported and deliberately
+unpopulated by `DASH.5`. **Retail units are store-scope only**: a unit is delivered once, and attributing
+it to both Sales and Finance would count the same car twice.
+
+**`fact_sales_target.kpi_id` names the metric being TARGETED, never the target KPI.** A plan row for the
+month's retail units carries `KPI-SLS-001`; `KPI-TGT-001` is the measure computed *from* such rows.
+
+### 39.4 `KPI-TGT-001` — Retail unit target
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-TGT-001` |
+| **Display name** | Retail unit target |
+| **Business purpose** | The month's committed retail-unit goal per store: the denominator of attainment and the reference line of pace. |
+| **Definition (plain English)** | The number of retail deliveries the store committed to make in the calendar month. |
+| **Formula** | `SUM(target_value)` where `target_scope_type = 'Store'` and `kpi_id = 'KPI-SLS-001'` |
+| **Numerator (precise)** | n/a — additive measure |
+| **Denominator (precise)** | n/a — additive measure |
+| **Grain** | Store × calendar month. Additive across stores and months **within** this scope and metric. |
+| **Date basis** | Target month. |
+| **Filters** | Store-scope rows for the selected stores and months. |
+| **Exclusions** | Department- and employee-scope rows, which are refinements rather than addends. |
+| **Eligibility rules** | None. |
+| **Null / zero-denominator behaviour** | No denominator. **No target row for a store-month → NULL, displayed "No target set", never `0`.** A missing planning record and a goal of zero are different statements and are both representable. |
+| **Unit and formatting** | Whole units, carried in `numeric(14,2)` as e.g. `57.00`. Thousands separator, no decimals on display. |
+| **SQL ownership** | `reporting.vw_target_attainment.target_value`. |
+| **Future DAX ownership** | Target Measures group (planned; no measure exists — see §39.2). |
+| **Reconciliation rule** | `RECON-TGT-UNITS` (warehouse against reporting, exact) and the export total `retail_unit_target`, which declares the row subset it covers. |
+| **Web presentation** | The target beside the actual on the Executive Overview and Sales & Gross target cards, and the pace bar's denominator. |
+| **Interpretation caution** | A fictional operating goal. Attainment against it demonstrates the calculation, not performance. |
+| **Implementation status** | **Implemented** (`DASH.5`) |
+| **Depends on (entities)** | `warehouse.fact_sales_target`, `warehouse.dim_dealership`, `warehouse.dim_date` |
+
+### 39.5 `KPI-TGT-002` — Retail unit target attainment
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-TGT-002` |
+| **Display name** | Retail unit target attainment |
+| **Business purpose** | Whether the store is delivering the units it committed to, as a ratio a GM can act on mid-month. |
+| **Definition (plain English)** | Retail units delivered month to date, divided by the month's unit target. |
+| **Formula** | `KPI-SLS-001 (MTD) / KPI-TGT-001` |
+| **Numerator (precise)** | `SUM(reporting.vw_target_attainment.attainment_numerator)` over `target_scope_type = 'Store'` and `target_kpi_id = 'KPI-SLS-001'` — retail units month to date on the sale-date basis, restricted to the rows that carry a usable denominator. |
+| **Denominator (precise)** | `SUM(reporting.vw_target_attainment.attainment_denominator)` over the **same rows**. The denominator is `NULL` when the target is absent **or** zero, so a zero-target store cannot contribute a division by zero. |
+| **Grain** | Store × month; aggregable to any store set and any set of whole months **by summing both components**. |
+| **Date basis** | Sale date for the numerator, target month for the denominator. |
+| **Filters** | As `KPI-SLS-001`. |
+| **Exclusions** | As `KPI-SLS-001`. **A store with no target contributes to neither side**; its units are still shown in the actual, and the console names the store rather than hiding the exclusion. |
+| **Eligibility rules** | None. |
+| **Null / zero-denominator behaviour** | **NULL when the target is NULL or zero — never `0`.** A store with no plan has no attainment; it does not have an attainment of nothing. |
+| **Unit and formatting** | Percentage, one decimal. |
+| **SQL ownership** | `reporting.vw_target_attainment` publishes `attainment_numerator` and `attainment_denominator` as separate additive columns, and `target_attainment_ratio` for a single row. **The export publishes only the two components**, so an average of store percentages cannot be formed from the exported data at all. |
+| **Future DAX ownership** | Target Measures group (planned; no measure exists). |
+| **Reconciliation rule** | The export total `retail_unit_target_attainment`, published as numerator and denominator with no quotient. |
+| **Web presentation** | The percentage beside the pace bar, with both sides visible. |
+| **Interpretation caution** | **A group attainment is `SUM(numerator) / SUM(denominator)`, never the average of store attainments** — those are different numbers, and the average is wrong whenever the stores differ in size. `tests/integration/test_kpi_verification.py` and `portfolio/tests/unit/dashboard-targets.test.ts` each plant the average and assert it differs. Attainment against a fictional goal demonstrates the calculation, not performance. |
+| **Implementation status** | **Implemented** (`DASH.5`) |
+| **Depends on (entities)** | `warehouse.fact_sales_target`, `warehouse.fact_vehicle_sale`, `warehouse.dim_date` |
+
+### 39.6 `KPI-TGT-003` — Total gross target
+
+As `KPI-TGT-001` with `kpi_id = 'KPI-GRS-003'`. **Unit and formatting:** currency, USD, exact `numeric(14,2)`,
+no decimals at summary level. **Reconciliation rule:** `RECON-TGT-GROSS` (0.01 currency tolerance) and the
+export total `total_gross_target`. Every other field is identical, including the "No target set" null rule.
+Status **Implemented** (`DASH.5`).
+
+The two **department** gross plans sum to this figure exactly, per store-month: the Sales department's
+front-end target (`KPI-GRS-001` rows) plus the Finance department's back-end target (`KPI-GRS-002` rows).
+`DQ-TGT-012` and `RECON-TGT-DEPT-SPLIT` assert the identity to the cent. They are a partition of this
+target, **not an addition to it**.
+
+### 39.7 `KPI-TGT-004` — Total gross target attainment
+
+As `KPI-TGT-002` with numerator `KPI-GRS-003` (MTD, sale-date basis) and denominator `KPI-TGT-003`.
+**Unit:** percentage, one decimal. **Reconciliation rule:** the export total
+`total_gross_target_attainment`, published as numerator and denominator with no quotient. Every other
+field is identical, including the group-aggregation rule and the NULL behaviour. Status **Implemented**
+(`DASH.5`).
+
+### 39.8 `KPI-TGT-005` — Selling days elapsed
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-TGT-005` |
+| **Display name** | Selling days elapsed |
+| **Business purpose** | The pace clock's denominator: how much of the month's selling capacity has been used. |
+| **Definition (plain English)** | The number of governed selling days in the month up to and including the dataset's as-of date. |
+| **Formula** | `COUNT(dim_date rows) WHERE is_selling_day AND full_date <= as-of date AND month = the target month` |
+| **Numerator / Denominator** | n/a — additive count |
+| **Grain** | Month × as-of date. **Store-invariant**: all three stores share one calendar. |
+| **Date basis** | Calendar date. |
+| **Filters** | `warehouse.dim_date.is_selling_day`, per the deterministic closure-holiday rule of [ADR-0002](docs/architecture-decisions/ADR-0002-phase-0-technology-baseline.md). **`dim_date` is the only selling-day authority in ARPI**; no consumer re-derives weekends or holidays, and no JavaScript or DAX calendar exists. |
+| **Exclusions** | Closure holidays. |
+| **Eligibility rules** | None. |
+| **Null / zero-denominator behaviour** | **`0` is legitimate and means the month has not started.** It is never converted to NULL, and it is what makes pace and projection NULL rather than a division error. |
+| **Unit and formatting** | Whole days. Rendered as "Day 14 of 26 selling days". |
+| **SQL ownership** | `reporting.vw_target_attainment.selling_days_elapsed`. |
+| **Future DAX ownership** | Target Measures group (planned; no measure exists). |
+| **Reconciliation rule** | Verified against an independent `dim_date` count in `tests/integration/test_kpi_verification.py`. |
+| **Web presentation** | The selling-day header above the target cards, and the marker on the pace bar's track. |
+| **Interpretation caution** | The shared calendar is a documented simplification: real stores keep different hours, and a real group would carry a selling-day calendar per store. On the committed `development` profile the as-of date is the last day of the window, so every month is complete and this figure equals the month's total. |
+| **Implementation status** | **Implemented** (`DASH.5`) |
+| **Depends on (entities)** | `warehouse.dim_date` |
+
+### 39.9 `KPI-TGT-006` — Selling days remaining
+
+`(selling days in the month) − KPI-TGT-005`. **Never negative**; `0` on a completed month, which is the
+honest statement that nothing is left to sell rather than a missing value. All other fields as
+`KPI-TGT-005`. Status **Implemented** (`DASH.5`).
+
+### 39.10 `KPI-TGT-007` — Retail unit pace
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-TGT-007` |
+| **Display name** | Retail unit pace |
+| **Business purpose** | Units per selling day at the current run rate — the number a desk uses daily. |
+| **Definition (plain English)** | Retail units delivered month to date, divided by the governed selling days that have elapsed. |
+| **Formula** | `KPI-SLS-001 (MTD) / KPI-TGT-005` |
+| **Numerator (precise)** | `SUM(reporting.vw_target_attainment.pace_numerator)` — retail units MTD, sale-date basis. Additive across stores. |
+| **Denominator (precise)** | `reporting.vw_target_attainment.pace_denominator` — selling days elapsed. **Store-invariant, and therefore NOT summed across stores**: a group pace is total units over the same elapsed days, not over three times as many days. |
+| **Grain** | Store × month × as-of date. **NON-ADDITIVE**; recompute from summed components at every level. |
+| **Date basis** | Sale date over the calendar clock. |
+| **Filters / Exclusions** | As `KPI-SLS-001`. |
+| **Eligibility rules** | None. |
+| **Null / zero-denominator behaviour** | **NULL when selling days elapsed = 0.** A run rate over zero days is undefined, not zero, and the console renders "Pace not available before the first selling day". |
+| **Unit and formatting** | Units per selling day, two decimals. |
+| **SQL ownership** | `reporting.vw_target_attainment.pace_per_selling_day`, with its two components published separately. |
+| **Future DAX ownership** | Target Measures group (planned; no measure exists). |
+| **Reconciliation rule** | Independently re-derived in `tests/integration/test_kpi_verification.py` from the sale fact and `dim_date`. |
+| **Web presentation** | "1.33 units per selling day" beside the pace bar. |
+| **Interpretation caution** | **A run rate, never a forecast.** Early-month values are volatile by construction, because the generator weights trading heavily towards Saturdays. The average of several days' paces is not this figure, and neither is the average of several stores' paces. |
+| **Implementation status** | **Implemented** (`DASH.5`) |
+| **Depends on (entities)** | `warehouse.fact_vehicle_sale`, `warehouse.dim_date` |
+
+### 39.11 `KPI-TGT-008` — Total gross pace
+
+As `KPI-TGT-007` with numerator `KPI-GRS-003` (MTD). **Unit:** currency per selling day, USD, two decimals.
+Exact `numeric` throughout; no float touches it at any layer. All other fields identical, including the
+NULL rule at zero elapsed selling days. Status **Implemented** (`DASH.5`).
+
+### 39.12 `KPI-TGT-009` — Projected month-end retail units
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-TGT-009` |
+| **Display name** | Projected month-end retail units |
+| **Business purpose** | Where the month lands if the current selling-day rate holds — the honest version of "are we going to make it". |
+| **Definition (plain English)** | The current units-per-selling-day rate, multiplied by the month's total selling days. |
+| **Formula** | `KPI-TGT-007 × (selling days in the month)`, evaluated as **one division** from published components: `projection_numerator / projection_denominator`, where the numerator is `actual MTD × selling days in month` and the denominator is selling days elapsed. |
+| **Numerator (precise)** | `SUM(reporting.vw_target_attainment.projection_numerator)`. Additive across stores within one month. |
+| **Denominator (precise)** | `reporting.vw_target_attainment.projection_denominator` — selling days elapsed, store-invariant. |
+| **Grain** | Store × month × as-of date. **NON-ADDITIVE.** |
+| **Date basis** | Sale date over the calendar clock. |
+| **Filters / Exclusions** | As `KPI-TGT-007`. |
+| **Eligibility rules** | None. |
+| **Null / zero-denominator behaviour** | **NULL whenever the pace is NULL**, which is before the first selling day. Never `0`, never `Infinity`, never `NaN`. |
+| **Unit and formatting** | Whole units on display; **the exact ratio is retained internally** and only the final rendered figure is rounded, half away from zero. That rounding happens in exactly one place, so no reconciliation is computed from a rounded value. |
+| **SQL ownership** | `reporting.vw_target_attainment.projected_month_end_value`, composed from the two published components so the value is not a rounded pace multiplied by a day count. |
+| **Future DAX ownership** | Target Measures group (planned; no measure exists). |
+| **Reconciliation rule** | Independently re-derived in `tests/integration/test_kpi_verification.py`. |
+| **Web presentation** | Labelled **"Selling-day pace projection"**, always beside the actual MTD and the target, never alone. |
+| **Interpretation caution** | **Linear extrapolation over the calendar, and nothing more.** It is not a forecast, a prediction, AI, machine learning, a probability or a benchmark, and it must never be captioned as one. It ignores within-month seasonality that the data genuinely contains, so it is structurally less reliable early in a month. **Once every selling day has elapsed it equals the final actual**, and the surface says so rather than presenting a finished month as forward-looking. |
+| **Implementation status** | **Implemented** (`DASH.5`) |
+| **Depends on (entities)** | `warehouse.fact_vehicle_sale`, `warehouse.dim_date` |
+
+### 39.13 `KPI-TGT-010` — Projected month-end total gross
+
+As `KPI-TGT-009` over `KPI-TGT-008`. **Unit:** currency, USD, exact internally and rendered without decimals
+at summary level. Every other field identical, including the mandatory **"Selling-day pace projection"**
+label and the prohibition on the words *forecast*, *forecasted gross*, *expected gross*, *predicted gross*
+and *AI projection*. Status **Implemented** (`DASH.5`).
+
+### 39.14 What this domain deliberately does not define
+
+There is **no** favourable direction, no ahead/behind score, no performance grade, no A/B/C rating and no
+target health score. ARPI has no governed semantic for whether an attainment figure is good, and inventing
+one would publish a judgement rather than a figure. The one comparison the console states is arithmetic —
+"Selling-day pace projection is 6 units above target" — and never evaluative.
+
+There is also **no target-editing surface**: no edit, save, approve, assign, lock or submit. `DASH.5` is
+read-only analytics over governed generated plan data, and the console is not a planning-entry application.

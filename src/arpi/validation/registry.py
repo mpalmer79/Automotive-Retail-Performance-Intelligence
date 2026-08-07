@@ -160,6 +160,7 @@ RESERVED_CHECK_PREFIXES: Final[Mapping[str, str]] = MappingProxyType(
         "APT": "fact_appointment",
         "CMP": "dim_marketing_campaign",
         "MKT": "fact_marketing_spend",
+        "TGT": "fact_sales_target (targets and selling-day pace)",
         "REF": "cross-object referential and grain integrity (SQL)",
         "AUD": "audit-layer integrity (SQL)",
         "ING": "ingestion and the row-count chain",
@@ -416,7 +417,8 @@ def expected_check_ids(
 # Phase 1 families (DQ-VMD, DQ-VEH, DQ-EMP, DQ-CUS, DQ-ACQ, DQ-SLE, DQ-INV, DQ-LDS,
 # DQ-LED, DQ-APT, DQ-CMP, DQ-MKT, DQ-ING) have their prefixes reserved above and are
 # registered by the modules that implement them, via register_checks(). Nothing below
-# needs to change when they arrive.
+# needs to change when they arrive. The same holds for the dashboard program's DQ-TGT
+# family, registered by arpi.generation.sales_target.
 # ---------------------------------------------------------------------------------------
 
 _DIM_DATE_OBJECT: Final = "warehouse.dim_date"

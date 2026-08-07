@@ -1,4 +1,9 @@
-"""Every one of the 29 MVP KPIs is computable from the reporting layer, and correct.
+"""Every governed KPI is computable from the reporting layer, and correct.
+
+Covers the 29 MVP KPIs and, from ``DASH.5``, the ten Targets and pace KPIs
+(``KPI-TGT-001`` … ``KPI-TGT-010``). The two families are held to the same standard and
+counted separately, because the MVP figure is what the Power BI semantic model was
+measured against and the target family is not a DAX measure.
 
 Three things are proved here, and they are different things:
 
@@ -26,7 +31,12 @@ from typing import Any
 
 import pytest
 
-from arpi.constants import KPI_IDS, KPI_VIEW_OWNERSHIP
+from arpi.constants import (
+    KPI_IDS,
+    KPI_VIEW_OWNERSHIP,
+    TARGET_KPI_IDS,
+    TARGET_KPI_VIEW_OWNERSHIP,
+)
 
 pytestmark = pytest.mark.integration
 
@@ -35,6 +45,12 @@ def _scalar(cursor: Any, statement: str) -> Any:
     cursor.execute(statement)
     row = cursor.fetchone()
     return None if row is None else row[0]
+
+
+def _rows(cursor: Any, statement: str, params: Any = None) -> list[tuple[Any, ...]]:
+    """Run a statement and return every row."""
+    cursor.execute(statement, params)
+    return list(cursor.fetchall())
 
 
 def _assert_equal(reported: Any, expected: Any, label: str) -> None:
@@ -804,3 +820,792 @@ def test_at_least_one_zero_denominator_case_actually_occurs(loaded_cursor: Any) 
         """,
     )
     assert exercised > 0, "no zero-denominator case occurs, so the NULL rule is untested"
+
+
+# =======================================================================================
+# Targets and pace: KPI-TGT-001..010 (DASH.5)
+# =======================================================================================
+#
+# Every figure below is re-derived from warehouse.fact_sales_target,
+# warehouse.fact_vehicle_sale and warehouse.dim_date, written from the catalogue's §39
+# numerator and denominator text. Nothing here verifies reporting.vw_target_attainment
+# against itself: a test that computed both sides from the view would prove only that
+# SQL is deterministic.
+#
+# The controlled cases -- no target, a zero target, zero selling days, one store missing
+# a target, an employee-scope row -- are planted inside the test transaction and rolled
+# back. Nothing under data/ is touched.
+
+
+@pytest.mark.parametrize("kpi_id", TARGET_KPI_IDS)
+def test_every_target_kpi_resolves_to_an_existing_reporting_view(
+    loaded_cursor: Any, kpi_id: str
+) -> None:
+    owners = TARGET_KPI_VIEW_OWNERSHIP[kpi_id]
+    assert owners, f"{kpi_id} has no reporting view registered in arpi.constants"
+    for view_name in owners:
+        exists = _scalar(
+            loaded_cursor,
+            "SELECT count(*) FROM information_schema.views "
+            f"WHERE table_schema = 'reporting' AND table_name = '{view_name}'",
+        )
+        assert exists == 1, f"{kpi_id} names reporting.{view_name}, which does not exist"
+
+
+def test_the_target_family_is_ten_and_does_not_touch_the_mvp_register() -> None:
+    """The MVP baseline is 29 and stays 29. The target family is counted beside it."""
+    assert len(TARGET_KPI_IDS) == 10
+    assert len(set(TARGET_KPI_IDS)) == 10
+    assert set(TARGET_KPI_VIEW_OWNERSHIP) == set(TARGET_KPI_IDS)
+    assert not set(TARGET_KPI_IDS) & set(KPI_IDS)
+    assert len(KPI_IDS) == 29
+
+
+def _target_month(cursor: Any) -> str:
+    """The latest target month the view carries, as an ISO date."""
+    return str(_scalar(cursor, "SELECT max(target_month) FROM reporting.vw_target_attainment"))
+
+
+# --------------------------------------------------------------------------------------
+# KPI-TGT-001 / KPI-TGT-003 -- the plan itself
+# --------------------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("kpi_id", "metric"),
+    [("KPI-TGT-001", "KPI-SLS-001"), ("KPI-TGT-003", "KPI-GRS-003")],
+)
+def test_the_store_target_reads_store_scope_rows_only(
+    loaded_cursor: Any, kpi_id: str, metric: str
+) -> None:
+    """A store total excludes department rows, which are refinements rather than addends."""
+    reported = _scalar(
+        loaded_cursor,
+        f"""
+        SELECT coalesce(sum(target_value), 0) FROM reporting.vw_target_attainment
+        WHERE target_scope_type = 'Store' AND target_kpi_id = '{metric}'
+        """,
+    )
+    expected = _scalar(
+        loaded_cursor,
+        f"""
+        SELECT coalesce(sum(t.target_value), 0) FROM warehouse.fact_sales_target AS t
+        WHERE t.target_scope_type = 'Store' AND t.kpi_id = '{metric}'
+        """,
+    )
+    _assert_equal(reported, expected, kpi_id)
+
+    everything = _scalar(
+        loaded_cursor,
+        "SELECT coalesce(sum(t.target_value), 0) FROM warehouse.fact_sales_target AS t "
+        f"WHERE t.kpi_id = '{metric}' OR t.target_scope_type = 'Department'",
+    )
+    assert Decimal(str(everything)) != Decimal(str(expected)) or metric == "KPI-SLS-001", (
+        f"{kpi_id}: summing every scope gives the same figure as summing store scope, so "
+        "the exclusion rule is not being exercised by this data"
+    )
+
+
+def test_the_department_plans_partition_the_store_gross_plan(loaded_cursor: Any) -> None:
+    """Front + back = total on the plan, exactly as on the sale fact, per store-month."""
+    mismatched = _scalar(
+        loaded_cursor,
+        """
+        SELECT count(*) FROM (
+            SELECT t.dealership_key, t.target_month_date_key,
+                   coalesce(sum(t.target_value) FILTER (
+                       WHERE t.target_scope_type = 'Store' AND t.kpi_id = 'KPI-GRS-003'), 0)
+                   AS store_total,
+                   coalesce(sum(t.target_value) FILTER (
+                       WHERE t.target_scope_type = 'Department'), 0) AS department_total
+            FROM warehouse.fact_sales_target AS t
+            GROUP BY t.dealership_key, t.target_month_date_key
+        ) AS m
+        WHERE m.store_total <> m.department_total
+        """,
+    )
+    assert mismatched == 0
+
+
+def test_a_store_month_with_no_plan_reports_no_target_rather_than_zero(
+    loaded_cursor: Any,
+) -> None:
+    """Absence of a plan is NULL, not a plan of zero. The two are different statements."""
+    month = _target_month(loaded_cursor)
+    loaded_cursor.execute(
+        """
+        DELETE FROM warehouse.fact_sales_target
+        WHERE target_scope_type = 'Store' AND kpi_id = 'KPI-SLS-001'
+          AND target_month_date_key = to_char(%s::date, 'YYYYMMDD')::integer
+          AND dealership_key = (SELECT min(dealership_key) FROM warehouse.fact_sales_target)
+        """,
+        (month,),
+    )
+    assert loaded_cursor.rowcount == 1
+
+    row = _rows(
+        loaded_cursor,
+        """
+        SELECT is_target_present, target_value, attainment_denominator,
+               target_attainment_ratio, actual_mtd_value
+        FROM reporting.vw_target_attainment
+        WHERE target_scope_type = 'Store' AND target_kpi_id = 'KPI-SLS-001'
+          AND target_month = %s::date
+          AND dealership_key = (SELECT min(dealership_key) FROM warehouse.dim_dealership)
+        """,
+        (month,),
+    )
+    assert len(row) == 1, "the store-month must still appear, carrying no target"
+    present, target, denominator, ratio, actual = row[0]
+    assert present is False
+    assert target is None, "a missing plan is NULL, never 0"
+    assert denominator is None
+    assert ratio is None, "attainment over a missing target is undefined, not zero"
+    assert actual is not None, "the actual is a measured fact and does not disappear"
+
+
+def test_a_zero_target_produces_a_null_attainment_rather_than_a_division_error(
+    loaded_cursor: Any,
+) -> None:
+    """Production never emits a zero target, so the rule is exercised deliberately."""
+    month = _target_month(loaded_cursor)
+    loaded_cursor.execute(
+        """
+        UPDATE warehouse.fact_sales_target
+        SET target_value = 0, stretch_target_value = 0
+        WHERE target_scope_type = 'Store' AND kpi_id = 'KPI-SLS-001'
+          AND target_month_date_key = to_char(%s::date, 'YYYYMMDD')::integer
+          AND dealership_key = (SELECT min(dealership_key) FROM warehouse.fact_sales_target)
+        """,
+        (month,),
+    )
+    assert loaded_cursor.rowcount == 1
+
+    present, target, denominator, ratio = _rows(
+        loaded_cursor,
+        """
+        SELECT is_target_present, target_value, attainment_denominator,
+               target_attainment_ratio
+        FROM reporting.vw_target_attainment
+        WHERE target_scope_type = 'Store' AND target_kpi_id = 'KPI-SLS-001'
+          AND target_month = %s::date
+          AND dealership_key = (SELECT min(dealership_key) FROM warehouse.dim_dealership)
+        """,
+        (month,),
+    )[0]
+    assert present is True, "a zero target IS a plan; it is not an absent one"
+    assert Decimal(str(target)) == Decimal("0.00")
+    assert denominator is None, "zero becomes NULL in the denominator, never a divisor"
+    assert ratio is None
+
+
+# --------------------------------------------------------------------------------------
+# KPI-TGT-002 / KPI-TGT-004 -- attainment, and the group rule
+# --------------------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("kpi_id", "metric", "actual_expression"),
+    [
+        ("KPI-TGT-002", "KPI-SLS-001", "sum(s.unit_count) FILTER (WHERE s.is_retail)"),
+        ("KPI-TGT-004", "KPI-GRS-003", "sum(s.total_gross) FILTER (WHERE s.is_retail)"),
+    ],
+)
+def test_attainment_is_summed_components_not_averaged_percentages(
+    loaded_cursor: Any, kpi_id: str, metric: str, actual_expression: str
+) -> None:
+    """The group figure, re-derived from the two facts, and the wrong answer beside it."""
+    numerator, denominator = _rows(
+        loaded_cursor,
+        f"""
+        SELECT sum(attainment_numerator), sum(attainment_denominator)
+        FROM reporting.vw_target_attainment
+        WHERE target_scope_type = 'Store' AND target_kpi_id = '{metric}'
+          AND attainment_denominator IS NOT NULL
+        """,
+    )[0]
+
+    expected_numerator = _scalar(
+        loaded_cursor,
+        f"""
+        SELECT coalesce(sum(actual), 0) FROM (
+            SELECT s.dealership_key, d.month_start_date,
+                   coalesce({actual_expression}, 0) AS actual
+            FROM warehouse.fact_vehicle_sale AS s
+            JOIN warehouse.dim_date AS d ON d.date_key = s.sale_date_key
+            GROUP BY s.dealership_key, d.month_start_date
+        ) AS a
+        WHERE EXISTS (
+            SELECT 1 FROM warehouse.fact_sales_target AS t
+            WHERE t.dealership_key = a.dealership_key
+              AND t.target_month_date_key = to_char(a.month_start_date, 'YYYYMMDD')::integer
+              AND t.target_scope_type = 'Store' AND t.kpi_id = '{metric}'
+              AND t.target_value <> 0)
+        """,
+    )
+    expected_denominator = _scalar(
+        loaded_cursor,
+        f"""
+        SELECT coalesce(sum(t.target_value), 0) FROM warehouse.fact_sales_target AS t
+        WHERE t.target_scope_type = 'Store' AND t.kpi_id = '{metric}' AND t.target_value <> 0
+        """,
+    )
+    _assert_equal(numerator, expected_numerator, f"{kpi_id} numerator")
+    _assert_equal(denominator, expected_denominator, f"{kpi_id} denominator")
+
+    correct = Decimal(str(numerator)) / Decimal(str(denominator))
+
+    # THE WRONG ANSWER, computed deliberately. Averaging store-month attainment
+    # percentages weights a store that sold four cars the same as one that sold forty,
+    # and it is the single most common way a group attainment figure misleads.
+    averaged = _scalar(
+        loaded_cursor,
+        f"""
+        SELECT avg(target_attainment_ratio) FROM reporting.vw_target_attainment
+        WHERE target_scope_type = 'Store' AND target_kpi_id = '{metric}'
+          AND target_attainment_ratio IS NOT NULL
+        """,
+    )
+    assert averaged is not None
+    assert abs(correct - Decimal(str(averaged))) > Decimal("0.0001"), (
+        f"{kpi_id}: the average of store attainments equals the correct group figure on "
+        "this data, so the test cannot demonstrate the difference. Widen the plan spread "
+        "rather than deleting the assertion."
+    )
+
+
+def test_one_store_without_a_plan_leaves_the_group_ratio_aligned(loaded_cursor: Any) -> None:
+    """Subset alignment: a store contributes to both sides of the ratio, or to neither.
+
+    The failure this guards against is specific and plausible: summing every store's
+    units while summing only the targets that exist. That inflates the group attainment
+    by exactly the units of the store that had no goal, and it looks like good news.
+    """
+    loaded_cursor.execute(
+        """
+        DELETE FROM warehouse.fact_sales_target
+        WHERE target_scope_type = 'Store' AND kpi_id = 'KPI-SLS-001'
+          AND dealership_key = (SELECT min(dealership_key) FROM warehouse.fact_sales_target)
+        """
+    )
+    assert loaded_cursor.rowcount > 0
+
+    numerator, denominator = _rows(
+        loaded_cursor,
+        """
+        SELECT sum(attainment_numerator), sum(attainment_denominator)
+        FROM reporting.vw_target_attainment
+        WHERE target_scope_type = 'Store' AND target_kpi_id = 'KPI-SLS-001'
+          AND attainment_denominator IS NOT NULL
+        """,
+    )[0]
+    excluded_units = _scalar(
+        loaded_cursor,
+        """
+        SELECT coalesce(sum(s.unit_count) FILTER (WHERE s.is_retail), 0)
+        FROM warehouse.fact_vehicle_sale AS s
+        WHERE s.dealership_key = (SELECT min(dealership_key) FROM warehouse.dim_dealership)
+        """,
+    )
+    all_units = _scalar(
+        loaded_cursor,
+        "SELECT coalesce(sum(s.unit_count) FILTER (WHERE s.is_retail), 0) "
+        "FROM warehouse.fact_vehicle_sale AS s",
+    )
+    assert excluded_units > 0, "the planted case must remove a store that actually sold"
+    assert Decimal(str(numerator)) == Decimal(str(all_units)) - Decimal(str(excluded_units)), (
+        "the store with no plan contributed its units to the group numerator while its "
+        "absent target stayed out of the denominator"
+    )
+    assert denominator is not None and Decimal(str(denominator)) > 0
+
+
+# --------------------------------------------------------------------------------------
+# KPI-TGT-005 / KPI-TGT-006 -- the selling-day clock
+# --------------------------------------------------------------------------------------
+
+
+def test_selling_days_come_from_dim_date_and_nothing_else(loaded_cursor: Any) -> None:
+    """Re-derived by counting the calendar directly, exactly as §39.8 states it."""
+    rows = _rows(
+        loaded_cursor,
+        """
+        SELECT DISTINCT target_month, selling_days_in_month, selling_days_elapsed,
+               selling_days_remaining, as_of_date, month_state
+        FROM reporting.vw_target_attainment ORDER BY target_month
+        """,
+    )
+    assert rows
+    for month, total, elapsed, remaining, as_of, state in rows:
+        expected_total = _scalar(
+            loaded_cursor,
+            "SELECT count(*) FROM warehouse.dim_date "
+            f"WHERE is_selling_day AND month_start_date = '{month}'::date",
+        )
+        expected_elapsed = _scalar(
+            loaded_cursor,
+            "SELECT count(*) FROM warehouse.dim_date "
+            f"WHERE is_selling_day AND month_start_date = '{month}'::date "
+            f"AND full_date <= '{as_of}'::date",
+        )
+        assert total == expected_total, month
+        assert elapsed == expected_elapsed, month
+        assert remaining == expected_total - expected_elapsed, month
+        assert remaining >= 0, "selling days remaining is never negative"
+        if elapsed == 0:
+            assert state == "Not started"
+        elif remaining == 0:
+            assert state == "Complete"
+        else:
+            assert state == "In progress"
+
+
+def test_the_as_of_date_is_the_datasets_own_and_never_the_wall_clock(
+    loaded_cursor: Any,
+) -> None:
+    """The same definition the export manifest carries, re-derived independently."""
+    reported = _scalar(
+        loaded_cursor, "SELECT DISTINCT as_of_date FROM reporting.vw_target_attainment"
+    )
+    expected = _scalar(
+        loaded_cursor,
+        """
+        SELECT max(d.full_date) FROM warehouse.dim_date AS d
+        WHERE d.date_key IN (
+            SELECT sale_date_key FROM warehouse.fact_vehicle_sale
+            UNION ALL SELECT snapshot_date_key FROM warehouse.fact_vehicle_inventory_snapshot
+            UNION ALL SELECT lead_created_date_key FROM warehouse.fact_lead)
+        """,
+    )
+    assert str(reported) == str(expected)
+    assert str(reported) != str(_scalar(loaded_cursor, "SELECT current_date"))
+
+
+def test_the_effective_as_of_date_never_leaves_its_month(loaded_cursor: Any) -> None:
+    """A completed historical month is not rendered as though it were still running."""
+    offenders = _scalar(
+        loaded_cursor,
+        """
+        SELECT count(*) FROM reporting.vw_target_attainment AS v
+        JOIN warehouse.dim_date AS d ON d.full_date = v.target_month
+        WHERE v.effective_as_of_date > d.month_end_date
+           OR v.effective_as_of_date > v.as_of_date
+        """,
+    )
+    assert offenders == 0
+
+
+# --------------------------------------------------------------------------------------
+# KPI-TGT-007..010 -- pace and the selling-day pace projection
+# --------------------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("kpi_id", "metric", "actual_expression"),
+    [
+        ("KPI-TGT-007", "KPI-SLS-001", "sum(s.unit_count) FILTER (WHERE s.is_retail)"),
+        ("KPI-TGT-008", "KPI-GRS-003", "sum(s.total_gross) FILTER (WHERE s.is_retail)"),
+    ],
+)
+def test_pace_is_the_actual_over_elapsed_selling_days(
+    loaded_cursor: Any, kpi_id: str, metric: str, actual_expression: str
+) -> None:
+    rows = _rows(
+        loaded_cursor,
+        f"""
+        SELECT v.dealership_key, v.target_month, v.pace_numerator, v.pace_denominator,
+               v.pace_per_selling_day
+        FROM reporting.vw_target_attainment AS v
+        WHERE v.target_scope_type = 'Store' AND v.target_kpi_id = '{metric}'
+        ORDER BY v.dealership_key, v.target_month
+        """,
+    )
+    assert rows
+    for dealership_key, month, numerator, denominator, pace in rows:
+        expected_actual = _scalar(
+            loaded_cursor,
+            f"""
+            SELECT coalesce({actual_expression}, 0)
+            FROM warehouse.fact_vehicle_sale AS s
+            JOIN warehouse.dim_date AS d ON d.date_key = s.sale_date_key
+            WHERE s.dealership_key = {int(dealership_key)}
+              AND d.month_start_date = '{month}'::date
+              AND d.full_date <= (SELECT max(v.as_of_date) FROM reporting.vw_target_attainment AS v)
+            """,
+        )
+        _assert_equal(numerator, expected_actual, f"{kpi_id} numerator")
+        if denominator == 0:
+            assert pace is None, f"{kpi_id}: a run rate over zero selling days is undefined"
+            continue
+        expected_pace = (Decimal(str(numerator)) / Decimal(denominator)).quantize(
+            Decimal("0.000001")
+        )
+        assert abs(Decimal(str(pace)) - expected_pace) <= Decimal("0.000001")
+
+
+@pytest.mark.parametrize(
+    ("kpi_id", "metric"),
+    [("KPI-TGT-009", "KPI-SLS-001"), ("KPI-TGT-010", "KPI-GRS-003")],
+)
+def test_the_projection_is_pace_times_the_months_selling_days(
+    loaded_cursor: Any, kpi_id: str, metric: str
+) -> None:
+    """One division from the published components, not a rounded pace re-multiplied."""
+    rows = _rows(
+        loaded_cursor,
+        f"""
+        SELECT projection_numerator, projection_denominator, selling_days_in_month,
+               pace_numerator, projected_month_end_value
+        FROM reporting.vw_target_attainment
+        WHERE target_scope_type = 'Store' AND target_kpi_id = '{metric}'
+        """,
+    )
+    assert rows
+    for numerator, denominator, total_days, actual, projection in rows:
+        assert Decimal(str(numerator)) == Decimal(str(actual)) * Decimal(total_days)
+        if denominator == 0:
+            assert projection is None
+            continue
+        expected = (Decimal(str(numerator)) / Decimal(denominator)).quantize(Decimal("0.000001"))
+        assert abs(Decimal(str(projection)) - expected) <= Decimal("0.000001")
+
+
+def test_on_a_completed_month_the_projection_equals_the_actual(loaded_cursor: Any) -> None:
+    """Arithmetic, not a claim about the future: no selling days left, nothing to project."""
+    rows = _rows(
+        loaded_cursor,
+        """
+        SELECT actual_mtd_value, projected_month_end_value, selling_days_remaining
+        FROM reporting.vw_target_attainment
+        WHERE month_state = 'Complete' AND target_scope_type = 'Store'
+        """,
+    )
+    assert rows, "no completed month in the fixture, so the rule is untested"
+    for actual, projection, remaining in rows:
+        assert remaining == 0
+        assert abs(Decimal(str(projection)) - Decimal(str(actual))) <= Decimal("0.000001")
+
+
+def test_a_month_with_no_elapsed_selling_day_has_no_pace_and_no_projection(
+    loaded_cursor: Any,
+) -> None:
+    """Zero elapsed days is legitimate. It produces NULL, never Infinity and never zero.
+
+    Planted by removing every fact dated on or after the last month's first day, which
+    moves the dataset's own as-of date back before that month starts. The window's own
+    data never contains this case, so it is constructed rather than hoped for.
+    """
+    month = _target_month(loaded_cursor)
+    # Order matters: appointments reference leads and sales, and leads reference sales.
+    # The two funnel facts are removed entirely rather than by date, because an
+    # appointment dated before the cutoff can legitimately reference a sale after it, and
+    # the as-of rule only needs their contribution gone.
+    loaded_cursor.execute("DELETE FROM warehouse.fact_appointment")
+    loaded_cursor.execute("DELETE FROM warehouse.fact_lead")
+    for statement in (
+        "DELETE FROM warehouse.fact_vehicle_inventory_snapshot WHERE snapshot_date_key >= "
+        "to_char(%s::date, 'YYYYMMDD')::integer",
+        "DELETE FROM warehouse.fact_vehicle_sale WHERE sale_date_key >= "
+        "to_char(%s::date, 'YYYYMMDD')::integer",
+    ):
+        loaded_cursor.execute(statement, (month,))
+
+    rows = _rows(
+        loaded_cursor,
+        """
+        SELECT selling_days_elapsed, selling_days_remaining, selling_days_in_month,
+               pace_per_selling_day, projected_month_end_value, month_state,
+               actual_mtd_value, attainment_denominator, target_attainment_ratio
+        FROM reporting.vw_target_attainment
+        WHERE target_month = %s::date AND target_scope_type = 'Store'
+        """,
+        (month,),
+    )
+    assert rows, "the month must still appear once its selling days have not started"
+    for (
+        elapsed,
+        remaining,
+        total,
+        pace,
+        projection,
+        state,
+        actual,
+        denominator,
+        ratio,
+    ) in rows:
+        assert elapsed == 0
+        assert remaining == total, "no selling day has elapsed, so none has been used"
+        assert state == "Not started"
+        assert pace is None, "a run rate over zero days is undefined, not zero"
+        assert projection is None
+        assert Decimal(str(actual)) == 0, "an unstarted month has sold nothing"
+        # Attainment is still defined: a plan exists and nothing has been done against it.
+        assert denominator is not None
+        assert Decimal(str(ratio)) == 0
+
+
+def test_a_mid_month_as_of_date_produces_a_partial_clock(loaded_cursor: Any) -> None:
+    """The in-progress arithmetic, on a controlled as-of date.
+
+    On the committed profiles the dataset's as-of date is the last day of the last month,
+    so every month is complete and the console honestly says so. The mid-month behaviour
+    is therefore proved here, by moving the as-of date rather than by hoping the fixture
+    happens to contain a part-finished month.
+    """
+    month = _target_month(loaded_cursor)
+    cutoff = _scalar(loaded_cursor, f"SELECT ('{month}'::date + INTERVAL '13 days')::date")
+    loaded_cursor.execute("DELETE FROM warehouse.fact_appointment")
+    loaded_cursor.execute("DELETE FROM warehouse.fact_lead")
+    for statement in (
+        "DELETE FROM warehouse.fact_vehicle_inventory_snapshot WHERE snapshot_date_key > "
+        "to_char(%s::date, 'YYYYMMDD')::integer",
+        "DELETE FROM warehouse.fact_vehicle_sale WHERE sale_date_key > "
+        "to_char(%s::date, 'YYYYMMDD')::integer",
+    ):
+        loaded_cursor.execute(statement, (cutoff,))
+
+    elapsed, total, remaining, state, as_of, effective = _rows(
+        loaded_cursor,
+        """
+        SELECT DISTINCT selling_days_elapsed, selling_days_in_month, selling_days_remaining,
+               month_state, as_of_date, effective_as_of_date
+        FROM reporting.vw_target_attainment WHERE target_month = %s::date
+        """,
+        (month,),
+    )[0]
+    assert 0 < elapsed < total, "the planted as-of date must land mid-month"
+    assert remaining == total - elapsed
+    assert remaining > 0
+    assert state == "In progress"
+    assert str(as_of) == str(cutoff)
+    assert str(effective) == str(cutoff)
+
+    pace, _total_days, actual = _rows(
+        loaded_cursor,
+        """
+        SELECT sum(pace_numerator), max(selling_days_in_month), sum(actual_mtd_value)
+        FROM reporting.vw_target_attainment
+        WHERE target_month = %s::date AND target_scope_type = 'Store'
+          AND target_kpi_id = 'KPI-SLS-001'
+        """,
+        (month,),
+    )[0]
+    assert pace is not None and Decimal(str(pace)) == Decimal(str(actual))
+
+
+# --------------------------------------------------------------------------------------
+# Scope behaviour beyond the store
+# --------------------------------------------------------------------------------------
+
+
+def test_the_department_actual_is_the_gross_component_that_department_owns(
+    loaded_cursor: Any,
+) -> None:
+    """Sales owns the front end, Finance the back end, and the two never overlap."""
+    for department, metric, expression in (
+        ("Sales", "KPI-GRS-001", "front_end_gross"),
+        ("Finance", "KPI-GRS-002", "back_end_gross"),
+    ):
+        reported = _scalar(
+            loaded_cursor,
+            f"""
+            SELECT coalesce(sum(actual_mtd_value), 0) FROM reporting.vw_target_attainment
+            WHERE target_scope_type = 'Department' AND department_name = '{department}'
+              AND target_kpi_id = '{metric}'
+            """,
+        )
+        expected = _scalar(
+            loaded_cursor,
+            f"SELECT coalesce(sum(s.{expression}) FILTER (WHERE s.is_retail), 0) "
+            "FROM warehouse.fact_vehicle_sale AS s",
+        )
+        _assert_equal(reported, expected, f"{department} department actual")
+
+    front, back, total = _rows(
+        loaded_cursor,
+        """
+        SELECT coalesce(sum(actual_mtd_value) FILTER (WHERE department_name = 'Sales'), 0),
+               coalesce(sum(actual_mtd_value) FILTER (WHERE department_name = 'Finance'), 0),
+               coalesce(sum(actual_mtd_value) FILTER (
+                   WHERE target_scope_type = 'Store' AND target_kpi_id = 'KPI-GRS-003'), 0)
+        FROM reporting.vw_target_attainment
+        """,
+    )[0]
+    assert Decimal(str(front)) + Decimal(str(back)) == Decimal(str(total)), (
+        "the two department actuals must partition the store actual exactly; if they do "
+        "not, a department view and a store view disagree about the same month"
+    )
+
+
+def test_an_employee_scope_row_is_supported_and_is_not_a_store_addend(
+    loaded_cursor: Any,
+) -> None:
+    """DASH.5 generates none. The fact accepts one, and the store total ignores it.
+
+    Planted and rolled back. This is what makes "employee scope is physically supported"
+    a fact about the schema rather than a sentence in a docstring, and it proves the
+    exclusion rule KPI-TGT-001 depends on.
+    """
+    before = _scalar(
+        loaded_cursor,
+        "SELECT coalesce(sum(target_value), 0) FROM reporting.vw_target_attainment "
+        "WHERE target_scope_type = 'Store' AND target_kpi_id = 'KPI-SLS-001'",
+    )
+    loaded_cursor.execute(
+        """
+        INSERT INTO warehouse.fact_sales_target (
+            sales_target_key, target_month_date_key, dealership_key, target_scope_type,
+            target_scope_id, department_name, employee_key, kpi_id, target_value,
+            stretch_target_value, source_system)
+        SELECT (SELECT max(x.sales_target_key) + 1 FROM warehouse.fact_sales_target AS x),
+               (SELECT min(x.target_month_date_key) FROM warehouse.fact_sales_target AS x),
+               store.dealership_key, 'Employee', e.employee_id, NULL, e.employee_key,
+               'KPI-SLS-001', 6.00, 7.00, 'arpi_synthetic_generator'
+        FROM warehouse.dim_employee AS e
+        JOIN warehouse.dim_dealership AS store
+          ON store.dealership_id = e.dealership_id AND store.is_current
+        WHERE e.job_role = 'Salesperson' AND e.is_current
+        ORDER BY e.employee_key
+        LIMIT 1
+        """
+    )
+    assert loaded_cursor.rowcount == 1
+
+    after = _scalar(
+        loaded_cursor,
+        "SELECT coalesce(sum(target_value), 0) FROM reporting.vw_target_attainment "
+        "WHERE target_scope_type = 'Store' AND target_kpi_id = 'KPI-SLS-001'",
+    )
+    assert Decimal(str(after)) == Decimal(str(before)), (
+        "an employee-scope plan changed the store total; it is a refinement, not an addend"
+    )
+
+    employee_rows = _rows(
+        loaded_cursor,
+        """
+        SELECT target_value, actual_mtd_value, attainment_denominator
+        FROM reporting.vw_target_attainment WHERE target_scope_type = 'Employee'
+        """,
+    )
+    assert len(employee_rows) == 1, "the view must carry a scope the fact holds"
+    target, actual, denominator = employee_rows[0]
+    assert Decimal(str(target)) == Decimal("6.00")
+    assert actual is not None, "the employee numerator resolves rather than staying NULL"
+    assert denominator is not None
+
+
+def test_an_invalid_scope_combination_cannot_be_stored(loaded_cursor: Any) -> None:
+    """Scope integrity is a CHECK constraint, not a convention the loader observes."""
+    import psycopg
+
+    statements = (
+        # A Store-scope row carrying a department.
+        "UPDATE warehouse.fact_sales_target SET department_name = 'Sales' "
+        "WHERE sales_target_key = (SELECT min(sales_target_key) "
+        "FROM warehouse.fact_sales_target WHERE target_scope_type = 'Store')",
+        # A Department-scope row targeting the store's own metric.
+        "UPDATE warehouse.fact_sales_target SET kpi_id = 'KPI-GRS-003' "
+        "WHERE target_scope_type = 'Department' AND sales_target_key = "
+        "(SELECT min(sales_target_key) FROM warehouse.fact_sales_target "
+        " WHERE target_scope_type = 'Department')",
+        # A stretch goal beneath the committed goal.
+        "UPDATE warehouse.fact_sales_target SET stretch_target_value = target_value - 1 "
+        "WHERE sales_target_key = (SELECT min(sales_target_key) "
+        "FROM warehouse.fact_sales_target)",
+        # A negative goal.
+        "UPDATE warehouse.fact_sales_target SET target_value = -1 "
+        "WHERE sales_target_key = (SELECT min(sales_target_key) "
+        "FROM warehouse.fact_sales_target)",
+        # A target month that is not the first of a month.
+        "UPDATE warehouse.fact_sales_target SET target_month_date_key = "
+        "target_month_date_key + 4 WHERE sales_target_key = "
+        "(SELECT min(sales_target_key) FROM warehouse.fact_sales_target)",
+    )
+    for statement in statements:
+        loaded_cursor.execute("SAVEPOINT scope_check")
+        with pytest.raises(psycopg.errors.IntegrityError):
+            loaded_cursor.execute(statement)
+        loaded_cursor.execute("ROLLBACK TO SAVEPOINT scope_check")
+
+
+def test_the_declared_grain_cannot_be_duplicated(loaded_cursor: Any) -> None:
+    """The grain constraint is over five NOT NULL columns, so NULL cannot defeat it."""
+    import psycopg
+
+    loaded_cursor.execute("SAVEPOINT grain_check")
+    with pytest.raises(psycopg.errors.UniqueViolation):
+        loaded_cursor.execute(
+            """
+            INSERT INTO warehouse.fact_sales_target (
+                sales_target_key, target_month_date_key, dealership_key, target_scope_type,
+                target_scope_id, department_name, employee_key, kpi_id, target_value,
+                stretch_target_value, source_system)
+            SELECT (SELECT max(x.sales_target_key) + 1 FROM warehouse.fact_sales_target AS x),
+                   t.target_month_date_key, t.dealership_key, t.target_scope_type,
+                   t.target_scope_id, t.department_name, t.employee_key, t.kpi_id,
+                   t.target_value, t.stretch_target_value, t.source_system
+            FROM warehouse.fact_sales_target AS t
+            WHERE t.sales_target_key =
+                  (SELECT min(y.sales_target_key) FROM warehouse.fact_sales_target AS y)
+            """
+        )
+    loaded_cursor.execute("ROLLBACK TO SAVEPOINT grain_check")
+
+
+# --------------------------------------------------------------------------------------
+# Seeded defects: the verification has to be able to fail
+# --------------------------------------------------------------------------------------
+
+
+def test_moving_one_target_by_a_dollar_breaks_the_store_total(loaded_cursor: Any) -> None:
+    """A verification that cannot fail proves nothing. One dollar, and it does."""
+    before = _scalar(
+        loaded_cursor,
+        "SELECT sum(target_value) FROM reporting.vw_target_attainment "
+        "WHERE target_scope_type = 'Store' AND target_kpi_id = 'KPI-GRS-003'",
+    )
+    loaded_cursor.execute(
+        "UPDATE warehouse.fact_sales_target SET target_value = target_value + 1.00 "
+        "WHERE target_scope_type = 'Store' AND kpi_id = 'KPI-GRS-003' "
+        "AND sales_target_key = (SELECT min(sales_target_key) "
+        "FROM warehouse.fact_sales_target WHERE kpi_id = 'KPI-GRS-003')"
+    )
+    after = _scalar(
+        loaded_cursor,
+        "SELECT sum(target_value) FROM reporting.vw_target_attainment "
+        "WHERE target_scope_type = 'Store' AND target_kpi_id = 'KPI-GRS-003'",
+    )
+    assert Decimal(str(after)) - Decimal(str(before)) == Decimal("1.00")
+
+
+def test_removing_one_selling_day_breaks_the_selling_day_verification(
+    loaded_cursor: Any,
+) -> None:
+    """The clock is read from the calendar, so changing the calendar must move it."""
+    month = _target_month(loaded_cursor)
+    before = _scalar(
+        loaded_cursor,
+        "SELECT DISTINCT selling_days_in_month FROM reporting.vw_target_attainment "
+        f"WHERE target_month = '{month}'::date",
+    )
+    # is_selling_day is DERIVED from is_closure_holiday and the two are tied together by
+    # ck_dim_date_selling_day_rule, so the calendar is changed the only way it can be:
+    # by closing the store, which is what a selling day means.
+    loaded_cursor.execute(
+        "UPDATE warehouse.dim_date "
+        "SET is_closure_holiday = true, is_holiday = true, "
+        "    holiday_name = 'Planted closure', is_selling_day = false "
+        f"WHERE month_start_date = '{month}'::date AND is_selling_day "
+        "AND date_key = (SELECT min(date_key) FROM warehouse.dim_date "
+        f"WHERE month_start_date = '{month}'::date AND is_selling_day)"
+    )
+    assert loaded_cursor.rowcount == 1
+    after = _scalar(
+        loaded_cursor,
+        "SELECT DISTINCT selling_days_in_month FROM reporting.vw_target_attainment "
+        f"WHERE target_month = '{month}'::date",
+    )
+    assert after == before - 1, (
+        "the selling-day count did not follow dim_date, so it is being derived somewhere "
+        "else -- which is exactly what ADR-0002 forbids"
+    )

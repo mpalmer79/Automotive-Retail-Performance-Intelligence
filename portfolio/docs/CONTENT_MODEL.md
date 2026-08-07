@@ -901,6 +901,41 @@ that the view model divides nothing - it sums one exported count column, for the
 distribution, and the executive suite asserts that total equals the active-inventory
 KPI.
 
+### 14.10 What `DASH.5` added
+
+**One dataset, one file, one door.** `target-attainment` joins the lane as an **unchunked**
+dataset, and the decision was measured rather than assumed: 72 rows and 49,369 bytes in the
+committed development profile, which is nowhere near the size at which chunking earns its
+complexity. Chunking it because five other datasets are chunked would have added a partition
+table, a boundary rule and a manifest index to save nothing.
+
+`src/lib/dashboard/targets-data.ts` is the door — the sixth, and the boundary suite asserts
+the importer list exactly, in both directions, as it does for the other five.
+
+**The dataset carries no quotient.** Attainment and pace are ratios, and a ratio cannot be
+re-aggregated: summing store percentages is meaningless and averaging them weights a
+twenty-unit store the same as a fifty-unit one. So the export publishes
+`attainment_numerator` / `attainment_denominator` and `pace_numerator` / `pace_denominator`
+as exact decimal strings, and any group figure is `SUM(numerator) / SUM(denominator)`. The
+unit test asserts that this **disagrees** with the average of the store percentages on the
+committed data — if the two ever agreed, the test would be proving nothing.
+
+**Reconciliation totals gained a `subset`.** A target reconciliation is not a total over the
+whole dataset: "group retail-unit target" means _store-scope rows whose targeted KPI is
+`KPI-SLS-001`_, and summing the column without that filter would silently add the department
+gross plan to a unit count. `ReconciliationTotal` now carries a subset of column/value pairs,
+the root exporter applies it inside the SQL it reconciles against, the transformer applies the
+same filter to the exported rows, and the subset is part of the contract fingerprint, so
+changing which rows a total covers changes the fingerprint rather than quietly changing the
+total.
+
+**The formula did not move into TypeScript.** The view model reads exported columns and
+formats them. It performs exactly one kind of arithmetic — subtracting a target from a
+projection to produce a magnitude and a direction — and that lives in
+`lib/dashboard/targets.ts`, not in a component, because the boundary suite asserts no React
+component calls an arithmetic helper. No target value is written in React, and a source scan
+asserts it: a hardcoded target would be a number nobody could trace to the warehouse.
+
 ### 14.8 Adding a snapshot of the warehouse
 
 Regenerating is a deliberate act, not a scheduled one. Load a warehouse, run the root
