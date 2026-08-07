@@ -1,0 +1,3114 @@
+{
+  "schema": "arpi.dashboard_export/1",
+  "contract_version": 1,
+  "contract_sha256": "7d9c024d58db60bca2da421af8f40935cb0e1aaa239b11d5a3dd8bd933fcb05a",
+  "dataset_version": 1,
+  "generated_at": "2026-08-07T00:50:19+00:00",
+  "as_of_date": "2025-12-31",
+  "profile": "development",
+  "random_seed": 20250701,
+  "source_commit": "775677f8d7dbbdc59583ad4e4c09400a6fc8e7a1",
+  "exporter_version": "0.1.0",
+  "query_normalisation": "arpi.sql_whitespace_canonical/1",
+  "reporter_role": "arpi_reporter",
+  "synthetic_data": true,
+  "fictional_dealer_group": true,
+  "pipeline_run": {
+    "run_uuid": "6234de77-020e-461b-819f-819354ce6544",
+    "logical_run_key": null,
+    "status": "succeeded"
+  },
+  "source_views": [
+    "reporting.vw_appointment_funnel",
+    "reporting.vw_calendar",
+    "reporting.vw_days_supply",
+    "reporting.vw_days_to_sale",
+    "reporting.vw_dealership",
+    "reporting.vw_gross_summary",
+    "reporting.vw_inventory_aging",
+    "reporting.vw_inventory_health",
+    "reporting.vw_inventory_turn",
+    "reporting.vw_lead_funnel",
+    "reporting.vw_lead_response",
+    "reporting.vw_lead_source",
+    "reporting.vw_marketing_campaign",
+    "reporting.vw_marketing_performance",
+    "reporting.vw_pipeline_run_summary",
+    "reporting.vw_reconciliation_status",
+    "reporting.vw_sales_summary"
+  ],
+  "datasets": [
+    {
+      "name": "stores",
+      "source_view": "reporting.vw_dealership",
+      "join_views": [],
+      "grain": "One row per dealership store, current version only.",
+      "business_key": [
+        "dealership_id"
+      ],
+      "date_basis": null,
+      "sort_keys": [
+        "dealership_id"
+      ],
+      "chunked": false,
+      "kpi_ids": [],
+      "columns": [
+        {
+          "name": "dealership_id",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_dealership.dealership_code"
+        },
+        {
+          "name": "store_name",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_dealership.store_name"
+        },
+        {
+          "name": "store_short_name",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_dealership.store_short_name"
+        },
+        {
+          "name": "store_type",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "Franchise New and Used",
+            "Independent Used"
+          ],
+          "source_column": "reporting.vw_dealership.store_type"
+        },
+        {
+          "name": "franchise_brand",
+          "type": "string",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_dealership.franchise_brand"
+        },
+        {
+          "name": "brand_label",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_dealership.brand_label"
+        },
+        {
+          "name": "is_franchise_store",
+          "type": "boolean",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_dealership.is_franchise_store"
+        },
+        {
+          "name": "city",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_dealership.city"
+        },
+        {
+          "name": "state_code",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_dealership.state_code"
+        },
+        {
+          "name": "market_region",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_dealership.market_region"
+        },
+        {
+          "name": "location_label",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_dealership.location_label"
+        },
+        {
+          "name": "opened_date",
+          "type": "date",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_dealership.opened_date"
+        },
+        {
+          "name": "is_active",
+          "type": "boolean",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_dealership.is_active"
+        },
+        {
+          "name": "version_effective_date",
+          "type": "date",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_dealership.version_effective_date"
+        }
+      ],
+      "notes": "franchise_brand is null for the independent pre-owned store, which is an operating model rather than missing data: the console renders 'Not applicable', never a blank or a placeholder brand. source_system is deliberately not exported -- it names an internal producer and tells a public reader nothing.",
+      "query_sha256": "188be9a3465b655f177f81fb683592e68deedd46853572d254b5da5959fb340b",
+      "row_count": 3,
+      "file": "stores.json",
+      "file_sha256": "50bb88114577690298a0ccbdc9801ff09f8dffa7bd3aca49761e331d75e369aa",
+      "file_bytes": 1269
+    },
+    {
+      "name": "calendar",
+      "source_view": "reporting.vw_calendar",
+      "join_views": [],
+      "grain": "One row per calendar date in the reporting window.",
+      "business_key": [
+        "calendar_date"
+      ],
+      "date_basis": "calendar date",
+      "sort_keys": [
+        "calendar_date"
+      ],
+      "chunked": false,
+      "kpi_ids": [],
+      "columns": [
+        {
+          "name": "calendar_date",
+          "type": "date",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_calendar.calendar_date"
+        },
+        {
+          "name": "day_name",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_calendar.day_name"
+        },
+        {
+          "name": "iso_day_of_week",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_calendar.iso_day_of_week"
+        },
+        {
+          "name": "month_start_date",
+          "type": "date",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_calendar.month_start_date"
+        },
+        {
+          "name": "month_end_date",
+          "type": "date",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_calendar.month_end_date"
+        },
+        {
+          "name": "year_month_number",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_calendar.year_month_number"
+        },
+        {
+          "name": "year_month_label",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_calendar.year_month_label"
+        },
+        {
+          "name": "quarter_year_label",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_calendar.quarter_year_label"
+        },
+        {
+          "name": "calendar_year",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_calendar.calendar_year"
+        },
+        {
+          "name": "is_weekend",
+          "type": "boolean",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_calendar.is_weekend"
+        },
+        {
+          "name": "is_month_end",
+          "type": "boolean",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_calendar.is_month_end"
+        },
+        {
+          "name": "is_quarter_end",
+          "type": "boolean",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_calendar.is_quarter_end"
+        },
+        {
+          "name": "is_year_end",
+          "type": "boolean",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_calendar.is_year_end"
+        },
+        {
+          "name": "is_holiday",
+          "type": "boolean",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_calendar.is_holiday"
+        },
+        {
+          "name": "holiday_name",
+          "type": "string",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_calendar.holiday_name"
+        },
+        {
+          "name": "is_showroom_closed",
+          "type": "boolean",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_calendar.is_showroom_closed"
+        },
+        {
+          "name": "is_selling_day",
+          "type": "boolean",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_calendar.is_selling_day"
+        }
+      ],
+      "notes": "The selling-day and period-boundary fields only, per DATA_CONTRACT.md section 3. Period filters resolve against this dataset rather than against a date library in the browser, so the console and the warehouse cannot disagree about which days a month contains or which of them a showroom was open.",
+      "query_sha256": "309605d691372d95be7d5b6dbca9f0e290b3a4099f192402b8e99835cd688037",
+      "row_count": 184,
+      "file": "calendar.json",
+      "file_sha256": "ce6bd1881f2d0ee6858f94cb8414da6a866f82e6e2e25739c28be558a00b51d1",
+      "file_bytes": 76574
+    },
+    {
+      "name": "lead-sources",
+      "source_view": "reporting.vw_lead_source",
+      "join_views": [],
+      "grain": "One row per normalised lead source.",
+      "business_key": [
+        "lead_source_code"
+      ],
+      "date_basis": null,
+      "sort_keys": [
+        "lead_source_code"
+      ],
+      "chunked": false,
+      "kpi_ids": [],
+      "columns": [
+        {
+          "name": "lead_source_code",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_source.lead_source_code"
+        },
+        {
+          "name": "lead_source_name",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_source.lead_source_name"
+        },
+        {
+          "name": "source_category",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_source.source_category"
+        },
+        {
+          "name": "is_paid",
+          "type": "boolean",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_source.is_paid"
+        },
+        {
+          "name": "is_digital",
+          "type": "boolean",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_source.is_digital"
+        },
+        {
+          "name": "is_third_party",
+          "type": "boolean",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_source.is_third_party"
+        },
+        {
+          "name": "is_internal",
+          "type": "boolean",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_source.is_internal"
+        },
+        {
+          "name": "is_cost_attributable",
+          "type": "boolean",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_source.is_cost_attributable"
+        },
+        {
+          "name": "cost_basis_label",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_source.cost_basis_label"
+        }
+      ],
+      "notes": "Required so the funnel and marketing datasets can carry a business code instead of a lead_source_key. is_cost_attributable is the RECON-MKT-COST-RULE flag: an organic source has no spend, and a cost-per-lead over it would be a fabricated number.",
+      "query_sha256": "07b6f7c3678302ead7c3021d84771c411fe98c655f5655defa0dae09fc3b022c",
+      "row_count": 19,
+      "file": "lead-sources.json",
+      "file_sha256": "780d3ecd5dffbf882cfcb1626c9dc30aa594a60864c8a807cdfc3e1302af2428",
+      "file_bytes": 4734
+    },
+    {
+      "name": "campaigns",
+      "source_view": "reporting.vw_marketing_campaign",
+      "join_views": [
+        "reporting.vw_lead_source"
+      ],
+      "grain": "One row per marketing campaign.",
+      "business_key": [
+        "campaign_code"
+      ],
+      "date_basis": null,
+      "sort_keys": [
+        "campaign_code"
+      ],
+      "chunked": false,
+      "kpi_ids": [],
+      "columns": [
+        {
+          "name": "campaign_code",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_marketing_campaign.campaign_code"
+        },
+        {
+          "name": "campaign_name",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_marketing_campaign.campaign_name"
+        },
+        {
+          "name": "channel",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_marketing_campaign.channel"
+        },
+        {
+          "name": "vendor_name",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_marketing_campaign.vendor_name"
+        },
+        {
+          "name": "lead_source_code",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_source.lead_source_code"
+        },
+        {
+          "name": "is_cost_attributable",
+          "type": "boolean",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_marketing_campaign.is_cost_attributable"
+        },
+        {
+          "name": "start_date",
+          "type": "date",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_marketing_campaign.start_date"
+        },
+        {
+          "name": "end_date",
+          "type": "date",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_marketing_campaign.end_date"
+        },
+        {
+          "name": "is_open_ended",
+          "type": "boolean",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_marketing_campaign.is_open_ended"
+        },
+        {
+          "name": "target_department",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_marketing_campaign.target_department"
+        },
+        {
+          "name": "target_vehicle_category",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_marketing_campaign.target_vehicle_category"
+        }
+      ],
+      "notes": "vendor_name is a fictional vendor: no real advertising vendor is named anywhere in ARPI. end_date is null exactly when is_open_ended is true.",
+      "query_sha256": "8b068b8b583519d02f04ad6db94605853556567bca0329221d332e1ab946305e",
+      "row_count": 24,
+      "file": "campaigns.json",
+      "file_sha256": "7b2e95311073d714bb344ae9478c5271853245ffd77721721a97475428f9b6fd",
+      "file_bytes": 8172
+    },
+    {
+      "name": "sales-summary",
+      "source_view": "reporting.vw_sales_summary",
+      "join_views": [
+        "reporting.vw_dealership",
+        "reporting.vw_calendar"
+      ],
+      "grain": "One row per store per sale date on which at least one transaction was finalized.",
+      "business_key": [
+        "dealership_id",
+        "sale_date"
+      ],
+      "date_basis": "sale date",
+      "sort_keys": [
+        "dealership_id",
+        "sale_date"
+      ],
+      "chunked": false,
+      "kpi_ids": [
+        "KPI-SLS-001",
+        "KPI-SLS-002",
+        "KPI-SLS-003",
+        "KPI-INV-007"
+      ],
+      "columns": [
+        {
+          "name": "dealership_id",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_dealership.dealership_code"
+        },
+        {
+          "name": "sale_date",
+          "type": "date",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "sale date",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_calendar.calendar_date"
+        },
+        {
+          "name": "units_sold_all_types",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "units",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_sales_summary.units_sold_all_types"
+        },
+        {
+          "name": "retail_units_sold",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "units",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_sales_summary.retail_units_sold"
+        },
+        {
+          "name": "new_units_sold",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "units",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_sales_summary.new_units_sold"
+        },
+        {
+          "name": "used_units_sold",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "units",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_sales_summary.used_units_sold"
+        },
+        {
+          "name": "wholesale_units",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "units",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_sales_summary.wholesale_units"
+        },
+        {
+          "name": "dealer_trade_units",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "units",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_sales_summary.dealer_trade_units"
+        },
+        {
+          "name": "retail_sale_price_total",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_sales_summary.retail_sale_price_total"
+        },
+        {
+          "name": "retail_days_in_inventory_total",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "days",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_sales_summary.retail_days_in_inventory_total"
+        },
+        {
+          "name": "average_days_to_sale",
+          "type": "exact",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": "days",
+          "display_precision": 1,
+          "enumeration": null,
+          "source_column": "reporting.vw_sales_summary.average_days_to_sale"
+        }
+      ],
+      "notes": "average_days_to_sale is null when no retail unit sold that day: zero units means the average is undefined, not zero. new_units_sold + used_units_sold = retail_units_sold is the RECON-UNITS-001 identity and is asserted row by row on export.",
+      "query_sha256": "4c3c6718dd6181c9925e728ca9141722963f0a3ad880a976caeb38dda3f98b47",
+      "row_count": 357,
+      "file": "sales-summary.json",
+      "file_sha256": "bc4496ef22d33305807e91eff1ee59efff34d51cb9983dde2a005f333f10a962",
+      "file_bytes": 107640
+    },
+    {
+      "name": "gross-summary",
+      "source_view": "reporting.vw_gross_summary",
+      "join_views": [
+        "reporting.vw_dealership",
+        "reporting.vw_calendar"
+      ],
+      "grain": "One row per store per sale date on which at least one transaction was finalized.",
+      "business_key": [
+        "dealership_id",
+        "sale_date"
+      ],
+      "date_basis": "sale date",
+      "sort_keys": [
+        "dealership_id",
+        "sale_date"
+      ],
+      "chunked": false,
+      "kpi_ids": [
+        "KPI-GRS-001",
+        "KPI-GRS-002",
+        "KPI-GRS-003",
+        "KPI-GRS-004",
+        "KPI-GRS-005",
+        "KPI-GRS-006"
+      ],
+      "columns": [
+        {
+          "name": "dealership_id",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_dealership.dealership_code"
+        },
+        {
+          "name": "sale_date",
+          "type": "date",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "sale date",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_calendar.calendar_date"
+        },
+        {
+          "name": "retail_units_sold",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "units",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_gross_summary.retail_units_sold"
+        },
+        {
+          "name": "front_end_gross",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_gross_summary.front_end_gross"
+        },
+        {
+          "name": "back_end_gross",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_gross_summary.back_end_gross"
+        },
+        {
+          "name": "total_gross",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_gross_summary.total_gross"
+        },
+        {
+          "name": "front_end_gross_all_types",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_gross_summary.front_end_gross_all_types"
+        },
+        {
+          "name": "back_end_gross_all_types",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_gross_summary.back_end_gross_all_types"
+        },
+        {
+          "name": "total_gross_all_types",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_gross_summary.total_gross_all_types"
+        },
+        {
+          "name": "front_gross_per_retail_unit",
+          "type": "exact",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": "USD per unit",
+          "display_precision": 2,
+          "enumeration": null,
+          "source_column": "reporting.vw_gross_summary.front_gross_per_retail_unit"
+        },
+        {
+          "name": "back_gross_per_retail_unit",
+          "type": "exact",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": "USD per unit",
+          "display_precision": 2,
+          "enumeration": null,
+          "source_column": "reporting.vw_gross_summary.back_gross_per_retail_unit"
+        },
+        {
+          "name": "total_gross_per_retail_unit",
+          "type": "exact",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": "USD per unit",
+          "display_precision": 2,
+          "enumeration": null,
+          "source_column": "reporting.vw_gross_summary.total_gross_per_retail_unit"
+        },
+        {
+          "name": "negative_front_gross_units",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "units",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_gross_summary.negative_front_gross_units"
+        }
+      ],
+      "notes": "Negative front gross is a real dealership outcome and is exported with its sign intact. The three per-unit ratios share one denominator column, which is what makes KPI-GRS-006 = KPI-GRS-004 + KPI-GRS-005 an identity; they are valid at this grain only, and the exporter never re-derives them at another level.",
+      "query_sha256": "3c3abf0ba626f101ece21103d8bdba91e9fb69c3029113ff5c027e3f8aa91b58",
+      "row_count": 357,
+      "file": "gross-summary.json",
+      "file_sha256": "a58b15966818218f597e11d8ff994a25637da5ab01e07b3bf48f256862228747",
+      "file_bytes": 160986
+    },
+    {
+      "name": "inventory-health",
+      "source_view": "reporting.vw_inventory_health",
+      "join_views": [
+        "reporting.vw_dealership",
+        "reporting.vw_calendar"
+      ],
+      "grain": "One row per store per snapshot date per condition group.",
+      "business_key": [
+        "dealership_id",
+        "snapshot_date",
+        "condition_group"
+      ],
+      "date_basis": "snapshot date",
+      "sort_keys": [
+        "dealership_id",
+        "snapshot_date",
+        "condition_group"
+      ],
+      "chunked": true,
+      "kpi_ids": [
+        "KPI-INV-001",
+        "KPI-INV-002",
+        "KPI-INV-003",
+        "KPI-INV-004",
+        "KPI-INV-005",
+        "KPI-INV-006"
+      ],
+      "columns": [
+        {
+          "name": "dealership_id",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_dealership.dealership_code"
+        },
+        {
+          "name": "snapshot_date",
+          "type": "date",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "snapshot date",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_calendar.calendar_date"
+        },
+        {
+          "name": "condition_group",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "New",
+            "Used"
+          ],
+          "source_column": "reporting.vw_inventory_health.condition_group"
+        },
+        {
+          "name": "active_inventory_units",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "units",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_health.active_inventory_units"
+        },
+        {
+          "name": "inventory_investment",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_health.inventory_investment"
+        },
+        {
+          "name": "days_in_stock_total",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "days",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_health.days_in_stock_total"
+        },
+        {
+          "name": "average_inventory_age",
+          "type": "exact",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "days",
+          "display_precision": 1,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_health.average_inventory_age"
+        },
+        {
+          "name": "median_inventory_age",
+          "type": "double",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "days",
+          "display_precision": 0,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_health.median_inventory_age"
+        },
+        {
+          "name": "aged_inventory_units",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "units",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_health.aged_inventory_units"
+        },
+        {
+          "name": "aged_inventory_investment",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_health.aged_inventory_investment"
+        },
+        {
+          "name": "aged_inventory_percentage",
+          "type": "exact",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "ratio",
+          "display_precision": 3,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_health.aged_inventory_percentage"
+        },
+        {
+          "name": "aged_threshold_days",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "days",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_health.aged_threshold_days"
+        },
+        {
+          "name": "oldest_unit_days_in_stock",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "days",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_health.oldest_unit_days_in_stock"
+        }
+      ],
+      "notes": "aged_inventory_percentage is published as a ratio in 0..1, not as a pre-multiplied percentage, and unrounded: display_precision tells the UI how to render it. aged_threshold_days is a labelled project default, never an industry benchmark. median_inventory_age is a percentile_cont result and is therefore a double, exported by its shortest round-tripping representation rather than converted to a decimal it never had.",
+      "query_sha256": "ce79320c20115b9836f7c48b11a546acb7bbc6cc7a1bec6f8e8682b79a86bbbe",
+      "row_count": 920,
+      "file": "inventory-health.json",
+      "file_sha256": "f39627a655d7cbae3ba3be9e5716435e782178a51a003bd79445eeba785809d5",
+      "file_bytes": 391268
+    },
+    {
+      "name": "inventory-aging",
+      "source_view": "reporting.vw_inventory_aging",
+      "join_views": [
+        "reporting.vw_dealership",
+        "reporting.vw_calendar"
+      ],
+      "grain": "One row per store per snapshot date per condition group per age bucket.",
+      "business_key": [
+        "dealership_id",
+        "snapshot_date",
+        "condition_group",
+        "age_bucket"
+      ],
+      "date_basis": "snapshot date",
+      "sort_keys": [
+        "dealership_id",
+        "snapshot_date",
+        "condition_group",
+        "age_bucket_sort_order"
+      ],
+      "chunked": true,
+      "kpi_ids": [
+        "KPI-INV-004"
+      ],
+      "columns": [
+        {
+          "name": "dealership_id",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_dealership.dealership_code"
+        },
+        {
+          "name": "snapshot_date",
+          "type": "date",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "snapshot date",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_calendar.calendar_date"
+        },
+        {
+          "name": "condition_group",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "New",
+            "Used"
+          ],
+          "source_column": "reporting.vw_inventory_aging.condition_group"
+        },
+        {
+          "name": "age_bucket",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "0-30",
+            "31-60",
+            "61-90",
+            "91-120",
+            "Over 120"
+          ],
+          "source_column": "reporting.vw_inventory_aging.age_bucket"
+        },
+        {
+          "name": "age_bucket_sort_order",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_aging.age_bucket_sort_order"
+        },
+        {
+          "name": "units_in_bucket",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "units",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_aging.units_in_bucket"
+        },
+        {
+          "name": "investment_in_bucket",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_aging.investment_in_bucket"
+        },
+        {
+          "name": "days_in_stock_total",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "days",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_aging.days_in_stock_total"
+        },
+        {
+          "name": "bucket_median_days_in_stock",
+          "type": "double",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "days",
+          "display_precision": 0,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_aging.bucket_median_days_in_stock"
+        },
+        {
+          "name": "bucket_min_days_in_stock",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "days",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_aging.bucket_min_days_in_stock"
+        },
+        {
+          "name": "bucket_max_days_in_stock",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "days",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_aging.bucket_max_days_in_stock"
+        },
+        {
+          "name": "units_on_lot",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "units",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_aging.units_on_lot"
+        },
+        {
+          "name": "bucket_share",
+          "type": "exact",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "ratio",
+          "display_precision": 3,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_aging.bucket_share"
+        }
+      ],
+      "notes": "The bucket boundaries are the governed set and are exported as a closed enumeration: a sixth bucket would fail the export rather than appear as an unlabelled category. age_bucket_sort_order carries the display order so the console never sorts '91-120' before 'Over 120' alphabetically.",
+      "query_sha256": "4d10880372ea1ea17820d201829d38bc13307e67ba6a497541c98e3ac494a545",
+      "row_count": 4575,
+      "file": "inventory-aging.json",
+      "file_sha256": "41e756f14a69f0d1bae6c50c24e43a27028d87a854601c3de31d9fddbc978f41",
+      "file_bytes": 1680187
+    },
+    {
+      "name": "days-to-sale",
+      "source_view": "reporting.vw_days_to_sale",
+      "join_views": [
+        "reporting.vw_dealership",
+        "reporting.vw_calendar"
+      ],
+      "grain": "One row per store per sale month per condition group.",
+      "business_key": [
+        "dealership_id",
+        "sale_month_start_date",
+        "condition_group"
+      ],
+      "date_basis": "sale date",
+      "sort_keys": [
+        "dealership_id",
+        "sale_month_start_date",
+        "condition_group"
+      ],
+      "chunked": false,
+      "kpi_ids": [
+        "KPI-INV-007"
+      ],
+      "columns": [
+        {
+          "name": "dealership_id",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_dealership.dealership_code"
+        },
+        {
+          "name": "sale_month_start_date",
+          "type": "date",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "sale month start",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_calendar.calendar_date"
+        },
+        {
+          "name": "condition_group",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "New",
+            "Used"
+          ],
+          "source_column": "reporting.vw_days_to_sale.condition_group"
+        },
+        {
+          "name": "retail_units_sold",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "units",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_days_to_sale.retail_units_sold"
+        },
+        {
+          "name": "days_in_inventory_total",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "days",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_days_to_sale.days_in_inventory_total"
+        },
+        {
+          "name": "mean_days_to_sale",
+          "type": "exact",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "days",
+          "display_precision": 1,
+          "enumeration": null,
+          "source_column": "reporting.vw_days_to_sale.mean_days_to_sale"
+        },
+        {
+          "name": "median_days_to_sale",
+          "type": "double",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "days",
+          "display_precision": 0,
+          "enumeration": null,
+          "source_column": "reporting.vw_days_to_sale.median_days_to_sale"
+        },
+        {
+          "name": "p25_days_to_sale",
+          "type": "double",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "days",
+          "display_precision": 0,
+          "enumeration": null,
+          "source_column": "reporting.vw_days_to_sale.p25_days_to_sale"
+        },
+        {
+          "name": "p75_days_to_sale",
+          "type": "double",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "days",
+          "display_precision": 0,
+          "enumeration": null,
+          "source_column": "reporting.vw_days_to_sale.p75_days_to_sale"
+        },
+        {
+          "name": "max_days_to_sale",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "days",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_days_to_sale.max_days_to_sale"
+        }
+      ],
+      "notes": "Median and mean travel together because KPI_CATALOG.md section 5 requires the pair: days-to-sale is right-skewed, and a mean alone hides the aged tail that matters.",
+      "query_sha256": "cd17932c0a25c100adc54b569e1520f5639083b8a604ec3fd270b42f34accb56",
+      "row_count": 30,
+      "file": "days-to-sale.json",
+      "file_sha256": "a7ccafed02220682c846f792bb2f86013d659c6e529920316f889dc18c074525",
+      "file_bytes": 8607
+    },
+    {
+      "name": "inventory-turn",
+      "source_view": "reporting.vw_inventory_turn",
+      "join_views": [
+        "reporting.vw_dealership",
+        "reporting.vw_calendar"
+      ],
+      "grain": "One row per store per calendar month per condition group.",
+      "business_key": [
+        "dealership_id",
+        "month_start_date",
+        "condition_group"
+      ],
+      "date_basis": "snapshot date",
+      "sort_keys": [
+        "dealership_id",
+        "month_start_date",
+        "condition_group"
+      ],
+      "chunked": false,
+      "kpi_ids": [
+        "KPI-INV-008"
+      ],
+      "columns": [
+        {
+          "name": "dealership_id",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_dealership.dealership_code"
+        },
+        {
+          "name": "month_start_date",
+          "type": "date",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "month start",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_calendar.calendar_date"
+        },
+        {
+          "name": "condition_group",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "New",
+            "Used"
+          ],
+          "source_column": "reporting.vw_inventory_turn.condition_group"
+        },
+        {
+          "name": "retail_units_sold",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "units",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_turn.retail_units_sold"
+        },
+        {
+          "name": "calendar_days_in_period",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "days",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_turn.calendar_days_in_period"
+        },
+        {
+          "name": "annualized_retail_units",
+          "type": "exact",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "units",
+          "display_precision": 2,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_turn.annualized_retail_units"
+        },
+        {
+          "name": "inventory_unit_days",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "unit-days",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_turn.inventory_unit_days"
+        },
+        {
+          "name": "snapshot_day_count",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "days",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_turn.snapshot_day_count"
+        },
+        {
+          "name": "average_daily_active_inventory",
+          "type": "exact",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "units",
+          "display_precision": 2,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_turn.average_daily_active_inventory"
+        },
+        {
+          "name": "inventory_turn",
+          "type": "exact",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": "turns per year",
+          "display_precision": 2,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_turn.inventory_turn"
+        }
+      ],
+      "notes": "Turn is annualised inside the view, at this grain only. The console must not average monthly turn values to obtain a quarterly one; a period figure needs the view evaluated over that period.",
+      "query_sha256": "5461342f552d69164062d558cf8b04310201d069cf664e6f686afcc3cf8d39f7",
+      "row_count": 30,
+      "file": "inventory-turn.json",
+      "file_sha256": "7dca5dd06324152224a1f017fd425f846337b08a0873bc2a9c4b2ad889eddd64",
+      "file_bytes": 9981
+    },
+    {
+      "name": "days-supply",
+      "source_view": "reporting.vw_days_supply",
+      "join_views": [
+        "reporting.vw_dealership",
+        "reporting.vw_calendar"
+      ],
+      "grain": "One row per store per snapshot (as-of) date per condition group.",
+      "business_key": [
+        "dealership_id",
+        "as_of_date",
+        "condition_group"
+      ],
+      "date_basis": "as-of date",
+      "sort_keys": [
+        "dealership_id",
+        "as_of_date",
+        "condition_group"
+      ],
+      "chunked": true,
+      "kpi_ids": [
+        "KPI-INV-009"
+      ],
+      "columns": [
+        {
+          "name": "dealership_id",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_dealership.dealership_code"
+        },
+        {
+          "name": "as_of_date",
+          "type": "date",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "as-of date",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_calendar.calendar_date"
+        },
+        {
+          "name": "condition_group",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "New",
+            "Used"
+          ],
+          "source_column": "reporting.vw_days_supply.condition_group"
+        },
+        {
+          "name": "active_inventory_units",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "units",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_days_supply.active_inventory_units"
+        },
+        {
+          "name": "trailing_days",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "days",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_days_supply.trailing_days"
+        },
+        {
+          "name": "trailing_retail_units",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "units",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_days_supply.trailing_retail_units"
+        },
+        {
+          "name": "average_daily_retail_sales",
+          "type": "exact",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "units per day",
+          "display_precision": 2,
+          "enumeration": null,
+          "source_column": "reporting.vw_days_supply.average_daily_retail_sales"
+        },
+        {
+          "name": "days_supply",
+          "type": "exact",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": "days",
+          "display_precision": 0,
+          "enumeration": null,
+          "source_column": "reporting.vw_days_supply.days_supply"
+        }
+      ],
+      "notes": "days_supply is null when the trailing window sold nothing: dividing by zero sales does not yield an infinite supply, it yields an undefined figure, and the console renders 'No data' rather than a bar at the axis maximum.",
+      "query_sha256": "658c3cb3ac646e1c9f1723ceea162e7c52b2e1d8d2c63a7aa0088c99e917cc8c",
+      "row_count": 920,
+      "file": "days-supply.json",
+      "file_sha256": "fc4b9b1f11d35f656181c56f67a60f5494852d4777d873520d761ce981b6edd2",
+      "file_bytes": 229699
+    },
+    {
+      "name": "lead-funnel",
+      "source_view": "reporting.vw_lead_funnel",
+      "join_views": [
+        "reporting.vw_dealership",
+        "reporting.vw_calendar",
+        "reporting.vw_lead_source",
+        "reporting.vw_marketing_campaign"
+      ],
+      "grain": "One row per store per lead source per campaign (nullable) per lead-creation date.",
+      "business_key": [
+        "dealership_id",
+        "lead_source_code",
+        "campaign_code",
+        "lead_created_date"
+      ],
+      "date_basis": "lead creation date",
+      "sort_keys": [
+        "dealership_id",
+        "lead_created_date",
+        "lead_source_code",
+        "campaign_code"
+      ],
+      "chunked": true,
+      "kpi_ids": [
+        "KPI-FUN-001",
+        "KPI-FUN-002",
+        "KPI-FUN-003",
+        "KPI-FUN-006"
+      ],
+      "columns": [
+        {
+          "name": "dealership_id",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_dealership.dealership_code"
+        },
+        {
+          "name": "lead_created_date",
+          "type": "date",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "lead creation date",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_calendar.calendar_date"
+        },
+        {
+          "name": "lead_source_code",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_source.lead_source_code"
+        },
+        {
+          "name": "campaign_code",
+          "type": "string",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_marketing_campaign.campaign_code"
+        },
+        {
+          "name": "leads_received",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "leads",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_funnel.leads_received"
+        },
+        {
+          "name": "contacted_leads",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "leads",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_funnel.contacted_leads"
+        },
+        {
+          "name": "appointment_set_leads",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "leads",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_funnel.appointment_set_leads"
+        },
+        {
+          "name": "appointment_shown_leads",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "leads",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_funnel.appointment_shown_leads"
+        },
+        {
+          "name": "sold_leads",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "leads",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_funnel.sold_leads"
+        },
+        {
+          "name": "duplicate_leads_excluded",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "leads",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_funnel.duplicate_leads_excluded"
+        },
+        {
+          "name": "leads_before_exclusions",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "leads",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_funnel.leads_before_exclusions"
+        },
+        {
+          "name": "contact_rate",
+          "type": "exact",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": "ratio",
+          "display_precision": 3,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_funnel.contact_rate"
+        },
+        {
+          "name": "appointment_set_rate",
+          "type": "exact",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": "ratio",
+          "display_precision": 3,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_funnel.appointment_set_rate"
+        },
+        {
+          "name": "lead_to_sale_conversion",
+          "type": "exact",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": "ratio",
+          "display_precision": 3,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_funnel.lead_to_sale_conversion"
+        },
+        {
+          "name": "duplicate_lead_rate",
+          "type": "exact",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": "ratio",
+          "display_precision": 3,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_funnel.duplicate_lead_rate"
+        }
+      ],
+      "notes": "campaign_code is null when the source carries no campaign; the business key treats that null as a distinct key component, which is why the export asserts uniqueness over the four-column tuple rather than over the three non-null ones. Every rate is null on an empty denominator and is exported unrounded.",
+      "query_sha256": "5af6e26986a71a42df0d89825a711b0af758cd8216f78bd63fdb53cde176a4ca",
+      "row_count": 4419,
+      "file": "lead-funnel.json",
+      "file_sha256": "a4fc3c69e38ea083565e604711465e0fe6dc531bc0ec5f74e8a1c5ac35112720",
+      "file_bytes": 2031858
+    },
+    {
+      "name": "appointment-funnel",
+      "source_view": "reporting.vw_appointment_funnel",
+      "join_views": [
+        "reporting.vw_dealership",
+        "reporting.vw_calendar"
+      ],
+      "grain": "One row per store per calendar date on which the store had at least one appointment scheduled or shown.",
+      "business_key": [
+        "dealership_id",
+        "appointment_date"
+      ],
+      "date_basis": "appointment date",
+      "sort_keys": [
+        "dealership_id",
+        "appointment_date"
+      ],
+      "chunked": false,
+      "kpi_ids": [
+        "KPI-FUN-004",
+        "KPI-FUN-005"
+      ],
+      "columns": [
+        {
+          "name": "dealership_id",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_dealership.dealership_code"
+        },
+        {
+          "name": "appointment_date",
+          "type": "date",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "appointment date",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_calendar.calendar_date"
+        },
+        {
+          "name": "scheduled_appointments",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "appointments",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_appointment_funnel.scheduled_appointments"
+        },
+        {
+          "name": "eligible_appointments",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "appointments",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_appointment_funnel.eligible_appointments"
+        },
+        {
+          "name": "cancelled_in_advance_appointments",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "appointments",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_appointment_funnel.cancelled_in_advance_appointments"
+        },
+        {
+          "name": "confirmed_appointments",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "appointments",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_appointment_funnel.confirmed_appointments"
+        },
+        {
+          "name": "shown_appointments",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "appointments",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_appointment_funnel.shown_appointments"
+        },
+        {
+          "name": "show_rate",
+          "type": "exact",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": "ratio",
+          "display_precision": 3,
+          "enumeration": null,
+          "source_column": "reporting.vw_appointment_funnel.show_rate"
+        },
+        {
+          "name": "cancellation_rate",
+          "type": "exact",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": "ratio",
+          "display_precision": 3,
+          "enumeration": null,
+          "source_column": "reporting.vw_appointment_funnel.cancellation_rate"
+        },
+        {
+          "name": "shown_appointments_on_show_date",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "appointments",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_appointment_funnel.shown_appointments_on_show_date"
+        },
+        {
+          "name": "shown_and_sold_appointments",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "appointments",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_appointment_funnel.shown_and_sold_appointments"
+        },
+        {
+          "name": "test_drive_appointments",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "appointments",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_appointment_funnel.test_drive_appointments"
+        },
+        {
+          "name": "write_up_appointments",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "appointments",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_appointment_funnel.write_up_appointments"
+        },
+        {
+          "name": "show_to_sale_conversion",
+          "type": "exact",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": "ratio",
+          "display_precision": 3,
+          "enumeration": null,
+          "source_column": "reporting.vw_appointment_funnel.show_to_sale_conversion"
+        }
+      ],
+      "notes": "The show-rate denominator is eligible appointments -- scheduled less those cancelled in advance -- because an appointment the customer cancelled the day before was never a no-show. Both columns travel with the rate so the console can show either side.",
+      "query_sha256": "f16a1fa04571569774fa688af8995f9929d3e6484ad4e040b659cee1a3572008",
+      "row_count": 539,
+      "file": "appointment-funnel.json",
+      "file_sha256": "6a490ccdf75bb47bfbdf47166482b6b9c62971fcb8d466312a411eb02c360a07",
+      "file_bytes": 245047
+    },
+    {
+      "name": "lead-response",
+      "source_view": "reporting.vw_lead_response",
+      "join_views": [
+        "reporting.vw_dealership",
+        "reporting.vw_calendar",
+        "reporting.vw_lead_source"
+      ],
+      "grain": "One row per store per lead source per lead-creation date.",
+      "business_key": [
+        "dealership_id",
+        "lead_source_code",
+        "lead_created_date"
+      ],
+      "date_basis": "lead creation date",
+      "sort_keys": [
+        "dealership_id",
+        "lead_created_date",
+        "lead_source_code"
+      ],
+      "chunked": true,
+      "kpi_ids": [
+        "KPI-FUN-007",
+        "KPI-FUN-008"
+      ],
+      "columns": [
+        {
+          "name": "dealership_id",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_dealership.dealership_code"
+        },
+        {
+          "name": "lead_created_date",
+          "type": "date",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "lead creation date",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_calendar.calendar_date"
+        },
+        {
+          "name": "lead_source_code",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_source.lead_source_code"
+        },
+        {
+          "name": "valid_leads",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "leads",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_response.valid_leads"
+        },
+        {
+          "name": "responded_leads",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "leads",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_response.responded_leads"
+        },
+        {
+          "name": "unresponded_leads",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "leads",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_response.unresponded_leads"
+        },
+        {
+          "name": "response_coverage_rate",
+          "type": "exact",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": "ratio",
+          "display_precision": 3,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_response.response_coverage_rate"
+        },
+        {
+          "name": "response_seconds_total",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "seconds",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_response.response_seconds_total"
+        },
+        {
+          "name": "average_response_seconds",
+          "type": "exact",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": "seconds",
+          "display_precision": 1,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_response.average_response_seconds"
+        },
+        {
+          "name": "average_response_minutes",
+          "type": "exact",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": "minutes",
+          "display_precision": 1,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_response.average_response_minutes"
+        },
+        {
+          "name": "median_response_seconds",
+          "type": "double",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": "seconds",
+          "display_precision": 0,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_response.median_response_seconds"
+        },
+        {
+          "name": "median_response_minutes",
+          "type": "double",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": "minutes",
+          "display_precision": 0,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_response.median_response_minutes"
+        },
+        {
+          "name": "p90_response_minutes",
+          "type": "double",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": "minutes",
+          "display_precision": 0,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_response.p90_response_minutes"
+        },
+        {
+          "name": "responses_under_5_minutes",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "leads",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_response.responses_under_5_minutes"
+        },
+        {
+          "name": "responses_5_to_15_minutes",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "leads",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_response.responses_5_to_15_minutes"
+        },
+        {
+          "name": "responses_15_to_60_minutes",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "leads",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_response.responses_15_to_60_minutes"
+        },
+        {
+          "name": "responses_over_60_minutes",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "leads",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_response.responses_over_60_minutes"
+        }
+      ],
+      "notes": "response_seconds_total is the additive numerator behind the average, published separately so a group-level average is computed from summed seconds over summed responded leads rather than by averaging store averages. The median is a percentile_cont double and cannot be recomputed from any aggregate, which is why the distribution buckets travel with it.",
+      "query_sha256": "87e7a67d4a0ac964ca2f237b0d0dda5800bdf31bb444a8a428fc283f275ccbb6",
+      "row_count": 4099,
+      "file": "lead-response.json",
+      "file_sha256": "3859c0cc2315528b93adb8fb985a0c684825cafe4db719b24138714a3d1d4658",
+      "file_bytes": 2269345
+    },
+    {
+      "name": "marketing-performance",
+      "source_view": "reporting.vw_marketing_performance",
+      "join_views": [
+        "reporting.vw_dealership",
+        "reporting.vw_calendar",
+        "reporting.vw_lead_source",
+        "reporting.vw_marketing_campaign"
+      ],
+      "grain": "One row per store per calendar month per lead source per campaign (nullable).",
+      "business_key": [
+        "dealership_id",
+        "month_start_date",
+        "lead_source_code",
+        "campaign_code"
+      ],
+      "date_basis": "spend month",
+      "sort_keys": [
+        "dealership_id",
+        "month_start_date",
+        "lead_source_code",
+        "campaign_code"
+      ],
+      "chunked": false,
+      "kpi_ids": [
+        "KPI-MKT-001",
+        "KPI-MKT-002",
+        "KPI-MKT-003"
+      ],
+      "columns": [
+        {
+          "name": "dealership_id",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_dealership.dealership_code"
+        },
+        {
+          "name": "month_start_date",
+          "type": "date",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "month start",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_calendar.calendar_date"
+        },
+        {
+          "name": "lead_source_code",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_source.lead_source_code"
+        },
+        {
+          "name": "campaign_code",
+          "type": "string",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_marketing_campaign.campaign_code"
+        },
+        {
+          "name": "is_cost_attributable",
+          "type": "boolean",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_marketing_performance.is_cost_attributable"
+        },
+        {
+          "name": "spend_amount",
+          "type": "currency",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_marketing_performance.spend_amount"
+        },
+        {
+          "name": "impressions",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "impressions",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_marketing_performance.impressions"
+        },
+        {
+          "name": "clicks",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "clicks",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_marketing_performance.clicks"
+        },
+        {
+          "name": "vendor_reported_leads",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "leads",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_marketing_performance.vendor_reported_leads"
+        },
+        {
+          "name": "attributed_leads",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "leads",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_marketing_performance.attributed_leads"
+        },
+        {
+          "name": "attributed_sold_leads",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "leads",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_marketing_performance.attributed_sold_leads"
+        },
+        {
+          "name": "attributed_retail_units",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "units",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_marketing_performance.attributed_retail_units"
+        },
+        {
+          "name": "attributed_total_gross",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_marketing_performance.attributed_total_gross"
+        },
+        {
+          "name": "attributed_front_end_gross",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_marketing_performance.attributed_front_end_gross"
+        },
+        {
+          "name": "attributed_revenue",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_marketing_performance.attributed_revenue"
+        },
+        {
+          "name": "cost_per_lead",
+          "type": "exact",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": "USD per lead",
+          "display_precision": 2,
+          "enumeration": null,
+          "source_column": "reporting.vw_marketing_performance.cost_per_lead"
+        },
+        {
+          "name": "cost_per_sale",
+          "type": "exact",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": "USD per sale",
+          "display_precision": 2,
+          "enumeration": null,
+          "source_column": "reporting.vw_marketing_performance.cost_per_sale"
+        },
+        {
+          "name": "gross_return_on_ad_spend",
+          "type": "exact",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": "ratio",
+          "display_precision": 2,
+          "enumeration": null,
+          "source_column": "reporting.vw_marketing_performance.gross_return_on_ad_spend"
+        },
+        {
+          "name": "spend_with_no_attributed_leads",
+          "type": "boolean",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_marketing_performance.spend_with_no_attributed_leads"
+        },
+        {
+          "name": "spend_with_no_attributed_sales",
+          "type": "boolean",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_marketing_performance.spend_with_no_attributed_sales"
+        },
+        {
+          "name": "leads_with_no_spend",
+          "type": "boolean",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_marketing_performance.leads_with_no_spend"
+        }
+      ],
+      "notes": "spend_amount is null, not zero, for an organic or internal source: that source has no advertising cost, and a zero would put it in the same bucket as a paid campaign that spent nothing (RECON-MKT-COST-RULE). The three exception flags are null on the same rows for the same reason -- 'spend with no attributed leads' is not a question that has an answer where there is no spend.",
+      "query_sha256": "0239580b998928b01948a514a6fa6f36d9e214bf7be305b46eed32dabb57f95c",
+      "row_count": 537,
+      "file": "marketing-performance.json",
+      "file_sha256": "1dd1fc5e7c4b7b098a3daa12cc5e8199b6cdc28a6d69d92a1804513fc6641dc1",
+      "file_bytes": 316825
+    },
+    {
+      "name": "reconciliation-status",
+      "source_view": "reporting.vw_reconciliation_status",
+      "join_views": [],
+      "grain": "One row per reconciliation identifier, for the pipeline run this export describes.",
+      "business_key": [
+        "reconciliation_id"
+      ],
+      "date_basis": null,
+      "sort_keys": [
+        "reconciliation_id"
+      ],
+      "chunked": false,
+      "kpi_ids": [],
+      "columns": [
+        {
+          "name": "reconciliation_id",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_reconciliation_status.reconciliation_id"
+        },
+        {
+          "name": "left_value",
+          "type": "exact",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "count or USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_reconciliation_status.left_value"
+        },
+        {
+          "name": "right_value",
+          "type": "exact",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "count or USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_reconciliation_status.right_value"
+        },
+        {
+          "name": "difference",
+          "type": "exact",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "count or USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_reconciliation_status.difference"
+        },
+        {
+          "name": "absolute_difference",
+          "type": "exact",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "count or USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_reconciliation_status.absolute_difference"
+        },
+        {
+          "name": "tolerance",
+          "type": "exact",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "count or USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_reconciliation_status.tolerance"
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "passed",
+            "failed",
+            "skipped"
+          ],
+          "source_column": "reporting.vw_reconciliation_status.status"
+        },
+        {
+          "name": "is_passing",
+          "type": "boolean",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_reconciliation_status.is_passing"
+        },
+        {
+          "name": "is_critical",
+          "type": "boolean",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_reconciliation_status.is_critical"
+        },
+        {
+          "name": "severity_rank",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_reconciliation_status.severity_rank"
+        }
+      ],
+      "notes": "The source view's grain is reconciliation x run; this dataset selects the export's own run, so the console shows the evidence belonging to the data it is rendering. Three of the view's columns are deliberately NOT exported -- the two source columns and the prose description -- because all three embed schema-qualified names of internal warehouse and audit objects, which ADR-0013 condition 8 keeps out of the public lane. The governed reconciliation_id is the public handle: KPI_CATALOG.md section 36 documents what each identifier compares, so the console links to the definition instead of restating an internal object path. The values, the tolerance and the outcome are what make a reconciliation public evidence.",
+      "query_sha256": "aa70b6a47c645d0784272a562223ec2fb1eabb499dac4e403e8a1cc0e0d6f50e",
+      "row_count": 58,
+      "file": "reconciliation-status.json",
+      "file_sha256": "2cd302987914ec8310b4e3ddc72d8c62fcd93db12725edb03e4ed6fd2847813a",
+      "file_bytes": 13249
+    },
+    {
+      "name": "pipeline-run",
+      "source_view": "reporting.vw_pipeline_run_summary",
+      "join_views": [],
+      "grain": "One row: the pipeline run this export was taken from.",
+      "business_key": [
+        "run_uuid"
+      ],
+      "date_basis": null,
+      "sort_keys": [
+        "run_uuid"
+      ],
+      "chunked": false,
+      "kpi_ids": [],
+      "columns": [
+        {
+          "name": "run_uuid",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_pipeline_run_summary.run_uuid"
+        },
+        {
+          "name": "profile_name",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_pipeline_run_summary.profile_name"
+        },
+        {
+          "name": "run_mode",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_pipeline_run_summary.run_mode"
+        },
+        {
+          "name": "arpi_version",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_pipeline_run_summary.arpi_version"
+        },
+        {
+          "name": "random_seed",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_pipeline_run_summary.random_seed"
+        },
+        {
+          "name": "run_status",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "running",
+            "succeeded",
+            "failed",
+            "aborted"
+          ],
+          "source_column": "reporting.vw_pipeline_run_summary.run_status"
+        },
+        {
+          "name": "source_row_count",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "rows",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_pipeline_run_summary.source_row_count"
+        },
+        {
+          "name": "raw_row_count",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "rows",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_pipeline_run_summary.raw_row_count"
+        },
+        {
+          "name": "staging_row_count",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "rows",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_pipeline_run_summary.staging_row_count"
+        },
+        {
+          "name": "warehouse_row_count",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "rows",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_pipeline_run_summary.warehouse_row_count"
+        },
+        {
+          "name": "rejected_row_count",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "rows",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_pipeline_run_summary.rejected_row_count"
+        },
+        {
+          "name": "validation_check_count",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "checks",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_pipeline_run_summary.validation_check_count"
+        },
+        {
+          "name": "validation_passed_count",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "checks",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_pipeline_run_summary.validation_passed_count"
+        },
+        {
+          "name": "validation_failed_count",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "checks",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_pipeline_run_summary.validation_failed_count"
+        },
+        {
+          "name": "validation_skipped_count",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "checks",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_pipeline_run_summary.validation_skipped_count"
+        },
+        {
+          "name": "critical_failed_check_count",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "checks",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_pipeline_run_summary.critical_failed_check_count"
+        },
+        {
+          "name": "reconciliation_count",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "checks",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_pipeline_run_summary.reconciliation_count"
+        },
+        {
+          "name": "reconciliation_failed_count",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "checks",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_pipeline_run_summary.reconciliation_failed_count"
+        },
+        {
+          "name": "reconciliation_status",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "passed",
+            "failed",
+            "skipped"
+          ],
+          "source_column": "reporting.vw_pipeline_run_summary.reconciliation_status"
+        }
+      ],
+      "notes": "run_uuid is the ONE declared varying field in any dataset: a rebuilt warehouse is a new run and this value changes with it. Everything else in every dataset is a function of the data alone, which is what makes byte-comparison a usable check. started_at, completed_at and duration_seconds are excluded because they are wall-clock and machine-dependent, and notes is excluded because the privacy tripwire prohibits a free-text column in a public artifact.",
+      "query_sha256": "adca98ad620f10e4795dec1cda7735ca8ccc2a03111636becea487320e109e43",
+      "row_count": 1,
+      "file": "pipeline-run.json",
+      "file_sha256": "06d145c096a371cc294384b90a472a06efe1cfc91813265f2e95c9a8c2b153ad",
+      "file_bytes": 537
+    }
+  ],
+  "reconciliation": {
+    "status": "passed",
+    "method": "Every total is an exact sum over an additive exported column. A ratio publishes its numerator sum and its denominator sum and no quotient: the reporting layer's rule 7 puts division in the consumer, which is also what makes an average of store averages impossible to form from this block and what lets a consumer in any language reproduce the figure without first agreeing on a rounding convention. Non-additive figures -- medians, percentiles, days supply, inventory turn -- carry no group total by design, because a group median is not the average of store medians; their evidence is row-level equality with the source view, asserted by tests/integration/test_dashboard_export.py.",
+    "totals": {
+      "retail_units": {
+        "dataset": "sales-summary",
+        "kpi_id": "KPI-SLS-001",
+        "unit": "units",
+        "display_precision": null,
+        "column": "retail_units_sold",
+        "total": "558"
+      },
+      "new_units": {
+        "dataset": "sales-summary",
+        "kpi_id": "KPI-SLS-002",
+        "unit": "units",
+        "display_precision": null,
+        "column": "new_units_sold",
+        "total": "202"
+      },
+      "used_units": {
+        "dataset": "sales-summary",
+        "kpi_id": "KPI-SLS-003",
+        "unit": "units",
+        "display_precision": null,
+        "column": "used_units_sold",
+        "total": "356"
+      },
+      "front_end_gross": {
+        "dataset": "gross-summary",
+        "kpi_id": "KPI-GRS-001",
+        "unit": "USD",
+        "display_precision": 2,
+        "column": "front_end_gross",
+        "total": "1270498.26"
+      },
+      "back_end_gross": {
+        "dataset": "gross-summary",
+        "kpi_id": "KPI-GRS-002",
+        "unit": "USD",
+        "display_precision": 2,
+        "column": "back_end_gross",
+        "total": "666073.33"
+      },
+      "total_gross": {
+        "dataset": "gross-summary",
+        "kpi_id": "KPI-GRS-003",
+        "unit": "USD",
+        "display_precision": 2,
+        "column": "total_gross",
+        "total": "1936571.59"
+      },
+      "front_gross_per_retail_unit": {
+        "dataset": "gross-summary",
+        "kpi_id": "KPI-GRS-004",
+        "unit": "USD per unit",
+        "display_precision": 2,
+        "numerator_column": "front_end_gross",
+        "denominator_column": "retail_units_sold",
+        "numerator": "1270498.26",
+        "denominator": "558"
+      },
+      "back_gross_per_retail_unit": {
+        "dataset": "gross-summary",
+        "kpi_id": "KPI-GRS-005",
+        "unit": "USD per unit",
+        "display_precision": 2,
+        "numerator_column": "back_end_gross",
+        "denominator_column": "retail_units_sold",
+        "numerator": "666073.33",
+        "denominator": "558"
+      },
+      "total_gross_per_retail_unit": {
+        "dataset": "gross-summary",
+        "kpi_id": "KPI-GRS-006",
+        "unit": "USD per unit",
+        "display_precision": 2,
+        "numerator_column": "total_gross",
+        "denominator_column": "retail_units_sold",
+        "numerator": "1936571.59",
+        "denominator": "558"
+      },
+      "leads_received": {
+        "dataset": "lead-funnel",
+        "kpi_id": "KPI-FUN-001",
+        "unit": "leads",
+        "display_precision": null,
+        "column": "leads_received",
+        "total": "5538"
+      },
+      "contacted_leads": {
+        "dataset": "lead-funnel",
+        "kpi_id": null,
+        "unit": "leads",
+        "display_precision": null,
+        "column": "contacted_leads",
+        "total": "3982"
+      },
+      "appointment_set_leads": {
+        "dataset": "lead-funnel",
+        "kpi_id": null,
+        "unit": "leads",
+        "display_precision": null,
+        "column": "appointment_set_leads",
+        "total": "1473"
+      },
+      "sold_leads": {
+        "dataset": "lead-funnel",
+        "kpi_id": null,
+        "unit": "leads",
+        "display_precision": null,
+        "column": "sold_leads",
+        "total": "400"
+      },
+      "contact_rate": {
+        "dataset": "lead-funnel",
+        "kpi_id": "KPI-FUN-002",
+        "unit": "ratio",
+        "display_precision": 3,
+        "numerator_column": "contacted_leads",
+        "denominator_column": "leads_received",
+        "numerator": "3982",
+        "denominator": "5538"
+      },
+      "appointment_set_rate": {
+        "dataset": "lead-funnel",
+        "kpi_id": "KPI-FUN-003",
+        "unit": "ratio",
+        "display_precision": 3,
+        "numerator_column": "appointment_set_leads",
+        "denominator_column": "leads_received",
+        "numerator": "1473",
+        "denominator": "5538"
+      },
+      "lead_to_sale_conversion": {
+        "dataset": "lead-funnel",
+        "kpi_id": "KPI-FUN-006",
+        "unit": "ratio",
+        "display_precision": 3,
+        "numerator_column": "sold_leads",
+        "denominator_column": "leads_received",
+        "numerator": "400",
+        "denominator": "5538"
+      },
+      "shown_appointments": {
+        "dataset": "appointment-funnel",
+        "kpi_id": null,
+        "unit": "appointments",
+        "display_precision": null,
+        "column": "shown_appointments",
+        "total": "1025"
+      },
+      "show_rate": {
+        "dataset": "appointment-funnel",
+        "kpi_id": "KPI-FUN-004",
+        "unit": "ratio",
+        "display_precision": 3,
+        "numerator_column": "shown_appointments",
+        "denominator_column": "eligible_appointments",
+        "numerator": "1025",
+        "denominator": "1620"
+      },
+      "show_to_sale_conversion": {
+        "dataset": "appointment-funnel",
+        "kpi_id": "KPI-FUN-005",
+        "unit": "ratio",
+        "display_precision": 3,
+        "numerator_column": "shown_and_sold_appointments",
+        "denominator_column": "shown_appointments_on_show_date",
+        "numerator": "225",
+        "denominator": "1025"
+      },
+      "average_response_seconds": {
+        "dataset": "lead-response",
+        "kpi_id": "KPI-FUN-007",
+        "unit": "seconds",
+        "display_precision": 1,
+        "numerator_column": "response_seconds_total",
+        "denominator_column": "responded_leads",
+        "numerator": "22920787",
+        "denominator": "4924"
+      },
+      "marketing_spend": {
+        "dataset": "marketing-performance",
+        "kpi_id": null,
+        "unit": "USD",
+        "display_precision": 2,
+        "column": "spend_amount",
+        "total": "53272.78"
+      },
+      "attributed_total_gross": {
+        "dataset": "marketing-performance",
+        "kpi_id": null,
+        "unit": "USD",
+        "display_precision": 2,
+        "column": "attributed_total_gross",
+        "total": "1402668.95"
+      },
+      "cost_per_lead": {
+        "dataset": "marketing-performance",
+        "kpi_id": "KPI-MKT-001",
+        "unit": "USD per lead",
+        "display_precision": 2,
+        "numerator_column": "spend_amount",
+        "denominator_column": "attributed_leads",
+        "numerator": "53272.78",
+        "denominator": "5538"
+      },
+      "cost_per_sale": {
+        "dataset": "marketing-performance",
+        "kpi_id": "KPI-MKT-002",
+        "unit": "USD per sale",
+        "display_precision": 2,
+        "numerator_column": "spend_amount",
+        "denominator_column": "attributed_retail_units",
+        "numerator": "53272.78",
+        "denominator": "400"
+      },
+      "gross_return_on_ad_spend": {
+        "dataset": "marketing-performance",
+        "kpi_id": "KPI-MKT-003",
+        "unit": "ratio",
+        "display_precision": 2,
+        "numerator_column": "attributed_total_gross",
+        "denominator_column": "spend_amount",
+        "numerator": "1402668.95",
+        "denominator": "53272.78"
+      }
+    }
+  },
+  "privacy_scan": {
+    "status": "passed",
+    "prohibited_hits": 0,
+    "columns_scanned": 225,
+    "primary_control": "contract allowlist",
+    "secondary_control": "arpi.validation.privacy prohibited-name tripwire"
+  },
+  "validation": {
+    "critical_failures": 0,
+    "warnings": 0,
+    "checks_evaluated": 114,
+    "reconciliations_evaluated": 58,
+    "reconciliations_failed": 0
+  },
+  "sizes": {
+    "dataset_bytes_total": 7555978,
+    "largest_dataset": {
+      "name": "lead-response",
+      "bytes": 2269345,
+      "rows": 4099
+    },
+    "limits": {
+      "single_export_file": 3145728,
+      "total_export_directory": 20971520
+    }
+  },
+  "stale": false,
+  "limitations": [
+    "SYNTHETIC DATA -- 100% machine generated. Granite Auto Group and every store, employee role and transaction referenced by this project are fictional. No real customer, employee, dealership or vendor data is present, and no record here describes a real person or a real business.",
+    "Granite Auto Group is a fictional dealer group. Every store, employee role and transaction in this export is machine generated.",
+    "The export carries only the 29 governed KPIs implemented at DASH.1. Targets, itemized F&I products, finance reserve, inventory accounting and GL controls are not modelled yet and no dataset here stands in for them.",
+    "Manufacturer incentives, holdback and floorplan credits are excluded from front gross, so new-vehicle front gross is understated by construction. That is a modelling boundary, not a finding.",
+    "Ratios and rates are exported unrounded at the scale the reporting view produced. display_precision states how the console should render them; the export never discards the exact value.",
+    "Median, percentile, days-supply and inventory-turn figures are not additive. No group-level total is published for them, because a group median is not the average of store medians. Their evidence is row-level equality with the source view.",
+    "logical_run_key is null: ADR-0010's logical run key is recorded in the audit layer's pipeline-run table, the reporting layer does not publish it, and the exporter may not read that schema. It is left null rather than guessed.",
+    "Power BI real-engine validation remains pending on both ADR-0008 paths. Nothing in this export validates the semantic model, and no artifact here may be cited as Gate 2 evidence.",
+    "aged_threshold_days and the age-bucket boundaries are labelled project defaults, never industry benchmarks."
+  ]
+}

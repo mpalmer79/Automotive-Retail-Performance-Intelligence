@@ -597,6 +597,75 @@ That is what a reviewer should take from it.
 
 ---
 
+## 17. The governed dashboard export lane (ADR-0013)
+
+A second public data lane, and the first one whose source is the warehouse. Its privacy posture is
+built from two controls in a deliberate order, and one honest gap.
+
+### 17.1 The allowlist is the primary control
+
+A field reaches `data/dashboard/` only by being declared in
+[`src/arpi/dashboard/contract.py`](src/arpi/dashboard/contract.py), with a type, a nullability, a
+unit and a privacy classification. `non-personal` is the only class eligible for export, and a column
+declared anything else aborts the export. There is no discovery step and no `SELECT *`: a column
+nobody reviewed cannot appear.
+
+### 17.2 The prohibited-name tripwire is the second
+
+`arpi.validation.privacy` — the same rule §3.1 describes, with the same vocabulary — runs over every
+exported header. It is the belt and braces behind the allowlist, and it is what catches an allowlist
+somebody extended carelessly. Twenty-one prohibited spellings are asserted refused, covering name,
+address, email, phone, birth date, age, SSN, driver's licence, bank and payment-card details, credit
+score, free-form notes and communication content.
+
+It found something real: `vw_pipeline_run_summary.notes` is a free-text column, and the tripwire
+refuses it. It is excluded from the export rather than exempted, because a free-form field in a
+public artifact is where an unreviewed sentence eventually appears.
+
+### 17.3 No dataset is at customer grain
+
+There is no customer dataset, banded or otherwise. Customers appear only as pre-aggregated counts
+inside the funnel views — `leads_received`, `contacted_leads`, `sold_leads`. `reporting.vw_customer`
+is not in the allowlist and a test asserts no exported column name contains "customer".
+
+Employees do not appear at all in this increment: no `DASH.1` dataset needs them, so none is
+exported. `vw_employee` becomes exportable at `DASH.11`, limited to synthetic id, role, store and
+active window, subject to the §5 minimum-sample rule.
+
+### 17.4 The gap, stated: names not values
+
+§10 already records that the tripwire inspects names rather than values. Because this lane is public,
+three further controls sit behind it:
+
+1. **Both stages scan their own produced bytes** for an email address, a URL, a VIN-shaped
+   seventeen-character token, connection detail and any reference to `raw`, `staging`, `warehouse` or
+   `audit`, and refuse to write on a hit. That control is not decorative — it is what found the three
+   columns of `vw_reconciliation_status` that embed internal object paths in their text, now
+   excluded.
+2. **No dataset declares a vehicle identifier of any spelling.** The tripwire deliberately permits
+   `vin` as a name, because ARPI's VINs are synthetic by §4's policy and legitimate on the ADR-0011
+   listing lane. Here the protection is structural instead: there is no field for one to arrive in.
+3. **No free-text column is exported anywhere in the lane** (§17.2).
+
+### 17.5 No credential, no host, no connection
+
+The exporter runs as `arpi_reporter` and records that fact; it records nothing about the machine it
+ran on. No credential, hostname, port, database name, username, connection string, internal Railway
+service detail or absolute local path appears in any artifact, asserted over the produced bytes in
+both stages and again over the committed files by the portfolio boundary suite. The portfolio package
+declares no database dependency at all, so a runtime connection is impossible rather than merely
+absent.
+
+### 17.6 The lane makes no claim it cannot support
+
+Every artifact states in its own manifest that the data is synthetic, that the dealer group is
+fictional, and what the export cannot support — including that Power BI real-engine validation
+remains pending and that nothing here may be cited toward Gate 2. The client-safe manifest carries no
+Power BI field at all, so there is exactly one place in the repository a "validated" claim could ever
+be written, and it is the evidence files.
+
+---
+
 ## 16. Sanitized public reference data (ADR-0011)
 
 This section is the exception to section 2, and it is written to be read alongside it

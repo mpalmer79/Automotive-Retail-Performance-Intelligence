@@ -38,7 +38,7 @@
 | Increment | Title | Complexity | Status |
 |---|---|---|---|
 | `DASH.0` | Architecture and program contract | Large | **Implemented** — delivered by the change that introduces this document |
-| `DASH.1` | Existing-KPI dashboard export foundation | Large | Planned |
+| `DASH.1` | Existing-KPI dashboard export foundation | Large | **Implemented** |
 | `DASH.2` | Dashboard shell and Executive Overview | Large | Planned |
 | `DASH.3` | Sales, Gross, and Deal Explorer | Large | Planned |
 | `DASH.4` | Basic Deal Jacket | Large | Planned |
@@ -119,7 +119,7 @@ program. Evidence: the diagram files and index diffs in this change.
 | **Estimated complexity** | Large |
 | **Blocking gate** | None (no Deferred entity involved) |
 | **Architecture references** | §10, §18, §22; ADR-0013 conditions 1–4, 8–10, 15 |
-| **Status** | Planned |
+| **Status** | **Implemented** |
 
 ### `DASH.1-01` — Root exporter `scripts/export_dashboard_dataset.py`
 
@@ -128,14 +128,15 @@ program. Evidence: the diagram files and index diffs in this change.
 | Purpose | One governed exit from PostgreSQL to the public data lane. |
 | Dependencies | `DASH.0-03` (data contract) |
 | Complexity | Large |
-| Status | Planned |
+| Status | **Implemented** |
 | Architecture references | §22.3 (roles), ADR-0013 Compliance |
 | Data-grain impact | None (reads approved views at their declared grains) |
 | Acceptance criteria | Connects only as `arpi_reporter`; reads only the `DATA_CONTRACT.md §3` allowlist; writes `data/dashboard/` datasets + `manifest.json` with dataset/schema versions, as-of date, seed, source commit, exporter version, pipeline-run id, per-dataset source view, query hash, row count, file hash, reconciliation totals, privacy-scan status; exact decimals serialized as strings; deterministic ordering; byte-stable on unchanged source; `--check` mode byte-compares; refuses prohibited columns via `arpi.validation.privacy`; fails on unexpected view schema; never writes a credential; committed `development`-profile export lands with the change. |
 | Required tests | `tests/unit/test_export_dashboard_dataset.py` (allowlist, determinism, decimal serialization, prohibited-column refusal, manifest shape); `tests/integration/test_dashboard_export.py` (against the built database: row counts, reconciliation totals equal `reporting` totals, `arpi_reporter`-only access). |
 | Documentation updates | `DATA_CONTRACT.md` marked to match as-built; `scripts/README.md`; `docs/index.md` if paths change. |
 | Explicit non-goals | No new views; no portfolio consumption; no route. |
-| Completion evidence | Script + committed export + named tests green in CI. |
+| Completion evidence | `scripts/export_dashboard_dataset.py` (CLI) over `src/arpi/dashboard/{contract,serialization,export}.py`; committed `development`-profile export in `data/dashboard/` (18 files, 7,660,811 B, 17 datasets, 18,148 rows); `tests/unit/test_export_dashboard_dataset.py` (135 tests) and `tests/integration/test_dashboard_export.py` (43 tests) green. |
+| As-built notes | Connects through the repository configuration contract and `SET ROLE`s into `arpi_reporter` (a NOLOGIN group role), confirming the effective role before reading. Two existing dimension views were added to the allowlist — `vw_lead_source`, `vw_marketing_campaign` — because §4 forbids exporting a surrogate key and the funnel and marketing views are grained on `lead_source_key`/`campaign_key`; recorded in `DATA_CONTRACT.md §3` and §14. Ratios are exported **unrounded** with `display_precision` beside them rather than pre-rounded, because rounding at export would break reconciliation. The reconciliation block publishes numerator and denominator sums and **no quotient** (`DATA_CONTRACT.md §12`). The single-file size ceiling was raised from a provisional 2 MB to a measured 3 MB (`§10`). `pipeline_run.logical_run_key` is null: the reporting layer does not publish it and the exporter may not read `audit`. |
 
 ### `DASH.1-02` — Portfolio transformer `portfolio/scripts/generate-dashboard-data.ts`
 
@@ -144,14 +145,15 @@ program. Evidence: the diagram files and index diffs in this change.
 | Purpose | Turn normalized root exports into typed, page-shaped, chunked payloads the routes can consume without recomputation. |
 | Dependencies | `DASH.1-01` |
 | Complexity | Large |
-| Status | Planned |
+| Status | **Implemented** |
 | Architecture references | ADR-0013 conditions 2–4, 15; existing generator conventions (`generate-inventory-data.ts`) |
 | Data-grain impact | None |
 | Acceptance criteria | Validates root schemas and manifest hashes; fails on staleness, duplicate natural ids, unresolved relationships; emits `portfolio/src/generated/dashboard/` per the `DATA_CONTRACT.md §8` layout with a client-safe manifest; generates TypeScript contracts; preaggregates page summaries; chunks deal/inventory detail by the contract's chunk keys; measures and records output sizes; `dashboard`/`dashboard:check` npm scripts added to `prebuild`, CI, and `Dockerfile.railway`; `railway.json` watch patterns extended to `data/dashboard/**`. |
 | Required tests | `portfolio/tests/unit/dashboard-data.test.ts` (schema validation, chunk integrity, determinism, size recording, stale-input failure); CI check-mode step. |
 | Documentation updates | `portfolio/docs/CONTENT_MODEL.md` (new generated lane); `DATA_CONTRACT.md` as-built notes. |
 | Explicit non-goals | No route, no component. |
-| Completion evidence | Generated artifacts byte-stable under `--check` in CI and the Docker build. |
+| Completion evidence | `portfolio/scripts/generate-dashboard-data.ts` + `portfolio/src/types/dashboard.ts`; `portfolio/src/generated/dashboard/` (103 files, 2,387,403 B); `dashboard`/`dashboard:check` in `prebuild`, `verify` and `Dockerfile.railway`; `railway.json` watch patterns extended to `data/dashboard/**`; `portfolio/tests/unit/dashboard-data.test.ts` (62 tests) green; regeneration byte-identical. |
+| As-built notes | **Page-shaped payloads and the deal-grain family were not created, deliberately.** A page payload is a presentation decision owned by its route increment, and preaggregating KPI values in TypeScript would violate ADR-0013 condition 2; `DASH.2`/`DASH.10` build them with the pages that define what they contain. No deal-grain view exists in this increment's allowlist (`vw_deal_explorer` is `DASH.3-01`, `vw_deal_jacket` is `DASH.4-01`), so a `deal-index.json` here could only have been fabricated, and a fabricated empty dataset is not implementation. Chunking is instead exercised on the five date-grained datasets that warrant it — `inventory-health`, `inventory-aging`, `days-supply`, `lead-funnel`, `lead-response` — at store × month, 18 partitions each, every one inside the 256 KB ceiling. Generated dataset files are columnar (a re-encoding preserving every value exactly), which saved 5 MB against mirroring the export's row-object shape. Full rationale in `DATA_CONTRACT.md §14`. |
 
 ### `DASH.1-03` — Boundary and reconciliation guards
 
@@ -160,14 +162,15 @@ program. Evidence: the diagram files and index diffs in this change.
 | Purpose | The ADR-0013 controls exist as failing tests before the first route ships. |
 | Dependencies | `DASH.1-01`, `DASH.1-02` |
 | Complexity | Medium |
-| Status | Planned |
+| Status | **Implemented** |
 | Architecture references | ADR-0013 Compliance |
 | Data-grain impact | None |
 | Acceptance criteria | A portfolio unit test fails if any file under `portfolio/src` references `raw.`, `staging.`, `warehouse.`, or `audit.`; a cross-layer test asserts export totals equal reporting-view totals for every exported dataset (development profile fixture); the client-safe manifest excludes connection detail by schema. |
 | Required tests | `portfolio/tests/unit/dashboard-boundaries.test.ts`; `tests/integration/test_dashboard_export.py::test_export_totals_match_reporting`. |
 | Documentation updates | `TEST_STRATEGY.md` as-built notes. |
 | Explicit non-goals | UI assertions (arrive with `DASH.2`). |
-| Completion evidence | Named tests exist and have been observed failing on a seeded defect (mutated export) before passing. |
+| Completion evidence | `portfolio/tests/unit/dashboard-boundaries.test.ts` (34 tests) and `tests/integration/test_dashboard_export.py::test_export_totals_match_reporting`. The seeded defect was exercised: a one-cent mutation to one `front_end_gross` value is caught by the file hash, by reconciliation after the hash is restamped, and by comparison against the database (`TestSeededDefect`, three tests). Eighteen further corrupted-export cases are each driven through the real portfolio generator and each observed failing. |
+| As-built notes | The `portfolio/src` schema-reference rule is enforced over the whole tree except three named prose files — `lib/content.ts`, `content/architecture.ts`, `app/ui-lab/page.tsx` — which exist to *describe* the warehouse: `/data-model` names `warehouse.fact_vehicle_sale` because that is the table it documents. Each exempted file is separately asserted to construct no query, import no client and carry no connection string, and the **literal** substring rule is applied with no exemption to the dashboard lane's own files. Reasoning recorded in `TEST_STRATEGY.md §3.2`. |
 
 ---
 
@@ -181,6 +184,7 @@ program. Evidence: the diagram files and index diffs in this change.
 | **Blocking gate** | None |
 | **Architecture references** | ADR-0013 conditions 11–14; `INFORMATION_ARCHITECTURE.md` |
 | **Status** | Planned |
+| **Inherited from `DASH.1`** | The page-shaped payloads `DATA_CONTRACT.md §8` originally listed (`executive-summary.json`, `store-scoreboard.json`, `sales-gross.json`, `inventory-health.json`) were deliberately not created by `DASH.1`, because a page payload is a presentation decision owned by its route and preaggregating KPI values in TypeScript would violate ADR-0013 condition 2. `DASH.2-03` builds the executive payload from the exported datasets that already exist, and `DASH.2-04` adds the trust panel that merges the real ADR-0008 Power BI state — the export lane carries no Power BI field, by design. |
 
 ### `DASH.2-01` — Shell, navigation, and disclosure
 

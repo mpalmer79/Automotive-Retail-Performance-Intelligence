@@ -18,6 +18,7 @@
       "sql/**",
       "data/reference/inventory/**",
       "data/sample/dim_dealership.csv",
+      "data/dashboard/**",
       "src/arpi/inventory/spec.py",
       "scripts/check_secrets.py",
       "railway.json",

@@ -137,6 +137,16 @@ line always meant: a duplicate analytics implementation that recomputes the KPIs
 the Power BI deliverable for analytical authority. A console that forks a KPI formula or opens a
 database connection from the browser violates this architecture regardless of ADR-0013.
 
+**Built so far:** delivery increment `DASH.1` has delivered the console's **data lane only** — a
+governed export from the `reporting` schema (`scripts/export_dashboard_dataset.py`, running as
+`arpi_reporter` over an explicit view allowlist), the committed `data/dashboard/` artifacts with their
+manifest, hashes, query hashes, row counts and reconciliation totals, and the portfolio transform that
+validates them into typed client-safe artifacts. **No `/dashboard` route, component, chart or
+navigation entry exists**, nothing under `portfolio/src` imports the generated data, and tests assert
+both. The contract is [`docs/dashboard/DATA_CONTRACT.md`](docs/dashboard/DATA_CONTRACT.md); the
+lineage is `reporting` views → root export → committed JSON → portfolio transform → generated
+artifacts, with no database in the build and none at runtime.
+
 **The Fabric exclusion is narrower than it reads, and the distinction is load-bearing.** ARPI's warehouse is PostgreSQL and stays PostgreSQL; no analytical storage or transformation moves into Fabric. But the **Fabric Service** is one of the two accepted real-engine validation paths for the semantic model under [ADR-0008](docs/architecture-decisions/ADR-0008-real-engine-validation-paths.md), of equal standing with Power BI Desktop, and it is the path this project can reach without Windows. Deploying the committed TMDL to a Fabric workspace, refreshing it against the `reporting` schema and evaluating the governed DAX is **in scope**. Building analytics *in* Fabric is not. An unqualified exclusion fails `scripts/check_project_capabilities.py`, because this list went on excluding Fabric outright after ADR-0008 had made it a required path, and nothing failed.
 
 A public case-study page may be added after the analytical system is complete, but it must not duplicate the Power BI report.

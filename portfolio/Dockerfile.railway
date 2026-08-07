@@ -187,6 +187,19 @@ COPY data/sample/dim_dealership.csv ./data/sample/dim_dealership.csv
 # pre-sanitization column set one `docker pull` away.
 COPY data/reference/inventory ./data/reference/inventory
 
+# --- Dashboard evidence, read by generate-dashboard-data.ts ----------------
+#
+# The governed dashboard export: JSON produced from the PostgreSQL `reporting`
+# views by `scripts/export_dashboard_dataset.py` running as `arpi_reporter`
+# (ADR-0013, delivery increment DASH.1). Copied because the transformer validates
+# every hash, row count and reconciliation total in it before the build proceeds.
+#
+# NO DATABASE IS INVOLVED IN THIS BUILD. That is the point of committing the
+# export: the image is built from files, and the browser has never had a
+# connection to lose. Nothing here reaches the runtime stage either — what ships
+# is the transformed tree inside `.next`.
+COPY data/dashboard ./data/dashboard
+
 # --- Website source --------------------------------------------------------
 COPY portfolio ./portfolio
 
@@ -208,6 +221,15 @@ RUN npm run manifest:check
 # regenerates the three artefacts from the workbooks copied above and fails if
 # they differ from the committed ones by a byte.
 RUN npm run inventory:check
+
+# THE DASHBOARD FRESHNESS GATE, for the same reason again.
+#
+# A stale generated dashboard tree would deploy a console whose figures no longer
+# match the export they claim to come from. This revalidates the export copied
+# above — schema, contract fingerprint, every file hash, every row count, every
+# business key, every referential link and every reconciliation total — and then
+# fails if the committed artefacts differ from what it would write by a byte.
+RUN npm run dashboard:check
 
 # `next build` — types are checked as part of it (`ignoreBuildErrors: false`).
 RUN npm run build

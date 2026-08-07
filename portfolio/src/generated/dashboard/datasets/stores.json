@@ -1,0 +1,10 @@
+{
+  "dataset": "stores",
+  "rowCount": 3,
+  "columns": ["dealership_id","store_name","store_short_name","store_type","franchise_brand","brand_label","is_franchise_store","city","state_code","market_region","location_label","opened_date","is_active","version_effective_date"],
+  "rows": [
+    ["GSA-001","Granite Chevrolet of Nashua","Granite Chevrolet","Franchise New and Used","Chevrolet","Chevrolet",true,"Nashua","NH","Southern New Hampshire","Nashua, NH","2009-04-06",true,"2009-04-06"],
+    ["GSA-002","Granite Subaru of Manchester","Granite Subaru","Franchise New and Used","Subaru","Subaru",true,"Manchester","NH","Southern New Hampshire","Manchester, NH","2013-08-19",true,"2013-08-19"],
+    ["GSA-003","Granite Pre-Owned Center of Merrimack","Granite Pre-Owned","Independent Used",null,"Independent",false,"Merrimack","NH","Southern New Hampshire","Merrimack, NH","2017-03-13",true,"2017-03-13"]
+  ]
+}
