@@ -730,12 +730,12 @@ which means it meets more absences than anything else. The §12.6 rule — say w
 missing and why — needed a vocabulary rather than a habit, because four different things
 were all being written as "N/A" and they are not the same thing.
 
-| Word | Means | Example on the page |
-|---|---|---|
-| **Not applicable** | Structurally absent. The thing cannot exist for this deal. | A used unit has no MSRP; a cash deal has no lender because nothing was financed |
-| **Not modelled** | Out of scope. The thing exists in the world and not in this warehouse. | Trade payoff and equity; APR, term and payment; F&I product itemization |
-| **Unattributed** | A role that could have been filled and was not. | A deal with no BDC employee recorded |
-| **No linked lead** | Walk-in business. A real outcome, not missing data. | A deal the store earned without a CRM lead behind it |
+| Word               | Means                                                                  | Example on the page                                                             |
+| ------------------ | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| **Not applicable** | Structurally absent. The thing cannot exist for this deal.             | A used unit has no MSRP; a cash deal has no lender because nothing was financed |
+| **Not modelled**   | Out of scope. The thing exists in the world and not in this warehouse. | Trade payoff and equity; APR, term and payment; F&I product itemization         |
+| **Unattributed**   | A role that could have been filled and was not.                        | A deal with no BDC employee recorded                                            |
+| **No linked lead** | Walk-in business. A real outcome, not missing data.                    | A deal the store earned without a CRM lead behind it                            |
 
 **A zero is a real zero and nothing else.** A cash deal shows `$0.00` financed, because
 that is a measured fact about the transaction. An absent MSRP shows the words, not `$0.00`,

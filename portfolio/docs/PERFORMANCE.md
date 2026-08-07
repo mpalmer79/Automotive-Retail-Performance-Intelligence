@@ -528,11 +528,11 @@ importer set in both directions. Nothing is read from the file system at runtime
 
 Measured the same way, on the same day, against the same production build.
 
-| Route                          |     HTML |  Route JS |    Total |
-| ------------------------------ | -------: | --------: | -------: |
-| `/dashboard/deals/SLE-…`       |  40.4 kB |  161.9 kB | 332.2 kB |
-| `/dashboard/deals`             |  58.5 kB |  164.0 kB | 352.5 kB |
-| `/case-study` (shell only)     |  26.4 kB |  162.3 kB | 318.6 kB |
+| Route                      |    HTML | Route JS |    Total |
+| -------------------------- | ------: | -------: | -------: |
+| `/dashboard/deals/SLE-…`   | 40.4 kB | 161.9 kB | 332.2 kB |
+| `/dashboard/deals`         | 58.5 kB | 164.0 kB | 352.5 kB |
+| `/case-study` (shell only) | 26.4 kB | 162.3 kB | 318.6 kB |
 
 **The densest page in the console carries less script than the empty shell.** 161.9 kB
 against `/case-study`'s 162.3 kB, and the difference is not noise: the Deal Jacket has no
@@ -550,14 +550,14 @@ deal id in the table became an anchor to its jacket, which is 25 links and their
 The increment required the choice between full static generation and server rendering to
 be made from measurement.
 
-| | Full static generation | Server rendering (chosen) |
-|---|---|---|
-| Build output | 650 documents × ~190 kB uncompressed ≈ **120 MB** in `.next` and in the deployment image | none |
-| Runtime data | none | **443,448 B** of partitions, static imports, resolved by the output tracer |
-| Build time | grows with the deal population, every increment that grows it pays again | flat |
-| Time to first byte | file read | **11–17 ms**, measured over twelve deals across all three stores |
-| Complete without JavaScript | yes | yes |
-| ADR-0013 | satisfied — no API, no runtime database | satisfied — no API, no runtime database |
+|                             | Full static generation                                                                   | Server rendering (chosen)                                                  |
+| --------------------------- | ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Build output                | 650 documents × ~190 kB uncompressed ≈ **120 MB** in `.next` and in the deployment image | none                                                                       |
+| Runtime data                | none                                                                                     | **443,448 B** of partitions, static imports, resolved by the output tracer |
+| Build time                  | grows with the deal population, every increment that grows it pays again                 | flat                                                                       |
+| Time to first byte          | file read                                                                                | **11–17 ms**, measured over twelve deals across all three stores           |
+| Complete without JavaScript | yes                                                                                      | yes                                                                        |
+| ADR-0013                    | satisfied — no API, no runtime database                                                  | satisfied — no API, no runtime database                                    |
 
 443 kB against 120 MB is not a close call. Both options satisfy the architecture, so the
 measurement is what decides, and the property the choice was not allowed to cost — a
