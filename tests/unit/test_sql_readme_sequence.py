@@ -60,7 +60,7 @@ _ROW = re.compile("^\\|\\s*(\\d+(?:[-\u2013]\\d+)?)\\s*\\|(.+?)\\|", re.MULTILIN
 #: -- so both forms must match, and the bare one is resolved against the first's directory.
 _PATH = re.compile(r"`([0-9A-Za-z_]+(?:/[0-9A-Za-z_]+)?\.sql)`")
 
-#: "The sequence is **121 files** in total".
+#: "The sequence is **124 files** in total".
 _TOTAL = re.compile(r"The sequence is \*\*(\d+) files\*\* in total")
 
 

@@ -115,10 +115,11 @@ TABLE_PRIVILEGES: tuple[str, ...] = (
 #: "at least 28" to accommodate a second lane would have thrown away the half that
 #: catches an object nobody declared.
 #:
-#: The two numbers are held apart rather than summed into one literal because they mean
+#: The three numbers are held apart rather than summed into one literal because they mean
 #: different things. Twenty-eight is what the SQL baseline and the Power BI semantic model
 #: were measured against; six is the sanitized public listing lane (ADR-0011), which the
-#: semantic model does not read. A reader who saw only 34 could not tell which had moved.
+#: semantic model does not read; three is the dashboard program's own lane, which it does
+#: not read either. A reader who saw only 37 could not tell which had moved.
 #:
 #: They are duplicated from `arpi.constants` because this script imports only the standard
 #: library -- it runs against a database from a bare interpreter. `tests/unit/
@@ -126,8 +127,11 @@ TABLE_PRIVILEGES: tuple[str, ...] = (
 #: so the duplication cannot drift.
 EXPECTED_MVP_REPORTING_VIEW_COUNT: int = 28
 EXPECTED_LISTING_REPORTING_VIEW_COUNT: int = 6
+EXPECTED_DASHBOARD_REPORTING_VIEW_COUNT: int = 3
 EXPECTED_REPORTING_VIEW_COUNT: int = (
-    EXPECTED_MVP_REPORTING_VIEW_COUNT + EXPECTED_LISTING_REPORTING_VIEW_COUNT
+    EXPECTED_MVP_REPORTING_VIEW_COUNT
+    + EXPECTED_LISTING_REPORTING_VIEW_COUNT
+    + EXPECTED_DASHBOARD_REPORTING_VIEW_COUNT
 )
 
 #: The eight conformed dimensions. Each must exist and hold at least one row.
@@ -356,7 +360,8 @@ def check_reporting_view_count(cursor: Any) -> CheckOutcome:
                     "reporting-view-count",
                     f"expected exactly {EXPECTED_REPORTING_VIEW_COUNT} views "
                     f"({EXPECTED_MVP_REPORTING_VIEW_COUNT} MVP + "
-                    f"{EXPECTED_LISTING_REPORTING_VIEW_COUNT} sanitized listing lane), "
+                    f"{EXPECTED_LISTING_REPORTING_VIEW_COUNT} sanitized listing lane + "
+                    f"{EXPECTED_DASHBOARD_REPORTING_VIEW_COUNT} dashboard program), "
                     f"found {observed}. Fewer means the ordered sequence did not finish; "
                     "more means an object was created outside sql/.",
                 )
@@ -706,7 +711,8 @@ CHECKS: tuple[Check, ...] = (
         "reporting-view-count",
         f"exactly {EXPECTED_REPORTING_VIEW_COUNT} views in reporting "
         f"({EXPECTED_MVP_REPORTING_VIEW_COUNT} MVP + "
-        f"{EXPECTED_LISTING_REPORTING_VIEW_COUNT} listing lane)",
+        f"{EXPECTED_LISTING_REPORTING_VIEW_COUNT} listing lane + "
+        f"{EXPECTED_DASHBOARD_REPORTING_VIEW_COUNT} dashboard program)",
         check_reporting_view_count,
     ),
     Check(

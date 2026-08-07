@@ -694,6 +694,35 @@ content rules that follow from that are different from the documentation routes'
   them exist and can show their evidence, because an action is a recommendation and
   Gate 2 does not permit one.
 
+### 12.7 What `DASH.3` added to those rules
+
+The two new console routes follow §12.6 unchanged. Three rules become sharper because
+they now have something to bite on.
+
+- **An attribution is not a cause, and the copy says which it is.** The gross change
+  bridge is the first thing on this site that assigns a movement to a component, and
+  the approved verbs are "the bridge attributes", "the documented decomposition
+  assigns", "under the sequential bridge". `dashboard-sales-gross.spec.ts` asserts the
+  bridge section contains none of "caused by", "was caused", "due to the", "drove the"
+  or "responsible for". The page also states, in its own words, that it does not know
+  why volume or rate moved and implicates no person, department, inventory position or
+  marketing spend.
+- **A measure the export does not publish is named as absent, not approximated.** The
+  sale-type mix shows unit counts and prints "Not published by sale type" in the gross
+  column, because apportioning the retail total across sale types would invent a
+  measure no reporting view owns. The same rule produces "No eligible denominator" for
+  a rate whose denominator is zero and "Not applicable" for the MSRP discount at a
+  store that sells no unit carrying an MSRP.
+- **A rounding residual is shown, never absorbed.** The bridge's components are exact
+  numerators divided for display, and three rounded amounts need not sum to a rounded
+  total. When they do not, a "Rounding" line carries the difference — at most a cent or
+  two — because silently adjusting one component to make a column add up would misstate
+  that component.
+
+One naming rule came out of the data rather than the design: **the console does not call
+`vehicle_code` a stock number.** The warehouse has no stock number, and captioning the
+vehicle identifier as one would invent a dealership artefact the data does not contain.
+
 ---
 
 ## 14. The dashboard data lane (`DASH.1`)

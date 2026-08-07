@@ -294,25 +294,39 @@ describe('the frontend holds no credential and can open no connection', () => {
 /* No dashboard route or feature UI exists yet                                  */
 /* -------------------------------------------------------------------------- */
 
-describe('DASH.2 ships exactly one console route', () => {
+describe('the console ships exactly the routes its increments have delivered', () => {
   /*
-   * THIS BLOCK CHANGED WITH `DASH.2`, AND THAT IS THE MECHANISM WORKING.
+   * THIS BLOCK CHANGES WITH EACH ROUTE INCREMENT, AND THAT IS THE MECHANISM WORKING.
    *
-   * At `DASH.1` these three assertions read "no route", "no component directory",
-   * "no navigation entry" - written that way deliberately, so that the first route
-   * would arrive in the same diff as the expectation change and a reviewer would
-   * see both. This is that diff. What replaces them is not a weaker check: it is
-   * the same guard aimed at the new boundary, which is that the console has ONE
-   * route and the nine others in `INFORMATION_ARCHITECTURE.md` §1 do not exist.
+   * At `DASH.1` these assertions read "no route", "no component directory", "no
+   * navigation entry" - written that way deliberately, so that the first route would
+   * arrive in the same diff as the expectation change and a reviewer would see both.
+   * `DASH.2` re-aimed them at one route; `DASH.3` re-aims them at three.
+   *
+   * What is guarded is unchanged: the console has EXACTLY the routes its increments
+   * have delivered, and the seven others in `INFORMATION_ARCHITECTURE.md` §1 do not
+   * exist. A route that appeared without an increment fails here.
+   *
+   * `deals/[saleId]` is deliberately absent: the Deal Jacket is `DASH.4`.
    */
-  it('has the /dashboard route and no other console route', () => {
+  it('has exactly the delivered console routes and no others', () => {
     const root = join(SRC, 'app/dashboard')
     expect(existsSync(root)).toBe(true)
     expect(existsSync(join(root, 'page.tsx'))).toBe(true)
     const nested = readdirSync(root, { withFileTypes: true })
       .filter((entry) => entry.isDirectory())
       .map((entry) => entry.name)
-    expect(nested, 'DASH.3 onward own the other console routes').toEqual([])
+      .sort()
+    expect(nested, 'DASH.4 onward own the other console routes').toEqual([
+      'deals',
+      'sales-gross',
+    ])
+    for (const section of nested) {
+      expect(
+        existsSync(join(root, section, 'page.tsx')),
+        `${section} is a route directory without a page`
+      ).toBe(true)
+    }
   })
 
   it('has a dashboard component directory whose components are server-first', () => {
@@ -379,19 +393,68 @@ describe('the generated dashboard data stays out of the existing route bundles',
    */
   const importers = files.filter((file) => IMPORTS_GENERATED_DASHBOARD.test(file.text))
 
-  it('is imported by exactly one module, which is the server data layer', () => {
+  it('is imported only by the declared server data modules', () => {
     /*
      * `DASH.1` asserted zero importers so that the first one would arrive in a diff a
-     * reviewer could see. `DASH.2` adds it, and the guard becomes the stronger one:
-     * the generated tree has exactly ONE door. `lib/dashboard/data.ts` reads the
-     * whole-file datasets and the manifest, `lib/dashboard/chunks.ts` holds the
-     * static partition table, and no component, no route and no other library
-     * module reaches past them.
+     * reviewer could see. `DASH.2` made it two: one door for whole datasets, one for
+     * the partition table.
+     *
+     * `DASH.3` makes it four, and the two additions are deliberate route SCOPING
+     * rather than a relaxation. An import is a graph edge, and a module that imports a
+     * dataset puts it into the server graph of every route that reads that module. So:
+     *
+     *   lib/dashboard/data.ts          shared helpers + the six Executive Overview sets
+     *   lib/dashboard/chunks.ts        the five date-grained partition tables
+     *   lib/dashboard/sales-gross-data.ts   the 95 kB trend set and the bridge, which
+     *                                       only /dashboard/sales-gross reads
+     *   lib/dashboard/deal-chunks.ts   the 18 deal partitions, which only the deal
+     *                                  routes read
+     *
+     * Folding the last two into `data.ts` would have put deal-level records and a
+     * 95 kB trend into `/dashboard`'s graph, which has no use for either. Four narrow
+     * doors is a stronger boundary than two wide ones, and the list is exhaustive:
+     * a fifth importer fails here.
      */
     expect(
       importers.map((file) => file.relative).sort(),
-      'the generated dashboard data has exactly one door'
-    ).toEqual(['lib/dashboard/chunks.ts', 'lib/dashboard/data.ts'])
+      'the generated dashboard data has exactly four declared doors'
+    ).toEqual([
+      'lib/dashboard/chunks.ts',
+      'lib/dashboard/data.ts',
+      'lib/dashboard/deal-chunks.ts',
+      'lib/dashboard/sales-gross-data.ts',
+    ])
+  })
+
+  it('keeps the deal partitions out of the Executive Overview route graph', () => {
+    /*
+     * The reason `deal-chunks.ts` is its own module, asserted rather than intended.
+     * `/dashboard` must not carry 221 kB of transaction records to render an overview
+     * that shows none, and the only thing that actually prevents it is that the
+     * overview's modules do not import the deal table.
+     */
+    const dealChunkImporters = files
+      .filter((file) => /from '[^']*deal-chunks'/.test(file.text))
+      .map((file) => file.relative)
+      .sort()
+    /*
+     * Two importers, both view models. The routes do not reach the partition table
+     * directly: they call a view model, which is what keeps the read path and its
+     * filtering in one testable place.
+     *
+     * `sales-gross.ts` is on this list because the deal-level gross distribution is
+     * genuinely deal-grain data -- a distribution of transactions cannot be computed
+     * from a store-day aggregate.
+     */
+    expect(dealChunkImporters).toEqual([
+      'lib/dashboard/deals.ts',
+      'lib/dashboard/sales-gross.ts',
+    ])
+    const overview = readFileSync(join(SRC, 'app/dashboard/page.tsx'), 'utf8')
+    expect(overview).not.toMatch(/deal-chunks/)
+    expect(readFileSync(join(SRC, 'lib/dashboard/executive.ts'), 'utf8')).not.toMatch(
+      /deal-chunks/
+    )
   })
 
   it('is never imported from a client component, if it is ever imported at all', () => {
@@ -451,10 +514,52 @@ describe('ADR-0013 condition 2: no frontend redefines a KPI', () => {
         )
       )
       .map((file) => file.relative)
+      .sort()
+    /*
+     * Three view models, and the list is exhaustive. Each is a VIEW MODEL: it sums
+     * additive exported columns and divides one summed column by another, which is
+     * the operation the reporting layer already publishes numerator and denominator
+     * for. None of them defines what a measure means.
+     *
+     * That claim is not left to this test. `dashboard-executive.test.tsx` and
+     * `dashboard-sales-gross.test.tsx` each reconcile the rendered figures against the
+     * export manifest's own published totals, character for character, so a module
+     * that had quietly invented a formula would fail there with a wrong number rather
+     * than pass here on a filename.
+     *
+     * `visuals.tsx` is NOT on this list and must not be: a chart primitive receives
+     * resolved values and turns them into geometry.
+     */
     expect(
       offenders,
-      'exact arithmetic outside decimal.ts and the governed selector registry'
-    ).toEqual(['lib/dashboard/executive.ts'])
+      'exact arithmetic outside decimal.ts, the selector registry and the declared view models'
+    ).toEqual([
+      'lib/dashboard/deals.ts',
+      'lib/dashboard/executive.ts',
+      'lib/dashboard/sales-gross.ts',
+    ])
+  })
+
+  it('keeps arithmetic out of the chart primitives and the section components', () => {
+    /*
+     * A chart may compute a bar width. It may not compute a figure. The primitives take
+     * already-resolved values and an already-formatted display string, and the only
+     * numeric function they are allowed to reach for is the one that exists to make
+     * geometry out of an exact decimal.
+     */
+    const componentFiles = files.filter(
+      (file) =>
+        file.relative.startsWith('components/dashboard/') ||
+        file.relative.startsWith('app/dashboard/')
+    )
+    const offenders = componentFiles
+      .filter((file) =>
+        /\b(addExact|subtractExact|divideExact|sumExact|multiplyByInteger|roundExact)\s*\(/.test(
+          stripComments(file.text)
+        )
+      )
+      .map((file) => file.relative)
+    expect(offenders, 'a component performed exact arithmetic').toEqual([])
   })
 
   it('confines the view model to summing one exported count column', () => {

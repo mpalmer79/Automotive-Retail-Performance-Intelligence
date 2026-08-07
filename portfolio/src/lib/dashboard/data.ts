@@ -81,6 +81,22 @@ export function datasetManifest(name: string): DashboardClientDataset {
  */
 const rowCache = new Map<string, readonly DashboardRow[]>()
 
+/**
+ * Rehydrate a columnar dataset file, memoized by key.
+ *
+ * Exported so a ROUTE-SCOPED data module can decode its own generated files without
+ * importing them through this one. That distinction matters: an import here is an
+ * edge in the graph of every route that reads this module, so a dataset only one
+ * route needs is imported by a module only that route reads, and shares this
+ * decoder rather than duplicating it. See `deal-chunks.ts` and `sales-gross-data.ts`.
+ */
+export function decodeDataset(
+  cacheKey: string,
+  file: DashboardDatasetFile
+): readonly DashboardRow[] {
+  return toRows(cacheKey, file)
+}
+
 function toRows(cacheKey: string, file: DashboardDatasetFile): readonly DashboardRow[] {
   const cached = rowCache.get(cacheKey)
   if (cached !== undefined) return cached

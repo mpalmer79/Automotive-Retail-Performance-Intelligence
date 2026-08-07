@@ -70,6 +70,9 @@ one commit is a check failure.
 | `reporting.vw_appointment_funnel` | `appointment-funnel` | Store × date |
 | `reporting.vw_lead_response` | `lead-response` | Store × source × date |
 | `reporting.vw_marketing_performance` | `marketing-performance` | Store × month × source × campaign |
+| `reporting.vw_sales_gross_trend` | `sales-gross-trend` | Store × sale date (`DASH.3`) |
+| `reporting.vw_gross_change_bridge` | `gross-change-bridge` | Store × month pair × bridge component (`DASH.3`) |
+| `reporting.vw_deal_explorer` | `deal-explorer` | One finalized transaction (`DASH.3`) |
 | `reporting.vw_reconciliation_status` | `reconciliation-status` | Reconciliation, for the export's own run |
 | `reporting.vw_pipeline_run_summary` | `pipeline-run` | The export's own run |
 
@@ -81,11 +84,25 @@ carry no measure. They are required because §4 forbids exporting a warehouse su
 could only publish meaningless integers. Both pass the prohibited-name tripwire; both name only
 fictional sources and vendors.
 
-Later increments extend the allowlist with their views (`vw_vehicle_sales`-derived
-`vw_deal_explorer`/`vw_deal_jacket` at `DASH.3`/`DASH.4`; targets at `DASH.5`; F&I at
-`DASH.6`/`DASH.7`; accounting at `DASH.8`; employees at `DASH.11`; actions at `DASH.12`). Each
-extension lands as a diff to this table **and** to `arpi.dashboard.contract` in the same PR as the
-exporter change; the paired unit test refuses a change to only one of them.
+**Three views were added by `DASH.3`**, through the same mechanism. None introduces a new fact and
+none defines a new measure:
+
+- `vw_sales_gross_trend` publishes volume and gross on ONE row at store × sale date, with their
+  condition and sale-type components as additive columns rather than as extra rows. It exists
+  because joining `vw_sales_summary` to `vw_gross_summary` and splitting them by condition in
+  TypeScript is precisely the second arithmetic engine ADR-0013 condition 2 forbids. The
+  integration suite asserts it agrees with both existing views on every store-day.
+- `vw_gross_change_bridge` publishes the volume, front-PVR and back-PVR decomposition of
+  month-over-month total-gross change, as EXACT NUMERATORS over a shared denominator. It never
+  divides, so the reconciliation identity holds to the last digit rather than to the cent. §12's
+  numerator-and-denominator rule is the reason the shape is what it is.
+- `vw_deal_explorer` is the project's first deal-grain export: one row per finalized transaction,
+  public-safe and compact, with no cost structure and no customer attribute of any kind.
+
+Later increments extend the allowlist with their views (`vw_deal_jacket` at `DASH.4`; targets at
+`DASH.5`; F&I at `DASH.6`/`DASH.7`; accounting at `DASH.8`; employees at `DASH.11`; actions at
+`DASH.12`). Each extension lands as a diff to this table **and** to `arpi.dashboard.contract` in the
+same PR as the exporter change; the paired unit test refuses a change to only one of them.
 
 **Never exported:** any `raw`/`staging`/`warehouse`/`audit` object (the exporter cannot see them, and
 its own output-byte scan refuses even a mention of one); `vw_customer` (even banded — no
@@ -322,9 +339,21 @@ asserts zero importers today, so the first one arrives in the same diff as the e
   the transformer asserts the partition row counts sum to the dataset row count.
 - The chunk index in the client manifest carries every key with its row count and measured bytes, so
   a missing partition is a check failure rather than an empty page.
-- Deal-grain chunking (`deal-index.json`, `deal-chunks/`) belongs to `DASH.3`/`DASH.4`, which own the
-  deal experiences and the `vw_deal_explorer`/`vw_deal_jacket` views that would source it. No
-  deal-grain view exists in this increment's allowlist, so no such file is created — see §14.
+- **Deal-grain chunking is as-built at `DASH.3`.** `deal-explorer` partitions by store × SALE month
+  (never delivery month), which is the first date column the dataset declares and therefore the one
+  the transformer partitions on. 18 partitions, 650 rows, 221,386 bytes in total, largest partition
+  17,206 bytes — an order of magnitude inside the 256 KB ceiling.
+
+  The planned `deal-index.json` + `deal-chunks/` split was NOT built. It would have produced a
+  second, smaller projection of the same rows, and the measurement says it buys nothing: the whole
+  deal population is 538 kB in the root export and 221 kB generated, so an index file would add a
+  file to keep in sync in order to avoid reading files that are already small. The Deal Explorer
+  reads only the partitions the store and period selection covers.
+
+- The deal partitions live in their OWN module, `lib/dashboard/deal-chunks.ts`, rather than in
+  `lib/dashboard/chunks.ts`. An import is a graph edge, so putting them in the shared table would
+  place every transaction record into the server graph of `/dashboard`, which shows none. The
+  boundary suite asserts the importer set in both directions.
 
 ## 10. File-size constraints
 
@@ -335,11 +364,11 @@ measured by `python scripts/export_dashboard_dataset.py --check --sizes` and
 | Artifact | Ceiling | Measured (development profile) |
 |---|---|---|
 | Any single committed export file | **3 MB** | 2,269,345 B — `lead-response.json`, 4,099 rows |
-| Total committed `data/dashboard/` | 20 MB | 7,660,811 B across 18 files, 18,148 rows |
-| Any single generated chunk | 256 KB | 47,325 B — `datasets/lead-funnel/GSA-001/2025-07.json` |
-| Any single generated whole-dataset file | 256 KB (same ceiling) | 78,932 B — `datasets/marketing-performance.json` |
+| Total committed `data/dashboard/` | 20 MB | 8,604,340 B across 21 files, 19,209 rows (`DASH.3`) |
+| Any single generated chunk | 256 KB | 47,325 B — `datasets/lead-funnel/GSA-001/2025-07.json`; largest deal partition 17,206 B |
+| Any single generated whole-dataset file | 256 KB (same ceiling) | 95,189 B — `datasets/sales-gross-trend.json` (`DASH.3`) |
 | Client-safe manifest | not separately budgeted | 83,452 B (the largest generated file) |
-| Total generated `portfolio/src/generated/dashboard/` | not yet budgeted | 2,387,403 B across 103 files (12 whole datasets, 90 chunks, 1 manifest) |
+| Total generated `portfolio/src/generated/dashboard/` | not yet budgeted | 2,738,380 B across 123 files (14 whole datasets, 108 chunks, 1 manifest) (`DASH.3`) |
 | Any page's initial data payload | measured in `DASH.2-04`, budgeted in `DASH.13` | no page exists yet |
 
 Every figure above was produced by `python scripts/export_dashboard_dataset.py --check --sizes` and

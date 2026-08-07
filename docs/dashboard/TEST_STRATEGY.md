@@ -243,6 +243,26 @@ routes because they operate on source and on every registered route. `DASH.13-01
 dashboard routes to the adversarial screenshot sweep (`review:screenshots`), reviewed by a person
 per the established VISUAL_REVIEW.md process; no committed baseline images.
 
+## 10.1 As-built: what `DASH.3` added
+
+| Suite | File | What it proves |
+|---|---|---|
+| SQL integration | `tests/integration/test_dashboard_reporting_views.py` (52 tests) | Grain, documentation and reporter access on all three views; the trend view agrees with `vw_sales_summary` and `vw_gross_summary` on every store-day; the bridge reconciles **exactly**; the explorer is one row per sale with no fan-out and no prohibited column |
+| Seeded defect | same file | Adding one cent to a single bridge component breaks the reconciliation. Without it an identity test that had become vacuous would look exactly like a passing one |
+| TypeScript unit | `dashboard-sales-gross.test.tsx` (27) | Every rendered figure reconciles to the export manifest's own published totals, character for character; a rate is recomputed rather than averaged, asserted by showing the two differ; the condition split adds back to the retail total |
+| TypeScript unit | `dashboard-deals.test.tsx` (29) | Every deal is visited exactly once across all pages **under every sort key and direction** — the assertion that catches a non-total order; search determinism; parameter parsing; the privacy boundary, checked against the shipped chunk rather than the view model |
+| Component | `dashboard-visuals.test.tsx` (15) | Every value a bar encodes is also text; the data table is in the document while the disclosure is closed; direction is a glyph and a sign, never colour alone; the primitives ship no client JavaScript |
+| End to end | `dashboard-sales-gross.spec.ts` (27) | The figures reach the screen; the bridge's copy stays non-causal in the rendered document; charts keep their data without JavaScript; a filter the route cannot apply says so |
+| End to end | `dashboard-deals.spec.ts` (34) | Sorting and paging are real links that work with scripting disabled; browser history is the undo stack; exactly one responsive representation is in the accessibility tree; **no row links to the Deal Jacket route `DASH.4` has not delivered** |
+
+Two assertions were deliberately made narrower than first written, and the reason is recorded in
+both files. A page-wide scan for causal words flagged "because the export publishes both", ordinary
+prose about the data model, so the check is scoped to the bridge section. A page-wide scan for
+customer fields flagged the synthetic lead source "Customer Referral", so the check became
+structural: no column NAMES a customer attribute, and no cell holds a value shaped like an email,
+a telephone number or a street address. Both are stronger than what they replaced; a check that
+cries wolf teaches the next reader to silence it.
+
 ## 11. Power BI alignment
 
 **`DASH.2` changed no TMDL, no `powerbi/` file and no validation evidence either.** The trust panel it

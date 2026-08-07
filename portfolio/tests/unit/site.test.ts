@@ -99,6 +99,11 @@ describe('the thirteen primary routes exist and the lab is not one of them', () 
     '/about',
     '/case-study',
     '/dashboard',
+    // The console's own sections, added by `DASH.3`. Indexed and real, but not
+    // header destinations: the header carries `Dashboard`, and `DashboardNav`
+    // carries what is inside it.
+    '/dashboard/sales-gross',
+    '/dashboard/deals',
   ]
 
   /** Routes that exist and are indexed but are not navigation destinations. */
@@ -107,15 +112,20 @@ describe('the thirteen primary routes exist and the lab is not one of them', () 
     '/dealerships/granite-chevrolet',
     '/dealerships/granite-subaru',
     '/dealerships/granite-pre-owned',
+    // Reached from the console's own sub-navigation, not from the header. Putting
+    // them in `inPrimaryNav` would restate the console three times in the footer
+    // index and push the header past MAX_PRIMARY_NAV_ITEMS.
+    '/dashboard/sales-gross',
+    '/dashboard/deals',
   ]
 
-  it('declares exactly the fourteen primary routes plus the lab', () => {
+  it('declares exactly the sixteen primary routes plus the lab', () => {
     expect(ALL_ROUTES.map((route) => route.href).sort()).toEqual(
       [...PRIMARY, '/ui-lab'].sort()
     )
   })
 
-  it("keeps ten routes reachable from the site's own navigation", () => {
+  it("keeps ten routes reachable from the site's own header navigation", () => {
     // The case study is deliberately absent: it is locked, and it is reached from
     // the footer, the status page and the home page's closing section rather than
     // from a navigation surface.

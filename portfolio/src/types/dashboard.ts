@@ -204,6 +204,28 @@ export const DASHBOARD_DATASETS = [
     chunked: false,
   },
   {
+    name: 'sales-gross-trend',
+    businessKey: ['dealership_id', 'sale_date'],
+    dateBasis: 'sale date',
+    chunked: false,
+  },
+  {
+    name: 'gross-change-bridge',
+    businessKey: ['dealership_id', 'month_start_date', 'component_code'],
+    dateBasis: 'sale date, aggregated to calendar month',
+    chunked: false,
+  },
+  {
+    // The first chunked dataset whose business key is not a date. It partitions by
+    // store and SALE month, which is `sale_date` - the first date column the dataset
+    // declares, and the one the transformer partitions on. Delivery month is a
+    // different question and is never the partition key.
+    name: 'deal-explorer',
+    businessKey: ['sale_id'],
+    dateBasis: 'sale date',
+    chunked: true,
+  },
+  {
     name: 'reconciliation-status',
     businessKey: ['reconciliation_id'],
     dateBasis: null,

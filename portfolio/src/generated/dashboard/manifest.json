@@ -1,24 +1,26 @@
 {
   "schema": "arpi.dashboard_client/1",
-  "datasetVersion": 1,
+  "datasetVersion": 2,
   "contractVersion": 1,
-  "contractSha256": "7d9c024d58db60bca2da421af8f40935cb0e1aaa239b11d5a3dd8bd933fcb05a",
-  "generatedAt": "2026-08-07T00:50:19+00:00",
+  "contractSha256": "801895e62434f348bec3a3f76f3126779768273f970c7f104b85cd27781eea06",
+  "generatedAt": "2026-08-07T15:40:51+00:00",
   "asOfDate": "2025-12-31",
   "profile": "development",
   "randomSeed": 20250701,
-  "sourceCommit": "775677f8d7dbbdc59583ad4e4c09400a6fc8e7a1",
+  "sourceCommit": "f36a5a1d3d1586f14df2d3c75ccb41b5097a7a9b",
   "exporterVersion": "0.1.0",
   "syntheticData": true,
   "fictionalDealerGroup": true,
-  "pipelineRunUuid": "6234de77-020e-461b-819f-819354ce6544",
+  "pipelineRunUuid": "7e4849be-6dfe-4841-bdc0-6de8b04a54bf",
   "pipelineRunStatus": "succeeded",
   "sourceViews": [
     "reporting.vw_appointment_funnel",
     "reporting.vw_calendar",
     "reporting.vw_days_supply",
     "reporting.vw_days_to_sale",
+    "reporting.vw_deal_explorer",
     "reporting.vw_dealership",
+    "reporting.vw_gross_change_bridge",
     "reporting.vw_gross_summary",
     "reporting.vw_inventory_aging",
     "reporting.vw_inventory_health",
@@ -30,6 +32,7 @@
     "reporting.vw_marketing_performance",
     "reporting.vw_pipeline_run_summary",
     "reporting.vw_reconciliation_status",
+    "reporting.vw_sales_gross_trend",
     "reporting.vw_sales_summary"
   ],
   "reconciliationStatus": "passed",
@@ -2765,6 +2768,873 @@
       "chunks": null
     },
     {
+      "name": "sales-gross-trend",
+      "grain": "One row per store per sale date on which at least one transaction was finalized.",
+      "businessKey": [
+        "dealership_id",
+        "sale_date"
+      ],
+      "dateBasis": "sale date",
+      "kpiIds": [
+        "KPI-SLS-001",
+        "KPI-SLS-002",
+        "KPI-SLS-003",
+        "KPI-GRS-001",
+        "KPI-GRS-002",
+        "KPI-GRS-003",
+        "KPI-GRS-004",
+        "KPI-GRS-005",
+        "KPI-GRS-006"
+      ],
+      "rowCount": 357,
+      "columns": [
+        {
+          "name": "dealership_id",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "sale_date",
+          "type": "date",
+          "nullable": false,
+          "unit": "sale date",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "units_sold_all_types",
+          "type": "integer",
+          "nullable": false,
+          "unit": "units",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "retail_units_sold",
+          "type": "integer",
+          "nullable": false,
+          "unit": "units",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "new_units_sold",
+          "type": "integer",
+          "nullable": false,
+          "unit": "units",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "used_units_sold",
+          "type": "integer",
+          "nullable": false,
+          "unit": "units",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "wholesale_units",
+          "type": "integer",
+          "nullable": false,
+          "unit": "units",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "dealer_trade_units",
+          "type": "integer",
+          "nullable": false,
+          "unit": "units",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "lease_units",
+          "type": "integer",
+          "nullable": false,
+          "unit": "units",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "certified_retail_units",
+          "type": "integer",
+          "nullable": false,
+          "unit": "units",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "retail_sale_price_total",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "front_end_gross",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "back_end_gross",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "total_gross",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "front_end_gross_all_types",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "back_end_gross_all_types",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "total_gross_all_types",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "new_front_end_gross",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "new_back_end_gross",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "new_total_gross",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "used_front_end_gross",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "used_back_end_gross",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "used_total_gross",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "front_gross_per_retail_unit",
+          "type": "exact",
+          "nullable": true,
+          "unit": "USD per unit",
+          "displayPrecision": 2,
+          "enumeration": null
+        },
+        {
+          "name": "back_gross_per_retail_unit",
+          "type": "exact",
+          "nullable": true,
+          "unit": "USD per unit",
+          "displayPrecision": 2,
+          "enumeration": null
+        },
+        {
+          "name": "total_gross_per_retail_unit",
+          "type": "exact",
+          "nullable": true,
+          "unit": "USD per unit",
+          "displayPrecision": 2,
+          "enumeration": null
+        },
+        {
+          "name": "negative_front_gross_units",
+          "type": "integer",
+          "nullable": false,
+          "unit": "units",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "discount_from_original_total",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "discount_from_final_total",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "discount_from_msrp_total",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "msrp_eligible_units",
+          "type": "integer",
+          "nullable": false,
+          "unit": "units",
+          "displayPrecision": null,
+          "enumeration": null
+        }
+      ],
+      "chunks": null
+    },
+    {
+      "name": "gross-change-bridge",
+      "grain": "One row per store per comparison-period pair per bridge component.",
+      "businessKey": [
+        "dealership_id",
+        "month_start_date",
+        "component_code"
+      ],
+      "dateBasis": "sale date, aggregated to calendar month",
+      "kpiIds": [
+        "KPI-GRS-003",
+        "KPI-GRS-004",
+        "KPI-GRS-005",
+        "KPI-GRS-006"
+      ],
+      "rowCount": 54,
+      "columns": [
+        {
+          "name": "dealership_id",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "month_start_date",
+          "type": "date",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "comparison_month_start_date",
+          "type": "date",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "component_ordinal",
+          "type": "integer",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "component_code",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": [
+            "volume",
+            "front_pvr",
+            "back_pvr"
+          ]
+        },
+        {
+          "name": "component_label",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "retail_units_sold",
+          "type": "integer",
+          "nullable": false,
+          "unit": "units",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "comparison_retail_units_sold",
+          "type": "integer",
+          "nullable": false,
+          "unit": "units",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "front_end_gross",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "comparison_front_end_gross",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "back_end_gross",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "comparison_back_end_gross",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "total_gross",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "comparison_total_gross",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "total_gross_change",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "is_comparable",
+          "type": "boolean",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "not_comparable_reason",
+          "type": "string",
+          "nullable": true,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": [
+            "comparison-period-outside-window",
+            "comparison-period-no-retail-units"
+          ]
+        },
+        {
+          "name": "effect_numerator",
+          "type": "currency",
+          "nullable": true,
+          "unit": "USD x units",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "effect_denominator",
+          "type": "integer",
+          "nullable": true,
+          "unit": "units",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "effect_amount",
+          "type": "exact",
+          "nullable": true,
+          "unit": "USD",
+          "displayPrecision": 2,
+          "enumeration": null
+        }
+      ],
+      "chunks": null
+    },
+    {
+      "name": "deal-explorer",
+      "grain": "One row per finalized vehicle transaction.",
+      "businessKey": [
+        "sale_id"
+      ],
+      "dateBasis": "sale date",
+      "kpiIds": [
+        "KPI-SLS-001",
+        "KPI-GRS-001",
+        "KPI-GRS-002",
+        "KPI-GRS-003",
+        "KPI-INV-007"
+      ],
+      "rowCount": 650,
+      "columns": [
+        {
+          "name": "sale_id",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "sale_date",
+          "type": "date",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "delivery_date",
+          "type": "date",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "dealership_id",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "vehicle_code",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "model_year",
+          "type": "integer",
+          "nullable": false,
+          "unit": "year",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "make",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "model_name",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "trim_level",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "vehicle_display",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "body_style",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "condition_type",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": [
+            "New",
+            "Used",
+            "Certified"
+          ]
+        },
+        {
+          "name": "condition_group",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": [
+            "New",
+            "Used"
+          ]
+        },
+        {
+          "name": "sale_type",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": [
+            "New Retail",
+            "Used Retail",
+            "Certified Retail",
+            "Lease",
+            "Wholesale",
+            "Dealer Trade"
+          ]
+        },
+        {
+          "name": "is_retail",
+          "type": "boolean",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "sale_price",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "msrp",
+          "type": "currency",
+          "nullable": true,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "original_asking_price",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "final_asking_price",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "front_end_gross",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "back_end_gross",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "total_gross",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "is_negative_front_gross",
+          "type": "boolean",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "days_in_inventory_at_sale",
+          "type": "integer",
+          "nullable": false,
+          "unit": "days",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "has_trade",
+          "type": "boolean",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "is_lead_attributed",
+          "type": "boolean",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "lead_source_code",
+          "type": "string",
+          "nullable": true,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "lead_source_name",
+          "type": "string",
+          "nullable": true,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "salesperson_code",
+          "type": "string",
+          "nullable": true,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "desk_manager_code",
+          "type": "string",
+          "nullable": true,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "finance_manager_code",
+          "type": "string",
+          "nullable": true,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        }
+      ],
+      "chunks": [
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-07",
+          "file": "datasets/deal-explorer/GSA-001/2025-07.json",
+          "rowCount": 44,
+          "bytes": 14842
+        },
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-08",
+          "file": "datasets/deal-explorer/GSA-001/2025-08.json",
+          "rowCount": 51,
+          "bytes": 17206
+        },
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-09",
+          "file": "datasets/deal-explorer/GSA-001/2025-09.json",
+          "rowCount": 47,
+          "bytes": 15976
+        },
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-10",
+          "file": "datasets/deal-explorer/GSA-001/2025-10.json",
+          "rowCount": 37,
+          "bytes": 12707
+        },
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-11",
+          "file": "datasets/deal-explorer/GSA-001/2025-11.json",
+          "rowCount": 37,
+          "bytes": 12637
+        },
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-12",
+          "file": "datasets/deal-explorer/GSA-001/2025-12.json",
+          "rowCount": 42,
+          "bytes": 14063
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-07",
+          "file": "datasets/deal-explorer/GSA-002/2025-07.json",
+          "rowCount": 40,
+          "bytes": 13847
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-08",
+          "file": "datasets/deal-explorer/GSA-002/2025-08.json",
+          "rowCount": 45,
+          "bytes": 15297
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-09",
+          "file": "datasets/deal-explorer/GSA-002/2025-09.json",
+          "rowCount": 36,
+          "bytes": 12373
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-10",
+          "file": "datasets/deal-explorer/GSA-002/2025-10.json",
+          "rowCount": 35,
+          "bytes": 12100
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-11",
+          "file": "datasets/deal-explorer/GSA-002/2025-11.json",
+          "rowCount": 35,
+          "bytes": 11947
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-12",
+          "file": "datasets/deal-explorer/GSA-002/2025-12.json",
+          "rowCount": 38,
+          "bytes": 13120
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-07",
+          "file": "datasets/deal-explorer/GSA-003/2025-07.json",
+          "rowCount": 32,
+          "bytes": 10763
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-08",
+          "file": "datasets/deal-explorer/GSA-003/2025-08.json",
+          "rowCount": 40,
+          "bytes": 13351
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-09",
+          "file": "datasets/deal-explorer/GSA-003/2025-09.json",
+          "rowCount": 20,
+          "bytes": 6945
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-10",
+          "file": "datasets/deal-explorer/GSA-003/2025-10.json",
+          "rowCount": 25,
+          "bytes": 8403
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-11",
+          "file": "datasets/deal-explorer/GSA-003/2025-11.json",
+          "rowCount": 20,
+          "bytes": 6926
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-12",
+          "file": "datasets/deal-explorer/GSA-003/2025-12.json",
+          "rowCount": 26,
+          "bytes": 8883
+        }
+      ]
+    },
+    {
       "name": "reconciliation-status",
       "grain": "One row per reconciliation identifier, for the pipeline run this export describes.",
       "businessKey": [
@@ -3037,12 +3907,12 @@
     }
   ],
   "sizes": {
-    "totalBytes": 2303951,
-    "fileCount": 102,
+    "totalBytes": 2632112,
+    "fileCount": 122,
     "largestFile": {
-      "file": "datasets/marketing-performance.json",
-      "bytes": 78932
+      "file": "datasets/sales-gross-trend.json",
+      "bytes": 95189
     },
-    "rootExportBytes": 7555978
+    "rootExportBytes": 8467638
   }
 }

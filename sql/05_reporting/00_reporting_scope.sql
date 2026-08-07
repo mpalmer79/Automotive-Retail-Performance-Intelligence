@@ -9,7 +9,8 @@
 -- =============================================================================
 --
 -- =============================================================================
--- WHAT THE REPORTING LAYER CONTAINS  (status: Implemented — 28 views)
+-- WHAT THE REPORTING LAYER CONTAINS  (status: Implemented — 37 views:
+-- 28 MVP + 6 sanitized public listing lane + 3 dashboard program)
 -- =============================================================================
 -- DIMENSION VIEWS — one per MVP dimension. Each relates one-to-many into the
 -- facts, in a single direction, and each dimension key is unique so no
@@ -57,7 +58,39 @@
 --   vw_pipeline_run_summary   one row per pipeline run, with counts
 --   vw_data_quality_summary   one row per validation result, with run context
 --
--- arpi_reporter can read these twenty-eight views and nothing else. The expected
+-- Those twenty-eight are the MVP surface: what the SQL baseline was measured
+-- against and what the Power BI semantic model binds to. Two further lanes exist
+-- in the same schema and are held apart from it on purpose, because folding either
+-- in would change a number measured against a specific baseline run while the
+-- semantic model — still awaiting real-engine validation — gained nothing.
+--
+-- SANITIZED PUBLIC LISTING LANE (ADR-0011) — six views over
+-- warehouse.fact_vehicle_listing_snapshot and warehouse.dim_observed_vehicle,
+-- populated by a workbook import rather than by a pipeline run.
+--
+--   vw_vehicle_listing_current             one row per currently-listed vehicle
+--   vw_vehicle_listing_summary             listing counts and price completeness
+--   vw_vehicle_listing_model_mix           listing mix by model line
+--   vw_vehicle_listing_price_completeness  how much of the lane carries a price
+--   vw_vehicle_listing_observation_span    the window each vehicle was observed
+--   vw_vehicle_listing_change              listing-to-listing change
+--
+-- DASHBOARD PROGRAM LANE — three views added by DASH.3 for the Dealer Operations
+-- Command Center. They read the same warehouse facts as the MVP surface and add no
+-- new fact; they exist because ADR-0013 condition 2 puts analytical arithmetic in
+-- SQL rather than in the console.
+--
+--   vw_sales_gross_trend      store x sale date: volume and gross on one row, with
+--                             their condition and sale-type components as additive
+--                             columns rather than as extra rows
+--   vw_gross_change_bridge    store x month pair x component: the volume, front-PVR
+--                             and back-PVR decomposition of total-gross change,
+--                             published as exact numerators over a shared
+--                             denominator so the identity needs no division
+--   vw_deal_explorer          one row per finalized transaction, public-safe and
+--                             compact, for the Deal Explorer index
+--
+-- arpi_reporter can read these thirty-seven views and nothing else. The expected
 -- set is fixed in arpi.constants.REPORTING_VIEWS, and
 -- tests/integration/test_reporting_layer_completeness.py asserts the schema
 -- contains exactly those and no others — a view added here and not declared there
@@ -106,8 +139,12 @@
 
 COMMENT ON SCHEMA reporting IS
     'ARPI reporting layer. The only schema Power BI, Excel and arpi_reporter may read, and the only schema '
-    'they need: 28 views covering all eight MVP dimensions, all five MVP facts at their own grain, thirteen '
-    'governed analytical views owning the SQL side of all 29 KPIs, and two operational views. Every view '
+    'they need: 37 views in three lanes. The MVP surface is 28 -- all eight MVP dimensions, all five MVP '
+    'facts at their own grain, thirteen governed analytical views owning the SQL side of all 29 KPIs, and '
+    'two operational views -- and it is what the SQL baseline was measured against and what the semantic '
+    'model binds to. Beside it sit six sanitized public listing views (ADR-0011) and three dashboard '
+    'program views (DASH.3), both lanes held apart from the MVP count on purpose so that adding them '
+    'cannot silently move a measured baseline. Every view '
     'declares its grain and comments every column; every ratio publishes its numerator and denominator as '
     'separate additive columns and returns NULL on an empty denominator; row-level values are exposed '
     'wherever a median is specified. Service, target-attainment and F&I product views are deliberately '

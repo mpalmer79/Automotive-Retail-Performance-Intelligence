@@ -19,6 +19,7 @@ from pathlib import Path
 import pytest
 
 from arpi.constants import (
+    DASHBOARD_PROGRAM_VIEWS,
     INVENTORY_LISTING_KPI_IDS,
     INVENTORY_LISTING_KPI_VIEW_OWNERSHIP,
     INVENTORY_LISTING_VIEWS,
@@ -184,9 +185,25 @@ def test_the_listing_views_are_not_part_of_the_mvp_reporting_surface() -> None:
     assert len(INVENTORY_LISTING_VIEWS) == 6
 
 
-def test_the_full_reporting_surface_is_the_union_of_the_two() -> None:
-    assert set(REPORTING_VIEWS) == set(MVP_REPORTING_VIEWS) | set(INVENTORY_LISTING_VIEWS)
-    assert len(REPORTING_VIEWS) == 34
+def test_the_dashboard_program_views_are_not_part_of_the_mvp_reporting_surface() -> None:
+    """`DASH.3` added three views, and none of them may enlarge the semantic-model surface.
+
+    ``MVP_REPORTING_VIEWS`` is what ``sql_baseline_metadata.json`` describes and what the
+    Power BI model binds to. The console's own views read the same warehouse facts and add
+    no new fact, so folding them in would change a number measured against a specific
+    baseline run while the model -- still awaiting real-engine validation -- gained
+    nothing.
+    """
+    assert set(MVP_REPORTING_VIEWS) & set(DASHBOARD_PROGRAM_VIEWS) == set()
+    assert set(INVENTORY_LISTING_VIEWS) & set(DASHBOARD_PROGRAM_VIEWS) == set()
+    assert len(DASHBOARD_PROGRAM_VIEWS) == 3
+
+
+def test_the_full_reporting_surface_is_the_union_of_the_three() -> None:
+    assert set(REPORTING_VIEWS) == (
+        set(MVP_REPORTING_VIEWS) | set(INVENTORY_LISTING_VIEWS) | set(DASHBOARD_PROGRAM_VIEWS)
+    )
+    assert len(REPORTING_VIEWS) == 37
     assert list(REPORTING_VIEWS) == sorted(REPORTING_VIEWS)
 
 

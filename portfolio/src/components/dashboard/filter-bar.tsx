@@ -73,6 +73,17 @@ export interface FilterBarProps {
   readonly stores: readonly FilterOption[]
   readonly conditions: readonly FilterOption[]
   readonly leadSources: readonly FilterOption[]
+  /**
+   * What the condition and lead-source parameters do ON THIS ROUTE.
+   *
+   * Supplied by the page rather than fixed here, because the honest answer differs:
+   * the Executive Overview can only apply condition to its inventory measures, and
+   * the Sales and Gross page applies it to units and gross because its dataset
+   * publishes the split. A single hard-coded sentence would have been wrong on one
+   * of the two, and a hint that misdescribes a control is worse than none.
+   */
+  readonly conditionHint?: string
+  readonly leadSourceHint?: string
 }
 
 const COMPARE_OPTIONS: readonly FilterOption[] = [
@@ -112,6 +123,8 @@ export function FilterBar({
   stores,
   conditions,
   leadSources,
+  conditionHint = 'Selects inventory measures only.',
+  leadSourceHint = 'Selects funnel measures only.',
 }: FilterBarProps) {
   const router = useRouter()
   const [draft, setDraft] = useState<DashboardFilters>(filters)
@@ -224,7 +237,7 @@ export function FilterBar({
           id="filter-condition"
           label="Condition"
           active={draft.condition !== null}
-          hint="Selects inventory measures only."
+          hint={conditionHint}
         >
           <SelectControl
             id="filter-condition"
@@ -254,7 +267,7 @@ export function FilterBar({
           id="filter-source"
           label="Lead source"
           active={draft.source !== null}
-          hint="Selects funnel measures only."
+          hint={leadSourceHint}
         >
           <SelectControl
             id="filter-source"

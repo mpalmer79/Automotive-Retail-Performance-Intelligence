@@ -278,6 +278,35 @@ export const ROUTES = {
     indexable: true,
     priority: 0.9,
   },
+  /*
+   * `DASH.3` adds the two routes below. Both are real destinations with real
+   * content, which is the only reason they may appear in `DASHBOARD_NAV`.
+   *
+   * Neither is in `PRIMARY_NAV`: the header already carries `Dashboard`, and the
+   * console's own navigation is where its sections belong. `MAX_PRIMARY_NAV_ITEMS`
+   * is a cap on how many destinations a reader is asked to choose between at the
+   * top level, and a console section is not a top-level destination.
+   */
+  dashboardSalesGross: {
+    href: '/dashboard/sales-gross',
+    navLabel: 'Sales and gross',
+    title: 'Sales and gross',
+    description:
+      'Volume, gross and per-unit gross across the group and by store, with the trend, the new and used mix, discount against asking price, the deal-level gross distribution, and the documented decomposition of what changed month over month. Synthetic data for a fictional dealer group.',
+    inPrimaryNav: false,
+    indexable: true,
+    priority: 0.8,
+  },
+  dashboardDeals: {
+    href: '/dashboard/deals',
+    navLabel: 'Deal Explorer',
+    title: 'Deal Explorer',
+    description:
+      'Every finalized transaction in the governed export, searchable by deal, unit, make and model, filterable by period, store, condition, sale type and lead source. Synthetic data for a fictional dealer group.',
+    inPrimaryNav: false,
+    indexable: true,
+    priority: 0.8,
+  },
   uiLab: {
     href: '/ui-lab',
     navLabel: 'UI lab',
@@ -493,6 +522,25 @@ export const DASHBOARD_NAV: readonly NavItem[] = [
     matches: [ROUTES.dashboard.href],
     purpose: 'Group and store operating performance on one screen',
   },
+  {
+    href: ROUTES.dashboardSalesGross.href,
+    label: 'Sales and gross',
+    matches: [ROUTES.dashboardSalesGross.href],
+    purpose: 'Volume, gross, mix, discount and what changed',
+  },
+  {
+    /*
+     * `matches` covers the Deal Jacket too, so a reader on
+     * `/dashboard/deals/SLE-00000123` sees the section they are inside marked
+     * current. The Jacket is a drill-through, not a sibling: it is deliberately
+     * NOT its own navigation item, because nothing navigates to "a deal" -- one
+     * arrives at a specific deal from the index.
+     */
+    href: ROUTES.dashboardDeals.href,
+    label: 'Deal Explorer',
+    matches: [ROUTES.dashboardDeals.href, `${ROUTES.dashboardDeals.href}/`],
+    purpose: 'Every finalized transaction behind the numbers',
+  },
 ]
 
 /** A console section that does not exist yet, and the increment that delivers it. */
@@ -512,11 +560,6 @@ export interface PlannedDashboardSection {
  * outlive the work it describes.
  */
 export const PLANNED_DASHBOARD_SECTIONS: readonly PlannedDashboardSection[] = [
-  {
-    label: 'Sales and gross',
-    increment: 'DASH.3',
-    purpose: 'Trend, mix, gross decomposition and the deal explorer',
-  },
   {
     label: 'Deal Jacket',
     increment: 'DASH.4',
