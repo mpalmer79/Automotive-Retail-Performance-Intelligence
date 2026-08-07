@@ -19,7 +19,7 @@ from dataclasses import replace
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
 import pytest
 
@@ -684,7 +684,7 @@ class TestDeterminism:
     #:
     #: A proxy is only acceptable when it is one-to-one with the column it stands for,
     #: which the test below asserts rather than assumes.
-    ORDERING_PROXIES = {
+    ORDERING_PROXIES: ClassVar[dict[str, dict[str, str]]] = {
         "inventory-aging": {"age_bucket_sort_order": "age_bucket"},
         "gross-change-bridge": {"component_ordinal": "component_code"},
     }
