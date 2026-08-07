@@ -345,6 +345,22 @@ export interface NavItem {
    * kind of bug that only shows up after the route exists.
    */
   readonly matches: readonly string[]
+  /**
+   * Path prefixes this item is ALSO current for.
+   *
+   * For a drill-through: a route that belongs inside a section but is not a
+   * navigation destination of its own, because nobody navigates to "a deal" — they
+   * arrive at one specific deal from the index. `/dashboard/deals/SLE-00000123` has
+   * to mark Deal Explorer current, and there are 650 of them, so an exact list is
+   * not available.
+   *
+   * Each prefix must end in `/`. That is what keeps this from becoming the blanket
+   * prefix rule `matches` exists to avoid: `/dashboard/deals/` cannot silently claim
+   * a future `/dashboard/deals-report`, which is exactly the bug that only shows up
+   * once the second route exists. `tests/unit/site.test.ts` asserts the trailing
+   * slash on every prefix.
+   */
+  readonly matchPrefixes?: readonly string[]
   /** One line of purpose, shown in the mobile drawer. */
   readonly purpose: string
 }
@@ -530,7 +546,7 @@ export const DASHBOARD_NAV: readonly NavItem[] = [
   },
   {
     /*
-     * `matches` covers the Deal Jacket too, so a reader on
+     * `matchPrefixes` covers the Deal Jacket, so a reader on
      * `/dashboard/deals/SLE-00000123` sees the section they are inside marked
      * current. The Jacket is a drill-through, not a sibling: it is deliberately
      * NOT its own navigation item, because nothing navigates to "a deal" -- one
@@ -538,7 +554,8 @@ export const DASHBOARD_NAV: readonly NavItem[] = [
      */
     href: ROUTES.dashboardDeals.href,
     label: 'Deal Explorer',
-    matches: [ROUTES.dashboardDeals.href, `${ROUTES.dashboardDeals.href}/`],
+    matches: [ROUTES.dashboardDeals.href],
+    matchPrefixes: [`${ROUTES.dashboardDeals.href}/`],
     purpose: 'Every finalized transaction behind the numbers',
   },
 ]
@@ -645,7 +662,8 @@ export const GROUP_NAV: readonly NavItem[] = [
 
 /** Whether a navigation item is the current one for a pathname. */
 export function isNavItemCurrent(item: NavItem, pathname: string): boolean {
-  return item.matches.includes(pathname)
+  if (item.matches.includes(pathname)) return true
+  return (item.matchPrefixes ?? []).some((prefix) => pathname.startsWith(prefix))
 }
 
 /** Routes a search engine may index. */

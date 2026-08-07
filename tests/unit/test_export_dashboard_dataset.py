@@ -1116,13 +1116,25 @@ class TestPrivacyControls:
 
         So the rule is narrowed rather than dropped, and the narrowing is asserted below:
         ``sale_id`` is permitted ONLY on a deal-grain dataset and ONLY as its business key.
-        Every VIN spelling, every stock-number spelling and every surrogate key stays
-        prohibited everywhere, ``sale_key`` included -- a URL carrying a surrogate would
-        leak warehouse load order and break when the fact is rebuilt.
+        Every stock-number spelling and every surrogate key stays prohibited everywhere,
+        ``sale_key`` included -- a URL carrying a surrogate would leak warehouse load order
+        and break when the fact is rebuilt.
+
+        ``DASH.4`` NARROWED IT ONCE MORE, FOR ``synthetic_vin``, AND ONLY ON THE JACKET.
+        ``DEAL_JACKET_SPEC.md`` section 4 requires the Deal Jacket to display the unit's
+        synthetic identifier with its ADR-0005 policy note, and ADR-0005 is what makes that
+        safe: the value is ``ARPI`` plus thirteen characters, and the prefix contains an
+        ``I``, which the real-VIN alphabet excludes. The value is therefore structurally
+        incapable of being a real VIN -- which is also why the portfolio generator's
+        VIN-shaped-token byte scan does not fire on it, and correctly so. The bare spelling
+        ``vin`` stays prohibited everywhere: a column called ``vin`` reads as a real vehicle
+        identifier no matter what it holds.
+
+        ``test_the_synthetic_vin_shape_is_what_keeps_the_byte_scan_honest`` below asserts
+        the property this permission rests on, rather than leaving it to the prose.
         """
         prohibited = {
             "vin",
-            "synthetic_vin",
             "vehicle_identification_number",
             "vehicle_id",
             "vehicle_key",
@@ -1134,8 +1146,18 @@ class TestPrivacyControls:
             offending = sorted(prohibited & set(entry.column_names))
             assert offending == [], f"{entry.name} declares {offending}"
 
+        #: The only dataset that may publish the synthetic vehicle identifier.
+        for entry in spec.DATASETS:
+            if "synthetic_vin" not in entry.column_names:
+                continue
+            assert entry.name == "deal-jacket", (
+                f"{entry.name} declares synthetic_vin; only the Deal Jacket's dataset may, "
+                "because it is the only surface that renders one unit in detail with the "
+                "ADR-0005 policy note beside it"
+            )
+
         #: The deal-grain datasets, which are the only ones that may publish ``sale_id``.
-        deal_grain = {"deal-explorer"}
+        deal_grain = {"deal-explorer", "deal-jacket"}
         for entry in spec.DATASETS:
             if "sale_id" not in entry.column_names:
                 continue
@@ -1149,6 +1171,40 @@ class TestPrivacyControls:
         # Both), not a vehicle. Kept as a reminder that this test is about identifiers,
         # not about the word.
         assert "target_vehicle_category" in spec.dataset("campaigns").column_names
+
+    def test_the_synthetic_vin_shape_is_what_keeps_the_byte_scan_honest(self) -> None:
+        """ADR-0005's ``ARPI`` prefix is a privacy control, not a branding choice.
+
+        The portfolio generator scans its own output bytes for a VIN-shaped token: 17
+        characters from the real VIN alphabet, which excludes ``I``, ``O`` and ``Q``, with
+        at least one digit. That scan is the reason a vehicle identifier cannot reach the
+        console unnoticed -- and the Deal Jacket publishes ``synthetic_vin`` right past it.
+
+        That is correct, and this test is why. ``ARPI`` contains an ``I``, so a value in the
+        policy's shape is structurally incapable of matching the pattern: it is not a real
+        VIN, the scanner agrees it is not, and nothing has been suppressed to make that
+        true. The day somebody changes the prefix to four characters from the VIN alphabet,
+        the synthetic identifier becomes indistinguishable from a real one to every tool
+        that looks for one -- and this test fails first.
+        """
+        vin_shaped = re.compile(r"\b(?=[A-HJ-NPR-Z0-9]{17}\b)[A-HJ-NPR-Z]*\d[A-HJ-NPR-Z0-9]*\b")
+
+        # The pattern works: a genuinely VIN-shaped token matches.
+        assert vin_shaped.search("1HGCM82633A004352") is not None
+
+        # And an ARPI synthetic identifier does not, because of the prefix.
+        for synthetic in ("ARPIJ5Y7KSD2532DA", "ARPI4K9VY0KDWVR23", "ARPIB87282JN280J6"):
+            assert vin_shaped.search(synthetic) is None, (
+                f"{synthetic} is VIN-shaped; ADR-0005's prefix is supposed to make that "
+                "impossible, and the Deal Jacket publishes this column"
+            )
+
+        # The prefix is the mechanism, stated as an assertion rather than as a comment:
+        # the VIN alphabet excludes `I`, and ADR-0005's prefix contains one.
+        vin_alphabet = "ABCDEFGHJKLMNPRSTUVWXYZ0123456789"
+        arpi_prefix = "ARPI"
+        assert "I" not in vin_alphabet
+        assert "I" in arpi_prefix
 
 
 class TestNoSecretsInOutput:

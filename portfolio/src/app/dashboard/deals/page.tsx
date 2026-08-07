@@ -279,16 +279,10 @@ export default async function DealExplorerPage({
               lastRowNumber={view.lastRowNumber}
             />
 
-            {/*
-              The drill-through is declared rather than linked, because the route it
-              points at does not exist on this branch. A link to a 404 is worse than
-              a sentence saying where the page is going.
-            */}
             <Text size="xs" tone="faint">
-              Each deal opens into a Deal Jacket at /dashboard/deals/[deal id]: the
-              transaction explained to the cent, with its trade context, staff
-              attribution, lead timeline and lineage. That route is delivered by DASH.4,
-              and the deal ids above become links when it lands.
+              Each deal id opens its Deal Jacket: the transaction explained to the cent,
+              with the cost components behind its front gross, its trade context, staff
+              attribution, lead timeline, integrity checks and lineage.
             </Text>
           </div>
         </Container>

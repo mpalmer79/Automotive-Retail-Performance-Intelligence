@@ -66,6 +66,12 @@ const ROUTES = [
   '/dashboard/sales-gross?store=GSA-001&period=2025-11&condition=New',
   '/dashboard/deals',
   '/dashboard/deals?period=2025-07-01..2025-12-31&sort=total_gross&dir=desc&page=12',
+  // One Deal Jacket (`DASH.4`). The densest single document in the console: four
+  // calculation blocks, a timeline, a checklist and a lineage disclosure, all server
+  // components. Measured because the increment chose server rendering over
+  // prerendering 650 documents, and a rendering decision that is not measured is a
+  // preference.
+  '/dashboard/deals/SLE-00000646',
   '/architecture',
   '/data-model',
   '/kpis',

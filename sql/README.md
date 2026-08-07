@@ -144,29 +144,29 @@ header block.
 | 76–80 | `05_reporting/11_vw_vehicle_sales.sql` … `15_vw_marketing_spend.sql` | The five **fact** views, each preserving its fact's grain exactly: `vw_vehicle_sales`, `vw_inventory_snapshots`, `vw_leads`, `vw_appointments`, `vw_marketing_spend` |
 | 81–93 | `05_reporting/20_vw_sales_summary.sql` … `32_vw_reconciliation_status.sql` | The thirteen governed **analytical** views: sales, gross, inventory health, inventory aging, days to sale, inventory turn, days supply, lead funnel, appointment funnel, lead response, marketing performance, data-quality trend, reconciliation status |
 | 94–99 | `05_reporting/33_vw_vehicle_listing_current.sql` … `38_vw_vehicle_listing_change.sql` | **Listing lane.** The six listing views: `vw_vehicle_listing_current`, `vw_vehicle_listing_summary`, `vw_vehicle_listing_model_mix`, `vw_vehicle_listing_price_completeness`, `vw_vehicle_listing_observation_span`, `vw_vehicle_listing_change`. Counted **apart from the twenty-eight**; see §1.1 |
-| 100–102 | `05_reporting/40_vw_sales_gross_trend.sql` … `42_vw_deal_explorer.sql` | **Dashboard program lane.** The three `DASH.3` views: `vw_sales_gross_trend` (store × sale date, volume and gross with their condition components as additive columns), `vw_gross_change_bridge` (store × month pair × component, published as exact numerators over a shared denominator so the reconciliation needs no division), `vw_deal_explorer` (one row per finalized transaction, public-safe). Counted **apart from the twenty-eight**; see §1.1 |
-| 103 | `06_indexes/00_indexes.sql` | Creates the Phase 0 justified secondary indexes |
-| 104 | `06_indexes/01_phase1_indexes.sql` | Creates the Phase 1 justified secondary indexes |
-| 105 | `06_indexes/02_inventory_listing_indexes.sql` | **Listing lane.** Secondary indexes for the listing fact and its dimension |
-| 106 | `07_security/00_roles.sql` | Creates `arpi_admin`, `arpi_loader`, `arpi_reporter` (NOLOGIN) |
-| 107 | `07_security/01_grants.sql` | Moves ownership to `arpi_admin`; applies the grant model; asserts it object by object |
-| 108 | `08_validation/00_validation_helpers.sql` | Result-shape template view + `audit.fn_record_validation_result` |
-| 109 | `08_validation/01_dim_date_checks.sql` | Creates `audit.vw_dq_dim_date` (`DQ-DATE-001..005`) |
-| 110 | `08_validation/02_dim_dealership_checks.sql` | Creates `audit.vw_dq_dim_dealership` (`DQ-DLR-001..005`) |
-| 111 | `08_validation/03_referential_checks.sql` | Creates `audit.vw_dq_referential` (`DQ-REF-001..005`) |
-| 112 | `08_validation/04_audit_checks.sql` | Creates `audit.vw_dq_audit` (`DQ-AUD-001..005`), `audit.vw_dq_all`, `audit.fn_record_all_dq_checks` |
-| 113 | `08_validation/05_reconciliation_helpers.sql` | Creates `audit.vw_recon_result_template`, the uniform reconciliation result shape |
-| 114 | `08_validation/06_recon_ingestion.sql` | Creates `audit.vw_recon_ingestion` — the five facts' staging-to-warehouse counts, and snapshot continuity |
-| 115 | `08_validation/07_recon_gross.sql` | Creates `audit.vw_recon_gross` — `RECON-GROSS-001`, `RECON-GROSS-002`, `RECON-UNITS-001`, `RECON-REPORT-SALES` |
-| 116 | `08_validation/08_recon_funnel.sql` | Creates `audit.vw_recon_funnel` — `RECON-LEAD-001`, duplicates, funnel bounds, sold path, funnel chain |
-| 117 | `08_validation/09_recon_marketing.sql` | Creates `audit.vw_recon_marketing` — spend, attributed leads, sales and gross, and the cost-attributability rule |
-| 118 | `08_validation/10_recon_reporting.sql` | Creates `audit.vw_recon_reporting` — every reporting view reconciled to the fact it projects |
-| 119 | `08_validation/11_recon_all.sql` | Creates `audit.vw_recon_all` and `audit.fn_record_all_reconciliations` |
-| 120 | `08_validation/12_recon_inventory_listing.sql` | **Listing lane.** Creates `audit.vw_recon_inventory_listing` — `RECON-LISTING-001..010`. Deliberately **not** unioned into `audit.vw_recon_all`, which is the pipeline's per-run set with an asserted per-run count; this lane runs on a workbook cadence |
-| 121–123 | `09_migrations/0000_migration_history.sql` … `0002_add_inventory_listing_objects.sql` | The migration ledger and the two recorded migrations. Each is idempotent and records itself |
-| 124 | `07_security/01_grants.sql` **(again)** | Privilege-normalisation pass over the objects created in the validation and migration steps |
+| 100–103 | `05_reporting/40_vw_sales_gross_trend.sql` … `43_vw_deal_jacket.sql` | **Dashboard program lane.** The three `DASH.3` views plus one from `DASH.4`: `vw_sales_gross_trend` (store × sale date, volume and gross with their condition components as additive columns), `vw_gross_change_bridge` (store × month pair × component, published as exact numerators over a shared denominator so the reconciliation needs no division), `vw_deal_explorer` (one row per finalized transaction, public-safe and compact, for the index), `vw_deal_jacket` (the same grain, presentation-complete: the cost components behind the front gross, the trade context, the finance amounts, the people and the lead's paper trail, for the record view). Counted **apart from the twenty-eight**; see §1.1 |
+| 104 | `06_indexes/00_indexes.sql` | Creates the Phase 0 justified secondary indexes |
+| 105 | `06_indexes/01_phase1_indexes.sql` | Creates the Phase 1 justified secondary indexes |
+| 106 | `06_indexes/02_inventory_listing_indexes.sql` | **Listing lane.** Secondary indexes for the listing fact and its dimension |
+| 107 | `07_security/00_roles.sql` | Creates `arpi_admin`, `arpi_loader`, `arpi_reporter` (NOLOGIN) |
+| 108 | `07_security/01_grants.sql` | Moves ownership to `arpi_admin`; applies the grant model; asserts it object by object |
+| 109 | `08_validation/00_validation_helpers.sql` | Result-shape template view + `audit.fn_record_validation_result` |
+| 110 | `08_validation/01_dim_date_checks.sql` | Creates `audit.vw_dq_dim_date` (`DQ-DATE-001..005`) |
+| 111 | `08_validation/02_dim_dealership_checks.sql` | Creates `audit.vw_dq_dim_dealership` (`DQ-DLR-001..005`) |
+| 112 | `08_validation/03_referential_checks.sql` | Creates `audit.vw_dq_referential` (`DQ-REF-001..005`) |
+| 113 | `08_validation/04_audit_checks.sql` | Creates `audit.vw_dq_audit` (`DQ-AUD-001..005`), `audit.vw_dq_all`, `audit.fn_record_all_dq_checks` |
+| 114 | `08_validation/05_reconciliation_helpers.sql` | Creates `audit.vw_recon_result_template`, the uniform reconciliation result shape |
+| 115 | `08_validation/06_recon_ingestion.sql` | Creates `audit.vw_recon_ingestion` — the five facts' staging-to-warehouse counts, and snapshot continuity |
+| 116 | `08_validation/07_recon_gross.sql` | Creates `audit.vw_recon_gross` — `RECON-GROSS-001`, `RECON-GROSS-002`, `RECON-UNITS-001`, `RECON-REPORT-SALES` |
+| 117 | `08_validation/08_recon_funnel.sql` | Creates `audit.vw_recon_funnel` — `RECON-LEAD-001`, duplicates, funnel bounds, sold path, funnel chain |
+| 118 | `08_validation/09_recon_marketing.sql` | Creates `audit.vw_recon_marketing` — spend, attributed leads, sales and gross, and the cost-attributability rule |
+| 119 | `08_validation/10_recon_reporting.sql` | Creates `audit.vw_recon_reporting` — every reporting view reconciled to the fact it projects |
+| 120 | `08_validation/11_recon_all.sql` | Creates `audit.vw_recon_all` and `audit.fn_record_all_reconciliations` |
+| 121 | `08_validation/12_recon_inventory_listing.sql` | **Listing lane.** Creates `audit.vw_recon_inventory_listing` — `RECON-LISTING-001..010`. Deliberately **not** unioned into `audit.vw_recon_all`, which is the pipeline's per-run set with an asserted per-run count; this lane runs on a workbook cadence |
+| 122–124 | `09_migrations/0000_migration_history.sql` … `0002_add_inventory_listing_objects.sql` | The migration ledger and the two recorded migrations. Each is idempotent and records itself |
+| 125 | `07_security/01_grants.sql` **(again)** | Privilege-normalisation pass over the objects created in the validation and migration steps |
 
-The sequence is **124 files** in total; the table groups consecutive files of one kind
+The sequence is **125 files** in total; the table groups consecutive files of one kind
 rather than listing all of them, and the grouped ranges are contiguous. The count and the
 order are both derived from the directory by
 `tests/integration/conftest.py::init_sequence_files`, and

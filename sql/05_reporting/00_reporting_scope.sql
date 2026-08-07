@@ -9,8 +9,8 @@
 -- =============================================================================
 --
 -- =============================================================================
--- WHAT THE REPORTING LAYER CONTAINS  (status: Implemented — 37 views:
--- 28 MVP + 6 sanitized public listing lane + 3 dashboard program)
+-- WHAT THE REPORTING LAYER CONTAINS  (status: Implemented — 38 views:
+-- 28 MVP + 6 sanitized public listing lane + 4 dashboard program)
 -- =============================================================================
 -- DIMENSION VIEWS — one per MVP dimension. Each relates one-to-many into the
 -- facts, in a single direction, and each dimension key is unique so no
@@ -75,10 +75,10 @@
 --   vw_vehicle_listing_observation_span    the window each vehicle was observed
 --   vw_vehicle_listing_change              listing-to-listing change
 --
--- DASHBOARD PROGRAM LANE — three views added by DASH.3 for the Dealer Operations
--- Command Center. They read the same warehouse facts as the MVP surface and add no
--- new fact; they exist because ADR-0013 condition 2 puts analytical arithmetic in
--- SQL rather than in the console.
+-- DASHBOARD PROGRAM LANE — four views added by DASH.3 and DASH.4 for the Dealer
+-- Operations Command Center. They read the same warehouse facts as the MVP surface
+-- and add no new fact; they exist because ADR-0013 condition 2 puts analytical
+-- arithmetic in SQL rather than in the console.
 --
 --   vw_sales_gross_trend      store x sale date: volume and gross on one row, with
 --                             their condition and sale-type components as additive
@@ -89,8 +89,12 @@
 --                             denominator so the identity needs no division
 --   vw_deal_explorer          one row per finalized transaction, public-safe and
 --                             compact, for the Deal Explorer index
+--   vw_deal_jacket            one row per finalized transaction, presentation-
+--                             complete: the cost components behind the front gross,
+--                             the trade context, the finance amounts, the people and
+--                             the lead's paper trail, for the Deal Jacket route
 --
--- arpi_reporter can read these thirty-seven views and nothing else. The expected
+-- arpi_reporter can read these thirty-eight views and nothing else. The expected
 -- set is fixed in arpi.constants.REPORTING_VIEWS, and
 -- tests/integration/test_reporting_layer_completeness.py asserts the schema
 -- contains exactly those and no others — a view added here and not declared there
@@ -139,11 +143,11 @@
 
 COMMENT ON SCHEMA reporting IS
     'ARPI reporting layer. The only schema Power BI, Excel and arpi_reporter may read, and the only schema '
-    'they need: 37 views in three lanes. The MVP surface is 28 -- all eight MVP dimensions, all five MVP '
+    'they need: 38 views in three lanes. The MVP surface is 28 -- all eight MVP dimensions, all five MVP '
     'facts at their own grain, thirteen governed analytical views owning the SQL side of all 29 KPIs, and '
     'two operational views -- and it is what the SQL baseline was measured against and what the semantic '
-    'model binds to. Beside it sit six sanitized public listing views (ADR-0011) and three dashboard '
-    'program views (DASH.3), both lanes held apart from the MVP count on purpose so that adding them '
+    'model binds to. Beside it sit six sanitized public listing views (ADR-0011) and four dashboard '
+    'program views (DASH.3, DASH.4), both lanes held apart from the MVP count on purpose so that adding them '
     'cannot silently move a measured baseline. Every view '
     'declares its grain and comments every column; every ratio publishes its numerator and denominator as '
     'separate additive columns and returns NULL on an empty denominator; row-level values are exposed '

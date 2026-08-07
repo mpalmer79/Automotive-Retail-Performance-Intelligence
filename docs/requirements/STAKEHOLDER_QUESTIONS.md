@@ -725,12 +725,27 @@ list the acceptance criteria bind to.
 | **Interpretation caution** | **A negative front-end gross is a real dealership outcome, not a data defect**, and the index shows it with its sign rather than suppressing it: a store may knowingly take a loss on the front to hold a customer, move an aged unit or earn back-end. Wholesale disposals and dealer trades appear in the list and are labelled as not retail — they are real transactions, and judging them by retail measures is the error, not showing them. Lead attribution is resolved through the lead linked to the deal, so a deal with no linked lead is genuine walk-in or unattributed business rather than missing data, and the two are never collapsed. The index carries **no customer attribute of any kind** and no cost structure; the deal's cost components belong to the Deal Jacket. |
 | **Implementation status** | **Implemented** |
 
+### SQ-42 — Controller / general sales manager
+
+| Field | Value |
+|---|---|
+| **Persona** | Controller, general sales manager, dealer principal |
+| **Business question** | *This one deal shows a front gross of $994.83. Where exactly did that number come from, and can I check it?* |
+| **Required dimensions** | `dim_date`, `dim_dealership`, `dim_vehicle`, `dim_vehicle_model`, `dim_employee`, `dim_lead_source` |
+| **Required facts** | `fact_vehicle_sale`, `fact_lead`, `fact_appointment`, `fact_vehicle_inventory_snapshot` |
+| **KPI IDs** | `KPI-SLS-001`, `KPI-GRS-001`, `KPI-GRS-002`, `KPI-GRS-003`, `KPI-INV-007` |
+| **Reporting view** | `reporting.vw_deal_jacket` |
+| **Intended future report page** | 2b. Deal Jacket |
+| **Decision enabled** | Whether to trust the aggregate. Every number above a deal is a sum of deals, and a manager who cannot open one transaction and see its arithmetic has to take the whole report on faith. This is the question that makes a reporting layer auditable rather than merely presentable: the jacket shows sale price less acquisition, reconditioning and pack, in that order, and the page recomputes the identity from those components rather than displaying the stored figure. |
+| **Interpretation caution** | **"Verified to the cent" is a statement about internal consistency, not about reality.** It means the exported components recompute the exported gross exactly; the transaction is synthetic and did not happen. The front-end gross **excludes** manufacturer holdback, dealer cash, stair-step money, floorplan credits and unposted accounting adjustments, none of which is modelled, so it is understated by design in the same way new-vehicle gross is. **Trade variance is shown beside the calculation and is deliberately not inside it** — folding it in would change what `KPI-GRS-001` means. Back-end gross is aggregate: no reserve, product or chargeback figure exists until the F&I fact does, and no product-mix statement about a deal is supportable. No lender, APR, term, payment or rate spread exists anywhere in ARPI, by policy rather than by omission. Employees appear as synthetic identifiers with no name and no pay, and no judgement of an individual may be drawn from a single transaction. |
+| **Implementation status** | **Implemented** |
+
 ---
 
 ## 5. Unattributed KPIs and orphan views
 
 **None.** All 29 MVP KPI identifiers and all 22 Inventory Listings KPI identifiers in
-[KPI_CATALOG.md](../../KPI_CATALOG.md) are cited by at least one question above, and all 34 views in the
+[KPI_CATALOG.md](../../KPI_CATALOG.md) are cited by at least one question above, and all 38 views in the
 `reporting` schema support at least one. Both directions are asserted by
 `tests/integration/test_stakeholder_question_traceability.py`, which reads `arpi.constants.KPI_IDS`,
 `arpi.constants.INVENTORY_LISTING_KPI_IDS` and `arpi.constants.REPORTING_VIEWS` and fails if any of them

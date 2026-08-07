@@ -399,31 +399,57 @@ describe('the generated dashboard data stays out of the existing route bundles',
      * reviewer could see. `DASH.2` made it two: one door for whole datasets, one for
      * the partition table.
      *
-     * `DASH.3` makes it four, and the two additions are deliberate route SCOPING
-     * rather than a relaxation. An import is a graph edge, and a module that imports a
-     * dataset puts it into the server graph of every route that reads that module. So:
+     * `DASH.3` made it four and `DASH.4` makes it five, and every addition after the
+     * first two is deliberate route SCOPING rather than a relaxation. An import is a
+     * graph edge, and a module that imports a dataset puts it into the server graph of
+     * every route that reads that module. So:
      *
      *   lib/dashboard/data.ts          shared helpers + the six Executive Overview sets
      *   lib/dashboard/chunks.ts        the five date-grained partition tables
      *   lib/dashboard/sales-gross-data.ts   the 95 kB trend set and the bridge, which
      *                                       only /dashboard/sales-gross reads
-     *   lib/dashboard/deal-chunks.ts   the 18 deal partitions, which only the deal
-     *                                  routes read
+     *   lib/dashboard/deal-chunks.ts   the 18 deal INDEX partitions, which the deal
+     *                                  routes and the gross distribution read
+     *   lib/dashboard/jacket-chunks.ts the 18 deal RECORD partitions -- 443 kB against
+     *                                  the index's 221 kB for the same 650 deals --
+     *                                  which only /dashboard/deals/[saleId] reads
      *
-     * Folding the last two into `data.ts` would have put deal-level records and a
-     * 95 kB trend into `/dashboard`'s graph, which has no use for either. Four narrow
-     * doors is a stronger boundary than two wide ones, and the list is exhaustive:
-     * a fifth importer fails here.
+     * Folding any of the last three into `data.ts` would have put deal-level records
+     * and a 95 kB trend into `/dashboard`'s graph, which has no use for either. Five
+     * narrow doors is a stronger boundary than two wide ones, and the list is
+     * exhaustive: a sixth importer fails here.
      */
     expect(
       importers.map((file) => file.relative).sort(),
-      'the generated dashboard data has exactly four declared doors'
+      'the generated dashboard data has exactly five declared doors'
     ).toEqual([
       'lib/dashboard/chunks.ts',
       'lib/dashboard/data.ts',
       'lib/dashboard/deal-chunks.ts',
+      'lib/dashboard/jacket-chunks.ts',
       'lib/dashboard/sales-gross-data.ts',
     ])
+  })
+
+  it('keeps the deal RECORD partitions out of every route but the Deal Jacket', () => {
+    /*
+     * `jacket-chunks.ts` is the largest partition table in the console: the cost
+     * components, trade amounts and finance amounts that the index deliberately omits.
+     * The only thing that keeps 443 kB out of `/dashboard` and `/dashboard/deals` is
+     * that nothing on those routes imports it, so that is asserted rather than assumed.
+     */
+    const jacketImporters = files
+      .filter((file) => /from '[^']*jacket-chunks'/.test(file.text))
+      .map((file) => file.relative)
+      .sort()
+    expect(jacketImporters).toEqual(['lib/dashboard/deal-jacket.ts'])
+
+    for (const route of ['app/dashboard/page.tsx', 'app/dashboard/deals/page.tsx']) {
+      expect(readFileSync(join(SRC, route), 'utf8')).not.toMatch(/jacket-chunks/)
+    }
+    for (const viewModel of ['lib/dashboard/executive.ts', 'lib/dashboard/deals.ts']) {
+      expect(readFileSync(join(SRC, viewModel), 'utf8')).not.toMatch(/jacket-chunks/)
+    }
   })
 
   it('keeps the deal partitions out of the Executive Overview route graph', () => {
@@ -516,16 +542,26 @@ describe('ADR-0013 condition 2: no frontend redefines a KPI', () => {
       .map((file) => file.relative)
       .sort()
     /*
-     * Three view models, and the list is exhaustive. Each is a VIEW MODEL: it sums
+     * Four view models, and the list is exhaustive. Each is a VIEW MODEL: it sums
      * additive exported columns and divides one summed column by another, which is
      * the operation the reporting layer already publishes numerator and denominator
      * for. None of them defines what a measure means.
      *
+     * `deal-jacket.ts` is on this list for a different and stronger reason than the
+     * other three: it does not aggregate at all. It RE-DERIVES two identities that the
+     * export already publishes — sale price less the three cost components, and front
+     * plus back — and reports whether the recomputation matched. That is the whole
+     * point of the Deal Jacket, and it is arithmetic the module has to perform itself,
+     * because a verification that reads a stored flag verifies nothing. It defines no
+     * measure: both identities are `KPI-GRS-001` and `KPI-GRS-003` as the catalogue
+     * already states them.
+     *
      * That claim is not left to this test. `dashboard-executive.test.tsx` and
      * `dashboard-sales-gross.test.tsx` each reconcile the rendered figures against the
-     * export manifest's own published totals, character for character, so a module
-     * that had quietly invented a formula would fail there with a wrong number rather
-     * than pass here on a filename.
+     * export manifest's own published totals, character for character, and
+     * `dashboard-deal-jacket.test.tsx` drives the jacket with a CORRUPTED partition and
+     * requires the failure to surface. A module that had quietly invented a formula
+     * would fail there with a wrong number rather than pass here on a filename.
      *
      * `visuals.tsx` is NOT on this list and must not be: a chart primitive receives
      * resolved values and turns them into geometry.
@@ -534,6 +570,7 @@ describe('ADR-0013 condition 2: no frontend redefines a KPI', () => {
       offenders,
       'exact arithmetic outside decimal.ts, the selector registry and the declared view models'
     ).toEqual([
+      'lib/dashboard/deal-jacket.ts',
       'lib/dashboard/deals.ts',
       'lib/dashboard/executive.ts',
       'lib/dashboard/sales-gross.ts',
@@ -786,5 +823,56 @@ describe('the runtime image is unchanged in shape', () => {
       }
     }
     walk(GENERATED_DASHBOARD, '')
+  })
+})
+
+describe('the print rules land on elements that actually carry them', () => {
+  /*
+   * `Section`, `Container` and `Text` take a DECLARED prop list. They do not spread
+   * the rest, which is deliberate -- a layout primitive that forwards anything is a
+   * primitive with no contract -- but it means an attribute passed to one of them
+   * compiles, type-checks against `React.ComponentProps`-free interfaces, renders
+   * nothing, and silently does not apply.
+   *
+   * That is not hypothetical. `DASH.4` shipped `data-arpi-print="omit"` on a
+   * `<Section>`, and the paper recap printed its navigation until the Playwright
+   * print assertion caught it. This test catches the next one at build time: the
+   * print attributes may only be placed on an intrinsic element, whose tag name is
+   * lowercase.
+   */
+  const PRINT_ATTRIBUTE = /data-arpi-print=/g
+
+  it('places every print attribute on a lowercase intrinsic element', () => {
+    const offenders: string[] = []
+    for (const file of files) {
+      // Comments are stripped first: several of these files EXPLAIN the rule, naming
+      // the attribute in prose, and a guard that fires on its own documentation is a
+      // guard somebody deletes. That is the same reasoning as the schema-name scan
+      // above, and this test caught itself on it.
+      const source = stripComments(file.text)
+      for (const match of source.matchAll(PRINT_ATTRIBUTE)) {
+        // Walk backwards to the `<` that opens this element.
+        const opening = source.lastIndexOf('<', match.index)
+        if (opening < 0) continue
+        const tag = /^<\s*([A-Za-z][\w.]*)/.exec(source.slice(opening, match.index))?.[1]
+        if (tag === undefined) continue
+        if (/^[a-z]/.test(tag)) continue
+        offenders.push(`${file.relative}: <${tag}> would swallow data-arpi-print`)
+      }
+    }
+    expect(offenders).toEqual([])
+  })
+
+  it('is used at all, so the assertion above is not vacuous', () => {
+    const users = files.filter((file) =>
+      /data-arpi-print=/.test(stripComments(file.text))
+    )
+    expect(users.map((file) => file.relative).sort()).toEqual([
+      'app/dashboard/deals/[saleId]/page.tsx',
+      'components/dashboard/deal-jacket-sections.tsx',
+      'components/shell/dashboard-nav.tsx',
+      'components/shell/site-footer.tsx',
+      'components/shell/site-header.tsx',
+    ])
   })
 })

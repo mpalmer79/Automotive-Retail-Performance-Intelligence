@@ -73,6 +73,7 @@ one commit is a check failure.
 | `reporting.vw_sales_gross_trend` | `sales-gross-trend` | Store × sale date (`DASH.3`) |
 | `reporting.vw_gross_change_bridge` | `gross-change-bridge` | Store × month pair × bridge component (`DASH.3`) |
 | `reporting.vw_deal_explorer` | `deal-explorer` | One finalized transaction (`DASH.3`) |
+| `reporting.vw_deal_jacket` | `deal-jacket` | One finalized transaction, presentation-complete (`DASH.4`) |
 | `reporting.vw_reconciliation_status` | `reconciliation-status` | Reconciliation, for the export's own run |
 | `reporting.vw_pipeline_run_summary` | `pipeline-run` | The export's own run |
 
@@ -99,9 +100,27 @@ none defines a new measure:
 - `vw_deal_explorer` is the project's first deal-grain export: one row per finalized transaction,
   public-safe and compact, with no cost structure and no customer attribute of any kind.
 
-Later increments extend the allowlist with their views (`vw_deal_jacket` at `DASH.4`; targets at
-`DASH.5`; F&I at `DASH.6`/`DASH.7`; accounting at `DASH.8`; employees at `DASH.11`; actions at
-`DASH.12`). Each extension lands as a diff to this table **and** to `arpi.dashboard.contract` in the
+**One view was added by `DASH.4`:**
+
+- `vw_deal_jacket` is the same grain as `vw_deal_explorer` and deliberately a different dataset. The
+  explorer is an INDEX — what a manager scans to find a transaction — and carries no cost structure,
+  because shipping every deal's acquisition cost, reconditioning, pack, trade and finance amounts to
+  render a list would be 443 kB to display 221 kB worth of columns. The jacket is the RECORD they
+  open once they have found it, and it carries exactly those components, because the page's whole
+  claim is that it can show where the front-end gross came from. Two datasets at one grain is the
+  price of route-scoping that data, and `portfolio/tests/unit/dashboard-boundaries.test.ts` asserts
+  that only `/dashboard/deals/[saleId]` imports the larger one.
+
+  It publishes the cost components in the order `KPI-GRS-001` states them, the trade context
+  SEPARATELY from the front-gross formula (folding trade variance in would redefine the KPI), the
+  finance amounts with no rate, term, payment or lender because none is modelled, the four staff
+  roles as synthetic identifiers, the lead's paper trail as flags and dates, and three supporting
+  facts the page's integrity checklist needs. It publishes **no** verification flag: the console
+  recomputes both arithmetic identities itself, because a verification that reads a stored flag
+  verifies nothing.
+
+Later increments extend the allowlist with their views (targets at `DASH.5`; F&I at
+`DASH.6`/`DASH.7`; accounting at `DASH.8`; employees at `DASH.11`; actions at `DASH.12`). Each extension lands as a diff to this table **and** to `arpi.dashboard.contract` in the
 same PR as the exporter change; the paired unit test refuses a change to only one of them.
 
 **Never exported:** any `raw`/`staging`/`warehouse`/`audit` object (the exporter cannot see them, and
@@ -355,6 +374,24 @@ asserts zero importers today, so the first one arrives in the same diff as the e
   place every transaction record into the server graph of `/dashboard`, which shows none. The
   boundary suite asserts the importer set in both directions.
 
+- **`DASH.4` adds a third partition module,** `lib/dashboard/jacket-chunks.ts`, for the same reason
+  one step further out. `deal-jacket` partitions on store × sale month exactly as `deal-explorer`
+  does — same 18 keys, same 650 rows — but carries the cost, trade and finance components the index
+  omits: **443,448 bytes against the index's 221,386**, largest partition 34,439 B. Folding it into
+  `deal-chunks.ts` would double what `/dashboard/deals` carries in order to render a list that shows
+  none of it. Only `/dashboard/deals/[saleId]` imports it, and the boundary suite asserts that in
+  both directions.
+
+- **The Deal Jacket route renders on demand rather than prerendering 650 documents,** and the choice
+  was made from measurement rather than preference. `generateStaticParams` over every sale id would
+  emit roughly 190 kB of uncompressed HTML per deal — on the order of **120 MB** of prerendered
+  output carried in `.next` and into the deployment image, growing with every future increment that
+  grows the deal population. Server-rendering from the statically imported partitions costs 443 kB of
+  data, resolved by the output tracer as graph edges, with no file read at runtime and no database.
+  Neither option introduces an API or a runtime database, so both satisfy ADR-0013; 443 kB against
+  120 MB is what decides it. The route is complete HTML without JavaScript either way, which is the
+  property the choice was not allowed to cost. Recorded in `PERFORMANCE.md` §9.4.
+
 ## 10. File-size constraints
 
 **Measured, not assumed.** The figures below are what the development profile actually produces,
@@ -364,12 +401,18 @@ measured by `python scripts/export_dashboard_dataset.py --check --sizes` and
 | Artifact | Ceiling | Measured (development profile) |
 |---|---|---|
 | Any single committed export file | **3 MB** | 2,269,345 B — `lead-response.json`, 4,099 rows |
-| Total committed `data/dashboard/` | 20 MB | 8,604,340 B across 21 files, 19,209 rows (`DASH.3`) |
-| Any single generated chunk | 256 KB | 47,325 B — `datasets/lead-funnel/GSA-001/2025-07.json`; largest deal partition 17,206 B |
+| Total committed `data/dashboard/` | 20 MB | 9,817,762 B across 22 files, 18,783 rows in 21 datasets (`DASH.4`) |
+| Any single generated chunk | 256 KB | 47,325 B — `datasets/lead-funnel/GSA-001/2025-07.json`; largest deal-jacket partition 34,439 B, largest deal-explorer partition 17,206 B |
 | Any single generated whole-dataset file | 256 KB (same ceiling) | 95,189 B — `datasets/sales-gross-trend.json` (`DASH.3`) |
-| Client-safe manifest | not separately budgeted | 83,452 B (the largest generated file) |
-| Total generated `portfolio/src/generated/dashboard/` | not yet budgeted | 2,738,380 B across 123 files (14 whole datasets, 108 chunks, 1 manifest) (`DASH.3`) |
-| Any page's initial data payload | measured in `DASH.2-04`, budgeted in `DASH.13` | no page exists yet |
+| Client-safe manifest | not separately budgeted | 124,098 B (the largest generated file) |
+| Total generated `portfolio/src/generated/dashboard/` | not yet budgeted | 3,199,658 B across 141 files (14 whole datasets, 126 chunks, 1 manifest) (`DASH.4`) |
+| Any page's initial data payload | measured per route in `PERFORMANCE.md` §9 | see `PERFORMANCE.md` §9.4 for the Deal Jacket |
+
+> **Correction, `DASH.4`.** The committed-export row count in this table read *19,209 rows across 21
+> files* through `DASH.3`. Re-measured from `data/dashboard/manifest.json`, the `DASH.3` figure was
+> **18,133 rows across 20 datasets**; `DASH.4` adds the 650-row `deal-jacket` dataset, giving 18,783.
+> The byte figures were correct. Nothing downstream consumed the row total — it is a documentation
+> figure, not an asserted one — but it was wrong and is restated here rather than quietly replaced.
 
 Every figure above was produced by `python scripts/export_dashboard_dataset.py --check --sizes` and
 `npm run dashboard -- --sizes` on the committed artifacts, not estimated. The generated tree sits an

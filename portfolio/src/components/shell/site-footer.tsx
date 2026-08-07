@@ -54,7 +54,9 @@ export function SiteFooter() {
      * the viewport edge to edge. `mt-auto` keeps it at the bottom of a short
      * route without the field stretching behind it.
      */
-    <footer className="mt-auto border-t border-line bg-canvas">
+    // `data-arpi-print="omit"`: see the header. A footer of site navigation is the
+    // same affordance at the other end of the page.
+    <footer data-arpi-print="omit" className="mt-auto border-t border-line bg-canvas">
       <Container width="wide" className="py-14 sm:py-16">
         <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-12 lg:gap-8">
           <div className="flex flex-col gap-4 lg:col-span-4">

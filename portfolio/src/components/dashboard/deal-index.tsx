@@ -15,12 +15,16 @@
  * a real URL a reader can share, and puts every state in browser history. `aria-sort`
  * on the header cell announces the current column and direction.
  *
- * THE DEAL ID IS NOT A LINK YET
- * -----------------------------
- * `/dashboard/deals/[saleId]` arrives with `DASH.4`. Until it exists, rendering an
- * anchor to it would ship a link to a 404 -- which the route sweep would catch, and
- * which a reader would meet before the sweep did. The id is rendered as text, and the
- * page says where the drill-through is going and which increment delivers it.
+ * THE DEAL ID IS THE DRILL-THROUGH
+ * --------------------------------
+ * `DASH.3` rendered it as TEXT, because `/dashboard/deals/[saleId]` did not exist and
+ * an anchor to it would have been a link to a 404. `DASH.4` delivers that route, so
+ * the id becomes a link -- in the same diff that makes the destination real, which is
+ * the only order in which it is honest to do it.
+ *
+ * The link is the deal id itself rather than a "view" affordance beside it: the id is
+ * what a manager is looking for, and making it the target means the thing they read
+ * and the thing they click are the same thing.
  */
 import { Text } from '@/components/ui/typography'
 import type {
@@ -197,8 +201,13 @@ export function DealIndex({ route, filterQuery, state, rows }: DealIndexProps) {
                 key={row.saleId}
                 className="border-b border-line-subtle/60 last:border-0"
               >
-                <th scope="row" className="numeric py-2 pr-3 font-normal text-ink">
-                  {row.saleId}
+                <th scope="row" className="numeric py-2 pr-3 font-normal">
+                  <a
+                    href={`${route}/${row.saleId}`}
+                    className="inline-flex min-h-6 items-center text-ink underline decoration-line underline-offset-2 transition-colors duration-(--arpi-motion-fast) hover:text-accent"
+                  >
+                    {row.saleId}
+                  </a>
                 </th>
                 <td className="py-2 pr-3 text-ink-secondary">{row.saleDateDisplay}</td>
                 <td className="py-2 pr-3 text-ink-secondary">{row.storeName}</td>

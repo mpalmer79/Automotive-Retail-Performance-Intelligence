@@ -524,6 +524,56 @@ rather than in the shared `chunks.ts` precisely so they do **not** enter `/dashb
 graph, which shows no deal-level content; `dashboard-boundaries.test.ts` asserts the
 importer set in both directions. Nothing is read from the file system at runtime.
 
+## 9.4 The Deal Jacket, and the rendering decision it was measured for (`DASH.4`)
+
+Measured the same way, on the same day, against the same production build.
+
+| Route                          |     HTML |  Route JS |    Total |
+| ------------------------------ | -------: | --------: | -------: |
+| `/dashboard/deals/SLE-…`       |  40.4 kB |  161.9 kB | 332.2 kB |
+| `/dashboard/deals`             |  58.5 kB |  164.0 kB | 352.5 kB |
+| `/case-study` (shell only)     |  26.4 kB |  162.3 kB | 318.6 kB |
+
+**The densest page in the console carries less script than the empty shell.** 161.9 kB
+against `/case-study`'s 162.3 kB, and the difference is not noise: the Deal Jacket has no
+client island at all. The Executive Overview, Sales and gross, and the Deal Explorer each
+carry the shared filter bar; a jacket shows one transaction and has nothing to filter, so
+it ships no route-owned JavaScript whatsoever. Four calculation blocks, a timeline, a
+five-row checklist and a lineage disclosure are all server components.
+
+**The Deal Explorer moved from 55.8 kB to 58.5 kB.** That is this increment's doing: every
+deal id in the table became an anchor to its jacket, which is 25 links and their hrefs.
+2.7 kB to make the drill-through real is the whole cost of `DASH.4` on the index.
+
+### The `DASH.4-01` decision, and the two numbers that settled it
+
+The increment required the choice between full static generation and server rendering to
+be made from measurement.
+
+| | Full static generation | Server rendering (chosen) |
+|---|---|---|
+| Build output | 650 documents × ~190 kB uncompressed ≈ **120 MB** in `.next` and in the deployment image | none |
+| Runtime data | none | **443,448 B** of partitions, static imports, resolved by the output tracer |
+| Build time | grows with the deal population, every increment that grows it pays again | flat |
+| Time to first byte | file read | **11–17 ms**, measured over twelve deals across all three stores |
+| Complete without JavaScript | yes | yes |
+| ADR-0013 | satisfied — no API, no runtime database | satisfied — no API, no runtime database |
+
+443 kB against 120 MB is not a close call. Both options satisfy the architecture, so the
+measurement is what decides, and the property the choice was not allowed to cost — a
+complete page with scripting disabled — is preserved either way and asserted in
+`dashboard-deal-jacket.spec.ts`.
+
+The rendered document is 174,790 bytes uncompressed and 40.4 kB over the wire, which is
+where the ~190 kB per-document estimate above comes from.
+
+**Server graph.** The jacket's 18 partitions live in `lib/dashboard/jacket-chunks.ts`,
+imported by exactly one module. 443 kB is twice what the deal INDEX carries for the same
+650 transactions — it holds the cost, trade and finance components the index omits — which
+is precisely why it does not enter `/dashboard/deals`'s graph. The map from sale id to row
+is built once per server process and memoized; the alternative, scanning eighteen
+partitions per request, would repeat the same work for every reader.
+
 ## 10. What has not been measured
 
 Stated rather than implied.

@@ -253,7 +253,7 @@ per the established VISUAL_REVIEW.md process; no committed baseline images.
 | TypeScript unit | `dashboard-deals.test.tsx` (29) | Every deal is visited exactly once across all pages **under every sort key and direction** — the assertion that catches a non-total order; search determinism; parameter parsing; the privacy boundary, checked against the shipped chunk rather than the view model |
 | Component | `dashboard-visuals.test.tsx` (15) | Every value a bar encodes is also text; the data table is in the document while the disclosure is closed; direction is a glyph and a sign, never colour alone; the primitives ship no client JavaScript |
 | End to end | `dashboard-sales-gross.spec.ts` (27) | The figures reach the screen; the bridge's copy stays non-causal in the rendered document; charts keep their data without JavaScript; a filter the route cannot apply says so |
-| End to end | `dashboard-deals.spec.ts` (34) | Sorting and paging are real links that work with scripting disabled; browser history is the undo stack; exactly one responsive representation is in the accessibility tree; **no row links to the Deal Jacket route `DASH.4` has not delivered** |
+| End to end | `dashboard-deals.spec.ts` (35) | Sorting and paging are real links that work with scripting disabled; browser history is the undo stack; exactly one responsive representation is in the accessibility tree; every row links to a Deal Jacket that resolves (through `DASH.3` this assertion was its opposite — that no row linked to a route that did not exist yet — and `DASH.4` re-aims it in the diff that makes the destination real) |
 
 Two assertions were deliberately made narrower than first written, and the reason is recorded in
 both files. A page-wide scan for causal words flagged "because the export publishes both", ordinary
@@ -262,6 +262,32 @@ customer fields flagged the synthetic lead source "Customer Referral", so the ch
 structural: no column NAMES a customer attribute, and no cell holds a value shaped like an email,
 a telephone number or a street address. Both are stronger than what they replaced; a check that
 cries wolf teaches the next reader to silence it.
+
+## 10.2 As-built: what `DASH.4` added
+
+| Suite | File | What it proves |
+|---|---|---|
+| SQL integration | `tests/integration/test_deal_jacket_reporting_view.py` (34) | One row per finalized sale across **seven** joins, with the two that could widen the grain — the linked lead and the linked appointment — asserted directly rather than assumed; both arithmetic identities on every deal; `finance_structure` is exactly its documented derivation and its published basis agrees; no prohibited column, no `*_name` column but the two that name a thing, every staff code a synthetic `EMP-` identifier, every synthetic VIN in its ADR-0005 shape |
+| Seeded defect | same file | Two: a one-cent mutation of the front gross, and of the total gross. Each must break the identity the file asserts. An identity test that had become vacuous — zero rows, or a value compared with itself — looks exactly like a passing one |
+| Seeded defect | same file | Folding trade variance into the front-gross formula must break the identity on every deal that has one. If it did not, publishing the variance separately would be decorative rather than load-bearing |
+| TypeScript unit | `dashboard-deal-jacket.test.tsx` (43) | Both identities recomputed on all 650 deals from the components the page displays; the seven deal shapes of `DEAL_JACKET_SPEC.md §19`, each selected by predicate over the population so a shape that stops existing fails loudly; malformed and unknown ids resolve to nothing; the four absence words are distinct and a real zero survives as a zero; a value-level privacy scan over every string in every jacket |
+| Corrupted fixture | same file | The view model is rebuilt against a partition whose first deal is one cent off. The verification must report the failure in words with both figures, the checklist must raise it for review, and the page must still show the figures as exported. Without this, a `verify()` that returned `true` unconditionally would pass every other test in the file |
+| End to end | `dashboard-deal-jacket.spec.ts` (31) | The route 200s for a deal and 404s for both an unknown and a malformed id; the disclosure is above the money; the money keeps formula order at 390px and 1440px; the page is complete with scripting disabled; nothing on it is a control that acts on the deal; the **paper recap** carries the transaction and drops the navigation, asserted under `media: 'print'` |
+| Boundary | `dashboard-boundaries.test.ts` (+2) | `jacket-chunks.ts` has exactly one importer, and neither the Deal Explorer nor the Executive Overview reaches it; every `data-arpi-print` attribute sits on a lowercase intrinsic element |
+
+**Two of these tests caught real defects rather than confirming intent**, which is the only reason
+worth writing them:
+
+- The print assertions failed on the first run. `data-arpi-print="omit"` had been passed to the
+  `<Section>` primitive, which takes a declared prop list and does not spread the rest, so the
+  attribute compiled, rendered nothing, and the paper recap printed its navigation. The fix moved it
+  to a plain element and added the boundary test above, so the next one fails at build time instead
+  of in a browser.
+- The navigation assertion failed too. `DASHBOARD_NAV` carried a `matches` entry of
+  `'/dashboard/deals/'` intending to cover the Jacket, but `matches` is an exact-membership test and
+  no path is ever equal to that string — the comment described behaviour the code did not have.
+  `NavItem` now has an explicit `matchPrefixes`, each required to end in `/` so it cannot become the
+  blanket prefix rule `matches` exists to avoid.
 
 ## 11. Power BI alignment
 

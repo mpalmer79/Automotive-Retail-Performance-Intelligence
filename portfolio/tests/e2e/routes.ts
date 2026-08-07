@@ -149,11 +149,30 @@ export const DASHBOARD_NAV_ROUTES: readonly { label: string; path: string }[] = 
   { label: 'Deal Explorer', path: '/dashboard/deals' },
 ]
 
-/** Every route that renders the console sub-navigation. */
+/**
+ * One Deal Jacket, named once, so every suite drills into the same transaction.
+ *
+ * `SLE-00000646` is a retail deal with a trade, a linked lead that reached test drive
+ * and write-up, and a positive front gross — the shape that exercises the most of the
+ * page. The unit suite covers the other six shapes across the whole population; a
+ * browser only has to prove that one of them renders, navigates and prints.
+ */
+export const DEAL_JACKET_SALE_ID = 'SLE-00000646'
+export const DEAL_JACKET_ROUTE = `/dashboard/deals/${DEAL_JACKET_SALE_ID}`
+
+/**
+ * Every route that renders the console sub-navigation.
+ *
+ * Four, against three navigation items. `/dashboard/deals/[saleId]` — the Deal
+ * Jacket — carries the console bar so a reader who arrived by drill-through can get
+ * back out, but it is NOT a navigation destination: a manager reaches a jacket by
+ * finding a deal, never by picking one of 650 from a menu.
+ */
 export const DASHBOARD_ROUTES: readonly string[] = [
   '/dashboard',
   '/dashboard/sales-gross',
   '/dashboard/deals',
+  DEAL_JACKET_ROUTE,
 ]
 
 /**
@@ -164,12 +183,13 @@ export const DASHBOARD_ROUTES: readonly string[] = [
  */
 export const UNBUILT_DASHBOARD_ROUTES: readonly string[] = [
   /*
-   * `/dashboard/deals/[saleId]` -- the Deal Jacket -- is `DASH.4` and is deliberately
-   * on this list. `DASH.3` renders each deal id as TEXT rather than as a link for
-   * exactly that reason: an anchor here would point at a 404, and the negative
-   * assertion below is what proves none was shipped.
+   * `/dashboard/deals/[saleId]` was on this list through `DASH.3`, which rendered each
+   * deal id as TEXT because an anchor would have pointed at a 404. `DASH.4` delivers
+   * the route, so it moves to `DASHBOARD_ROUTES` in the same diff that makes the
+   * destination real. What remains here is the seven sections that genuinely do not
+   * exist, and `dashboard-deal-jacket.spec.ts` covers the negative that replaced it:
+   * a deal id that names no transaction still 404s.
    */
-  '/dashboard/deals/SLE-00000001',
   '/dashboard/inventory',
   '/dashboard/fi',
   '/dashboard/leads-marketing',
@@ -231,6 +251,21 @@ export const ALL_TESTED_ROUTES: readonly string[] = [
   '/dashboard/deals',
   '/ui-lab',
 ]
+
+/**
+ * Routes the accessibility sweep covers that are NOT in the site's route map.
+ *
+ * `ALL_TESTED_ROUTES` is asserted equal to the route map by `tests/unit/site.test.ts`,
+ * which is what makes this file a second opinion rather than a copy. A drill-through
+ * is deliberately absent from that map — there are 650 Deal Jackets, the sitemap lists
+ * the index only, and each jacket asks not to be indexed — so it cannot go on that
+ * list without breaking a real invariant.
+ *
+ * It still needs scanning: the Deal Jacket is the densest page in the console, with
+ * four calculation blocks, a timeline, a checklist and a disclosure. So it gets its
+ * own list, and the sweep runs over both.
+ */
+export const DRILL_THROUGH_ROUTES: readonly string[] = [DEAL_JACKET_ROUTE]
 
 /**
  * The routes that RENDER that sub-navigation.
