@@ -160,6 +160,12 @@ class VarianceScenario:
         omit_gl: When true no GL balance row is written at all, which produces the
             ``Missing GL balance`` comparison state rather than a variance. A missing
             side is not a zero and must never be coalesced into one.
+        orphan_gl: When set, a GL balance is written at a position the SUBLEDGER has no
+            rows for, producing the mirror state -- ``Missing subledger balance``. This
+            is the exception a controller actually hunts: a control account carrying a
+            balance the schedule has nothing behind it. It is only reachable at a
+            store/category the store genuinely does not stock, which is why it is
+            planted rather than waited for.
     """
 
     scenario_id: str
@@ -168,6 +174,7 @@ class VarianceScenario:
     balance_date: date
     variance: Decimal
     omit_gl: bool = False
+    orphan_gl: Decimal | None = None
 
 
 #: The planted scenarios, declared once.
@@ -209,6 +216,14 @@ VARIANCE_SCENARIOS: Final[tuple[VarianceScenario, ...]] = (
         balance_date=date(2025, 8, 31),
         variance=Decimal("0.00"),
         omit_gl=True,
+    ),
+    VarianceScenario(
+        scenario_id="ACC-SCN-005",
+        dealership_id="GSA-003",
+        category="New Vehicle Inventory",
+        balance_date=date(2025, 12, 31),
+        variance=Decimal("0.00"),
+        orphan_gl=Decimal("18400.00"),
     ),
 )
 
@@ -315,10 +330,42 @@ def build_gl_balance_rows(
 
     rows: list[dict[str, Any]] = []
     ordinal = 0
+    # A GL balance with no subledger behind it. Emitted first so the ordering below stays
+    # keyed on the subledger positions rather than on scenario bookkeeping.
+    orphans: dict[tuple[str, str, date], Decimal] = {
+        (planted.dealership_id, planted.category, planted.balance_date): planted.orphan_gl
+        for planted in VARIANCE_SCENARIOS
+        if planted.orphan_gl is not None
+    }
+    for (dealership_id, category, balance_date), amount in sorted(orphans.items()):
+        if not (config.reporting.start_date <= balance_date <= config.reporting.end_date):
+            # The scenarios are dated against the committed development window. A shorter
+            # profile simply does not reach them, and planting a balance outside the
+            # window would land on a date `dim_date` does not carry.
+            continue
+        if (dealership_id, category, balance_date) in totals:
+            raise ValueError(
+                f"a scenario plants an orphan GL balance at {dealership_id}/{category}/"
+                f"{balance_date}, a position the subledger DOES carry, so it would read "
+                "as a variance rather than as a missing subledger side"
+            )
+        ordinal += 1
+        rows.append(
+            {
+                "gl_control_balance_id": f"GLB-{ordinal:08d}",
+                "dealership_id": dealership_id,
+                "gl_account_id": CATEGORY_TO_ACCOUNT_ID[category],
+                "balance_date": balance_date,
+                "net_balance": amount.quantize(Decimal("0.01")),
+                "source_system": GL_SOURCE_SYSTEM,
+            }
+        )
     for (dealership_id, category, balance_date), subledger in sorted(
         totals.items(), key=lambda item: (item[0][2], item[0][0], item[0][1])
     ):
         scenario = scenario_for(dealership_id, category, balance_date)
+        if scenario is not None and scenario.orphan_gl is not None:
+            continue
         if scenario is not None and scenario.omit_gl:
             # No row at all. The reconciliation must report a missing GL side rather than
             # a zero balance, and the only way to test that is for the row to be absent.
