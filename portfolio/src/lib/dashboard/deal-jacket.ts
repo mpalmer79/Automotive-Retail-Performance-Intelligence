@@ -39,7 +39,8 @@ import {
   isZero,
   subtractExact,
 } from './decimal'
-import { dashboardManifest, dashboardStores } from './data'
+import { dashboardManifest, dashboardStores, decodeDataset } from './data'
+import { productDetailChunkFile } from './fi-chunks'
 import {
   formatCountExact,
   formatCurrencyExact,
@@ -47,6 +48,12 @@ import {
   formatMinutesExact,
 } from './format'
 import { allJacketChunks } from './jacket-chunks'
+
+/** Zero at cent scale, used wherever a missing money cell means "none". */
+const ZERO: Exact = { units: 0n, scale: 2 }
+
+/** Local alias so the product builder reads as prose beside `compareExact`. */
+const isZeroExact = isZero
 
 /* -------------------------------------------------------------------------- */
 /* Lookup                                                                      */
@@ -214,8 +221,20 @@ export type TradeSection =
 export interface FinanceSection {
   readonly structure: string
   readonly basis: string
+  /** False on a wholesale or dealer-trade disposal, which has no consumer. */
+  readonly isRetailStructure: boolean
   readonly cashDown: string
   readonly amountFinanced: string
+  /** The FICTIONAL lender, or `null` when none exists. */
+  readonly lenderCode: string | null
+  readonly lenderName: string | null
+  readonly lenderCategory: string | null
+  /** Classifies the LENDER'S PROGRAM, never a customer. Not a credit grade. */
+  readonly lenderProgramTier: string | null
+  /** Why there is no lender, when there is none. Never just "not applicable". */
+  readonly lenderAbsence: string | null
+  /** An amount, never a rate. `$0.00` is a real governed zero on a cash deal. */
+  readonly financeReserve: string
   /** What is deliberately not shown, and why. Rendered, not omitted. */
   readonly notModelled: readonly { readonly label: string; readonly reason: string }[]
 }
@@ -246,6 +265,75 @@ export type TimelineSection =
     }
   | { readonly kind: 'unlinked'; readonly statement: string }
 
+/** One F&I product contract on the deal. */
+export interface ProductContract {
+  readonly productSaleId: string
+  readonly productName: string
+  readonly category: string
+  readonly provider: string
+  readonly eligibilityRuleId: string
+  readonly retailPrice: string
+  readonly dealerCost: string
+  readonly originalGross: string
+  readonly adjustmentTotal: string
+  readonly adjustmentEvents: number
+  readonly netGross: string
+  /** The COVERAGE's term. Never a loan term: ARPI models none. */
+  readonly contractTermMonths: number
+  /**
+   * Derived deterministically from the contract's own event history, never from a clock.
+   *
+   *   Active        no adjustment posted
+   *   Adjusted      events posted and gross remains
+   *   Cancelled     the whole original gross has been taken back
+   *
+   * "Cancelled" is claimed only when nothing remains, because a partial cancellation is
+   * a reduction and calling it cancelled would overstate what happened.
+   */
+  readonly status: 'Active' | 'Adjusted' | 'Cancelled'
+  /** Whether the net figure recomputes from original less cumulative adjustments. */
+  readonly netVerified: boolean
+}
+
+/** The deal's whole F&I product section. */
+export interface ProductSection {
+  readonly contracts: readonly ProductContract[]
+  readonly contractCount: number
+  readonly originalGrossTotal: string
+  readonly adjustmentTotal: string
+  readonly netGrossTotal: string
+  readonly asOfDate: string
+  /**
+   * Whether the itemization sums to the deal row's own product rollup.
+   *
+   * The deal row carries a pre-aggregated total and the contract partition carries the
+   * lines. If they disagree, one of them is wrong and the page says so rather than
+   * showing whichever it happened to read first.
+   */
+  readonly reconcilesToDealRow: boolean
+  /** reserve + original product gross === back-end gross, on the deal row. */
+  readonly backGrossVerified: boolean
+  /** Every contract names a governed rule and sits on a retail structure. */
+  readonly eligibilityRecorded: boolean
+  /** Every contract's net recomputes and sits inside `[0, original]`. */
+  readonly adjustmentsValid: boolean
+}
+
+/** The back-end gross decomposition, verified from its own components. */
+export interface BackGrossSection {
+  readonly reserve: string
+  readonly originalProductGross: string
+  readonly otherFiIncome: string
+  readonly backEndGross: string
+  /** reserve + original product gross === back-end gross, to the cent. */
+  readonly verified: boolean
+  readonly residual: string
+  /** The as-of retained figures, which answer a different question. */
+  readonly cumulativeAdjustments: string
+  readonly retainedFiGross: string
+  readonly asOfDate: string
+}
+
 export interface IntegrityCheck {
   readonly id: string
   readonly label: string
@@ -263,7 +351,8 @@ export interface DealJacket {
   }
   readonly trade: TradeSection
   readonly finance: FinanceSection
-  readonly backGross: { readonly display: string; readonly note: string }
+  readonly products: ProductSection
+  readonly backGross: BackGrossSection
   readonly totalGross: {
     readonly lines: readonly CalculationLine[]
     readonly verification: Verification
@@ -353,6 +442,9 @@ export function buildDealJacket(saleId: string): DealJacket | null {
     return null
   }
 
+  // The deal's contract itemization, from the ONE product partition this deal sits in.
+  const products = buildProducts(row)
+
   // The front-gross identity, recomputed from the displayed components.
   const recomputedFront = subtractExact(
     subtractExact(subtractExact(salePrice, acquisition), reconditioning),
@@ -362,6 +454,15 @@ export function buildDealJacket(saleId: string): DealJacket | null {
 
   const isRetail = flag(row, 'is_retail')
   const msrp = money(row, 'msrp')
+
+  const checks = buildChecks(
+    row,
+    recomputedFront,
+    frontGross,
+    recomputedTotal,
+    totalGross,
+    products
+  )
 
   return {
     identity: {
@@ -435,10 +536,8 @@ export function buildDealJacket(saleId: string): DealJacket | null {
     },
     trade: buildTrade(row),
     finance: buildFinance(row),
-    backGross: {
-      display: formatCurrencyExact(backGross, 2),
-      note: 'Aggregate back-end gross. Product-level itemization arrives with the F&I model increment (DASH.7); no finance-product fact exists in the warehouse yet, so no reserve, VSC, GAP or other product figure is shown or implied.',
-    },
+    products,
+    backGross: buildBackGross(row, backGross, products),
     totalGross: {
       lines: [
         {
@@ -465,28 +564,41 @@ export function buildDealJacket(saleId: string): DealJacket | null {
     },
     staff: buildStaff(row, isRetail),
     timeline: buildTimeline(row),
-    checks: buildChecks(row, recomputedFront, frontGross, recomputedTotal, totalGross),
-    checksNeedingReview: buildChecks(
-      row,
-      recomputedFront,
-      frontGross,
-      recomputedTotal,
-      totalGross
-    ).filter((check) => check.state === 'review').length,
+    // Built ONCE. The previous version called the builder twice -- a second time only to
+    // count the failures -- which is both wasteful and a place for the two results to
+    // diverge if the builder ever stops being pure.
+    checks,
+    checksNeedingReview: checks.filter((check) => check.state === 'review').length,
     lineage: {
       sourceView: SOURCE_VIEW,
       datasetName: DATASET_NAME,
       datasetVersion: dashboardManifest.datasetVersion,
       asOfDate: dashboardManifest.asOfDate,
       contractFingerprint: dashboardManifest.contractSha256.slice(0, 12),
-      kpiIds: ['KPI-SLS-001', 'KPI-GRS-001', 'KPI-GRS-002', 'KPI-GRS-003', 'KPI-INV-007'],
+      // The KPIs THIS DEAL feeds, not the whole F&I family. A deal that carried no
+      // contract contributes to none of the product measures, and listing all
+      // twenty-two on every jacket would make the lineage decorative.
+      kpiIds: [
+        'KPI-SLS-001',
+        'KPI-GRS-001',
+        'KPI-GRS-002',
+        'KPI-GRS-003',
+        'KPI-INV-007',
+        'KPI-FNI-001',
+        ...(products.contractCount > 0
+          ? ['KPI-FNI-003', 'KPI-FNI-004', 'KPI-FNI-011']
+          : []),
+      ],
       limitations: [
         'Synthetic data. Granite Auto Group and every store, employee role and transaction referenced here are fictional.',
         'Front-end gross EXCLUDES manufacturer holdback, dealer cash, stair-step money, floorplan credits and unposted accounting adjustments. None is modelled, and none is implied.',
-        'Back-end gross is aggregate. Reserve and product gross are not separated until the F&I model increment.',
+        'Back-end gross is on the DEAL-DATE basis and is never rewritten when a cancellation or chargeback posts later. Retained F&I gross answers a different question and is shown separately.',
+        'Every F&I product, administrator and lender is fictional, and every product price and cost is synthetic. No figure here is a market price or an industry benchmark.',
+        'No APR, term, payment, buy rate, sell rate or rate spread exists anywhere in this project. Finance reserve is an amount, never a rate.',
+        'A product contract term is the COVERAGE term and is never a loan term.',
         'The odometer reading is banded, never exact.',
         'Trade payoff and equity are not modelled: no trade fact exists.',
-        'No lender, APR, term, payment, buy rate, sell rate or rate spread exists anywhere in ARPI.',
+        'The lender is a fictional finance source recorded as an assignment only. No credit application, decision, tier, stipulation or adverse-action record exists in ARPI, and none is implied by a lender appearing here.',
         'The vehicle identifier is not a stock number. The model contains none.',
       ],
     },
@@ -539,33 +651,198 @@ function buildTrade(row: DashboardRow): TradeSection {
 
 function buildFinance(row: DashboardRow): FinanceSection {
   const structure = text(row, 'finance_structure')
+  const isRetailStructure = flag(row, 'is_retail_structure')
+  // Only ONE entry remains, and it is the one that will never be filled: DASH.6 made the
+  // lender and the reserve real, so claiming they are "not modelled" would now be false.
   const notModelled: { label: string; reason: string }[] = [
-    {
-      label: 'Lender and lender category',
-      reason:
-        structure === 'Cash'
-          ? 'Not applicable: nothing was financed on this deal.'
-          : 'Not modelled: no lender dimension exists in the warehouse until DASH.6.',
-    },
     {
       label: 'APR, term, payment, buy rate, sell rate, rate spread',
       reason:
-        'Not modelled, and deliberately out of scope. PRIVACY_AND_ETHICS.md §7 places rate mechanics outside what this project publishes.',
-    },
-    {
-      label: 'Finance reserve gross',
-      reason: 'Not modelled: reserve is not separated from back-end gross until DASH.7.',
+        'Not modelled, and deliberately out of scope permanently. PRIVACY_AND_ETHICS.md §7 places rate mechanics outside what this project publishes: ARPI approves nothing, prices nothing and recommends no lender.',
     },
   ]
   return {
     structure,
     basis: text(row, 'finance_structure_basis'),
-    cashDown: formatCurrencyExact(money(row, 'cash_down') ?? { units: 0n, scale: 2 }, 2),
-    amountFinanced: formatCurrencyExact(
-      money(row, 'amount_financed') ?? { units: 0n, scale: 2 },
-      2
-    ),
+    isRetailStructure,
+    cashDown: formatCurrencyExact(money(row, 'cash_down') ?? ZERO, 2),
+    amountFinanced: formatCurrencyExact(money(row, 'amount_financed') ?? ZERO, 2),
+    lenderCode: optionalText(row, 'lender_code'),
+    lenderName: optionalText(row, 'lender_name'),
+    lenderCategory: optionalText(row, 'lender_category'),
+    lenderProgramTier: optionalText(row, 'lender_program_tier'),
+    // WHY there is no lender, when there is none. Three different reasons, and a reader
+    // who sees "Not applicable" without one cannot tell which of them applies.
+    lenderAbsence:
+      optionalText(row, 'lender_code') !== null
+        ? null
+        : !isRetailStructure
+          ? 'A wholesale or dealer-trade disposal has no consumer, so it carries no lender.'
+          : structure === 'Cash'
+            ? 'Nothing was financed on this deal, so no lender exists.'
+            : 'No lender is recorded against this deal.',
+    financeReserve: formatCurrencyExact(money(row, 'finance_reserve_gross') ?? ZERO, 2),
     notModelled,
+  }
+}
+
+/**
+ * The deal's F&I product contracts.
+ *
+ * ONE PARTITION. The contract dataset is chunked by store and SALE month, the same key
+ * the deal row itself sits under, so this resolves exactly one file and never the whole
+ * population's contract detail. A deal that carried nothing resolves a partition holding
+ * no row for its `sale_id`, which is a legitimate and common outcome rather than an error.
+ */
+function buildProducts(row: DashboardRow): ProductSection {
+  const saleId = text(row, 'sale_id')
+  const dealershipId = text(row, 'dealership_id')
+  const month = text(row, 'sale_date').slice(0, 7)
+  const asOfDate = text(row, 'as_of_date')
+
+  const file = productDetailChunkFile(dealershipId, month)
+  const rows =
+    file === undefined
+      ? []
+      : decodeDataset(`deal-product-detail/${dealershipId}/${month}`, file).filter(
+          (candidate) => text(candidate, 'sale_id') === saleId
+        )
+
+  const contracts = rows.map((contract) => {
+    const original = money(contract, 'original_product_gross') ?? ZERO
+    const adjustments = money(contract, 'cumulative_adjustment_amount') ?? ZERO
+    const net = money(contract, 'net_product_gross_as_of') ?? ZERO
+    const events = count(contract, 'adjustment_event_count') ?? 0
+
+    // Recomputed, not read: original less cumulative adjustments must equal the
+    // published net. A verification that trusts the column verifies nothing.
+    const recomputedNet = subtractExact(original, adjustments)
+    const netVerified = compareExact(recomputedNet, net) === 0
+
+    // Status is a function of the event history and nothing else. No clock is consulted:
+    // a contract's state is what its events made it, and "as of" is the export's date.
+    let status: ProductContract['status'] = 'Active'
+    if (events > 0) status = isZeroExact(net) ? 'Cancelled' : 'Adjusted'
+
+    return {
+      productSaleId: text(contract, 'product_sale_id'),
+      productName: text(contract, 'product_name'),
+      category: text(contract, 'product_category'),
+      provider: text(contract, 'provider_name'),
+      eligibilityRuleId: text(contract, 'eligibility_rule_id'),
+      retailPrice: formatCurrencyExact(
+        money(contract, 'product_retail_price') ?? ZERO,
+        2
+      ),
+      dealerCost: formatCurrencyExact(money(contract, 'product_dealer_cost') ?? ZERO, 2),
+      originalGross: formatCurrencyExact(original, 2),
+      adjustmentTotal: formatCurrencyExact(adjustments, 2),
+      adjustmentEvents: events,
+      netGross: formatCurrencyExact(net, 2),
+      contractTermMonths: count(contract, 'contract_term_months') ?? 0,
+      status,
+      netVerified,
+    }
+  })
+
+  // Summed from the LINES, then compared against the deal row's own pre-aggregated
+  // rollup. Two independent paths to the same number; if they disagree the page says so.
+  let originalTotal = ZERO
+  let adjustmentTotal = ZERO
+  let netTotal = ZERO
+  for (const contract of rows) {
+    originalTotal = addExact(
+      originalTotal,
+      money(contract, 'original_product_gross') ?? ZERO
+    )
+    adjustmentTotal = addExact(
+      adjustmentTotal,
+      money(contract, 'cumulative_adjustment_amount') ?? ZERO
+    )
+    netTotal = addExact(netTotal, money(contract, 'net_product_gross_as_of') ?? ZERO)
+  }
+  const rollup = money(row, 'original_product_gross') ?? ZERO
+
+  // The deal-date identity, on the deal row's own components.
+  const reserve = money(row, 'finance_reserve_gross') ?? ZERO
+  const backEnd = money(row, 'back_end_gross') ?? ZERO
+  const backGrossVerified = compareExact(addExact(reserve, rollup), backEnd) === 0
+
+  // Eligibility EVIDENCE, not the predicate. Every contract must name a governed rule and
+  // must sit on a retail structure a product can attach to at all. The predicate itself
+  // belongs to the configuration and is enforced in the warehouse; re-implementing it
+  // here would create the second authority the eligibility model exists to prevent.
+  const eligibilityRecorded = rows.every((contract) => {
+    const rule = text(contract, 'eligibility_rule_id')
+    const structure = text(contract, 'finance_structure')
+    return rule.startsWith('ELIG-') && RETAIL_STRUCTURES.has(structure)
+  })
+
+  // Adjustment ARITHMETIC, which this page can genuinely do: every net must recompute,
+  // and no contract may sit outside [0, original]. The sequence and cumulative-cap rules
+  // over a contract's whole history are the warehouse's.
+  const adjustmentsValid = rows.every((contract) => {
+    const original = money(contract, 'original_product_gross') ?? ZERO
+    const adjustments = money(contract, 'cumulative_adjustment_amount') ?? ZERO
+    const net = money(contract, 'net_product_gross_as_of') ?? ZERO
+    if (compareExact(subtractExact(original, adjustments), net) !== 0) return false
+    if (isNegative(net)) return false
+    return compareExact(net, original) <= 0
+  })
+
+  return {
+    contracts,
+    contractCount: contracts.length,
+    originalGrossTotal: formatCurrencyExact(originalTotal, 2),
+    adjustmentTotal: formatCurrencyExact(adjustmentTotal, 2),
+    netGrossTotal: formatCurrencyExact(netTotal, 2),
+    asOfDate,
+    reconcilesToDealRow: compareExact(originalTotal, rollup) === 0,
+    backGrossVerified,
+    eligibilityRecorded,
+    adjustmentsValid,
+  }
+}
+
+/** The three structures a product contract can be written on. A disposal has no consumer. */
+const RETAIL_STRUCTURES: ReadonlySet<string> = new Set([
+  'Cash',
+  'Retail Finance',
+  'Lease',
+])
+
+/**
+ * The back-end gross decomposition, recomputed from the deal row's own components.
+ *
+ * THE IDENTITY USES ORIGINAL PRODUCT GROSS, NOT NET. A later cancellation is supposed to
+ * make retained gross differ from produced gross; substituting the retained figure here
+ * would make the check fail on every adjusted deal and report a defect that is actually
+ * correct behaviour. The retained figures are shown separately, because they answer a
+ * different question.
+ */
+function buildBackGross(
+  row: DashboardRow,
+  backGross: Exact,
+  products: ProductSection
+): BackGrossSection {
+  const reserve = money(row, 'finance_reserve_gross') ?? ZERO
+  const original = money(row, 'original_product_gross') ?? ZERO
+  const adjustments = money(row, 'cumulative_adjustment_amount') ?? ZERO
+  const net = money(row, 'net_product_gross_as_of') ?? ZERO
+
+  const explained = addExact(reserve, original)
+  const residual = subtractExact(backGross, explained)
+
+  return {
+    reserve: formatCurrencyExact(reserve, 2),
+    originalProductGross: formatCurrencyExact(original, 2),
+    otherFiIncome: formatCurrencyExact(ZERO, 2),
+    backEndGross: formatCurrencyExact(backGross, 2),
+    verified: compareExact(explained, backGross) === 0,
+    residual: formatCurrencyExact(residual, 2),
+    cumulativeAdjustments: formatCurrencyExact(adjustments, 2),
+    retainedFiGross: formatCurrencyExact(addExact(reserve, net), 2),
+    asOfDate: products.asOfDate,
   }
 }
 
@@ -715,7 +992,8 @@ function buildChecks(
   recomputedFront: Exact,
   publishedFront: Exact,
   recomputedTotal: Exact,
-  publishedTotal: Exact
+  publishedTotal: Exact,
+  products: ProductSection
 ): readonly IntegrityCheck[] {
   const frontOk = compareExact(recomputedFront, publishedFront) === 0
   const totalOk = compareExact(recomputedTotal, publishedTotal) === 0
@@ -738,6 +1016,62 @@ function buildChecks(
       detail: totalOk
         ? 'Front-end gross plus back-end gross equals the published total gross, to the cent.'
         : 'The published total gross does not equal front plus back.',
+    },
+    {
+      /*
+       * THE BACK-GROSS DECOMPOSITION, recomputed rather than read.
+       *
+       * Deliberately uses ORIGINAL product gross. A cancellation is supposed to make
+       * retained gross differ from produced gross, so a check written against the net
+       * figure would go red on every adjusted deal and report correct behaviour as a
+       * defect. It fails when the exported components genuinely do not add up.
+       */
+      id: 'back-gross-reconciliation',
+      label: 'Back-gross reconciliation',
+      state: products.backGrossVerified ? 'passed' : 'review',
+      detail: products.backGrossVerified
+        ? 'Finance reserve plus original product gross equals the published back-end gross, to the cent, with other F&I income of $0.00.'
+        : 'Finance reserve plus original product gross does not equal the published back-end gross.',
+    },
+    {
+      /*
+       * PRODUCT ELIGIBILITY, and the scope is stated honestly.
+       *
+       * The page does NOT re-evaluate the ELIG-* predicates: that would be a second
+       * implementation of a rule the configuration owns, which is the thing the
+       * eligibility model exists to prevent. What it checks is that every contract on
+       * this deal carries a governed rule identifier, and that the structure the contract
+       * was written under is one a product can attach to at all. The deeper predicate is
+       * enforced in the warehouse by DQ-FPS-011 and RECON-FI-ELIGIBILITY, which is where
+       * the rule lives.
+       */
+      id: 'product-eligibility',
+      label: 'F&I product eligibility',
+      state: products.eligibilityRecorded ? 'passed' : 'review',
+      detail:
+        products.contractCount === 0
+          ? 'No product was written on this deal, so there is no eligibility to check. Recorded as passed rather than hidden, because an absent check reads exactly like a passing one.'
+          : products.eligibilityRecorded
+            ? `Every contract on this deal names the governed eligibility rule its category resolves to, and was written on a retail structure a product can attach to. The rule itself is evaluated in the warehouse by DQ-FPS-011 and RECON-FI-ELIGIBILITY; this page checks that the evidence travelled with the row rather than re-implementing the predicate.`
+            : 'A contract on this deal carries no governed eligibility rule identifier, or was written on a structure no product can attach to.',
+    },
+    {
+      /*
+       * PRODUCT ADJUSTMENT VALIDITY. Again arithmetic this page can actually do: every
+       * contract's net must recompute from its own original less its own cumulative
+       * adjustments, and no contract may have been reduced below zero or above its
+       * original gross. The sequence and cap rules over a contract's whole event history
+       * are the warehouse's, enforced by DQ-FPA-007, -008 and RECON-FI-ADJUSTMENT-CAP.
+       */
+      id: 'product-adjustment-validity',
+      label: 'Product adjustment validity',
+      state: products.adjustmentsValid ? 'passed' : 'review',
+      detail:
+        products.contractCount === 0
+          ? 'No product was written on this deal, so no adjustment can exist against one.'
+          : products.adjustmentsValid
+            ? "Every contract's net gross recomputes from its own original gross less its own cumulative adjustments, and none has been reduced below zero or above what it was written for."
+            : "A contract's net gross does not recompute from its components, or has been reduced outside the range its original gross allows.",
     },
     {
       id: 'delivery-date-validity',

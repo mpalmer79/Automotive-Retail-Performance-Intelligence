@@ -509,17 +509,81 @@ def test_the_view_exposes_no_customer_reference_and_no_lending_mechanic(
     assert offending == [], f"reporting.{view_name} exposes {offending}"
 
 
-def test_no_fi_view_is_exported_as_a_browser_dataset() -> None:
-    """DASH.6 is a data increment. DASH.7 owns the F&I presentation surface.
+def test_every_fi_view_is_exported_exactly_once_by_dash_7() -> None:
+    """DASH.6 exported none of these. DASH.7 promotes all four, and only these four.
+
+    Through DASH.6 this assertion read the other way round -- no F&I view may appear in
+    the export contract -- because DASH.6 was a data increment and a view that exists in
+    ``reporting`` is not thereby exportable. DASH.7 owns the presentation surface, so the
+    assertion is re-aimed rather than deleted, and it is still a closed set in both
+    directions: a fifth F&I view exported without an increment fails here, and a promoted
+    view that quietly lost its dataset fails here too.
 
     Read from the export contract rather than from the data directory, so a dataset added
     without a manifest entry is caught too.
     """
     from arpi.dashboard.contract import DATASETS
 
-    sources = {spec.source_view for spec in DATASETS}
-    for view_name in FI_VIEWS:
-        assert view_name not in sources, (
-            f"{view_name} is exported as a browser dataset. DASH.6 adds no F&I export: "
-            "DASH.7 owns the presentation surface and the itemized Deal Jacket."
+    exported = [spec for spec in DATASETS if spec.source_view.split(".")[-1] in FI_VIEWS]
+    by_view = {spec.source_view.split(".")[-1]: spec for spec in exported}
+
+    assert sorted(by_view) == sorted(FI_VIEWS), (
+        "DASH.7 exports exactly the four DASH.6 F&I views. "
+        f"Exported: {sorted(by_view)}; expected: {sorted(FI_VIEWS)}."
+    )
+    assert len(exported) == len(by_view), (
+        "an F&I view is exported by more than one dataset, which would publish the same "
+        "rows under two names and two reconciliation identities"
+    )
+    for spec in exported:
+        joined = {view.split(".")[-1] for view in spec.join_views}
+        assert joined <= set(FI_VIEWS) | {"vw_dealership", "vw_calendar"}, (
+            f"{spec.name} joins {sorted(joined)}: an F&I dataset resolves keys through "
+            "allowlisted dimension views only"
         )
+
+
+def test_no_exported_fi_column_is_undeclared_by_the_view(loaded_cursor: Any) -> None:
+    """The promotion is a SUBSET, never an addition.
+
+    A dataset that named a column the view does not publish would fail at export time,
+    but it would fail with a database error rather than with the reason. This states the
+    rule the promotion had to satisfy: DASH.7 exports fewer columns than DASH.6 built and
+    invents none.
+
+    Checked against ``source_column``, not against the exported name. Two columns are
+    deliberately RENAMED at the boundary -- ``finance_manager_id`` is exported as
+    ``finance_manager_code`` so that no exported identifier reads like a warehouse key --
+    and a check that compared exported names would call a rename an invention.
+    """
+    from arpi.dashboard.contract import DATASETS
+
+    checked = 0
+    for spec in DATASETS:
+        view_name = spec.source_view.split(".")[-1]
+        if view_name not in FI_VIEWS:
+            continue
+        loaded_cursor.execute(
+            """
+            SELECT column_name
+              FROM information_schema.columns
+             WHERE table_schema = 'reporting' AND table_name = %s
+            """,
+            (view_name,),
+        )
+        published = {row[0] for row in loaded_cursor.fetchall()}
+        declared = {
+            column.source_column.split(".")[-1]
+            for column in spec.columns
+            if column.source_column is not None
+        }
+        assert declared <= published, (
+            f"{spec.name} declares {sorted(declared - published)}, which "
+            f"reporting.{view_name} does not publish"
+        )
+        assert len(declared) < len(published), (
+            f"{spec.name} exports every column reporting.{view_name} publishes. The "
+            "promotion is meant to be a reviewed subset, not a pass-through."
+        )
+        checked += 1
+    assert checked == len(FI_VIEWS)

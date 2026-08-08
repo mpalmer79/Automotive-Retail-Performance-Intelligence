@@ -318,7 +318,33 @@ content through a DOM that had already collapsed it, and visible immediately in 
 The lesson is the general one: a string assembled in markup is not a string until something reads it the
 way a person does.
 
+## 10.4 As-built: what `DASH.7` added
+
+| Suite | File | What it proves |
+|---|---|---|
+| Export contract | `tests/unit/test_export_dashboard_dataset.py` (+17, `TestFiContract`) | The four F&I datasets read only allowlisted reporting views; **no consumer-credit column exists anywhere in the whole contract** (fifteen tokens swept over every dataset, not only the F&I ones); penetration publishes two additive columns and **no quotient of any spelling**; the denominator is keyed by category and by governed rule; the adjustment dataset is on the adjustment basis and the production datasets are not; **no F&I dataset sorts by a performance measure**, because a default sort by a metric is a leaderboard whatever the header says; no rank or judgement column is declared; the minimum-sample floor travels as a column; the manager code is nullable, because `null` means nobody was on the desk; the back-gross identity is reconcilable **across two datasets** rather than against itself; the two penetration totals each name their subset; the Deal Jacket publishes the components and **deliberately publishes no verification flag** |
+| View promotion boundary | `tests/integration/test_fi_reporting_views.py` | Re-aimed rather than deleted. Through `DASH.6` it asserted that **no** F&I view appeared in the export contract; it now asserts the exported set is **exactly those four**, in both directions, and that every declared column is one the view actually publishes — checked against `source_column`, not the exported name, so the deliberate `finance_manager_id` → `finance_manager_code` rename is not mistaken for an invention. It also asserts each dataset is a strict SUBSET: a promotion that exported every column would be a pass-through rather than a reviewed decision |
+| TypeScript unit | `portfolio/tests/unit/dashboard-fi.test.tsx` (59) | Every headline figure reconciled against the manifest's own published totals, character for character; both sides of VSC and GAP penetration; the cross-dataset back-gross identity; **a different eligible denominator per category**, with the group figure asserted to DIFFER from the average of store penetrations; the distinct-deal rule visible in the data (a category with more contracts than attached deals); a store filter scoping numerator and denominator together; the three date bases kept apart; the minimum-sample floor read from the export; the manager order proved neutral; the percentage-point conversion performed once; empty states that empty both sides of a ratio rather than only the numerator |
+| **Cache-key regression** | same file | The defect that produced it is in the file's own header. `decodeDataset` memoises by key, and eighteen partitions read under one key returned the first partition eighteen times — inflating numerator and denominator together, so VSC read 288/720 against a true 227/558 and rendered 40.0% instead of 40.7%. **Nothing on the page looked wrong.** Three assertions now pin it: every declared partition decodes, two partitions produce different row sets, and the partition row counts sum to the dataset row count |
+| Deal Jacket | `portfolio/tests/unit/dashboard-deal-jacket.test.tsx` (43 → 59) | The itemization sums to the deal row's own rollup on all 650 deals — two datasets, one grain apart, neither derived from the other; every contract's net gross recomputed; `Cancelled` claimed only when nothing remains; every net inside `[0, original]`; a governed `ELIG-*` rule on every contract; **no product on a transaction with no consumer**, which is what makes the corrected `finance_structure` load-bearing; the back-gross identity recomputed from the DISPLAYED currency strings; and the panel driven with a broken section so the failure wording is reachable |
+| End to end | `portfolio/tests/e2e/dashboard-fi.spec.ts` (36) | Complete HTML with scripting disabled, section by section; the methodology inside the document rather than behind a click; the disclosure above the money; both sides of every penetration as their own columns; the eligibility rule on every row; **no rank, benchmark, recommendation or rate field in the rendered text**; no control that pretends to act on a manager or a product; no horizontal page scroll from 320px to 1920px; every table named and every header cell scoped |
+| **Negation-aware sweeps** | same file | The negative sweeps had to learn the difference between reporting a benchmark and denying one. A flat substring match flags "no figure here is an industry benchmark" and "ARPI models no APR, payment, buy rate, sell rate, rate spread, credit score or lending decision" — the disclosures written to prevent the very thing being checked — and the only way to make it pass would be to delete them. The sweep splits into sentences and flags only **affirmative** uses, and a paired test asserts the denials are present, because a page that simply never mentioned benchmarks would pass the negative and still leave 40.7% looking judged against something |
+
+**Two real defects, each caught by the layer that could see it and by no other.**
+
+The **penetration cache key** was caught by reconciling the selector's output against the export
+manifest before any UI existed. No visual review would have found it: both sides of every ratio were
+inflated by the same factor, so every percentage on the page was plausible and internally consistent.
+
+The **double-converted percentage point** was caught by the browser suite reading what the page
+actually said. The selector multiplied a proportion difference by 100 and the shared formatter
+multiplied it again, so a three-and-a-half-point move rendered as `+350.9 percentage points`. Every
+unit test passed: the penetration figures were correct, the reconciliation held, and only their
+difference was wrong. It was visible in exactly one place — the rendered text — which is the argument
+for the browser layer existing at all.
+
 ## 11. Power BI alignment
+
 
 **`DASH.5` changed no TMDL, no `powerbi/` file and no validation evidence.** It recorded a new
 **semantic-model gap** in `powerbi/model_documentation/` — the target fact and view exist in PostgreSQL

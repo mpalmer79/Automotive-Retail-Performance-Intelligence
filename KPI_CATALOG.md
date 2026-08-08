@@ -1987,7 +1987,7 @@ two different products of one category, so a contract-row penetration can exceed
 | **Source facts** | `warehouse.fact_finance_product_sale`, `warehouse.fact_finance_product_adjustment`, `warehouse.fact_vehicle_sale`, `warehouse.dim_finance_product`, `warehouse.dim_lender`. |
 | **Future Power BI measure owner** | **None yet, deliberately.** The plan names an *F&I Measures* group ([`powerbi/model_documentation/03-measure-groups.md`](powerbi/model_documentation/03-measure-groups.md)) as the future owner; that is ownership planning, not implementation. **No TMDL was written for this domain, no relationship to either F&I fact exists, and no DAX has ever computed one of these twenty-two.** |
 | **Reconciliation** | `RECON-FI-*` in `audit.vw_recon_fi`, headed by `RECON-FI-001`, unioned into `audit.vw_recon_all` and recorded on every pipeline run. |
-| **Web presentation** | **None in `DASH.6`.** No browser dataset is exported and no console route reads these views: `DASH.7` owns the F&I surface and the itemized Deal Jacket. |
+| **Web presentation** | **`DASH.7`.** All four views are exported as governed browser datasets and read by `/dashboard/fi` and the itemized Deal Jacket. Three rules travel with them onto the surface: every ratio is rendered beside **both** of its components; `KPI-FNI-021` and `KPI-FNI-022` are ordered by store and synthetic identifier with the minimum-sample floor applied and **no rank of any kind**; and `KPI-FNI-014`, `-015` and `-018` carry the words *period proxy, not a contract-cohort loss rate* on every value. |
 | **Project-default thresholds** | Only the shared minimum-sample floor (§40.5). No rating, no grade, no favourable direction. |
 | **Null / zero-denominator behaviour** | Every ratio returns **NULL** on an empty denominator — never zero, never infinity, never a division error. |
 
@@ -2307,7 +2307,13 @@ customer segmentation, no menu-selling simulation, no lender recommendation, no 
 period proxies and say so. There is no `other_fi_income` measure, because the value is exactly `0.00` and
 is not a column: a zero that is never anything else is where a balancing plug would hide.
 
-There is also **no F&I operating surface** in `DASH.6`. No `/dashboard/fi` route exists, no browser dataset
-is exported from any of these views, and the Deal Jacket is not itemized. `DASH.7` owns all of that, and
-this increment deliberately stops at the data model so that increment is a presentation problem rather
-than a data problem.
+There was also **no F&I operating surface** in `DASH.6`, deliberately: the increment stopped at the data
+model so that the next one would be a presentation problem rather than a data problem. **`DASH.7` builds
+the surface** — `/dashboard/fi`, the itemized Deal Jacket, and all four views exported as governed browser
+datasets — and it needed no new measure, no new view and no change to any definition above, which is the
+evidence that the split was drawn in the right place.
+
+The prohibitions in this section are unchanged by that, and are enforced on the surface as well as in the
+model: no benchmark, no target penetration, no ranking, no recommendation, no menu simulation, no payment,
+no rate. `/dashboard/fi` states each of them as rendered text rather than only in this catalogue, and
+`portfolio/tests/e2e/dashboard-fi.spec.ts` sweeps the rendered page for affirmative uses of every one.

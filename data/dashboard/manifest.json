@@ -1,20 +1,20 @@
 {
   "schema": "arpi.dashboard_export/1",
   "contract_version": 1,
-  "contract_sha256": "d2f90edc9c1c776623cd787994a76529c65ff0a965f03d7ff18e1879228b98c0",
-  "dataset_version": 5,
-  "generated_at": "2026-08-08T03:40:21+00:00",
+  "contract_sha256": "996896902dddae3187c07341c5dc65c7ad732eff9634aab2938befe8703e881d",
+  "dataset_version": 8,
+  "generated_at": "2026-08-08T14:45:58+00:00",
   "as_of_date": "2025-12-31",
   "profile": "development",
   "random_seed": 20250701,
-  "source_commit": "dc6ecaa19f4e83b22fa351888a12ee7d516c629b",
+  "source_commit": "55c11b806a0b4b913e3197bf8fcef0f85d03c485",
   "exporter_version": "0.1.0",
   "query_normalisation": "arpi.sql_whitespace_canonical/1",
   "reporter_role": "arpi_reporter",
   "synthetic_data": true,
   "fictional_dealer_group": true,
   "pipeline_run": {
-    "run_uuid": "6b1a78ae-0a44-42ba-96e7-a12e7bb16363",
+    "run_uuid": "72a266b6-31d0-470b-80e4-48c3e3bfdd24",
     "logical_run_key": null,
     "status": "succeeded"
   },
@@ -25,7 +25,11 @@
     "reporting.vw_days_to_sale",
     "reporting.vw_deal_explorer",
     "reporting.vw_deal_jacket",
+    "reporting.vw_deal_product_detail",
     "reporting.vw_dealership",
+    "reporting.vw_fi_adjustment_summary",
+    "reporting.vw_fi_product_penetration",
+    "reporting.vw_fi_summary",
     "reporting.vw_gross_change_bridge",
     "reporting.vw_gross_summary",
     "reporting.vw_inventory_aging",
@@ -3845,7 +3849,9 @@
           "enumeration": [
             "Cash",
             "Retail Finance",
-            "Lease"
+            "Lease",
+            "Wholesale",
+            "Dealer Trade"
           ],
           "source_column": "reporting.vw_deal_jacket.finance_structure"
         },
@@ -3858,6 +3864,16 @@
           "display_precision": null,
           "enumeration": null,
           "source_column": "reporting.vw_deal_jacket.finance_structure_basis"
+        },
+        {
+          "name": "is_retail_structure",
+          "type": "boolean",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.is_retail_structure"
         },
         {
           "name": "vehicle_code",
@@ -4167,6 +4183,65 @@
           "source_column": "reporting.vw_deal_jacket.amount_financed"
         },
         {
+          "name": "lender_code",
+          "type": "string",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.lender_code"
+        },
+        {
+          "name": "lender_name",
+          "type": "string",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.lender_name"
+        },
+        {
+          "name": "lender_category",
+          "type": "string",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "Captive",
+            "Bank",
+            "Credit Union",
+            "Independent Finance Company"
+          ],
+          "source_column": "reporting.vw_deal_jacket.lender_category"
+        },
+        {
+          "name": "lender_program_tier",
+          "type": "string",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "Prime",
+            "Near-prime",
+            "Subprime"
+          ],
+          "source_column": "reporting.vw_deal_jacket.lender_program_tier"
+        },
+        {
+          "name": "finance_reserve_gross",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.finance_reserve_gross"
+        },
+        {
           "name": "back_end_gross",
           "type": "currency",
           "nullable": false,
@@ -4185,6 +4260,56 @@
           "display_precision": null,
           "enumeration": null,
           "source_column": "reporting.vw_deal_jacket.total_gross"
+        },
+        {
+          "name": "product_contract_count",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "contracts",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.product_contract_count"
+        },
+        {
+          "name": "original_product_gross",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.original_product_gross"
+        },
+        {
+          "name": "cumulative_adjustment_amount",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.cumulative_adjustment_amount"
+        },
+        {
+          "name": "adjustment_event_count",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "events",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.adjustment_event_count"
+        },
+        {
+          "name": "net_product_gross_as_of",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.net_product_gross_as_of"
         },
         {
           "name": "salesperson_code",
@@ -4435,14 +4560,1134 @@
           "display_precision": null,
           "enumeration": null,
           "source_column": "reporting.vw_deal_jacket.inventory_snapshot_count"
+        },
+        {
+          "name": "as_of_date",
+          "type": "date",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.as_of_date"
+        },
+        {
+          "name": "deal_date_basis",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.deal_date_basis"
+        },
+        {
+          "name": "net_gross_date_basis",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.net_gross_date_basis"
         }
       ],
-      "notes": "The presentation-complete record of ONE deal, and the second deal-grain dataset. It carries the cost components deal-explorer deliberately omits, because a jacket must show the arithmetic behind its front gross and an index must not ship the whole population's cost structure. The two ARITHMETIC identities are NOT exported as flags: the route recomputes front gross and total gross from the displayed components with exact-decimal arithmetic, because a verification that reads a flag verifies nothing. trade_variance is published beside the front-gross components and is deliberately not one of them. back_end_gross is aggregate: no finance-product fact exists until DASH.7, and the route labels it as aggregate rather than implying an itemization. No customer attribute is exported at any grain; staff are synthetic codes and roles with no name; the lead timeline is flags and dates with no message, note or free text, because none exists in the model.",
-      "query_sha256": "e989016c138ae991da8d8158137e20042e9251ba47f8060dfa3ca71aff7cc2ba",
+      "notes": "The presentation-complete record of ONE deal, and the second deal-grain dataset. It carries the cost components deal-explorer deliberately omits, because a jacket must show the arithmetic behind its front gross and an index must not ship the whole population's cost structure. The two ARITHMETIC identities are NOT exported as flags: the route recomputes front gross, total gross and the back-gross decomposition from the displayed components with exact-decimal arithmetic, because a verification that reads a flag verifies nothing. trade_variance is published beside the front-gross components and is deliberately not one of them. DASH.7 MADE THE BACK END REAL: back_end_gross is no longer an unexplained aggregate, because finance_reserve_gross + original_product_gross equals it to the cent on every deal with other_fi_income exactly 0.00, and the contract itemization is the deal-product-detail dataset partitioned by the SAME store and sale month so one jacket opens one product partition. original_product_gross is the DEAL-DATE sum and is the one the identity uses; net_product_gross_as_of is the retained figure through the governed as-of date, and substituting it would make the identity fail on every adjusted deal. DASH.7 ALSO CORRECTED finance_structure: the view derived it with an inline CASE that had no non-retail branch and labelled 92 wholesale and dealer-trade disposals as Cash; it now calls the governed derivation function, the one authority, the enumeration widened to five values, and is_retail_structure separates them. The lender is FICTIONAL and null means NO LENDER EXISTS; lender_program_tier classifies the LENDER'S PROGRAM and never a customer; no APR, term, payment, buy rate, sell rate or spread is exported because none is modelled. No customer attribute is exported at any grain; staff are synthetic codes and roles with no name; the lead timeline is flags and dates with no message, note or free text, because none exists in the model.",
+      "query_sha256": "e735b0db5269a72e052d63c6a62f6d72907c4f38e6dda69d89fbb683bc86dc3f",
       "row_count": 650,
       "file": "deal-jacket.json",
-      "file_sha256": "0106adcb6fc561d12768b7c4494564112043528f38ab95f181a4457b507c5fa1",
-      "file_bytes": 1190877
+      "file_sha256": "a6e36e3b37542932370659a881437160a5348c8aeb7185c1184b6fc20dd74c0e",
+      "file_bytes": 1505254
+    },
+    {
+      "name": "fi-summary",
+      "source_view": "reporting.vw_fi_summary",
+      "join_views": [],
+      "grain": "One row per store, per sale date, per finance manager -- including the 'nobody on the F&I desk' group. NO PRODUCT CATEGORY: this dataset carries finance reserve and retail units, both properties of a DEAL.",
+      "business_key": [
+        "dealership_id",
+        "sale_date",
+        "finance_manager_code"
+      ],
+      "date_basis": "sale date for every production measure; as-of for the retained ones",
+      "sort_keys": [
+        "dealership_id",
+        "sale_date",
+        "finance_manager_code"
+      ],
+      "chunked": false,
+      "kpi_ids": [
+        "KPI-FNI-001",
+        "KPI-FNI-002",
+        "KPI-FNI-003",
+        "KPI-FNI-004",
+        "KPI-FNI-005",
+        "KPI-FNI-006",
+        "KPI-FNI-011",
+        "KPI-FNI-014",
+        "KPI-FNI-015",
+        "KPI-FNI-018",
+        "KPI-FNI-019",
+        "KPI-FNI-022"
+      ],
+      "columns": [
+        {
+          "name": "dealership_id",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_summary.dealership_id"
+        },
+        {
+          "name": "store_short_name",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_summary.store_short_name"
+        },
+        {
+          "name": "sale_date",
+          "type": "date",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_summary.sale_date"
+        },
+        {
+          "name": "finance_manager_code",
+          "type": "string",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_summary.finance_manager_id"
+        },
+        {
+          "name": "retail_units",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "units",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_summary.retail_units"
+        },
+        {
+          "name": "cash_deal_count",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "deals",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_summary.cash_deal_count"
+        },
+        {
+          "name": "retail_finance_deal_count",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "deals",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_summary.retail_finance_deal_count"
+        },
+        {
+          "name": "lease_deal_count",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "deals",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_summary.lease_deal_count"
+        },
+        {
+          "name": "finance_reserve_gross",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": 2,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_summary.finance_reserve_gross"
+        },
+        {
+          "name": "back_end_gross_deal_date",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": 2,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_summary.back_end_gross_deal_date"
+        },
+        {
+          "name": "contract_count",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "contracts",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_summary.contract_count"
+        },
+        {
+          "name": "deals_with_a_product",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "deals",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_summary.deals_with_a_product"
+        },
+        {
+          "name": "product_retail_price",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": 2,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_summary.product_retail_price"
+        },
+        {
+          "name": "product_dealer_cost",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": 2,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_summary.product_dealer_cost"
+        },
+        {
+          "name": "original_product_gross",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": 2,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_summary.original_product_gross"
+        },
+        {
+          "name": "original_fi_gross",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": 2,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_summary.original_fi_gross"
+        },
+        {
+          "name": "adjustment_event_count",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "events",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_summary.adjustment_event_count"
+        },
+        {
+          "name": "cumulative_adjustment_amount",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": 2,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_summary.cumulative_adjustment_amount"
+        },
+        {
+          "name": "net_product_gross_as_of",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": 2,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_summary.net_product_gross_as_of"
+        },
+        {
+          "name": "net_fi_gross_as_of",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": 2,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_summary.net_fi_gross_as_of"
+        },
+        {
+          "name": "minimum_sample_floor",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "deals",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_summary.minimum_sample_floor"
+        },
+        {
+          "name": "meets_minimum_sample",
+          "type": "boolean",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_summary.meets_minimum_sample"
+        },
+        {
+          "name": "as_of_date",
+          "type": "date",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_summary.as_of_date"
+        },
+        {
+          "name": "deal_date_basis",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_summary.deal_date_basis"
+        },
+        {
+          "name": "net_gross_date_basis",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_summary.net_gross_date_basis"
+        }
+      ],
+      "notes": "THE F&I PRODUCTION SUMMARY, and the dataset that deliberately has NO CATEGORY COLUMN. finance_reserve_gross and retail_units are properties of a DEAL; adding a category would repeat both on every category row and multiply them for anything that summed the result. Category-grain measures are fi-product-penetration's, which carries neither. NO QUOTIENT IS EXPORTED: reserve PVR, product gross PVR and products per retail unit all cross as components, so a group figure is SUM(numerator) / SUM(denominator) and never an average of store rates. retail_units is the denominator of KPI-FNI-002, -005, -006 and -022 and INCLUDES CASH DEALS, which cannot generate reserve -- the SQ-20 caution -- so cash_deal_count is published beside it to make that checkable rather than merely stated. deals_with_a_product exists so a reader can see how many deliveries carried nothing, and is NOT the denominator of products per retail unit. back_end_gross_deal_date is KPI-GRS-002 restricted to this group and is NEVER rewritten by a later adjustment: original_fi_gross is the produced figure and net_fi_gross_as_of the retained one, and the difference between them is the point of the distinction rather than an error. meets_minimum_sample is PUBLISHED, NOT APPLIED: no component is ever blanked, because a null would be indistinguishable from a manager with no deals at all, and the consumer renders 'insufficient sample (n = X)' from the flag. finance_manager_code is null for the 'nobody on the F&I desk' group, which is a real population and never dropped.",
+      "query_sha256": "d4bdfcd1a4347fc3e3dabe7ac629626672a71a99dd31e8f2cbc9a316c90b7960",
+      "row_count": 354,
+      "file": "fi-summary.json",
+      "file_sha256": "f7d1e6031e12df38762e5997649711e8520519d0301c24cfbc834f0902b9401b",
+      "file_bytes": 267204
+    },
+    {
+      "name": "fi-product-penetration",
+      "source_view": "reporting.vw_fi_product_penetration",
+      "join_views": [],
+      "grain": "One row per store, per sale date, per finance manager, per governed product category that was ELIGIBLE on at least one of that group's retail deals. NO RESERVE AND NO RETAIL-UNIT COLUMN.",
+      "business_key": [
+        "dealership_id",
+        "sale_date",
+        "finance_manager_code",
+        "product_category"
+      ],
+      "date_basis": "sale date for the population and the production; as-of for the retained gross",
+      "sort_keys": [
+        "dealership_id",
+        "sale_date",
+        "finance_manager_code",
+        "product_category"
+      ],
+      "chunked": true,
+      "kpi_ids": [
+        "KPI-FNI-007",
+        "KPI-FNI-008",
+        "KPI-FNI-009",
+        "KPI-FNI-010",
+        "KPI-FNI-011",
+        "KPI-FNI-020",
+        "KPI-FNI-021"
+      ],
+      "columns": [
+        {
+          "name": "dealership_id",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_product_penetration.dealership_id"
+        },
+        {
+          "name": "store_short_name",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_product_penetration.store_short_name"
+        },
+        {
+          "name": "sale_date",
+          "type": "date",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_product_penetration.sale_date"
+        },
+        {
+          "name": "finance_manager_code",
+          "type": "string",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_product_penetration.finance_manager_id"
+        },
+        {
+          "name": "product_category",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "Vehicle Service Contract",
+            "GAP",
+            "Tire & Wheel",
+            "Prepaid Maintenance",
+            "Appearance Protection",
+            "Key Replacement",
+            "Theft or Security Product",
+            "Paintless Dent Protection",
+            "Lease Wear Protection",
+            "Other Aftermarket Product"
+          ],
+          "source_column": "reporting.vw_fi_product_penetration.product_category"
+        },
+        {
+          "name": "eligibility_rule_id",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "ELIG-VSC",
+            "ELIG-GAP",
+            "ELIG-TW",
+            "ELIG-PPM",
+            "ELIG-LWP",
+            "ELIG-OTH"
+          ],
+          "source_column": "reporting.vw_fi_product_penetration.eligibility_rule_id"
+        },
+        {
+          "name": "penetration_numerator",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "deals",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_product_penetration.penetration_numerator"
+        },
+        {
+          "name": "penetration_denominator",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "deals",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_product_penetration.penetration_denominator"
+        },
+        {
+          "name": "attached_deal_count",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "deals",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_product_penetration.attached_deal_count"
+        },
+        {
+          "name": "eligible_deal_count",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "deals",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_product_penetration.eligible_deal_count"
+        },
+        {
+          "name": "contract_count",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "contracts",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_product_penetration.contract_count"
+        },
+        {
+          "name": "product_retail_price",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": 2,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_product_penetration.product_retail_price"
+        },
+        {
+          "name": "product_dealer_cost",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": 2,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_product_penetration.product_dealer_cost"
+        },
+        {
+          "name": "original_product_gross",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": 2,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_product_penetration.original_product_gross"
+        },
+        {
+          "name": "adjustment_event_count",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "events",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_product_penetration.adjustment_event_count"
+        },
+        {
+          "name": "cumulative_adjustment_amount",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": 2,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_product_penetration.cumulative_adjustment_amount"
+        },
+        {
+          "name": "net_product_gross_as_of",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": 2,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_product_penetration.net_product_gross_as_of"
+        },
+        {
+          "name": "minimum_sample_floor",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "deals",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_product_penetration.minimum_sample_floor"
+        },
+        {
+          "name": "meets_minimum_sample",
+          "type": "boolean",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_product_penetration.meets_minimum_sample"
+        },
+        {
+          "name": "as_of_date",
+          "type": "date",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_product_penetration.as_of_date"
+        },
+        {
+          "name": "deal_date_basis",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_product_penetration.deal_date_basis"
+        },
+        {
+          "name": "net_gross_date_basis",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_product_penetration.net_gross_date_basis"
+        }
+      ],
+      "notes": "THE CATEGORY-GRAIN DATASET, and the one that carries NO finance reserve and NO retail-unit column -- the other half of the rule fi-summary states. ROWS ARE BUILT FROM THE DEALS, NOT THE CONTRACTS: a category with an eligible population and no sales produces a row with a ZERO NUMERATOR, which is a finding; building from the contracts would make that row vanish and a category nobody sold would render identically to one nobody COULD have sold. THE DENOMINATOR IS THE POINT: penetration_numerator, penetration_denominator and the ELIG-* rule that produced the denominator are on every row and the ratio itself is left to the consumer, because GAP penetration is over FINANCED eligible deals and computing it over all retail deals is the single most available way to get this number wrong. penetration_numerator counts DISTINCT ATTACHED DEALS and contract_count counts CONTRACTS: one deal may legitimately carry two different products in one category -- a windscreen plan and a roadside plan are both Other Aftermarket Products -- so the two differ and are never interchangeable. eligibility_rule_id is stamped from config/reference/fi_product_eligibility.yaml, the one authority; no consumer may restate the predicate. EVERY VALUE IS SYNTHETIC: no penetration here is an industry benchmark, and no surface may describe one as good, bad, standard or recommended.",
+      "query_sha256": "6b423b6a0c980aba8a30b954a0276dbfc7429c51d06a2ee0b56fd919ce332f19",
+      "row_count": 3012,
+      "file": "fi-product-penetration.json",
+      "file_sha256": "4ec3d7fab25da3d5fd9831bbe38b5140fdb2e1e501aa688ec1e56224201d7e2b",
+      "file_bytes": 2170439
+    },
+    {
+      "name": "fi-adjustment-summary",
+      "source_view": "reporting.vw_fi_adjustment_summary",
+      "join_views": [],
+      "grain": "One row per store, per ADJUSTMENT date, per finance manager, per product category, per adjustment type.",
+      "business_key": [
+        "dealership_id",
+        "adjustment_date",
+        "finance_manager_code",
+        "product_category",
+        "adjustment_type"
+      ],
+      "date_basis": "adjustment date -- the event's OWN business date, never the parent sale's",
+      "sort_keys": [
+        "dealership_id",
+        "adjustment_date",
+        "finance_manager_code",
+        "product_category",
+        "adjustment_type"
+      ],
+      "chunked": false,
+      "kpi_ids": [
+        "KPI-FNI-012",
+        "KPI-FNI-013",
+        "KPI-FNI-014",
+        "KPI-FNI-015",
+        "KPI-FNI-016",
+        "KPI-FNI-017",
+        "KPI-FNI-018"
+      ],
+      "columns": [
+        {
+          "name": "dealership_id",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_adjustment_summary.dealership_id"
+        },
+        {
+          "name": "store_short_name",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_adjustment_summary.store_short_name"
+        },
+        {
+          "name": "adjustment_date",
+          "type": "date",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_adjustment_summary.adjustment_date"
+        },
+        {
+          "name": "finance_manager_code",
+          "type": "string",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_adjustment_summary.finance_manager_id"
+        },
+        {
+          "name": "product_category",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "Vehicle Service Contract",
+            "GAP",
+            "Tire & Wheel",
+            "Prepaid Maintenance",
+            "Appearance Protection",
+            "Key Replacement",
+            "Theft or Security Product",
+            "Paintless Dent Protection",
+            "Lease Wear Protection",
+            "Other Aftermarket Product"
+          ],
+          "source_column": "reporting.vw_fi_adjustment_summary.product_category"
+        },
+        {
+          "name": "adjustment_type",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "Cancellation",
+            "Chargeback",
+            "Reinstatement",
+            "Approved Adjustment"
+          ],
+          "source_column": "reporting.vw_fi_adjustment_summary.adjustment_type"
+        },
+        {
+          "name": "adjustment_count",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "events",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_adjustment_summary.adjustment_count"
+        },
+        {
+          "name": "adjustment_amount",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": 2,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_adjustment_summary.adjustment_amount"
+        },
+        {
+          "name": "distinct_adjusted_contract_count",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "contracts",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_adjustment_summary.distinct_adjusted_contract_count"
+        },
+        {
+          "name": "adjusted_contract_original_gross",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": 2,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_adjustment_summary.adjusted_contract_original_gross"
+        },
+        {
+          "name": "numerator_date_basis",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_adjustment_summary.numerator_date_basis"
+        },
+        {
+          "name": "rate_denominator_date_basis",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_adjustment_summary.rate_denominator_date_basis"
+        },
+        {
+          "name": "rate_denominator_source",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_adjustment_summary.rate_denominator_source"
+        },
+        {
+          "name": "rate_basis_disclosure",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_fi_adjustment_summary.rate_basis_disclosure"
+        }
+      ],
+      "notes": "THE ONLY F&I DATASET ON THE ADJUSTMENT-DATE BASIS, which is why it is a separate dataset rather than more columns on fi-summary: an August chargeback on a June contract belongs to AUGUST, the June contract keeps June's gross, and two date bases inside one grain would put two populations behind one row with nothing failing. NO CONSUMER MAY RESTATE AN EVENT INTO ITS PARENT SALE'S MONTH. THE MIXED-BASIS RATES: KPI-FNI-014, -015 and -018 divide a figure from here by one from fi-summary -- the numerator's period is POSTING time and the denominator's is SELLING time -- so the result is a PERIOD PROXY and NOT a contract-cohort loss rate, because the contracts charged back in a month are mostly not the ones written in it. numerator_date_basis, rate_denominator_date_basis, rate_denominator_source and rate_basis_disclosure are published AS DATA so a consumer renders that disclosure from the row rather than from a sentence somebody remembered. The sale-date denominator is deliberately NOT copied onto these rows: a sale-date figure on an adjustment-date row is exactly the silent blend this design avoids. SIGN: a positive amount REDUCES retained gross and a negative one RESTORES it, so Reinstatement amounts are negative by construction and summing across types is legitimate arithmetic rather than a mistake. The reporting window truncates the adjustment lag distribution, so recent sale months carry structurally fewer events -- a property of the dataset, not a finding.",
+      "query_sha256": "d54376f98c5ad1f6d493e0d4766fa572fd34d07b2b84c20a46a547dd32a91aee",
+      "row_count": 57,
+      "file": "fi-adjustment-summary.json",
+      "file_sha256": "786ac1c2e0ae60dca1c76892e683604ebb37ee9f42159e66f0afb1150ee3d22a",
+      "file_bytes": 32858
+    },
+    {
+      "name": "deal-product-detail",
+      "source_view": "reporting.vw_deal_product_detail",
+      "join_views": [],
+      "grain": "One row per F&I product contract sold on a finalized vehicle transaction.",
+      "business_key": [
+        "product_sale_id"
+      ],
+      "date_basis": "sale date for the contract; as-of for its retained gross",
+      "sort_keys": [
+        "sale_id",
+        "line_ordinal",
+        "product_sale_id"
+      ],
+      "chunked": true,
+      "kpi_ids": [
+        "KPI-FNI-003",
+        "KPI-FNI-004",
+        "KPI-FNI-011"
+      ],
+      "columns": [
+        {
+          "name": "product_sale_id",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_product_detail.product_sale_id"
+        },
+        {
+          "name": "sale_id",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_product_detail.sale_id"
+        },
+        {
+          "name": "sale_date",
+          "type": "date",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_product_detail.sale_date"
+        },
+        {
+          "name": "dealership_id",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_product_detail.dealership_id"
+        },
+        {
+          "name": "store_short_name",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_product_detail.store_short_name"
+        },
+        {
+          "name": "finance_manager_code",
+          "type": "string",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_product_detail.finance_manager_id"
+        },
+        {
+          "name": "finance_structure",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "Cash",
+            "Retail Finance",
+            "Lease"
+          ],
+          "source_column": "reporting.vw_deal_product_detail.finance_structure"
+        },
+        {
+          "name": "lender_id",
+          "type": "string",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_product_detail.lender_id"
+        },
+        {
+          "name": "lender_category",
+          "type": "string",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "Captive",
+            "Bank",
+            "Credit Union",
+            "Independent Finance Company"
+          ],
+          "source_column": "reporting.vw_deal_product_detail.lender_category"
+        },
+        {
+          "name": "lender_program_tier",
+          "type": "string",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "Prime",
+            "Near-prime",
+            "Subprime"
+          ],
+          "source_column": "reporting.vw_deal_product_detail.lender_program_tier"
+        },
+        {
+          "name": "finance_product_id",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_product_detail.finance_product_id"
+        },
+        {
+          "name": "product_name",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_product_detail.product_name"
+        },
+        {
+          "name": "product_category",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "Vehicle Service Contract",
+            "GAP",
+            "Tire & Wheel",
+            "Prepaid Maintenance",
+            "Appearance Protection",
+            "Key Replacement",
+            "Theft or Security Product",
+            "Paintless Dent Protection",
+            "Lease Wear Protection",
+            "Other Aftermarket Product"
+          ],
+          "source_column": "reporting.vw_deal_product_detail.product_category"
+        },
+        {
+          "name": "provider_name",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_product_detail.provider_name"
+        },
+        {
+          "name": "eligibility_rule_id",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "ELIG-VSC",
+            "ELIG-GAP",
+            "ELIG-TW",
+            "ELIG-PPM",
+            "ELIG-LWP",
+            "ELIG-OTH"
+          ],
+          "source_column": "reporting.vw_deal_product_detail.eligibility_rule_id"
+        },
+        {
+          "name": "line_ordinal",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "position",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_product_detail.line_ordinal"
+        },
+        {
+          "name": "contract_term_months",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "months",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_product_detail.contract_term_months"
+        },
+        {
+          "name": "product_sale_count",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "contracts",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_product_detail.product_sale_count"
+        },
+        {
+          "name": "product_retail_price",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": 2,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_product_detail.product_retail_price"
+        },
+        {
+          "name": "product_dealer_cost",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": 2,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_product_detail.product_dealer_cost"
+        },
+        {
+          "name": "original_product_gross",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": 2,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_product_detail.original_product_gross"
+        },
+        {
+          "name": "adjustment_event_count",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "events",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_product_detail.adjustment_event_count"
+        },
+        {
+          "name": "cumulative_adjustment_amount",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": 2,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_product_detail.cumulative_adjustment_amount"
+        },
+        {
+          "name": "net_product_gross_as_of",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": 2,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_product_detail.net_product_gross_as_of"
+        },
+        {
+          "name": "as_of_date",
+          "type": "date",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_product_detail.as_of_date"
+        },
+        {
+          "name": "gross_date_basis",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_product_detail.gross_date_basis"
+        },
+        {
+          "name": "net_gross_date_basis",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_product_detail.net_gross_date_basis"
+        }
+      ],
+      "notes": "THE ITEMIZATION BEHIND ONE DEAL'S BACK GROSS, and the third deal-grain dataset. It exists for /dashboard/deals/[saleId] and NOT for the Deal Explorer index: the index stays compact, and this is chunked by store and SALE MONTH -- the same partition key deal-jacket uses -- so opening one jacket loads one product partition and never the whole population's contract detail. contract_term_months IS THE COVERAGE'S TERM AND NOT A LOAN TERM: ARPI models no loan term, no APR, no payment and no rate of any kind, and the two must never be conflated. original_product_gross is the DEAL-DATE figure and is never rewritten by a later cancellation; net_product_gross_as_of is the retained figure through the governed as-of date. A page verifies original_product_gross = product_retail_price - product_dealer_cost and net = original - cumulative from these components with exact-decimal arithmetic, which is a verification rather than a second definition. finance_structure carries only the three RETAIL values here, because a disposal has no consumer and can carry no contract. lender_id is null on a Cash contract and means NO LENDER EXISTS. EVERY PRODUCT, PROVIDER AND LENDER IS FICTIONAL and every price is synthetic: none is a market price, a recommended price or a real company's program. NO CUSTOMER REFERENCE OF ANY KIND, and no free-text field.",
+      "query_sha256": "a7f146fa2bcfb4ebf3ca5f51eef2fe4d7f4bd224075ab742d1757d65640223ac",
+      "row_count": 1012,
+      "file": "deal-product-detail.json",
+      "file_sha256": "a0d3153fccd8aa0a4c06a659ddd68aeb30bcda23515d57f3f07edf0359788b85",
+      "file_bytes": 885282
     },
     {
       "name": "reconciliation-status",
@@ -4790,7 +6035,7 @@
       "query_sha256": "adca98ad620f10e4795dec1cda7735ca8ccc2a03111636becea487320e109e43",
       "row_count": 1,
       "file": "pipeline-run.json",
-      "file_sha256": "30518d0b8d94f144d77b892d213d78420ca26d2c6d936441f2205fbe70e4d929",
+      "file_sha256": "f440026e7c567befa292116ab6aede6c8b3e5f0e636ac591bd1bc04cb5ce8954",
       "file_bytes": 541
     }
   ],
@@ -5097,13 +6342,119 @@
         },
         "column": "target_value",
         "total": "720280.50"
+      },
+      "finance_reserve_gross": {
+        "dataset": "fi-summary",
+        "kpi_id": "KPI-FNI-001",
+        "unit": "USD",
+        "display_precision": 2,
+        "column": "finance_reserve_gross",
+        "total": "160244.79"
+      },
+      "original_product_gross": {
+        "dataset": "fi-summary",
+        "kpi_id": "KPI-FNI-003",
+        "unit": "USD",
+        "display_precision": 2,
+        "column": "original_product_gross",
+        "total": "505828.54"
+      },
+      "net_product_gross_as_of": {
+        "dataset": "fi-summary",
+        "kpi_id": "KPI-FNI-004",
+        "unit": "USD",
+        "display_precision": 2,
+        "column": "net_product_gross_as_of",
+        "total": "483696.08"
+      },
+      "fi_contract_count": {
+        "dataset": "fi-summary",
+        "kpi_id": null,
+        "unit": "contracts",
+        "display_precision": null,
+        "column": "contract_count",
+        "total": "1012"
+      },
+      "product_contract_original_gross": {
+        "dataset": "deal-product-detail",
+        "kpi_id": "KPI-FNI-003",
+        "unit": "USD",
+        "display_precision": 2,
+        "column": "original_product_gross",
+        "total": "505828.54"
+      },
+      "product_contract_net_gross_as_of": {
+        "dataset": "deal-product-detail",
+        "kpi_id": "KPI-FNI-004",
+        "unit": "USD",
+        "display_precision": 2,
+        "column": "net_product_gross_as_of",
+        "total": "483696.08"
+      },
+      "products_per_retail_unit": {
+        "dataset": "fi-summary",
+        "kpi_id": "KPI-FNI-006",
+        "unit": "ratio",
+        "display_precision": 4,
+        "numerator_column": "contract_count",
+        "denominator_column": "retail_units",
+        "numerator": "1012",
+        "denominator": "558"
+      },
+      "gap_penetration": {
+        "dataset": "fi-product-penetration",
+        "kpi_id": "KPI-FNI-008",
+        "unit": "ratio",
+        "display_precision": 4,
+        "subset": {
+          "eligibility_rule_id": "ELIG-GAP"
+        },
+        "numerator_column": "penetration_numerator",
+        "denominator_column": "penetration_denominator",
+        "numerator": "200",
+        "denominator": "388"
+      },
+      "vsc_penetration": {
+        "dataset": "fi-product-penetration",
+        "kpi_id": "KPI-FNI-007",
+        "unit": "ratio",
+        "display_precision": 4,
+        "subset": {
+          "eligibility_rule_id": "ELIG-VSC"
+        },
+        "numerator_column": "penetration_numerator",
+        "denominator_column": "penetration_denominator",
+        "numerator": "227",
+        "denominator": "558"
+      },
+      "chargeback_amount": {
+        "dataset": "fi-adjustment-summary",
+        "kpi_id": "KPI-FNI-012",
+        "unit": "USD",
+        "display_precision": 2,
+        "subset": {
+          "adjustment_type": "Chargeback"
+        },
+        "column": "adjustment_amount",
+        "total": "10664.51"
+      },
+      "cancellation_amount": {
+        "dataset": "fi-adjustment-summary",
+        "kpi_id": "KPI-FNI-016",
+        "unit": "USD",
+        "display_precision": 2,
+        "subset": {
+          "adjustment_type": "Cancellation"
+        },
+        "column": "adjustment_amount",
+        "total": "12087.89"
       }
     }
   },
   "privacy_scan": {
     "status": "passed",
     "prohibited_hits": 0,
-    "columns_scanned": 396,
+    "columns_scanned": 498,
     "primary_control": "contract allowlist",
     "secondary_control": "arpi.validation.privacy prohibited-name tripwire"
   },
@@ -5115,7 +6466,7 @@
     "reconciliations_failed": 0
   },
   "sizes": {
-    "dataset_bytes_total": 9716524,
+    "dataset_bytes_total": 13386684,
     "largest_dataset": {
       "name": "lead-response",
       "bytes": 2269345,

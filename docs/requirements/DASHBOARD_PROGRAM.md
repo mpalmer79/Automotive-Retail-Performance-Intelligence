@@ -294,6 +294,18 @@ a silent default would put products on a disposal and move it into three eligibi
 `warehouse.dim_sale_type` remains **Deferred**. See
 [DATA_DICTIONARY.md §44.2](../../DATA_DICTIONARY.md).
 
+**`DASH.7` found the reason this decision was worth making, in the one place that had not honoured
+it.** `reporting.vw_deal_jacket` derived the structure with its own inline `CASE` rather than calling
+`warehouse.fn_finance_structure`, and that `CASE` had no branch for a transaction with no consumer —
+so **92 wholesale and dealer-trade disposals were labelled `Cash`**, claiming that nothing was
+financed on a transaction where there was nobody to finance anything. The view now calls the governed
+function, publishes `finance_structure_basis` naming the branch it took, and publishes
+`is_retail_structure` so no consumer re-enumerates the set. The exported vocabulary on the Deal Jacket
+is therefore **five values**: the three retail structures plus `Wholesale` and `Dealer Trade`, which
+exist there precisely so that a disposal cannot be mistaken for a cash sale. The stored generation
+vocabulary is unchanged, and nothing else in the project derived the structure locally — checked, not
+assumed.
+
 ### 9.8 `warehouse.fact_sales_target` — promote (DASH.5) — **DONE**
 
 Grain **as built**: one row per dealership, target month, targeted KPI, and target scope (scope type +
@@ -373,8 +385,10 @@ identity header with persistent synthetic disclosure; vehicle section; the exact
 calculation as ARPI defines it (`sale_price − acquisition_cost − reconditioning_cost − pack_amount`,
 with trade variance shown separately, never folded into front gross); trade section with
 "Not applicable" semantics; finance structure without rate mechanics; itemized F&I products with
-original and net gross — **the data for which `DASH.6` delivered and which `DASH.7` presents; `DASH.6`
-deliberately built no jacket itemization**; total-gross identity; role-based staff attribution using
+original and net gross — **`DASH.6` delivered the data and `DASH.7` presents it**, one row per product
+contract with its own status, plus a back-gross reconciliation panel that recomputes
+`finance reserve + original product gross = back-end gross` from the figures on the page;
+total-gross identity; role-based staff attribution using
 synthetic identifiers; lead-and-appointment timeline without any message content; accounting checks;
 and a KPI/lineage drawer. Full specification:
 [`DEAL_JACKET_SPEC.md`](../dashboard/DEAL_JACKET_SPEC.md).

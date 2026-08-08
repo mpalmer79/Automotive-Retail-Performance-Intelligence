@@ -19,7 +19,7 @@ portfolio [`CONTENT_MODEL.md`](../../portfolio/docs/CONTENT_MODEL.md) / `lib/sit
 | `/dashboard/deals` | Deal Explorer | **Built (`DASH.3`)** | `ROUTES.dashboardDeals`, mirrored in `tests/e2e/routes.ts` |
 | `/dashboard/deals/[saleId]` | Deal Jacket (dynamic; title carries the synthetic deal id) | **Implemented (DASH.4)** | dynamic — excluded from `inPrimaryNav`, sitemap lists the index route only, and each jacket asks not to be indexed. Marks Deal Explorer current via `NavItem.matchPrefixes`: nobody navigates to "a deal", so it is a drill-through rather than a navigation destination |
 | `/dashboard/inventory` | Inventory operations | Planned (DASH.9) | ” |
-| `/dashboard/fi` | F&I performance | Planned (DASH.7) | ” |
+| `/dashboard/fi` | F&I performance | **Built (`DASH.7`)** | `ROUTES.dashboardFi`, mirrored in `tests/e2e/routes.ts` |
 | `/dashboard/leads-marketing` | Leads and marketing | Planned (DASH.10) | ” |
 | `/dashboard/employees` | Employee performance | Planned (DASH.11) | ” |
 | `/dashboard/accounting` | Accounting integrity | Planned (DASH.9) | ” |
@@ -108,7 +108,7 @@ actual and the target, never alone.
 | Store scoreboard row | Same page filtered to the store | `store=GSA-00#` |
 | Sales/gross deal table row · deal index row | `/dashboard/deals/[saleId]` | none (deal id is the key) |
 | Inventory unit row | Unit detail panel on `/dashboard/inventory` (`unit=` param) | Stock reference |
-| F&I manager row | `/dashboard/fi?manager=EMP-#####` | Manager filter |
+| F&I manager row | `/dashboard/fi?employee=EMP-#####` | Manager filter. **As-built the parameter is `employee=`, not `manager=`**: the console has ONE filter grammar and one parameter for a person, and a route-specific spelling of the same concept would have been a second vocabulary for `filters.ts` to reconcile. Scopes both the numerator and the eligible denominator of every penetration figure. |
 | Funnel stage / lost-stage cell | `/dashboard/leads-marketing` filtered view | Stage + period |
 | Accounting exception row | Deal Jacket accounting section, or inventory unit detail | Entity id |
 | Action row | The rule's declared drill-through route | Entity id + period |
@@ -145,8 +145,8 @@ Filter state lives in the query string; a copied URL reproduces the view exactly
 | `campaign` | campaign id | |
 | `make` / `model` | catalogue values | Inventory, deals |
 | `condition` | `New` \| `Used` \| `Certified` | |
-| `structure` | `cash` \| `finance` \| `lease` | After `DASH.6` |
-| `product` | F&I category slug | After `DASH.6` |
+| `structure` | `cash` \| `finance` \| `lease` | Acted on by `/dashboard/fi` from `DASH.7`, and declared **partial** there: the exported F&I datasets carry the structure MIX as counts rather than a per-structure split of reserve, product gross and penetration, so the page states that rather than filtering figures it cannot filter |
+| `product` | F&I category slug | Acted on by `/dashboard/fi` from `DASH.7`. Slugs are derived mechanically from the ten governed category names, with `extended-warranty` accepted as a user-facing ALIAS for Vehicle Service Contract — an alias in the URL grammar, never a stored value and never an eleventh category |
 | Page-specific | declared per route (e.g. `unit=`, `severity=`, `rule=`, `q=`, `sort=`, `page=`) | Extend, never override, the global set |
 
 **As-built (`DASH.2`).** All thirteen parameters parse, validate, serialize and round-trip in

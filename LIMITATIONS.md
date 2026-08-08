@@ -512,12 +512,12 @@ boundary on itself rather than only here.
 |---|---|
 | Sale price less acquisition, reconditioning and pack — the ARPI front-end gross, recomputed on the page from the components displayed | Manufacturer holdback, dealer cash, stair-step money, floorplan credits and unposted accounting adjustments. None is modelled, so front-end gross is **understated by design** in the same way §6.2 records for new-vehicle gross |
 | Trade allowance, actual cash value and their variance, published beside the front-gross formula | Trade payoff, equity, and the trade vehicle itself. No trade fact exists (§4.5) |
-| Cash down and amount financed, and a finance structure derived from sale type and amount financed | Lender, APR, term, payment, buy rate, sell rate, rate spread. None exists anywhere in ARPI, by policy (`PRIVACY_AND_ETHICS.md` §7), not merely by omission |
-| Aggregate back-end gross | Reserve, VSC, GAP, tire-and-wheel or any product-level figure. The F&I fact is Deferred (§4.5), so **no product-mix statement about a deal is supportable** |
+| Cash down, amount financed, the finance structure with the branch that produced it, and **since `DASH.7`** the fictional lender's code, name, category and program tier | APR, term, payment, buy rate, sell rate, rate spread. None exists anywhere in ARPI, by policy (`PRIVACY_AND_ETHICS.md` §7), not merely by omission. A lender appearing on the jacket is an **assignment**, and implies no application, decision, tier for a person, stipulation or adverse-action record — none of which exists |
+| **Since `DASH.7`**: back-end gross decomposed into finance reserve and original product gross, plus one row per product contract with its category, provider, retail, cost, original gross, cumulative adjustment, retained gross and status | The adjustment EVENTS behind a contract's cumulative figure are not itemized on the jacket, and no offer, menu, presentation or declined product exists to show. The deal-date total is never rewritten by a later cancellation, so the retained figure beside it answers a different question and is labelled as one |
 | Four staff roles as synthetic identifiers | Any name, any pay, any performance judgement. §5 of `PRIVACY_AND_ETHICS.md` governs employee presentation |
 | The lead's stages and dates where one links | Any message, note, email or free text. None exists in the model |
 | Days in inventory at sale | An acquisition date or a stock number. `dim_vehicle` records neither, so the page publishes the vehicle code as itself and never captions it a stock number |
-| Five integrity checks it can actually perform | Back-gross reconciliation, product eligibility and product-adjustment validity. All three need the F&I model and are named as **absent** rather than shown as passing, because a check that cannot fail is not a check |
+| **Eight** integrity checks it can actually perform. `DASH.7` makes the three `DASH.4` named as absent real: back-gross reconciliation, product eligibility and product-adjustment validity | Nothing further is claimed. A check that cannot fail is not a check, and each of these three recomputes from the page's own components rather than reading a stored flag — the export deliberately publishes none |
 
 **A verified jacket is a statement about internal consistency, not about reality.** "Verified to the
 cent" means the exported components recompute the exported gross exactly. It does not mean the deal
@@ -1325,14 +1325,47 @@ one-deal penetration of 100% is a number that will be repeated and cannot be def
 The floor is a real limitation as well as a control: on a short window, a store with a thin F&I desk may
 produce **no** publishable manager-grain figure at all.
 
-### 15.15 The domain has no presentation surface, and the semantic model binds none of it
+### 15.15 The presentation surface exists since `DASH.7`; the semantic model still binds none of it
 
-DASH.6 delivers SQL, generation, validation and reporting views. It delivers **no console page, no itemized
-deal jacket, no F&I manager view, no action centre and no browser dataset** — `DASH.7` owns the presentation
-surface, and `tests/integration/test_fi_reporting_views.py` asserts that no F&I view appears in the export
-contract.
+DASH.6 delivered SQL, generation, validation and reporting views and no surface at all. **`DASH.7`
+builds the surface**: `/dashboard/fi`, the itemized Deal Jacket, and all four F&I views promoted into
+the governed browser export. `tests/integration/test_fi_reporting_views.py` is re-aimed rather than
+deleted — it now asserts the exported set is exactly those four, in both directions, so a fifth F&I
+view exported without an increment still fails a test.
 
 The Power BI semantic model binds **none** of the four views and **none** of the twenty-two `KPI-FNI-*`
-definitions. The F&I gap recorded in `powerbi/model_documentation/` is therefore no longer "the domain does
-not exist" — it is now **"the SQL and reporting domain is implemented; the semantic model is not yet bound
-to it"**, which is a smaller and more specific gap, and Gate 2 stays CLOSED regardless.
+definitions, and `DASH.7` changed no TMDL file. The F&I gap recorded in `powerbi/model_documentation/`
+is therefore **"the SQL, reporting and browser surfaces are implemented; the semantic model is not
+bound to any of them"**, and Gate 2 stays CLOSED regardless.
+
+### 15.16 What `/dashboard/fi` will not tell you, stated on the page as well as here
+
+The console page carries these as rendered text rather than only in this file, because a limitation a
+reader has to go looking for is a limitation most readers never see.
+
+**There is no benchmark and no target.** ARPI publishes no industry F&I figures, so nothing on the page
+is good, bad, healthy, weak or standard. A penetration of 40.7% is stated as 40.7%.
+
+**There is no recommendation.** Nothing suggests a product to sell, a price to charge, a customer to
+approach or a lender to use. ARPI approves nothing, declines nothing and tiers nobody.
+
+**There is no menu and no offer history**, so no closing rate is computable from this model at all.
+The warehouse records what was sold, never what was offered and declined — §7 of
+`PRIVACY_AND_ETHICS.md` records why that is deliberate rather than a gap.
+
+**Manager rows are comparisons, not evaluations.** They carry no ranking and no label, they are ordered
+by store and synthetic identifier, and below the governed floor a ratio is withheld rather than shown
+small. A finance manager's figures inherit the store's vehicle mix, its finance-structure mix and its
+product-eligibility mix, so a difference between two rows is not a difference in skill.
+
+**The period proxy rates are not loss rates**, and the page says so beside every one of them. A
+chargeback rate on the page divides an amount posted in the selected period by the original gross of
+contracts *sold* in that period — two different populations, since the contracts charged back in a
+month are mostly not the ones written in it. A true cohort rate needs the full life of each cohort,
+and the reporting window truncates the tail of the adjustment lag distribution, which is also why the
+most recent sale months carry structurally fewer adjustments than the earliest ones.
+
+**The structure filter is partial, and the page states it rather than applying it silently.** The
+exported F&I datasets carry the structure MIX as counts, not a per-structure split of reserve, product
+gross and penetration. Filtering the page by structure would produce figures that looked scoped and
+were not, so the filter is shown in the structure section and its limit is written beside it.

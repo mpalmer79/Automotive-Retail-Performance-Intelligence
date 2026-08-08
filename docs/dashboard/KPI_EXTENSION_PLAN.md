@@ -386,9 +386,22 @@ and by [KPI_CATALOG.md §40](../../KPI_CATALOG.md), which is the authority.
 11. **`Future Power BI measure owner` is still future.** No TMDL was modified. The F&I Measures group remains
     a documented gap in `powerbi/model_documentation/03-measure-groups.md`, and Gate 2 stays **CLOSED**.
 
-12. **No console surface was built.** Every "Web presentation" line below describes a `DASH.7` surface.
-    `DASH.6` exports **no browser dataset from any F&I view**, which
-    `tests/integration/test_fi_reporting_views.py` asserts.
+12. **No console surface was built by `DASH.6`; `DASH.7` builds it.** Every "Web presentation" line below
+    describes a `DASH.7` surface, and `DASH.7` delivers them: `/dashboard/fi` renders the summary cards,
+    the back-gross composition, the structure mix, the penetration table, the category economics, the
+    adjustment analysis and the manager comparison, and the Deal Jacket renders the per-contract
+    itemization. All four F&I views are now exported.
+    `tests/integration/test_fi_reporting_views.py` is re-aimed rather than deleted: it asserted through
+    `DASH.6` that **no** F&I view appeared in the export contract, and now asserts the exported set is
+    **exactly those four**, in both directions, so a fifth F&I view exported without an increment still
+    fails a test.
+
+    Three things the surfaces do **not** do, restated here because a "Web presentation" line could be
+    read as licence for them. No KPI below is rendered beside a benchmark, a target or a quality word;
+    `KPI-FNI-021` and `KPI-FNI-022` are rendered in store-and-identifier order with the minimum-sample
+    floor applied and **no rank of any kind**; and `KPI-FNI-014`, `KPI-FNI-015` and `KPI-FNI-018` are
+    rendered with the words *period proxy, not a contract-cohort loss rate* attached to every value, on
+    the page rather than only in this document.
 
 ### `KPI-FNI-001` — Finance reserve gross
 

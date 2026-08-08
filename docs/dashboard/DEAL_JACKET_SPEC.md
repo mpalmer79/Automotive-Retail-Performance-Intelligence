@@ -74,10 +74,23 @@ deal" state, never zeros.
 
 ## 7. Finance structure
 
-Structure (Cash / Retail Finance / Lease) · amount financed · cash down · synthetic lender and
-lender category (**the data exists since `DASH.6`**; "Not applicable" for cash) · finance reserve gross
-(**likewise**) — **neither is displayed yet: the jacket surface is `DASH.7`'s**. **No APR, term, payment, buy/sell rate, or spread appears anywhere** — the boundary of
+Structure (Cash / Retail Finance / Lease) · amount financed · cash down · synthetic lender, lender
+category and lender program tier · finance reserve gross. **Built at `DASH.7`.** **No APR, term,
+payment, buy/sell rate, or spread appears anywhere** — the boundary of
 [PRIVACY_AND_ETHICS.md §7](../../PRIVACY_AND_ETHICS.md), restated in the drawer.
+
+**As built the structure is five values, not three,** and the correction is the reason. `DASH.4`'s
+view derived the structure inline and had no branch for a transaction with no consumer, so every
+wholesale and dealer-trade disposal was labelled `Cash` — 92 rows in the committed data, each
+claiming that nothing was financed on a transaction where there was nobody to finance anything. The
+view now calls `warehouse.fn_finance_structure`, the governed derivation `DASH.6` built for exactly
+this reason, and publishes `finance_structure_basis` naming the branch taken and `is_retail_structure`
+so no consumer re-enumerates the set.
+
+**An absent lender states WHICH absence it is.** Three are distinguishable and the jacket
+distinguishes them: a disposal has no consumer, a cash deal financed nothing, and a financed deal
+with no lender recorded is a fourth and different thing. "Not applicable" with no reason is a
+sentence a reader cannot check.
 
 ## 8. F&I product section (`DASH.7`)
 
@@ -90,11 +103,19 @@ reconciliation state**. **The identity as built is on the DEAL-DATE basis** —
 **not net product gross**, which would make the check fail every time a cancellation posted, since
 `back_end_gross` is never rewritten. `RECON-FI-001` verifies it per deal to the cent.
 
-**`DASH.6` built the data and deliberately built none of this section.** The warehouse now holds one row
-per product contract and one row per adjustment event, and `reporting.vw_deal_product_detail` publishes
-them. Until `DASH.7`, the jacket still shows aggregate back gross labelled "aggregate — product itemization
-arrives with the F&I model increment", and **no F&I browser dataset is exported**, which
-`tests/integration/test_fi_reporting_views.py` asserts.
+**`DASH.6` built the data and deliberately built none of this section; `DASH.7` builds it.** The
+warehouse holds one row per product contract and one row per adjustment event, and
+`reporting.vw_deal_product_detail` publishes them. `DASH.7` promotes that view into the export as
+`deal-product-detail`, partitioned by store × SALE month — the same key `deal-jacket` uses, so opening
+one jacket resolves one product partition and it is the partition the route already opened for that
+deal. A contract's own adjustment dates are a different question and are never the partition key.
+
+**Contract status as built is three values, not four.** `Active` / `Adjusted` / `Cancelled`, derived
+deterministically from the contract's own event history and never from a clock. "Charged back" and
+"Reinstated" are EVENT types, not contract states: a contract that has been charged back and partly
+reinstated is in neither state, and the events themselves are shown with their own dates. `Cancelled`
+is claimed only when nothing at all remains, because a partial cancellation is a reduction and calling
+it cancelled would overstate what happened.
 
 ## 9. Total deal gross
 
@@ -260,3 +281,65 @@ which is the property the choice was not allowed to cost. See `DATA_CONTRACT.md`
   staff code matching the synthetic `EMP-` shape, every synthetic VIN matching the ADR-0005 shape,
   and a value-level scan over every string in all 650 jackets for anything shaped like an email,
   telephone number, SSN, payment card or street address.
+
+---
+
+## 21. As-built (`DASH.7`)
+
+`DASH.4` built the jacket and left three of its own checks absent, because the data behind them had
+no surface. `DASH.7` builds the surface. Section 20 is unchanged: what this increment did is recorded
+here beside it.
+
+### 21.1 What was added
+
+| Piece | Where |
+|---|---|
+| Reporting view | [`sql/05_reporting/43_vw_deal_jacket.sql`](../../sql/05_reporting/43_vw_deal_jacket.sql) — **13 columns added, one corrected**; the product rollup pre-aggregated to one row per `sale_key` so the join cannot fan out |
+| Second view promoted | `reporting.vw_deal_product_detail` → the `deal-product-detail` dataset, 1,012 rows, 18 partitions, 363 kB generated |
+| Export contract | `_DEAL_JACKET` in [`src/arpi/dashboard/contract.py`](../../src/arpi/dashboard/contract.py) — **65 → 79 columns**; `_DEAL_PRODUCT_DETAIL` added |
+| Partition module | [`portfolio/src/lib/dashboard/fi-chunks.ts`](../../portfolio/src/lib/dashboard/fi-chunks.ts) — the product partitions, on the same store × sale-month key |
+| View model | `buildProducts`, `buildBackGross` and an expanded `FinanceSection` in [`portfolio/src/lib/dashboard/deal-jacket.ts`](../../portfolio/src/lib/dashboard/deal-jacket.ts) |
+| Sections | `ProductSectionBlock` and `BackGrossSectionBlock` in [`portfolio/src/components/dashboard/deal-jacket-sections.tsx`](../../portfolio/src/components/dashboard/deal-jacket-sections.tsx) |
+| Page tests | [`portfolio/tests/unit/dashboard-deal-jacket.test.tsx`](../../portfolio/tests/unit/dashboard-deal-jacket.test.tsx) — 43 → 59 |
+
+### 21.2 The three absent checks are now real, and each can fail
+
+`DASH.4` wrote that "a check that cannot fail is not a check, and a green row for one is worse than
+no row". The checklist is therefore **five checks → eight**, in this order:
+
+| Check | What it recomputes | How it can fail |
+|---|---|---|
+| `back-gross-reconciliation` | `finance_reserve_gross + Σ original_product_gross + other_fi_income` against the deal row's own `back_end_gross`, from the DISPLAYED components | A residual is stated with its sign and the figures are shown as exported rather than adjusted to agree |
+| `product-eligibility` | Every contract names a governed `ELIG-*` rule and sits on a retail structure | A product on a wholesale disposal, or a contract with no rule, raises the check |
+| `product-adjustment-validity` | Every contract's net gross recomputes from original less cumulative adjustments, and sits inside `[0, original]` | A net above its original or below zero raises the check |
+
+All three recompute from the page's own components. None reads a stored flag, and the export
+publishes none to read: `deal-jacket` deliberately carries no column containing `verified` or
+`reconcil`, which `tests/unit/test_export_dashboard_dataset.py` asserts.
+
+### 21.3 Divergences from sections 1–19, and why
+
+| Planned | Built | Why |
+|---|---|---|
+| §8 four contract statuses (Active / Cancelled / Charged back / Reinstated) | **Three: Active / Adjusted / Cancelled** | "Charged back" and "Reinstated" are EVENT types, not contract states. A contract charged back and partly reinstated is in neither, and forcing it into one would be a claim the event history contradicts. `Cancelled` is claimed only when nothing remains: a partial cancellation is a reduction, and calling it cancelled overstates it. |
+| §8 "cancellation amount · chargeback amount" as separate columns | **One `adjustmentTotal` plus an event count** | Splitting the columns per event type on a per-contract row would publish six mostly-empty columns to show one number. The event types are analysed on `/dashboard/fi`, at the grain where the distinction is the point. |
+| §7 lender "Not applicable for cash" | **Three distinguishable absences, each with its reason** | "Not applicable" is a category, not an explanation. A disposal has no consumer; a cash deal financed nothing; a financed deal with no lender recorded is a third thing. A reader who sees one phrase for all three cannot tell which applies. |
+| §20.3 "§19 multiple products incl. a cancelled contract — still not tested" | **Tested, over the whole population** | The obligation is discharged: every contract's status, net arithmetic and `[0, original]` bound are asserted on all 650 deals rather than on one fixture. |
+| `DASH.4` limitation "back-end gross is aggregate" | **Removed, because it became false** | The jacket itemizes it. What replaces it is the statement the itemization makes necessary: the total is on the deal-date basis and is never rewritten when a cancellation posts later. |
+| `DASH.4` limitation "no lender … exists anywhere in ARPI" | **Removed, because it became false** | A limitation that is no longer true is worse than no limitation: it tells a reader the page is hiding something it is in fact showing. Replaced by what remains true — the lender is a fictional finance source recorded as an assignment only, and no credit application, decision, tier, stipulation or adverse-action record exists in ARPI. |
+
+### 21.4 Evidence
+
+- **The back-gross identity holds on all 650 deals**, recomputed on the page from the displayed
+  currency strings rather than from an unformatted value — an arithmetic check reading the raw figure
+  could pass while the page rendered something else.
+- **The itemization sums to the deal row's own rollup on all 650 deals.** The lines come from
+  `deal-product-detail` and the rollup from `deal-jacket`: two datasets, two partitions, one grain
+  apart, and nothing in the module derives either from the other.
+- **No product exists on a transaction with no consumer.** Asserted over the population, which is
+  what makes the corrected `finance_structure` load-bearing rather than cosmetic.
+- **Every net gross sits inside `[0, original]`,** and every `Cancelled` contract has a net of
+  exactly zero.
+- **The reconciliation can fail.** The panel is driven with a deliberately broken section and the
+  test requires "does not reconcile", the residual, and the sentence saying the figures are shown
+  unchanged rather than adjusted to agree.

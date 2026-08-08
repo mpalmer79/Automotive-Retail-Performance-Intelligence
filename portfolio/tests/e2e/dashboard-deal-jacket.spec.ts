@@ -110,20 +110,38 @@ test.describe('the money is shown in the formula order, and recomputed', () => {
     await expect(trade).toContainText(/not.{0,3}part of the front-gross formula/i)
   })
 
-  test('reports the back-end gross as aggregate rather than itemized', async ({
+  test('itemizes the back-end gross and reconciles it to the cent', async ({ page }) => {
+    /*
+     * Through `DASH.4` this test asserted the opposite: that the finance section reported
+     * an AGGREGATE back-end gross and implied no product figure, because no product fact
+     * had a surface here. `DASH.7` builds the surface, so the assertion is re-aimed. The
+     * claim under test is unchanged -- the page shows only what the model actually holds
+     * -- but "no product detail exists" would now be a false statement about the data.
+     */
+    await gotoRendered(page, DEAL_JACKET_ROUTE)
+    const backGross = page.locator('#back-gross')
+    await expect(backGross).toContainText(/Finance reserve/i)
+    await expect(backGross).toContainText(/Original product gross/i)
+    await expect(backGross).toContainText(/Back-end gross/i)
+    await expect(backGross).toContainText(/Reconciled to the cent/i)
+  })
+
+  test('names each product contract with its category, provider and coverage', async ({
     page,
   }) => {
     await gotoRendered(page, DEAL_JACKET_ROUTE)
-    const finance = page.locator('#finance')
-    await expect(finance).toContainText(/Aggregate back-end gross/i)
-    // No product name may be implied by a page with no product fact behind it.
-    const text = (await finance.textContent()) ?? ''
-    for (const product of ['VSC', 'GAP', 'Tire & Wheel', 'reserve gross of']) {
-      expect(
-        text.includes(product) && !text.includes('Not modelled'),
-        `the finance section implies a ${product} figure`
-      ).toBe(false)
+    const products = page.locator('#products')
+    const text = ((await products.textContent()) ?? '').replace(/\s+/g, ' ')
+    // Either the deal carries contracts and they are itemized, or it carries none and the
+    // page says so as an outcome. A blank section is the one thing that is not acceptable.
+    if (/No F&I product was written/i.test(text)) {
+      expect(text).toMatch(/real and common outcome/i)
+      return
     }
+    expect(text).toMatch(/Original gross/i)
+    expect(text).toMatch(/Net gross/i)
+    expect(text).toMatch(/month coverage/i)
+    expect(text).toMatch(/Active|Adjusted|Cancelled/)
   })
 
   test('names no rate, term, payment or lender anywhere', async ({ page }) => {
@@ -132,8 +150,26 @@ test.describe('the money is shown in the formula order, and recomputed', () => {
     // Each of these words appears on the page only inside a "not modelled" statement,
     // so the assertion is that no FIGURE is attached to one.
     expect(text).not.toMatch(/\bAPR\b[^.]{0,20}\d/)
-    expect(text).not.toMatch(/\b\d{2,3}\s*months?\b/)
     expect(text).not.toMatch(/\$[\d,]+(\.\d\d)?\s*(?:per month|\/mo\b|monthly)/i)
+    /*
+     * A month count on this page is a COVERAGE term and never a loan term, so the sweep
+     * has to know the difference. `DASH.4` could forbid every "NN months" because no
+     * product contract was shown; `DASH.7` shows one per contract, each explicitly
+     * captioned "NN-month coverage". Any month count NOT so captioned is what this now
+     * forbids, which is the assertion that was always meant.
+     */
+    const uncaptioned = text.replace(/\b\d{1,3}-month coverage\b/g, ' ')
+    expect(uncaptioned).not.toMatch(/\b\d{2,3}\s*months?\b/)
+    // "loan term" appears once, inside the limitation that DENIES it. That sentence is
+    // the reason the coverage terms above are safe to publish, so the sweep reads what is
+    // left after removing it rather than forbidding the disclosure that protects the page.
+    expect(text).toMatch(/COVERAGE term and is never a loan term/i)
+    expect(
+      text.replace(
+        /A product contract term is the COVERAGE term and is never a loan term\./g,
+        ' '
+      )
+    ).not.toMatch(/\bloan term\b/i)
   })
 })
 
@@ -146,14 +182,19 @@ test.describe('the integrity checklist is real', () => {
     for (const label of [
       'Front-gross identity',
       'Total-gross identity',
+      'Back-gross reconciliation',
+      'F&I product eligibility',
+      'Product adjustment validity',
       'Delivery date validity',
       'Sale-to-inventory relationship',
       'Source lineage',
     ]) {
       await expect(checks, `${label} missing`).toContainText(label)
     }
-    // The absent ones are named as absent rather than shown as green.
-    await expect(checks).toContainText(/a check that cannot fail is not a check/i)
+    // Eight now, and the three `DASH.4` named as absent are real. The section says which
+    // they were, so the change is legible on the page rather than only in a changelog.
+    await expect(checks).toContainText(/Eight checks/i)
+    await expect(checks).toContainText(/they are real now, and each can fail/i)
   })
 
   test('states where every figure came from', async ({ page }) => {

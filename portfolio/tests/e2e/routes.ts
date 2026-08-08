@@ -138,15 +138,17 @@ export const HEADER_NAV: readonly HeaderNavItem[] = [
 /**
  * The console's own internal navigation.
  *
- * One destination. `INFORMATION_ARCHITECTURE.md` §1 lists ten console routes and
- * `DASH.2` builds the first; the other nine are named on the page as text beside the
- * increment that delivers each, and are deliberately not links. A navigation item
- * that goes nowhere is worse than a navigation bar with one item in it.
+ * Four destinations. `INFORMATION_ARCHITECTURE.md` §1 lists ten console routes; `DASH.2`
+ * built the first, `DASH.3` two more and `DASH.7` the fourth. The remaining six are named
+ * on the page as text beside the increment that delivers each, and are deliberately not
+ * links. A navigation item that goes nowhere is worse than a navigation bar with one item
+ * in it.
  */
 export const DASHBOARD_NAV_ROUTES: readonly { label: string; path: string }[] = [
   { label: 'Command center', path: '/dashboard' },
   { label: 'Sales and gross', path: '/dashboard/sales-gross' },
   { label: 'Deal Explorer', path: '/dashboard/deals' },
+  { label: 'F&I', path: '/dashboard/fi' },
 ]
 
 /**
@@ -163,15 +165,18 @@ export const DEAL_JACKET_ROUTE = `/dashboard/deals/${DEAL_JACKET_SALE_ID}`
 /**
  * Every route that renders the console sub-navigation.
  *
- * Four, against three navigation items. `/dashboard/deals/[saleId]` — the Deal
+ * Five, against four navigation items. `/dashboard/deals/[saleId]` — the Deal
  * Jacket — carries the console bar so a reader who arrived by drill-through can get
  * back out, but it is NOT a navigation destination: a manager reaches a jacket by
- * finding a deal, never by picking one of 650 from a menu.
+ * finding a deal, never by picking one of 650 from a menu. It marks DEALS current
+ * rather than F&I, even though it now itemizes F&I: a reader who drilled into one
+ * transaction is inside Deals.
  */
 export const DASHBOARD_ROUTES: readonly string[] = [
   '/dashboard',
   '/dashboard/sales-gross',
   '/dashboard/deals',
+  '/dashboard/fi',
   DEAL_JACKET_ROUTE,
 ]
 
@@ -186,12 +191,12 @@ export const UNBUILT_DASHBOARD_ROUTES: readonly string[] = [
    * `/dashboard/deals/[saleId]` was on this list through `DASH.3`, which rendered each
    * deal id as TEXT because an anchor would have pointed at a 404. `DASH.4` delivers
    * the route, so it moves to `DASHBOARD_ROUTES` in the same diff that makes the
-   * destination real. What remains here is the seven sections that genuinely do not
-   * exist, and `dashboard-deal-jacket.spec.ts` covers the negative that replaced it:
+   * destination real, and `DASH.7` does the same for `/dashboard/fi`. What remains
+   * here is the five sections that genuinely do not exist, and
+   * `dashboard-deal-jacket.spec.ts` covers the negative that replaced the first one:
    * a deal id that names no transaction still 404s.
    */
   '/dashboard/inventory',
-  '/dashboard/fi',
   '/dashboard/leads-marketing',
   '/dashboard/employees',
   '/dashboard/accounting',
@@ -247,8 +252,18 @@ export const ALL_TESTED_ROUTES: readonly string[] = [
   // The console's own sections. They are real routes with real content and are in
   // `ROUTES`, but they are NOT primary navigation destinations: the header carries
   // `Dashboard`, and the console's own bar carries its sections.
+  //
+  // Membership of THIS list rather than of `PRIMARY_ROUTES` is what exempts them from
+  // the public-copy rules in `content-integrity.spec.ts` — no currency figure, no
+  // percentage result, no em dash — which were written for the documentation routes and
+  // which the console legitimately breaks: it renders governed KPI values from a
+  // versioned export, under the fifteen conditions ADR-0013 states. `/dashboard/fi` was
+  // briefly in `PRIMARY_ROUTES` during `DASH.7` and failed four of those rules on its
+  // first browser run, which is the mechanism working: a console route added to the wrong
+  // list is caught rather than quietly exempted.
   '/dashboard/sales-gross',
   '/dashboard/deals',
+  '/dashboard/fi',
   '/ui-lab',
 ]
 

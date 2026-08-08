@@ -775,6 +775,80 @@ export const DEAL_EXPLORER_SUPPORT: RouteFilterSupport = {
   product: {
     support: 'not-applicable',
     label: 'F&I product category',
-    note: 'F&I products are not modelled in the warehouse until DASH.6, so no dataset carries them.',
+    note: 'The deal index carries no product detail: itemization is the Deal Jacket, and the category view is the F&I page.',
+  },
+}
+
+/**
+ * The F&I page's declaration (`DASH.7`).
+ *
+ * Six parameters change what this page shows and seven do not. `structure` is the
+ * interesting one: it is marked `partial` rather than `applied` because the exported F&I
+ * datasets carry the structure MIX as counts — which is what `KPI-FNI-019` is — and not a
+ * per-structure split of reserve, product gross and penetration. Marking it `applied`
+ * would claim the whole page reorganized itself around a structure it can only report on.
+ *
+ * `condition` is `not-applicable` for a reason worth stating: vehicle condition already
+ * decides which categories are ELIGIBLE, and the rule applies it inside each denominator.
+ * A second condition filter on top would narrow the numerator without narrowing the
+ * governed denominator, which is the exact defect the eligibility model exists to prevent.
+ */
+export const FI_SUPPORT: RouteFilterSupport = {
+  period: { support: 'applied', label: 'Period' },
+  compare: {
+    support: 'partial',
+    label: 'Comparison',
+    note: 'Selects the prior-period penetration column. The production totals and the adjustment analysis show the selected period only.',
+  },
+  store: { support: 'applied', label: 'Store' },
+  employee: {
+    support: 'applied',
+    label: 'Finance manager',
+    note: 'Selects the finance manager credited on the deal, and scopes both the numerator and the eligible denominator of every penetration figure.',
+  },
+  product: {
+    support: 'applied',
+    label: 'F&I product category',
+    note: 'Selects one governed category. "extended-warranty" is accepted as a user-facing alias for Vehicle Service Contract.',
+  },
+  structure: {
+    support: 'partial',
+    label: 'Finance structure',
+    note: 'The exported datasets carry the structure mix as counts rather than a per-structure split of reserve, product gross and penetration, so the selection is reported in the finance structure section and is not applied to the other figures.',
+  },
+  scope: {
+    support: 'not-applicable',
+    label: 'Sale-type scope',
+    note: 'F&I exists only on retail deliveries. A wholesale or dealer-trade disposal has no consumer, so it carries no finance product and no consumer lender, and a sale-type scope would select nothing this page measures.',
+  },
+  condition: {
+    support: 'not-applicable',
+    label: 'Condition',
+    note: 'Vehicle condition decides which categories are ELIGIBLE — Prepaid Maintenance is new and certified only — and the eligibility rule already applies it inside each denominator. A second condition filter on top would narrow the numerator without narrowing the governed denominator.',
+  },
+  dept: {
+    support: 'not-applicable',
+    label: 'Department',
+    note: 'No department-grain reporting view exists yet.',
+  },
+  source: {
+    support: 'not-applicable',
+    label: 'Lead source',
+    note: 'The F&I datasets carry no lead-source attribute.',
+  },
+  campaign: {
+    support: 'not-applicable',
+    label: 'Campaign',
+    note: 'The F&I datasets carry no campaign attribute.',
+  },
+  make: {
+    support: 'not-applicable',
+    label: 'Make',
+    note: 'The F&I datasets are at store, day, manager and category grain and carry no vehicle attribute.',
+  },
+  model: {
+    support: 'not-applicable',
+    label: 'Model',
+    note: 'The F&I datasets are at store, day, manager and category grain and carry no vehicle attribute.',
   },
 }

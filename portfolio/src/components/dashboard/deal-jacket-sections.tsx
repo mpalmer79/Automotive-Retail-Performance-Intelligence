@@ -333,14 +333,52 @@ export function FinanceSectionBlock({ jacket }: { readonly jacket: DealJacket })
         <Fact term="Amount financed">
           <span className="numeric">{finance.amountFinanced}</span>
         </Fact>
+        <Fact term="Finance reserve">
+          <span className="numeric">{finance.financeReserve}</span>
+          <span className="ml-1.5 text-xs text-ink-faint">an amount, not a rate</span>
+        </Fact>
+        <Fact term="Lender">
+          {finance.lenderName === null ? (
+            <Absent>Not applicable</Absent>
+          ) : (
+            <>
+              {finance.lenderName}
+              <span className="ml-1.5 font-mono text-xs text-ink-faint">
+                {finance.lenderCode}
+              </span>
+            </>
+          )}
+        </Fact>
+        <Fact term="Lender category">
+          {finance.lenderCategory === null ? (
+            <Absent>Not applicable</Absent>
+          ) : (
+            finance.lenderCategory
+          )}
+        </Fact>
+        <Fact term="Lender program tier">
+          {finance.lenderProgramTier === null ? (
+            <Absent>Not applicable</Absent>
+          ) : (
+            <>
+              {finance.lenderProgramTier}
+              <span className="ml-1.5 text-xs text-ink-faint">
+                classifies the lender&rsquo;s program, not the customer
+              </span>
+            </>
+          )}
+        </Fact>
         <Fact term="Back-end gross">
-          <span className="numeric font-semibold">{backGross.display}</span>
-          <span className="ml-1.5 text-xs text-ink-faint">aggregate</span>
+          <span className="numeric font-semibold">{backGross.backEndGross}</span>
+          <span className="ml-1.5 text-xs text-ink-faint">deal date</span>
         </Fact>
       </dl>
-      <Text size="xs" tone="muted">
-        {backGross.note}
-      </Text>
+      {finance.lenderAbsence === null ? null : (
+        <Text size="xs" tone="muted">
+          {finance.lenderAbsence} Every lender in ARPI is fictional; no real institution
+          is named anywhere in this project.
+        </Text>
+      )}
       <dl className="grid gap-3 sm:grid-cols-3">
         {finance.notModelled.map((entry) => (
           <Fact key={entry.label} term={entry.label}>
@@ -353,6 +391,284 @@ export function FinanceSectionBlock({ jacket }: { readonly jacket: DealJacket })
           </Fact>
         ))}
       </dl>
+    </div>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+/* F&I products                                                                */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The deal's F&I product contracts, itemized.
+ *
+ * TWO REPRESENTATIONS, EXACTLY ONE IN THE ACCESSIBILITY TREE AT A TIME. A table from
+ * `md` up and stacked cards below it, which is the pattern the Deal Explorer established:
+ * eleven money columns cannot survive 320px, and hiding dealer cost or the adjustment to
+ * make them fit would remove the two things a reader came for.
+ */
+export function ProductSectionBlock({ jacket }: { readonly jacket: DealJacket }) {
+  const { products } = jacket
+
+  if (products.contractCount === 0) {
+    return (
+      <div className="rounded border border-line-subtle bg-surface px-4 py-4">
+        <Text size="sm" tone="muted">
+          No F&amp;I product was written on this deal. That is a real and common outcome —
+          a delivery that carried nothing — and not missing data. The deal&rsquo;s
+          back-end gross is finance reserve alone.
+        </Text>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Table: md and up */}
+      {/*
+        `tabIndex={0}` and the region role are an ACCESSIBILITY requirement, not a
+        styling choice: a container that scrolls horizontally is unreachable by keyboard
+        unless it is focusable, so a keyboard-only reader can see the first four columns
+        of this table and never the other four. Caught by axe on the Deal Jacket route.
+      */}
+      <div
+        className="hidden overflow-x-auto md:block"
+        tabIndex={0}
+        role="region"
+        aria-label="F&I product contracts, scrollable"
+      >
+        <table className="w-full min-w-[48rem] text-sm">
+          <caption className="sr-only">
+            F&amp;I product contracts written on this deal, with original and retained
+            gross
+          </caption>
+          <thead>
+            <tr className="border-b border-line text-left">
+              <th scope="col" className="py-2 font-medium text-ink-muted">
+                Product
+              </th>
+              <th scope="col" className="py-2 font-medium text-ink-muted">
+                Category
+              </th>
+              <th scope="col" className="py-2 text-right font-medium text-ink-muted">
+                Retail
+              </th>
+              <th scope="col" className="py-2 text-right font-medium text-ink-muted">
+                Dealer cost
+              </th>
+              <th scope="col" className="py-2 text-right font-medium text-ink-muted">
+                Original gross
+              </th>
+              <th scope="col" className="py-2 text-right font-medium text-ink-muted">
+                Adjustments
+              </th>
+              <th scope="col" className="py-2 text-right font-medium text-ink-muted">
+                Net gross
+              </th>
+              <th scope="col" className="py-2 font-medium text-ink-muted">
+                Status
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {products.contracts.map((contract) => (
+              <tr key={contract.productSaleId} className="border-b border-line-subtle">
+                <th scope="row" className="py-2 text-left font-normal">
+                  {contract.productName}
+                  <span className="block text-xs text-ink-faint">
+                    {contract.provider} · {contract.contractTermMonths}-month coverage
+                  </span>
+                </th>
+                <td className="py-2 text-xs">
+                  {contract.category}
+                  <span className="block font-mono text-[0.6875rem] text-ink-faint">
+                    {contract.eligibilityRuleId}
+                  </span>
+                </td>
+                <td className="numeric py-2 text-right">{contract.retailPrice}</td>
+                <td className="numeric py-2 text-right">{contract.dealerCost}</td>
+                <td className="numeric py-2 text-right">{contract.originalGross}</td>
+                <td className="numeric py-2 text-right">
+                  {contract.adjustmentEvents === 0 ? (
+                    <span className="text-ink-faint">None</span>
+                  ) : (
+                    contract.adjustmentTotal
+                  )}
+                </td>
+                <td className="numeric py-2 text-right">{contract.netGross}</td>
+                <td className="py-2 text-xs">
+                  {contract.status}
+                  {contract.netVerified ? null : (
+                    <span className="block text-xs text-warning">
+                      Net does not recompute
+                    </span>
+                  )}
+                </td>
+              </tr>
+            ))}
+            <tr className="font-medium">
+              <th scope="row" colSpan={4} className="py-2 text-left">
+                {products.contractCount} contract{products.contractCount === 1 ? '' : 's'}
+              </th>
+              <td className="numeric py-2 text-right">{products.originalGrossTotal}</td>
+              <td className="numeric py-2 text-right">{products.adjustmentTotal}</td>
+              <td className="numeric py-2 text-right">{products.netGrossTotal}</td>
+              <td className="py-2" />
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      {/* Cards: below md */}
+      <ul className="flex flex-col gap-3 md:hidden">
+        {products.contracts.map((contract) => (
+          <li
+            key={contract.productSaleId}
+            className="rounded border border-line-subtle bg-surface p-3"
+          >
+            <div className="flex flex-col gap-1">
+              <span className="font-medium text-ink">{contract.productName}</span>
+              <span className="text-xs text-ink-faint">
+                {contract.category} · {contract.provider} · {contract.eligibilityRuleId}
+              </span>
+            </div>
+            <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-sm">
+              <dt className="text-xs text-ink-muted">Retail</dt>
+              <dd className="numeric text-right">{contract.retailPrice}</dd>
+              <dt className="text-xs text-ink-muted">Dealer cost</dt>
+              <dd className="numeric text-right">{contract.dealerCost}</dd>
+              <dt className="text-xs text-ink-muted">Original gross</dt>
+              <dd className="numeric text-right">{contract.originalGross}</dd>
+              <dt className="text-xs text-ink-muted">Adjustments</dt>
+              <dd className="numeric text-right">
+                {contract.adjustmentEvents === 0 ? 'None' : contract.adjustmentTotal}
+              </dd>
+              <dt className="text-xs text-ink-muted">Net gross</dt>
+              <dd className="numeric text-right font-medium">{contract.netGross}</dd>
+              <dt className="text-xs text-ink-muted">Status</dt>
+              <dd className="text-right text-xs">{contract.status}</dd>
+            </dl>
+          </li>
+        ))}
+      </ul>
+
+      <Text size="xs" tone="muted">
+        Original gross is what the contract was written for, on the day of the deal. Net
+        gross is what remained as at {products.asOfDate} after every adjustment posted on
+        or before that date. Status is derived from each contract&rsquo;s own event
+        history and never from today&rsquo;s date. Every product and administrator named
+        here is fictional, and every price is synthetic.
+      </Text>
+
+      {products.reconcilesToDealRow ? null : (
+        <Text size="xs" tone="muted">
+          <strong className="font-medium text-ink">
+            Itemization does not reconcile.
+          </strong>{' '}
+          The contracts above sum to {products.originalGrossTotal}, which does not equal
+          the deal row&rsquo;s own product total. Both figures are shown as exported
+          rather than adjusted to agree.
+        </Text>
+      )}
+    </div>
+  )
+}
+
+/**
+ * The back-end gross decomposition, recomputed on this page.
+ *
+ * The identity uses ORIGINAL product gross. A cancellation is supposed to make retained
+ * gross differ from produced gross, so substituting the retained figure would make this
+ * check fail on every adjusted deal and report a defect that is correct behaviour.
+ */
+export function BackGrossSectionBlock({ jacket }: { readonly jacket: DealJacket }) {
+  const { backGross } = jacket
+  return (
+    <div className="flex flex-col gap-4">
+      <table className="w-full text-sm">
+        <caption className="sr-only">
+          Deal-date back-end gross, decomposed into finance reserve and product gross
+        </caption>
+        <tbody>
+          <tr className="border-b border-line-subtle">
+            <th scope="row" className="py-2 text-left font-normal">
+              Finance reserve
+            </th>
+            <td className="numeric py-2 text-right">{backGross.reserve}</td>
+          </tr>
+          <tr className="border-b border-line-subtle">
+            <th scope="row" className="py-2 text-left font-normal">
+              <span className="mr-1 text-ink-faint">+</span> Original product gross
+            </th>
+            <td className="numeric py-2 text-right">{backGross.originalProductGross}</td>
+          </tr>
+          <tr className="border-b border-line-subtle text-ink-muted">
+            <th scope="row" className="py-2 text-left font-normal">
+              <span className="mr-1 text-ink-faint">+</span> Other F&amp;I income
+            </th>
+            <td className="numeric py-2 text-right">{backGross.otherFiIncome}</td>
+          </tr>
+          <tr className="font-medium">
+            <th scope="row" className="py-2 text-left">
+              <span className="mr-1 text-ink-faint">=</span> Back-end gross
+            </th>
+            <td className="numeric py-2 text-right">{backGross.backEndGross}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div
+        className={cx(
+          'rounded border px-3 py-2 text-sm',
+          backGross.verified
+            ? 'border-line-subtle bg-surface text-ink-muted'
+            : 'border-warning bg-warning/10 text-ink'
+        )}
+      >
+        {backGross.verified ? (
+          <>
+            <strong className="font-medium text-ink">Reconciled to the cent.</strong>{' '}
+            Finance reserve plus original product gross equals this deal&rsquo;s back-end
+            gross exactly, with other F&amp;I income of $0.00 and no balancing figure.
+            Recomputed here from the components above.
+          </>
+        ) : (
+          <>
+            <strong className="font-medium">Back-end gross does not reconcile.</strong>{' '}
+            The components leave {backGross.residual} unexplained. The exported figures
+            are shown unchanged rather than adjusted to agree.
+          </>
+        )}
+      </div>
+
+      <table className="w-full text-sm">
+        <caption className="sr-only">
+          Produced and retained F&amp;I gross on this deal
+        </caption>
+        <tbody>
+          <tr className="border-b border-line-subtle text-ink-muted">
+            <th scope="row" className="py-2 text-left font-normal">
+              Cumulative product adjustments through {backGross.asOfDate}
+            </th>
+            <td className="numeric py-2 text-right">{backGross.cumulativeAdjustments}</td>
+          </tr>
+          <tr>
+            <th scope="row" className="py-2 text-left font-normal">
+              Retained F&amp;I gross as of {backGross.asOfDate}
+            </th>
+            <td className="numeric py-2 text-right font-medium">
+              {backGross.retainedFiGross}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <Text size="xs" tone="muted">
+        Back-end gross is the deal-date figure and is never rewritten when an adjustment
+        posts later. Retained F&amp;I gross answers a different question — what the store
+        still has — and a difference between the two is expected wherever adjustments
+        posted, not an error in either.
+      </Text>
     </div>
   )
 }
@@ -487,9 +803,11 @@ export function ChecksSection({
         {needingReview === 0
           ? 'All checks passed.'
           : `${String(needingReview)} check${needingReview === 1 ? '' : 's'} need review.`}{' '}
-        Back-gross reconciliation, product eligibility and product-adjustment validity are
-        absent rather than shown as passing: they need the F&amp;I model, and a check that
-        cannot fail is not a check.
+        Eight checks, and every one of them recomputes something from the figures on this
+        page rather than reading a stored flag. Back-gross reconciliation, product
+        eligibility and product-adjustment validity were named as absent through{' '}
+        <code className="font-mono text-[0.6875rem]">DASH.4</code> because the F&amp;I
+        model had no surface here; they are real now, and each can fail.
       </Text>
     </div>
   )

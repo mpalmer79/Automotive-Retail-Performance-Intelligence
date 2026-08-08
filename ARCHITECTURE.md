@@ -1463,12 +1463,17 @@ Questions answered:
 - Which products and managers generate sustainable back-end results?
 - Where do cancellations and chargebacks reduce gross?
 
-> **The SQL and reporting side is delivered by `DASH.6`; the semantic model is not.** Four governed reporting
-> views and twenty-two `KPI-FNI-*` definitions exist and are verified
-> ([KPI_CATALOG.md §40](KPI_CATALOG.md)), so both questions above are answerable from `reporting` today. The
-> Power BI semantic model binds none of them, and the **presentation surface — an F&I console page, an
-> itemized deal jacket, a finance-manager view — belongs to `DASH.7` and does not exist.** DASH.6 exports no
-> browser dataset from any F&I view, which `tests/integration/test_fi_reporting_views.py` asserts.
+> **The SQL, reporting and browser sides are delivered — `DASH.6` and `DASH.7`; the semantic model is not.**
+> Four governed reporting views and twenty-two `KPI-FNI-*` definitions exist and are verified
+> ([KPI_CATALOG.md §40](KPI_CATALOG.md)); `DASH.7` promotes all four into the governed browser export and
+> builds the **presentation surface** — `/dashboard/fi` and the itemized Deal Jacket with its back-gross
+> reconciliation panel. Both questions above are answerable from `reporting` and readable on a page. The
+> Power BI semantic model still binds none of it, and Gate 2 stays CLOSED.
+>
+> The first question is answerable **without a ranking**, which is the point of the way it is phrased.
+> "Which products and managers generate sustainable back-end results" is answered by showing each one's
+> figures beside the population they were measured over — never by ordering people, and never beside a
+> benchmark ARPI does not have.
 >
 > Two limits apply to how the second question may be answered. Cancellations and chargebacks are **events on
 > their own dates**, so an adjustment-period figure over a sale-date denominator is a **period proxy, never a

@@ -301,13 +301,12 @@ describe('the console ships exactly the routes its increments have delivered', (
    * At `DASH.1` these assertions read "no route", "no component directory", "no
    * navigation entry" - written that way deliberately, so that the first route would
    * arrive in the same diff as the expectation change and a reviewer would see both.
-   * `DASH.2` re-aimed them at one route; `DASH.3` re-aims them at three.
+   * `DASH.2` re-aimed them at one route; `DASH.3` re-aimed them at three; `DASH.7`
+   * adds `fi`.
    *
    * What is guarded is unchanged: the console has EXACTLY the routes its increments
-   * have delivered, and the seven others in `INFORMATION_ARCHITECTURE.md` §1 do not
+   * have delivered, and the others in `INFORMATION_ARCHITECTURE.md` §1 do not
    * exist. A route that appeared without an increment fails here.
-   *
-   * `deals/[saleId]` is deliberately absent: the Deal Jacket is `DASH.4`.
    */
   it('has exactly the delivered console routes and no others', () => {
     const root = join(SRC, 'app/dashboard')
@@ -317,8 +316,9 @@ describe('the console ships exactly the routes its increments have delivered', (
       .filter((entry) => entry.isDirectory())
       .map((entry) => entry.name)
       .sort()
-    expect(nested, 'DASH.4 onward own the other console routes').toEqual([
+    expect(nested, 'DASH.8 onward own the other console routes').toEqual([
       'deals',
+      'fi',
       'sales-gross',
     ])
     for (const section of nested) {
@@ -399,8 +399,9 @@ describe('the generated dashboard data stays out of the existing route bundles',
      * reviewer could see. `DASH.2` made it two: one door for whole datasets, one for
      * the partition table.
      *
-     * `DASH.3` made it four and `DASH.4` makes it five, and every addition after the
-     * first two is deliberate route SCOPING rather than a relaxation. An import is a
+     * `DASH.3` made it four, `DASH.4` five, `DASH.5` six and `DASH.7` eight, and every
+     * addition after the first two is deliberate route SCOPING rather than a
+     * relaxation. An import is a
      * graph edge, and a module that imports a dataset puts it into the server graph of
      * every route that reads that module. So:
      *
@@ -416,19 +417,28 @@ describe('the generated dashboard data stays out of the existing route bundles',
      *   lib/dashboard/targets-data.ts  the 17 kB operating-plan set (`DASH.5`), read by
      *                                  /dashboard and /dashboard/sales-gross and by
      *                                  neither deal route
+     *   lib/dashboard/fi-data.ts       the two UNCHUNKED F&I sets (`DASH.7`) -- the 79 kB
+     *                                  production summary and the 15 kB adjustment
+     *                                  summary -- which only /dashboard/fi reads
+     *   lib/dashboard/fi-chunks.ts     the 18 penetration partitions and the 18 deal
+     *                                  PRODUCT partitions (`DASH.7`); the product
+     *                                  partitions are also the Deal Jacket's product
+     *                                  itemisation, so this door is shared by two routes
      *
-     * Folding any of the last four into `data.ts` would have put deal-level records
-     * and a 95 kB trend into `/dashboard`'s graph, which has no use for either. Six
+     * Folding any of the last six into `data.ts` would have put deal-level records
+     * and a 95 kB trend into `/dashboard`'s graph, which has no use for either. Eight
      * narrow doors is a stronger boundary than two wide ones, and the list is
-     * exhaustive: a seventh importer fails here.
+     * exhaustive: a ninth importer fails here.
      */
     expect(
       importers.map((file) => file.relative).sort(),
-      'the generated dashboard data has exactly six declared doors'
+      'the generated dashboard data has exactly eight declared doors'
     ).toEqual([
       'lib/dashboard/chunks.ts',
       'lib/dashboard/data.ts',
       'lib/dashboard/deal-chunks.ts',
+      'lib/dashboard/fi-chunks.ts',
+      'lib/dashboard/fi-data.ts',
       'lib/dashboard/jacket-chunks.ts',
       'lib/dashboard/sales-gross-data.ts',
       'lib/dashboard/targets-data.ts',
@@ -546,7 +556,7 @@ describe('ADR-0013 condition 2: no frontend redefines a KPI', () => {
       .map((file) => file.relative)
       .sort()
     /*
-     * Five view models, and the list is exhaustive. Each is a VIEW MODEL: it sums
+     * Six view models, and the list is exhaustive. Each is a VIEW MODEL: it sums
      * additive exported columns and divides one summed column by another, which is
      * the operation the reporting layer already publishes numerator and denominator
      * for. None of them defines what a measure means.
@@ -575,6 +585,18 @@ describe('ADR-0013 condition 2: no frontend redefines a KPI', () => {
      * export manifest's own published target totals, so a module that had invented a
      * formula would fail there with a wrong number rather than pass here on a filename.
      *
+     * `fi.ts` (`DASH.7`) is the sixth, and it is the one most at risk of becoming a
+     * calculation engine, so its limits are the narrowest in the console. It sums
+     * additive exported columns -- reserve, product gross, attached deals, eligible
+     * deals -- and divides one summed column by another. It does NOT define an F&I
+     * measure: `KPI-FNI-001` through `KPI-FNI-018` are stated in the catalogue and
+     * computed in SQL, penetration arrives with its numerator and its OWN eligible
+     * denominator already published per category, and the three date bases arrive as
+     * three separate datasets that this module never joins. `dashboard-fi.test.tsx`
+     * reconciles what it produces against the export manifest's own published F&I
+     * totals, so a module that had invented a formula would fail there with a wrong
+     * number rather than pass here on a filename.
+     *
      * `visuals.tsx` and `pace-bar.tsx` are NOT on this list and must not be: a chart or
      * bar primitive receives resolved values and turns them into geometry.
      */
@@ -585,6 +607,7 @@ describe('ADR-0013 condition 2: no frontend redefines a KPI', () => {
       'lib/dashboard/deal-jacket.ts',
       'lib/dashboard/deals.ts',
       'lib/dashboard/executive.ts',
+      'lib/dashboard/fi.ts',
       'lib/dashboard/sales-gross.ts',
       'lib/dashboard/targets.ts',
     ])

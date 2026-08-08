@@ -72,6 +72,13 @@ const ROUTES = [
   // prerendering 650 documents, and a rendering decision that is not measured is a
   // preference.
   '/dashboard/deals/SLE-00000646',
+  // The F&I page (`DASH.7`). Eight sections and five tables, all server components,
+  // over four exported datasets of which two are partitioned. Measured filtered as
+  // well as whole, because a category filter narrows the penetration table to one row
+  // and the difference between the two payloads is the cheapest evidence that the
+  // filter reaches the server rather than hiding rows in the browser.
+  '/dashboard/fi',
+  '/dashboard/fi?store=GSA-001&period=2025-11&product=gap',
   '/architecture',
   '/data-model',
   '/kpis',

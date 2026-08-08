@@ -43,7 +43,16 @@ from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Final, Literal
 
-from arpi.constants import ALLOWED_STORE_TYPES, ARPI_VERSION, PIPELINE_STATUSES
+from arpi.constants import (
+    ADJUSTMENT_TYPES,
+    ALLOWED_STORE_TYPES,
+    ARPI_VERSION,
+    ELIGIBILITY_RULE_IDS,
+    FINANCE_PRODUCT_CATEGORIES,
+    LENDER_CATEGORIES,
+    LENDER_PROGRAM_TIERS,
+    PIPELINE_STATUSES,
+)
 
 __all__ = [
     "ALLOWED_SOURCE_SCHEMA",
@@ -363,10 +372,39 @@ _SALE_TYPES: Final[tuple[str, ...]] = (
     "Dealer Trade",
 )
 
-#: The finance structures the Deal Jacket derives. Closed, because the derivation has
-#: exactly three branches: a lease sale type, nothing financed, or something financed.
-#: No lender, rate, term or payment is modelled until DASH.6.
-_FINANCE_STRUCTURES: Final[tuple[str, ...]] = ("Cash", "Retail Finance", "Lease")
+#: The three RETAIL finance structures. What an F&I dataset may carry: a disposal has no
+#: consumer, so no product and no consumer lender can attach to one, and it is not part of
+#: the structure mix KPI-FNI-019 publishes.
+_RETAIL_FINANCE_STRUCTURES: Final[tuple[str, ...]] = ("Cash", "Retail Finance", "Lease")
+
+#: Every value ``warehouse.fn_finance_structure`` returns, which is what the Deal Jacket
+#: now carries. DASH.7 widened this from the three retail structures: the jacket covers
+#: every finalized transaction including wholesale and dealer-trade disposals, and its
+#: previous inline derivation had no non-retail branch, so it labelled 92 disposals on the
+#: development profile as ``Cash``. The enumeration is the guard that would have caught it.
+_FINANCE_STRUCTURES: Final[tuple[str, ...]] = (
+    "Cash",
+    "Retail Finance",
+    "Lease",
+    "Wholesale",
+    "Dealer Trade",
+)
+
+#: The ten governed F&I product categories, verbatim from ``arpi.constants``. Closed: the
+#: eleventh category is a catalogue row, and an undeclared one fails the export rather than
+#: reaching a penetration table nobody declared a denominator for.
+_FI_PRODUCT_CATEGORIES: Final[tuple[str, ...]] = FINANCE_PRODUCT_CATEGORIES
+
+#: The six governed eligibility rules. Every penetration row names one.
+_FI_ELIGIBILITY_RULES: Final[tuple[str, ...]] = ELIGIBILITY_RULE_IDS
+
+#: The four governed adjustment event types.
+_FI_ADJUSTMENT_TYPES: Final[tuple[str, ...]] = ADJUSTMENT_TYPES
+
+#: The lender vocabularies. ``program_tier`` classifies the LENDER'S PROGRAM and never a
+#: customer: it is not a credit grade and is assigned to no person.
+_LENDER_CATEGORIES: Final[tuple[str, ...]] = LENDER_CATEGORIES
+_LENDER_PROGRAM_TIERS: Final[tuple[str, ...]] = LENDER_PROGRAM_TIERS
 
 #: The bridge's three components. A fourth (a mix effect) may not be added until its
 #: position in the sequence and its exact reconciliation are documented, so the closed
@@ -1815,6 +1853,7 @@ _DEAL_JACKET = DatasetContract(
             enumeration=_FINANCE_STRUCTURES,
         ),
         _attribute("finance_structure_basis", "string", view="vw_deal_jacket"),
+        _attribute("is_retail_structure", "boolean", view="vw_deal_jacket"),
         # Vehicle
         _attribute("vehicle_code", "string", view="vw_deal_jacket"),
         _attribute("synthetic_vin", "string", view="vw_deal_jacket"),
@@ -1854,12 +1893,35 @@ _DEAL_JACKET = DatasetContract(
         _measure("trade_allowance", "currency", unit="USD", view="vw_deal_jacket"),
         _measure("trade_acv", "currency", unit="USD", view="vw_deal_jacket"),
         _measure("trade_variance", "currency", unit="USD", view="vw_deal_jacket"),
-        # Finance amounts
+        # Finance amounts and the fictional funding source. Still no rate mechanic.
         _measure("cash_down", "currency", unit="USD", view="vw_deal_jacket"),
         _measure("amount_financed", "currency", unit="USD", view="vw_deal_jacket"),
-        # Gross
+        _attribute("lender_code", "string", nullable=True, view="vw_deal_jacket"),
+        _attribute("lender_name", "string", nullable=True, view="vw_deal_jacket"),
+        _attribute(
+            "lender_category",
+            "string",
+            nullable=True,
+            view="vw_deal_jacket",
+            enumeration=_LENDER_CATEGORIES,
+        ),
+        _attribute(
+            "lender_program_tier",
+            "string",
+            nullable=True,
+            view="vw_deal_jacket",
+            enumeration=_LENDER_PROGRAM_TIERS,
+        ),
+        # Gross, with the back end now decomposed
+        _measure("finance_reserve_gross", "currency", unit="USD", view="vw_deal_jacket"),
         _measure("back_end_gross", "currency", unit="USD", view="vw_deal_jacket"),
         _measure("total_gross", "currency", unit="USD", view="vw_deal_jacket"),
+        # The deal's F&I product rollup, pre-aggregated to one row per deal.
+        _measure("product_contract_count", "integer", unit="contracts", view="vw_deal_jacket"),
+        _measure("original_product_gross", "currency", unit="USD", view="vw_deal_jacket"),
+        _measure("cumulative_adjustment_amount", "currency", unit="USD", view="vw_deal_jacket"),
+        _measure("adjustment_event_count", "integer", unit="events", view="vw_deal_jacket"),
+        _measure("net_product_gross_as_of", "currency", unit="USD", view="vw_deal_jacket"),
         # Staff, synthetic codes and roles only
         _attribute("salesperson_code", "string", nullable=True, view="vw_deal_jacket"),
         _attribute("salesperson_role", "string", nullable=True, view="vw_deal_jacket"),
@@ -1895,21 +1957,529 @@ _DEAL_JACKET = DatasetContract(
         # Supporting fact for the page's integrity checklist
         _attribute("delivery_on_or_after_sale", "boolean", view="vw_deal_jacket"),
         _measure("inventory_snapshot_count", "integer", unit="snapshots", view="vw_deal_jacket"),
+        _attribute("as_of_date", "date", view="vw_deal_jacket"),
+        _attribute("deal_date_basis", "string", view="vw_deal_jacket"),
+        _attribute("net_gross_date_basis", "string", view="vw_deal_jacket"),
     ),
     notes=(
         "The presentation-complete record of ONE deal, and the second deal-grain dataset. "
         "It carries the cost components deal-explorer deliberately omits, because a jacket "
         "must show the arithmetic behind its front gross and an index must not ship the "
         "whole population's cost structure. The two ARITHMETIC identities are NOT exported "
-        "as flags: the route recomputes front gross and total gross from the displayed "
-        "components with exact-decimal arithmetic, because a verification that reads a flag "
-        "verifies nothing. trade_variance is published beside the front-gross components "
-        "and is deliberately not one of them. back_end_gross is aggregate: no "
-        "finance-product fact exists until DASH.7, and the route labels it as aggregate "
-        "rather than implying an itemization. No customer attribute is exported at any "
+        "as flags: the route recomputes front gross, total gross and the back-gross "
+        "decomposition from the displayed components with exact-decimal arithmetic, because "
+        "a verification that reads a flag verifies nothing. trade_variance is published "
+        "beside the front-gross components and is deliberately not one of them. "
+        "DASH.7 MADE THE BACK END REAL: back_end_gross is no longer an unexplained "
+        "aggregate, because finance_reserve_gross + original_product_gross equals it to the "
+        "cent on every deal with other_fi_income exactly 0.00, and the contract itemization "
+        "is the deal-product-detail dataset partitioned by the SAME store and sale month so "
+        "one jacket opens one product partition. original_product_gross is the DEAL-DATE sum "
+        "and is the one the identity uses; net_product_gross_as_of is the retained figure "
+        "through the governed as-of date, and substituting it would make the identity fail on "
+        "every adjusted deal. DASH.7 ALSO CORRECTED finance_structure: the view derived it "
+        "with an inline CASE that had no non-retail branch and labelled 92 wholesale and "
+        "dealer-trade disposals as Cash; it now calls the governed derivation function, the one "
+        "authority, the enumeration widened to five values, and is_retail_structure separates "
+        "them. The lender is FICTIONAL and null means NO LENDER EXISTS; lender_program_tier "
+        "classifies the LENDER'S PROGRAM and never a customer; no APR, term, payment, buy "
+        "rate, sell rate or spread is exported because none is modelled. "
+        "No customer attribute is exported at any "
         "grain; staff are synthetic codes and roles with no name; the lead timeline is "
         "flags and dates with no message, note or free text, because none exists in the "
         "model."
+    ),
+)
+
+
+# ---------------------------------------------------------------------------------------
+# The F&I lane (DASH.7)
+# ---------------------------------------------------------------------------------------
+# DASH.6 built four reporting views and exported NONE of them: the domain existed in SQL
+# and had no presentation surface. DASH.7 promotes all four across the boundary, and the
+# thing that matters most about them is that they DO NOT SHARE A GRAIN.
+#
+#   fi-summary                 store x sale date x finance manager, no category
+#   fi-product-penetration     the same, PLUS category, and no reserve or retail units
+#   fi-adjustment-summary      store x ADJUSTMENT date x manager x category x type
+#   deal-product-detail        one contract
+#
+# That separation is DASH.6's, it is deliberate, and it is what stops a category join from
+# multiplying finance reserve and retail units across ten rows. The export preserves it
+# rather than flattening the four into one convenient shape, because the convenient shape
+# is the one that double-counts.
+#
+# THREE DATE BASES CROSS THE BOUNDARY AND EACH SAYS SO IN THE ROW. Deal date is what the
+# F&I office produced. As-of net is what the store retained through the governed as-of
+# date. Adjustment period groups events by their OWN date -- an August chargeback on a June
+# contract belongs to August, and no consumer may restate it into June.
+#
+# NO QUOTIENT IS EXPORTED. Penetration, PVR, products per unit and the period-proxy rates
+# all cross as numerator and denominator, so a group figure is SUM(numerator) /
+# SUM(denominator) and an average of store percentages cannot be formed from this data.
+
+
+def _fi_store_id(view: str) -> ColumnContract:
+    """The store's business code, already resolved by the F&I view.
+
+    Every F&I reporting view publishes ``dealership_id`` itself, so these datasets take it
+    from the view rather than joining ``vw_dealership`` the way the older ones do. Same
+    exported name, same value, one join fewer -- and a join that resolves a key the source
+    has already resolved is a join that can only introduce a defect.
+    """
+    return ColumnContract(
+        name="dealership_id",
+        type="string",
+        nullable=False,
+        expression="base.dealership_id",
+        source_column=f"{view}.dealership_id",
+    )
+
+
+def _fi_manager_code(view: str) -> ColumnContract:
+    """The finance manager's synthetic code, or ``null`` for the unstaffed group.
+
+    ``null`` here means NOBODY WAS ON THE F&I DESK -- a real population of real
+    deliveries -- and never "manager unknown". The views carry a NOT NULL
+    ``finance_manager_grain_key`` for uniqueness, and it is deliberately NOT exported:
+    it is ``coalesce(employee_key, 0)`` over a warehouse surrogate, and surrogates stop
+    at this boundary. ``finance_manager_code`` plus the store and date are what identify
+    a row publicly, with ``null`` as a legitimate member of the key.
+    """
+    return ColumnContract(
+        name="finance_manager_code",
+        type="string",
+        nullable=True,
+        expression="base.finance_manager_id",
+        source_column=f"{view}.finance_manager_id",
+    )
+
+
+_FI_SUMMARY = DatasetContract(
+    name="fi-summary",
+    source_view="vw_fi_summary",
+    grain=(
+        "One row per store, per sale date, per finance manager -- including the "
+        "'nobody on the F&I desk' group. NO PRODUCT CATEGORY: this dataset carries "
+        "finance reserve and retail units, both properties of a DEAL."
+    ),
+    business_key=("dealership_id", "sale_date", "finance_manager_code"),
+    date_basis="sale date for every production measure; as-of for the retained ones",
+    sort_keys=("dealership_id", "sale_date", "finance_manager_code"),
+    chunked=False,
+    kpi_ids=(
+        "KPI-FNI-001",
+        "KPI-FNI-002",
+        "KPI-FNI-003",
+        "KPI-FNI-004",
+        "KPI-FNI-005",
+        "KPI-FNI-006",
+        "KPI-FNI-011",
+        "KPI-FNI-014",
+        "KPI-FNI-015",
+        "KPI-FNI-018",
+        "KPI-FNI-019",
+        "KPI-FNI-022",
+    ),
+    columns=(
+        _fi_store_id("vw_fi_summary"),
+        _attribute("store_short_name", "string", view="vw_fi_summary"),
+        _attribute("sale_date", "date", view="vw_fi_summary"),
+        _fi_manager_code("vw_fi_summary"),
+        _measure("retail_units", "integer", unit="units", view="vw_fi_summary"),
+        _measure("cash_deal_count", "integer", unit="deals", view="vw_fi_summary"),
+        _measure("retail_finance_deal_count", "integer", unit="deals", view="vw_fi_summary"),
+        _measure("lease_deal_count", "integer", unit="deals", view="vw_fi_summary"),
+        _measure(
+            "finance_reserve_gross", "currency", unit="USD", precision=2, view="vw_fi_summary"
+        ),
+        _measure(
+            "back_end_gross_deal_date", "currency", unit="USD", precision=2, view="vw_fi_summary"
+        ),
+        _measure("contract_count", "integer", unit="contracts", view="vw_fi_summary"),
+        _measure("deals_with_a_product", "integer", unit="deals", view="vw_fi_summary"),
+        _measure("product_retail_price", "currency", unit="USD", precision=2, view="vw_fi_summary"),
+        _measure("product_dealer_cost", "currency", unit="USD", precision=2, view="vw_fi_summary"),
+        _measure(
+            "original_product_gross", "currency", unit="USD", precision=2, view="vw_fi_summary"
+        ),
+        _measure("original_fi_gross", "currency", unit="USD", precision=2, view="vw_fi_summary"),
+        _measure("adjustment_event_count", "integer", unit="events", view="vw_fi_summary"),
+        _measure(
+            "cumulative_adjustment_amount",
+            "currency",
+            unit="USD",
+            precision=2,
+            view="vw_fi_summary",
+        ),
+        _measure(
+            "net_product_gross_as_of", "currency", unit="USD", precision=2, view="vw_fi_summary"
+        ),
+        _measure("net_fi_gross_as_of", "currency", unit="USD", precision=2, view="vw_fi_summary"),
+        _measure("minimum_sample_floor", "integer", unit="deals", view="vw_fi_summary"),
+        _attribute("meets_minimum_sample", "boolean", view="vw_fi_summary"),
+        _attribute("as_of_date", "date", view="vw_fi_summary"),
+        _attribute("deal_date_basis", "string", view="vw_fi_summary"),
+        _attribute("net_gross_date_basis", "string", view="vw_fi_summary"),
+    ),
+    notes=(
+        "THE F&I PRODUCTION SUMMARY, and the dataset that deliberately has NO CATEGORY "
+        "COLUMN. finance_reserve_gross and retail_units are properties of a DEAL; adding a "
+        "category would repeat both on every category row and multiply them for anything "
+        "that summed the result. Category-grain measures are fi-product-penetration's, "
+        "which carries neither. NO QUOTIENT IS EXPORTED: reserve PVR, product gross PVR "
+        "and products per retail unit all cross as components, so a group figure is "
+        "SUM(numerator) / SUM(denominator) and never an average of store rates. "
+        "retail_units is the denominator of KPI-FNI-002, -005, -006 and -022 and INCLUDES "
+        "CASH DEALS, which cannot generate reserve -- the SQ-20 caution -- so "
+        "cash_deal_count is published beside it to make that checkable rather than merely "
+        "stated. deals_with_a_product exists so a reader can see how many deliveries "
+        "carried nothing, and is NOT the denominator of products per retail unit. "
+        "back_end_gross_deal_date is KPI-GRS-002 restricted to this group and is NEVER "
+        "rewritten by a later adjustment: original_fi_gross is the produced figure and "
+        "net_fi_gross_as_of the retained one, and the difference between them is the "
+        "point of the distinction rather than an error. meets_minimum_sample is PUBLISHED, "
+        "NOT APPLIED: no component is ever blanked, because a null would be "
+        "indistinguishable from a manager with no deals at all, and the consumer renders "
+        "'insufficient sample (n = X)' from the flag. finance_manager_code is null for the "
+        "'nobody on the F&I desk' group, which is a real population and never dropped."
+    ),
+)
+
+_FI_PRODUCT_PENETRATION = DatasetContract(
+    name="fi-product-penetration",
+    source_view="vw_fi_product_penetration",
+    grain=(
+        "One row per store, per sale date, per finance manager, per governed product "
+        "category that was ELIGIBLE on at least one of that group's retail deals. NO "
+        "RESERVE AND NO RETAIL-UNIT COLUMN."
+    ),
+    business_key=("dealership_id", "sale_date", "finance_manager_code", "product_category"),
+    date_basis="sale date for the population and the production; as-of for the retained gross",
+    sort_keys=("dealership_id", "sale_date", "finance_manager_code", "product_category"),
+    # CHUNKED, on the measurement rather than the reflex. At 3,012 rows and 2.17 MB in the
+    # root export it is the second-largest dataset in the lane -- ten category rows per
+    # store-day-manager group -- and DATA_CONTRACT.md section 9 asks for the number before
+    # the decision. fi-summary (354 rows, 267 kB) and fi-adjustment-summary (57 rows) stay
+    # in one file each for the same reason inverted: partitioning them would add files and
+    # a chunk table to save nothing.
+    chunked=True,
+    kpi_ids=(
+        "KPI-FNI-007",
+        "KPI-FNI-008",
+        "KPI-FNI-009",
+        "KPI-FNI-010",
+        "KPI-FNI-011",
+        "KPI-FNI-020",
+        "KPI-FNI-021",
+    ),
+    columns=(
+        _fi_store_id("vw_fi_product_penetration"),
+        _attribute("store_short_name", "string", view="vw_fi_product_penetration"),
+        _attribute("sale_date", "date", view="vw_fi_product_penetration"),
+        _fi_manager_code("vw_fi_product_penetration"),
+        _attribute(
+            "product_category",
+            "string",
+            view="vw_fi_product_penetration",
+            enumeration=_FI_PRODUCT_CATEGORIES,
+        ),
+        _attribute(
+            "eligibility_rule_id",
+            "string",
+            view="vw_fi_product_penetration",
+            enumeration=_FI_ELIGIBILITY_RULES,
+        ),
+        _measure(
+            "penetration_numerator", "integer", unit="deals", view="vw_fi_product_penetration"
+        ),
+        _measure(
+            "penetration_denominator", "integer", unit="deals", view="vw_fi_product_penetration"
+        ),
+        _measure("attached_deal_count", "integer", unit="deals", view="vw_fi_product_penetration"),
+        _measure("eligible_deal_count", "integer", unit="deals", view="vw_fi_product_penetration"),
+        _measure("contract_count", "integer", unit="contracts", view="vw_fi_product_penetration"),
+        _measure(
+            "product_retail_price",
+            "currency",
+            unit="USD",
+            precision=2,
+            view="vw_fi_product_penetration",
+        ),
+        _measure(
+            "product_dealer_cost",
+            "currency",
+            unit="USD",
+            precision=2,
+            view="vw_fi_product_penetration",
+        ),
+        _measure(
+            "original_product_gross",
+            "currency",
+            unit="USD",
+            precision=2,
+            view="vw_fi_product_penetration",
+        ),
+        _measure(
+            "adjustment_event_count", "integer", unit="events", view="vw_fi_product_penetration"
+        ),
+        _measure(
+            "cumulative_adjustment_amount",
+            "currency",
+            unit="USD",
+            precision=2,
+            view="vw_fi_product_penetration",
+        ),
+        _measure(
+            "net_product_gross_as_of",
+            "currency",
+            unit="USD",
+            precision=2,
+            view="vw_fi_product_penetration",
+        ),
+        _measure("minimum_sample_floor", "integer", unit="deals", view="vw_fi_product_penetration"),
+        _attribute("meets_minimum_sample", "boolean", view="vw_fi_product_penetration"),
+        _attribute("as_of_date", "date", view="vw_fi_product_penetration"),
+        _attribute("deal_date_basis", "string", view="vw_fi_product_penetration"),
+        _attribute("net_gross_date_basis", "string", view="vw_fi_product_penetration"),
+    ),
+    notes=(
+        "THE CATEGORY-GRAIN DATASET, and the one that carries NO finance reserve and NO "
+        "retail-unit column -- the other half of the rule fi-summary states. ROWS ARE "
+        "BUILT FROM THE DEALS, NOT THE CONTRACTS: a category with an eligible population "
+        "and no sales produces a row with a ZERO NUMERATOR, which is a finding; building "
+        "from the contracts would make that row vanish and a category nobody sold would "
+        "render identically to one nobody COULD have sold. THE DENOMINATOR IS THE POINT: "
+        "penetration_numerator, penetration_denominator and the ELIG-* rule that produced "
+        "the denominator are on every row and the ratio itself is left to the consumer, "
+        "because GAP penetration is over FINANCED eligible deals and computing it over all "
+        "retail deals is the single most available way to get this number wrong. "
+        "penetration_numerator counts DISTINCT ATTACHED DEALS and contract_count counts "
+        "CONTRACTS: one deal may legitimately carry two different products in one category "
+        "-- a windscreen plan and a roadside plan are both Other Aftermarket Products -- "
+        "so the two differ and are never interchangeable. eligibility_rule_id is stamped "
+        "from config/reference/fi_product_eligibility.yaml, the one authority; no consumer "
+        "may restate the predicate. EVERY VALUE IS SYNTHETIC: no penetration here is an "
+        "industry benchmark, and no surface may describe one as good, bad, standard or "
+        "recommended."
+    ),
+)
+
+_FI_ADJUSTMENT_SUMMARY = DatasetContract(
+    name="fi-adjustment-summary",
+    source_view="vw_fi_adjustment_summary",
+    grain=(
+        "One row per store, per ADJUSTMENT date, per finance manager, per product "
+        "category, per adjustment type."
+    ),
+    business_key=(
+        "dealership_id",
+        "adjustment_date",
+        "finance_manager_code",
+        "product_category",
+        "adjustment_type",
+    ),
+    date_basis="adjustment date -- the event's OWN business date, never the parent sale's",
+    sort_keys=(
+        "dealership_id",
+        "adjustment_date",
+        "finance_manager_code",
+        "product_category",
+        "adjustment_type",
+    ),
+    chunked=False,
+    kpi_ids=(
+        "KPI-FNI-012",
+        "KPI-FNI-013",
+        "KPI-FNI-014",
+        "KPI-FNI-015",
+        "KPI-FNI-016",
+        "KPI-FNI-017",
+        "KPI-FNI-018",
+    ),
+    columns=(
+        _fi_store_id("vw_fi_adjustment_summary"),
+        _attribute("store_short_name", "string", view="vw_fi_adjustment_summary"),
+        _attribute("adjustment_date", "date", view="vw_fi_adjustment_summary"),
+        _fi_manager_code("vw_fi_adjustment_summary"),
+        _attribute(
+            "product_category",
+            "string",
+            view="vw_fi_adjustment_summary",
+            enumeration=_FI_PRODUCT_CATEGORIES,
+        ),
+        _attribute(
+            "adjustment_type",
+            "string",
+            view="vw_fi_adjustment_summary",
+            enumeration=_FI_ADJUSTMENT_TYPES,
+        ),
+        _measure("adjustment_count", "integer", unit="events", view="vw_fi_adjustment_summary"),
+        _measure(
+            "adjustment_amount",
+            "currency",
+            unit="USD",
+            precision=2,
+            view="vw_fi_adjustment_summary",
+        ),
+        _measure(
+            "distinct_adjusted_contract_count",
+            "integer",
+            unit="contracts",
+            view="vw_fi_adjustment_summary",
+        ),
+        _measure(
+            "adjusted_contract_original_gross",
+            "currency",
+            unit="USD",
+            precision=2,
+            view="vw_fi_adjustment_summary",
+        ),
+        _attribute("numerator_date_basis", "string", view="vw_fi_adjustment_summary"),
+        _attribute("rate_denominator_date_basis", "string", view="vw_fi_adjustment_summary"),
+        _attribute("rate_denominator_source", "string", view="vw_fi_adjustment_summary"),
+        _attribute("rate_basis_disclosure", "string", view="vw_fi_adjustment_summary"),
+    ),
+    notes=(
+        "THE ONLY F&I DATASET ON THE ADJUSTMENT-DATE BASIS, which is why it is a separate "
+        "dataset rather than more columns on fi-summary: an August chargeback on a June "
+        "contract belongs to AUGUST, the June contract keeps June's gross, and two date "
+        "bases inside one grain would put two populations behind one row with nothing "
+        "failing. NO CONSUMER MAY RESTATE AN EVENT INTO ITS PARENT SALE'S MONTH. THE "
+        "MIXED-BASIS RATES: KPI-FNI-014, -015 and -018 divide a figure from here by one "
+        "from fi-summary -- the numerator's period is POSTING time and the denominator's is "
+        "SELLING time -- so the result is a PERIOD PROXY and NOT a contract-cohort loss "
+        "rate, because the contracts charged back in a month are mostly not the ones "
+        "written in it. numerator_date_basis, rate_denominator_date_basis, "
+        "rate_denominator_source and rate_basis_disclosure are published AS DATA so a "
+        "consumer renders that disclosure from the row rather than from a sentence "
+        "somebody remembered. The sale-date denominator is deliberately NOT copied onto "
+        "these rows: a sale-date figure on an adjustment-date row is exactly the silent "
+        "blend this design avoids. SIGN: a positive amount REDUCES retained gross and a "
+        "negative one RESTORES it, so Reinstatement amounts are negative by construction "
+        "and summing across types is legitimate arithmetic rather than a mistake. The "
+        "reporting window truncates the adjustment lag distribution, so recent sale months "
+        "carry structurally fewer events -- a property of the dataset, not a finding."
+    ),
+)
+
+_DEAL_PRODUCT_DETAIL = DatasetContract(
+    name="deal-product-detail",
+    source_view="vw_deal_product_detail",
+    grain="One row per F&I product contract sold on a finalized vehicle transaction.",
+    business_key=("product_sale_id",),
+    date_basis="sale date for the contract; as-of for its retained gross",
+    sort_keys=("sale_id", "line_ordinal", "product_sale_id"),
+    chunked=True,
+    kpi_ids=("KPI-FNI-003", "KPI-FNI-004", "KPI-FNI-011"),
+    columns=(
+        _attribute("product_sale_id", "string", view="vw_deal_product_detail"),
+        _attribute("sale_id", "string", view="vw_deal_product_detail"),
+        # sale_date must remain the FIRST date column: the transformer partitions a
+        # chunked dataset by the first one it finds, and the governed partition key is the
+        # sale month -- the same one deal-jacket uses, so a jacket page opens exactly one
+        # product partition and it is the one it already opened for the deal row.
+        _attribute("sale_date", "date", view="vw_deal_product_detail"),
+        _fi_store_id("vw_deal_product_detail"),
+        _attribute("store_short_name", "string", view="vw_deal_product_detail"),
+        _fi_manager_code("vw_deal_product_detail"),
+        _attribute(
+            "finance_structure",
+            "string",
+            view="vw_deal_product_detail",
+            enumeration=_RETAIL_FINANCE_STRUCTURES,
+        ),
+        _attribute("lender_id", "string", nullable=True, view="vw_deal_product_detail"),
+        _attribute(
+            "lender_category",
+            "string",
+            nullable=True,
+            view="vw_deal_product_detail",
+            enumeration=_LENDER_CATEGORIES,
+        ),
+        _attribute(
+            "lender_program_tier",
+            "string",
+            nullable=True,
+            view="vw_deal_product_detail",
+            enumeration=_LENDER_PROGRAM_TIERS,
+        ),
+        _attribute("finance_product_id", "string", view="vw_deal_product_detail"),
+        _attribute("product_name", "string", view="vw_deal_product_detail"),
+        _attribute(
+            "product_category",
+            "string",
+            view="vw_deal_product_detail",
+            enumeration=_FI_PRODUCT_CATEGORIES,
+        ),
+        _attribute("provider_name", "string", view="vw_deal_product_detail"),
+        _attribute(
+            "eligibility_rule_id",
+            "string",
+            view="vw_deal_product_detail",
+            enumeration=_FI_ELIGIBILITY_RULES,
+        ),
+        _measure("line_ordinal", "integer", unit="position", view="vw_deal_product_detail"),
+        _measure("contract_term_months", "integer", unit="months", view="vw_deal_product_detail"),
+        _measure("product_sale_count", "integer", unit="contracts", view="vw_deal_product_detail"),
+        _measure(
+            "product_retail_price",
+            "currency",
+            unit="USD",
+            precision=2,
+            view="vw_deal_product_detail",
+        ),
+        _measure(
+            "product_dealer_cost",
+            "currency",
+            unit="USD",
+            precision=2,
+            view="vw_deal_product_detail",
+        ),
+        _measure(
+            "original_product_gross",
+            "currency",
+            unit="USD",
+            precision=2,
+            view="vw_deal_product_detail",
+        ),
+        _measure("adjustment_event_count", "integer", unit="events", view="vw_deal_product_detail"),
+        _measure(
+            "cumulative_adjustment_amount",
+            "currency",
+            unit="USD",
+            precision=2,
+            view="vw_deal_product_detail",
+        ),
+        _measure(
+            "net_product_gross_as_of",
+            "currency",
+            unit="USD",
+            precision=2,
+            view="vw_deal_product_detail",
+        ),
+        _attribute("as_of_date", "date", view="vw_deal_product_detail"),
+        _attribute("gross_date_basis", "string", view="vw_deal_product_detail"),
+        _attribute("net_gross_date_basis", "string", view="vw_deal_product_detail"),
+    ),
+    notes=(
+        "THE ITEMIZATION BEHIND ONE DEAL'S BACK GROSS, and the third deal-grain dataset. "
+        "It exists for /dashboard/deals/[saleId] and NOT for the Deal Explorer index: the "
+        "index stays compact, and this is chunked by store and SALE MONTH -- the same "
+        "partition key deal-jacket uses -- so opening one jacket loads one product "
+        "partition and never the whole population's contract detail. contract_term_months "
+        "IS THE COVERAGE'S TERM AND NOT A LOAN TERM: ARPI models no loan term, no APR, no "
+        "payment and no rate of any kind, and the two must never be conflated. "
+        "original_product_gross is the DEAL-DATE figure and is never rewritten by a later "
+        "cancellation; net_product_gross_as_of is the retained figure through the governed "
+        "as-of date. A page verifies original_product_gross = product_retail_price - "
+        "product_dealer_cost and net = original - cumulative from these components with "
+        "exact-decimal arithmetic, which is a verification rather than a second definition. "
+        "finance_structure carries only the three RETAIL values here, because a disposal "
+        "has no consumer and can carry no contract. lender_id is null on a Cash contract "
+        "and means NO LENDER EXISTS. EVERY PRODUCT, PROVIDER AND LENDER IS FICTIONAL and "
+        "every price is synthetic: none is a market price, a recommended price or a real "
+        "company's program. NO CUSTOMER REFERENCE OF ANY KIND, and no free-text field."
     ),
 )
 
@@ -1935,6 +2505,10 @@ DATASETS: Final[tuple[DatasetContract, ...]] = (
     _TARGET_ATTAINMENT,
     _DEAL_EXPLORER,
     _DEAL_JACKET,
+    _FI_SUMMARY,
+    _FI_PRODUCT_PENETRATION,
+    _FI_ADJUSTMENT_SUMMARY,
+    _DEAL_PRODUCT_DETAIL,
     _RECONCILIATION_STATUS,
     _PIPELINE_RUN,
 )
@@ -2273,6 +2847,122 @@ RECONCILIATION_TOTALS: Final[tuple[ReconciliationTotal, ...]] = (
         unit="USD",
         display_precision=2,
         subset=(("target_scope_type", "Department"), ("department_name", "Finance")),
+    ),
+    # The F&I lane (DASH.7). Only ADDITIVE components appear, and the two ratios are
+    # numerator/denominator pairs -- a group penetration is SUM(numerator) /
+    # SUM(denominator), never an average of store rates.
+    ReconciliationTotal(
+        "finance_reserve_gross",
+        "fi-summary",
+        "finance_reserve_gross",
+        unit="USD",
+        display_precision=2,
+        kpi_id="KPI-FNI-001",
+    ),
+    ReconciliationTotal(
+        "original_product_gross",
+        "fi-summary",
+        "original_product_gross",
+        unit="USD",
+        display_precision=2,
+        kpi_id="KPI-FNI-003",
+    ),
+    ReconciliationTotal(
+        "net_product_gross_as_of",
+        "fi-summary",
+        "net_product_gross_as_of",
+        unit="USD",
+        display_precision=2,
+        kpi_id="KPI-FNI-004",
+    ),
+    ReconciliationTotal(
+        "fi_contract_count",
+        "fi-summary",
+        "contract_count",
+        type="integer",
+        unit="contracts",
+    ),
+    # THE ITEMIZATION AGAINST THE ROLLUP, across two datasets at two grains.
+    #
+    # ``fi-summary`` publishes one pre-aggregated product-gross figure per store-day-manager;
+    # ``deal-product-detail`` publishes one row per contract. Nothing derives either from the
+    # other -- they are two views over the same fact at different grains -- so the two totals
+    # agreeing is evidence rather than a tautology, and it is the export-boundary form of the
+    # check the Deal Jacket performs per deal.
+    #
+    # ``deal-product-detail`` carried NO total at all until DASH.7's own seeded-defect suite
+    # found that a one-cent mutation of ``original_product_gross`` passed the offline check.
+    # Every other dataset in the F&I family had a total re-derived from its committed bytes;
+    # this one did not, so the cheapest possible corruption of the largest deal-grain F&I
+    # dataset was invisible without a database. That is what these two totals close.
+    ReconciliationTotal(
+        "product_contract_original_gross",
+        "deal-product-detail",
+        "original_product_gross",
+        unit="USD",
+        display_precision=2,
+        kpi_id="KPI-FNI-003",
+    ),
+    ReconciliationTotal(
+        "product_contract_net_gross_as_of",
+        "deal-product-detail",
+        "net_product_gross_as_of",
+        unit="USD",
+        display_precision=2,
+        kpi_id="KPI-FNI-004",
+    ),
+    ReconciliationTotal(
+        "products_per_retail_unit",
+        "fi-summary",
+        "contract_count",
+        "retail_units",
+        type="exact",
+        unit="ratio",
+        display_precision=4,
+        kpi_id="KPI-FNI-006",
+    ),
+    # THE PENETRATION PAIR, subset to one rule so the denominator means something. GAP is
+    # the case worth reconciling: its denominator is FINANCED eligible deals, and computing
+    # it over all retail deals is the single most available way to get this number wrong.
+    ReconciliationTotal(
+        "gap_penetration",
+        "fi-product-penetration",
+        "penetration_numerator",
+        "penetration_denominator",
+        type="exact",
+        unit="ratio",
+        display_precision=4,
+        kpi_id="KPI-FNI-008",
+        subset=(("eligibility_rule_id", "ELIG-GAP"),),
+    ),
+    ReconciliationTotal(
+        "vsc_penetration",
+        "fi-product-penetration",
+        "penetration_numerator",
+        "penetration_denominator",
+        type="exact",
+        unit="ratio",
+        display_precision=4,
+        kpi_id="KPI-FNI-007",
+        subset=(("eligibility_rule_id", "ELIG-VSC"),),
+    ),
+    ReconciliationTotal(
+        "chargeback_amount",
+        "fi-adjustment-summary",
+        "adjustment_amount",
+        unit="USD",
+        display_precision=2,
+        kpi_id="KPI-FNI-012",
+        subset=(("adjustment_type", "Chargeback"),),
+    ),
+    ReconciliationTotal(
+        "cancellation_amount",
+        "fi-adjustment-summary",
+        "adjustment_amount",
+        unit="USD",
+        display_precision=2,
+        kpi_id="KPI-FNI-016",
+        subset=(("adjustment_type", "Cancellation"),),
     ),
 )
 
