@@ -1,17 +1,17 @@
 {
   "schema": "arpi.dashboard_client/1",
-  "datasetVersion": 5,
+  "datasetVersion": 6,
   "contractVersion": 1,
-  "contractSha256": "d2f90edc9c1c776623cd787994a76529c65ff0a965f03d7ff18e1879228b98c0",
-  "generatedAt": "2026-08-08T03:40:21+00:00",
+  "contractSha256": "1bd3f43629cc705df4eee15feb47812596d63acf617baf50f40a3bbf81a0c0fb",
+  "generatedAt": "2026-08-08T11:59:58+00:00",
   "asOfDate": "2025-12-31",
   "profile": "development",
   "randomSeed": 20250701,
-  "sourceCommit": "dc6ecaa19f4e83b22fa351888a12ee7d516c629b",
+  "sourceCommit": "7dcbeab8e4a307fea49c109e72d69a84f31fc737",
   "exporterVersion": "0.1.0",
   "syntheticData": true,
   "fictionalDealerGroup": true,
-  "pipelineRunUuid": "6b1a78ae-0a44-42ba-96e7-a12e7bb16363",
+  "pipelineRunUuid": "72a266b6-31d0-470b-80e4-48c3e3bfdd24",
   "pipelineRunStatus": "succeeded",
   "sourceViews": [
     "reporting.vw_appointment_funnel",
@@ -20,7 +20,11 @@
     "reporting.vw_days_to_sale",
     "reporting.vw_deal_explorer",
     "reporting.vw_deal_jacket",
+    "reporting.vw_deal_product_detail",
     "reporting.vw_dealership",
+    "reporting.vw_fi_adjustment_summary",
+    "reporting.vw_fi_product_penetration",
+    "reporting.vw_fi_summary",
     "reporting.vw_gross_change_bridge",
     "reporting.vw_gross_summary",
     "reporting.vw_inventory_aging",
@@ -112,6 +116,28 @@
       "numerator": "666073.33",
       "denominator": "558"
     },
+    "cancellation_amount": {
+      "dataset": "fi-adjustment-summary",
+      "kpi_id": "KPI-FNI-016",
+      "unit": "USD",
+      "display_precision": 2,
+      "subset": {
+        "adjustment_type": "Cancellation"
+      },
+      "column": "adjustment_amount",
+      "total": "12087.89"
+    },
+    "chargeback_amount": {
+      "dataset": "fi-adjustment-summary",
+      "kpi_id": "KPI-FNI-012",
+      "unit": "USD",
+      "display_precision": 2,
+      "subset": {
+        "adjustment_type": "Chargeback"
+      },
+      "column": "adjustment_amount",
+      "total": "10664.51"
+    },
     "contact_rate": {
       "dataset": "lead-funnel",
       "kpi_id": "KPI-FUN-002",
@@ -154,6 +180,24 @@
       "numerator": "53272.78",
       "denominator": "400"
     },
+    "fi_contract_count": {
+      "dataset": "fi-summary",
+      "kpi_id": null,
+      "unit": "contracts",
+      "display_precision": null,
+      "subset": null,
+      "column": "contract_count",
+      "total": "1012"
+    },
+    "finance_reserve_gross": {
+      "dataset": "fi-summary",
+      "kpi_id": "KPI-FNI-001",
+      "unit": "USD",
+      "display_precision": 2,
+      "subset": null,
+      "column": "finance_reserve_gross",
+      "total": "160244.79"
+    },
     "front_end_gross": {
       "dataset": "gross-summary",
       "kpi_id": "KPI-GRS-001",
@@ -185,6 +229,19 @@
       "denominator_column": "retail_units_sold",
       "numerator": "1270498.26",
       "denominator": "558"
+    },
+    "gap_penetration": {
+      "dataset": "fi-product-penetration",
+      "kpi_id": "KPI-FNI-008",
+      "unit": "ratio",
+      "display_precision": 4,
+      "subset": {
+        "eligibility_rule_id": "ELIG-GAP"
+      },
+      "numerator_column": "penetration_numerator",
+      "denominator_column": "penetration_denominator",
+      "numerator": "200",
+      "denominator": "388"
     },
     "gross_return_on_ad_spend": {
       "dataset": "marketing-performance",
@@ -226,6 +283,15 @@
       "column": "spend_amount",
       "total": "53272.78"
     },
+    "net_product_gross_as_of": {
+      "dataset": "fi-summary",
+      "kpi_id": "KPI-FNI-004",
+      "unit": "USD",
+      "display_precision": 2,
+      "subset": null,
+      "column": "net_product_gross_as_of",
+      "total": "483696.08"
+    },
     "new_units": {
       "dataset": "sales-summary",
       "kpi_id": "KPI-SLS-002",
@@ -234,6 +300,26 @@
       "subset": null,
       "column": "new_units_sold",
       "total": "202"
+    },
+    "original_product_gross": {
+      "dataset": "fi-summary",
+      "kpi_id": "KPI-FNI-003",
+      "unit": "USD",
+      "display_precision": 2,
+      "subset": null,
+      "column": "original_product_gross",
+      "total": "505828.54"
+    },
+    "products_per_retail_unit": {
+      "dataset": "fi-summary",
+      "kpi_id": "KPI-FNI-006",
+      "unit": "ratio",
+      "display_precision": 4,
+      "subset": null,
+      "numerator_column": "contract_count",
+      "denominator_column": "retail_units",
+      "numerator": "1012",
+      "denominator": "558"
     },
     "retail_unit_target": {
       "dataset": "target-attainment",
@@ -364,6 +450,19 @@
       "subset": null,
       "column": "used_units_sold",
       "total": "356"
+    },
+    "vsc_penetration": {
+      "dataset": "fi-product-penetration",
+      "kpi_id": "KPI-FNI-007",
+      "unit": "ratio",
+      "display_precision": 4,
+      "subset": {
+        "eligibility_rule_id": "ELIG-VSC"
+      },
+      "numerator_column": "penetration_numerator",
+      "denominator_column": "penetration_denominator",
+      "numerator": "227",
+      "denominator": "558"
     }
   },
   "privacyScanStatus": "passed",
@@ -4056,7 +4155,9 @@
           "enumeration": [
             "Cash",
             "Retail Finance",
-            "Lease"
+            "Lease",
+            "Wholesale",
+            "Dealer Trade"
           ]
         },
         {
@@ -4537,126 +4638,1243 @@
           "month": "2025-07",
           "file": "datasets/deal-jacket/GSA-001/2025-07.json",
           "rowCount": 44,
-          "bytes": 29726
+          "bytes": 29888
         },
         {
           "dealershipId": "GSA-001",
           "month": "2025-08",
           "file": "datasets/deal-jacket/GSA-001/2025-08.json",
           "rowCount": 51,
-          "bytes": 34439
+          "bytes": 34685
         },
         {
           "dealershipId": "GSA-001",
           "month": "2025-09",
           "file": "datasets/deal-jacket/GSA-001/2025-09.json",
           "rowCount": 47,
-          "bytes": 32071
+          "bytes": 32278
         },
         {
           "dealershipId": "GSA-001",
           "month": "2025-10",
           "file": "datasets/deal-jacket/GSA-001/2025-10.json",
           "rowCount": 37,
-          "bytes": 25593
+          "bytes": 25710
         },
         {
           "dealershipId": "GSA-001",
           "month": "2025-11",
           "file": "datasets/deal-jacket/GSA-001/2025-11.json",
           "rowCount": 37,
-          "bytes": 25165
+          "bytes": 25408
         },
         {
           "dealershipId": "GSA-001",
           "month": "2025-12",
           "file": "datasets/deal-jacket/GSA-001/2025-12.json",
           "rowCount": 42,
-          "bytes": 28252
+          "bytes": 28537
         },
         {
           "dealershipId": "GSA-002",
           "month": "2025-07",
           "file": "datasets/deal-jacket/GSA-002/2025-07.json",
           "rowCount": 40,
-          "bytes": 27631
+          "bytes": 27754
         },
         {
           "dealershipId": "GSA-002",
           "month": "2025-08",
           "file": "datasets/deal-jacket/GSA-002/2025-08.json",
           "rowCount": 45,
-          "bytes": 30717
+          "bytes": 30879
         },
         {
           "dealershipId": "GSA-002",
           "month": "2025-09",
           "file": "datasets/deal-jacket/GSA-002/2025-09.json",
           "rowCount": 36,
-          "bytes": 24840
+          "bytes": 25047
         },
         {
           "dealershipId": "GSA-002",
           "month": "2025-10",
           "file": "datasets/deal-jacket/GSA-002/2025-10.json",
           "rowCount": 35,
-          "bytes": 24207
+          "bytes": 24414
         },
         {
           "dealershipId": "GSA-002",
           "month": "2025-11",
           "file": "datasets/deal-jacket/GSA-002/2025-11.json",
           "rowCount": 35,
-          "bytes": 23910
+          "bytes": 24036
         },
         {
           "dealershipId": "GSA-002",
           "month": "2025-12",
           "file": "datasets/deal-jacket/GSA-002/2025-12.json",
           "rowCount": 38,
-          "bytes": 26400
+          "bytes": 26523
         },
         {
           "dealershipId": "GSA-003",
           "month": "2025-07",
           "file": "datasets/deal-jacket/GSA-003/2025-07.json",
           "rowCount": 32,
-          "bytes": 21489
+          "bytes": 21738
         },
         {
           "dealershipId": "GSA-003",
           "month": "2025-08",
           "file": "datasets/deal-jacket/GSA-003/2025-08.json",
           "rowCount": 40,
-          "bytes": 26683
+          "bytes": 27097
         },
         {
           "dealershipId": "GSA-003",
           "month": "2025-09",
           "file": "datasets/deal-jacket/GSA-003/2025-09.json",
           "rowCount": 20,
-          "bytes": 13819
+          "bytes": 14023
         },
         {
           "dealershipId": "GSA-003",
           "month": "2025-10",
           "file": "datasets/deal-jacket/GSA-003/2025-10.json",
           "rowCount": 25,
-          "bytes": 16655
+          "bytes": 17024
         },
         {
           "dealershipId": "GSA-003",
           "month": "2025-11",
           "file": "datasets/deal-jacket/GSA-003/2025-11.json",
           "rowCount": 20,
-          "bytes": 13932
+          "bytes": 14094
         },
         {
           "dealershipId": "GSA-003",
           "month": "2025-12",
           "file": "datasets/deal-jacket/GSA-003/2025-12.json",
           "rowCount": 26,
-          "bytes": 17919
+          "bytes": 18087
+        }
+      ]
+    },
+    {
+      "name": "fi-summary",
+      "grain": "One row per store, per sale date, per finance manager -- including the 'nobody on the F&I desk' group. NO PRODUCT CATEGORY: this dataset carries finance reserve and retail units, both properties of a DEAL.",
+      "businessKey": [
+        "dealership_id",
+        "sale_date",
+        "finance_manager_code"
+      ],
+      "dateBasis": "sale date for every production measure; as-of for the retained ones",
+      "kpiIds": [
+        "KPI-FNI-001",
+        "KPI-FNI-002",
+        "KPI-FNI-003",
+        "KPI-FNI-004",
+        "KPI-FNI-005",
+        "KPI-FNI-006",
+        "KPI-FNI-011",
+        "KPI-FNI-014",
+        "KPI-FNI-015",
+        "KPI-FNI-018",
+        "KPI-FNI-019",
+        "KPI-FNI-022"
+      ],
+      "rowCount": 354,
+      "columns": [
+        {
+          "name": "dealership_id",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "store_short_name",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "sale_date",
+          "type": "date",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "finance_manager_code",
+          "type": "string",
+          "nullable": true,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "retail_units",
+          "type": "integer",
+          "nullable": false,
+          "unit": "units",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "cash_deal_count",
+          "type": "integer",
+          "nullable": false,
+          "unit": "deals",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "retail_finance_deal_count",
+          "type": "integer",
+          "nullable": false,
+          "unit": "deals",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "lease_deal_count",
+          "type": "integer",
+          "nullable": false,
+          "unit": "deals",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "finance_reserve_gross",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": 2,
+          "enumeration": null
+        },
+        {
+          "name": "back_end_gross_deal_date",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": 2,
+          "enumeration": null
+        },
+        {
+          "name": "contract_count",
+          "type": "integer",
+          "nullable": false,
+          "unit": "contracts",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "deals_with_a_product",
+          "type": "integer",
+          "nullable": false,
+          "unit": "deals",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "product_retail_price",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": 2,
+          "enumeration": null
+        },
+        {
+          "name": "product_dealer_cost",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": 2,
+          "enumeration": null
+        },
+        {
+          "name": "original_product_gross",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": 2,
+          "enumeration": null
+        },
+        {
+          "name": "original_fi_gross",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": 2,
+          "enumeration": null
+        },
+        {
+          "name": "adjustment_event_count",
+          "type": "integer",
+          "nullable": false,
+          "unit": "events",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "cumulative_adjustment_amount",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": 2,
+          "enumeration": null
+        },
+        {
+          "name": "net_product_gross_as_of",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": 2,
+          "enumeration": null
+        },
+        {
+          "name": "net_fi_gross_as_of",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": 2,
+          "enumeration": null
+        },
+        {
+          "name": "minimum_sample_floor",
+          "type": "integer",
+          "nullable": false,
+          "unit": "deals",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "meets_minimum_sample",
+          "type": "boolean",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "as_of_date",
+          "type": "date",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "deal_date_basis",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "net_gross_date_basis",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        }
+      ],
+      "chunks": null
+    },
+    {
+      "name": "fi-product-penetration",
+      "grain": "One row per store, per sale date, per finance manager, per governed product category that was ELIGIBLE on at least one of that group's retail deals. NO RESERVE AND NO RETAIL-UNIT COLUMN.",
+      "businessKey": [
+        "dealership_id",
+        "sale_date",
+        "finance_manager_code",
+        "product_category"
+      ],
+      "dateBasis": "sale date for the population and the production; as-of for the retained gross",
+      "kpiIds": [
+        "KPI-FNI-007",
+        "KPI-FNI-008",
+        "KPI-FNI-009",
+        "KPI-FNI-010",
+        "KPI-FNI-011",
+        "KPI-FNI-020",
+        "KPI-FNI-021"
+      ],
+      "rowCount": 3012,
+      "columns": [
+        {
+          "name": "dealership_id",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "store_short_name",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "sale_date",
+          "type": "date",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "finance_manager_code",
+          "type": "string",
+          "nullable": true,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "product_category",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": [
+            "Vehicle Service Contract",
+            "GAP",
+            "Tire & Wheel",
+            "Prepaid Maintenance",
+            "Appearance Protection",
+            "Key Replacement",
+            "Theft or Security Product",
+            "Paintless Dent Protection",
+            "Lease Wear Protection",
+            "Other Aftermarket Product"
+          ]
+        },
+        {
+          "name": "eligibility_rule_id",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": [
+            "ELIG-VSC",
+            "ELIG-GAP",
+            "ELIG-TW",
+            "ELIG-PPM",
+            "ELIG-LWP",
+            "ELIG-OTH"
+          ]
+        },
+        {
+          "name": "penetration_numerator",
+          "type": "integer",
+          "nullable": false,
+          "unit": "deals",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "penetration_denominator",
+          "type": "integer",
+          "nullable": false,
+          "unit": "deals",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "attached_deal_count",
+          "type": "integer",
+          "nullable": false,
+          "unit": "deals",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "eligible_deal_count",
+          "type": "integer",
+          "nullable": false,
+          "unit": "deals",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "contract_count",
+          "type": "integer",
+          "nullable": false,
+          "unit": "contracts",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "product_retail_price",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": 2,
+          "enumeration": null
+        },
+        {
+          "name": "product_dealer_cost",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": 2,
+          "enumeration": null
+        },
+        {
+          "name": "original_product_gross",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": 2,
+          "enumeration": null
+        },
+        {
+          "name": "adjustment_event_count",
+          "type": "integer",
+          "nullable": false,
+          "unit": "events",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "cumulative_adjustment_amount",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": 2,
+          "enumeration": null
+        },
+        {
+          "name": "net_product_gross_as_of",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": 2,
+          "enumeration": null
+        },
+        {
+          "name": "minimum_sample_floor",
+          "type": "integer",
+          "nullable": false,
+          "unit": "deals",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "meets_minimum_sample",
+          "type": "boolean",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "as_of_date",
+          "type": "date",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "deal_date_basis",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "net_gross_date_basis",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        }
+      ],
+      "chunks": [
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-07",
+          "file": "datasets/fi-product-penetration/GSA-001/2025-07.json",
+          "rowCount": 229,
+          "bytes": 57674
+        },
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-08",
+          "file": "datasets/fi-product-penetration/GSA-001/2025-08.json",
+          "rowCount": 225,
+          "bytes": 56887
+        },
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-09",
+          "file": "datasets/fi-product-penetration/GSA-001/2025-09.json",
+          "rowCount": 188,
+          "bytes": 47733
+        },
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-10",
+          "file": "datasets/fi-product-penetration/GSA-001/2025-10.json",
+          "rowCount": 183,
+          "bytes": 46497
+        },
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-11",
+          "file": "datasets/fi-product-penetration/GSA-001/2025-11.json",
+          "rowCount": 156,
+          "bytes": 39596
+        },
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-12",
+          "file": "datasets/fi-product-penetration/GSA-001/2025-12.json",
+          "rowCount": 180,
+          "bytes": 45650
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-07",
+          "file": "datasets/fi-product-penetration/GSA-002/2025-07.json",
+          "rowCount": 192,
+          "bytes": 47985
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-08",
+          "file": "datasets/fi-product-penetration/GSA-002/2025-08.json",
+          "rowCount": 210,
+          "bytes": 52334
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-09",
+          "file": "datasets/fi-product-penetration/GSA-002/2025-09.json",
+          "rowCount": 194,
+          "bytes": 48255
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-10",
+          "file": "datasets/fi-product-penetration/GSA-002/2025-10.json",
+          "rowCount": 192,
+          "bytes": 47948
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-11",
+          "file": "datasets/fi-product-penetration/GSA-002/2025-11.json",
+          "rowCount": 194,
+          "bytes": 48226
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-12",
+          "file": "datasets/fi-product-penetration/GSA-002/2025-12.json",
+          "rowCount": 184,
+          "bytes": 45832
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-07",
+          "file": "datasets/fi-product-penetration/GSA-003/2025-07.json",
+          "rowCount": 148,
+          "bytes": 37458
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-08",
+          "file": "datasets/fi-product-penetration/GSA-003/2025-08.json",
+          "rowCount": 136,
+          "bytes": 34564
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-09",
+          "file": "datasets/fi-product-penetration/GSA-003/2025-09.json",
+          "rowCount": 91,
+          "bytes": 23341
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-10",
+          "file": "datasets/fi-product-penetration/GSA-003/2025-10.json",
+          "rowCount": 75,
+          "bytes": 19321
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-11",
+          "file": "datasets/fi-product-penetration/GSA-003/2025-11.json",
+          "rowCount": 109,
+          "bytes": 27647
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-12",
+          "file": "datasets/fi-product-penetration/GSA-003/2025-12.json",
+          "rowCount": 126,
+          "bytes": 32028
+        }
+      ]
+    },
+    {
+      "name": "fi-adjustment-summary",
+      "grain": "One row per store, per ADJUSTMENT date, per finance manager, per product category, per adjustment type.",
+      "businessKey": [
+        "dealership_id",
+        "adjustment_date",
+        "finance_manager_code",
+        "product_category",
+        "adjustment_type"
+      ],
+      "dateBasis": "adjustment date -- the event's OWN business date, never the parent sale's",
+      "kpiIds": [
+        "KPI-FNI-012",
+        "KPI-FNI-013",
+        "KPI-FNI-014",
+        "KPI-FNI-015",
+        "KPI-FNI-016",
+        "KPI-FNI-017",
+        "KPI-FNI-018"
+      ],
+      "rowCount": 57,
+      "columns": [
+        {
+          "name": "dealership_id",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "store_short_name",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "adjustment_date",
+          "type": "date",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "finance_manager_code",
+          "type": "string",
+          "nullable": true,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "product_category",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": [
+            "Vehicle Service Contract",
+            "GAP",
+            "Tire & Wheel",
+            "Prepaid Maintenance",
+            "Appearance Protection",
+            "Key Replacement",
+            "Theft or Security Product",
+            "Paintless Dent Protection",
+            "Lease Wear Protection",
+            "Other Aftermarket Product"
+          ]
+        },
+        {
+          "name": "adjustment_type",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": [
+            "Cancellation",
+            "Chargeback",
+            "Reinstatement",
+            "Approved Adjustment"
+          ]
+        },
+        {
+          "name": "adjustment_count",
+          "type": "integer",
+          "nullable": false,
+          "unit": "events",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "adjustment_amount",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": 2,
+          "enumeration": null
+        },
+        {
+          "name": "distinct_adjusted_contract_count",
+          "type": "integer",
+          "nullable": false,
+          "unit": "contracts",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "adjusted_contract_original_gross",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": 2,
+          "enumeration": null
+        },
+        {
+          "name": "numerator_date_basis",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "rate_denominator_date_basis",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "rate_denominator_source",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "rate_basis_disclosure",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        }
+      ],
+      "chunks": null
+    },
+    {
+      "name": "deal-product-detail",
+      "grain": "One row per F&I product contract sold on a finalized vehicle transaction.",
+      "businessKey": [
+        "product_sale_id"
+      ],
+      "dateBasis": "sale date for the contract; as-of for its retained gross",
+      "kpiIds": [
+        "KPI-FNI-003",
+        "KPI-FNI-004",
+        "KPI-FNI-011"
+      ],
+      "rowCount": 1012,
+      "columns": [
+        {
+          "name": "product_sale_id",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "sale_id",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "sale_date",
+          "type": "date",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "dealership_id",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "store_short_name",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "finance_manager_code",
+          "type": "string",
+          "nullable": true,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "finance_structure",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": [
+            "Cash",
+            "Retail Finance",
+            "Lease"
+          ]
+        },
+        {
+          "name": "lender_id",
+          "type": "string",
+          "nullable": true,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "lender_category",
+          "type": "string",
+          "nullable": true,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": [
+            "Captive",
+            "Bank",
+            "Credit Union",
+            "Independent Finance Company"
+          ]
+        },
+        {
+          "name": "lender_program_tier",
+          "type": "string",
+          "nullable": true,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": [
+            "Prime",
+            "Near-prime",
+            "Subprime"
+          ]
+        },
+        {
+          "name": "finance_product_id",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "product_name",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "product_category",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": [
+            "Vehicle Service Contract",
+            "GAP",
+            "Tire & Wheel",
+            "Prepaid Maintenance",
+            "Appearance Protection",
+            "Key Replacement",
+            "Theft or Security Product",
+            "Paintless Dent Protection",
+            "Lease Wear Protection",
+            "Other Aftermarket Product"
+          ]
+        },
+        {
+          "name": "provider_name",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "eligibility_rule_id",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": [
+            "ELIG-VSC",
+            "ELIG-GAP",
+            "ELIG-TW",
+            "ELIG-PPM",
+            "ELIG-LWP",
+            "ELIG-OTH"
+          ]
+        },
+        {
+          "name": "line_ordinal",
+          "type": "integer",
+          "nullable": false,
+          "unit": "position",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "contract_term_months",
+          "type": "integer",
+          "nullable": false,
+          "unit": "months",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "product_sale_count",
+          "type": "integer",
+          "nullable": false,
+          "unit": "contracts",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "product_retail_price",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": 2,
+          "enumeration": null
+        },
+        {
+          "name": "product_dealer_cost",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": 2,
+          "enumeration": null
+        },
+        {
+          "name": "original_product_gross",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": 2,
+          "enumeration": null
+        },
+        {
+          "name": "adjustment_event_count",
+          "type": "integer",
+          "nullable": false,
+          "unit": "events",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "cumulative_adjustment_amount",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": 2,
+          "enumeration": null
+        },
+        {
+          "name": "net_product_gross_as_of",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": 2,
+          "enumeration": null
+        },
+        {
+          "name": "as_of_date",
+          "type": "date",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "gross_date_basis",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "net_gross_date_basis",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        }
+      ],
+      "chunks": [
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-07",
+          "file": "datasets/deal-product-detail/GSA-001/2025-07.json",
+          "rowCount": 81,
+          "bytes": 28798
+        },
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-08",
+          "file": "datasets/deal-product-detail/GSA-001/2025-08.json",
+          "rowCount": 94,
+          "bytes": 33424
+        },
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-09",
+          "file": "datasets/deal-product-detail/GSA-001/2025-09.json",
+          "rowCount": 98,
+          "bytes": 34769
+        },
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-10",
+          "file": "datasets/deal-product-detail/GSA-001/2025-10.json",
+          "rowCount": 73,
+          "bytes": 26262
+        },
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-11",
+          "file": "datasets/deal-product-detail/GSA-001/2025-11.json",
+          "rowCount": 52,
+          "bytes": 18830
+        },
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-12",
+          "file": "datasets/deal-product-detail/GSA-001/2025-12.json",
+          "rowCount": 74,
+          "bytes": 26408
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-07",
+          "file": "datasets/deal-product-detail/GSA-002/2025-07.json",
+          "rowCount": 72,
+          "bytes": 25704
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-08",
+          "file": "datasets/deal-product-detail/GSA-002/2025-08.json",
+          "rowCount": 67,
+          "bytes": 24111
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-09",
+          "file": "datasets/deal-product-detail/GSA-002/2025-09.json",
+          "rowCount": 60,
+          "bytes": 21333
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-10",
+          "file": "datasets/deal-product-detail/GSA-002/2025-10.json",
+          "rowCount": 43,
+          "bytes": 15385
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-11",
+          "file": "datasets/deal-product-detail/GSA-002/2025-11.json",
+          "rowCount": 52,
+          "bytes": 18676
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-12",
+          "file": "datasets/deal-product-detail/GSA-002/2025-12.json",
+          "rowCount": 49,
+          "bytes": 17374
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-07",
+          "file": "datasets/deal-product-detail/GSA-003/2025-07.json",
+          "rowCount": 46,
+          "bytes": 16785
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-08",
+          "file": "datasets/deal-product-detail/GSA-003/2025-08.json",
+          "rowCount": 48,
+          "bytes": 17520
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-09",
+          "file": "datasets/deal-product-detail/GSA-003/2025-09.json",
+          "rowCount": 19,
+          "bytes": 6990
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-10",
+          "file": "datasets/deal-product-detail/GSA-003/2025-10.json",
+          "rowCount": 21,
+          "bytes": 7724
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-11",
+          "file": "datasets/deal-product-detail/GSA-003/2025-11.json",
+          "rowCount": 27,
+          "bytes": 9777
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-12",
+          "file": "datasets/deal-product-detail/GSA-003/2025-12.json",
+          "rowCount": 36,
+          "bytes": 13209
         }
       ]
     },
@@ -4933,12 +6151,12 @@
     }
   ],
   "sizes": {
-    "totalBytes": 3095310,
-    "fileCount": 141,
+    "totalBytes": 4315487,
+    "fileCount": 179,
     "largestFile": {
       "file": "datasets/sales-gross-trend.json",
       "bytes": 95189
     },
-    "rootExportBytes": 9716524
+    "rootExportBytes": 13076081
   }
 }

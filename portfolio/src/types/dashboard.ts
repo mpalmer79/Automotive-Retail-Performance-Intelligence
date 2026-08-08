@@ -257,6 +257,58 @@ export const DASHBOARD_DATASETS = [
     chunked: true,
   },
   {
+    // The F&I lane (`DASH.7`). Four datasets, and the thing that matters most about them
+    // is that they DO NOT SHARE A GRAIN. `fi-summary` carries finance reserve and retail
+    // units and no category; `fi-product-penetration` carries the category and neither of
+    // those. That separation is `DASH.6`'s and it is what stops a category join from
+    // multiplying a deal-level measure across ten rows. The transformer preserves it.
+    name: 'fi-summary',
+    businessKey: ['dealership_id', 'sale_date', 'finance_manager_code'],
+    dateBasis: 'sale date for every production measure; as-of for the retained ones',
+    chunked: false,
+  },
+  {
+    // CHUNKED on the measurement: 3,012 rows and 2.17 MB in the root export, ten category
+    // rows per store-day-manager group, second-largest dataset in the lane. `fi-summary`
+    // at 354 rows and `fi-adjustment-summary` at 57 stay in one file each for the same
+    // reason inverted.
+    name: 'fi-product-penetration',
+    businessKey: ['dealership_id', 'sale_date', 'finance_manager_code', 'product_category'],
+    dateBasis: 'sale date for the population and the production; as-of for the retained gross',
+    chunked: true,
+  },
+  {
+    // THE ONLY DATASET ON THE ADJUSTMENT-DATE BASIS, which is why it is a separate dataset
+    // rather than more columns on `fi-summary`: an August chargeback on a June contract
+    // belongs to August, and two date bases inside one grain would put two populations
+    // behind one row with nothing failing.
+    name: 'fi-adjustment-summary',
+    businessKey: [
+      'dealership_id',
+      'adjustment_date',
+      'finance_manager_code',
+      'product_category',
+      'adjustment_type',
+    ],
+    dateBasis: "adjustment date -- the event's OWN business date, never the parent sale's",
+    // NOT chunked, and for two reasons. 57 rows and 33 kB is two orders of magnitude
+    // inside the ceiling; and its first date column is `adjustment_date`, so partitioning
+    // it would key partitions by the ADJUSTMENT month while every other partition in the
+    // console is keyed by the SALE month. Two partition semantics under one naming scheme
+    // is the kind of thing that reads as a bug months later.
+    chunked: false,
+  },
+  {
+    // The third deal-grain dataset: the contract itemization behind one deal's back gross.
+    // Chunked by store and SALE month -- the same partition key `deal-jacket` uses -- so a
+    // jacket page opens exactly one product partition, and it is the one it already opened
+    // for the deal row.
+    name: 'deal-product-detail',
+    businessKey: ['product_sale_id'],
+    dateBasis: 'sale date for the contract; as-of for its retained gross',
+    chunked: true,
+  },
+  {
     name: 'reconciliation-status',
     businessKey: ['reconciliation_id'],
     dateBasis: null,

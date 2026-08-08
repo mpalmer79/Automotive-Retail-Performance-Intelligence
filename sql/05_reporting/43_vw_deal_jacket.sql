@@ -33,20 +33,39 @@
 -- duplicating that deal, and a duplicated Deal Jacket is a page that shows a
 -- transaction twice with no indication that it has.
 --
--- FINANCE STRUCTURE IS DERIVED, AND THE DERIVATION IS THE WHOLE DEFINITION
--- ------------------------------------------------------------------------
--- ARPI models no lender, no rate and no term until DASH.6. What it does model is
--- sale_type and amount_financed, and those two settle the only structural question
--- the jacket asks:
+-- FINANCE STRUCTURE COMES FROM THE ONE AUTHORITY (DASH.7 CORRECTION)
+-- ------------------------------------------------------------------
+-- This view used to derive the structure with its own inline CASE. DASH.6 created
+-- warehouse.fn_finance_structure as THE derivation, and the copy here had already
+-- drifted from it:
 --
---   sale_type = 'Lease'      -> Lease
---   amount_financed = 0      -> Cash
---   otherwise                -> Retail Finance
+--   the copy       Lease -> Lease; amount_financed = 0 -> Cash; otherwise Retail Finance
+--   the authority  Lease -> Lease; Wholesale/Dealer Trade -> the same word (non-retail:
+--                  no consumer); retail with amount financed -> Retail Finance; else Cash
 --
--- That is the entire derivation, it is published as a column rather than left to a
--- consumer, and finance_structure_basis records it in the row so a reader can see
--- what the label was decided from. Nothing further is inferred: a Cash deal shows no
--- lender because no lender exists, not because one is hidden.
+-- On the development profile the copy labelled 92 non-retail disposals -- 62 Wholesale
+-- and 30 Dealer Trade, none of which financed anything -- as 'Cash', which reads as a
+-- cash RETAIL structure and is wrong. The jacket now calls the function, so there is one
+-- derivation and it cannot drift again. finance_structure_basis is derived from the
+-- returned label rather than re-deciding it.
+--
+-- The function is LANGUAGE sql IMMUTABLE over two scalars, so PostgreSQL inlines it into
+-- this view's plan and arpi_reporter needs no privilege on the warehouse schema to read
+-- the result -- the same mechanism reporting.vw_fi_summary already relies on.
+--
+-- THE F&I SIDE IS NOW REAL (DASH.6 DATA, DASH.7 PRESENTATION)
+-- -----------------------------------------------------------
+-- finance_reserve_gross and the fictional lender are columns on the deal, and the deal's
+-- product contracts are rolled up here so the page can verify the ORIGINAL deal-date
+-- back-gross identity without loading the contract partition first:
+--
+--   back_end_gross = finance_reserve_gross + original_product_gross   (+ 0.00 other)
+--
+-- original_product_gross is the DEAL-DATE sum and is never reduced by a later
+-- cancellation; net_product_gross_as_of is the retained figure through the governed
+-- as-of date, and the two are separate columns precisely because they answer different
+-- questions. The itemization itself is the deal-product-detail dataset, not this view.
+-- A Cash deal shows no lender because NO LENDER EXISTS, not because one is hidden.
 --
 -- WHAT IS NOT MODELLED, AND SAYS SO
 -- ---------------------------------
@@ -55,8 +74,8 @@
 -- "Not modelled" from data instead of from a hard-coded sentence:
 --
 --   trade payoff and equity          no trade fact exists (DASH.O-1)
---   lender, APR, term, payment       no finance dimension exists (DASH.6)
---   F&I product itemization          no product fact exists (DASH.7)
+--   APR, term, payment, buy rate,    ARPI models no rate mechanic of any kind and
+--   sell rate, rate spread           never will (PRIVACY_AND_ETHICS.md section 7)
 --   acquisition date                 dim_vehicle records no acquisition date;
 --                                    days_in_inventory_at_sale is what exists
 --   stock number                     the model contains none; vehicle_code is the
@@ -76,6 +95,52 @@
 -- components, because a verification that reads a flag verifies nothing.
 
 CREATE OR REPLACE VIEW reporting.vw_deal_jacket AS
+WITH governed_as_of AS (
+    -- ARPI's ONE as-of date, defined identically here, in reporting.vw_target_attainment
+    -- and in every F&I view: the last day any measured thing happened. NEVER the wall
+    -- clock, so a rerun on a different day produces the same figure. Adjustment dates are
+    -- deliberately excluded -- an adjustment posted after the last measured sale is
+    -- genuinely not yet reflected, and excluding it is what makes the basis mean anything.
+    SELECT max(d.full_date) AS as_of_date
+    FROM warehouse.dim_date AS d
+    WHERE d.date_key IN (
+        SELECT vs.sale_date_key FROM warehouse.fact_vehicle_sale AS vs
+        UNION ALL
+        SELECT i.snapshot_date_key FROM warehouse.fact_vehicle_inventory_snapshot AS i
+        UNION ALL
+        SELECT ld.lead_created_date_key FROM warehouse.fact_lead AS ld
+    )
+),
+applied_adjustments AS (
+    -- PRE-AGGREGATED to one row per contract, over events on or before the as-of date.
+    SELECT
+        a.product_sale_key,
+        count(*)::integer        AS adjustment_event_count,
+        sum(a.adjustment_amount) AS cumulative_adjustment_amount
+    FROM warehouse.fact_finance_product_adjustment AS a
+    JOIN warehouse.dim_date AS ad ON ad.date_key = a.adjustment_date_key
+    CROSS JOIN governed_as_of AS g
+    WHERE ad.full_date <= g.as_of_date
+    GROUP BY a.product_sale_key
+),
+deal_products AS (
+    -- PRE-AGGREGATED TO ONE ROW PER DEAL, and that is the whole reason it is a CTE
+    -- rather than a join: a deal carries up to five contracts, and joining the contract
+    -- fact directly would multiply the deal row -- every gross figure on the jacket
+    -- with it. tests/integration/test_dashboard_reporting_views.py asserts the grain.
+    SELECT
+        ps.sale_key,
+        count(*)::integer                                        AS contract_count,
+        sum(ps.original_product_gross)                           AS original_product_gross,
+        coalesce(sum(adj.cumulative_adjustment_amount), 0.00)    AS cumulative_adjustment_amount,
+        coalesce(sum(adj.adjustment_event_count), 0)::integer    AS adjustment_event_count,
+        sum(ps.original_product_gross)
+            - coalesce(sum(adj.cumulative_adjustment_amount), 0.00)
+                                                                 AS net_product_gross_as_of
+    FROM warehouse.fact_finance_product_sale AS ps
+    LEFT JOIN applied_adjustments AS adj ON adj.product_sale_key = ps.product_sale_key
+    GROUP BY ps.sale_key
+)
 SELECT
     -- Identity ----------------------------------------------------------------
     s.sale_code                                               AS sale_id,
@@ -86,17 +151,18 @@ SELECT
     s.sale_type                                               AS sale_type,
     s.is_retail                                               AS is_retail,
 
-    -- Finance structure, derived. The basis is published beside the label.
-    CASE
-        WHEN s.sale_type = 'Lease' THEN 'Lease'
-        WHEN s.amount_financed = 0 THEN 'Cash'
-        ELSE 'Retail Finance'
-    END                                                       AS finance_structure,
-    CASE
-        WHEN s.sale_type = 'Lease' THEN 'sale type is Lease'
-        WHEN s.amount_financed = 0 THEN 'nothing was financed'
-        ELSE 'an amount was financed'
+    -- Finance structure, from THE authority. Not re-derived here: see the header.
+    warehouse.fn_finance_structure(s.sale_type, fact.amount_financed)
+                                                              AS finance_structure,
+    CASE warehouse.fn_finance_structure(s.sale_type, fact.amount_financed)
+        WHEN 'Lease'          THEN 'sale type is Lease'
+        WHEN 'Wholesale'      THEN 'a wholesale disposal: no consumer, so no retail structure'
+        WHEN 'Dealer Trade'   THEN 'a dealer trade: no consumer, so no retail structure'
+        WHEN 'Retail Finance' THEN 'an amount was financed'
+        WHEN 'Cash'           THEN 'nothing was financed'
     END                                                       AS finance_structure_basis,
+    (warehouse.fn_finance_structure(s.sale_type, fact.amount_financed)
+        IN ('Cash', 'Retail Finance', 'Lease'))               AS is_retail_structure,
 
     -- Vehicle -----------------------------------------------------------------
     v.vehicle_code                                            AS vehicle_code,
@@ -139,13 +205,27 @@ SELECT
     s.trade_acv                                               AS trade_acv,
     (s.trade_allowance - s.trade_acv)                         AS trade_variance,
 
-    -- Finance amounts. No rate, no term, no payment, no lender: none is modelled.
+    -- Finance amounts and the fictional funding source. STILL no rate, no term, no
+    -- payment, no buy rate, no sell rate and no spread: ARPI models none of them.
     s.cash_down                                               AS cash_down,
     s.amount_financed                                         AS amount_financed,
+    lnd.lender_id                                             AS lender_code,
+    lnd.lender_name                                           AS lender_name,
+    lnd.lender_category                                       AS lender_category,
+    lnd.program_tier                                          AS lender_program_tier,
 
     -- Gross ------------------------------------------------------------------
+    fact.finance_reserve_gross                                AS finance_reserve_gross,
     s.back_end_gross                                          AS back_end_gross,
     s.total_gross                                             AS total_gross,
+
+    -- The deal's F&I product rollup. DEAL-DATE and AS-OF are separate columns
+    -- because they answer different questions; the itemization is its own dataset.
+    coalesce(fi.contract_count, 0)::bigint                    AS product_contract_count,
+    coalesce(fi.original_product_gross, 0.00)                 AS original_product_gross,
+    coalesce(fi.cumulative_adjustment_amount, 0.00)           AS cumulative_adjustment_amount,
+    coalesce(fi.adjustment_event_count, 0)::bigint            AS adjustment_event_count,
+    coalesce(fi.net_product_gross_as_of, 0.00)                AS net_product_gross_as_of,
 
     -- Staff, as synthetic codes with their roles. No name is published anywhere.
     sp.employee_id                                            AS salesperson_code,
@@ -187,6 +267,11 @@ SELECT
         WHERE i.vehicle_key = s.vehicle_key
     )::bigint                                                 AS inventory_snapshot_count,
 
+    g.as_of_date                                              AS as_of_date,
+    'sale date'::text                                         AS deal_date_basis,
+    'original gross less cumulative adjustments through as_of_date'::text
+                                                              AS net_gross_date_basis,
+
     s.source_system                                           AS source_system
 FROM reporting.vw_vehicle_sales AS s
 JOIN reporting.vw_calendar AS sd
@@ -216,7 +301,22 @@ LEFT JOIN warehouse.dim_employee AS bdc
 LEFT JOIN reporting.vw_calendar AS ac
        ON ac.date_key = a.scheduled_date_key
 LEFT JOIN reporting.vw_calendar AS ash
-       ON ash.date_key = a.show_date_key;
+       ON ash.date_key = a.show_date_key
+-- The fictional funding source. LEFT because a Cash deal borrows nothing and a
+-- non-retail disposal has no consumer: NULL here means NO LENDER EXISTS, never
+-- "lender unknown". dim_lender's key is unique, so this cannot widen the grain.
+-- The sale fact itself, for the two columns DASH.6 added to it. vw_vehicle_sales is
+-- one of the 28 MVP reporting views and its contract is deliberately NOT widened here:
+-- the jacket already reads four warehouse objects directly, and a keyed join on the
+-- fact's own primary key is one-to-one and cannot widen the grain.
+JOIN warehouse.fact_vehicle_sale AS fact
+       ON fact.sale_key = s.sale_key
+LEFT JOIN warehouse.dim_lender AS lnd
+       ON lnd.lender_key = fact.lender_key
+-- Pre-aggregated to one row per deal above, so this cannot widen it either.
+LEFT JOIN deal_products AS fi
+       ON fi.sale_key = s.sale_key
+CROSS JOIN governed_as_of AS g;
 
 COMMENT ON VIEW reporting.vw_deal_jacket IS
     'Grain: one row per finalized vehicle transaction -- identical to warehouse.fact_vehicle_sale, no '
@@ -231,8 +331,9 @@ COMMENT ON VIEW reporting.vw_deal_jacket IS
     'on a unique key, and the linked lead and appointment are LEFT on sale_key carrying at most one row '
     'each -- the last two are the only joins that could widen the grain and both are asserted rather than '
     'assumed, because a duplicated Deal Jacket shows a transaction twice with no indication that it has. '
-    'FINANCE STRUCTURE IS DERIVED and the derivation is the whole definition: Lease when the sale type is, '
-    'Cash when nothing was financed, Retail Finance otherwise; finance_structure_basis records which of the '
+    'FINANCE STRUCTURE COMES FROM warehouse.fn_finance_structure, THE one derivation, called rather than '
+    'copied -- a DASH.7 correction to an inline CASE that had drifted and labelled wholesale and '
+    'dealer-trade disposals as Cash; finance_structure_basis records which of the '
     'three decided it. NOT MODELLED, and published as absence rather than as a plausible zero: trade payoff '
     'and equity (no trade fact), lender/APR/term/payment (no finance dimension until DASH.6), F&I product '
     'itemization (no product fact until DASH.7), acquisition date (dim_vehicle records none), stock number '
@@ -248,7 +349,21 @@ COMMENT ON COLUMN reporting.vw_deal_jacket.sale_month_start_date IS 'First day o
 COMMENT ON COLUMN reporting.vw_deal_jacket.dealership_key IS 'Store surrogate key. Relationship column; resolved to the GSA-00# business code by the dashboard export.';
 COMMENT ON COLUMN reporting.vw_deal_jacket.sale_type IS 'New Retail, Used Retail, Certified Retail, Lease, Wholesale or Dealer Trade.';
 COMMENT ON COLUMN reporting.vw_deal_jacket.is_retail IS 'True for a retail or lease delivery. False for wholesale and dealer trades, whose retail-only sections the jacket renders as Not applicable rather than as zero.';
-COMMENT ON COLUMN reporting.vw_deal_jacket.finance_structure IS 'Cash, Retail Finance or Lease, DERIVED from sale type and amount financed. No lender, rate, term or payment is modelled until DASH.6, so this is the only structural fact the jacket states.';
+COMMENT ON COLUMN reporting.vw_deal_jacket.finance_structure IS 'Cash, Retail Finance, Lease, Wholesale or Dealer Trade, from warehouse.fn_finance_structure -- THE derivation, called rather than copied. DASH.7 CORRECTION: this view previously used its own inline CASE with no non-retail branch, which labelled 92 wholesale and dealer-trade disposals on the development profile as ''Cash''. A disposal has no consumer and therefore no retail structure. is_retail_structure is the column that separates the three retail values from the two disposals. NO RATE MECHANIC OF ANY KIND is modelled: no APR, term, payment, buy rate, sell rate or spread.';
+COMMENT ON COLUMN reporting.vw_deal_jacket.is_retail_structure IS 'Whether finance_structure is one of the three RETAIL structures. False on Wholesale and Dealer Trade, which carry no consumer, no lender and no F&I product. Published so a consumer filters on a fact rather than on a string comparison it invented.';
+COMMENT ON COLUMN reporting.vw_deal_jacket.lender_code IS 'The FICTIONAL lender''s business identifier, or NULL. NULL MEANS NO LENDER EXISTS -- a cash deal borrowed nothing and a disposal has no consumer -- and never "lender unknown". Every lender in ARPI is invented; no real institution is named.';
+COMMENT ON COLUMN reporting.vw_deal_jacket.lender_name IS 'The FICTIONAL lender''s name, such as "Merrimack Valley Bank". Names a SYNTHETIC INSTITUTION THAT DOES NOT EXIST, never a person and never a real financial institution.';
+COMMENT ON COLUMN reporting.vw_deal_jacket.lender_category IS 'Captive, Bank, Credit Union or Independent Finance Company. A classification of the invented institution, not of the customer.';
+COMMENT ON COLUMN reporting.vw_deal_jacket.lender_program_tier IS 'Prime, Near-prime or Subprime. CLASSIFIES THE LENDER''S PROGRAM, NEVER A CUSTOMER: it is not a credit grade, it is assigned to no person, and because it is an attribute of the lender it is constant across that lender''s deals. ARPI models no credit score, no application, no approval and no decline.';
+COMMENT ON COLUMN reporting.vw_deal_jacket.finance_reserve_gross IS 'KPI-FNI-001 at deal grain: the finance reserve component of back_end_gross, on the DEAL-DATE basis. AN AMOUNT, NEVER A RATE -- it is never divided by anything financed and no spread or markup is derivable from it. 0.00 on Cash (nothing financed), on Lease (ARPI models no money factor, so there is no mechanic it could be attributed to) and on the flat or no-reserve financed programs.';
+COMMENT ON COLUMN reporting.vw_deal_jacket.product_contract_count IS 'How many F&I product contracts this deal carried. Zero is a real and common outcome: an eligible retail deal that bought nothing. Pre-aggregated to one row per deal, so the join cannot multiply any gross figure on this row.';
+COMMENT ON COLUMN reporting.vw_deal_jacket.original_product_gross IS 'KPI-FNI-003 at deal grain: the DEAL-DATE sum of the deal''s contract gross, NEVER reduced by a later cancellation or chargeback. This is the column the back-gross identity uses: back_end_gross = finance_reserve_gross + original_product_gross, with other_fi_income exactly 0.00. Substituting net_product_gross_as_of here would make the identity fail on every adjusted deal, which is why they are separate columns.';
+COMMENT ON COLUMN reporting.vw_deal_jacket.cumulative_adjustment_amount IS 'Signed sum of the deal''s product adjustments with adjustment_date <= as_of_date. POSITIVE REDUCES retained gross and negative restores it. Zero means no adjustment posted, which is different from an adjustment that netted to zero -- adjustment_event_count is what tells them apart.';
+COMMENT ON COLUMN reporting.vw_deal_jacket.adjustment_event_count IS 'How many adjustment events posted against this deal''s contracts through the as-of date. Zero and a zero amount are different statements.';
+COMMENT ON COLUMN reporting.vw_deal_jacket.net_product_gross_as_of IS 'KPI-FNI-004 at deal grain: original_product_gross less cumulative_adjustment_amount, as at as_of_date. THE RETAINED figure, not the produced one. It is never compared to original_product_gross as though the difference were an error: a later cancellation is supposed to make them differ, and that difference is the point of the distinction.';
+COMMENT ON COLUMN reporting.vw_deal_jacket.as_of_date IS 'The dataset''s own as-of date: the last day any measured thing happened, defined identically in every F&I view and in reporting.vw_target_attainment. NEVER the wall clock.';
+COMMENT ON COLUMN reporting.vw_deal_jacket.deal_date_basis IS 'Constant label "sale date": the basis of front gross, back gross, reserve and original product gross.';
+COMMENT ON COLUMN reporting.vw_deal_jacket.net_gross_date_basis IS 'Constant label naming the as-of arithmetic, published as data so a consumer renders the basis from the row rather than from a sentence somebody remembered.';
 COMMENT ON COLUMN reporting.vw_deal_jacket.finance_structure_basis IS 'Which of the three conditions produced finance_structure, in words. Published so a reader can see what the label was decided from rather than trusting it.';
 COMMENT ON COLUMN reporting.vw_deal_jacket.vehicle_code IS 'Synthetic vehicle identifier, VEH-#######. NOT a stock number: the model contains none, and this column is never captioned as one.';
 COMMENT ON COLUMN reporting.vw_deal_jacket.synthetic_vin IS 'The ARPI synthetic VIN-style identifier (ADR-0005). Machine-generated and belonging to no real vehicle; the route displays it with its policy note.';
@@ -280,7 +395,7 @@ COMMENT ON COLUMN reporting.vw_deal_jacket.trade_acv IS 'Actual cash value of th
 COMMENT ON COLUMN reporting.vw_deal_jacket.trade_variance IS 'Trade allowance less actual cash value. NOT part of the ARPI front-gross formula, and published separately for exactly that reason: folding it in would change what KPI-GRS-001 means. Payoff and equity are not modelled at all.';
 COMMENT ON COLUMN reporting.vw_deal_jacket.cash_down IS 'Cash down payment.';
 COMMENT ON COLUMN reporting.vw_deal_jacket.amount_financed IS 'Amount financed. Zero on a cash deal, which is what finance_structure reads. No rate, term, payment, lender, buy rate, sell rate or spread exists anywhere in ARPI.';
-COMMENT ON COLUMN reporting.vw_deal_jacket.back_end_gross IS 'KPI-GRS-002 at deal grain. AGGREGATE finance-office profit: reserve and product gross are not separated because no finance-product fact exists until DASH.7, and the route labels it as aggregate rather than implying an itemization it does not have.';
+COMMENT ON COLUMN reporting.vw_deal_jacket.back_end_gross IS 'KPI-GRS-002 at deal grain, on the DEAL-DATE basis. Its definition did not change in DASH.6 or DASH.7 -- it is now EXPLAINED: finance_reserve_gross + original_product_gross equals it to the cent on every deal, with other_fi_income exactly 0.00 and no balancing plug, and RECON-FI-001 proves that per deal in the warehouse. NEVER rewritten when a later cancellation or chargeback posts: that is a separate event, and the difference between this and net_product_gross_as_of is the whole point of the distinction.';
 COMMENT ON COLUMN reporting.vw_deal_jacket.total_gross IS 'KPI-GRS-003 at deal grain: front_end_gross + back_end_gross, reconciled to the cent by RECON-GROSS-001. The page recomputes this identity from the displayed components rather than trusting the column.';
 COMMENT ON COLUMN reporting.vw_deal_jacket.salesperson_code IS 'Synthetic employee identifier of the selling salesperson. No name is published. NULL means the role was not attributed.';
 COMMENT ON COLUMN reporting.vw_deal_jacket.salesperson_role IS 'The salesperson''s job role, for the attribution line. Role and store only; no name, no pay, no performance.';
