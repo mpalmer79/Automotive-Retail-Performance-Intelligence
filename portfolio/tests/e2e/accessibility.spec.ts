@@ -310,6 +310,24 @@ test.describe('keyboard operation', () => {
 test.describe('reflow and target size', () => {
   for (const viewport of VIEWPORTS) {
     test(`no horizontal scrolling at ${viewport.name}px`, async ({ page }) => {
+      /*
+       * This is the longest-running test in the suite and the timeout is raised
+       * deliberately rather than left to fail intermittently.
+       *
+       * It walks EVERY primary route at one viewport, and each route is settled with a
+       * full scroll of the document -- 70 ms per step plus a 400 ms rest -- because a
+       * reveal that has not fired has no bounding box to measure. The cost is therefore
+       * routes x page height, and it grew when `DASH.7` added `/dashboard/fi`, which is
+       * one of the longest pages in the console: at 320 px it settles in roughly forty
+       * steps on its own. Under the project's 45 s default the narrow viewports finished
+       * with seconds to spare, which is not a margin -- it is a test that will fail on a
+       * loaded machine and pass on a rerun, and a test that passes only on rerun is worse
+       * than no test.
+       *
+       * Budgeted from the route count so the next increment does not have to rediscover
+       * this: 12 s of headroom plus 6 s per route.
+       */
+      test.setTimeout(12_000 + PRIMARY_ROUTES.length * 6_000)
       await page.setViewportSize({ width: viewport.width, height: viewport.height })
       for (const route of PRIMARY_ROUTES) {
         await page.goto(route.path)

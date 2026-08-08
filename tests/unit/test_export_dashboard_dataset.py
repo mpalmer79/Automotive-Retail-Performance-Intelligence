@@ -882,6 +882,223 @@ class TestReconciliationTotals:
         assert totals["marketing_spend"]["total"] == "100.00"
 
 
+class TestFiContract:
+    """The four F&I datasets DASH.7 promoted, checked as declarations rather than as data.
+
+    These assertions are about the CONTRACT, not about the warehouse: they hold with the
+    fake world in place and would hold against an empty database. What they guard is the
+    set of decisions that could be quietly reversed by a future contract edit -- a rate
+    column added, a penetration quotient exported, a leaderboard sort introduced, the
+    three date bases collapsed into one.
+    """
+
+    FI_DATASETS = (
+        "fi-summary",
+        "fi-product-penetration",
+        "fi-adjustment-summary",
+        "deal-product-detail",
+    )
+
+    def test_all_four_are_declared_and_read_only_the_reporting_layer(self) -> None:
+        for name in self.FI_DATASETS:
+            entry = spec.dataset(name)
+            assert entry.source_view in spec.SOURCE_VIEW_ALLOWLIST, entry.name
+            for view in entry.join_views:
+                assert view in spec.SOURCE_VIEW_ALLOWLIST, f"{entry.name} joins {view}"
+
+    def test_no_consumer_credit_column_is_declared_anywhere(self) -> None:
+        """Not merely absent from the F&I datasets: absent from the whole contract.
+
+        The warehouse models none of these, so the export cannot publish one. This states
+        the rule at the boundary anyway, because the boundary is where a future increment
+        would be tempted to add one and where a reviewer will look for the prohibition.
+        """
+        prohibited = (
+            "apr",
+            "buy_rate",
+            "sell_rate",
+            "rate_spread",
+            "money_factor",
+            "monthly_payment",
+            "payment_amount",
+            "credit_score",
+            "fico",
+            "customer_income",
+            "stipulation",
+            "adverse_action",
+            "ssn",
+            "social_security",
+            "date_of_birth",
+        )
+        for entry in spec.DATASETS:
+            for column in entry.column_names:
+                for token in prohibited:
+                    assert token not in column, f"{entry.name}.{column} contains {token!r}"
+
+    def test_penetration_publishes_two_additive_columns_and_no_quotient(self) -> None:
+        entry = spec.dataset("fi-product-penetration")
+        names = set(entry.column_names)
+        assert "penetration_numerator" in names
+        assert "penetration_denominator" in names
+        offending = [
+            name
+            for name in names
+            if re.fullmatch(r"penetration_(rate|ratio|pct|percent|percentage)", name)
+        ]
+        assert offending == [], (
+            f"fi-product-penetration exports {offending}. A consumer that can read a "
+            "penetration ratio can average it across stores, and the average of store "
+            "penetrations is a different and wrong number."
+        )
+
+    def test_the_penetration_denominator_is_declared_per_category(self) -> None:
+        """The category and its governed rule are both in the business key.
+
+        A denominator that were not keyed by category could only be one population for
+        every product, which is the contracts-over-all-retail-deals mistake in another
+        shape.
+        """
+        entry = spec.dataset("fi-product-penetration")
+        assert "product_category" in entry.business_key
+        assert "eligibility_rule_id" in entry.column_names
+
+    def test_the_adjustment_dataset_is_on_its_own_date_basis(self) -> None:
+        entry = spec.dataset("fi-adjustment-summary")
+        assert "adjustment date" in entry.date_basis.lower(), entry.date_basis
+        assert "adjustment_date" in entry.business_key
+        # And it does not carry the parent sale's date, so nothing can restate it.
+        assert "sale_date" not in entry.column_names
+
+    def test_the_production_datasets_are_not_on_the_adjustment_basis(self) -> None:
+        for name in ("fi-summary", "fi-product-penetration", "deal-product-detail"):
+            entry = spec.dataset(name)
+            assert "adjustment date" not in entry.date_basis.lower(), entry.name
+
+    def test_no_fi_dataset_sorts_by_a_performance_measure(self) -> None:
+        """A default sort by a metric IS a leaderboard, whatever the column header says."""
+        measureish = re.compile(
+            r"gross|pvr|penetration|rate|ratio|amount|count|units|per_", re.IGNORECASE
+        )
+        for name in self.FI_DATASETS:
+            entry = spec.dataset(name)
+            assert entry.sort_keys, f"{entry.name} declares no sort"
+            for key in entry.sort_keys:
+                assert not measureish.search(key), f"{entry.name} sorts by {key}"
+
+    def test_no_fi_dataset_declares_a_rank_or_a_judgement_column(self) -> None:
+        forbidden = (
+            "rank",
+            "percentile_of_peers",
+            "is_top",
+            "is_bottom",
+            "best_",
+            "worst_",
+            "performance_grade",
+            "benchmark",
+            "target_penetration",
+        )
+        for name in self.FI_DATASETS:
+            entry = spec.dataset(name)
+            for column in entry.column_names:
+                for token in forbidden:
+                    assert token not in column, f"{entry.name}.{column} contains {token!r}"
+
+    def test_the_minimum_sample_floor_travels_with_the_data(self) -> None:
+        """Governed centrally, exported as a column, never restated as a page constant."""
+        entry = spec.dataset("fi-summary")
+        assert "minimum_sample_floor" in entry.column_names
+
+    def test_the_manager_identifier_is_a_synthetic_code_and_nullable(self) -> None:
+        """``null`` means NOBODY WAS ON THE DESK, which is a real population."""
+        for name in ("fi-summary", "fi-product-penetration", "fi-adjustment-summary"):
+            entry = spec.dataset(name)
+            column = entry.column("finance_manager_code")
+            assert column.nullable, f"{entry.name} cannot represent an unstaffed delivery"
+            assert not column.name.endswith("_key")
+
+    def test_the_back_gross_identity_is_reconcilable_across_two_datasets(self) -> None:
+        """Reserve and product gross come from ``fi-summary``; back-end gross does not.
+
+        The identity is only evidence because the two sides are published by different
+        views over different facts. If a future edit moved ``back_end_gross`` onto
+        ``fi-summary`` and reconciled it against itself, this assertion is what notices.
+        """
+        by_name = {total.name: total for total in spec.RECONCILIATION_TOTALS}
+        assert by_name["finance_reserve_gross"].dataset == "fi-summary"
+        assert by_name["original_product_gross"].dataset == "fi-summary"
+        assert by_name["back_end_gross"].dataset == "gross-summary"
+
+    def test_the_penetration_totals_each_name_the_rows_they_cover(self) -> None:
+        """Two categories, two different denominators, both declared as subsets.
+
+        A total over the whole penetration dataset would add VSC's 558 eligible deals to
+        GAP's 388 and publish a group penetration that means nothing.
+        """
+        by_name = {total.name: total for total in spec.RECONCILIATION_TOTALS}
+        for name, rule in (("vsc_penetration", "ELIG-VSC"), ("gap_penetration", "ELIG-GAP")):
+            total = by_name[name]
+            assert total.dataset == "fi-product-penetration"
+            assert dict(total.subset or ()) == {"eligibility_rule_id": rule}, total.subset
+            assert total.denominator == "penetration_denominator"
+
+    def test_the_adjustment_totals_are_subset_by_event_type(self) -> None:
+        by_name = {total.name: total for total in spec.RECONCILIATION_TOTALS}
+        for name, adjustment_type in (
+            ("chargeback_amount", "Chargeback"),
+            ("cancellation_amount", "Cancellation"),
+        ):
+            total = by_name[name]
+            assert total.dataset == "fi-adjustment-summary"
+            assert dict(total.subset or ()) == {"adjustment_type": adjustment_type}, total.subset
+
+    def test_the_deal_jacket_publishes_the_components_rather_than_a_verified_flag(
+        self,
+    ) -> None:
+        """DASH.7-02 needs the parts, not a boolean somebody else computed.
+
+        A jacket that read a stored ``back_gross_verified`` would verify nothing. The
+        console recomputes the identity from these columns, so they have to be here and
+        the flag has to not be.
+        """
+        entry = spec.dataset("deal-jacket")
+        names = set(entry.column_names)
+        assert {"finance_reserve_gross", "original_product_gross", "back_end_gross"} <= names
+        offending = sorted(name for name in names if "verified" in name or "reconcil" in name)
+        assert offending == [], f"deal-jacket publishes {offending}"
+
+    def test_the_deal_jacket_derives_its_structure_from_the_governed_function(self) -> None:
+        """The DASH.7 defect, stated at the contract boundary.
+
+        The view's inline CASE labelled every wholesale and dealer-trade disposal
+        ``Cash`` -- 92 rows -- because neither finances anything. The view now calls the
+        governed derivation and publishes the branch it took, plus a boolean so a
+        consumer never re-enumerates the set. All three columns are required together:
+        a structure with no basis is a claim a reader cannot check.
+        """
+        names = set(spec.dataset("deal-jacket").column_names)
+        assert {"finance_structure", "finance_structure_basis", "is_retail_structure"} <= names
+
+    def test_the_lender_is_published_without_any_decision_record(self) -> None:
+        """A lender assignment is not a credit decision, and the contract keeps them apart."""
+        entry = spec.dataset("deal-jacket")
+        names = set(entry.column_names)
+        assert "lender_name" in names
+        assert "lender_code" in names
+        for forbidden in ("decision", "approval", "declin", "tier_assigned", "application"):
+            offending = sorted(name for name in names if forbidden in name)
+            assert offending == [], f"deal-jacket publishes {offending}"
+        # `lender_program_tier` classifies the LENDER'S PROGRAM. It is permitted, and it
+        # is named here so that the sweep above cannot be read as forbidding it by
+        # accident.
+        assert "lender_program_tier" in names
+
+    def test_every_lender_and_product_column_is_nullable_where_absence_is_real(self) -> None:
+        """A cash deal has no lender. A wholesale disposal has no consumer at all."""
+        entry = spec.dataset("deal-jacket")
+        for name in ("lender_code", "lender_name", "lender_category", "lender_program_tier"):
+            assert entry.column(name).nullable, f"deal-jacket.{name} cannot be absent"
+
+
 # =======================================================================================
 # The controls: each one proven able to fail
 # =======================================================================================
@@ -1157,14 +1374,24 @@ class TestPrivacyControls:
             )
 
         #: The deal-grain datasets, which are the only ones that may publish ``sale_id``.
-        deal_grain = {"deal-explorer", "deal-jacket"}
+        #:
+        #: ``deal-product-detail`` (DASH.7) is one grain BELOW a deal -- one row per
+        #: product contract -- and carries ``sale_id`` as the foreign key that lets the
+        #: Deal Jacket resolve its own contracts. It is therefore on this list and is
+        #: deliberately the one member whose business key is not ``sale_id`` alone: its
+        #: key is the contract, and asserting otherwise would require it to publish one
+        #: row per deal, which is the aggregation the itemisation exists to avoid.
+        deal_grain = {"deal-explorer", "deal-jacket", "deal-product-detail"}
         for entry in spec.DATASETS:
             if "sale_id" not in entry.column_names:
                 continue
             assert entry.name in deal_grain, (
                 f"{entry.name} declares sale_id but is not a deal-grain dataset"
             )
-            assert entry.business_key == ("sale_id",), (
+            expected_key = (
+                ("product_sale_id",) if entry.name == "deal-product-detail" else ("sale_id",)
+            )
+            assert entry.business_key == expected_key, (
                 f"{entry.name} declares sale_id as something other than its business key"
             )
         # `campaigns.target_vehicle_category` names a campaign's audience (New / Used /

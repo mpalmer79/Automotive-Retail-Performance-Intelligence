@@ -33,6 +33,10 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { KpiStrip } from '../../src/components/dashboard/kpi-strip.tsx'
 import { StoreScoreboard } from '../../src/components/dashboard/store-scoreboard.tsx'
 import { dealChunkFile, dealChunkKeys } from '../../src/lib/dashboard/deal-chunks.ts'
+import {
+  penetrationChunkKeys,
+  productDetailChunkKeys,
+} from '../../src/lib/dashboard/fi-chunks.ts'
 import { jacketChunkKeys } from '../../src/lib/dashboard/jacket-chunks.ts'
 import { CHUNK_TABLES, chunkKey } from '../../src/lib/dashboard/chunks.ts'
 import {
@@ -229,21 +233,24 @@ describe('the selector registry is governed', () => {
 
 describe('the static chunk tables match the manifest chunk index', () => {
   /*
-   * THREE tables, not one, since `DASH.4`. `CHUNK_TABLES` holds the five date-grained
-   * partitions the Executive Overview reads; the 18 deal INDEX partitions and the 18
-   * deal RECORD partitions each live in their own module so that importing either does
+   * FOUR route-scoped tables since `DASH.7`, plus the shared one. `CHUNK_TABLES` holds
+   * the five date-grained partitions the Executive Overview reads; the 18 deal INDEX
+   * partitions, the 18 deal RECORD partitions, the 18 F&I penetration partitions and
+   * the 18 deal PRODUCT partitions each live outside it so that importing any one does
    * not put transaction data into the server graph of a route that shows none.
    *
-   * All three are checked against the manifest in both directions here, because a
+   * All of them are checked against the manifest in both directions here, because a
    * partition present in the export and missing from a table is an empty section on a
    * page rather than an error, and the split must not become a place for one to hide.
    *
    * The route-scoped tables are named in a MAP rather than as a chain of special cases,
-   * so a fourth one is a line of data instead of another `? :` in two places.
+   * so a fifth one is a line of data instead of another `? :` in two places.
    */
   const ROUTE_SCOPED_CHUNK_TABLES: Readonly<Record<string, () => readonly string[]>> = {
     'deal-explorer': dealChunkKeys,
     'deal-jacket': jacketChunkKeys,
+    'deal-product-detail': productDetailChunkKeys,
+    'fi-product-penetration': penetrationChunkKeys,
   }
 
   it('carries exactly the partitions the export declares, in both directions', () => {
