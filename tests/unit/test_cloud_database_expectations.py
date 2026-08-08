@@ -78,16 +78,24 @@ def test_the_reporting_view_count_matches_the_sql_that_creates_them() -> None:
     )
 
 
-def test_the_expected_fact_tables_are_the_mvp_five_and_not_the_listing_fact() -> None:
+def test_the_expected_fact_tables_are_the_pipeline_loaded_six_and_not_the_listing_fact() -> None:
     """The listing fact is deliberately absent from the cloud verifier's fact list.
 
     That list is checked for "exists and holds at least one row". The listing fact is
     loaded on a workbook cadence, not by the pipeline, so a correct cloud database can
     legitimately hold the table and no rows -- and requiring rows would fail a deployment
     for not having been handed a workbook.
+
+    ``fact_sales_target`` IS here, and belongs here for the opposite reason: ``DASH.5``
+    wired it into the pipeline, so every pipeline run loads it and a cloud database
+    holding it empty is a broken deployment. The six are the pipeline-loaded facts, which
+    is not the same set as the five MVP facts the semantic model was measured against --
+    the target fact is a dashboard-program fact, and this list is about what the loader
+    writes rather than about that baseline.
     """
     assert "fact_vehicle_listing_snapshot" not in verifier.EXPECTED_FACT_TABLES
-    assert len(verifier.EXPECTED_FACT_TABLES) == 5
+    assert "fact_sales_target" in verifier.EXPECTED_FACT_TABLES
+    assert len(verifier.EXPECTED_FACT_TABLES) == 6
 
 
 def test_the_observed_vehicle_dimension_is_not_one_of_the_eight() -> None:
@@ -102,8 +110,12 @@ def test_the_reconciliation_count_excludes_the_listing_lane() -> None:
     The lane records its own reconciliations against its own `audit.pipeline_run` row on a
     workbook cadence. Adding them to a per-run count would make the expected number depend
     on how many workbooks somebody had imported.
+
+    69, not 58, since ``DASH.5``: ten target reconciliations plus the target ingestion
+    chain. That is a count of what the pipeline records on a run, and it moved because the
+    pipeline records more -- not because the expectation was relaxed to fit a failure.
     """
-    assert verifier.EXPECTED_RECONCILIATION_COUNT_PER_RUN == 58
+    assert verifier.EXPECTED_RECONCILIATION_COUNT_PER_RUN == 69
 
 
 def test_no_listing_view_carries_an_expected_row_count() -> None:

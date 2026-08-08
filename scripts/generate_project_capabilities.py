@@ -129,6 +129,29 @@ def _warehouse_block(evidence: DerivedEvidence, _declared: dict[str, Any]) -> st
             f"| Forward migrations | {evidence.migrations} | Ordered, immutable once "
             "released, recorded in `audit.schema_migration`. |",
             "",
+            "Counted apart from every row above, because folding either lane in would move a "
+            "baseline that was measured against a specific run:",
+            "",
+            "| Lane, counted separately | Count | Status |",
+            "|---|---:|---|",
+            f"| Sanitized public listing SQL files (ADR-0011) | "
+            f"{evidence.inventory_listing_sql_files} | Implemented, and outside the MVP "
+            "warehouse the semantic model reads. |",
+            f"| Sanitized public listing reporting views | "
+            f"{evidence.inventory_listing_reporting_views} | Implemented. |",
+            f"| Dashboard program SQL files (ADR-0013) | "
+            f"{evidence.dashboard_program_sql_files} | Implemented. |",
+            f"| Dashboard program fact DDL scripts | "
+            f"{evidence.dashboard_program_fact_ddl_scripts} | Implemented. `DASH.5` added the "
+            "first fact this lane owns; the MVP fact count above is unchanged. |",
+            f"| Dashboard program reporting views | "
+            f"{evidence.dashboard_program_reporting_views} | Implemented, and **not** part of "
+            "the reporting-view baseline the semantic model binds to. |",
+            f"| Dashboard program KPIs | {evidence.dashboard_program_kpis} | Implemented in "
+            f"SQL and on the web console. The {evidence.governed_kpis} governed KPIs above are "
+            "unchanged: no DAX measure reads these, so the two numbers are reported side by "
+            "side and never summed. |",
+            "",
         ]
     )
 

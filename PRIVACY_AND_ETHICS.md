@@ -306,7 +306,8 @@ project can most easily overstep. ARPI's boundaries:
 | **No credit decisions** | ARPI does not model, simulate, or reproduce credit decisioning. [ARCHITECTURE.md §6](ARCHITECTURE.md) lists **credit application processing** as an explicit non-goal. `docs/research.md` §4.9 excludes real credit files and full credit applications. |
 | **No payment or APR advice** | ARPI does not model APR, term, payment, buy rate, sell rate, or reserve mechanics at a level that could be read as guidance. [ARCHITECTURE.md §6](ARCHITECTURE.md) lists **payment calculations** as a non-goal. `fact_vehicle_sale` carries `finance_amount` and `cash_down_payment` as amounts only. |
 | **No desking or menu simulation** | [ARCHITECTURE.md §9](ARCHITECTURE.md): the project is not a desking platform. |
-| **Back-end gross is a modelled outcome, not a recommendation** | `KPI-GRS-002` and `KPI-GRS-005` describe what a fictional finance office produced. They are not targets, and ARPI publishes no benchmark for either ([KPI_CATALOG.md](KPI_CATALOG.md)). |
+| **Back-end gross is a modelled outcome, not a recommendation** | `KPI-GRS-002` and `KPI-GRS-005` describe what a fictional finance office produced. ARPI publishes no benchmark for either ([KPI_CATALOG.md](KPI_CATALOG.md)). Since `DASH.5` the `Finance` department does carry a synthetic monthly back-end gross **goal** (`KPI-GRS-002` at Department scope in `fact_sales_target`) — an invented internal plan for a fictional store, still not a benchmark and still not a recommendation. |
+| **No target is a personnel measure** | `warehouse.fact_sales_target` supports an `Employee` scope physically, and `DASH.5` **generates no employee-scope row**. Nothing in the product attaches a goal to a person, ranks people against goals, or attaches compensation to attainment. The employee-performance surface belongs to `DASH.11` and inherits §5's contextual-metric obligations before it may show anything. |
 
 ### 7.1 The FTC Safeguards Rule — context, not a compliance claim
 
@@ -424,7 +425,15 @@ benchmarks.**
 
 Concretely:
 
-- No figure produced by ARPI is a dealership benchmark, an industry average, or a target.
+- No figure produced by ARPI is a dealership benchmark or an industry average.
+- **ARPI does produce target figures, and they are not benchmarks.** Since `DASH.5`,
+  `warehouse.fact_sales_target` carries monthly operating goals and the console renders them. Every one is
+  a **synthetic internal operating goal for the fictional Granite Auto Group**: not an industry average,
+  not a manufacturer objective, not a market standard, not any real dealership's plan, and never a
+  recommendation. No surface may call a target value *good*, *average*, *standard* or *recommended*, and no
+  ARPI figure may be described as above or below one as though that carried external meaning. Each
+  target-bearing surface carries the disclosure in plain sight
+  ([DATA_DICTIONARY.md §41](DATA_DICTIONARY.md), [LIMITATIONS.md §4.5.1](LIMITATIONS.md)).
 - No ARPI figure may be compared to a real dealership's figure as though the comparison were meaningful.
 - The Granite Auto Group is fictional and is **never renamed** to anything resembling a real group.
 - Resume, LinkedIn, and case-study materials must describe the work accurately

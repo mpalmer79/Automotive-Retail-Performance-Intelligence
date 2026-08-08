@@ -259,6 +259,16 @@ class ReconciliationTotal:
         unit: The unit, for the console's label.
         display_precision: Decimal places the UI should render.
         kpi_id: The governed KPI this total evidences, where one owns it.
+        subset: Column/value pairs, ANDed, restricting the rows the total is computed
+            over. Empty for a total over the whole dataset.
+
+            DECLARED, NEVER IMPLICIT. ``target-attainment`` carries unit targets and
+            currency targets in the same column, distinguished by ``target_kpi_id``, and
+            it carries store plans beside department refinements of them. A total over
+            the whole dataset would add units to dollars and count the same gross twice,
+            so the subset is part of the declaration and therefore part of the contract
+            fingerprint: changing it changes the hash, exactly as changing a column list
+            does.
     """
 
     name: str
@@ -269,6 +279,7 @@ class ReconciliationTotal:
     unit: str | None = None
     display_precision: int | None = None
     kpi_id: str | None = None
+    subset: tuple[tuple[str, str], ...] = ()
 
 
 # ---------------------------------------------------------------------------------------
@@ -296,11 +307,21 @@ _RECONCILIATION_STATUSES: Final[tuple[str, ...]] = ("passed", "failed", "skipped
 #:
 #: The generator READS this tuple rather than restating the list, because a second
 #: hand-written copy is exactly what would drift away from the first.
+#: ``DASH.5`` adds the first dashboard-program WAREHOUSE FACT as well as a view, so the
+#: lane now also carries a ``04_facts/`` entry. That entry is what keeps the historical
+#: "five MVP facts" baseline true: the tree holds six fact DDL scripts and the MVP count
+#: is still five, because the sixth belongs to a lane the semantic model never measured.
 DASHBOARD_LANE_SQL_FILES: Final[tuple[str, ...]] = (
+    "01_raw/15_raw_sales_target_load.sql",
+    "02_staging/16_stg_sales_target.sql",
+    "04_facts/06_fact_sales_target.sql",
+    "04_facts/16_fact_sales_target_load.sql",
     "05_reporting/40_vw_sales_gross_trend.sql",
     "05_reporting/41_vw_gross_change_bridge.sql",
     "05_reporting/42_vw_deal_explorer.sql",
     "05_reporting/43_vw_deal_jacket.sql",
+    "05_reporting/44_vw_target_attainment.sql",
+    "08_validation/11_recon_target.sql",
 )
 
 #: The vehicle condition vocabulary, exactly as ``warehouse.dim_vehicle`` constrains it.
@@ -1497,6 +1518,187 @@ _GROSS_CHANGE_BRIDGE = DatasetContract(
     ),
 )
 
+#: The target-scope vocabulary, exactly as ``warehouse.fact_sales_target`` constrains it.
+_TARGET_SCOPE_TYPES: Final[tuple[str, ...]] = ("Store", "Department", "Employee")
+
+#: The departments the target domain supports. Sales owns front-end gross and Finance owns
+#: back-end gross, which partition total gross exactly.
+_TARGET_DEPARTMENTS: Final[tuple[str, ...]] = ("Sales", "Finance")
+
+#: The metrics a target row may name. NEVER a ``KPI-TGT`` id: those are computed FROM
+#: these rows, and exporting one here would let a consumer mistake the plan for its own
+#: measure.
+_TARGET_METRIC_KPI_IDS: Final[tuple[str, ...]] = (
+    "KPI-SLS-001",
+    "KPI-GRS-001",
+    "KPI-GRS-002",
+    "KPI-GRS-003",
+)
+
+#: The month states ``vw_target_attainment`` publishes.
+_TARGET_MONTH_STATES: Final[tuple[str, ...]] = ("Not started", "In progress", "Complete")
+
+#: The two units a target row can be measured in.
+_TARGET_MEASURE_UNITS: Final[tuple[str, ...]] = ("units", "USD")
+
+_TARGET_ATTAINMENT = DatasetContract(
+    name="target-attainment",
+    source_view="vw_target_attainment",
+    grain=(
+        "One row per store per target scope (type and identity) per targeted KPI per "
+        "calendar month, with the governed as-of context."
+    ),
+    business_key=(
+        "dealership_id",
+        "target_month",
+        "target_scope_type",
+        "target_scope_id",
+        "target_kpi_id",
+    ),
+    date_basis="target month for the plan; sale date for every actual",
+    sort_keys=(
+        "dealership_id",
+        "target_month",
+        "target_scope_type",
+        "target_scope_id",
+        "target_kpi_id",
+    ),
+    join_views=("vw_dealership",),
+    # Deliberately NOT chunked. 3 stores x 6 months x 4 scope-metric combinations is 72
+    # rows; the whole file is two orders of magnitude inside the size ceiling, and a
+    # partitioned dataset would add eighteen files and a chunk table to save nothing.
+    # DATA_CONTRACT.md section 9 requires the measurement, not the reflex.
+    chunked=False,
+    kpi_ids=(
+        "KPI-TGT-001",
+        "KPI-TGT-002",
+        "KPI-TGT-003",
+        "KPI-TGT-004",
+        "KPI-TGT-005",
+        "KPI-TGT-006",
+        "KPI-TGT-007",
+        "KPI-TGT-008",
+        "KPI-TGT-009",
+        "KPI-TGT-010",
+    ),
+    columns=(
+        _store_id(),
+        _attribute("target_month", "date", view="vw_target_attainment"),
+        _attribute(
+            "target_scope_type",
+            "string",
+            view="vw_target_attainment",
+            enumeration=_TARGET_SCOPE_TYPES,
+        ),
+        _attribute("target_scope_id", "string", view="vw_target_attainment"),
+        _attribute(
+            "department_name",
+            "string",
+            nullable=True,
+            view="vw_target_attainment",
+            enumeration=_TARGET_DEPARTMENTS,
+        ),
+        _attribute(
+            "target_kpi_id",
+            "string",
+            view="vw_target_attainment",
+            enumeration=_TARGET_METRIC_KPI_IDS,
+        ),
+        _attribute("target_kpi_label", "string", view="vw_target_attainment"),
+        _attribute(
+            "measure_unit",
+            "string",
+            view="vw_target_attainment",
+            enumeration=_TARGET_MEASURE_UNITS,
+        ),
+        _attribute("actual_date_basis", "string", view="vw_target_attainment"),
+        _attribute("is_target_present", "boolean", view="vw_target_attainment"),
+        _measure(
+            "target_value",
+            "exact",
+            nullable=True,
+            unit="units or USD",
+            precision=2,
+            view="vw_target_attainment",
+        ),
+        _measure(
+            "actual_mtd_value",
+            "exact",
+            unit="units or USD",
+            precision=2,
+            view="vw_target_attainment",
+        ),
+        _measure(
+            "attainment_numerator",
+            "exact",
+            unit="units or USD",
+            precision=2,
+            view="vw_target_attainment",
+        ),
+        _measure(
+            "attainment_denominator",
+            "exact",
+            nullable=True,
+            unit="units or USD",
+            precision=2,
+            view="vw_target_attainment",
+        ),
+        _measure("selling_days_in_month", "integer", unit="days", view="vw_target_attainment"),
+        _measure("selling_days_elapsed", "integer", unit="days", view="vw_target_attainment"),
+        _measure("selling_days_remaining", "integer", unit="days", view="vw_target_attainment"),
+        _measure(
+            "pace_numerator",
+            "exact",
+            unit="units or USD",
+            precision=2,
+            view="vw_target_attainment",
+        ),
+        _measure("pace_denominator", "integer", unit="days", view="vw_target_attainment"),
+        _measure(
+            "projection_numerator",
+            "exact",
+            unit="units or USD x days",
+            precision=2,
+            view="vw_target_attainment",
+        ),
+        _measure("projection_denominator", "integer", unit="days", view="vw_target_attainment"),
+        _attribute("as_of_date", "date", view="vw_target_attainment"),
+        _attribute("effective_as_of_date", "date", view="vw_target_attainment"),
+        _attribute(
+            "month_state",
+            "string",
+            view="vw_target_attainment",
+            enumeration=_TARGET_MONTH_STATES,
+        ),
+    ),
+    notes=(
+        "TARGETS ARE SYNTHETIC INTERNAL OPERATING GOALS FOR THE FICTIONAL GRANITE AUTO "
+        "GROUP. They are not industry benchmarks, manufacturer objectives, market "
+        "standards or any real dealership's plan, and no surface may describe one as "
+        "good, average, standard or recommended. target_kpi_id names the metric BEING "
+        "TARGETED and is never a KPI-TGT identifier: those ten are computed FROM these "
+        "rows. Department rows are REFINEMENTS of the store plan, never addends -- a "
+        "store total reads target_scope_type = 'Store' only, and summing across scopes "
+        "double-counts gross, because Sales owns the front end and Finance the back end "
+        "of the same total. Retail units are store-scope only: a unit is delivered once. "
+        "NO QUOTIENT IS PUBLISHED. target_attainment_ratio, pace_per_selling_day and "
+        "projected_month_end_value exist in the view and are deliberately NOT exported: "
+        "the export carries their numerators and denominators so a group figure is "
+        "SUM(numerator) / SUM(denominator) and an average of store percentages cannot be "
+        "formed from this data. attainment_denominator is NULL when the target is absent "
+        "OR zero -- NO TARGET SET IS NOT A TARGET OF ZERO, and is_target_present is the "
+        "column that tells them apart. pace_denominator is zero before the first selling "
+        "day, which is legitimate and must render as 'pace not available', never as a "
+        "division. A projected month-end figure derived from projection_numerator / "
+        "projection_denominator is a SELLING-DAY PACE PROJECTION: linear arithmetic over "
+        "the governed selling-day calendar, never a forecast, a prediction, AI, machine "
+        "learning or a probability. Once a month is complete it equals the final actual. "
+        "stretch_target_value exists on the fact and is deliberately not exported: no "
+        "DASH.5 surface renders it, and exporting an unused planning figure would invite "
+        "a consumer to invent a meaning for it."
+    ),
+)
+
 _DEAL_EXPLORER = DatasetContract(
     name="deal-explorer",
     source_view="vw_deal_explorer",
@@ -1707,6 +1909,7 @@ DATASETS: Final[tuple[DatasetContract, ...]] = (
     _MARKETING_PERFORMANCE,
     _SALES_GROSS_TREND,
     _GROSS_CHANGE_BRIDGE,
+    _TARGET_ATTAINMENT,
     _DEAL_EXPLORER,
     _DEAL_JACKET,
     _RECONCILIATION_STATUS,
@@ -1978,6 +2181,75 @@ RECONCILIATION_TOTALS: Final[tuple[ReconciliationTotal, ...]] = (
         unit="ratio",
         display_precision=2,
         kpi_id="KPI-MKT-003",
+    ),
+    # ---------------------------------------------------------------------------------
+    # Targets and pace (DASH.5)
+    # ---------------------------------------------------------------------------------
+    # Every entry names its subset. `target-attainment` carries unit targets and currency
+    # targets in one column and store plans beside department refinements of them, so a
+    # total over the whole dataset would add units to dollars AND count the same gross
+    # twice. There is deliberately no attainment, pace or projection total: each is a
+    # ratio, its group value is SUM(numerator) / SUM(denominator), and publishing the two
+    # sums is what makes an average of store percentages impossible to form.
+    ReconciliationTotal(
+        "retail_unit_target",
+        "target-attainment",
+        "target_value",
+        type="exact",
+        unit="units",
+        display_precision=0,
+        kpi_id="KPI-TGT-001",
+        subset=(("target_scope_type", "Store"), ("target_kpi_id", "KPI-SLS-001")),
+    ),
+    ReconciliationTotal(
+        "total_gross_target",
+        "target-attainment",
+        "target_value",
+        type="exact",
+        unit="USD",
+        display_precision=2,
+        kpi_id="KPI-TGT-003",
+        subset=(("target_scope_type", "Store"), ("target_kpi_id", "KPI-GRS-003")),
+    ),
+    ReconciliationTotal(
+        "retail_unit_target_attainment",
+        "target-attainment",
+        "attainment_numerator",
+        "attainment_denominator",
+        type="exact",
+        unit="ratio",
+        display_precision=4,
+        kpi_id="KPI-TGT-002",
+        subset=(("target_scope_type", "Store"), ("target_kpi_id", "KPI-SLS-001")),
+    ),
+    ReconciliationTotal(
+        "total_gross_target_attainment",
+        "target-attainment",
+        "attainment_numerator",
+        "attainment_denominator",
+        type="exact",
+        unit="ratio",
+        display_precision=4,
+        kpi_id="KPI-TGT-004",
+        subset=(("target_scope_type", "Store"), ("target_kpi_id", "KPI-GRS-003")),
+    ),
+    ReconciliationTotal(
+        "front_end_gross_target",
+        "target-attainment",
+        "target_value",
+        type="exact",
+        unit="USD",
+        display_precision=2,
+        subset=(("target_scope_type", "Department"), ("department_name", "Sales")),
+    ),
+    ReconciliationTotal(
+        "back_end_gross_target",
+        "target-attainment",
+        "target_value",
+        type="exact",
+        unit="USD",
+        display_precision=2,
+        subset=(("target_scope_type", "Department"), ("department_name", "Finance")),
     ),
 )
 

@@ -16,6 +16,7 @@ import {
   StaleBanner,
 } from '@/components/dashboard/notices'
 import { StoreScoreboard } from '@/components/dashboard/store-scoreboard'
+import { TargetPaceSection } from '@/components/dashboard/target-context'
 import { TrustPanel } from '@/components/dashboard/trust-panel'
 import { Badge } from '@/components/ui/badge'
 import { Container, Section, SectionHeader } from '@/components/ui/layout'
@@ -184,6 +185,28 @@ export default async function DashboardPage({
                   comparisonLabel={comparisonLabel}
                   comparisonUnavailable={overview.periodContext.comparisonUnavailable}
                 />
+              </div>
+            </Container>
+          </Section>
+
+          {/* -------------------------------------------------------------- */}
+          {/* Targets and selling-day pace                                    */}
+          {/* -------------------------------------------------------------- */}
+          {/*
+            Secondary to the KPI row above it, and deliberately so: the actual is the
+            business result and the plan is the management context beside it. Nothing
+            here is a forecast — the projected figure is arithmetic over the governed
+            selling-day calendar and carries that name wherever it appears.
+          */}
+          <Section rhythm="default" id="targets">
+            <Container width="full">
+              <SectionHeader
+                eyebrow="Targets and pace"
+                title="What the month was committed to, and where the rate lands it"
+                lede="Actual against plan, the selling days elapsed and remaining, the current rate per selling day, and where the month finishes if that rate holds. The projection is linear arithmetic over the governed selling-day calendar, never a forecast, a prediction or a statistical model, and the targets are synthetic operating goals for a fictional group rather than benchmarks."
+              />
+              <div className="pt-6">
+                <TargetPaceSection context={overview.targets} />
               </div>
             </Container>
           </Section>

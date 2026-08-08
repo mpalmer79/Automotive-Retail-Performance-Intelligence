@@ -1,20 +1,20 @@
 {
   "schema": "arpi.dashboard_export/1",
   "contract_version": 1,
-  "contract_sha256": "8cb74151d610652c4da1e37ef4bb8cd835d3868fe7ebf92291aad8244745f495",
-  "dataset_version": 3,
-  "generated_at": "2026-08-07T17:08:36+00:00",
+  "contract_sha256": "d2f90edc9c1c776623cd787994a76529c65ff0a965f03d7ff18e1879228b98c0",
+  "dataset_version": 4,
+  "generated_at": "2026-08-07T20:32:01+00:00",
   "as_of_date": "2025-12-31",
   "profile": "development",
   "random_seed": 20250701,
-  "source_commit": "603f473777258eb4f24509be5b9cef535b4b1b2a",
+  "source_commit": "1b9be8c339c0cb85d0e1e700c54d396ffb7cc555",
   "exporter_version": "0.1.0",
   "query_normalisation": "arpi.sql_whitespace_canonical/1",
   "reporter_role": "arpi_reporter",
   "synthetic_data": true,
   "fictional_dealer_group": true,
   "pipeline_run": {
-    "run_uuid": "7e4849be-6dfe-4841-bdc0-6de8b04a54bf",
+    "run_uuid": "2e878277-7633-40ec-a575-0a099b1dc142",
     "logical_run_key": null,
     "status": "succeeded"
   },
@@ -39,7 +39,8 @@
     "reporting.vw_pipeline_run_summary",
     "reporting.vw_reconciliation_status",
     "reporting.vw_sales_gross_trend",
-    "reporting.vw_sales_summary"
+    "reporting.vw_sales_summary",
+    "reporting.vw_target_attainment"
   ],
   "datasets": [
     {
@@ -3087,6 +3088,309 @@
       "file_bytes": 33599
     },
     {
+      "name": "target-attainment",
+      "source_view": "reporting.vw_target_attainment",
+      "join_views": [
+        "reporting.vw_dealership"
+      ],
+      "grain": "One row per store per target scope (type and identity) per targeted KPI per calendar month, with the governed as-of context.",
+      "business_key": [
+        "dealership_id",
+        "target_month",
+        "target_scope_type",
+        "target_scope_id",
+        "target_kpi_id"
+      ],
+      "date_basis": "target month for the plan; sale date for every actual",
+      "sort_keys": [
+        "dealership_id",
+        "target_month",
+        "target_scope_type",
+        "target_scope_id",
+        "target_kpi_id"
+      ],
+      "chunked": false,
+      "kpi_ids": [
+        "KPI-TGT-001",
+        "KPI-TGT-002",
+        "KPI-TGT-003",
+        "KPI-TGT-004",
+        "KPI-TGT-005",
+        "KPI-TGT-006",
+        "KPI-TGT-007",
+        "KPI-TGT-008",
+        "KPI-TGT-009",
+        "KPI-TGT-010"
+      ],
+      "columns": [
+        {
+          "name": "dealership_id",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_dealership.dealership_code"
+        },
+        {
+          "name": "target_month",
+          "type": "date",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_target_attainment.target_month"
+        },
+        {
+          "name": "target_scope_type",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "Store",
+            "Department",
+            "Employee"
+          ],
+          "source_column": "reporting.vw_target_attainment.target_scope_type"
+        },
+        {
+          "name": "target_scope_id",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_target_attainment.target_scope_id"
+        },
+        {
+          "name": "department_name",
+          "type": "string",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "Sales",
+            "Finance"
+          ],
+          "source_column": "reporting.vw_target_attainment.department_name"
+        },
+        {
+          "name": "target_kpi_id",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "KPI-SLS-001",
+            "KPI-GRS-001",
+            "KPI-GRS-002",
+            "KPI-GRS-003"
+          ],
+          "source_column": "reporting.vw_target_attainment.target_kpi_id"
+        },
+        {
+          "name": "target_kpi_label",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_target_attainment.target_kpi_label"
+        },
+        {
+          "name": "measure_unit",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "units",
+            "USD"
+          ],
+          "source_column": "reporting.vw_target_attainment.measure_unit"
+        },
+        {
+          "name": "actual_date_basis",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_target_attainment.actual_date_basis"
+        },
+        {
+          "name": "is_target_present",
+          "type": "boolean",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_target_attainment.is_target_present"
+        },
+        {
+          "name": "target_value",
+          "type": "exact",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": "units or USD",
+          "display_precision": 2,
+          "enumeration": null,
+          "source_column": "reporting.vw_target_attainment.target_value"
+        },
+        {
+          "name": "actual_mtd_value",
+          "type": "exact",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "units or USD",
+          "display_precision": 2,
+          "enumeration": null,
+          "source_column": "reporting.vw_target_attainment.actual_mtd_value"
+        },
+        {
+          "name": "attainment_numerator",
+          "type": "exact",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "units or USD",
+          "display_precision": 2,
+          "enumeration": null,
+          "source_column": "reporting.vw_target_attainment.attainment_numerator"
+        },
+        {
+          "name": "attainment_denominator",
+          "type": "exact",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": "units or USD",
+          "display_precision": 2,
+          "enumeration": null,
+          "source_column": "reporting.vw_target_attainment.attainment_denominator"
+        },
+        {
+          "name": "selling_days_in_month",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "days",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_target_attainment.selling_days_in_month"
+        },
+        {
+          "name": "selling_days_elapsed",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "days",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_target_attainment.selling_days_elapsed"
+        },
+        {
+          "name": "selling_days_remaining",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "days",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_target_attainment.selling_days_remaining"
+        },
+        {
+          "name": "pace_numerator",
+          "type": "exact",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "units or USD",
+          "display_precision": 2,
+          "enumeration": null,
+          "source_column": "reporting.vw_target_attainment.pace_numerator"
+        },
+        {
+          "name": "pace_denominator",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "days",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_target_attainment.pace_denominator"
+        },
+        {
+          "name": "projection_numerator",
+          "type": "exact",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "units or USD x days",
+          "display_precision": 2,
+          "enumeration": null,
+          "source_column": "reporting.vw_target_attainment.projection_numerator"
+        },
+        {
+          "name": "projection_denominator",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "days",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_target_attainment.projection_denominator"
+        },
+        {
+          "name": "as_of_date",
+          "type": "date",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_target_attainment.as_of_date"
+        },
+        {
+          "name": "effective_as_of_date",
+          "type": "date",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_target_attainment.effective_as_of_date"
+        },
+        {
+          "name": "month_state",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "Not started",
+            "In progress",
+            "Complete"
+          ],
+          "source_column": "reporting.vw_target_attainment.month_state"
+        }
+      ],
+      "notes": "TARGETS ARE SYNTHETIC INTERNAL OPERATING GOALS FOR THE FICTIONAL GRANITE AUTO GROUP. They are not industry benchmarks, manufacturer objectives, market standards or any real dealership's plan, and no surface may describe one as good, average, standard or recommended. target_kpi_id names the metric BEING TARGETED and is never a KPI-TGT identifier: those ten are computed FROM these rows. Department rows are REFINEMENTS of the store plan, never addends -- a store total reads target_scope_type = 'Store' only, and summing across scopes double-counts gross, because Sales owns the front end and Finance the back end of the same total. Retail units are store-scope only: a unit is delivered once. NO QUOTIENT IS PUBLISHED. target_attainment_ratio, pace_per_selling_day and projected_month_end_value exist in the view and are deliberately NOT exported: the export carries their numerators and denominators so a group figure is SUM(numerator) / SUM(denominator) and an average of store percentages cannot be formed from this data. attainment_denominator is NULL when the target is absent OR zero -- NO TARGET SET IS NOT A TARGET OF ZERO, and is_target_present is the column that tells them apart. pace_denominator is zero before the first selling day, which is legitimate and must render as 'pace not available', never as a division. A projected month-end figure derived from projection_numerator / projection_denominator is a SELLING-DAY PACE PROJECTION: linear arithmetic over the governed selling-day calendar, never a forecast, a prediction, AI, machine learning or a probability. Once a month is complete it equals the final actual. stretch_target_value exists on the fact and is deliberately not exported: no DASH.5 surface renders it, and exporting an unused planning figure would invite a consumer to invent a meaning for it.",
+      "query_sha256": "568e0839e9a0075fca6c1683a92a46c4417abf688cf68619035580250e04bbcc",
+      "row_count": 72,
+      "file": "target-attainment.json",
+      "file_sha256": "116c1c448230836c5f3b2c91b8477bc49273eaaf49c152f1cba164127cc69a4c",
+      "file_bytes": 49369
+    },
+    {
       "name": "deal-explorer",
       "source_view": "reporting.vw_deal_explorer",
       "join_views": [
@@ -4262,10 +4566,10 @@
       ],
       "notes": "The source view's grain is reconciliation x run; this dataset selects the export's own run, so the console shows the evidence belonging to the data it is rendering. Three of the view's columns are deliberately NOT exported -- the two source columns and the prose description -- because all three embed schema-qualified names of internal warehouse and audit objects, which ADR-0013 condition 8 keeps out of the public lane. The governed reconciliation_id is the public handle: KPI_CATALOG.md section 36 documents what each identifier compares, so the console links to the definition instead of restating an internal object path. The values, the tolerance and the outcome are what make a reconciliation public evidence.",
       "query_sha256": "aa70b6a47c645d0784272a562223ec2fb1eabb499dac4e403e8a1cc0e0d6f50e",
-      "row_count": 58,
+      "row_count": 69,
       "file": "reconciliation-status.json",
-      "file_sha256": "2cd302987914ec8310b4e3ddc72d8c62fcd93db12725edb03e4ed6fd2847813a",
-      "file_bytes": 13249
+      "file_sha256": "56328ecd286ef507808763b97e926d6275d0db762351d6e8a78ecdf26f353bc5",
+      "file_bytes": 15719
     },
     {
       "name": "pipeline-run",
@@ -4486,7 +4790,7 @@
       "query_sha256": "adca98ad620f10e4795dec1cda7735ca8ccc2a03111636becea487320e109e43",
       "row_count": 1,
       "file": "pipeline-run.json",
-      "file_sha256": "e82efbe5afa2a23431e016262f741cf1c1978a8d04b72811ba5b8fb9d2a7a6f4",
+      "file_sha256": "1753a1fdc1d39d98f5df8f8e9378334f1df5a5e5be6b951f9bc784b081f552d0",
       "file_bytes": 537
     }
   ],
@@ -4717,25 +5021,101 @@
         "denominator_column": "spend_amount",
         "numerator": "1402668.95",
         "denominator": "53272.78"
+      },
+      "retail_unit_target": {
+        "dataset": "target-attainment",
+        "kpi_id": "KPI-TGT-001",
+        "unit": "units",
+        "display_precision": 0,
+        "subset": {
+          "target_scope_type": "Store",
+          "target_kpi_id": "KPI-SLS-001"
+        },
+        "column": "target_value",
+        "total": "592.00"
+      },
+      "total_gross_target": {
+        "dataset": "target-attainment",
+        "kpi_id": "KPI-TGT-003",
+        "unit": "USD",
+        "display_precision": 2,
+        "subset": {
+          "target_scope_type": "Store",
+          "target_kpi_id": "KPI-GRS-003"
+        },
+        "column": "target_value",
+        "total": "2084379.79"
+      },
+      "retail_unit_target_attainment": {
+        "dataset": "target-attainment",
+        "kpi_id": "KPI-TGT-002",
+        "unit": "ratio",
+        "display_precision": 4,
+        "subset": {
+          "target_scope_type": "Store",
+          "target_kpi_id": "KPI-SLS-001"
+        },
+        "numerator_column": "attainment_numerator",
+        "denominator_column": "attainment_denominator",
+        "numerator": "558",
+        "denominator": "592.00"
+      },
+      "total_gross_target_attainment": {
+        "dataset": "target-attainment",
+        "kpi_id": "KPI-TGT-004",
+        "unit": "ratio",
+        "display_precision": 4,
+        "subset": {
+          "target_scope_type": "Store",
+          "target_kpi_id": "KPI-GRS-003"
+        },
+        "numerator_column": "attainment_numerator",
+        "denominator_column": "attainment_denominator",
+        "numerator": "1936571.59",
+        "denominator": "2084379.79"
+      },
+      "front_end_gross_target": {
+        "dataset": "target-attainment",
+        "kpi_id": null,
+        "unit": "USD",
+        "display_precision": 2,
+        "subset": {
+          "target_scope_type": "Department",
+          "department_name": "Sales"
+        },
+        "column": "target_value",
+        "total": "1364099.29"
+      },
+      "back_end_gross_target": {
+        "dataset": "target-attainment",
+        "kpi_id": null,
+        "unit": "USD",
+        "display_precision": 2,
+        "subset": {
+          "target_scope_type": "Department",
+          "department_name": "Finance"
+        },
+        "column": "target_value",
+        "total": "720280.50"
       }
     }
   },
   "privacy_scan": {
     "status": "passed",
     "prohibited_hits": 0,
-    "columns_scanned": 372,
+    "columns_scanned": 396,
     "primary_control": "contract allowlist",
     "secondary_control": "arpi.validation.privacy prohibited-name tripwire"
   },
   "validation": {
     "critical_failures": 0,
     "warnings": 0,
-    "checks_evaluated": 114,
-    "reconciliations_evaluated": 58,
+    "checks_evaluated": 129,
+    "reconciliations_evaluated": 69,
     "reconciliations_failed": 0
   },
   "sizes": {
-    "dataset_bytes_total": 9658515,
+    "dataset_bytes_total": 9710354,
     "largest_dataset": {
       "name": "lead-response",
       "bytes": 2269345,

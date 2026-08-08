@@ -3,6 +3,6 @@
   "rowCount": 1,
   "columns": ["run_uuid","profile_name","run_mode","arpi_version","random_seed","run_status","source_row_count","raw_row_count","staging_row_count","warehouse_row_count","rejected_row_count","validation_check_count","validation_passed_count","validation_failed_count","validation_skipped_count","critical_failed_check_count","reconciliation_count","reconciliation_failed_count","reconciliation_status"],
   "rows": [
-    ["7e4849be-6dfe-4841-bdc0-6de8b04a54bf","development","cli","0.1.0",20250701,"succeeded",45754,45754,45754,2500,0,114,114,0,0,0,58,0,"passed"]
+    ["2e878277-7633-40ec-a575-0a099b1dc142","development","cli","0.1.0",20250701,"succeeded",45754,45754,45754,2500,0,129,129,0,0,0,69,0,"passed"]
   ]
 }

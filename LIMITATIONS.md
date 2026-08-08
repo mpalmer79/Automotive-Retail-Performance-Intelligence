@@ -141,8 +141,10 @@ calculation rather than a standard:
 
 `docs/research.md` §5.4 notes that NADA aggregate reports may be used for **contextual plausibility checks
 and industry framing only** — aggregate data at a different grain, which cannot support dealership-level
-comparison. Any future `fact_sales_target` values will be **fictional operating goals for a fictional
-group**, never industry benchmarks ([DATA_DICTIONARY.md §27.10](DATA_DICTIONARY.md)).
+comparison. `fact_sales_target` values are **fictional operating goals for a fictional group**, never
+industry benchmarks ([DATA_DICTIONARY.md §41](DATA_DICTIONARY.md)). The fact is Implemented as of
+`DASH.5`, so this is no longer a statement about the future: the console renders those goals today, and
+every surface that shows one carries the disclosure that it is synthetic and not a benchmark.
 
 **For a reviewer.** A sentence of the form "X is above or below industry average" is a defect. Report it. The
 comparisons ARPI supports are **store against store, period against period, source against source and model
@@ -307,12 +309,16 @@ reconciliation, and through those, Gate 2.
 | **Exit condition** | A workbook committed, with `RECON-EXCEL-001` recording its totals against `reporting` |
 | **Owner** | Post-MVP, [PHASE_2_BACKLOG.md](docs/requirements/PHASE_2_BACKLOG.md) |
 
-### 4.5 Four deferred domains, and the four questions they block
+### 4.5 Three deferred domains, and the three questions they block
 
-`fact_finance_product_sale`, `fact_service_visit` and `fact_sales_target` are Deferred, together with the
-dimensions that support them, and so is customer purchase history beyond the generated window. The four
+> **One of the four was resolved.** `warehouse.fact_sales_target` was Deferred when this section was
+> written; `DASH.5` implemented it, and **`SQ-31` target attainment is answered** — with its own
+> limitations, recorded in §4.5.1 below rather than dropped. The heading and counts moved with the fact.
+
+`fact_finance_product_sale` and `fact_service_visit` are Deferred, together with the
+dimensions that support them, and so is customer purchase history beyond the generated window. The three
 stakeholder questions they block — `SQ-21` F&I product penetration, `SQ-29` service-to-sales opportunities,
-`SQ-31` target attainment, `SQ-32` customer retention — are **recorded** in
+`SQ-32` customer retention — are **recorded** in
 [`docs/requirements/STAKEHOLDER_QUESTIONS.md`](docs/requirements/STAKEHOLDER_QUESTIONS.md) §6 rather than
 quietly dropped, which is the point: a question with no data behind it is a scope decision, and a scope
 decision that leaves no trace is indistinguishable from an oversight. Adding any of these domains requires
@@ -320,7 +326,30 @@ Gate 4 ([ARCHITECTURE.md §28](ARCHITECTURE.md)), whose first condition — a st
 it — is the one already satisfied.
 
 The analytical consequences of their absence — back-end gross with no product detail, no repeat-customer or
-service-to-sales measure, no target attainment — are in section 6, at the KPIs where they bite.
+service-to-sales measure — are in section 6, at the KPIs where they bite.
+
+#### 4.5.1 What the implemented target domain still cannot tell you
+
+`SQ-31` is answered, and these five limits travel with the answer:
+
+1. **The targets are invented.** They are synthetic internal operating goals for a fictional group,
+   generated from exogenous planning inputs. An attainment figure demonstrates that the calculation is
+   correct; it says nothing about anyone's performance and nothing about any real dealership.
+2. **"By department" reaches two departments.** `Sales` owns front-end gross and `Finance` owns back-end
+   gross, because those two partition total gross exactly and `fact_vehicle_sale` enforces the identity.
+   **BDC, Management and Service have no numerator in the warehouse**, so a target for them would be a
+   denominator with nothing to compare against. Retail units are store-scope only, because a unit is
+   delivered once.
+3. **There is no target history.** The load is an idempotent upsert on the grain, so a revised plan
+   replaces the previous value and leaves no record of what it used to be. A plan-revision history would
+   need its own fact and its own grain, and no registered question requires one.
+4. **The projection is linear.** A selling-day pace projection multiplies the current rate per selling day
+   by the month's selling days. It ignores the within-month seasonality the sale generator deliberately
+   encodes, so it is structurally less accurate early in a month than late in one. **It is arithmetic, not
+   a forecast**, and nothing in the product calls it one.
+5. **The selling-day calendar is shared.** All three stores use one governed `dim_date.is_selling_day`
+   rule (ADR-0002). Real stores keep different hours and different holiday closures, and a per-store
+   selling-day calendar would change every pace figure on the page.
 
 ---
 
@@ -769,6 +798,17 @@ source it describes — which is precisely how the statements corrected in this 
 | Reporting views | 28 | The only surface the semantic model may read. |
 | Audit row-count layers recorded | 5 of 5 | `source`, `raw`, `staging`, `warehouse`, `rejected`. |
 | Forward migrations | 3 | Ordered, immutable once released, recorded in `audit.schema_migration`. |
+
+Counted apart from every row above, because folding either lane in would move a baseline that was measured against a specific run:
+
+| Lane, counted separately | Count | Status |
+|---|---:|---|
+| Sanitized public listing SQL files (ADR-0011) | 15 | Implemented, and outside the MVP warehouse the semantic model reads. |
+| Sanitized public listing reporting views | 6 | Implemented. |
+| Dashboard program SQL files (ADR-0013) | 10 | Implemented. |
+| Dashboard program fact DDL scripts | 1 | Implemented. `DASH.5` added the first fact this lane owns; the MVP fact count above is unchanged. |
+| Dashboard program reporting views | 5 | Implemented, and **not** part of the reporting-view baseline the semantic model binds to. |
+| Dashboard program KPIs | 10 | Implemented in SQL and on the web console. The 29 governed KPIs above are unchanged: no DAX measure reads these, so the two numbers are reported side by side and never summed. |
 <!-- ARPI:CAPABILITIES:END warehouse -->
 
 <!-- ARPI:CAPABILITIES:BEGIN semantic-model -->
@@ -832,9 +872,13 @@ TMDL is in the repository.
 ### 10.3 Deferred
 
 `dim_finance_product`, `dim_lender`, `dim_sale_type`, `dim_inventory_source`, `dim_geography`,
-`fact_lead_activity`, `fact_inventory_price_history`, `fact_finance_product_sale`, `fact_service_visit`,
-`fact_sales_target`; F&I penetration, products per retail unit, repeat-customer rate, service-to-sales
-conversion and target-attainment KPIs; `RECON-FI-001`; the static case-study page and walkthrough video.
+`fact_lead_activity`, `fact_inventory_price_history`, `fact_finance_product_sale`, `fact_service_visit`;
+F&I penetration, products per retail unit, repeat-customer rate and service-to-sales
+conversion KPIs; `RECON-FI-001`; the static case-study page and walkthrough video.
+
+`fact_sales_target` and the target-attainment KPIs were on this list until `DASH.5` implemented them
+(§4.5.1). They are **not** in §10.1's MVP baseline either: they are a dashboard-program lane, counted
+separately, so promoting them moved no measured baseline.
 
 ### 10.4 Out of scope
 

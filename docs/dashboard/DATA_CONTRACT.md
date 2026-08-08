@@ -72,6 +72,7 @@ one commit is a check failure.
 | `reporting.vw_marketing_performance` | `marketing-performance` | Store × month × source × campaign |
 | `reporting.vw_sales_gross_trend` | `sales-gross-trend` | Store × sale date (`DASH.3`) |
 | `reporting.vw_gross_change_bridge` | `gross-change-bridge` | Store × month pair × bridge component (`DASH.3`) |
+| `reporting.vw_target_attainment` | `target-attainment` | Store × target scope × targeted KPI × month (`DASH.5`) |
 | `reporting.vw_deal_explorer` | `deal-explorer` | One finalized transaction (`DASH.3`) |
 | `reporting.vw_deal_jacket` | `deal-jacket` | One finalized transaction, presentation-complete (`DASH.4`) |
 | `reporting.vw_reconciliation_status` | `reconciliation-status` | Reconciliation, for the export's own run |
@@ -142,6 +143,46 @@ Three exclusions are decisions rather than omissions, and each is recorded in th
 | `vw_pipeline_run_summary` | `notes` | Free-text. The prohibited-name tripwire refuses it, and correctly: a free-form field in a public artifact is where an unreviewed sentence eventually appears. |
 | `vw_pipeline_run_summary` | `started_at`, `completed_at`, `duration_seconds` | Wall-clock and machine-dependent. A dataset carries no timestamp (§1.4); the manifest carries the two it declares. |
 | `vw_reconciliation_status` | `left_source`, `right_source`, `description` | All three embed schema-qualified names of internal warehouse and audit objects. Publishing them would put an internal object path into the public lane and past the ADR-0013 condition 8 boundary guard. The governed `reconciliation_id` is the public handle — [KPI_CATALOG.md §36](../../KPI_CATALOG.md) documents what each identifier compares — and the values, tolerance and outcome are what make a reconciliation public evidence. |
+
+### 3.2 `target-attainment` (`DASH.5`)
+
+One view was added by `DASH.5`: `reporting.vw_target_attainment`. It is the first dashboard-program
+view over a **new fact** — `warehouse.fact_sales_target`, the monthly operating plan — rather than
+over facts the MVP already carried, and the dataset it feeds has four properties a consumer must
+know before reading a single figure.
+
+**Targets are synthetic internal operating goals for the fictional Granite Auto Group.** They are not
+industry benchmarks, manufacturer objectives, market standards or any real dealership's plan, and no
+surface may describe one as good, average, standard or recommended.
+
+**`target_kpi_id` names the metric being TARGETED, never the target KPI.** A plan row for the
+month's retail units carries `KPI-SLS-001`; `KPI-TGT-001` is the governed measure computed *from*
+such rows. A `KPI-TGT` identifier never appears in this column, and the enumeration forbids one.
+
+**Scope rows are refinements, never addends.** `target_scope_type` is `Store`, `Department` or
+`Employee`. A store total reads `Store` rows only. The `Department` rows carry the two components
+that partition total gross exactly — the Sales department owns front-end gross and the Finance
+department owns back-end gross, because `fact_vehicle_sale` enforces `total = front + back` — so
+summing a department row together with its store row counts the same gross twice. Retail units are
+store-scope only: a unit is delivered once, and a Finance-department unit target would count the same
+car a second time. `Employee` scope is physically supported by the fact and deliberately unpopulated
+by `DASH.5`; no exported column identifies an employee.
+
+**No quotient is exported.** The view computes `target_attainment_ratio`, `pace_per_selling_day` and
+`projected_month_end_value`, and none of the three is in the dataset. What crosses the boundary is
+their components — `attainment_numerator` / `attainment_denominator`, `pace_numerator` /
+`pace_denominator`, `projection_numerator` / `projection_denominator` — so a group figure is
+`SUM(numerator) / SUM(denominator)` and an average of store percentages cannot be formed from this
+data at all. That is §12's rule applied to a new domain, not an exception to it.
+
+Two NULL states are distinct and are both representable. `is_target_present = false` with a NULL
+`target_value` means **no target set**, which is not a target of zero; `attainment_denominator` is
+NULL when the target is absent *or* zero, because dividing by zero is undefined either way.
+`pace_denominator` is `0` before the first selling day, which is legitimate and renders as "pace not
+available", never as a division.
+
+`stretch_target_value` exists on the fact and is deliberately **not exported**. No `DASH.5` surface
+renders it, and publishing an unused planning figure invites a consumer to invent a meaning for it.
 
 ## 4. Column rules
 
@@ -401,11 +442,11 @@ measured by `python scripts/export_dashboard_dataset.py --check --sizes` and
 | Artifact | Ceiling | Measured (development profile) |
 |---|---|---|
 | Any single committed export file | **3 MB** | 2,269,345 B — `lead-response.json`, 4,099 rows |
-| Total committed `data/dashboard/` | 20 MB | 9,817,762 B across 22 files, 18,783 rows in 21 datasets (`DASH.4`) |
+| Total committed `data/dashboard/` | 20 MB | 9,883,189 B across 23 files, 18,855 rows in 22 datasets (`DASH.5`) |
 | Any single generated chunk | 256 KB | 47,325 B — `datasets/lead-funnel/GSA-001/2025-07.json`; largest deal-jacket partition 34,439 B, largest deal-explorer partition 17,206 B |
-| Any single generated whole-dataset file | 256 KB (same ceiling) | 95,189 B — `datasets/sales-gross-trend.json` (`DASH.3`) |
-| Client-safe manifest | not separately budgeted | 124,098 B (the largest generated file) |
-| Total generated `portfolio/src/generated/dashboard/` | not yet budgeted | 3,199,658 B across 141 files (14 whole datasets, 126 chunks, 1 manifest) (`DASH.4`) |
+| Any single generated whole-dataset file | 256 KB (same ceiling) | 95,189 B — `datasets/sales-gross-trend.json` (`DASH.3`); `datasets/target-attainment.json` is 16,582 B (`DASH.5`) |
+| Client-safe manifest | not separately budgeted | 132,965 B (the largest generated file) (`DASH.5`) |
+| Total generated `portfolio/src/generated/dashboard/` | not yet budgeted | 3,225,993 B across 142 files (15 whole datasets, 126 chunks, 1 manifest) (`DASH.5`) |
 | Any page's initial data payload | measured per route in `PERFORMANCE.md` §9 | see `PERFORMANCE.md` §9.4 for the Deal Jacket |
 
 > **Correction, `DASH.4`.** The committed-export row count in this table read *19,209 rows across 21
@@ -479,6 +520,21 @@ publishing the components makes an average of store averages impossible to form 
 a quotient would have to be reproduced exactly by a TypeScript consumer to be checkable, when
 Python's `Decimal` division and PostgreSQL's `numeric` division already disagree about how many
 digits to keep.
+
+**A total may declare a row SUBSET, and `DASH.5` is why.** `target-attainment` carries unit targets
+and currency targets in one `target_value` column, distinguished by `target_kpi_id`, and store plans
+beside the department refinements of them. A total over the whole dataset would add units to dollars
+and count the same gross twice, so the six target totals each name the rows they cover:
+
+```jsonc
+"retail_unit_target": { "column": "target_value", "total": "592.00", "kpi_id": "KPI-TGT-001",
+                        "subset": { "target_scope_type": "Store", "target_kpi_id": "KPI-SLS-001" } }
+```
+
+The subset is part of the contract declaration and therefore part of the contract fingerprint:
+changing it moves the hash exactly as changing a column list does. Both consumers re-derive the total
+over the declared rows rather than guessing which ones the exporter meant, and an unreadable subset
+fails rather than silently summing everything.
 
 **Non-additive figures carry no group total at all** — medians, percentiles, days supply and inventory
 turn. A group median is not the average of store medians, and the only reliable protection is for the

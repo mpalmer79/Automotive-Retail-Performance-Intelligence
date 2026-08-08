@@ -14,7 +14,8 @@ deliberately corrupted fixture that proves it can fail.
 
 ## 1. Python (pytest, `tests/unit` + `tests/data_quality`)
 
-- New generators (targets, F&I dims/facts, adjustments, accounting snapshot, GL balances): column
+- New generators (**targets — delivered, see §10.3**; F&I dims/facts, adjustments, accounting snapshot,
+  GL balances): column
   contracts via `GeneratedDataset.schema_matches`, namespace-seeded determinism (double-generate,
   frame-equal), edge-case coverage per program §9 (negative front gross, zero back gross, cash,
   lease, multi-product deal, eligible-no-product deal, cancellation, chargeback, later-period
@@ -289,7 +290,37 @@ worth writing them:
   `NavItem` now has an explicit `matchPrefixes`, each required to end in `/` so it cannot become the
   blanket prefix rule `matches` exists to avoid.
 
+## 10.3 As-built: what `DASH.5` added
+
+| Suite | File | What it proves |
+|---|---|---|
+| Generator unit | `tests/unit/test_sales_target_generation.py` (28) | Byte-identical output on the same seed; store and month differentiation; every value an exact `Decimal` at cent scale with no float anywhere; the scope vocabulary and the scope-to-metric rule; the department gross targets partitioning the store gross target to the cent; the stretch rule; stable ordering |
+| **No-leakage guard** | same file | Two, and they are the reason the domain is credible. One walks the generator's import graph with `ast` — direct imports and one level transitive — and asserts no path reaches the sale generator or the sale fact. The other sets `sys.modules['arpi.generation.sale'] = None` and asserts the plan is unchanged. **A target derived from the month it targets makes every attainment ratio a tautology**, and a convention nobody tests is not a guarantee |
+| SQL integration | `tests/integration/test_target_ingestion.py` (33) | The objects exist with `numeric(14,2)` money; the grain constraint is over the five columns it claims and every one is `NOT NULL`; the foreign keys resolve; the row-count chain holds from raw through staging to the fact; seven staging rejection cases each reject for their own stated reason; a duplicate natural key is refused; **reloading writes nothing and a revised plan replaces rather than appends**; `arpi_reporter` reads the view and nothing beneath it; the view does not fan out; a store-month with no plan still appears in the frame |
+| KPI verification | `tests/integration/test_kpi_verification.py` (+22) | Every `KPI-TGT-001..010` recomputed from `fact_sales_target`, `fact_vehicle_sale` and `dim_date` independently of the view — never the view against itself. Store totals read store-scope rows only; the department split equals front and back gross; a missing plan is NULL and a zero target is NULL, neither is zero; selling days come from `dim_date` and the as-of date is not `current_date`; a completed month's projection equals its actual; zero elapsed selling days yields NULL pace, not a division |
+| **Wrong-method guard** | same file | Group attainment computed as `SUM(numerator) / SUM(denominator)` is asserted to **differ** from `avg()` of the store percentages on the committed dataset. If the two ever agreed the test would be vacuous, so it asserts the disagreement rather than the result |
+| **Subset alignment** | same file | One store's target is deleted inside a transaction. The group ratio must drop that store from **both** sides — an actual admitted into a numerator whose denominator excludes its target is the classic way a plan-attainment figure becomes quietly wrong |
+| Seeded defect | same file | Two: one target moved by `$1.00`, and one selling day removed by setting `is_closure_holiday` (the calendar's `is_selling_day = NOT is_closure_holiday` rule makes any other mutation illegal). Each must break the assertion that claims to detect it |
+| Reconciliation | `tests/integration/test_reconciliations.py` (+3 data, +7 view) | Three corruptions — a deleted fact row, a duplicated grain after dropping the constraint, and a department split moved by `$1.00` — each must be caught by the reconciliation that claims to catch it |
+| Export | `tests/integration/test_dashboard_export.py` | The `target-attainment` dataset against the database, with the reconciliation **subsets** (scope and KPI filters) applied on both sides, so a total that is right only because it summed the wrong rows cannot pass |
+| TypeScript unit | `portfolio/tests/unit/dashboard-targets.test.ts` (36) | Dataset shape and exact decimal strings; **no quotient is exported**, only numerators and denominators; the manifest reconciliation reproduced from the dataset; the group rule against the average-of-percentages result; every state — missing target, zero target, zero selling days, completed month; the comparability layer's three verdicts and seven causes; and source scans proving no hardcoded target, no "forecast" claim, and no verdict vocabulary in the components |
+| End to end | `dashboard.spec.ts` (+13), `dashboard-sales-gross.spec.ts` (+9) | The target values render and change with the store and period filters; the exact phrase **"Selling-day pace projection"** appears wherever a projection does; the word *forecast* appears nowhere; the incomparable-filter state renders; the whole section survives with scripting disabled; axe-clean; no horizontal overflow from 320px to 1920px |
+| Boundary | `dashboard-boundaries.test.ts` | `target-attainment.json` has exactly **one** importer; no component does exact arithmetic — the magnitude and direction of a projection-versus-target comparison are split in the view model, so the component only formats |
+
+**One of these caught a real defect rather than confirming intent.** The first `PaceBar` build put the
+comparison sentence together in JSX as `{value} projected` across two lines, and JSX drops the newline —
+the page rendered `projectionequals`. It was invisible in unit tests, which read the element's text
+content through a DOM that had already collapsed it, and visible immediately in the e2e text assertion.
+The lesson is the general one: a string assembled in markup is not a string until something reads it the
+way a person does.
+
 ## 11. Power BI alignment
+
+**`DASH.5` changed no TMDL, no `powerbi/` file and no validation evidence.** It recorded a new
+**semantic-model gap** in `powerbi/model_documentation/` — the target fact and view exist in PostgreSQL
+and no TMDL object binds them — and left Gate 2 CLOSED and both engine validations PENDING.
+`scripts/check_powerbi_model.py`, `check_real_engine_validation.py` and the two freshness checks were
+run and are unchanged.
 
 **`DASH.2` changed no TMDL, no `powerbi/` file and no validation evidence either.** The trust panel it
 adds derives its state from `powerbi/validation/*_validation_results.json` through the project

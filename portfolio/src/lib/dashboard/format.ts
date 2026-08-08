@@ -102,6 +102,18 @@ export function formatMinutesExact(value: Exact, decimals = 1): string {
   return `${groupDigits(text)} minutes`
 }
 
+/**
+ * A rate carried to a fixed number of decimals: `1.33`.
+ *
+ * Used for a per-selling-day unit rate, where the noun is written by the caller because
+ * the same formatter serves "units per selling day" and any other whole-unit rate a
+ * later increment publishes. Currency rates go through `formatCurrencyExact`, which
+ * already carries the symbol.
+ */
+export function formatRateExact(value: Exact, decimals = 2): string {
+  return groupDigits(exactToString(roundExact(value, decimals)))
+}
+
 /** Turns per year, two decimals, annualization stated by the caller: `4.47`. */
 export function formatTurnsExact(value: Exact, decimals = 2): string {
   return groupDigits(exactToString(roundExact(value, decimals)))

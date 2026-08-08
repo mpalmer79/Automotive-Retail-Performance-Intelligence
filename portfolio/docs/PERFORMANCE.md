@@ -574,6 +574,67 @@ is precisely why it does not enter `/dashboard/deals`'s graph. The map from sale
 is built once per server process and memoized; the alternative, scanning eighteen
 partitions per request, would repeat the same work for every reader.
 
+## 9.5 Targets and selling-day pace, measured (`DASH.5`)
+
+Measured by `npm run bundle` against a production build served locally, cold, compressed,
+on 7 August 2026 — the same method, the same day and the same build as §9.3 and §9.4.
+**A baseline, not a budget.** `DASH.13-02` sets budgets from measurements.
+
+| Route                                                               |     HTML | Route JS |    Total |
+| ------------------------------------------------------------------- | -------: | -------: | -------: |
+| `/dashboard`                                                        | 120.9 kB | 164.0 kB | 414.9 kB |
+| `/dashboard?store=GSA-001&period=2025-11&condition=Used`            | 110.8 kB | 164.0 kB | 404.9 kB |
+| `/dashboard/sales-gross`                                            |  66.5 kB | 164.0 kB | 360.5 kB |
+| `/dashboard/sales-gross?store=GSA-001&period=2025-11&condition=New` |  58.4 kB | 164.0 kB | 352.4 kB |
+| `/dashboard/deals` (untouched by this increment)                    |  58.5 kB | 164.0 kB | 352.6 kB |
+| `/case-study` (the lightest route: shell only)                      |  26.4 kB | 162.3 kB | 318.7 kB |
+
+**Zero new client JavaScript.** All three console routes still report 164.0 kB, exactly as
+they did at `DASH.3` and `DASH.4`. The site still has **one client island on these routes**
+— the filter bar — and `DASH.5` added none: the pace bar, the target cards, the selling-day
+header and the scoreboard cell are all server components, and neither `pace-bar.tsx` nor
+`target-context.tsx` contains a `'use client'` directive. **`DASH.5` needed no chart
+library**, and would not have been permitted one: the smallest considered is two orders of
+magnitude larger than the console's entire route-owned payload
+(`DESIGN_SYSTEM.md` §6.0a).
+
+**What the increment cost, in HTML.**
+
+| Route                             | Before (`DASH.3`/`DASH.4`) |    After | Delta       |
+| --------------------------------- | -------------------------: | -------: | ----------- |
+| `/dashboard`                      |                   111.3 kB | 120.9 kB | **+9.6 kB** |
+| `/dashboard/sales-gross`          |                    59.3 kB |  66.5 kB | **+7.2 kB** |
+| `/dashboard/sales-gross` filtered |                    57.1 kB |  58.4 kB | **+1.3 kB** |
+
+Roughly 17 kB of compressed HTML across two routes, for the target sections, the pace bars
+and one scoreboard column. **The filtered sales-gross measurement is the interesting one:**
+it grew by 1.3 kB rather than 7.2 kB, because a `condition=New` filter makes the store
+target incomparable, and the page renders the short _not comparable_ statement instead of
+the full target block. The comparability guard is visible in the payload — which is a
+useful property: a page that silently compared a filtered actual against a full-store
+target would have cost the full 7.2 kB and been wrong.
+
+**Data lane.**
+
+| Artifact                                             |     Bytes |
+| ---------------------------------------------------- | --------: |
+| Generated source CSV, `data/sample/sales_target.csv` |     7,728 |
+| Root export, `data/dashboard/target-attainment.json` |    49,369 |
+| Generated portfolio artifact (columnar)              |    16,582 |
+| Root export tree, all 23 files                       | 9,883,189 |
+| Generated tree, all 142 files                        | 3,225,993 |
+
+72 rows in the committed development profile — four per store-month, three stores, six
+months. **One file, not chunked**, and the decision was measured rather than inherited:
+49 kB is nowhere near the size at which a partition table, a boundary rule and a manifest
+chunk index earn their complexity. Five other datasets are chunked; copying that because it
+is the local convention would have been pre-optimisation with a maintenance cost.
+
+**Server graph.** `target-attainment.json` enters the graph of `/dashboard` and
+`/dashboard/sales-gross` through exactly one module, `lib/dashboard/targets-data.ts`, which
+the boundary suite asserts in both directions. 16.6 kB is small enough that it is imported
+whole rather than partitioned, and nothing reads the file system at runtime.
+
 ## 10. What has not been measured
 
 Stated rather than implied.

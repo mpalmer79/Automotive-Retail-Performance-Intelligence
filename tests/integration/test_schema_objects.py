@@ -36,6 +36,8 @@ RAW_ENTITIES = (
     "inventory_snapshot_load",
     # The sanitized public listing lane (ADR-0011).
     "inventory_listing_snapshot_load",
+    # The dashboard program's operating plan (ADR-0013, DASH.5).
+    "sales_target_load",
 )
 
 #: Entities whose staging layer follows the Phase 1 three-view pattern:
@@ -54,6 +56,7 @@ STAGING_ENTITIES = (
     "marketing_spend",
     "inventory_snapshot",
     "inventory_listing_snapshot",
+    "sales_target",
 )
 
 #: The conformed dimensions.
@@ -68,7 +71,7 @@ DIMENSION_TABLES = (
     "dim_marketing_campaign",
 )
 
-#: The fact tables. All five are populated by a real pipeline run; this module builds a
+#: The fact tables. Five MVP facts, the listing lane's, and the target lane's; this module builds a
 #: structure-only database and never runs the pipeline, which is what
 #: test_the_sql_sequence_alone_loads_no_data relies on.
 FACT_TABLES = (
@@ -82,6 +85,11 @@ FACT_TABLES = (
     # a pipeline run, so it is absent from arpi.ingestion.spec.ENTITY_SPECS and is empty
     # in a structure-only database exactly as the other five are.
     "fact_vehicle_listing_snapshot",
+    # The dashboard program's operating plan (ADR-0013, DASH.5). Structurally a seventh
+    # fact and deliberately not a sixth MVP fact: the MVP baseline the semantic model was
+    # measured against describes five, and this table holds a PLAN rather than a measured
+    # result. It IS in arpi.ingestion.spec.ENTITY_SPECS and loads on every pipeline run.
+    "fact_sales_target",
 )
 
 EXPECTED_TABLES = {
@@ -117,6 +125,10 @@ AUDIT_VIEWS = (
     "vw_recon_marketing",
     "vw_recon_reporting",
     "vw_recon_result_template",
+    # The target domain's reconciliations (DASH.5). Unioned INTO vw_recon_all, unlike the
+    # listing lane's: the operating plan loads on every pipeline run, so its chain,
+    # grain, department partition and reporting totals are per-run evidence.
+    "vw_recon_target",
 )
 
 EXPECTED_VIEWS = {
@@ -256,7 +268,12 @@ def test_expected_views_exist(cursor: Any) -> None:
 
 
 def test_exactly_the_declared_fact_tables_exist(cursor: Any) -> None:
-    """The fact tables are exactly the five the contract declares -- no more."""
+    """The fact tables are exactly the ones the contract declares -- no more.
+
+    Seven, across three lanes: the five MVP facts, the sanitized listing lane's, and
+    the dashboard program's operating plan. The MVP baseline still describes five,
+    which is a claim about the semantic model rather than about this schema.
+    """
     cursor.execute(
         """
         SELECT table_name FROM information_schema.tables

@@ -19,8 +19,9 @@ erDiagram
     dim_employee ||--o{ fact_finance_product_sale : "finance manager"
     fact_finance_product_sale ||--o{ fact_finance_product_adjustment : "DASH.6: one row per adjustment event"
 
-    dim_date ||--o{ fact_sales_target : "DASH.5: month"
-    dim_dealership ||--o{ fact_sales_target : "DASH.5"
+    dim_date ||--o{ fact_sales_target : "DASH.5 (built): target month"
+    dim_dealership ||--o{ fact_sales_target : "DASH.5 (built)"
+    dim_employee ||--o{ fact_sales_target : "DASH.5 (built): Employee scope, nullable, unpopulated"
 
     dim_date ||--o{ fact_vehicle_inventory_snapshot : "daily"
     dim_dealership ||--o{ fact_vehicle_inventory_snapshot : ""
@@ -38,7 +39,11 @@ erDiagram
     dim_date ||--o{ fact_marketing_spend : "month"
 ```
 
-**Grain register (new entities).** `fact_sales_target`: dealership × optional scope × KPI × month.
+**Grain register (new entities).** `fact_sales_target` — **built by `DASH.5`**; grain as built is
+dealership × target month × targeted KPI × target scope (scope type + scope id), one column wider than
+the "optional scope" this diagram planned, because a nullable scope column cannot enforce a grain in
+PostgreSQL. The `dim_employee` edge exists physically and carries no row: `DASH.5` generates no
+employee-scope target.
 `fact_finance_product_sale`: one row per finance product sold on a finalized transaction.
 `fact_finance_product_adjustment`: one row per cancellation/chargeback/reinstatement/adjustment
 event. `fact_inventory_accounting_snapshot`: vehicle × dealership × accounting snapshot date while

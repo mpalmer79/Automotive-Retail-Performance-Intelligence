@@ -583,11 +583,6 @@ export const PLANNED_DASHBOARD_SECTIONS: readonly PlannedDashboardSection[] = [
     purpose: 'One sanitized deal end to end, with its lineage',
   },
   {
-    label: 'Targets and pace',
-    increment: 'DASH.5',
-    purpose: 'Attainment against a target fact that is not modelled yet',
-  },
-  {
     label: 'F&I performance',
     increment: 'DASH.7',
     purpose: 'Reserve, product gross and penetration on eligible denominators',

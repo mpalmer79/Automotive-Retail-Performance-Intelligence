@@ -49,6 +49,12 @@ import {
 } from './filters'
 import { calendarWindow, resolvePeriod, type PeriodContext } from './periods'
 import {
+  buildStoreTargetContexts,
+  buildTargetContext,
+  type StoreTargetContext,
+  type TargetContext,
+} from './targets'
+import {
   SELECTORS,
   compareMetric,
   evaluate,
@@ -145,6 +151,13 @@ export interface ScoreboardCell {
 export interface ScoreboardRow {
   readonly store: DashboardStore
   readonly cells: readonly ScoreboardCell[]
+  /**
+   * The store's own target context, for the scoreboard's compact pace cell.
+   *
+   * Built by the same function the group card uses, called with a single store, so a
+   * cell and a card can never disagree about what one store's attainment is.
+   */
+  readonly target: StoreTargetContext
 }
 
 /**
@@ -344,6 +357,16 @@ export interface ExecutiveOverview {
   readonly conditionGroups: readonly string[] | null
   readonly leadSources: readonly string[] | null
   readonly cards: readonly KpiCard[]
+  /**
+   * Targets, attainment and the selling-day clock for the selected scope.
+   *
+   * Secondary management context, never the headline: `cards` carries the actual, and
+   * this carries what the store committed to. When the active filter changes the actual
+   * population without changing the plan, `comparability` says so and `measures` is
+   * empty, so the page renders the sentence rather than a valid percentage of the wrong
+   * thing.
+   */
+  readonly targets: TargetContext
   readonly scoreboard: readonly ScoreboardRow[]
   readonly salesGross: SalesGrossSummary
   readonly inventory: InventorySummary
@@ -442,6 +465,9 @@ export function buildExecutiveOverview(
     ),
   ]
 
+  const targets = buildTargetContext(filters, periodContext.period, scope.ids)
+  const storeTargets = buildStoreTargetContexts(filters, periodContext.period, scope.ids)
+
   const scoreboard: readonly ScoreboardRow[] = scope.stores.map((store) => {
     const storeContext: MetricContext = { ...context, stores: [store.id] }
     return {
@@ -455,6 +481,11 @@ export function buildExecutiveOverview(
           evaluate(column.selector, storeContext)
         ),
       })),
+      target: storeTargets.find((entry) => entry.storeId === store.id) ?? {
+        storeId: store.id,
+        measures: [],
+        clock: null,
+      },
     }
   })
 
@@ -494,6 +525,7 @@ export function buildExecutiveOverview(
     conditionGroups,
     leadSources,
     cards,
+    targets,
     scoreboard,
     salesGross,
     inventory,

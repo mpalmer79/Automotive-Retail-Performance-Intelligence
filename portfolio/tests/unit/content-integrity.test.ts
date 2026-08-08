@@ -43,6 +43,22 @@ function laneSqlFiles(): Set<string> {
   return new Set([...block![1]!.matchAll(/"([^"]+\.sql)"/g)].map((m) => m[1]!))
 }
 
+/**
+ * The dashboard program's own SQL files (ADR-0013).
+ *
+ * Subtracted from the MVP counts for the same reason the listing lane is: the semantic
+ * model and the SQL baseline were measured against the MVP surface, and `DASH.5` added a
+ * fact table and a reporting view that surface never contained. Read from the one Python
+ * declaration rather than restated here, so this test cannot pass by agreeing with a
+ * broken derivation.
+ */
+function dashboardLaneSqlFiles(): Set<string> {
+  const source = repoText('src/arpi/dashboard/contract.py')
+  const block = /DASHBOARD_LANE_SQL_FILES[^=]*=\s*\(([\s\S]*?)\)/.exec(source)
+  expect(block, 'DASHBOARD_LANE_SQL_FILES is no longer declared').toBeTruthy()
+  return new Set([...block![1]!.matchAll(/"([^"]+\.sql)"/g)].map((m) => m[1]!))
+}
+
 /** Every .ts/.tsx file under src/, excluding the generated manifest. */
 function sourceFiles(dir = join(PORTFOLIO, 'src')): string[] {
   const found: string[] = []
@@ -132,23 +148,44 @@ describe('every displayed count traces to repository evidence', () => {
   })
 
   it('counts the eight dimensions and five facts from the DDL on disk', () => {
+    // Two lanes are subtracted, for the same reason and from the same kind of source.
     // The sanitized public listing lane (ADR-0011) puts its own dimension and fact in
-    // these same directories and is deliberately NOT part of the MVP warehouse the
-    // semantic model reads. It is subtracted here exactly as the manifest generator
-    // subtracts it, from the one place that declares which files belong to it, so this
-    // test cannot pass by agreeing with a broken derivation.
+    // these directories, and the dashboard program (ADR-0013) puts `fact_sales_target`
+    // in `sql/04_facts/` from `DASH.5`. Neither is part of the MVP warehouse the
+    // semantic model reads, and the MVP baseline still describes FIVE facts. Both are
+    // subtracted exactly as the manifest generator subtracts them, from the one place
+    // that declares which files belong to each, so this test cannot pass by agreeing
+    // with a broken derivation.
     const lane = laneSqlFiles()
+    const dashboardLane = dashboardLaneSqlFiles()
     const dims = readdirSync(join(REPO, 'sql/03_dimensions')).filter(
       (f) =>
         f.endsWith('.sql') && !f.includes('_merge') && !lane.has(`03_dimensions/${f}`)
     ).length
     const facts = readdirSync(join(REPO, 'sql/04_facts')).filter(
-      (f) => f.endsWith('.sql') && !f.includes('_load') && !lane.has(`04_facts/${f}`)
+      (f) =>
+        f.endsWith('.sql') &&
+        !f.includes('_load') &&
+        !lane.has(`04_facts/${f}`) &&
+        !dashboardLane.has(`04_facts/${f}`)
     ).length
     expect(manifest.counts.dimensions.value).toBe(dims)
     expect(manifest.counts.facts.value).toBe(facts)
     expect(dims).toBe(8)
     expect(facts).toBe(5)
+  })
+
+  it('keeps the dashboard program lane out of the MVP counts and declares it once', () => {
+    /*
+     * `DASH.5` is the first dashboard increment to add a WAREHOUSE FACT rather than only
+     * a view over existing ones. The MVP baseline the semantic model was measured
+     * against describes five facts and 28 reporting views, and it still does: the sixth
+     * fact and the fifth dashboard view belong to a lane that model has never read. This
+     * is the line that says so, and it fails if the lane grows without a decision.
+     */
+    const lane = dashboardLaneSqlFiles()
+    expect([...lane].filter((f) => f.startsWith('04_facts/06_'))).toHaveLength(1)
+    expect([...lane].filter((f) => f.startsWith('05_reporting/'))).toHaveLength(5)
   })
 
   it('keeps the sanitized listing lane out of the MVP counts and declares it once', () => {

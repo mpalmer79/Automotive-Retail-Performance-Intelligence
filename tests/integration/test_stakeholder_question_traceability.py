@@ -18,7 +18,12 @@ from pathlib import Path
 
 import pytest
 
-from arpi.constants import INVENTORY_LISTING_KPI_IDS, KPI_IDS, REPORTING_VIEWS
+from arpi.constants import (
+    INVENTORY_LISTING_KPI_IDS,
+    KPI_IDS,
+    REPORTING_VIEWS,
+    TARGET_KPI_IDS,
+)
 
 pytestmark = pytest.mark.integration
 
@@ -57,11 +62,12 @@ def matrix_text() -> str:
 
 #: Every governed KPI identifier, MVP and Inventory Listings alike.
 #:
-#: The two tuples are separate in ``arpi.constants`` because only the first is implemented
-#: as DAX and counted against the semantic model's expectation file. Traceability is not a
-#: property of the semantic model, though -- it is a property of the catalogue -- so both
-#: sets are held to it here.
-ALL_KPI_IDS: tuple[str, ...] = (*KPI_IDS, *INVENTORY_LISTING_KPI_IDS)
+#: The three tuples are separate in ``arpi.constants`` because only the first is
+#: implemented as DAX and counted against the semantic model's expectation file.
+#: Traceability is not a property of the semantic model, though -- it is a property of the
+#: catalogue -- so all three sets are held to it here. ``TARGET_KPI_IDS`` joined with
+#: ``DASH.5``; every one of its ten anchors to SQ-31.
+ALL_KPI_IDS: tuple[str, ...] = (*KPI_IDS, *INVENTORY_LISTING_KPI_IDS, *TARGET_KPI_IDS)
 
 
 def test_every_kpi_is_cited_by_at_least_one_question(matrix_text: str) -> None:

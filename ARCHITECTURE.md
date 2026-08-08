@@ -841,14 +841,36 @@ Core flags:
 
 ### 12.10 `warehouse.fact_sales_target`
 
-**Grain:** One row per dealership, employee or department, KPI, and calendar month.
+**Status: Implemented** by dashboard increment `DASH.5` under
+[ADR-0013](docs/architecture-decisions/ADR-0013-governed-web-operating-console.md). It is a
+**dashboard-program fact, not a sixth MVP fact**: it is outside `MVP_REPORTING_VIEWS`, outside the
+five-MVP-fact baseline, and **not bound by the Power BI semantic model**.
+
+**Grain as built:** one row per dealership, per target month, per targeted KPI, per target scope
+(scope type + scope id) — enforced by `uq_fact_sales_target_grain` over five `NOT NULL` columns.
+The planning-era phrase "employee or department" described the scope, not the key; a nullable scope
+column cannot enforce a grain, because PostgreSQL treats NULLs as distinct inside a `UNIQUE`
+constraint. The binding contract is
+[DATA_DICTIONARY.md §41](DATA_DICTIONARY.md) and
+[STM-016](docs/source-to-target/STM-016-fact-sales-target.md).
 
 Core measures:
 
 - Target value
 - Stretch target value
 
-This table supports target attainment without hardcoding goals in DAX.
+This table supports target attainment without hardcoding goals in DAX — **and without hardcoding them
+in TypeScript either**: the web console reads targets from the governed export and can write none.
+Every value is a synthetic internal operating goal for the fictional Granite Auto Group, never an
+industry benchmark.
+
+**`kpi_id` names the metric being targeted** (`KPI-SLS-001`, `KPI-GRS-001`, `KPI-GRS-002`,
+`KPI-GRS-003`), never a `KPI-TGT-*` identifier: the target KPIs are computed *from* these rows by
+`reporting.vw_target_attainment`.
+
+**The plan may not be derived from the result.** The generator that writes these rows reads no
+realized sale — an assertion enforced by an import-graph test, not only by convention — because a
+target generated from the month it targets would make every attainment ratio a tautology.
 
 ---
 
@@ -1342,7 +1364,8 @@ Required components:
 
 - KPI cards
 - Period-over-period trends
-- Target attainment
+- Target attainment — **delivered on the web console by `DASH.5`** (§12.10); still absent from the
+  Power BI semantic model, where it remains a documented gap and Gate 2 stays CLOSED
 - Store comparison
 - Exception summary
 
@@ -1765,7 +1788,11 @@ Validate:
 - Filter behavior
 - Totals and subtotals
 - Time-intelligence calculations
-- Target attainment
+- Target attainment — **still not applicable in Power BI.** `warehouse.fact_sales_target` now exists and
+  the target KPIs are computed in SQL and rendered on the web console (§12.10), but **no TMDL table,
+  relationship or measure binds them**. The item is recorded *not applicable — no semantic-model
+  binding*, which is a recorded outcome rather than a silent omission, and any later TMDL change
+  requires renewed Microsoft-engine validation
 - Drill-through context
 - Currency and percentage formatting
 - SQL-to-DAX reconciliation
@@ -2266,7 +2293,8 @@ The strong portfolio release adds:
 - F&I product analysis
 - Marketing gross return
 - Price-history analysis
-- Target attainment
+- Target attainment — **delivered ahead of this release by dashboard increment `DASH.5`**, on the web
+  console only
 - Customer retention
 - Service-to-sales opportunities
 - Excel operating report

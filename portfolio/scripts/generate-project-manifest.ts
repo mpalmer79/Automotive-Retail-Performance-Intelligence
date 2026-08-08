@@ -404,8 +404,16 @@ function inDashboardLane(dir: string, name: string): boolean {
 const dimensionDdl = listFiles('sql/03_dimensions', '.sql').filter(
   (f) => !f.includes('_merge') && !inLane('03_dimensions', f)
 )
+// The MVP fact DDL. Both lanes are subtracted for the same reason: the Power BI SQL
+// baseline and `data-model.json` describe the FIVE MVP facts, and `DASH.5` added a sixth
+// fact table that the semantic model has never measured. Counting it here would restate a
+// historical baseline rather than record a new capability.
 const factDdl = listFiles('sql/04_facts', '.sql').filter(
-  (f) => !f.includes('_load') && !inLane('04_facts', f)
+  (f) => !f.includes('_load') && !inLane('04_facts', f) && !inDashboardLane('04_facts', f)
+)
+/** The dashboard program's own fact DDL: `warehouse.fact_sales_target` (`DASH.5`). */
+const dashboardFactDdl = listFiles('sql/04_facts', '.sql').filter(
+  (f) => !f.includes('_load') && inDashboardLane('04_facts', f)
 )
 const reportingViewFiles = listFiles('sql/05_reporting', '.sql').filter(
   (f) =>
@@ -449,11 +457,18 @@ requireTrue(
     `${listingReportingViewFiles.length}.`
 )
 requireTrue(
-  dashboardReportingViewFiles.length === 4,
-  `Expected four dashboard program reporting views under sql/05_reporting/, found ` +
+  dashboardReportingViewFiles.length === 5,
+  `Expected five dashboard program reporting views under sql/05_reporting/, found ` +
     `${dashboardReportingViewFiles.length}. A DASH.* view added to the tree and not to ` +
     'DASHBOARD_LANE_SQL_FILES would be counted against the Power BI SQL baseline, which ' +
     'never measured it.'
+)
+requireTrue(
+  dashboardFactDdl.length === 1,
+  `Expected one dashboard program fact DDL script under sql/04_facts/, found ` +
+    `${dashboardFactDdl.length}. A DASH.* fact added to the tree and not to ` +
+    'DASHBOARD_LANE_SQL_FILES would be counted as a sixth MVP fact, which would restate ' +
+    'a baseline the semantic model was measured against.'
 )
 requireTrue(
   !baseline.credentials_recorded,

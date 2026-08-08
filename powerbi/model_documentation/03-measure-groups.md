@@ -454,10 +454,28 @@ annotation applies to *exactly eight* measures and that nine would be a defect. 
 predate the union resolution and are, on this point, out of date with the artefact they govern. A static
 check asserting eight would fail against the committed TMDL today.
 
-**Target attainment is absent from this register and must stay absent.**
-[ARCHITECTURE.md §19.4](../../ARCHITECTURE.md) lists target attainment as an Executive Overview component;
-`warehouse.fact_sales_target` is Deferred, so there is nothing to attain against. The component is Deferred
-with the fact it depends on, and the absence is recorded rather than filled with a placeholder.
+**Target attainment is absent from this register and must stay absent — for a reason that has changed.**
+[ARCHITECTURE.md §19.4](../../ARCHITECTURE.md) lists target attainment as an Executive Overview component.
+It used to be absent because `warehouse.fact_sales_target` was Deferred and there was nothing to attain
+against. **That is no longer true.** Dashboard increment `DASH.5` implemented the fact, the reporting view
+`reporting.vw_target_attainment`, and the ten `KPI-TGT-*` KPIs
+([KPI_CATALOG.md §39](../../KPI_CATALOG.md)).
+
+The measures are still absent, and the reason is now a **semantic-model gap** rather than a missing fact:
+
+- The fact and the view exist in PostgreSQL. **No TMDL table, relationship, measure or annotation binds
+  them**, and `DASH.5` changed no TMDL file.
+- `reporting.vw_target_attainment` is a **dashboard-program view**, deliberately held outside the 28-view
+  MVP surface the semantic model binds to, so its existence moved no measured baseline.
+- The ten target KPIs are **SQL and web KPIs**. They are not validated DAX measures, and nothing in this
+  repository may describe them as such.
+- Binding them later is real work: a `fact_sales_target` table, a relationship to the date dimension on the
+  target month, a decision about the scope column's role in the model, and a Target Measures group. **Any
+  such change requires renewed Microsoft-engine validation**; it cannot inherit the current evidence.
+- **Gate 2 remains CLOSED**, and Desktop validation remains PENDING. Neither moved, in either direction,
+  because of `DASH.5`.
+
+The absence is recorded rather than filled with a placeholder, exactly as before.
 
 **No page reads this register yet.** No Executive Overview page exists, and none may be claimed. `P2.2-02`
 is the item that builds one, and it is gated on the Desktop validation in `P2.1-09`.
@@ -527,7 +545,7 @@ model would read it as unfinished work rather than as a documented boundary.
 | F&I measures | `warehouse.fact_finance_product_sale` (Deferred) | Product penetration and products per retail unit. Until then `KPI-GRS-002` is a single generated number with no product detail behind it, and **no narrative about product mix is supportable from it**. |
 | Customer-retention measures | Full purchase history across a longer window | Repeat-customer rate. The `development` profile spans six months, which cannot evidence repeat purchase. |
 | Service-to-sales measures | `warehouse.fact_service_visit` (Deferred) | Service-to-sales conversion, which must be presented as decision support and never as a guarantee of purchase intent. |
-| Target-attainment measures | `warehouse.fact_sales_target` (Deferred) | Target attainment. Target values would be fictional operating goals for a fictional group, never industry benchmarks. |
+| Target-attainment measures | **No semantic-model binding** — the fact is no longer the blocker. `warehouse.fact_sales_target` and `reporting.vw_target_attainment` were implemented by `DASH.5`; what is missing is a TMDL table, a date relationship on the target month, and a Target Measures group. Any such change requires renewed Microsoft-engine validation. | Target attainment **in Power BI**. It is already answered on the web console. Target values are fictional operating goals for a fictional group, never industry benchmarks. |
 
 The eleventh group, Executive, is the curation register of §8 and likewise has no table.
 

@@ -358,6 +358,15 @@ class TestSourceToExportFidelity:
 # =======================================================================================
 
 
+def _sql_literal(value: object) -> str:
+    """Quote a declared subset value for inline use in a comparison.
+
+    The values come from the exporter's own contract declaration, never from input, and
+    the doubled quote is the standard SQL escape rather than an attempt at sanitisation.
+    """
+    return "'" + str(value).replace("'", "''") + "'"
+
+
 def test_export_totals_match_reporting(reporter_cursor: Any, exported: Any) -> None:
     """Every manifest total, recomputed in SQL over the source view it came from.
 
@@ -371,7 +380,18 @@ def test_export_totals_match_reporting(reporter_cursor: Any, exported: Any) -> N
 
     for name, total in totals.items():
         entry = spec.dataset(str(total["dataset"]))
-        where = f" WHERE {entry.where}" if entry.where else ""
+        # A total may declare a row SUBSET, and `target-attainment` is why: it carries
+        # unit targets and currency targets in one column, and store plans beside the
+        # department refinements of them, so a total over every row would add units to
+        # dollars AND count the same gross twice. The subset is part of the contract
+        # declaration, so it is applied here rather than guessed at -- and it is ANDed
+        # with the dataset's own filter rather than replacing it.
+        clauses = [entry.where] if entry.where else []
+        clauses.extend(
+            f"base.{column} = {_sql_literal(value)}"
+            for column, value in sorted(dict(total.get("subset") or {}).items())
+        )
+        where = f" WHERE {' AND '.join(clauses)}" if clauses else ""
         components = (
             [("total", str(total["column"]))]
             if "total" in total

@@ -2,8 +2,11 @@
 
 **Project:** Automotive Retail Performance Intelligence (ARPI)
 **Owner:** Michael Palmer
-**Status of this document:** Planning contract. Every KPI below is **Planned** or **Deferred** — none is
-computable today. Promotion into [`KPI_CATALOG.md`](../../KPI_CATALOG.md) happens in the delivery
+**Status of this document:** Planning contract. Every KPI below is **Planned** or **Deferred**, with one
+exception: **the ten `KPI-TGT` definitions in §3 are Implemented**, promoted by `DASH.5` into
+[`KPI_CATALOG.md` §39](../../KPI_CATALOG.md), which is now their binding definition. §3 is kept as the
+**as-built record of what this plan promised against what was built** — see §3.0. Everything else here is
+still uncomputable. Promotion into [`KPI_CATALOG.md`](../../KPI_CATALOG.md) happens in the delivery
 increment that implements the KPI's source fact, with every catalogue field filled and a stakeholder
 question registered. This plan reserves the identifiers so they are permanent from first mention.
 **Parent documents:** [KPI_CATALOG.md](../../KPI_CATALOG.md) ·
@@ -51,7 +54,7 @@ onward, numbers assigned at registration time) by the increment that promotes th
 
 | Proposed question | Persona | Anchors |
 |---|---|---|
-| Are we on pace to reach this month's unit and gross targets at the current selling-day rate? | Dealer principal / GM | `KPI-TGT-*` |
+| ~~Are we on pace to reach this month's unit and gross targets at the current selling-day rate?~~ **Not registered as a new question.** `DASH.5` anchored the `KPI-TGT` family to the question already on the register: **SQ-31**, *"Are we hitting our operating targets, by store and by department?"*, whose Deferred blocker was this exact fact. Registering a second, narrower question would have left SQ-31 unanswered while the data to answer it existed. | Dealer principal / GM | `KPI-TGT-*` |
 | Which F&I products, at what penetration of their eligible deals, are driving back-end gross, and what are cancellations and chargebacks taking back? | F&I director | `KPI-FNI-*` |
 | Does the stock-level inventory schedule reconcile to the selected GL control accounts, and which units and deals fail their arithmetic identities? | Controller | `KPI-ACC-*` |
 | Which deals show gross, attribution, or timing patterns that warrant review before period close? | GSM / Controller | `DIAG-DEAL-*` |
@@ -79,14 +82,59 @@ onward, numbers assigned at registration time) by the increment that promotes th
 
 ## 3. `KPI-TGT` — Targets and pace
 
-Source fact: `warehouse.fact_sales_target` (Deferred today; promoted by `DASH.5`). Grain: one row per
-dealership × optional employee-or-department scope × KPI ID × calendar month, carrying
-`target_value numeric(14,2)` and `stretch_target_value numeric(14,2)`. Targets are synthetic internal
-operating goals for a fictional group — never industry benchmarks
-([LIMITATIONS.md](../../LIMITATIONS.md); KPI_CATALOG.md §35 standing constraint).
+**Implemented by `DASH.5`.** The binding definitions are [KPI_CATALOG.md §39](../../KPI_CATALOG.md); the
+fact contract is [DATA_DICTIONARY.md §41](../../DATA_DICTIONARY.md) and
+[STM-016](../source-to-target/STM-016-fact-sales-target.md). **Where this plan and the catalogue disagree,
+the catalogue is correct.** What follows is preserved as the planning record.
+
+Source fact: `warehouse.fact_sales_target`. Grain as built: one row per dealership, target month, targeted
+KPI, and target scope (scope type + scope id), carrying `target_value numeric(14,2)` and
+`stretch_target_value numeric(14,2)`. Targets are synthetic internal operating goals for a fictional group,
+never industry benchmarks ([LIMITATIONS.md](../../LIMITATIONS.md); KPI_CATALOG.md §39 standing
+constraints).
 
 Any projected month-end figure is labelled **"Selling-day pace projection"** in every surface. It is
 arithmetic over the calendar, not a forecast, and is never described as AI or statistical prediction.
+
+### 3.0 As-built: what changed between this plan and the implementation
+
+A planning document that is quietly edited to match what shipped stops being evidence of anything. These
+are the divergences, stated rather than smoothed over.
+
+1. **The grain gained a scope key.** The plan said "dealership × optional employee-or-department scope ×
+   KPI ID × calendar month". *Optional* cannot be enforced: PostgreSQL treats NULLs as distinct in a
+   `UNIQUE` constraint, so a nullable scope column would have let the same store-month-KPI target be
+   inserted without limit. As built, the grain is
+   `(dealership_key, target_month_date_key, kpi_id, target_scope_type, target_scope_id)` with
+   `target_scope_id` `NOT NULL` on every scope type. See DATA_DICTIONARY.md §41.3.
+2. **The reporting view is not at store-month grain.** The plan's field tables describe each measure at
+   *store × month*. `reporting.vw_target_attainment` publishes **one row per store, month, scope and
+   targeted KPI**, because department attainment is part of SQ-31 and a store-month view could not carry
+   it. Every measure in §3 is still computable; it is computed by filtering the scope rather than by
+   reading a store-grain row. This is the single largest divergence and it is deliberate.
+3. **The view publishes numerator and denominator, not the ratio alone.** `KPI-TGT-002`, `-004`, `-007`
+   and `-009` are ratios, and a ratio cannot be re-aggregated. The view exports
+   `attainment_numerator` / `attainment_denominator` and `pace_numerator` / `pace_denominator` so a group
+   figure is `SUM(numerator) / SUM(denominator)` and never an average of store percentages.
+4. **Employee scope is supported and deliberately unpopulated.** The plan reserved the scope; the fact
+   enforces it with a `CHECK` and a foreign key; `DASH.5` writes no employee-scope row, because no
+   registered stakeholder question requires one and `DASH.11` owns the employee-performance surface.
+5. **Department scope is two departments, not all of them.** `Sales` owns front-end gross and `Finance`
+   owns back-end gross, because those two partition total gross exactly and `fact_vehicle_sale` enforces
+   the identity. BDC, Management and Service have **no numerator in the warehouse**, so a target for them
+   would be a denominator with nothing to compare against. Recorded as a limitation on SQ-31 rather than
+   hidden by rewording the question.
+6. **Retail units are store-scope only.** A unit is delivered once; a Sales-department unit target would
+   duplicate the store target and a Finance-department one would count the same car twice.
+7. **`stretch_target_value` is generated, governed and not exported.** It exists on the fact, it is
+   constrained (`>= target_value`), and no `DASH.5` surface displays it. The plan implied a console
+   presence it does not have.
+8. **`Future Power BI measure owner` is still future.** No TMDL was modified. The Target Measures group
+   remains a documented gap in `powerbi/model_documentation/03-measure-groups.md`, and Gate 2 stays
+   **CLOSED**.
+9. **"As-of date" is the governed dataset as-of, not the wall clock.** The plan's field tables say
+   "as-of date" without defining it. As built, it is the maximum date across the sale, snapshot and lead
+   bases, clamped to the month end. `current_date` appears nowhere in the lane.
 
 ### `KPI-TGT-001` — Retail unit target
 
@@ -104,12 +152,12 @@ arithmetic over the calendar, not a forecast, and is never described as AI or st
 | Eligibility rules | None |
 | Null behaviour | No target row for a store-month → NULL, displayed "No target set", never 0 |
 | Source fact | `warehouse.fact_sales_target` |
-| Reporting-view owner | `reporting.vw_target_attainment` (planned; named Deferred today in `sql/05_reporting/00_reporting_scope.sql`) |
+| Reporting-view owner | `reporting.vw_target_attainment` (implemented by `DASH.5`; `sql/05_reporting/44_vw_target_attainment.sql`) |
 | Future Power BI measure owner | Target Measures group (new measure table; one of the four groups `powerbi/model_documentation/03-measure-groups.md` records as documented gaps) |
 | Web presentation | Reference line on unit trend; scoreboard column; pace bar denominator |
 | Limitations | Fictional operating goal; no benchmark meaning |
 | Project-default thresholds | None |
-| Status | **Planned** (`DASH.5`) |
+| Status | **Implemented** (`DASH.5`) |
 
 ### `KPI-TGT-002` — Retail unit target attainment
 
@@ -132,17 +180,17 @@ arithmetic over the calendar, not a forecast, and is never described as AI or st
 | Web presentation | Pace bar with attained/target text; percentage with both sides visible |
 | Limitations | Attainment against a fictional goal demonstrates the calculation, not performance |
 | Project-default thresholds | None |
-| Status | **Planned** (`DASH.5`) |
+| Status | **Implemented** (`DASH.5`) |
 
 ### `KPI-TGT-003` — Total gross target
 
 As `KPI-TGT-001` with `kpi_id = 'KPI-GRS-003'`; currency (USD, `numeric`, exact). All other fields
-identical to `KPI-TGT-001`. Status **Planned** (`DASH.5`).
+identical to `KPI-TGT-001`. Status **Implemented** (`DASH.5`).
 
 ### `KPI-TGT-004` — Total gross target attainment
 
 As `KPI-TGT-002` with numerator `KPI-GRS-003` (MTD, sale-date basis) and denominator `KPI-TGT-003`.
-Status **Planned** (`DASH.5`).
+Status **Implemented** (`DASH.5`).
 
 ### `KPI-TGT-005` — Selling days elapsed
 
@@ -163,11 +211,11 @@ Status **Planned** (`DASH.5`).
 | Web presentation | "Day 14 of 26 selling days" text in the pace header |
 | Limitations | Shared calendar is a simplification; real stores differ |
 | Project-default thresholds | None |
-| Status | **Planned** (`DASH.5`) |
+| Status | **Implemented** (`DASH.5`) |
 
 ### `KPI-TGT-006` — Selling days remaining
 
-`(selling days in month) − KPI-TGT-005`. All other fields as `KPI-TGT-005`. Status **Planned** (`DASH.5`).
+`(selling days in month) − KPI-TGT-005`. All other fields as `KPI-TGT-005`. Status **Implemented** (`DASH.5`).
 
 ### `KPI-TGT-007` — Retail unit pace
 
@@ -189,11 +237,11 @@ Status **Planned** (`DASH.5`).
 | Web presentation | "X.X units per selling day" beside the pace bar |
 | Limitations | A run rate, not a forecast; early-month values are volatile by construction |
 | Project-default thresholds | None |
-| Status | **Planned** (`DASH.5`) |
+| Status | **Implemented** (`DASH.5`) |
 
 ### `KPI-TGT-008` — Total gross pace
 
-As `KPI-TGT-007` with numerator `KPI-GRS-003` (MTD). Currency per selling day. Status **Planned** (`DASH.5`).
+As `KPI-TGT-007` with numerator `KPI-GRS-003` (MTD). Currency per selling day. Status **Implemented** (`DASH.5`).
 
 ### `KPI-TGT-009` — Projected month-end retail units
 
@@ -214,11 +262,11 @@ As `KPI-TGT-007` with numerator `KPI-GRS-003` (MTD). Currency per selling day. S
 | Web presentation | Labelled **"Selling-day pace projection"**, always beside actual MTD and target, never alone |
 | Limitations | Linear extrapolation; ignores within-month seasonality the generator deliberately encodes (weekend weighting), so late-month accuracy is structurally better than early-month. Never called a forecast. |
 | Project-default thresholds | None |
-| Status | **Planned** (`DASH.5`) |
+| Status | **Implemented** (`DASH.5`) |
 
 ### `KPI-TGT-010` — Projected month-end total gross
 
-As `KPI-TGT-009` over `KPI-TGT-008`. Currency. Status **Planned** (`DASH.5`).
+As `KPI-TGT-009` over `KPI-TGT-008`. Currency. Status **Implemented** (`DASH.5`).
 
 ---
 
@@ -638,3 +686,13 @@ For each family, the owning increment (`DASH.5`, `DASH.6`, `DASH.8`) must, in th
    `src/arpi/validation/registry.py::RESERVED_CHECK_PREFIXES` at implementation).
 6. Update `powerbi/model_documentation/` future-ownership notes without touching TMDL until the
    Power BI increment is deliberately taken (see [`DASHBOARD_PROGRAM.md §17`](../requirements/DASHBOARD_PROGRAM.md)).
+
+**`DASH.5` has completed this protocol for the `KPI-TGT` family.** For the record, against each step:
+(1) `warehouse.fact_sales_target` went Deferred → Implemented in one increment, through Gate 4, with the
+grain enforced by `uq_fact_sales_target_grain`; (2) the ten definitions are in
+[`KPI_CATALOG.md` §39](../../KPI_CATALOG.md) with every field filled and the IDs unchanged; (3) **SQ-31**
+is registered and Implemented; (4) ten `RECON-TGT-*` / `RECON-FACT-SALES-TARGET-*` entries exist and three
+are exercised by seeded corruptions; (5) `TGT` is reserved in
+`src/arpi/validation/registry.py::RESERVED_CHECK_PREFIXES` and carries fourteen checks; (6) the Power BI
+gap is recorded in the model documentation, **no TMDL file was modified, no Power BI evidence was
+re-stated, and Gate 2 remains CLOSED**.

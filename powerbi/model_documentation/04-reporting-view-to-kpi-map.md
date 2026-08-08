@@ -154,7 +154,7 @@ completeness before any of them exists. It is a readiness statement, not a progr
 
 | Page | Views required | Blocked? |
 |---|---|---|
-| 1. Executive Overview | `vw_sales_summary`, `vw_gross_summary`, `vw_inventory_health`, `vw_lead_funnel`, `vw_marketing_performance`, `vw_calendar`, `vw_dealership` | Target attainment component blocked by `fact_sales_target` (Deferred) |
+| 1. Executive Overview | `vw_sales_summary`, `vw_gross_summary`, `vw_inventory_health`, `vw_lead_funnel`, `vw_marketing_performance`, `vw_calendar`, `vw_dealership` | Target attainment component blocked by the **absent semantic-model binding**, not by the fact. `DASH.5` implemented `fact_sales_target` and `reporting.vw_target_attainment`; the view sits in the dashboard-program lane and no TMDL table reads it. |
 | 2. Sales and Gross | `vw_vehicle_sales`, `vw_gross_summary`, `vw_sales_summary`, `vw_vehicle`, `vw_vehicle_model`, `vw_employee`, `vw_lead_source`, `vw_calendar`, `vw_dealership` | No |
 | 3. Inventory Health | `vw_inventory_snapshots`, `vw_inventory_health`, `vw_inventory_aging`, `vw_days_to_sale`, `vw_inventory_turn`, `vw_days_supply`, `vw_vehicle`, `vw_vehicle_model` | No |
 | 4. Lead Funnel | `vw_leads`, `vw_lead_funnel`, `vw_appointments`, `vw_appointment_funnel`, `vw_lead_response`, `vw_lead_source`, `vw_marketing_campaign` | No |

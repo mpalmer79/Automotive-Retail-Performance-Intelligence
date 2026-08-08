@@ -259,6 +259,7 @@ def _contract_fingerprint() -> str:
                 "denominator": total.denominator,
                 "type": total.type,
                 "kpi_id": total.kpi_id,
+                "subset": [list(pair) for pair in total.subset],
             }
             for total in spec.RECONCILIATION_TOTALS
         ],
@@ -711,7 +712,7 @@ def compute_reconciliation_totals(
     """
     totals: dict[str, dict[str, Any]] = {}
     for total in spec.RECONCILIATION_TOTALS:
-        records = outputs[total.dataset].records
+        records = _subset_records(outputs[total.dataset].records, total.subset)
         numerator = _sum_column(records, total.numerator)
         entry: dict[str, Any] = {
             "dataset": total.dataset,
@@ -719,6 +720,10 @@ def compute_reconciliation_totals(
             "unit": total.unit,
             "display_precision": total.display_precision,
         }
+        if total.subset:
+            # Emitted so a consumer re-deriving the total filters the same rows rather
+            # than guessing which ones the exporter meant.
+            entry["subset"] = dict(total.subset)
         if total.denominator is None:
             entry["column"] = total.numerator
             entry["total"] = _format_total(numerator, total.type)
@@ -729,6 +734,31 @@ def compute_reconciliation_totals(
             entry["denominator"] = format(_sum_column(records, total.denominator), "f")
         totals[total.name] = entry
     return totals
+
+
+def _subset_records(
+    records: Sequence[Mapping[str, Any]], subset: Sequence[tuple[str, str]]
+) -> Sequence[Mapping[str, Any]]:
+    """Restrict records to a declared subset, ANDing every column/value pair.
+
+    A total over a dataset that mixes measures -- ``target-attainment`` carries unit
+    targets and currency targets in one column, and store plans beside department
+    refinements of them -- would otherwise add units to dollars and count the same gross
+    twice. The subset is part of the contract declaration and therefore part of the
+    contract fingerprint, so it cannot change without moving the hash.
+
+    Args:
+        records: The exported records.
+        subset: Column/value pairs, ANDed. Empty means the whole dataset.
+
+    Returns:
+        The matching records, in their original order.
+    """
+    if not subset:
+        return records
+    return [
+        record for record in records if all(record[column] == value for column, value in subset)
+    ]
 
 
 def _sum_column(records: Sequence[Mapping[str, Any]], column: str) -> Decimal:

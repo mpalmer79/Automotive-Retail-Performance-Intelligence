@@ -404,7 +404,9 @@ first refresh failure would then be ambiguous. This is a hard sequencing rule, n
 - No time-intelligence measure that ARPI's six-month `development` window cannot support honestly. A
   year-over-year measure over a window shorter than a year returns blank, which is correct and useless;
   where one is defined, the window limitation travels with it.
-- No target-attainment measure. `warehouse.fact_sales_target` is Deferred, so there is nothing to attain
+- No target-attainment measure. **The fact is no longer the blocker** — `DASH.5` implemented
+  `warehouse.fact_sales_target` and `reporting.vw_target_attainment` — but no TMDL object binds them, and
+  this increment adds none. There is nothing in the *semantic model* to attain
   against.
 
 ---
@@ -438,11 +440,14 @@ first refresh failure would then be ambiguous. This is a hard sequencing rule, n
       measure is one of the eleven named. **A twelfth annotated measure is a defect**, because the point of a
       curation register is that it is curated.
 - [ ] **Target attainment is absent from the Executive register and stays absent.**
-      [ARCHITECTURE.md §19.4](../../ARCHITECTURE.md) lists it as an Executive Overview component; it is
-      Deferred with `warehouse.fact_sales_target`, and the absence is recorded rather than filled with a
-      placeholder.
+      [ARCHITECTURE.md §19.4](../../ARCHITECTURE.md) lists it as an Executive Overview component. It is no
+      longer blocked by a Deferred fact — `DASH.5` implemented `warehouse.fact_sales_target` and
+      `reporting.vw_target_attainment` — but **no TMDL object binds either**, so there is nothing in this
+      model to attain against. The absence is recorded rather than filled with a placeholder, and binding
+      it later requires renewed Microsoft-engine validation.
 - [ ] The four measure groups with no MVP measure — **F&I, Customer Retention, Service to Sales, Target
-      Attainment** — are created as **nothing at all**: no table, no empty table, no placeholder measure, no
+      Attainment** (the first three blocked by Deferred facts, the fourth by the absent semantic-model
+      binding) — are created as **nothing at all**: no table, no empty table, no placeholder measure, no
       hidden stub. They exist only in
       [`03-measure-groups.md §9`](../../powerbi/model_documentation/03-measure-groups.md), which names what
       each is blocked by and what unlocks it.
@@ -611,7 +616,8 @@ These seven apply identically to both paths. A run that satisfies six of them ha
 - [ ] The [ARCHITECTURE.md §25.4](../../ARCHITECTURE.md) list is walked item by item: relationship
       direction, role-playing date logic, filter behaviour, totals and subtotals, time-intelligence
       calculations, drill-through context, currency and percentage formatting, and SQL-to-DAX
-      reconciliation. Target attainment is recorded **not applicable — Deferred fact**.
+      reconciliation. Target attainment is recorded **not applicable — no semantic-model binding**
+      (the fact exists since `DASH.5`; no TMDL object reads it).
 - [ ] The result is recorded as **structured data against a schema with `additionalProperties: false`**,
       including the engine and its version, the date, the profile refreshed, the operator, and the
       **model-source hash at the time of validation** — in
@@ -1090,7 +1096,8 @@ These seven apply identically to both paths. A run that satisfies six of them ha
 
 - No F&I Performance page and no Customer and Service Opportunities page. Both are blocked by Deferred facts
   (`fact_finance_product_sale`, `fact_service_visit`), and building them from proxies would be fabrication.
-- No target-attainment visual anywhere. `fact_sales_target` is Deferred.
+- No target-attainment visual anywhere. The fact exists since `DASH.5` and **this model does not bind
+  it**; target attainment lives on the web console only.
 - No employee ranking that omits the fairness context [ARCHITECTURE.md §23](../../ARCHITECTURE.md) requires.
 - No mobile layout, no Power BI app, no embedded report.
 
@@ -1151,8 +1158,9 @@ These seven apply identically to both paths. A run that satisfies six of them ha
       [`03-measure-groups.md §7`](../../powerbi/model_documentation/03-measure-groups.md) as the default
       selection. The page reads the register; it does not curate a second one.
 - [ ] Period-over-period trend, store comparison and an exception summary are present.
-- [ ] **Target attainment is absent, and the page says why** — `fact_sales_target` is Deferred. An empty
-      target visual would imply a target exists.
+- [ ] **Target attainment is absent, and the page says why** — the fact exists since `DASH.5`, and this
+      semantic model binds neither it nor `reporting.vw_target_attainment`. An empty target visual would
+      imply this model has a target when it does not.
 - [ ] Every card renders blank, not zero, where its denominator is zero.
 
 **Tests required**
@@ -1461,8 +1469,9 @@ These seven apply identically to both paths. A run that satisfies six of them ha
 
 **Explicit non-goals**
 
-- No finding that requires a Deferred fact. F&I mix, service-to-sales and target attainment are unavailable
-  and stay unavailable.
+- No finding that requires a Deferred fact. F&I mix and service-to-sales are unavailable and stay
+  unavailable. Target attainment is available in SQL and on the web console since `DASH.5`, and stays out
+  of *this* deliverable because this lane reads the semantic model, which does not bind it.
 - No benchmark comparison against real-world dealership figures. The data is synthetic; comparing it to a
   real benchmark would be a category error.
 
@@ -1705,8 +1714,9 @@ These seven apply identically to both paths. A run that satisfies six of them ha
 
 - [ ] `excel/ARPI_Operating_Report.xlsx` exists and uses Power Query import, pivot tables, XLOOKUP or
       equivalent, SUMIFS or COUNTIFS, and conditional formatting.
-- [ ] A monthly summary and a variance section are present. **Variance to target is omitted while
-      `fact_sales_target` is Deferred**, and the omission is stated in the workbook.
+- [ ] A monthly summary and a variance section are present. **Variance to target is omitted while this
+      lane's source — the semantic model — carries no target measure**, and the omission is stated in the
+      workbook. `fact_sales_target` itself is Implemented since `DASH.5`; the gap here is the binding.
 - [ ] A reconciliation total **matches PostgreSQL and Power BI**, and the workbook shows the comparison
       rather than asserting it.
 - [ ] The workbook contains **no credential and no connection string with embedded authentication**.

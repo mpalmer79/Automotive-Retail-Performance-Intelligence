@@ -120,10 +120,18 @@ All operational data is synthetic.
 > **Status reality check.** Fifty-eight objects are Implemented, including all eight MVP dimensions, all
 > five MVP facts, and the twenty-eight views of the reporting layer. Every one of the 29 KPIs in
 > [KPI_CATALOG.md](KPI_CATALOG.md) is computable from `reporting`, asserted by
-> `tests/integration/test_kpi_verification.py`. Ten entities remain **Deferred**; none of them is an MVP
+> `tests/integration/test_kpi_verification.py`. Nine entities remain **Deferred**; none of them is an MVP
 > object, and the questions they block are recorded in
 > [`docs/requirements/STAKEHOLDER_QUESTIONS.md`](docs/requirements/STAKEHOLDER_QUESTIONS.md) §6 rather than
 > left absent.
+
+> **The baseline did not move.** Two lanes have been implemented *beside* the MVP baseline, not inside it:
+> the sanitized public inventory listing lane (ADR-0011, §40) and the dashboard-program target lane
+> (ADR-0013, [§41](#41-warehousefactsalestarget--implemented-contract-dash5)). `warehouse.fact_sales_target`
+> is the tenth Deferred entity promoted to Implemented, and it is a **dashboard-program fact, not a sixth
+> MVP fact**. The MVP baseline is still **five MVP facts and 29 MVP KPIs**; the ten `KPI-TGT-*` definitions
+> and `reporting.vw_target_attainment` belong to the dashboard program and are counted separately
+> ([KPI_CATALOG.md §39](KPI_CATALOG.md)).
 
 > **Scope of this index.** It lists every database object ARPI creates, including the six `audit.vw_dq_*`
 > helper views in `sql/08_validation/`. Those views are internal query helpers over the audit schema, not
@@ -146,6 +154,7 @@ All operational data is synthetic.
 | `warehouse.fact_lead` | Warehouse | One row per unique CRM lead | **Implemented** |
 | `warehouse.fact_appointment` | Warehouse | One row per scheduled appointment | **Implemented** |
 | `warehouse.fact_marketing_spend` | Warehouse | One row per dealership, campaign, and calendar month | **Implemented** |
+| `warehouse.fact_sales_target` | Warehouse | One row per dealership, target month, targeted KPI, and target scope (scope type + scope id) | **Implemented** (dashboard program, not an MVP fact — [§41](#41-warehousefactsalestarget--implemented-contract-dash5)) |
 | `audit.pipeline_run` | Audit | One row per pipeline execution | **Implemented** |
 | `audit.pipeline_run_row_count` | Audit | One row per run, entity, and layer | **Implemented** |
 | `audit.validation_result` | Audit | One row per validation check evaluation per run | **Implemented** |
@@ -174,9 +183,11 @@ All operational data is synthetic.
 | `warehouse.fact_inventory_price_history` | Warehouse | One row per vehicle price-change event | Deferred |
 | `warehouse.fact_finance_product_sale` | Warehouse | One row per finance product sold on a finalized transaction | Deferred |
 | `warehouse.fact_service_visit` | Warehouse | One row per closed repair-order visit | Deferred |
-| `warehouse.fact_sales_target` | Warehouse | One row per dealership, employee or department, KPI, and calendar month | Deferred |
 
-**Counts:** 21 Implemented · 11 Planned · 10 Deferred.
+**Counts:** 22 Implemented · 11 Planned · 9 Deferred.
+
+The Implemented count moved by one and the Deferred count by one, in the same direction, for the same
+object: `warehouse.fact_sales_target`. **No MVP count changed.**
 
 ---
 
@@ -1614,9 +1625,10 @@ Exposes `check_id`, `check_name`, `check_category`, `target_object`, `severity`,
 
 # Part G — Deferred domains
 
-> Everything below is **Deferred**: present in the target architecture, absent from the current roadmap.
-> Each is unlocked only by the release stage named. Grains are stated now so that a future implementation
-> starts from a decision rather than a debate. Adding any of these facts requires an ADR
+> Everything below is **Deferred** — with one exception, §27.10, which has been **promoted** and now
+> forwards to its implemented contract. Deferred means present in the target architecture, absent from the
+> current roadmap. Each is unlocked only by the release stage named. Grains are stated now so that a future
+> implementation starts from a decision rather than a debate. Adding any of these facts requires an ADR
 > ([ARCHITECTURE.md §35](ARCHITECTURE.md)).
 
 ### 27.1 `warehouse.dim_finance_product`
@@ -1689,13 +1701,31 @@ declined work, replacement opportunity, and sales conversion. Service-to-sales o
 presented as **decision support, not as a prediction of purchase intent** (`docs/research.md` §4.13).
 **Unlocked by service-to-sales opportunities in the strong release.** Status: **Deferred**.
 
-### 27.10 `warehouse.fact_sales_target`
+### 27.10 `warehouse.fact_sales_target` — **promoted**
 
-**Grain: one row per dealership, employee or department, KPI, and calendar month.** Target value and
-stretch target value. Exists so that goals are data, not hardcoded DAX constants
-([ARCHITECTURE.md §12.10](ARCHITECTURE.md)). **Unlocked by target attainment in the strong release.**
-Note that any target values will be *fictional operating goals for a fictional group*, never industry
-benchmarks. Status: **Deferred**.
+**This entity is no longer Deferred.** It was implemented by dashboard increment **DASH.5** under
+[ADR-0013](docs/architecture-decisions/ADR-0013-governed-web-operating-console.md) to answer **SQ-31**, and its
+binding contract is [§41](#41-warehousefactsalestarget--implemented-contract-dash5). This entry is kept
+only so that the historical Deferred record has a forwarding address; **it is not a second definition and
+must not be read as one.** Where the two disagree, §41 is correct.
+
+For the record, the deferred-era wording was: *"one row per dealership, employee or department, KPI, and
+calendar month; target value and stretch target value; exists so that goals are data, not hardcoded DAX
+constants; any target values will be fictional operating goals for a fictional group, never industry
+benchmarks."* Two of those clauses survived implementation unchanged and one did not:
+
+- **Survived** — targets are data rather than constants, and they are **synthetic internal operating goals
+  for the fictional Granite Auto Group, never industry benchmarks and never a recommendation.**
+- **Changed** — the grain. The implemented grain is
+  `(dealership_key, target_month_date_key, kpi_id, target_scope_type, target_scope_id)`. The deferred-era
+  phrase "employee or department" was a scope *description*, not a key; it could not be enforced, because
+  PostgreSQL treats NULLs as distinct and a nullable department or employee column would have let the same
+  store-month-KPI target be inserted twice. §41.3 records how that was closed.
+
+Everything else about the domain — the ten `KPI-TGT-*` definitions, the no-outcome-leakage rule, the
+selling-day pace arithmetic — lives in [§41](#41-warehousefactsalestarget--implemented-contract-dash5),
+[KPI_CATALOG.md §39](KPI_CATALOG.md) and
+[STM-016](docs/source-to-target/STM-016-fact-sales-target.md). Status: **Implemented**.
 
 ---
 
@@ -2947,3 +2977,213 @@ and there must never be one.**
 `vw_vehicle_listing_observation_span.days_observed_online` is **not days in stock.** Days
 in stock runs from acquisition and lives on `warehouse.fact_vehicle_inventory_snapshot`;
 this lane never sees it.
+
+---
+
+## 41. `warehouse.fact_sales_target` — implemented contract (`DASH.5`)
+
+The monthly operating **plan**. One lane, four objects: a raw landing table, a staging view set, this
+fact, and one reporting view. Authorized by
+[ADR-0013](docs/architecture-decisions/ADR-0013-governed-web-operating-console.md) and delivery increment
+**DASH.5**, to answer **SQ-31** ("Are we hitting our operating targets, by store and by department?").
+
+| Field | Value |
+|---|---|
+| **Entity name** | `sales_target` (source entity) → `warehouse.fact_sales_target` |
+| **Layer** | Warehouse fact (monthly plan / periodic snapshot of an intention) |
+| **Declared grain** | **One row per dealership, per target month, per targeted KPI, per target scope (scope type + scope id).** |
+| **Grain key** | `(dealership_key, target_month_date_key, kpi_id, target_scope_type, target_scope_id)` — `uq_fact_sales_target_grain`, five `NOT NULL` columns |
+| **Natural / source key** | `sales_target_id` (`TGT-########`) |
+| **Foreign keys** | `target_month_date_key` → `dim_date`; `dealership_key` → `dim_dealership`; `employee_key` → `dim_employee` (nullable) |
+| **History policy** | **Revisable plan, not an event log.** The load is an idempotent upsert on the grain: reloading an unchanged plan writes nothing, and a revised plan replaces the value in place. There is no target-history fact and DASH.5 does not claim one. |
+| **Generator** | `src/arpi/generation/sales_target.py` |
+| **Source-to-target mapping** | [STM-016](docs/source-to-target/STM-016-fact-sales-target.md) |
+| **Downstream** | `reporting.vw_target_attainment` → dashboard dataset `target-attainment` → the console's targets-and-pace sections |
+| **KPI ownership** | `KPI-TGT-001` … `KPI-TGT-010` ([KPI_CATALOG.md §39](KPI_CATALOG.md)) |
+| **Implementation status** | **Implemented** end to end: generator, raw, staging, fact, load script, reporting view, reconciliations, export, console. |
+| **Row counts** | 24 (test) · 72 (development) · 288 (portfolio). Four rows per store-month × 3 stores × the profile's month count. |
+| **Lane** | **Dashboard program.** Not an MVP fact, not in `MVP_REPORTING_VIEWS`, not bound by the Power BI semantic model. |
+
+### 41.1 What this fact is, and what it is not
+
+**It is the plan.** A row states what a store committed to produce in one calendar month, at one governed
+scope, for one governed metric.
+
+**Every value is a synthetic internal operating goal for the fictional Granite Auto Group.** It is not an
+industry benchmark, not a manufacturer objective, not a market standard, not a real dealership's plan and
+not a recommendation. No consumer of this fact may describe a value here as *good*, *average*, *standard*
+or *recommended* — a rule the console enforces in code and the test suite asserts by scanning the source
+for verdict vocabulary.
+
+**It is not an outcome.** The generator that writes these rows may not read a realized sale, and does not:
+its inputs are the store planning baselines, the governed calendar's selling days, a seasonality shape and
+a seeded planning draw. Two tests hold that line — an AST walk over the generator's import graph asserting
+no path reaches the sale generator or the sale fact, and a test that monkeypatches the sale generator to
+`None` and asserts the plan is byte-identical. A plan derived from the month's realized sales would make
+every attainment ratio a tautology.
+
+### 41.2 Column contract (exact names, exact order)
+
+| # | Column | Type | Null | Allowed values / domain | Description | **PII class** |
+|---:|---|---|---|---|---|---|
+| 1 | `sales_target_key` | `bigint` | no | > 0 | Surrogate primary key, deterministic over the grain order. | Non-personal |
+| 2 | `target_month_date_key` | `integer` | no | `YYYYMM01` | **Always the first day of the target month**, so the plan and the actual agree on what a month is, and so the selling-day denominator resolves from `dim_date`. | Non-personal |
+| 3 | `dealership_key` | `integer` | no | resolves to `dim_dealership` | The store the plan belongs to, resolved **as at the month start** through the SCD2 dimension. | Non-personal |
+| 4 | `target_scope_type` | `varchar(12)` | no | `Store`, `Department`, `Employee` | Decides which actual is the comparable numerator, and whether the row is a store total or a refinement of one. | Non-personal |
+| 5 | `target_scope_id` | `varchar(40)` | **no, on every scope type** | store `dealership_id`, department name, or employee synthetic id | The scope's own business identity. See §41.3 for why this may not be nullable. | Non-personal |
+| 6 | `department_name` | `varchar(20)` | yes | `Sales`, `Finance` | Present **exactly** on `Department` scope, NULL everywhere else, and always equal to `target_scope_id`. | Non-personal |
+| 7 | `employee_key` | `integer` | yes | resolves to `dim_employee` | Present **exactly** on `Employee` scope, NULL everywhere else. No employee-scope row is generated by DASH.5. | Non-personal |
+| 8 | `kpi_id` | `varchar(16)` | no | `KPI-SLS-001`, `KPI-GRS-001`, `KPI-GRS-002`, `KPI-GRS-003` | **The metric being targeted.** Never a `KPI-TGT-*` identifier — see §41.4. | Non-personal |
+| 9 | `target_value` | `numeric(14,2)` | no | ≥ 0 | The month's committed goal. A unit target is a whole number carried at cent scale (`45.00`); a gross target is USD to the cent. **Exact `numeric`, generated as `Decimal`, never a float.** | Non-personal |
+| 10 | `stretch_target_value` | `numeric(14,2)` | no | ≥ `target_value` | The month's stretch goal. Governed data with **no DASH.5 console surface**: it is exported nowhere and is reserved for the management-planning surfaces later increments own. | Non-personal |
+| 11 | `source_system` | `varchar(40)` | no | `arpi_synthetic_generator` | Lineage marker: what stops a reader mistaking a synthetic operating goal for a real dealership plan. | Non-personal |
+
+**No customer or employee personal data exists on this fact.** An employee-scope row would carry a
+surrogate key into `warehouse.dim_employee`, which holds a synthetic identifier and no name, no pay plan
+and no contact detail.
+
+### 41.3 The scope model, and the NULL problem it had to solve
+
+| Scope | `target_scope_id` holds | `department_name` | `employee_key` | May target |
+|---|---|---|---|---|
+| `Store` | the store's own `dealership_id` | NULL | NULL | `KPI-SLS-001` (retail units), `KPI-GRS-003` (total gross) |
+| `Department` | the department name | the same value | NULL | `Sales` → `KPI-GRS-001` (front-end gross); `Finance` → `KPI-GRS-002` (back-end gross) |
+| `Employee` | the employee's synthetic id | NULL | the resolved key | `KPI-SLS-001` |
+
+**Department and employee rows are refinements, never addends.** A store total reads `Store`-scope rows
+only. Summing every row of a store-month would double-count the store's gross, which is why `KPI-TGT-001`
+and `KPI-TGT-003` both filter on the scope.
+
+**Retail units are store-scope only, by design.** A retail unit is delivered once. A Sales-department unit
+target would reproduce the store target, and a Finance-department one would count the same car a second
+time. F&I measures are computed *per* the sales department's unit count, not on a unit count of their own.
+
+**Why `target_scope_id` is `NOT NULL` on every scope type.** The obvious modelling — a nullable
+`department_name` and a nullable `employee_id`, NULL meaning "store scope" — cannot be enforced.
+PostgreSQL treats NULLs as **distinct** inside a `UNIQUE` constraint, so a grain over nullable scope
+columns would permit unlimited duplicate store-level targets for the same store, month and KPI, and the
+constraint would look correct while enforcing nothing. Carrying the scope's own identity in one `NOT NULL`
+column makes the grain constraint five `NOT NULL` columns wide and therefore real. `DQ-TGT-001` and an
+integration test that attempts the duplicate insert both hold it.
+
+**The rule a `CHECK` cannot express.** Exactly one scope rule spans two tables: a `Store`-scope row's
+`target_scope_id` must equal *its own* store's `dealership_id`, and `dealership_id` lives in
+`warehouse.dim_dealership`. A `CHECK` cannot read another table, and a trigger would be a hidden second
+load path. That rule is enforced in `staging.stg_sales_target` as a `REJ-DOMAIN-001` rejection and
+asserted by `DQ-TGT-006`. **Every other scope rule is a physical `CHECK`** (§41.5).
+
+### 41.4 `kpi_id` names the metric being targeted, never the target KPI
+
+A row planning the month's retail units carries `kpi_id = 'KPI-SLS-001'`. `KPI-TGT-001`
+(*Retail unit target*) is the governed measure **computed from** such rows by
+`reporting.vw_target_attainment`; storing it here would make the fact describe its own consumer, and would
+mean the fact's KPI vocabulary changed every time a downstream view was added. The same holds for
+`KPI-GRS-003` and `KPI-TGT-003`. `ck_fact_sales_target_kpi_domain` restricts the column to the four
+metrics the domain targets, so a `KPI-TGT-*` value is physically unwritable.
+
+### 41.5 Physical constraints
+
+| Constraint | Rule |
+|---|---|
+| `pk_fact_sales_target` | `sales_target_key` is the primary key |
+| `uq_fact_sales_target_grain` | **The declared grain**, over five `NOT NULL` columns |
+| `ck_fact_sales_target_key_positive` | `sales_target_key > 0` |
+| `ck_fact_sales_target_scope_type_domain` | `target_scope_type IN ('Store','Department','Employee')` |
+| `ck_fact_sales_target_scope_id_not_blank` | A scope identity is not whitespace |
+| `ck_fact_sales_target_kpi_domain` | `kpi_id` is one of the four targeted metrics |
+| `ck_fact_sales_target_source_system_not_blank` | Lineage is always stated |
+| `ck_fact_sales_target_month_key_is_first_of_month` | `target_month_date_key % 100 = 1` |
+| `ck_fact_sales_target_value_nonnegative` | A negative goal is not a goal: it would invert every attainment ratio |
+| `ck_fact_sales_target_stretch_not_below_target` | A stretch beneath the commitment is not a stretch. **Equality is permitted** — a one-unit target multiplied by the stretch factor rounds back to one unit, and refusing that would forbid a legitimate small-store plan |
+| `ck_fact_sales_target_department_scope_coupling` | `department_name` is present **exactly** on `Department` scope |
+| `ck_fact_sales_target_department_identity` | `department_name = target_scope_id` when present |
+| `ck_fact_sales_target_employee_scope_coupling` | `employee_key` is present **exactly** on `Employee` scope |
+| `ck_fact_sales_target_scope_metric` | **The anti-double-counting rule**: which metric each scope may target (§41.3) |
+| `fk_fact_sales_target_month` / `_dealership` / `_employee` | Conformed-dimension foreign keys, `ON DELETE RESTRICT` |
+| `ix_fact_sales_target_store_month` | Read path: `(dealership_key, target_month_date_key)` |
+
+### 41.6 Zero, NULL and absence are three different statements
+
+- **A row with `target_value = 0`** means *the plan for this scope-month is zero.* It is a plan.
+- **The absence of a row** means **no target was set.** It is not a target of zero, and the reporting view
+  publishes `is_target_present = false` with a NULL target rather than substituting one. A missing plan
+  must never be read as a plan to sell nothing.
+- **A NULL attainment ratio** means the denominator was not eligible — no target row, or a target of zero.
+  `target_attainment_ratio` divides by `nullif(target_value, 0)` for exactly this reason: attainment
+  against a zero target is undefined, not infinite and not 100%.
+
+The reporting view's frame is the **union** of the governed applicable scope set and the target rows that
+exist, so a store-month with no plan still appears, carrying `is_target_present = false`. A view that
+inner-joined the fact would make an unplanned month invisible instead of visibly unplanned.
+
+### 41.7 Business rules
+
+- `target_month_date_key` is always the **first day of the month**.
+- The grain is unique. Duplicates are a `critical` failure, not a warning.
+- `stretch_target_value >= target_value` on every row.
+- **The department gross targets partition the store gross target exactly**: for each store-month,
+  `Sales` front-end gross target + `Finance` back-end gross target = the store's total-gross target, to the
+  cent. `warehouse.fact_vehicle_sale` enforces the same identity on the actual side
+  (`total_gross = front_end_gross + back_end_gross`), so the department actuals sum to the store actual with
+  no overlap and no gap. `DQ-TGT-012` and `RECON-TGT-DEPT-SPLIT` both assert it, and a seeded
+  ±$1.00 corruption proves the assertion is alive.
+- **Group attainment is `SUM(numerator) / SUM(denominator)`**, never the average of the store percentages.
+  A group figure computed as an average of ratios weights a small store equally with a large one and is
+  simply a different number; the KPI verification suite asserts the two disagree on the committed dataset,
+  so the correct rule cannot be silently replaced by the wrong one.
+- **Selling days come from `warehouse.dim_date.is_selling_day` and from nowhere else** (ADR-0002). No
+  JavaScript calendar, no DAX calendar, no wall-clock date.
+- **Pace and projection never read `current_date`.** The as-of date is the governed dataset as-of — the
+  maximum date across the sale, snapshot and lead bases — clamped to the month end. A dashboard that read
+  the wall clock would silently change its own numbers on a day nobody published anything.
+
+### 41.8 Data-quality checks
+
+All fourteen are `critical` and evaluate in the Python layer, over the generated frame, before a row
+reaches the database. The SQL layer's counterpart is not a duplicate check family but the physical
+constraints in §41.5 and the reconciliations in §41.9.
+
+| Check ID | Assertion | Category |
+|---|---|---|
+| `DQ-TGT-001` | The declared grain is unique | `uniqueness` |
+| `DQ-TGT-002` | The declared 11-column contract matches, in order | `structural` |
+| `DQ-TGT-003` | **Every `target_month_date_key` is the first day of its month** | `business_rule` |
+| `DQ-TGT-004` | Every target month lies inside the reporting window | `business_rule` |
+| `DQ-TGT-005` | Every scope type is in the governed vocabulary | `business_rule` |
+| `DQ-TGT-006` | **The scope identity columns agree with the scope type** (the store-identity half of this is the staging rule of §41.3) | `business_rule` |
+| `DQ-TGT-007` | The targeted metric is one the domain supports **for that scope** | `business_rule` |
+| `DQ-TGT-008` | Every `dealership_id` names a governed store | `referential` |
+| `DQ-TGT-009` | No target or stretch target is negative | `business_rule` |
+| `DQ-TGT-010` | The stretch goal is never beneath the committed goal | `business_rule` |
+| `DQ-TGT-011` | **Every value is a `Decimal` with at most two decimal places** — no float ever enters the lane | `structural` |
+| `DQ-TGT-012` | **Department gross targets partition the store gross target** | `business_rule` |
+| `DQ-TGT-013` | The lineage marker is the synthetic generator, on every row | `structural` |
+| `DQ-TGT-014` | **No prohibited PII column exists** | `privacy` |
+
+Two further guards are not DQ checks because they are properties of the *code*, not of the data:
+the import-graph assertion and the sale-generator-removed assertion of §41.1.
+
+### 41.9 Reconciliations
+
+`audit.vw_recon_target` publishes ten `RECON-TGT-*` / `RECON-FACT-SALES-TARGET-*` reconciliations in the
+project's uniform eight-column result shape, and joins `audit.vw_recon_all`. They cover the row-count chain
+from raw through staging to the fact, the grain, the department partition, scope-metric legality, the
+store-total-versus-refinement rule, the reporting view's agreement with the fact, and the selling-day
+denominator's agreement with `dim_date`. Three of them are exercised by **seeded corruptions** in
+`tests/integration/test_reconciliations.py` — a dropped grain constraint with a duplicate insert, a
+department split moved by $1.00, and a deleted fact row — so the suite proves the reconciliations detect
+what they claim to detect rather than merely returning `Passed`.
+
+### 41.10 History, restatement and what this fact deliberately does not record
+
+The load is an **idempotent upsert on the grain**. Reloading the same plan writes nothing; a revised plan
+overwrites the value.
+
+**There is therefore no record of what the target used to be.** That is a deliberate limitation, not an
+oversight: a plan-revision history would need its own fact, its own grain (one row per revision), an
+effective-dated read path, and a stakeholder question that requires it. None of those exists, and
+inventing them to look thorough would add an unowned table to the warehouse. It is recorded in
+[LIMITATIONS.md](LIMITATIONS.md) and in [STM-016](docs/source-to-target/STM-016-fact-sales-target.md) §13.
+
+Also deliberately absent: any approval state, any author or approver identity, any target-change
+notification, any target-editing path. The console **reads** targets and cannot write them.

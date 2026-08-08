@@ -493,6 +493,11 @@ APPROVED_NAME_COLUMNS: Final[Mapping[str, str]] = MappingProxyType(
         ),
         "check_name": "Human-readable name of a data-quality check. Names a rule, never a person.",
         "day_name": "Calendar vocabulary from DAY_NAMES: Monday..Sunday.",
+        "department_name": (
+            "Governed dealership department label -- Sales or Finance on a target row, "
+            "and one of the five ALLOWED_DEPARTMENTS on an employee row. Names an "
+            "organisational unit, never a person, and carries no headcount or identity."
+        ),
         "entity_name": "Warehouse entity such as dim_date. Names a table, never a person.",
         "holiday_name": "Recognised holiday label such as 'Independence Day'.",
         "lead_source_name": (
@@ -763,6 +768,7 @@ DASHBOARD_PROGRAM_VIEWS: Final[tuple[str, ...]] = (
     "vw_gross_change_bridge",
     "vw_deal_explorer",
     "vw_deal_jacket",
+    "vw_target_attainment",
 )
 
 #: Every view the ``reporting`` schema is expected to contain, and nothing else.
@@ -956,6 +962,106 @@ PROHIBITED_LISTING_MEASURES: Final[tuple[str, ...]] = (
 )
 
 # ---------------------------------------------------------------------------------------
+# The Targets and pace domain (delivery increment DASH.5)
+# ---------------------------------------------------------------------------------------
+#: The governed target-scope vocabulary of ``warehouse.fact_sales_target``.
+#:
+#: Permanent on assignment. ``Store`` and ``Department`` are populated by the generator;
+#: ``Employee`` is physically supported by the fact -- nullable ``employee_key``, CHECK-
+#: coupled to the scope type, foreign key to ``warehouse.dim_employee`` -- and is
+#: deliberately not populated by ``DASH.5``. See ``docs/source-to-target/
+#: STM-016-fact-sales-target.md`` section 6 for the recorded decision.
+TARGET_SCOPE_STORE: Final = "Store"
+TARGET_SCOPE_DEPARTMENT: Final = "Department"
+TARGET_SCOPE_EMPLOYEE: Final = "Employee"
+
+TARGET_SCOPE_TYPES: Final[tuple[str, ...]] = (
+    TARGET_SCOPE_STORE,
+    TARGET_SCOPE_DEPARTMENT,
+    TARGET_SCOPE_EMPLOYEE,
+)
+
+#: The departments the target domain supports, and the gross component each one owns.
+#:
+#: WHY ONLY TWO OF THE FIVE. ``dim_employee.department`` carries five values, but a
+#: department target needs a department ACTUAL, and the actual must be attributable
+#: without double counting. ``warehouse.fact_vehicle_sale`` enforces
+#: ``total_gross = front_end_gross + back_end_gross``, so front and back are an exact
+#: partition of the store's total gross: the Sales department owns the front end
+#: (``KPI-GRS-001``) and the Finance department owns the back end (``KPI-GRS-002``), and
+#: the two together are the store total with no overlap and no gap. BDC, Management and
+#: Service own no component of that identity -- BDC is measured in the lead funnel,
+#: Management is accountable for the store line rather than a separate one, and Service
+#: has no fact at all (``warehouse.fact_service_visit`` is Deferred). A target for any of
+#: them would have no denominator, so none is permitted.
+TARGET_DEPARTMENT_METRIC: Final[Mapping[str, str]] = MappingProxyType(
+    {
+        "Sales": "KPI-GRS-001",
+        "Finance": "KPI-GRS-002",
+    }
+)
+
+TARGET_DEPARTMENTS: Final[tuple[str, ...]] = tuple(sorted(TARGET_DEPARTMENT_METRIC))
+
+#: The metrics ``fact_sales_target.kpi_id`` may name.
+#:
+#: This is the metric BEING TARGETED, never the target KPI itself. A row that plans the
+#: month's retail units carries ``KPI-SLS-001``; ``KPI-TGT-001`` is the governed measure
+#: COMPUTED FROM such rows. Storing ``KPI-TGT-001`` on the fact would make the fact
+#: describe its own consumer.
+TARGET_METRIC_KPI_IDS: Final[tuple[str, ...]] = (
+    "KPI-SLS-001",
+    "KPI-GRS-001",
+    "KPI-GRS-002",
+    "KPI-GRS-003",
+)
+
+#: Which metrics each scope type may target, mirrored by a CHECK constraint on the fact.
+#:
+#: Store scope owns the two headline measures. Department scope owns the two gross
+#: components. Employee scope owns unit delivery. The separation is what stops a
+#: department row targeting total gross -- which would double-count against the store
+#: row -- or a store row targeting front gross, which would create two overlapping store
+#: gross plans.
+TARGET_SCOPE_METRICS: Final[Mapping[str, tuple[str, ...]]] = MappingProxyType(
+    {
+        TARGET_SCOPE_STORE: ("KPI-GRS-003", "KPI-SLS-001"),
+        TARGET_SCOPE_DEPARTMENT: ("KPI-GRS-001", "KPI-GRS-002"),
+        TARGET_SCOPE_EMPLOYEE: ("KPI-SLS-001",),
+    }
+)
+
+#: Every Targets and pace KPI identifier, in KPI_CATALOG.md order.
+#:
+#: HELD SEPARATE FROM :data:`KPI_IDS` FOR THE SAME REASON
+#: :data:`INVENTORY_LISTING_KPI_IDS` IS. ``KPI_IDS`` is the 29-strong MVP set the
+#: semantic model implements as DAX measures, and
+#: ``powerbi/validation/model_expectations.json`` asserts its size against the measures
+#: that actually exist. These ten are governed, computed in SQL by
+#: ``reporting.vw_target_attainment`` and rendered by the web console, but they are NOT
+#: semantic-model measures: the Power BI model is awaiting real-engine validation and
+#: adding measures before that validation would change what is being validated. Folding
+#: them into ``KPI_IDS`` would make the model's own expectation file wrong and would
+#: restate the historical MVP baseline, which describes 29 KPIs and still does.
+TARGET_KPI_IDS: Final[tuple[str, ...]] = (
+    "KPI-TGT-001",  # Retail unit target
+    "KPI-TGT-002",  # Retail unit target attainment
+    "KPI-TGT-003",  # Total gross target
+    "KPI-TGT-004",  # Total gross target attainment
+    "KPI-TGT-005",  # Selling days elapsed
+    "KPI-TGT-006",  # Selling days remaining
+    "KPI-TGT-007",  # Retail unit pace
+    "KPI-TGT-008",  # Total gross pace
+    "KPI-TGT-009",  # Projected month-end retail units
+    "KPI-TGT-010",  # Projected month-end total gross
+)
+
+#: The reporting view each Targets and pace KPI is computed from.
+TARGET_KPI_VIEW_OWNERSHIP: Final[Mapping[str, tuple[str, ...]]] = MappingProxyType(
+    dict.fromkeys(TARGET_KPI_IDS, ("vw_target_attainment",))
+)
+
+# ---------------------------------------------------------------------------------------
 # Reconciliation identifiers evaluated in SQL
 # ---------------------------------------------------------------------------------------
 #: Every reconciliation ``audit.vw_recon_all`` publishes, and the loader records on each
@@ -989,6 +1095,19 @@ SQL_RECONCILIATION_IDS: Final[tuple[str, ...]] = (
     "RECON-REPORT-APPOINTMENTS-ROWS",
     "RECON-REPORT-SPEND-ROWS",
     "RECON-REPORT-DAYS-TO-SALE",
+    # Targets and pace (DASH.5). Registered here like every other SQL reconciliation, so
+    # a target lost between two layers fails a run rather than making every attainment
+    # percentage quietly larger.
+    "RECON-FACT-SALES-TARGET-WAREHOUSE",
+    "RECON-TGT-GRAIN",
+    "RECON-TGT-UNITS",
+    "RECON-TGT-GROSS",
+    "RECON-TGT-DEPT-SPLIT",
+    "RECON-TGT-STORE-TOTALS",
+    "RECON-TGT-MONTH-TOTALS",
+    "RECON-REPORT-TARGET-ROWS",
+    "RECON-TGT-ACTUAL-UNITS",
+    "RECON-TGT-ACTUAL-GROSS",
 )
 
 #: The reconciliations whose failure invalidates the numbers built on them.
