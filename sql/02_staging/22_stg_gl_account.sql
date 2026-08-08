@@ -216,7 +216,7 @@ for a fictional dealer group -- never a chart of accounts. The category domain r
 general-ledger account entering through this view.';
 
 COMMENT ON COLUMN staging.stg_gl_account.gl_account_id IS 'Natural key, GLA-####.';
-COMMENT ON COLUMN staging.stg_gl_account.account_number IS 'Synthetic account number. Invented, never a real dealer group's.';
+COMMENT ON COLUMN staging.stg_gl_account.account_number IS 'Synthetic account number. Invented, never copied from a real dealer group.';
 COMMENT ON COLUMN staging.stg_gl_account.account_name IS 'Human-readable account name. Invented.';
 COMMENT ON COLUMN staging.stg_gl_account.account_category IS 'The governed inventory control category the account schedules.';
 COMMENT ON COLUMN staging.stg_gl_account.account_type IS 'Asset or Liability.';

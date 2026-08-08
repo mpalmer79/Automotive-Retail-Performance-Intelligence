@@ -60,8 +60,8 @@ CREATE INDEX IF NOT EXISTS ix_gl_account_load_load_batch_id
 COMMENT ON TABLE raw.gl_account_load IS
     'Grain: one row per data row of a dim_gl_account.csv file within one load batch. Raw landing table;
 business columns are untyped text and are cast in staging.stg_gl_account. A SELECTED synthetic
-control-account catalogue for a fictional dealer group, never a chart of accounts and never a real
-dealer group's. Never read by Power BI or Excel and explicitly revoked from arpi_reporter.';
+control-account catalogue for a fictional dealer group, never a chart of accounts and never copied from a
+real one. Never read by Power BI or Excel and explicitly revoked from arpi_reporter.';
 
 COMMENT ON COLUMN raw.gl_account_load.gl_account_id IS 'Untyped source value. Natural key, GLA-####.';
 COMMENT ON COLUMN raw.gl_account_load.account_number IS 'Untyped source value. Synthetic account number in a conventional inventory block. Invented.';

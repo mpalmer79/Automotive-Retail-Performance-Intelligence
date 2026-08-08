@@ -49,8 +49,6 @@
 -- for any of them:
 --   * accounting_date_key    -- a schedule date the calendar does not contain cannot be
 --                              compared with a control balance at all.
---   * acquisition_date_key   -- the posting-lag denominator. Defaulting it to the
---                              accounting date would silently report a lag of zero.
 --   * dealership_key         -- a schedule line for a store that does not exist cannot
 --                              be reconciled against that store's control account.
 --   * vehicle_key            -- a schedule line with no unit is not a stock schedule.
@@ -75,7 +73,6 @@ WITH src AS (
         store.dealership_key,
         veh.vehicle_key,
         acct.gl_account_key,
-        acq.date_key                   AS acquisition_date_key,
         s.control_account_category,
         s.acquisition_cost,
         s.capitalized_transportation,
@@ -88,12 +85,15 @@ WITH src AS (
         s.days_in_stock,
         s.source_system
     FROM staging.stg_inventory_accounting AS s
-    -- Required: the calendar, for the schedule date and for the acquisition date. Both
-    -- must be real business dates; neither is ever a wall clock.
+    -- Required: the calendar. A schedule date the window does not contain has no control
+    -- balance to be compared against, and comparability is matched-date.
+    --
+    -- The ACQUISITION date is deliberately NOT resolved to a key. It routinely predates
+    -- the governed calendar -- inventory has to exist before the first reporting day --
+    -- and days_in_stock already carries accounting_date - acquisition_date, which is the
+    -- whole of what KPI-ACC-011 needs. See the fact's header for the recorded decision.
     JOIN warehouse.dim_date AS d
       ON d.full_date = s.accounting_date
-    JOIN warehouse.dim_date AS acq
-      ON acq.full_date = s.acquisition_date
     -- Required: the store, as it stood on the accounting date.
     JOIN warehouse.dim_dealership AS store
       ON store.dealership_id = s.dealership_id
@@ -147,7 +147,6 @@ INSERT INTO warehouse.fact_inventory_accounting_snapshot AS f (
     dealership_key,
     vehicle_key,
     gl_account_key,
-    acquisition_date_key,
     control_account_category,
     acquisition_cost,
     capitalized_transportation,
@@ -166,7 +165,6 @@ SELECT
     k.dealership_key,
     k.vehicle_key,
     k.gl_account_key,
-    k.acquisition_date_key,
     k.control_account_category,
     k.acquisition_cost,
     k.capitalized_transportation,
@@ -181,7 +179,6 @@ SELECT
 FROM merged AS k
 ON CONFLICT (accounting_date_key, dealership_key, vehicle_key) DO UPDATE
 SET gl_account_key             = EXCLUDED.gl_account_key,
-    acquisition_date_key       = EXCLUDED.acquisition_date_key,
     control_account_category   = EXCLUDED.control_account_category,
     acquisition_cost           = EXCLUDED.acquisition_cost,
     capitalized_transportation = EXCLUDED.capitalized_transportation,
@@ -195,7 +192,6 @@ SET gl_account_key             = EXCLUDED.gl_account_key,
     source_system              = EXCLUDED.source_system
 WHERE (
     f.gl_account_key,
-    f.acquisition_date_key,
     f.control_account_category,
     f.acquisition_cost,
     f.capitalized_transportation,
@@ -209,7 +205,6 @@ WHERE (
     f.source_system
 ) IS DISTINCT FROM (
     EXCLUDED.gl_account_key,
-    EXCLUDED.acquisition_date_key,
     EXCLUDED.control_account_category,
     EXCLUDED.acquisition_cost,
     EXCLUDED.capitalized_transportation,

@@ -279,7 +279,7 @@ COMMENT ON COLUMN staging.stg_inventory_accounting.vehicle_id IS 'The carried un
 COMMENT ON COLUMN staging.stg_inventory_accounting.accounting_date IS 'Month-end the position is stated as at. Part of the declared grain.';
 COMMENT ON COLUMN staging.stg_inventory_accounting.acquisition_date IS 'Date the store took the unit into stock. With accounting_date this is the only supportable posting-lag pair in the model.';
 COMMENT ON COLUMN staging.stg_inventory_accounting.control_account_category IS 'New, Used or Certified Vehicle Inventory. One unit resolves to exactly one.';
-COMMENT ON COLUMN staging.stg_inventory_accounting.acquisition_cost IS 'What the store paid. The acquisition event's own figure, to the cent.';
+COMMENT ON COLUMN staging.stg_inventory_accounting.acquisition_cost IS 'What the store paid. The acquisition event''s own figure, to the cent.';
 COMMENT ON COLUMN staging.stg_inventory_accounting.capitalized_transportation IS 'Inbound freight capitalized into the unit. Zero where the unit was driven in.';
 COMMENT ON COLUMN staging.stg_inventory_accounting.capitalized_reconditioning IS 'Reconditioning capitalized into the unit.';
 COMMENT ON COLUMN staging.stg_inventory_accounting.capitalized_accessories IS 'Accessories fitted and capitalized.';

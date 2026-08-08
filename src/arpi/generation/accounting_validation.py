@@ -45,7 +45,7 @@ from arpi.constants import (
 )
 from arpi.generation.base import GeneratedDataset
 from arpi.generation.gl_control import (
-    ENTITY_GL_ACCOUNT,
+    ENTITY_DIM_GL_ACCOUNT,
     ENTITY_GL_CONTROL_BALANCE,
     GL_ACCOUNT_COLUMNS,
     GL_BALANCE_COLUMNS,
@@ -674,7 +674,7 @@ NON_CONTROL_ACCOUNT_FRAGMENTS: Final[tuple[str, ...]] = (
 
 def _gla_unique(frame: pd.DataFrame, column: str, check_id: str, name: str) -> CheckResult:
     """A uniqueness check over one catalogue column."""
-    base = _result(check_id, name, ENTITY_GL_ACCOUNT, frame, CHECK_CATEGORY_UNIQUENESS)
+    base = _result(check_id, name, ENTITY_DIM_GL_ACCOUNT, frame, CHECK_CATEGORY_UNIQUENESS)
     duplicated = int(frame.duplicated(subset=[column]).sum())
     if duplicated == 0:
         return base
@@ -685,7 +685,7 @@ def _gla_vocabulary(
     frame: pd.DataFrame, column: str, allowed: Sequence[str], check_id: str, name: str
 ) -> CheckResult:
     """A closed-vocabulary check over one catalogue column."""
-    base = _result(check_id, name, ENTITY_GL_ACCOUNT, frame, CHECK_CATEGORY_BUSINESS_RULE)
+    base = _result(check_id, name, ENTITY_DIM_GL_ACCOUNT, frame, CHECK_CATEGORY_BUSINESS_RULE)
     offenders = int((~frame[column].isin(list(allowed))).sum())
     if offenders == 0:
         return base
@@ -702,7 +702,7 @@ def _gla_control_flag(frame: pd.DataFrame) -> CheckResult:
     base = _result(
         CHECK_GLA_CONTROL_FLAG_CONSISTENT,
         "inventory control flag agrees with the account category",
-        ENTITY_GL_ACCOUNT,
+        ENTITY_DIM_GL_ACCOUNT,
         frame,
         CHECK_CATEGORY_BUSINESS_RULE,
     )
@@ -724,7 +724,7 @@ def _gla_active_dates(frame: pd.DataFrame) -> CheckResult:
     base = _result(
         CHECK_GLA_ACTIVE_DATES_ORDERED,
         "account active window is ordered",
-        ENTITY_GL_ACCOUNT,
+        ENTITY_DIM_GL_ACCOUNT,
         frame,
         CHECK_CATEGORY_BUSINESS_RULE,
     )
@@ -745,7 +745,7 @@ def _gla_focused(frame: pd.DataFrame) -> CheckResult:
     base = _result(
         CHECK_GLA_CATALOGUE_IS_FOCUSED,
         "the catalogue contains only inventory control accounts",
-        ENTITY_GL_ACCOUNT,
+        ENTITY_DIM_GL_ACCOUNT,
         frame,
         CHECK_CATEGORY_BUSINESS_RULE,
     )
@@ -778,7 +778,7 @@ def validate_gl_account_dataset(dataset: GeneratedDataset) -> ValidationReport:
     schema = _result(
         CHECK_GLA_SCHEMA_MATCHES,
         "gl account matches its declared column contract",
-        ENTITY_GL_ACCOUNT,
+        ENTITY_DIM_GL_ACCOUNT,
         frame,
         CHECK_CATEGORY_STRUCTURAL,
     )
@@ -828,7 +828,7 @@ def validate_gl_account_dataset(dataset: GeneratedDataset) -> ValidationReport:
             _gla_active_dates(frame),
             _gla_focused(frame),
             _source_system_check(
-                frame, ENTITY_GL_ACCOUNT, CHECK_GLA_SOURCE_SYSTEM, GL_SOURCE_SYSTEM
+                frame, ENTITY_DIM_GL_ACCOUNT, CHECK_GLA_SOURCE_SYSTEM, GL_SOURCE_SYSTEM
             ),
         )
     )
@@ -1008,7 +1008,7 @@ def _gla(check_id: str, name: str, category: str, description: str) -> CheckDefi
         category=category,
         severity=CheckSeverity.CRITICAL,
         layer=CheckLayer.PYTHON,
-        entity=ENTITY_GL_ACCOUNT,
+        entity=ENTITY_DIM_GL_ACCOUNT,
         description=description,
         applies_to=("warehouse.dim_gl_account",),
     )

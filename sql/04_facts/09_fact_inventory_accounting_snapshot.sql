@@ -76,6 +76,27 @@
 -- exactly as fact_vehicle_inventory_snapshot bounds it, because that is the population
 -- rather than a classification.
 --
+-- THERE IS NO acquisition_date_key, AND THAT IS AN AS-BUILT DECISION
+-- ------------------------------------------------------------------
+-- KPI-ACC-011 is a posting lag, so an acquisition date key looks like the obvious column
+-- to carry. It is not, and the reason is worth recording rather than discovering twice.
+--
+-- warehouse.dim_date spans the governed 184-day reporting window. Roughly 28% of units
+-- were taken into stock during the warm-up period BEFORE that window opens, because
+-- inventory has to exist on the first reporting day for the first month-end schedule to
+-- mean anything. A NOT NULL acquisition_date_key with a foreign key into dim_date would
+-- therefore reject about a quarter of the schedule -- 360 legitimate lines whose carrying
+-- amount belongs in the control balance -- and the only alternatives would be to widen a
+-- calendar baseline that was measured against a specific run, or to make the key nullable
+-- and hand every consumer a NULL that means "before the calendar" rather than "unknown".
+--
+-- None of that is necessary, because days_in_stock IS accounting_date - acquisition_date.
+-- The posting lag is that number on a unit's FIRST schedule appearance, so the measure is
+-- computable exactly as specified with no second date key at all. The acquisition date is
+-- still carried and validated in raw and staging, where DQ-IAS-016 proves days_in_stock is
+-- the derivation it claims to be; the warehouse carries the derived duration, which is the
+-- same convention warehouse.fact_vehicle_inventory_snapshot already follows.
+--
 -- MEASURE ADDITIVITY
 --   Additive at one accounting date, across vehicles / stores / categories:
 --     acquisition_cost, capitalized_*, other_capitalized_costs, write_down_amount,
@@ -94,7 +115,6 @@ CREATE TABLE IF NOT EXISTS warehouse.fact_inventory_accounting_snapshot (
     dealership_key              integer        NOT NULL,
     vehicle_key                 integer        NOT NULL,
     gl_account_key              integer        NOT NULL,
-    acquisition_date_key        integer        NOT NULL,
     control_account_category    varchar(40)    NOT NULL,
     acquisition_cost            numeric(14,2)  NOT NULL,
     capitalized_transportation  numeric(14,2)  NOT NULL,
@@ -152,12 +172,11 @@ CREATE TABLE IF NOT EXISTS warehouse.fact_inventory_accounting_snapshot (
         CHECK (current_book_value >= 0),
     CONSTRAINT ck_fact_inventory_accounting_floorplan_nonnegative
         CHECK (floorplan_principal >= 0),
+    -- A unit cannot be booked before it entered stock. days_in_stock IS the elapsed days
+    -- between acquisition and the accounting date, so this is also what stops KPI-ACC-011's
+    -- posting lag from going negative.
     CONSTRAINT ck_fact_inventory_accounting_days_in_stock_nonnegative
-        CHECK (days_in_stock >= 0),
-    -- A unit cannot be booked before it entered stock. Guards the posting lag from
-    -- becoming negative, which would make KPI-ACC-011 meaningless.
-    CONSTRAINT ck_fact_inventory_accounting_acquired_before_booked
-        CHECK (acquisition_date_key <= accounting_date_key)
+        CHECK (days_in_stock >= 0)
 );
 
 -- Foreign keys, added guarded so the file is safe to rerun.
@@ -170,16 +189,6 @@ BEGIN
         ALTER TABLE warehouse.fact_inventory_accounting_snapshot
             ADD CONSTRAINT fk_fact_inventory_accounting_date
             FOREIGN KEY (accounting_date_key)
-            REFERENCES warehouse.dim_date (date_key) ON DELETE RESTRICT;
-    END IF;
-
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_constraint
-        WHERE conname = 'fk_fact_inventory_accounting_acquisition_date'
-    ) THEN
-        ALTER TABLE warehouse.fact_inventory_accounting_snapshot
-            ADD CONSTRAINT fk_fact_inventory_accounting_acquisition_date
-            FOREIGN KEY (acquisition_date_key)
             REFERENCES warehouse.dim_date (date_key) ON DELETE RESTRICT;
     END IF;
 
@@ -242,7 +251,6 @@ COMMENT ON COLUMN warehouse.fact_inventory_accounting_snapshot.accounting_date_k
 COMMENT ON COLUMN warehouse.fact_inventory_accounting_snapshot.dealership_key IS 'Store carrying the unit. Part of the declared grain. Resolved as the store stood on the accounting date.';
 COMMENT ON COLUMN warehouse.fact_inventory_accounting_snapshot.vehicle_key IS 'The carried unit. Part of the declared grain. A synthetic vehicle; ARPI models no dealership stock number and this column is not one.';
 COMMENT ON COLUMN warehouse.fact_inventory_accounting_snapshot.gl_account_key IS 'The inventory control account this unit is scheduled to, resolved from control_account_category. One unit resolves to exactly one control account and can never appear in two control balances.';
-COMMENT ON COLUMN warehouse.fact_inventory_accounting_snapshot.acquisition_date_key IS 'Date the store took the unit into stock. With accounting_date_key this is the only supportable posting-lag pair in the model (KPI-ACC-011); the F&I domain has no separate posting date, so no F&I posting lag exists to compute.';
 COMMENT ON COLUMN warehouse.fact_inventory_accounting_snapshot.control_account_category IS 'New, Used or Certified Vehicle Inventory, derived from the vehicle condition and knowable ON the accounting date. Wholesale Inventory is deliberately NOT a category: nothing distinguishes a unit held for wholesale at a snapshot date except how it eventually left, and classifying inventory by its eventual disposal is future-outcome leakage.';
 COMMENT ON COLUMN warehouse.fact_inventory_accounting_snapshot.acquisition_cost IS 'What the store paid. The acquisition event''s own figure, to the cent -- the accounting schedule does not invent a second acquisition cost.';
 COMMENT ON COLUMN warehouse.fact_inventory_accounting_snapshot.capitalized_transportation IS 'Inbound freight capitalized into the unit. 0.00 where the unit was driven in (customer trade, off-street purchase, lease return); a modelled zero, not an absence.';

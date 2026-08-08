@@ -67,10 +67,11 @@
 --
 -- POSTING LAG, AND WHAT IT HONESTLY MEASURES
 -- -------------------------------------------
--- posting_lag_days is accounting_date - acquisition_date: the elapsed days between a unit
--- entering stock and the schedule date on which it is being reported. KPI-ACC-011 is the
--- MEAN of this over units on their FIRST schedule appearance, which
--- is_first_accounting_appearance marks.
+-- posting_lag_days is the elapsed days between a unit entering stock and the schedule date
+-- on which it is being reported. It is days_in_stock under a second name, because that IS
+-- accounting_date - acquisition_date and the acquisition date is deliberately not keyed on
+-- the fact -- the fact's header records why. KPI-ACC-011 is the MEAN of this over units on
+-- their FIRST schedule appearance, which is_first_accounting_appearance marks.
 --
 -- It is NOT a measure of how long a clerk took to post a journal entry. ARPI holds no
 -- separate posting timestamp, and manufacturing one would invent an operational fact the
@@ -134,9 +135,12 @@ SELECT
 
     -- Age and posting lag ----------------------------------------------------
     f.days_in_stock                                  AS days_in_stock,
-    f.acquisition_date_key                           AS acquisition_date_key,
-    acq.full_date                                    AS acquisition_date,
-    (d.full_date - acq.full_date)                    AS posting_lag_days,
+    -- The SAME number as days_in_stock, published under the name KPI-ACC-011 uses. It is
+    -- aliased rather than recomputed because there is no second date to compute it from:
+    -- days_in_stock IS accounting_date - acquisition_date, and the acquisition date is
+    -- deliberately not keyed on the fact (see its header). Naming it twice is honest --
+    -- a consumer looking for a posting lag finds one, and it is visibly the same column.
+    f.days_in_stock                                  AS posting_lag_days,
     (f.accounting_date_key = min(f.accounting_date_key) OVER (PARTITION BY f.vehicle_key))
                                                      AS is_first_accounting_appearance,
 
@@ -147,8 +151,6 @@ SELECT
 FROM warehouse.fact_inventory_accounting_snapshot AS f
 JOIN warehouse.dim_date AS d
   ON d.date_key = f.accounting_date_key
-JOIN warehouse.dim_date AS acq
-  ON acq.date_key = f.acquisition_date_key
 JOIN warehouse.dim_dealership AS store
   ON store.dealership_key = f.dealership_key
 JOIN warehouse.dim_vehicle AS veh
@@ -166,7 +168,9 @@ capitalized_transportation + capitalized_reconditioning + capitalized_accessorie
 can be COMPARED rather than asserted. PACK IS NOT A BOOK COMPONENT and appears nowhere here.
 floorplan_principal is a LIABILITY carried as context and is never added to, subtracted from or netted
 against any book figure; 0.00 is a legitimate unfloored unit, not a missing value. posting_lag_days is
-accounting_date - acquisition_date and is NOT a journal posting delay -- ARPI holds no posting timestamp.
+days_in_stock under the name KPI-ACC-011 uses, aliased rather than recomputed because that column IS
+accounting date less acquisition date and the acquisition date is deliberately not keyed on the fact. It is
+NOT a journal posting delay: ARPI holds no posting timestamp.
 SEMI-ADDITIVE: additive across units, stores and accounts at ONE date, never summed across dates. Owns
 KPI-ACC-001 (subledger balance) and KPI-ACC-011 (posting lag). No browser dataset is exported from this
 view. All values synthetic; no personal data. Promoted by DASH.8.';
@@ -198,9 +202,7 @@ COMMENT ON COLUMN reporting.vw_inventory_accounting.is_written_down IS 'Whether 
 COMMENT ON COLUMN reporting.vw_inventory_accounting.floorplan_principal IS 'Floorplan principal outstanding against the unit. A LIABILITY, carried as context on an asset schedule. NEVER added to, subtracted from or netted against book value, and there is deliberately no net-inventory-position column anywhere in ARPI. 0.00 means genuinely unfloored, not missing.';
 COMMENT ON COLUMN reporting.vw_inventory_accounting.is_floorplanned IS 'Whether floorplan principal is outstanding. Distinguishes an unfloored unit from a zero that a reader might otherwise mistake for missing data.';
 COMMENT ON COLUMN reporting.vw_inventory_accounting.days_in_stock IS 'Days the unit has been in stock at the accounting date. Drives the write-down rule.';
-COMMENT ON COLUMN reporting.vw_inventory_accounting.acquisition_date_key IS 'Date the unit entered stock. Constrained on the fact to be no later than the accounting date.';
-COMMENT ON COLUMN reporting.vw_inventory_accounting.acquisition_date IS 'Date the unit entered stock, as a calendar date.';
-COMMENT ON COLUMN reporting.vw_inventory_accounting.posting_lag_days IS 'accounting_date - acquisition_date. NOT a journal posting delay: ARPI holds no posting timestamp and inventing one would manufacture an operational fact the synthetic data does not contain. KPI-ACC-011 is the mean of this over first appearances only.';
+COMMENT ON COLUMN reporting.vw_inventory_accounting.posting_lag_days IS 'accounting_date - acquisition_date, which is exactly days_in_stock -- the same column under the name KPI-ACC-011 uses, aliased rather than recomputed because the acquisition date is deliberately not keyed on the fact. NOT a journal posting delay: ARPI holds no posting timestamp and inventing one would manufacture an operational fact the synthetic data does not contain. KPI-ACC-011 is the mean of this over first appearances only.';
 COMMENT ON COLUMN reporting.vw_inventory_accounting.is_first_accounting_appearance IS 'Whether this is the earliest accounting date on which the unit appears. KPI-ACC-011''s population: averaging posting lag over every appearance would grow the mean purely because a unit stayed in stock.';
 COMMENT ON COLUMN reporting.vw_inventory_accounting.stock_unit_count IS 'Constant 1, published so a consumer sums a column rather than counting rows. Additive at one date.';
 COMMENT ON COLUMN reporting.vw_inventory_accounting.source_system IS 'Originating system; constant SYNTHETIC-DMS-ACC.';

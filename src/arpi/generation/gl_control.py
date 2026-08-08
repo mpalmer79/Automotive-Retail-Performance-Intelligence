@@ -71,7 +71,7 @@ from arpi.generation.inventory_accounting import (
 
 LOGGER: Final = logging.getLogger(__name__)
 
-ENTITY_GL_ACCOUNT: Final = "gl_account"
+ENTITY_DIM_GL_ACCOUNT: Final = "dim_gl_account"
 ENTITY_GL_CONTROL_BALANCE: Final = "gl_control_balance"
 GL_ACCOUNT_NAMESPACE: Final = "gl_account"
 GL_BALANCE_NAMESPACE: Final = "gl_control_balance"
@@ -272,7 +272,7 @@ def build_gl_account_rows(config: ArpiConfig) -> tuple[dict[str, Any], ...]:
 class GlAccountGenerator(BaseGenerator):
     """Build the selected synthetic GL control-account catalogue."""
 
-    entity_name = ENTITY_GL_ACCOUNT
+    entity_name = ENTITY_DIM_GL_ACCOUNT
     declared_columns = GL_ACCOUNT_COLUMNS
     namespace = GL_ACCOUNT_NAMESPACE
 
@@ -412,7 +412,7 @@ def generate_gl_control_balance_dataset(config: ArpiConfig) -> GeneratedDataset:
 
 __all__ = [
     "CATEGORY_TO_ACCOUNT_ID",
-    "ENTITY_GL_ACCOUNT",
+    "ENTITY_DIM_GL_ACCOUNT",
     "ENTITY_GL_CONTROL_BALANCE",
     "GL_ACCOUNT_COLUMNS",
     "GL_ACCOUNT_DEFINITIONS",

@@ -94,7 +94,7 @@ from arpi.generation.finance_product_sale import (
     validate_finance_product_sale_dataset,
 )
 from arpi.generation.gl_control import (
-    ENTITY_GL_ACCOUNT,
+    ENTITY_DIM_GL_ACCOUNT,
     ENTITY_GL_CONTROL_BALANCE,
     generate_gl_account_dataset,
     generate_gl_control_balance_dataset,
@@ -212,7 +212,7 @@ GENERATION_ORDER: tuple[str, ...] = (
     # is built from the acquisition population, and the control balances are built from
     # the schedule, so a balance can never precede the thing it is meant to control.
     ENTITY_INVENTORY_ACCOUNTING_SNAPSHOT,
-    ENTITY_GL_ACCOUNT,
+    ENTITY_DIM_GL_ACCOUNT,
     ENTITY_GL_CONTROL_BALANCE,
 )
 
@@ -477,9 +477,9 @@ def validate_all_datasets(
         validate_inventory_accounting_dataset(
             by_entity[ENTITY_INVENTORY_ACCOUNTING_SNAPSHOT], config
         ),
-        validate_gl_account_dataset(by_entity[ENTITY_GL_ACCOUNT]),
+        validate_gl_account_dataset(by_entity[ENTITY_DIM_GL_ACCOUNT]),
         validate_gl_control_balance_dataset(
-            by_entity[ENTITY_GL_CONTROL_BALANCE], config, by_entity[ENTITY_GL_ACCOUNT]
+            by_entity[ENTITY_GL_CONTROL_BALANCE], config, by_entity[ENTITY_DIM_GL_ACCOUNT]
         ),
         validate_generation(datasets, config),
     )
