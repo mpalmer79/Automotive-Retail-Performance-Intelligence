@@ -70,13 +70,7 @@ export type DashboardRow = Readonly<Record<string, DashboardCell>>
  * validation failure instead of an unchecked passthrough.
  */
 export type DashboardColumnType =
-  | 'currency'
-  | 'exact'
-  | 'double'
-  | 'integer'
-  | 'date'
-  | 'string'
-  | 'boolean'
+  'currency' | 'exact' | 'double' | 'integer' | 'date' | 'string' | 'boolean'
 
 /** The only privacy classification eligible for public export. */
 export type DashboardPrivacyClass = 'non-personal'
