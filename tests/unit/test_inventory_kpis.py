@@ -212,8 +212,13 @@ def test_the_dashboard_program_views_are_not_part_of_the_mvp_reporting_surface()
     assert set(INVENTORY_LISTING_VIEWS) & set(DASHBOARD_PROGRAM_VIEWS) == set()
     # Five through DASH.5; DASH.6 added the four F&I views, which are
     # database-and-reporting only -- no browser dataset and no console route, because
-    # DASH.7 owns the F&I surface.
-    assert len(DASHBOARD_PROGRAM_VIEWS) == 9
+    # DASH.7 owns the F&I surface. DASH.9 added vw_inventory_units, which unlike those
+    # four IS read by a console route: it is the unit-grain surface /dashboard/inventory
+    # drills into. It shares its grain with the MVP view vw_inventory_snapshots and still
+    # belongs here rather than in that baseline, because the MVP view publishes surrogate
+    # keys for the semantic model and this one publishes business identifiers for the
+    # browser.
+    assert len(DASHBOARD_PROGRAM_VIEWS) == 10
     # DASH.8's three accounting views are a FOURTH lane, not part of this one. They add no
     # browser dataset and no console route at all, so folding them into the dashboard
     # program's register would misdescribe both.
@@ -228,7 +233,7 @@ def test_the_full_reporting_surface_is_the_union_of_the_four() -> None:
         | set(DASHBOARD_PROGRAM_VIEWS)
         | set(ACCOUNTING_REPORTING_VIEWS)
     )
-    assert len(REPORTING_VIEWS) == 46
+    assert len(REPORTING_VIEWS) == 47
     assert list(REPORTING_VIEWS) == sorted(REPORTING_VIEWS)
 
 
