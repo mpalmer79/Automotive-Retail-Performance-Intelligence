@@ -19,7 +19,7 @@
 | **Merge script** | `sql/03_dimensions/25_dim_gl_account_merge.sql` |
 | **Upstream objects** | None — the catalogue is a governed constant of the synthetic model |
 | **Downstream objects** | `warehouse.fact_inventory_accounting_snapshot` (STM-022), `warehouse.fact_gl_control_balance` (STM-024), `reporting.vw_inventory_accounting`, `reporting.vw_inventory_gl_reconciliation` |
-| **SCD policy** | **Type 1** ([ADR-0006](../architecture-decisions/ADR-0006-scd-strategy.md)) |
+| **SCD policy** | **Type 1** ([ADR-0006](../architecture-decisions/ADR-0006-scd-type-selection-phase-1.md)) |
 | **Authorizing decision** | [ADR-0013 §Decision](../architecture-decisions/ADR-0013-governed-web-operating-console.md) and [DASHBOARD_PROGRAM.md](../requirements/DASHBOARD_PROGRAM.md). Gate 4 evidence: [STAKEHOLDER_QUESTIONS.md `SQ-43`](../requirements/STAKEHOLDER_QUESTIONS.md). |
 
 ---
