@@ -164,9 +164,12 @@ test.describe('the money is shown in the formula order, and recomputed', () => {
     // the reason the coverage terms above are safe to publish, so the sweep reads what is
     // left after removing it rather than forbidding the disclosure that protects the page.
     expect(text).toMatch(/COVERAGE term and is never a loan term/i)
-    expect(text.replace(/A product contract term is the COVERAGE term and is never a loan term\./g, ' ')).not.toMatch(
-      /\bloan term\b/i
-    )
+    expect(
+      text.replace(
+        /A product contract term is the COVERAGE term and is never a loan term\./g,
+        ' '
+      )
+    ).not.toMatch(/\bloan term\b/i)
   })
 })
 

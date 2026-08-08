@@ -768,7 +768,10 @@ describe('period comparison', () => {
       )
       compared += 1
     }
-    expect(compared, 'no category formed a comparison, so nothing was checked').toBeGreaterThan(0)
+    expect(
+      compared,
+      'no category formed a comparison, so nothing was checked'
+    ).toBeGreaterThan(0)
   })
 
   it('renders that difference in percentage points, not in percent', () => {

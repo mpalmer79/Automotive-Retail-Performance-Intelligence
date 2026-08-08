@@ -668,19 +668,19 @@ evidence that the filter reaches the server.
 
 **Data lane.**
 
-| Artifact                                              |      Bytes |
-| ----------------------------------------------------- | ---------: |
-| Root export, `fi-summary.json`                        |    267,204 |
-| Root export, `fi-product-penetration.json`            |  2,170,439 |
-| Root export, `fi-adjustment-summary.json`             |     32,858 |
-| Root export, `deal-product-detail.json`               |    885,282 |
-| Generated, `datasets/fi-summary.json`                 |     79,488 |
-| Generated, `datasets/fi-adjustment-summary.json`      |     14,860 |
-| Generated, `datasets/fi-product-penetration/` (18)    |    758,976 |
-| Generated, `datasets/deal-product-detail/` (18)       |    363,079 |
-| Largest single generated partition                    |     57,674 |
-| Root export tree, all 27 files                        | 13,608,954 |
-| Generated tree, all 180 files                         |  4,605,990 |
+| Artifact                                           |      Bytes |
+| -------------------------------------------------- | ---------: |
+| Root export, `fi-summary.json`                     |    267,204 |
+| Root export, `fi-product-penetration.json`         |  2,170,439 |
+| Root export, `fi-adjustment-summary.json`          |     32,858 |
+| Root export, `deal-product-detail.json`            |    885,282 |
+| Generated, `datasets/fi-summary.json`              |     79,488 |
+| Generated, `datasets/fi-adjustment-summary.json`   |     14,860 |
+| Generated, `datasets/fi-product-penetration/` (18) |    758,976 |
+| Generated, `datasets/deal-product-detail/` (18)    |    363,079 |
+| Largest single generated partition                 |     57,674 |
+| Root export tree, all 27 files                     | 13,608,954 |
+| Generated tree, all 180 files                      |  4,605,990 |
 
 **Chunking was decided from these numbers, not from the local convention.**
 `fi-product-penetration` at 2.17 MB in the root export is the second-largest dataset in
@@ -710,7 +710,6 @@ integrity checks and four lender fields. The jacket partition itself grew from 4
 34,439 to 44,190 bytes, still well inside the 256 KB ceiling.
 
 ## 10. What has not been measured
-
 
 Stated rather than implied.
 

@@ -46,7 +46,10 @@ function affirmativeSentences(text: string, pattern: RegExp): string[] {
   return text
     .split(/(?<=[.!?])\s+|(?=[A-Z][a-z]+ (?:is|are) no\b)/)
     .filter((sentence) => pattern.test(sentence))
-    .filter((sentence) => !/\b(no|not|never|none|nothing|nobody|cannot|neither)\b/i.test(sentence))
+    .filter(
+      (sentence) =>
+        !/\b(no|not|never|none|nothing|nobody|cannot|neither)\b/i.test(sentence)
+    )
 }
 
 test.describe('the route exists and is the F&I destination', () => {
@@ -143,7 +146,9 @@ test.describe('the page says what it is before it says anything else', () => {
     expect(disclosureTop).toBeLessThan(production)
   })
 
-  test('states that every lender, product and provider is fictional', async ({ page }) => {
+  test('states that every lender, product and provider is fictional', async ({
+    page,
+  }) => {
     await gotoRendered(page, ROUTE)
     const text = await mainTextContent(page)
     expect(text).toMatch(/fictional/i)
@@ -240,9 +245,7 @@ test.describe('what the page must never say', () => {
     await gotoRendered(page, ROUTE)
     // Buttons that submit the filter form are legitimate. A button that claims to
     // change a deal, coach a manager or set a target is not.
-    const labels = await page
-      .locator('main button, main [role="button"]')
-      .allInnerTexts()
+    const labels = await page.locator('main button, main [role="button"]').allInnerTexts()
     for (const label of labels) {
       expect(label.toLowerCase()).not.toMatch(
         /coach|assign|approve|decline|set target|adjust|recalculate|send/
@@ -306,7 +309,9 @@ test.describe('the numbers on the page are the numbers in the export', () => {
     expect(text).toMatch(/Eligible population/i)
   })
 
-  test('states the eligibility rule each category was measured under', async ({ page }) => {
+  test('states the eligibility rule each category was measured under', async ({
+    page,
+  }) => {
     await gotoRendered(page, ROUTE)
     const text = await page.locator('#penetration').innerText()
     expect(text).toMatch(/ELIG-[A-Z]+/)
@@ -322,7 +327,9 @@ test.describe('the numbers on the page are the numbers in the export', () => {
     expect(text).toMatch(/is an August event here/i)
   })
 
-  test('shows the back-gross identity and states that it reconciled', async ({ page }) => {
+  test('shows the back-gross identity and states that it reconciled', async ({
+    page,
+  }) => {
     await gotoRendered(page, ROUTE)
     const text = (await page.locator('#composition').innerText()).replace(/\s+/g, ' ')
     expect(text).toMatch(/reserve/i)
@@ -354,13 +361,14 @@ test.describe('accessibility of the page structure', () => {
 
   test('gives every table an accessible name', async ({ page }) => {
     await gotoRendered(page, ROUTE)
-    const unnamed = await page.evaluate(() =>
-      Array.from(document.querySelectorAll('main table')).filter(
-        (table) =>
-          table.querySelector('caption') === null &&
-          table.getAttribute('aria-label') === null &&
-          table.getAttribute('aria-labelledby') === null
-      ).length
+    const unnamed = await page.evaluate(
+      () =>
+        Array.from(document.querySelectorAll('main table')).filter(
+          (table) =>
+            table.querySelector('caption') === null &&
+            table.getAttribute('aria-label') === null &&
+            table.getAttribute('aria-labelledby') === null
+        ).length
     )
     expect(unnamed).toBe(0)
   })
