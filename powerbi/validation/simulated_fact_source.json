@@ -1,0 +1,102 @@
+{
+  "schema": "arpi.simulated_fact_source/1",
+  "validation_kind": "SIMULATED SEMANTIC-MODEL VALIDATION",
+  "is_real_engine_result": false,
+  "purpose": "A tiny hand-built fact source for the simulated semantic-model validation. It is NOT dealership data, NOT the development-profile database, and NOT the SQL baseline. Every number here was chosen to make one behaviour of the model checkable by hand: a zero denominator, a null-bearing wholesale row, a show date in a different month from the scheduled date, two snapshot dates so that a semi-additive measure has something to be wrong about.",
+  "not_evidence_of": [
+    "Power BI validation",
+    "Power BI Desktop validation",
+    "Microsoft Fabric validation",
+    "Gate 2"
+  ],
+  "conventions": {
+    "sparse_rows": "A row declares only the columns the simulation reads. Every other column of the table is absent, which the engine reads as BLANK. Declared columns are checked against the committed TMDL, so a renamed column fails the run rather than being silently ignored.",
+    "aged_threshold_days": 90,
+    "date_keys": "yyyymmdd integers, matching the model's date keys."
+  },
+  "tables": {
+    "vw_calendar": [
+      {"date_key": 20251101, "calendar_date": "2025-11-01", "year_month_label": "2025-11", "calendar_year": 2025, "month_number": 11},
+      {"date_key": 20251115, "calendar_date": "2025-11-15", "year_month_label": "2025-11", "calendar_year": 2025, "month_number": 11},
+      {"date_key": 20251130, "calendar_date": "2025-11-30", "year_month_label": "2025-11", "calendar_year": 2025, "month_number": 11},
+      {"date_key": 20251201, "calendar_date": "2025-12-01", "year_month_label": "2025-12", "calendar_year": 2025, "month_number": 12},
+      {"date_key": 20251215, "calendar_date": "2025-12-15", "year_month_label": "2025-12", "calendar_year": 2025, "month_number": 12},
+      {"date_key": 20251231, "calendar_date": "2025-12-31", "year_month_label": "2025-12", "calendar_year": 2025, "month_number": 12}
+    ],
+    "vw_dealership": [
+      {"dealership_key": 1, "dealership_code": "GSA-001", "store_name": "Simulated Store One"},
+      {"dealership_key": 2, "dealership_code": "GSA-002", "store_name": "Simulated Store Two"},
+      {"dealership_key": 3, "dealership_code": "GSA-003", "store_name": "Simulated Store Three"}
+    ],
+    "vw_vehicle_sales": [
+      {"sale_key": 1, "sale_date_key": 20251101, "delivery_date_key": 20251101, "dealership_key": 1, "condition_group": "New", "is_retail": true, "unit_count": 1, "retail_unit_count": 1, "new_unit_count": 1, "used_unit_count": 0, "retail_front_end_gross": 1000, "retail_back_end_gross": 500, "retail_total_gross": 1500, "retail_days_in_inventory": 10, "retail_days_in_inventory_total": 10},
+      {"sale_key": 2, "sale_date_key": 20251115, "delivery_date_key": 20251115, "dealership_key": 1, "condition_group": "Used", "is_retail": true, "unit_count": 1, "retail_unit_count": 1, "new_unit_count": 0, "used_unit_count": 1, "retail_front_end_gross": 2000, "retail_back_end_gross": 800, "retail_total_gross": 2800, "retail_days_in_inventory": 40, "retail_days_in_inventory_total": 40},
+      {"sale_key": 3, "sale_date_key": 20251201, "delivery_date_key": 20251201, "dealership_key": 1, "condition_group": "New", "is_retail": true, "unit_count": 1, "retail_unit_count": 1, "new_unit_count": 1, "used_unit_count": 0, "retail_front_end_gross": 1500, "retail_back_end_gross": 500, "retail_total_gross": 2000, "retail_days_in_inventory": 20, "retail_days_in_inventory_total": 20},
+      {"sale_key": 4, "sale_date_key": 20251215, "delivery_date_key": 20251215, "dealership_key": 2, "condition_group": "Used", "is_retail": true, "unit_count": 1, "retail_unit_count": 1, "new_unit_count": 0, "used_unit_count": 1, "retail_front_end_gross": 500, "retail_back_end_gross": 100, "retail_total_gross": 600, "retail_days_in_inventory": 60, "retail_days_in_inventory_total": 60},
+      {"sale_key": 5, "sale_date_key": 20251231, "delivery_date_key": 20251231, "dealership_key": 2, "condition_group": "New", "is_retail": true, "unit_count": 1, "retail_unit_count": 1, "new_unit_count": 1, "used_unit_count": 0, "retail_front_end_gross": 2500, "retail_back_end_gross": 900, "retail_total_gross": 3400, "retail_days_in_inventory": 30, "retail_days_in_inventory_total": 30},
+      {"sale_key": 6, "sale_date_key": 20251215, "delivery_date_key": 20251215, "dealership_key": 3, "condition_group": "Used", "is_retail": true, "unit_count": 1, "retail_unit_count": 1, "new_unit_count": 0, "used_unit_count": 1, "retail_front_end_gross": 0, "retail_back_end_gross": 0, "retail_total_gross": 0, "retail_days_in_inventory": 80, "retail_days_in_inventory_total": 80},
+      {"sale_key": 7, "sale_date_key": 20251215, "delivery_date_key": 20251215, "dealership_key": 3, "condition_group": "Used", "is_retail": false, "unit_count": 1, "retail_unit_count": 0, "new_unit_count": 0, "used_unit_count": 0}
+    ],
+    "vw_leads": [
+      {"lead_key": 1, "lead_created_date_key": 20251101, "dealership_key": 1, "valid_lead_count": 1, "contacted_lead_count": 1, "appointment_set_lead_count": 1, "sold_lead_count": 0, "duplicate_lead_count": 0, "unresponded_lead_count": 0, "responded_lead_count": 1, "response_seconds_total": 600, "first_response_seconds": 600},
+      {"lead_key": 2, "lead_created_date_key": 20251115, "dealership_key": 1, "valid_lead_count": 1, "contacted_lead_count": 0, "appointment_set_lead_count": 0, "sold_lead_count": 0, "duplicate_lead_count": 0, "unresponded_lead_count": 1, "responded_lead_count": 0, "response_seconds_total": 0},
+      {"lead_key": 3, "lead_created_date_key": 20251201, "dealership_key": 1, "valid_lead_count": 1, "contacted_lead_count": 1, "appointment_set_lead_count": 0, "sold_lead_count": 1, "duplicate_lead_count": 0, "unresponded_lead_count": 0, "responded_lead_count": 1, "response_seconds_total": 1800, "first_response_seconds": 1800},
+      {"lead_key": 4, "lead_created_date_key": 20251215, "dealership_key": 2, "valid_lead_count": 1, "contacted_lead_count": 1, "appointment_set_lead_count": 1, "sold_lead_count": 1, "duplicate_lead_count": 0, "unresponded_lead_count": 0, "responded_lead_count": 1, "response_seconds_total": 300, "first_response_seconds": 300},
+      {"lead_key": 5, "lead_created_date_key": 20251231, "dealership_key": 2, "valid_lead_count": 0, "contacted_lead_count": 0, "appointment_set_lead_count": 0, "sold_lead_count": 0, "duplicate_lead_count": 1, "unresponded_lead_count": 0, "responded_lead_count": 0, "response_seconds_total": 0},
+      {"lead_key": 6, "lead_created_date_key": 20251215, "dealership_key": 3, "valid_lead_count": 1, "contacted_lead_count": 0, "appointment_set_lead_count": 0, "sold_lead_count": 0, "duplicate_lead_count": 0, "unresponded_lead_count": 1, "responded_lead_count": 0, "response_seconds_total": 0}
+    ],
+    "vw_appointments": [
+      {"appointment_key": 1, "scheduled_date_key": 20251115, "show_date_key": 20251115, "created_date_key": 20251101, "dealership_key": 1, "appointment_count": 1, "eligible_appointment_count": 1, "cancelled_in_advance_count": 0, "shown_appointment_count": 1, "shown_and_sold_appointment_count": 1},
+      {"appointment_key": 2, "scheduled_date_key": 20251130, "show_date_key": 20251201, "created_date_key": 20251115, "dealership_key": 1, "appointment_count": 1, "eligible_appointment_count": 1, "cancelled_in_advance_count": 0, "shown_appointment_count": 1, "shown_and_sold_appointment_count": 0},
+      {"appointment_key": 3, "scheduled_date_key": 20251201, "created_date_key": 20251130, "dealership_key": 1, "appointment_count": 1, "eligible_appointment_count": 0, "cancelled_in_advance_count": 1, "shown_appointment_count": 0, "shown_and_sold_appointment_count": 0},
+      {"appointment_key": 4, "scheduled_date_key": 20251215, "show_date_key": 20251215, "created_date_key": 20251201, "dealership_key": 2, "appointment_count": 1, "eligible_appointment_count": 1, "cancelled_in_advance_count": 0, "shown_appointment_count": 0, "shown_and_sold_appointment_count": 0},
+      {"appointment_key": 5, "scheduled_date_key": 20251231, "created_date_key": 20251215, "dealership_key": 3, "appointment_count": 1, "eligible_appointment_count": 1, "cancelled_in_advance_count": 0, "shown_appointment_count": 0, "shown_and_sold_appointment_count": 0}
+    ],
+    "vw_inventory_snapshots": [
+      {"inventory_snapshot_key": 1, "snapshot_date_key": 20251130, "dealership_key": 1, "condition_group": "New", "inventory_unit_count": 1, "inventory_investment": 20000, "days_in_stock": 10, "aged_unit_count": 0, "aged_inventory_investment": 0},
+      {"inventory_snapshot_key": 2, "snapshot_date_key": 20251130, "dealership_key": 1, "condition_group": "Used", "inventory_unit_count": 1, "inventory_investment": 25000, "days_in_stock": 30, "aged_unit_count": 0, "aged_inventory_investment": 0},
+      {"inventory_snapshot_key": 3, "snapshot_date_key": 20251130, "dealership_key": 1, "condition_group": "Used", "inventory_unit_count": 1, "inventory_investment": 30000, "days_in_stock": 100, "aged_unit_count": 1, "aged_inventory_investment": 30000},
+      {"inventory_snapshot_key": 4, "snapshot_date_key": 20251231, "dealership_key": 1, "condition_group": "New", "inventory_unit_count": 1, "inventory_investment": 20000, "days_in_stock": 20, "aged_unit_count": 0, "aged_inventory_investment": 0},
+      {"inventory_snapshot_key": 5, "snapshot_date_key": 20251231, "dealership_key": 1, "condition_group": "New", "inventory_unit_count": 1, "inventory_investment": 25000, "days_in_stock": 45, "aged_unit_count": 0, "aged_inventory_investment": 0},
+      {"inventory_snapshot_key": 6, "snapshot_date_key": 20251231, "dealership_key": 1, "condition_group": "Used", "inventory_unit_count": 1, "inventory_investment": 28000, "days_in_stock": 70, "aged_unit_count": 0, "aged_inventory_investment": 0},
+      {"inventory_snapshot_key": 7, "snapshot_date_key": 20251231, "dealership_key": 1, "condition_group": "Used", "inventory_unit_count": 1, "inventory_investment": 32000, "days_in_stock": 120, "aged_unit_count": 1, "aged_inventory_investment": 32000},
+      {"inventory_snapshot_key": 8, "snapshot_date_key": 20251231, "dealership_key": 2, "condition_group": "New", "inventory_unit_count": 1, "inventory_investment": 18000, "days_in_stock": 15, "aged_unit_count": 0, "aged_inventory_investment": 0},
+      {"inventory_snapshot_key": 9, "snapshot_date_key": 20251231, "dealership_key": 2, "condition_group": "Used", "inventory_unit_count": 1, "inventory_investment": 40000, "days_in_stock": 95, "aged_unit_count": 1, "aged_inventory_investment": 40000}
+    ],
+    "vw_inventory_turn": [
+      {"dealership_key": 1, "month_date_key": 20251101, "condition_group": "New", "annualized_retail_units": 12, "average_daily_active_inventory": 4},
+      {"dealership_key": 1, "month_date_key": 20251201, "condition_group": "Used", "annualized_retail_units": 24, "average_daily_active_inventory": 6}
+    ],
+    "vw_days_supply": [
+      {"dealership_key": 1, "as_of_date_key": 20251130, "condition_group": "New", "active_inventory_units": 10, "average_daily_retail_sales": 0.5},
+      {"dealership_key": 1, "as_of_date_key": 20251231, "condition_group": "New", "active_inventory_units": 12, "average_daily_retail_sales": 0.4},
+      {"dealership_key": 2, "as_of_date_key": 20251231, "condition_group": "Used", "active_inventory_units": 8, "average_daily_retail_sales": 0.2}
+    ],
+    "vw_marketing_performance": [
+      {"dealership_key": 1, "month_date_key": 20251101, "spend_amount": 1000, "attributed_leads": 20, "attributed_retail_units": 2, "attributed_total_gross": 5000},
+      {"dealership_key": 1, "month_date_key": 20251201, "spend_amount": 1500, "attributed_leads": 25, "attributed_retail_units": 3, "attributed_total_gross": 9000},
+      {"dealership_key": 2, "month_date_key": 20251201, "spend_amount": 800, "attributed_leads": 10, "attributed_retail_units": 0, "attributed_total_gross": 0},
+      {"dealership_key": 3, "month_date_key": 20251201, "attributed_leads": 5, "attributed_retail_units": 0, "attributed_total_gross": 0}
+    ],
+    "vw_data_quality_trend": [
+      {"pipeline_run_id": 1, "checks_recorded": 100, "checks_evaluated": 90, "checks_passed": 85, "checks_failed": 5, "checks_skipped": 10}
+    ],
+    "vw_reconciliation_status": [
+      {"reconciliation_result_id": 1, "is_critical": true, "is_passing": true, "absolute_difference": 0},
+      {"reconciliation_result_id": 2, "is_critical": true, "is_passing": false, "absolute_difference": 12.5},
+      {"reconciliation_result_id": 3, "is_critical": false, "is_passing": false, "absolute_difference": 3.0}
+    ],
+    "vw_pipeline_run_summary": [
+      {"pipeline_run_id": 1, "run_status": "succeeded", "completed_at": "2025-12-31T01:00:00", "duration_seconds": 120, "rejected_row_count": 0},
+      {"pipeline_run_id": 2, "run_status": "failed", "completed_at": "2025-12-31T02:00:00", "duration_seconds": 240, "rejected_row_count": 7}
+    ],
+    "vw_customer": [],
+    "vw_employee": [],
+    "vw_vehicle": [],
+    "vw_vehicle_model": [],
+    "vw_lead_source": [],
+    "vw_marketing_campaign": [],
+    "vw_marketing_spend": [],
+    "vw_data_quality_summary": []
+  }
+}

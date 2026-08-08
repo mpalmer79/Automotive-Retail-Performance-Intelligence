@@ -125,7 +125,9 @@ standing next to it:
 
 - the fictional-entity notice for Granite Auto Group,
 - the sanitized-public-reference-data statement,
-- Gate 2 status and the case-study lock,
+- Gate 2 status and the case-study lock — a release audit is one of the five situations in which
+  [ADR-0014](docs/architecture-decisions/ADR-0014-gate-2-external-manual-validation-dependency.md) requires
+  the real-engine status to be stated rather than assumed,
 - the "listings are not sales, gross or turn" boundary,
 - every `SourceLink` provenance path.
 

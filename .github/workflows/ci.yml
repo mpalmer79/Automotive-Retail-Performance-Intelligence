@@ -746,8 +746,33 @@ jobs:
       - name: Real-engine validation evidence (Microsoft Fabric)
         run: python scripts/check_fabric_validation_freshness.py
 
+      # SIMULATED SEMANTIC-MODEL VALIDATION -- a development proxy, and NEVER a
+      # substitute for the two steps above. It parses the TMDL, evaluates every
+      # measure in a Python DAX-subset evaluator across eleven filter contexts,
+      # and compares each result against an independently written implementation
+      # of the same governed SQL definition. It then checks the identities the
+      # measure graph implies against the real governed numbers in
+      # powerbi/validation/sql_baseline.json.
+      #
+      # NO MICROSOFT ENGINE IS LAUNCHED OR CONTACTED. Nothing this step produces
+      # may be described as a Power BI, Desktop or Fabric validation, or as Gate 2
+      # evidence; ADR-0014 records why the layer exists and what it may be called.
+      #
+      # `--check` makes the committed artifact a build input: a model change that
+      # moves a number fails here until the artifact is regenerated and reviewed.
+      - name: Simulated semantic-model validation (ADR-0014)
+        run: python scripts/simulate_semantic_model.py --check
+
+      # The labelling guard for the step above. Fails when a tracked file claims,
+      # on a line naming a simulated artifact, that the model is Power BI, Desktop
+      # or Fabric validated or that Gate 2 has passed -- and fails when the
+      # simulated artifact records an engine state the real evidence files do not.
+      # Denials are always allowed; saying what a thing is not is the point.
+      - name: Simulated validation is labelled as simulated
+        run: python scripts/check_simulation_labels.py
+
       # The gate itself. Either engine passing satisfies it; static validation
-      # alone never does.
+      # alone never does, and neither does the simulation above.
       #
       # `--require-pass` is DELIBERATELY NOT SET YET. Turning it on before any
       # passing real-engine evidence exists would break the branch for a
