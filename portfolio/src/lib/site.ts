@@ -307,6 +307,20 @@ export const ROUTES = {
     indexable: true,
     priority: 0.8,
   },
+  /*
+   * `DASH.7` adds the F&I performance surface. `DASH.6` built the domain in SQL and
+   * exported none of it; this is the route that reads it.
+   */
+  dashboardFi: {
+    href: '/dashboard/fi',
+    navLabel: 'F&I',
+    title: 'F&I performance',
+    description:
+      'Finance reserve against product gross, product penetration on its own eligible denominator, category economics, cancellations and chargebacks on their own posting dates, and a finance-manager comparison with the minimum-sample rule applied. Synthetic data for a fictional dealer group; every lender, product and provider is invented.',
+    inPrimaryNav: false,
+    indexable: true,
+    priority: 0.8,
+  },
   uiLab: {
     href: '/ui-lab',
     navLabel: 'UI lab',
@@ -558,6 +572,18 @@ export const DASHBOARD_NAV: readonly NavItem[] = [
     matchPrefixes: [`${ROUTES.dashboardDeals.href}/`],
     purpose: 'Every finalized transaction behind the numbers',
   },
+  {
+    /*
+     * `DASH.7`. The Deal Jacket is deliberately NOT matched here even though it now
+     * itemizes F&I: a reader who drilled from the Deal Explorer into one transaction
+     * is inside Deals, and marking F&I current would tell them they navigated
+     * somewhere they did not.
+     */
+    href: ROUTES.dashboardFi.href,
+    label: 'F&I',
+    matches: [ROUTES.dashboardFi.href],
+    purpose: 'Reserve against product gross, penetration on eligible denominators',
+  },
 ]
 
 /** A console section that does not exist yet, and the increment that delivers it. */
@@ -581,11 +607,6 @@ export const PLANNED_DASHBOARD_SECTIONS: readonly PlannedDashboardSection[] = [
     label: 'Deal Jacket',
     increment: 'DASH.4',
     purpose: 'One sanitized deal end to end, with its lineage',
-  },
-  {
-    label: 'F&I performance',
-    increment: 'DASH.7',
-    purpose: 'Reserve, product gross and penetration on eligible denominators',
   },
   {
     label: 'Inventory operations',

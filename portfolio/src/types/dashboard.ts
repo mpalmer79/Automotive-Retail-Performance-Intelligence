@@ -70,7 +70,13 @@ export type DashboardRow = Readonly<Record<string, DashboardCell>>
  * validation failure instead of an unchecked passthrough.
  */
 export type DashboardColumnType =
-  'currency' | 'exact' | 'double' | 'integer' | 'date' | 'string' | 'boolean'
+  | 'currency'
+  | 'exact'
+  | 'double'
+  | 'integer'
+  | 'date'
+  | 'string'
+  | 'boolean'
 
 /** The only privacy classification eligible for public export. */
 export type DashboardPrivacyClass = 'non-personal'
@@ -273,8 +279,14 @@ export const DASHBOARD_DATASETS = [
     // at 354 rows and `fi-adjustment-summary` at 57 stay in one file each for the same
     // reason inverted.
     name: 'fi-product-penetration',
-    businessKey: ['dealership_id', 'sale_date', 'finance_manager_code', 'product_category'],
-    dateBasis: 'sale date for the population and the production; as-of for the retained gross',
+    businessKey: [
+      'dealership_id',
+      'sale_date',
+      'finance_manager_code',
+      'product_category',
+    ],
+    dateBasis:
+      'sale date for the population and the production; as-of for the retained gross',
     chunked: true,
   },
   {
@@ -290,7 +302,8 @@ export const DASHBOARD_DATASETS = [
       'product_category',
       'adjustment_type',
     ],
-    dateBasis: "adjustment date -- the event's OWN business date, never the parent sale's",
+    dateBasis:
+      "adjustment date -- the event's OWN business date, never the parent sale's",
     // NOT chunked, and for two reasons. 57 rows and 33 kB is two orders of magnitude
     // inside the ceiling; and its first date column is `adjustment_date`, so partitioning
     // it would key partitions by the ADJUSTMENT month while every other partition in the
