@@ -1,13 +1,13 @@
 {
   "schema": "arpi.dashboard_export/1",
   "contract_version": 1,
-  "contract_sha256": "6f41748f7b98c93f6fe44b3ce28f4740cfcb0a83cd0d050de13df9afe97e2114",
-  "dataset_version": 7,
-  "generated_at": "2026-08-08T12:28:39+00:00",
+  "contract_sha256": "996896902dddae3187c07341c5dc65c7ad732eff9634aab2938befe8703e881d",
+  "dataset_version": 8,
+  "generated_at": "2026-08-08T14:45:58+00:00",
   "as_of_date": "2025-12-31",
   "profile": "development",
   "random_seed": 20250701,
-  "source_commit": "2aad9b41781015aceff504779f3324865debb300",
+  "source_commit": "55c11b806a0b4b913e3197bf8fcef0f85d03c485",
   "exporter_version": "0.1.0",
   "query_normalisation": "arpi.sql_whitespace_canonical/1",
   "reporter_role": "arpi_reporter",
@@ -6374,6 +6374,22 @@
         "display_precision": null,
         "column": "contract_count",
         "total": "1012"
+      },
+      "product_contract_original_gross": {
+        "dataset": "deal-product-detail",
+        "kpi_id": "KPI-FNI-003",
+        "unit": "USD",
+        "display_precision": 2,
+        "column": "original_product_gross",
+        "total": "505828.54"
+      },
+      "product_contract_net_gross_as_of": {
+        "dataset": "deal-product-detail",
+        "kpi_id": "KPI-FNI-004",
+        "unit": "USD",
+        "display_precision": 2,
+        "column": "net_product_gross_as_of",
+        "total": "483696.08"
       },
       "products_per_retail_unit": {
         "dataset": "fi-summary",

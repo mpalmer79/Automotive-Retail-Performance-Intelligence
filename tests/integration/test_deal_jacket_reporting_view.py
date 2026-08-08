@@ -69,7 +69,12 @@ PROHIBITED_JACKET_COLUMNS = (
     "bank_account",
     "card_number",
     "lender",
-    "lender_name",
+    # `lender_name` was on this list through DASH.6 and is deliberately NOT on it now.
+    # DASH.7 publishes it under the allowlist decision recorded in PRIVACY_AND_ETHICS.md
+    # §7.0: it names an invented institution, `DQ-LND-002` closes the name set, and
+    # `tests/unit/test_fi_privacy.py` asserts no committed name collides with a real one.
+    # The surrogate stays prohibited, and so does the bare `lender` spelling -- a column
+    # called `lender` could hold anything, including a decision record.
     "lender_key",
     "apr",
     "interest_rate",
@@ -421,20 +426,76 @@ def test_a_unit_without_an_msrp_has_a_null_msrp_discount_and_not_a_zero(
 # ======================================================================================
 
 
-def test_the_finance_structure_is_exactly_its_documented_derivation(loaded_cursor: Any) -> None:
-    """Lease, then nothing financed, then financed. In that order and no other."""
+def test_the_finance_structure_is_exactly_the_governed_derivation(loaded_cursor: Any) -> None:
+    """The view must CALL the governed function, not restate its mapping.
+
+    THIS TEST WAS THE DEFECT, AND IS NOW THE GUARD.
+
+    Through DASH.6 it compared the view against a CASE expression written out here --
+    Lease, then nothing financed, then financed -- which is the same three-branch mapping
+    the view itself used. Both were wrong in the same way and agreed perfectly: neither
+    had a branch for a transaction with no consumer, so every wholesale and dealer-trade
+    disposal was labelled `Cash`, claiming that nothing was financed on a transaction
+    where there was nobody to finance anything. 92 rows in the committed development
+    profile. A test that duplicates the mapping it is checking can only ever confirm that
+    the duplication was faithful.
+
+    It now compares the view against `warehouse.fn_finance_structure`, which DASH.6 built
+    as the single authority for exactly this reason and which
+    `test_fi_reporting_views.py` proves equal to the Python authority over the whole input
+    cross product. No mapping is written here at all.
+    """
+    wrong = _scalar(
+        loaded_cursor,
+        f"""
+        SELECT count(*) FROM {JACKET_VIEW} AS j
+        WHERE j.finance_structure IS DISTINCT FROM
+              warehouse.fn_finance_structure(j.sale_type, j.amount_financed)
+        """,
+    )
+    assert wrong == 0, "finance_structure does not match the governed derivation"
+
+
+def test_no_disposal_is_labelled_cash(loaded_cursor: Any) -> None:
+    """The defect itself, named and pinned so it cannot come back quietly.
+
+    A wholesale disposal and a dealer trade have no consumer. Neither finances anything,
+    and neither is a cash SALE. Labelling one `Cash` is not a rounding difference: it puts
+    a disposal into a retail structure mix and into three eligibility denominators.
+    """
+    mislabelled = _scalar(
+        loaded_cursor,
+        f"""
+        SELECT count(*) FROM {JACKET_VIEW}
+        WHERE sale_type IN ('Wholesale', 'Dealer Trade')
+          AND finance_structure <> sale_type
+        """,
+    )
+    assert mislabelled == 0, "a disposal carries a retail finance structure"
+
+    # And the population is non-trivial, so the assertion above is not vacuous.
+    disposals = _scalar(
+        loaded_cursor,
+        f"SELECT count(*) FROM {JACKET_VIEW} WHERE NOT is_retail_structure",
+    )
+    assert disposals > 0, "no disposal exists in the profile, so this rule is untested"
+
+
+def test_the_retail_structure_flag_agrees_with_the_label(loaded_cursor: Any) -> None:
+    """`is_retail_structure` exists so no consumer re-enumerates the set.
+
+    A boolean that disagreed with the label it summarises would be worse than no boolean:
+    a consumer would trust it precisely because it looked authoritative.
+    """
     wrong = _scalar(
         loaded_cursor,
         f"""
         SELECT count(*) FROM {JACKET_VIEW}
-        WHERE finance_structure IS DISTINCT FROM CASE
-                WHEN sale_type = 'Lease' THEN 'Lease'
-                WHEN amount_financed = 0 THEN 'Cash'
-                ELSE 'Retail Finance'
-              END
+        WHERE is_retail_structure
+              IS DISTINCT FROM (finance_structure IN ('Cash', 'Retail Finance', 'Lease'))
         """,
     )
-    assert wrong == 0, "finance_structure does not match its documented derivation"
+    assert wrong == 0, "is_retail_structure contradicts finance_structure"
 
 
 def test_the_finance_structure_basis_agrees_with_the_label(loaded_cursor: Any) -> None:
@@ -443,23 +504,37 @@ def test_the_finance_structure_basis_agrees_with_the_label(loaded_cursor: Any) -
         loaded_cursor,
         f"""
         SELECT count(*) FROM {JACKET_VIEW}
-        WHERE (finance_structure = 'Lease'
-               AND finance_structure_basis <> 'sale type is Lease')
-           OR (finance_structure = 'Cash'
-               AND finance_structure_basis <> 'nothing was financed')
-           OR (finance_structure = 'Retail Finance'
-               AND finance_structure_basis <> 'an amount was financed')
+        WHERE finance_structure_basis IS DISTINCT FROM CASE finance_structure
+                WHEN 'Lease'          THEN 'sale type is Lease'
+                WHEN 'Wholesale'      THEN
+                    'a wholesale disposal: no consumer, so no retail structure'
+                WHEN 'Dealer Trade'   THEN
+                    'a dealer trade: no consumer, so no retail structure'
+                WHEN 'Retail Finance' THEN 'an amount was financed'
+                WHEN 'Cash'           THEN 'nothing was financed'
+              END
         """,
     )
     assert wrong == 0, "finance_structure_basis contradicts finance_structure"
 
+    # Every branch is exercised. A CASE with an unreachable arm would pass the assertion
+    # above while telling a reader nothing, so the population is checked as well.
+    loaded_cursor.execute(f"SELECT count(DISTINCT finance_structure_basis) FROM {JACKET_VIEW}")
+    assert loaded_cursor.fetchone()[0] == 5, "a basis branch is never taken in this profile"
 
-def test_all_three_finance_structures_are_present(loaded_cursor: Any) -> None:
-    """Each renders differently. A structure with no deal is a rendering rule never run."""
+
+def test_all_five_finance_structures_are_present(loaded_cursor: Any) -> None:
+    """Each renders differently. A structure with no deal is a rendering rule never run.
+
+    FIVE on this view, not the three the warehouse stores. The three retail structures are
+    the mix a finance office is measured on; `Wholesale` and `Dealer Trade` exist here
+    precisely so that a disposal cannot be mistaken for a cash sale on the one surface that
+    shows a single transaction in detail.
+    """
     loaded_cursor.execute(f"SELECT DISTINCT finance_structure FROM {JACKET_VIEW} ORDER BY 1")
     structures = [row[0] for row in loaded_cursor.fetchall()]
-    assert structures == ["Cash", "Lease", "Retail Finance"], (
-        f"expected all three finance structures in the profile, found {structures}"
+    assert structures == ["Cash", "Dealer Trade", "Lease", "Retail Finance", "Wholesale"], (
+        f"expected all five finance structures in the profile, found {structures}"
     )
 
 
@@ -592,9 +667,16 @@ def test_the_jacket_does_not_expose_the_surrogate_sale_key(loaded_cursor: Any) -
     assert "sale_key" not in _columns(loaded_cursor, JACKET_VIEW)
 
 
-#: The only ``*_name`` columns the jacket is permitted to publish. Both name a THING --
-#: a model line and a lead-source category -- and neither names a person.
-PERMITTED_NAME_COLUMNS = {"model_name", "lead_source_name"}
+#: The only ``*_name`` columns the jacket is permitted to publish. Each names a THING --
+#: a model line, a lead-source category, and since DASH.7 an invented finance source --
+#: and none names a person.
+#:
+#: `lender_name` was argued for rather than merged, which is what this allowlist exists to
+#: force. The argument is in PRIVACY_AND_ETHICS.md §7.0: the Deal Jacket's whole claim is
+#: that one transaction is explained, and "a lender was assigned" with the lender withheld
+#: explains nothing while implying the model is hiding something. It appears on this one
+#: view, at deal grain, beside the statement that it is an assignment and not a decision.
+PERMITTED_NAME_COLUMNS = {"model_name", "lead_source_name", "lender_name"}
 
 
 def test_the_only_name_columns_are_the_two_that_name_a_thing(loaded_cursor: Any) -> None:

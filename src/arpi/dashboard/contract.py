@@ -2882,6 +2882,35 @@ RECONCILIATION_TOTALS: Final[tuple[ReconciliationTotal, ...]] = (
         type="integer",
         unit="contracts",
     ),
+    # THE ITEMIZATION AGAINST THE ROLLUP, across two datasets at two grains.
+    #
+    # ``fi-summary`` publishes one pre-aggregated product-gross figure per store-day-manager;
+    # ``deal-product-detail`` publishes one row per contract. Nothing derives either from the
+    # other -- they are two views over the same fact at different grains -- so the two totals
+    # agreeing is evidence rather than a tautology, and it is the export-boundary form of the
+    # check the Deal Jacket performs per deal.
+    #
+    # ``deal-product-detail`` carried NO total at all until DASH.7's own seeded-defect suite
+    # found that a one-cent mutation of ``original_product_gross`` passed the offline check.
+    # Every other dataset in the F&I family had a total re-derived from its committed bytes;
+    # this one did not, so the cheapest possible corruption of the largest deal-grain F&I
+    # dataset was invisible without a database. That is what these two totals close.
+    ReconciliationTotal(
+        "product_contract_original_gross",
+        "deal-product-detail",
+        "original_product_gross",
+        unit="USD",
+        display_precision=2,
+        kpi_id="KPI-FNI-003",
+    ),
+    ReconciliationTotal(
+        "product_contract_net_gross_as_of",
+        "deal-product-detail",
+        "net_product_gross_as_of",
+        unit="USD",
+        display_precision=2,
+        kpi_id="KPI-FNI-004",
+    ),
     ReconciliationTotal(
         "products_per_retail_unit",
         "fi-summary",

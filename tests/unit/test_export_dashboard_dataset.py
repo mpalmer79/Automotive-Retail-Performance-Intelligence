@@ -1032,6 +1032,47 @@ class TestFiContract:
         assert by_name["original_product_gross"].dataset == "fi-summary"
         assert by_name["back_end_gross"].dataset == "gross-summary"
 
+    def test_the_itemisation_is_reconcilable_against_the_rollup(self) -> None:
+        """``deal-product-detail`` carries its own totals, at a different grain.
+
+        Added by DASH.7's seeded-defect suite, which found that a one-cent mutation of
+        ``original_product_gross`` on this dataset passed the offline check: it was the
+        only one of the four F&I datasets with no total re-derived from its committed
+        bytes, so the largest deal-grain F&I export could be corrupted invisibly without a
+        database.
+
+        The pair is chosen so the check is evidence rather than a tautology. ``fi-summary``
+        publishes the pre-aggregated figure and ``deal-product-detail`` publishes the
+        lines; neither is derived from the other, so their agreeing is the export-boundary
+        form of the reconciliation the Deal Jacket performs per deal.
+        """
+        by_name = {total.name: total for total in spec.RECONCILIATION_TOTALS}
+        for name, column in (
+            ("product_contract_original_gross", "original_product_gross"),
+            ("product_contract_net_gross_as_of", "net_product_gross_as_of"),
+        ):
+            total = by_name[name]
+            assert total.dataset == "deal-product-detail"
+            assert total.numerator == column
+            assert total.denominator is None, f"{name} is a sum, not a ratio"
+            # The rollup side, published from a different dataset over a different view.
+            rollup = by_name[column]
+            assert rollup.dataset == "fi-summary"
+
+    def test_every_fi_dataset_carries_at_least_one_total(self) -> None:
+        """The rule the missing one broke, stated so it cannot be broken again.
+
+        A dataset with no reconciliation total is a dataset whose bytes nothing re-derives
+        offline. For the F&I family that is not acceptable: three of the four had one and
+        the fourth did not, and nothing said the fourth was allowed to be different.
+        """
+        covered = {total.dataset for total in spec.RECONCILIATION_TOTALS}
+        for name in self.FI_DATASETS:
+            assert name in covered, (
+                f"{name} publishes no reconciliation total, so a corruption of its bytes "
+                "would pass `--check` without a database"
+            )
+
     def test_the_penetration_totals_each_name_the_rows_they_cover(self) -> None:
         """Two categories, two different denominators, both declared as subsets.
 
@@ -1684,6 +1725,375 @@ class TestCheckMode:
         result = check_export(output_dir=exported)
         assert not result.ok
         assert any("not in canonical serialisation" in problem for problem in result.problems)
+
+
+class TestSeededFiExportDefects:
+    """Four F&I datasets, each protected by a deliberate corruption that must be caught.
+
+    WHY THIS CLASS EXISTS
+    ---------------------
+    ``DASH.1`` set the rule and this applies it to the datasets ``DASH.7`` promoted: a
+    check that has never been observed failing is not evidence. Every assertion below
+    corrupts a committed export and requires the PRODUCTION validation path --
+    :func:`check_export`, the same function ``scripts/export_dashboard_dataset.py --check``
+    calls and the same one CI runs -- to refuse it. No test-only validator is used
+    anywhere in this class.
+
+    WHAT PROTECTS WHAT, EXPLICITLY
+    ------------------------------
+    ``fi-summary``
+        A one-cent mutation of ``finance_reserve_gross``, hash restamped. Caught by the
+        ``finance_reserve_gross`` reconciliation total re-derived from the committed rows.
+        A second case breaks the exact-decimal contract; a third repeats the business key.
+
+    ``fi-product-penetration``
+        A mutation of ``penetration_numerator`` and, separately, of
+        ``penetration_denominator``, each hash restamped. Caught by the ``vsc_penetration``
+        total, which publishes both sides. A fourth case moves BOTH sides together so the
+        ratio still reads plausibly -- the shape of the real ``DASH.7`` cache-key defect --
+        and requires that a plausible wrong answer is still refused.
+
+    ``fi-adjustment-summary``
+        A mutation of ``adjustment_amount``, hash restamped. Caught by the
+        ``cancellation_amount`` subset total. A second case corrupts the adjustment DATE,
+        which is this dataset's whole reason for existing separately.
+
+    ``deal-product-detail``
+        A one-cent mutation of ``original_product_gross`` that also breaks the identity
+        against ``net_product_gross_as_of``; and a duplicated ``product_sale_id``, which is
+        the relationship break that would let one contract be counted twice.
+
+    THE HASH IS RESTAMPED ON PURPOSE
+    --------------------------------
+    Every mutation below rewrites the manifest's ``file_sha256`` and ``file_bytes`` through
+    :func:`_restamp` before the check runs. Without that the hash guard fires first and the
+    test would prove only that SHA-256 works. Restamping puts the deeper guard on the hook,
+    which is the assertion actually worth making: an attacker or a careless script that
+    updated the hash still cannot get a wrong figure past the boundary.
+
+    NO COMMITTED PRODUCTION ARTIFACT IS MUTATED. Every case runs against a fresh export
+    written into pytest's ``tmp_path`` from the fixture world.
+    """
+
+    @pytest.fixture()
+    def exported(self, connection: FakeConnection, tmp_path: Path) -> Path:
+        result = _export(connection, tmp_path)
+        assert result.ok, result.problems
+        # The control: the untouched export passes. Without this, a case that "fails" for
+        # an unrelated reason would look like the seeded defect being caught.
+        assert check_export(output_dir=tmp_path).ok
+        return tmp_path
+
+    @staticmethod
+    def _mutate(exported: Path, dataset: str, mutate: Any) -> Any:
+        """Rewrite one dataset's records, restamp its hash, and run the production check."""
+        path = exported / f"{dataset}.json"
+        records = json.loads(path.read_text(encoding="utf-8"))
+        mutate(records)
+        payload = render_dataset_bytes(records)
+        path.write_bytes(payload)
+        _restamp(exported, dataset, payload)
+        return check_export(output_dir=exported)
+
+    # -- fi-summary ---------------------------------------------------------------
+
+    def test_fi_summary_one_cent_of_finance_reserve_is_caught(self, exported: Path) -> None:
+        """The smallest mutation that changes a governed figure at all."""
+
+        def mutate(records: list[dict[str, Any]]) -> None:
+            original = Decimal(records[0]["finance_reserve_gross"])
+            records[0]["finance_reserve_gross"] = f"{original + Decimal('0.01'):.2f}"
+
+        result = self._mutate(exported, "fi-summary", mutate)
+        assert not result.ok
+        assert any(
+            "'finance_reserve_gross' recomputes its total" in problem for problem in result.problems
+        ), result.problems
+
+    def test_fi_summary_restamping_the_hash_does_not_bypass_the_total(self, exported: Path) -> None:
+        """Stated as its own assertion because it is the property that matters.
+
+        The hash guard is the cheap one. What makes the boundary trustworthy is that
+        passing it changes nothing: the totals are re-derived from the bytes on disk.
+        """
+
+        def mutate(records: list[dict[str, Any]]) -> None:
+            records[0]["original_product_gross"] = "999999.99"
+
+        result = self._mutate(exported, "fi-summary", mutate)
+        assert not result.ok
+        # The hash guard did NOT fire -- that is the point.
+        assert not any("hashes to" in problem for problem in result.problems), result.problems
+        assert any(
+            "'original_product_gross' recomputes its total" in problem
+            for problem in result.problems
+        ), result.problems
+
+    def test_fi_summary_an_exact_decimal_that_lost_a_place_is_caught(self, exported: Path) -> None:
+        def mutate(records: list[dict[str, Any]]) -> None:
+            records[0]["finance_reserve_gross"] = "1234.5"
+
+        result = self._mutate(exported, "fi-summary", mutate)
+        assert not result.ok
+        assert any("not a valid currency value" in problem for problem in result.problems), (
+            result.problems
+        )
+
+    def test_fi_summary_a_currency_value_turned_into_a_float_is_caught(
+        self, exported: Path
+    ) -> None:
+        """A float in a monetary field is the failure the whole contract exists to prevent."""
+
+        def mutate(records: list[dict[str, Any]]) -> None:
+            records[0]["finance_reserve_gross"] = 1234.56
+
+        result = self._mutate(exported, "fi-summary", mutate)
+        assert not result.ok
+        assert any("not a valid currency value" in problem for problem in result.problems), (
+            result.problems
+        )
+
+    def test_fi_summary_a_repeated_business_key_is_caught(self, exported: Path) -> None:
+        """Store, sale date and manager identify a row exactly once, or the grain widened."""
+
+        def mutate(records: list[dict[str, Any]]) -> None:
+            records.append(dict(records[0]))
+
+        result = self._mutate(exported, "fi-summary", mutate)
+        assert not result.ok
+        assert any("repeats the business key" in problem for problem in result.problems), (
+            result.problems
+        )
+
+    # -- fi-product-penetration ---------------------------------------------------
+
+    def test_penetration_a_mutated_numerator_is_caught(self, exported: Path) -> None:
+        """Attached deals moved on their own. The published numerator no longer re-derives."""
+
+        def mutate(records: list[dict[str, Any]]) -> None:
+            records[0]["penetration_numerator"] = int(records[0]["penetration_numerator"]) + 1
+
+        result = self._mutate(exported, "fi-product-penetration", mutate)
+        assert not result.ok
+        assert any(
+            "'vsc_penetration' recomputes its numerator" in problem for problem in result.problems
+        ), result.problems
+
+    def test_penetration_a_mutated_denominator_is_caught(self, exported: Path) -> None:
+        """The eligible population moved on its own.
+
+        This is the one that matters most on this dataset. A denominator nobody checks is
+        how "penetration over all retail deals" gets published under a governed name.
+        """
+
+        def mutate(records: list[dict[str, Any]]) -> None:
+            records[0]["penetration_denominator"] = int(records[0]["penetration_denominator"]) + 7
+
+        result = self._mutate(exported, "fi-product-penetration", mutate)
+        assert not result.ok
+        assert any(
+            "'vsc_penetration' recomputes its denominator" in problem for problem in result.problems
+        ), result.problems
+
+    def test_penetration_a_plausible_wrong_ratio_is_still_refused(self, exported: Path) -> None:
+        """BOTH sides inflated together, so the RATIO is unchanged and looks right.
+
+        This is the shape of the real ``DASH.7`` defect: eighteen partitions decoded under
+        one cache key returned the first partition eighteen times, inflating numerator and
+        denominator by the same factor. VSC read 288/720 where the warehouse says 227/558,
+        and 40.0% against a true 40.7% is a figure nobody would question on a screen.
+
+        A validation that compared only the quotient would pass this. The manifest
+        publishes both components separately for exactly this reason, and both are
+        re-derived, so a wrong answer that happens to be plausible is refused on the
+        components rather than accepted on the ratio.
+        """
+        path = exported / "fi-product-penetration.json"
+        records = json.loads(path.read_text(encoding="utf-8"))
+        before = Decimal(records[0]["penetration_numerator"]) / Decimal(
+            records[0]["penetration_denominator"]
+        )
+
+        def mutate(mutated: list[dict[str, Any]]) -> None:
+            mutated[0]["penetration_numerator"] = int(mutated[0]["penetration_numerator"]) * 2
+            mutated[0]["penetration_denominator"] = int(mutated[0]["penetration_denominator"]) * 2
+
+        result = self._mutate(exported, "fi-product-penetration", mutate)
+
+        after_records = json.loads(
+            (exported / "fi-product-penetration.json").read_text(encoding="utf-8")
+        )
+        after = Decimal(after_records[0]["penetration_numerator"]) / Decimal(
+            after_records[0]["penetration_denominator"]
+        )
+        assert before == after, "the corruption changed the ratio, so it is not the plausible case"
+
+        assert not result.ok
+        assert any("'vsc_penetration' recomputes its" in problem for problem in result.problems), (
+            result.problems
+        )
+
+    def test_penetration_a_repeated_category_grain_is_caught(self, exported: Path) -> None:
+        """Store, sale date, manager and CATEGORY, exactly once.
+
+        A repeated category row would double one category's numerator and denominator
+        together -- again leaving the ratio plausible and the counts wrong.
+        """
+
+        def mutate(records: list[dict[str, Any]]) -> None:
+            records.append(dict(records[0]))
+
+        result = self._mutate(exported, "fi-product-penetration", mutate)
+        assert not result.ok
+        assert any("repeats the business key" in problem for problem in result.problems), (
+            result.problems
+        )
+
+    # -- fi-adjustment-summary ----------------------------------------------------
+
+    def test_adjustment_a_mutated_amount_is_caught(self, exported: Path) -> None:
+        """The subset total covers Cancellation rows and re-derives from the bytes."""
+
+        def mutate(records: list[dict[str, Any]]) -> None:
+            original = Decimal(records[0]["adjustment_amount"])
+            records[0]["adjustment_amount"] = f"{original + Decimal('0.01'):.2f}"
+
+        result = self._mutate(exported, "fi-adjustment-summary", mutate)
+        assert not result.ok
+        assert any(
+            "'cancellation_amount' recomputes its total" in problem for problem in result.problems
+        ), result.problems
+
+    def test_adjustment_a_corrupted_date_basis_column_is_caught(self, exported: Path) -> None:
+        """The adjustment date is why this dataset exists separately from the summary.
+
+        A row whose own business date is unreadable cannot be placed in a period at all,
+        and a console that silently dropped it would under-report the period rather than
+        fail.
+        """
+
+        def mutate(records: list[dict[str, Any]]) -> None:
+            records[0]["adjustment_date"] = "not-a-date"
+
+        result = self._mutate(exported, "fi-adjustment-summary", mutate)
+        assert not result.ok
+        assert any("date" in problem.lower() for problem in result.problems), result.problems
+
+    def test_adjustment_an_out_of_set_event_type_is_caught(self, exported: Path) -> None:
+        """Four governed adjustment types. A fifth is a vocabulary nobody agreed to."""
+
+        def mutate(records: list[dict[str, Any]]) -> None:
+            records[0]["adjustment_type"] = "Refund"
+
+        result = self._mutate(exported, "fi-adjustment-summary", mutate)
+        assert not result.ok
+        assert any(
+            "enumeration" in problem.lower() or "permitted" in problem.lower()
+            for problem in result.problems
+        ), result.problems
+
+    # -- deal-product-detail ------------------------------------------------------
+
+    def test_product_detail_a_one_cent_gross_mutation_is_caught(self, exported: Path) -> None:
+        """One cent on one contract, hash restamped, and the export still refuses it."""
+
+        def mutate(records: list[dict[str, Any]]) -> None:
+            original = Decimal(records[0]["original_product_gross"])
+            records[0]["original_product_gross"] = f"{original + Decimal('0.01'):.2f}"
+
+        result = self._mutate(exported, "deal-product-detail", mutate)
+        assert not result.ok
+        assert result.problems
+
+    def test_product_detail_a_duplicated_contract_is_caught(self, exported: Path) -> None:
+        """The relationship break that would count one contract twice.
+
+        ``product_sale_id`` is this dataset's whole business key precisely because a deal
+        may carry several contracts: identity has to be the contract, not the sale. A
+        duplicate is how a single contract's gross would be added to a category twice.
+        """
+
+        def mutate(records: list[dict[str, Any]]) -> None:
+            records.append(dict(records[0]))
+
+        result = self._mutate(exported, "deal-product-detail", mutate)
+        assert not result.ok
+        assert any("repeats the business key" in problem for problem in result.problems), (
+            result.problems
+        )
+
+    def test_product_detail_a_null_in_a_required_column_is_caught(self, exported: Path) -> None:
+        """A required column may not be null.
+
+        Null means "not applicable or not observed", never zero -- and never at all on a
+        column the contract declares required.
+        """
+
+        def mutate(records: list[dict[str, Any]]) -> None:
+            records[0]["original_product_gross"] = None
+
+        result = self._mutate(exported, "deal-product-detail", mutate)
+        assert not result.ok
+        assert any("declares required" in problem for problem in result.problems), result.problems
+
+    def test_product_detail_an_undeclared_column_is_caught(self, exported: Path) -> None:
+        """The column set is closed in both directions.
+
+        A prohibited F&I field can only reach the export by being added to a row, and this
+        is the guard that refuses one. ``TestFiContract`` refuses it at the contract, this
+        refuses it in the bytes, and the exporter's own prohibited-name tripwire refuses it
+        at generation -- three independent controls, none of which relies on the others.
+        """
+
+        def mutate(records: list[dict[str, Any]]) -> None:
+            records[0]["credit_score"] = 720
+
+        result = self._mutate(exported, "deal-product-detail", mutate)
+        assert not result.ok
+        assert result.problems
+
+    # -- the whole family ---------------------------------------------------------
+
+    @pytest.mark.parametrize(
+        "dataset",
+        [
+            "fi-summary",
+            "fi-product-penetration",
+            "fi-adjustment-summary",
+            "deal-product-detail",
+        ],
+    )
+    def test_every_fi_dataset_is_hash_protected(self, exported: Path, dataset: str) -> None:
+        """The cheap guard, asserted once per dataset so none is left out of it.
+
+        Deliberately does NOT restamp: this is the one case where the hash guard is the
+        guard under test.
+        """
+        path = exported / f"{dataset}.json"
+        records = json.loads(path.read_text(encoding="utf-8"))
+        records.append(dict(records[0]))
+        path.write_bytes(render_dataset_bytes(records))
+        result = check_export(output_dir=exported)
+        assert not result.ok
+        assert any("hashes to" in problem for problem in result.problems), result.problems
+
+    @pytest.mark.parametrize(
+        "dataset",
+        [
+            "fi-summary",
+            "fi-product-penetration",
+            "fi-adjustment-summary",
+            "deal-product-detail",
+        ],
+    )
+    def test_every_fi_dataset_is_required_to_be_present(self, exported: Path, dataset: str) -> None:
+        """A missing F&I file is a failure, never an empty section on a page."""
+        (exported / f"{dataset}.json").unlink()
+        result = check_export(output_dir=exported)
+        assert not result.ok
+        assert any(f"{dataset}.json is missing" in problem for problem in result.problems), (
+            result.problems
+        )
 
 
 def _restamp(output_dir: Path, dataset: str, payload: bytes) -> None:
