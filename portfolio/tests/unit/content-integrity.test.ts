@@ -59,6 +59,20 @@ function dashboardLaneSqlFiles(): Set<string> {
   return new Set([...block![1]!.matchAll(/"([^"]+\.sql)"/g)].map((m) => m[1]!))
 }
 
+/**
+ * The inventory accounting and GL control lane's SQL files (`DASH.8`).
+ *
+ * Subtracted for the same reason as the two lanes above, and declared in `arpi.constants`
+ * rather than in the dashboard contract because that increment adds no browser dataset and
+ * no console route -- so the contract module is deliberately untouched by it.
+ */
+function accountingLaneSqlFiles(): Set<string> {
+  const source = repoText('src/arpi/constants.py')
+  const block = /ACCOUNTING_LANE_SQL_FILES[^=]*=\s*\(([\s\S]*?)\)/.exec(source)
+  expect(block, 'ACCOUNTING_LANE_SQL_FILES is no longer declared').toBeTruthy()
+  return new Set([...block![1]!.matchAll(/"([^"]+\.sql)"/g)].map((m) => m[1]!))
+}
+
 /** Every .ts/.tsx file under src/, excluding the generated manifest. */
 function sourceFiles(dir = join(PORTFOLIO, 'src')): string[] {
   const found: string[] = []
@@ -153,33 +167,70 @@ describe('every displayed count traces to repository evidence', () => {
     // these directories; the dashboard program (ADR-0013) puts `fact_sales_target` there
     // from `DASH.5`, and `dim_finance_product`, `dim_lender`,
     // `fact_finance_product_sale` and `fact_finance_product_adjustment` from `DASH.6`.
+    // `DASH.8` adds `dim_gl_account`, `fact_inventory_accounting_snapshot` and
+    // `fact_gl_control_balance` in a third lane of its own.
+    //
     // None of them is part of the MVP warehouse the semantic model reads, and the MVP
-    // baseline still describes EIGHT dimensions and FIVE facts. Both lanes are subtracted
-    // exactly as the manifest generator subtracts them, from the one place that declares
-    // which files belong to each, so this test cannot pass by agreeing with a broken
-    // derivation. `_functions` is excluded on its own terms: a script that creates
-    // governed SQL functions declares no dimension, in either lane.
+    // baseline still describes EIGHT dimensions and FIVE facts. All three lanes are
+    // subtracted exactly as the manifest generator subtracts them, from the one place that
+    // declares which files belong to each, so this test cannot pass by agreeing with a
+    // broken derivation. `_functions` is excluded on its own terms: a script that creates
+    // governed SQL functions declares no dimension, in any lane.
     const lane = laneSqlFiles()
     const dashboardLane = dashboardLaneSqlFiles()
+    const accountingLane = accountingLaneSqlFiles()
     const dims = readdirSync(join(REPO, 'sql/03_dimensions')).filter(
       (f) =>
         f.endsWith('.sql') &&
         !f.includes('_merge') &&
         !f.includes('_functions') &&
         !lane.has(`03_dimensions/${f}`) &&
-        !dashboardLane.has(`03_dimensions/${f}`)
+        !dashboardLane.has(`03_dimensions/${f}`) &&
+        !accountingLane.has(`03_dimensions/${f}`)
     ).length
     const facts = readdirSync(join(REPO, 'sql/04_facts')).filter(
       (f) =>
         f.endsWith('.sql') &&
         !f.includes('_load') &&
         !lane.has(`04_facts/${f}`) &&
-        !dashboardLane.has(`04_facts/${f}`)
+        !dashboardLane.has(`04_facts/${f}`) &&
+        !accountingLane.has(`04_facts/${f}`)
     ).length
     expect(manifest.counts.dimensions.value).toBe(dims)
     expect(manifest.counts.facts.value).toBe(facts)
     expect(dims).toBe(8)
     expect(facts).toBe(5)
+  })
+
+  it('keeps the accounting control lane out of the MVP counts and declares it once', () => {
+    /*
+     * `DASH.8` is the third lane to put objects in these directories, and the first to add
+     * both a dimension and two facts at once. The MVP baseline still describes eight
+     * dimensions, five facts and 28 reporting views, and these are the lines that say so.
+     *
+     * The lane's own shape is asserted rather than only its absence from the MVP counts: a
+     * DASH.8 script added to the tree and not to the declaration would silently become a
+     * ninth MVP dimension or a sixth MVP fact.
+     */
+    const lane = accountingLaneSqlFiles()
+    const dimensionDdl = [...lane].filter(
+      (f) => f.startsWith('03_dimensions/') && !f.includes('_merge')
+    )
+    const factDdl = [...lane].filter(
+      (f) => f.startsWith('04_facts/') && !f.includes('_load')
+    )
+    const views = [...lane].filter((f) => f.startsWith('05_reporting/'))
+
+    expect(dimensionDdl).toHaveLength(1)
+    expect(factDdl).toHaveLength(2)
+    expect(views).toHaveLength(3)
+
+    // And the lane is disjoint from the other two, so no file is counted twice or
+    // subtracted twice.
+    for (const file of lane) {
+      expect(laneSqlFiles().has(file)).toBe(false)
+      expect(dashboardLaneSqlFiles().has(file)).toBe(false)
+    }
   })
 
   it('keeps the dashboard program lane out of the MVP counts and declares it once', () => {
