@@ -115,11 +115,13 @@ TABLE_PRIVILEGES: tuple[str, ...] = (
 #: "at least 28" to accommodate a second lane would have thrown away the half that
 #: catches an object nobody declared.
 #:
-#: The three numbers are held apart rather than summed into one literal because they mean
+#: The four numbers are held apart rather than summed into one literal because they mean
 #: different things. Twenty-eight is what the SQL baseline and the Power BI semantic model
 #: were measured against; six is the sanitized public listing lane (ADR-0011), which the
-#: semantic model does not read; three is the dashboard program's own lane, which it does
-#: not read either. A reader who saw only 37 could not tell which had moved.
+#: semantic model does not read; nine is the dashboard program's own lane, which it does
+#: not read either; three is the inventory accounting and GL control lane (`DASH.8`),
+#: which has no browser dataset and no console route at all. A reader who saw only 46
+#: could not tell which had moved.
 #:
 #: They are duplicated from `arpi.constants` because this script imports only the standard
 #: library -- it runs against a database from a bare interpreter. `tests/unit/
@@ -128,10 +130,12 @@ TABLE_PRIVILEGES: tuple[str, ...] = (
 EXPECTED_MVP_REPORTING_VIEW_COUNT: int = 28
 EXPECTED_LISTING_REPORTING_VIEW_COUNT: int = 6
 EXPECTED_DASHBOARD_REPORTING_VIEW_COUNT: int = 9
+EXPECTED_ACCOUNTING_REPORTING_VIEW_COUNT: int = 3
 EXPECTED_REPORTING_VIEW_COUNT: int = (
     EXPECTED_MVP_REPORTING_VIEW_COUNT
     + EXPECTED_LISTING_REPORTING_VIEW_COUNT
     + EXPECTED_DASHBOARD_REPORTING_VIEW_COUNT
+    + EXPECTED_ACCOUNTING_REPORTING_VIEW_COUNT
 )
 
 #: The eight conformed dimensions. Each must exist and hold at least one row.
@@ -379,7 +383,8 @@ def check_reporting_view_count(cursor: Any) -> CheckOutcome:
                     f"expected exactly {EXPECTED_REPORTING_VIEW_COUNT} views "
                     f"({EXPECTED_MVP_REPORTING_VIEW_COUNT} MVP + "
                     f"{EXPECTED_LISTING_REPORTING_VIEW_COUNT} sanitized listing lane + "
-                    f"{EXPECTED_DASHBOARD_REPORTING_VIEW_COUNT} dashboard program), "
+                    f"{EXPECTED_DASHBOARD_REPORTING_VIEW_COUNT} dashboard program + "
+                    f"{EXPECTED_ACCOUNTING_REPORTING_VIEW_COUNT} accounting control), "
                     f"found {observed}. Fewer means the ordered sequence did not finish; "
                     "more means an object was created outside sql/.",
                 )

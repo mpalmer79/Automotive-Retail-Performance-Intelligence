@@ -47,7 +47,7 @@
 | `DASH.5` | Targets and pace | Large | **Implemented** |
 | `DASH.6` | F&I model | Large | **Implemented** |
 | `DASH.7` | F&I dashboard and expanded Deal Jacket | Large | **Implemented** |
-| `DASH.8` | Inventory accounting and GL controls | Large | Planned |
+| `DASH.8` | Inventory accounting and GL controls | Large | **Implemented** |
 | `DASH.9` | Accounting dashboard and inventory integration | Large | Planned |
 | `DASH.10` | Leads and Marketing dashboard | Large | Planned |
 | `DASH.11` | Employee performance | Medium | Planned |
@@ -729,19 +729,62 @@ decision, tier, stipulation or adverse-action record anywhere in the project.
 | **Estimated complexity** | Large |
 | **Blocking gate** | Gate 4 — satisfied within the increment |
 | **Architecture references** | Program §9.9–9.10; KPI_EXTENSION_PLAN §5 |
-| **Status** | Planned |
+| **Anchoring question** | **SQ-43** — *Does the inventory on my stock schedule agree with what the general ledger says the inventory control account holds, and if not, where exactly does it differ?* Registered and answered in the same change. |
+| **Status** | **Implemented** |
+| **Evidence** | Three warehouse objects promoted through the four Gate 4 conditions; 13 accounting reconciliations, all passing on a fresh warehouse; all four comparison states present (39 reconciled, 2 variance — one of each sign, 1 missing GL balance, 1 missing subledger balance); 12 `KPI-ACC-*` measures each re-derived independently from `warehouse` in `tests/integration/test_kpi_verification.py`; **15 seeded defects** in `tests/unit/test_accounting_seeded_defects.py`, each pushed through the production validation entry point; **12 seeded reconciliation corruptions** plus a falsifiability test for the one non-critical rule. Staff-level review: [DASH-8-REVIEW.md](../reviews/DASH-8-REVIEW.md). |
+| **Deliberately not done** | **No `DASH.9` work of any kind**: no accounting route, no browser dataset exported from any accounting view, and `src/arpi/dashboard/contract.py` is unchanged. No full general ledger, no journal entry, no debit/credit pair, no posting workflow, no trial balance, no period close. No Floorplan Liability account and no `Wholesale Inventory` category — both recorded decisions, not omissions. **No TMDL change and Gate 2 remains CLOSED.** |
+| **Baselines preserved** | 29 MVP KPIs, 28 MVP reporting views, 5 MVP facts, 8 MVP dimensions — all unchanged. The lane is declared once in `arpi.constants.ACCOUNTING_LANE_SQL_FILES` and subtracted by `scripts/project_capabilities.py`, so the tree now holds 11 fact DDL scripts and 12 dimensions while every MVP figure still describes what it was measured against. |
 
-Items: `DASH.8-01` `fact_inventory_accounting_snapshot` end-to-end (Large) — generator derives book
-components consistently with acquisition/recon costs already generated, write-down scenarios,
-book-value identity as generator rule + SQL CHECK, `DQ-IAS-*`, `STM-022`; pack excluded from book
-value; floorplan principal as liability column never summed into book value. `DASH.8-02`
-`dim_gl_account` + `fact_gl_control_balance` (Large) — selected synthetic control accounts,
-balances that usually reconcile plus **controlled, documented variance scenarios**, `DQ-GLA-*`/
-`DQ-GLB-*`, `STM-023`/`STM-024`. `DASH.8-03` `vw_inventory_accounting`,
-`vw_inventory_gl_reconciliation`, `vw_accounting_exceptions`, `KPI-ACC-001..012` promotion,
-reconciliation register entries, stakeholder question (Large). Non-goals: no full GL, no journal
-entries, no posting workflow. Evidence: variance surface demonstrably alive on the planted scenarios;
-all identities tested.
+Items: `DASH.8-01` `fact_inventory_accounting_snapshot` end-to-end (Large) — **Implemented**;
+`DASH.8-02` `dim_gl_account` + `fact_gl_control_balance` (Large) — **Implemented**; `DASH.8-03`
+`vw_inventory_accounting`, `vw_inventory_gl_reconciliation`, `vw_accounting_exceptions`,
+`KPI-ACC-001..012` promotion, reconciliation register entries, stakeholder question (Large) —
+**Implemented**.
+
+### `DASH.8` — where the as-built differs from this plan, and why
+
+**(a) `KPI-ACC-006` was corrected.** The plan specified back-end gross reconciled against **net**
+product gross. On this dataset that definition reports a nonzero count on every run purely because
+adjustments exist — a later cancellation is *supposed* to make retained gross differ from produced
+gross, so the planned definition would have flagged every adjusted deal as an accounting defect. The
+measure uses `finance_reserve_gross + SUM(original_product_gross) + other_fi_income`, which is the
+identity `RECON-FI-001` already proves, and `tests/integration/test_kpi_verification.py` asserts
+**both** that the corrected definition yields zero and that the planned one would have fired. That is
+what makes it a decision rather than a coincidence.
+
+**(b) `KPI-ACC-011` was narrowed.** The plan implied a posting lag with an F&I half. ARPI holds no
+separate posting timestamp on either side, so the measure is acquisition date to first month-end
+schedule appearance and nothing more, and **no F&I posting-lag pair was fabricated**. The narrowing is
+recorded in LIMITATIONS.md §16.4 and asserted by a test that no column named for a posting timestamp
+exists anywhere in `warehouse` or `reporting`.
+
+**(c) Three control categories, not four.** A `Wholesale Inventory` control account was considered and
+rejected: nothing observable at a month-end distinguishes a unit held for wholesale, and only the
+eventual disposal would — which is the future-outcome leakage the fact's own header forbids.
+
+**(d) Floorplan Liability was excluded from the catalogue.** The schedule carries `floorplan_principal`,
+so the account was available to model. Netting a liability into an asset reconciliation invites a "net
+inventory" figure that means nothing, and no registered question requires liability reconciliation.
+`account_type` still permits `Liability` so a later increment needs no domain migration.
+
+**(e) The fact carries no `acquisition_date_key`.** `dim_date` spans the governed 184-day window and
+roughly 28% of units entered stock before it opens, so a NOT NULL key with a foreign key into the
+calendar rejected 360 legitimate schedule lines — a quarter of the subledger balance. `days_in_stock`
+**is** the interval, so the measure needed no second key. Recorded in the fact's header and in
+STM-022 §4.6.
+
+**(f) The variance scenarios became window-relative.** They were written with literal month-end dates in
+the development window, and the shorter `test` profile — the one the integration suite runs on — never
+reached them, so every reconciliation state the increment exists to demonstrate was absent from the
+profile that tests it. Each scenario is now a month-end **offset**, which lands it in every profile and
+reproduces the original development dates exactly.
+
+**(g) Two data-quality checks were strengthened after a seeded defect walked past them.** `DQ-IAS-014`
+re-asked the book-value identity on floorplanned rows, which the identity check already covers; it now
+also asks whether any component *carries* the advance, because a floorplan balance capitalized into a
+component closes the identity just as neatly. `DQ-IAS-019` is new: `other_capitalized_costs` is the one
+column with no external meaning, so it is where a balancing residual would hide, and a plug makes an
+identity close by construction rather than by being true.
 
 ---
 

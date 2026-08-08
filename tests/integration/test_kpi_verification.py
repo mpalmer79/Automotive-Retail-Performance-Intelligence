@@ -2541,7 +2541,7 @@ def _exception_count(cursor: Any, code: str) -> int:
         _scalar(
             cursor,
             "SELECT count(*) FROM reporting.vw_accounting_exceptions "
-            f"WHERE exception_code = '{code}'"
+            f"WHERE exception_code = '{code}'",
         )
     )
 
@@ -2787,8 +2787,7 @@ def test_the_absolute_variance_never_replaces_the_signed_one(loaded_cursor: Any)
     assert offending == 0
     signed_differs = _scalar(
         loaded_cursor,
-        "SELECT count(*) FROM reporting.vw_inventory_gl_reconciliation "
-        "WHERE variance_amount < 0",
+        "SELECT count(*) FROM reporting.vw_inventory_gl_reconciliation WHERE variance_amount < 0",
     )
     assert signed_differs > 0, (
         "every variance is non-negative, so publishing the absolute value alongside the "

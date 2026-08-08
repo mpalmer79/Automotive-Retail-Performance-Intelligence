@@ -812,6 +812,11 @@ Counted apart from every row above, because folding either lane in would move a 
 | Dashboard program fact DDL scripts | 3 | Implemented. `DASH.5` added the first fact this lane owns; the MVP fact count above is unchanged. |
 | Dashboard program reporting views | 9 | Implemented, and **not** part of the reporting-view baseline the semantic model binds to. |
 | Dashboard program KPIs | 32 | Implemented in SQL and on the web console. The 29 governed KPIs above are unchanged: no DAX measure reads these, so the two numbers are reported side by side and never summed. |
+| Inventory accounting and GL control SQL files (`DASH.8`) | 17 | Implemented. Database and reporting only: no browser dataset is exported and no console route reads them. |
+| Inventory accounting fact DDL scripts | 2 | Implemented. The MVP fact count above is unchanged. |
+| Inventory accounting dimension merge scripts | 1 | Implemented. The conformed dimension count above is unchanged: a selected control-account catalogue is not a conformed MVP dimension. |
+| Inventory accounting reporting views | 3 | Implemented, and **not** part of the reporting-view baseline the semantic model binds to. |
+| Inventory accounting KPIs | 12 | Implemented in SQL. No DAX measure reads them and no console route renders them, so this number is reported beside the two above and never summed with either. |
 <!-- ARPI:CAPABILITIES:END warehouse -->
 
 <!-- ARPI:CAPABILITIES:BEGIN semantic-model -->
@@ -1369,3 +1374,145 @@ most recent sale months carry structurally fewer adjustments than the earliest o
 exported F&I datasets carry the structure MIX as counts, not a per-structure split of reserve, product
 gross and penetration. Filtering the page by structure would produce figures that looked scoped and
 were not, so the filter is shown in the structure section and its limit is written beside it.
+
+---
+
+## 16. What the inventory accounting and GL control model cannot support (ADR-0013, `DASH.8`)
+
+`DASH.8` promotes `warehouse.dim_gl_account`, `warehouse.fact_inventory_accounting_snapshot` and
+`warehouse.fact_gl_control_balance`, and publishes three reporting views and twelve `KPI-ACC-*`
+identifiers. Every limitation below is a property of the model, not a gap in the implementation, and
+each one is repeated on the surface that could be misread without it.
+
+### 16.1 The GL side is generated from the subledger it is reconciled against
+
+**This is the single most important limitation of the increment.**
+
+`warehouse.fact_gl_control_balance` is not an independently ingested second accounting system. Its
+balances are computed from `SUM(current_book_value)` over the stock schedule, plus a governed table of
+deliberate variances, so the reconciliation surface can be seen working in both its states.
+
+An exact reconciliation therefore proves the reconciliation **arithmetic** is correct. **It does not
+prove that two independent sources agree, because there is only one source.** No figure in this domain
+is evidence that a real ledger and a real schedule would tie out, and no surface may claim it is.
+
+The statement appears on the table comment, on both reporting views that publish a variance, in
+`RECON-ACC-GL-SUBLEDGER`'s own description, in `KPI_CATALOG.md §41.1` and here.
+
+### 16.2 ARPI is not building a general ledger
+
+There is no journal entry, journal line, debit amount, credit amount, posting batch, posting timestamp,
+trial balance, aged trial balance, period-close state, suspense account, adjusting entry, reversal,
+approval or sign-off workflow, remediation status, or financial statement of any kind — not as a
+column, not as a generation parameter, and not as a derived value.
+
+`KPI-ACC-002` is a **control-account balance**, not a trial-balance figure. The catalogue is three
+inventory control accounts and is **not a chart of accounts**: there is no Cash, Revenue, Cost of
+Sales, Payroll, Parts, Service, Rent, Payable, Receivable, Equity, Retained Earnings or Tax account.
+`DQ-GLA-009` scans account names for general-ledger vocabulary so the boundary fails a run rather than
+a review.
+
+**Nothing in this domain is accounting advice, an audit opinion, or evidence about a real close.**
+
+### 16.3 A variance is a demonstration, not a finding
+
+The dataset carries planted variances **on purpose**, and they are synthetic demonstration conditions.
+They are not discovered business findings and no document may describe them as such. Nothing here says
+anything about a real dealership, a real ledger or a real month.
+
+`RECON-ACC-GL-SUBLEDGER` is registered non-critical for exactly this reason: failing a pipeline run
+because a controlled accounting variance exists would make the exception surface unusable and would
+teach a reader that a variance means broken data. **It is the status that is not critical** — the
+variance is still calculated, recorded and rendered.
+
+### 16.4 `KPI-ACC-011` is not a journal posting delay
+
+The measure is **acquisition date to first month-end schedule appearance**, and nothing more. ARPI
+holds no separate posting timestamp, and manufacturing one would invent an operational fact the
+synthetic data does not contain.
+
+Two consequences follow. Because the accounting calendar is month-end only, the lag is bounded below by
+how far into a month a unit arrived, so it measures schedule **cadence** as much as promptness. And
+there is deliberately **no F&I equivalent**: the F&I domain carries no separate posting date, so no
+second posting-lag pair is supportable and none was fabricated.
+
+`tests/integration/test_kpi_verification.py` asserts that no column named for a posting timestamp
+exists anywhere in `warehouse` or `reporting`, so the narrowing cannot quietly be undone.
+
+### 16.5 Floorplan principal is context, and there is no floorplan cost analysis
+
+`floorplan_principal` is a **liability** carried on an asset schedule. It is never added to, subtracted
+from or netted against book value, and **ARPI publishes no net-inventory-position figure anywhere** —
+that number would net an asset against a liability and mean nothing a controller would recognise.
+
+No rate, interest, curtailment schedule, maturity or lender term is modelled, so **no carrying-cost,
+flooring-expense or interest-burden measure can be derived from this column**. Principal does not
+amortise in this model, and an amortisation curve would be an invented operational fact.
+
+`floorplan_principal = 0.00` is a **legitimate unfloored unit**, never missing data. After a write-down
+a unit may legitimately owe more than it is carried at, which is precisely why the two are never
+netted.
+
+### 16.6 There is no `Wholesale Inventory` control category
+
+Three categories, not four. Nothing observable **at a month-end** distinguishes a unit held for
+wholesale from one held for retail; only how the unit was eventually disposed of would, and reading
+that would be future-outcome leakage. A category assignable only by consulting the future is a label
+applied in hindsight, and a schedule built on one would be wrong in a way no reconciliation could
+detect.
+
+If a later increment introduces an observable held-for-wholesale signal — a disposition intent recorded
+at the time, not inferred afterwards — the category can be added.
+
+### 16.7 There is no Floorplan Liability control account
+
+`KPI-ACC-001` is an inventory **asset** subledger measure. Putting a liability into the same
+reconciliation invites netting the two, and no registered stakeholder question requires liability
+reconciliation. `account_type` permits `Liability` so a later increment can add one without a domain
+migration, but such an account must reconcile against `SUM(floorplan_principal)`, never against
+`current_book_value`, and must never enter `KPI-ACC-001`.
+
+### 16.8 The schedule is month-end only
+
+`fact_vehicle_inventory_snapshot` is daily; the accounting schedule is six month-ends. That narrowing
+is deliberate — a control account is reconciled at a period end — but it means **no intra-month
+inventory-value series is available**, and no question about how carrying value moved within a month is
+answerable from this domain.
+
+It is also what makes matched-date comparability structural: both sides of every reconciliation are
+month-end by construction, so comparing a month-end control balance with a mid-month schedule is not
+available rather than merely discouraged.
+
+### 16.9 A missing balance and a zero balance are different, and only one is ever reported
+
+`reporting.vw_inventory_gl_reconciliation` FULL JOINs the two sides. A store-account-date present on
+only one side produces a row with a **NULL** variance and a `Missing GL balance` or `Missing subledger
+balance` state — never a variance equal to the whole of the side that is present.
+
+A consumer that coalesced those NULLs to zero would report a missing balance as a **zeroed account**,
+which is a different fact about the world. No ARPI surface does, and `RECON-ACC-GL-SUBLEDGER` proves
+the coupling between the state, the variance and the reconciled flag on every row.
+
+### 16.10 There is no accounting surface, and the semantic model binds none of this
+
+`DASH.8` exports **no** browser dataset, adds **no** console route and leaves
+`src/arpi/dashboard/contract.py` unchanged. No TMDL was written for this domain, no relationship to
+either new fact exists, and **no DAX has ever computed one of the twelve `KPI-ACC-*` measures**.
+
+The three accounting views are counted apart from the twenty-eight-view MVP baseline for the same
+reason the listing and dashboard-program lanes are: that number is what the SQL baseline and the
+semantic model were measured against, and folding new views into it would restate a historical
+baseline rather than record a new capability.
+
+### 16.11 Three counts are zero on every healthy run, and two of them are unreachable
+
+`KPI-ACC-008` and `KPI-ACC-009` look for a child row whose parent does not resolve. The foreign keys
+make that impossible in a database whose constraints are intact, so both are `0` on every healthy run.
+
+They are written anyway, so that a constraint dropped from a **deployed** database fails a run rather
+than passing one — and `tests/integration/test_kpi_verification.py` asserts the constraints are
+actually present, because a zero from a branch that cannot fire is not evidence on its own.
+
+`KPI-ACC-012` counts failing data-quality checks and is `0` on a healthy run by construction. Unlike
+every other measure in this domain it names no store and no date: a failing check is a property of a
+pipeline run, not of a dealership.

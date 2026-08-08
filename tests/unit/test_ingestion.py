@@ -167,12 +167,12 @@ def test_the_required_fact_set_is_derived_from_the_ingestion_registry() -> None:
 
     declared = {spec.fact_load_script for spec in ENTITY_SPECS if spec.fact_load_script is not None}
     assert set(REQUIRED_FACT_SQL) == declared
-    # Six: the five MVP fact loads, plus the dashboard program's operating-plan fact
-    # (DASH.5). The pipeline runs all six on every execution; the MVP baseline the
-    # semantic model was measured against still describes five facts, which is a
-    # statement about that model rather than about this registry.
-    # Five MVP facts, the DASH.5 operating plan, and the two DASH.6 F&I facts.
-    assert len(REQUIRED_FACT_SQL) == 8
+    # Ten: the five MVP fact loads, the dashboard program's operating-plan fact (DASH.5),
+    # the two F&I facts (DASH.6) and the two accounting facts (DASH.8). The pipeline runs
+    # all ten on every execution; the MVP baseline the semantic model was measured against
+    # still describes five facts, which is a statement about that model rather than about
+    # this registry.
+    assert len(REQUIRED_FACT_SQL) == 10
     assert list(REQUIRED_FACT_SQL) == sorted(REQUIRED_FACT_SQL), "execution order is by file name"
 
 
