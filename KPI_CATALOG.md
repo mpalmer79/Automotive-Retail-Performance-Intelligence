@@ -1078,13 +1078,32 @@ recorded in `audit.reconciliation_result` ([DATA_DICTIONARY.md §22](DATA_DICTIO
 | `RECON-REPORT-APPOINTMENTS-ROWS` | `vw_appointments` preserves the fact grain and the funnel view accounts for every appointment | `reporting.vw_appointments` | `warehouse.fact_appointment` | 0 (exact) | **Implemented** |
 | `RECON-REPORT-SPEND-ROWS` | `vw_marketing_spend` preserves the fact grain | `reporting.vw_marketing_spend` | `warehouse.fact_marketing_spend` | 0 (exact) | **Implemented** |
 | `RECON-REPORT-DAYS-TO-SALE` | The days-to-sale population is exactly the retail units sold | `reporting.vw_days_to_sale` | `warehouse.fact_vehicle_sale` | 0 (exact) | **Implemented** |
-| `RECON-FI-001` | F&I product totals reconcile to transaction-level back-end gross | `warehouse.fact_finance_product_sale` net product gross | `warehouse.fact_vehicle_sale.back_end_gross` | 0.01 absolute | **Deferred** — see the note below |
+| `RECON-FI-001` | **Every cent of a deal's back-end gross is explained**: `finance_reserve_gross + SUM(original_product_gross)` equals `back_end_gross`, **per deal** | `warehouse.fact_vehicle_sale.back_end_gross` | `warehouse.fact_vehicle_sale.finance_reserve_gross` + `warehouse.fact_finance_product_sale.original_product_gross` | 0 (exact) | **Implemented** — promoted by DASH.6; see the note below |
+| `RECON-FI-DEAL-LEVEL` | The same identity as a group total | `warehouse.fact_vehicle_sale` | `warehouse.fact_finance_product_sale` | 0.01 absolute | **Implemented** |
+| `RECON-FI-TOTAL-GROSS` | The pre-existing `total = front + back` identity still holds after the decomposition | `warehouse.fact_vehicle_sale` | `warehouse.fact_vehicle_sale` | 0.01 absolute | **Implemented** |
+| `RECON-FI-PRODUCT-IDENTITY` | `original_product_gross = product_retail_price − product_dealer_cost` on every contract | `warehouse.fact_finance_product_sale` (conforming rows) | `warehouse.fact_finance_product_sale` (all rows) | 0 (exact) | **Implemented** |
+| `RECON-FI-PRODUCT-GRAIN` | No deal carries the same product definition twice | `warehouse.fact_finance_product_sale` row count | distinct `(sale_key, finance_product_key)` | 0 (exact) | **Implemented** |
+| `RECON-FI-STORE-TOTALS` | Store totals agree between the sale fact and the contract fact | `warehouse.fact_vehicle_sale` | `warehouse.fact_finance_product_sale` | 0.01 absolute | **Implemented** |
+| `RECON-FI-PERIOD-TOTALS` | Period totals agree between the same two | `warehouse.fact_vehicle_sale` | `warehouse.fact_finance_product_sale` | 0.01 absolute | **Implemented** |
+| `RECON-FI-RESERVE-STRUCTURE` | No Cash deal carries finance reserve or a lender | `warehouse.fact_vehicle_sale` (violations) | zero violations required | 0 (exact) | **Implemented** |
+| `RECON-FI-ELIGIBILITY` | Every contract's category is eligible under the rule the catalogue stamps | `warehouse.fact_finance_product_sale` | `warehouse.fn_product_category_is_eligible` | 0 (exact) | **Implemented** |
+| `RECON-FI-ADJUSTMENT-GRAIN` | Row count equals distinct `adjustment_id` — the grain is the **event** | `warehouse.fact_finance_product_adjustment` row count | distinct `adjustment_id` | 0 (exact) | **Implemented** |
+| `RECON-FI-ADJUSTMENT-CAP` | Cumulative net reduction stays inside `[0, original_product_gross]` on every contract | `warehouse.fact_finance_product_adjustment` | `warehouse.fact_finance_product_sale` | 0 (exact) | **Implemented** |
+| `RECON-FI-ADJUSTMENT-SEQUENCE` | No event predates its own contract, and no contract carries a reinstatement with nothing to reinstate | `warehouse.fact_finance_product_adjustment` (violations) | zero violations required | 0 (exact) | **Implemented** |
+| `RECON-FI-NET-GROSS` | As-of net product gross agrees between an independent warehouse derivation and the reporting view — reconciled on its **own** basis, never against deal-date back gross | `warehouse` net as of the governed date | `reporting.vw_fi_summary.net_product_gross_as_of` | 0.01 absolute | **Implemented** |
+| `RECON-FACT-FINANCE-PRODUCT-SALE-WAREHOUSE` | Every `product_sale_id` staging accepted reached the fact | `staging.stg_finance_product_sale` | `warehouse.fact_finance_product_sale` | 0 (exact) | **Implemented** |
+| `RECON-FACT-FINANCE-PRODUCT-ADJUSTMENT-WAREHOUSE` | Every `adjustment_id` staging accepted reached the fact | `staging.stg_finance_product_adjustment` | `warehouse.fact_finance_product_adjustment` | 0 (exact) | **Implemented** |
+| `RECON-REPORT-FI-DETAIL-ROWS` | `vw_deal_product_detail` preserves the contract fact's grain | `reporting.vw_deal_product_detail` | `warehouse.fact_finance_product_sale` | 0 (exact) | **Implemented** |
+| `RECON-REPORT-FI-SUMMARY-ROWS` | `vw_fi_summary` totals equal the warehouse's, unmultiplied | `reporting.vw_fi_summary` | `warehouse` | 0.01 absolute | **Implemented** |
+| `RECON-REPORT-FI-PENETRATION-ROWS` | `vw_fi_product_penetration` neither invents nor loses a category row | `reporting.vw_fi_product_penetration` | `warehouse` | 0 (exact) | **Implemented** |
+| `RECON-REPORT-FI-ADJUSTMENT-ROWS` | `vw_fi_adjustment_summary` neither invents nor loses a row | `reporting.vw_fi_adjustment_summary` | `warehouse` | 0 (exact) | **Implemented** |
 | `RECON-EXCEL-001` | Excel summary totals match approved SQL reporting views | `excel/ARPI_Operating_Report.xlsx` (not yet created) | `reporting.*` views | 0.01 absolute | Planned (post-MVP) |
 
-**Fifty-eight reconciliation results are recorded on every `development` database run**: thirty from the
-Python loader (the raw-to-staging chain for every entity, plus staging-to-warehouse and generated-row-count
-for every dimension) and twenty-eight from `audit.vw_recon_all`, which the loader evaluates and persists
-through `audit.fn_record_all_reconciliations`. Results land in `audit.reconciliation_result` and are
+**Ninety-six reconciliation results are recorded on every `development` database run**: the Python loader
+contributes the raw-to-staging chain for every entity plus staging-to-warehouse and generated-row-count for
+every dimension, and `audit.vw_recon_all` contributes the rest, which the loader evaluates and persists
+through `audit.fn_record_all_reconciliations`. DASH.6 added eighteen `RECON-FI-*` / `RECON-REPORT-FI-*` /
+`RECON-FACT-FINANCE-*` rules and the loader-side chain entries for the four new F&I entities. Results land in `audit.reconciliation_result` and are
 readable without any privilege on `audit` through `reporting.vw_reconciliation_status`.
 
 > **Only two tolerance values exist anywhere in ARPI.** `0` means exact and covers every count and identity
@@ -1108,10 +1127,24 @@ readable without any privilege on `audit` through `reporting.vw_reconciliation_s
 > converting by a path the funnel does not model, which is a finding to explain rather than a defect.
 > `reporting.vw_reconciliation_status.is_critical` marks it, and it is the only rule so marked.
 
-> **Note on `RECON-FI-001`.** [ARCHITECTURE.md §21.3](ARCHITECTURE.md) lists this as a required
-> reconciliation, but its dependency `warehouse.fact_finance_product_sale` is **Deferred**
-> ([DATA_DICTIONARY.md §27.8](DATA_DICTIONARY.md)). A reconciliation cannot be Planned when the table it
-> reconciles is not, so it is recorded as Deferred and will be promoted at the same time as the F&I domain.
+> **Note on `RECON-FI-001`, promoted by DASH.6.** [ARCHITECTURE.md §21.3](ARCHITECTURE.md) lists this as a
+> required reconciliation. It was Deferred for as long as its dependency
+> `warehouse.fact_finance_product_sale` was, and it is now **Implemented** and evaluated on every database
+> run ([DATA_DICTIONARY.md §44.1](DATA_DICTIONARY.md)).
+>
+> Three things about it are deliberate. **It is exact, not tolerant** — tolerance `0`, per deal, not on a
+> group total. A rule that reconciled only the grand total would pass while individual deals were wrong in
+> offsetting directions. **It reconciles the deal-date basis only.** A later cancellation is *supposed* to
+> make produced and retained gross differ, so blending the as-of side into this rule would turn an ordinary
+> chargeback into a permanent failing check; `RECON-FI-NET-GROSS` reconciles the as-of side separately, on
+> its own basis. **It proves an explanation, not a definition change** — `back_end_gross` and `KPI-GRS-002`
+> mean exactly what they meant before DASH.6, and `other_fi_income` is exactly `0.00` with no balancing
+> plug.
+>
+> **The whole F&I family is exercised by seeded corruptions** in `tests/integration/test_reconciliations.py`
+> — including a product-gross reduction that leaves the stored back-end gross untouched, an ineligible
+> contract, an over-cap adjustment, a reinstatement with nothing to reinstate, and a substituted view
+> expression — so each rule has been observed reporting `failed`.
 
 ---
 

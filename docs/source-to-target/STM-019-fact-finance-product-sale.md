@@ -206,10 +206,10 @@ product**.
 
 | `sale_type` | `amount_financed` | Structure |
 |---|---|---|
-| `Retail` | `0.00` or NULL | `Cash` |
-| `Retail` | `> 0.00` | `Retail Finance` |
-| `Lease` | any | `Lease` |
-| `Wholesale`, `Dealer Trade` | any | *(no structure — no product may be written)* |
+| `New Retail`, `Used Retail`, `Certified Retail` | `> 0.00` | `Retail Finance` |
+| `New Retail`, `Used Retail`, `Certified Retail` | `0.00` | `Cash` |
+| `Lease` | any | `Lease` — a lease is a lease however it was funded |
+| `Wholesale`, `Dealer Trade` | any | *(non-retail: no consumer, so no product and no consumer lender may attach, and neither is part of the structure mix)* |
 
 **`sale_type` was not changed and no `dim_sale_type` was created.** The structure is derived, not
 stored on the sale, and it is a low-cardinality closed vocabulary that a dimension would only
