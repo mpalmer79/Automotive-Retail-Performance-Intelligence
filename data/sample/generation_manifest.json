@@ -82,8 +82,8 @@
     {
       "entity": "inventory_snapshot_event",
       "row_count": 400,
-      "column_count": 15,
-      "content_digest": "c05caea1b9dfaf99604fbf2ba54c052150eafb7faee3320c324b29b558deef29"
+      "column_count": 16,
+      "content_digest": "0c9215ebc2d08a7df294cd795bc1da6392a5d9cc6a459e7b14f218a25313f745"
     },
     {
       "entity": "lead_event",
