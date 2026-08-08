@@ -46,7 +46,7 @@
 | `DASH.4` | Basic Deal Jacket | Large | **Implemented** |
 | `DASH.5` | Targets and pace | Large | **Implemented** |
 | `DASH.6` | F&I model | Large | **Implemented** |
-| `DASH.7` | F&I dashboard and expanded Deal Jacket | Large | Planned |
+| `DASH.7` | F&I dashboard and expanded Deal Jacket | Large | **Implemented** |
 | `DASH.8` | Inventory accounting and GL controls | Large | Planned |
 | `DASH.9` | Accounting dashboard and inventory integration | Large | Planned |
 | `DASH.10` | Leads and Marketing dashboard | Large | Planned |
@@ -645,16 +645,62 @@ view's own `COMMENT`, in `arpi.constants.FI_KPI_VIEW_OWNERSHIP` and in the exten
 | **Estimated complexity** | Large |
 | **Blocking gate** | None |
 | **Architecture references** | Program §7; KPI_EXTENSION_PLAN §4 |
-| **Status** | Planned |
+| **Anchoring question** | **SQ-21** — answered on a surface, not only in the warehouse. `DASH.6` made the data real; this makes it readable. |
+| **Status** | **Implemented** |
+| **Evidence** | Four F&I datasets promoted into the export allowlist ([DATA_CONTRACT.md §3.3](../dashboard/DATA_CONTRACT.md)); `/dashboard/fi` renders eight sections as complete HTML with scripting disabled; the Deal Jacket itemizes every product contract and reconciles back-end gross to the cent on all 650 deals; `tests/unit/dashboard-fi.test.tsx` reconciles every headline figure against the export manifest's own published totals; `tests/e2e/dashboard-fi.spec.ts` covers the browser-only claims. |
+| **Deliberately not done** | No `DASH.8+` work of any kind. No new warehouse object, no new reporting view, **no TMDL change and Gate 2 remains CLOSED**. No product recommendation, no menu simulation, no payment calculation, no credit decisioning, no leaderboard and no benchmark of any kind. No write-back workflow. |
+| **Baselines preserved** | 29 MVP KPIs, 28 MVP reporting views, 5 MVP facts, 8 MVP dimensions — all unchanged. No F&I view was edited to make it exportable: the contract declares a reviewed SUBSET of each view's columns, asserted by `tests/integration/test_fi_reporting_views.py`. |
 
-Items: `DASH.7-01` F&I export slices + `/dashboard/fi` (Large) — summary, penetration table always
-showing contracts sold / eligible deals / penetration / prior period, mix table, adjustment analysis
-distinguishing deal-date vs as-of vs adjustment-period, manager comparison with minimum-sample
-states; `DASH.7-02` Deal Jacket F&I itemization + reconciliation panel (Medium) — one row per
-product with original/cancellation/chargeback/net columns, totals tying to `back_end_gross`, contract
-status; `DASH.7-03` e2e + unit coverage per TEST_STRATEGY (Medium). Non-goals: no product
-recommendations, no menu simulation. Evidence: routes green; jacket reconciliation state renders
-from data.
+Items: `DASH.7-01` F&I export slices + `/dashboard/fi` (Large) — **Implemented**; `DASH.7-02` Deal
+Jacket F&I itemization + reconciliation panel (Medium) — **Implemented**; `DASH.7-03` e2e + unit
+coverage per TEST_STRATEGY (Medium) — **Implemented**.
+
+### `DASH.7` — where the as-built differs from this plan, and why
+
+**(a) `vw_deal_jacket` was CHANGED, which the plan did not anticipate.** The item reads "Deal Jacket
+F&I itemization", and the jacket view as `DASH.4` left it carried a back-gross TOTAL and nothing
+beneath it. Assembling reserve, product gross and the per-contract lines from that total is not
+possible, and reconstructing the split in TypeScript is the second calculation engine ADR-0013
+condition 2 forbids. The view gained thirteen columns — the lender's four public attributes, finance
+reserve, the product rollup, the adjustment rollup, the as-of net and the three date-basis labels —
+and one existing column was corrected. No other view was touched.
+
+**(b) A live correctness defect was found and fixed, and it was not an F&I defect.**
+`vw_deal_jacket` derived `finance_structure` with an inline `CASE` that had no branch for a
+transaction with no consumer, so **92 wholesale and dealer-trade disposals were labelled `Cash`** —
+a claim that nothing was financed on a transaction where there was nobody to finance anything.
+`DASH.6` had already governed the derivation in `warehouse.fn_finance_structure` for exactly this
+reason; the view now calls it, publishes `finance_structure_basis` naming the branch taken, and
+publishes `is_retail_structure` so no consumer re-enumerates the set. The Deal Jacket's exported
+bytes move because of it.
+
+**(c) Chunking was decided on measurement, not on symmetry.** Two of the four datasets are
+partitioned and two are whole files. `fi-product-penetration` is 2.17 MB in the root export — the
+second-largest dataset in the project — and `deal-product-detail` is 885 kB, so both are chunked;
+`fi-summary` (267 kB) and `fi-adjustment-summary` (33 kB) are not. The adjustment summary has a
+second and stronger reason: its first date column is the ADJUSTMENT date, so partitioning it would
+key partitions by a different month than every other partition in the console.
+
+**(d) The penetration selector had a defect that reconciliation caught and the page did not.**
+`decodeDataset` memoises by cache key, and reading eighteen partitions under one key returned the
+first partition eighteen times. Both sides of every ratio inflated together — VSC read 288/720 where
+the warehouse says 227/558 — so the rendered penetration was 40.0% against a true 40.7% and looked
+entirely plausible. It was found by comparing the selector's output with the manifest's own totals
+before any UI existed. `fi-chunks.ts` now keys per partition and `dashboard-fi.test.tsx` reconciles
+both sides of every published penetration permanently.
+
+**(e) The percentage-point change was converted twice.** The selector multiplied a proportion
+difference by 100 and the console's shared formatter multiplied it again, so a change of three and a
+half points rendered as `+350.9 percentage points`. The field now carries a proportion — the same
+unit every other difference in the console carries — and the formatter owns the one conversion. Found
+by the browser suite reading what the page actually said, which is the only place it was visible.
+
+**(f) One Deal Jacket limitation became false and was replaced rather than kept.** `DASH.4`'s jacket
+stated "back-end gross is aggregate" and "no lender … exists anywhere in ARPI". Both were true then
+and neither is true now. They are replaced by the statements the itemization makes necessary: the
+back-end gross total is on the deal-date basis and is never rewritten by a later event, and the
+lender is a fictional finance source recorded as an assignment only, with no credit application,
+decision, tier, stipulation or adverse-action record anywhere in the project.
 
 ---
 

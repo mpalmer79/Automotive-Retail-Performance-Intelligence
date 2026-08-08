@@ -316,6 +316,31 @@ project can most easily overstep. ARPI's boundaries:
 | **No F&I manager is labelled** (`DASH.6`) | `finance_manager_key` exists on both F&I facts, and **no leaderboard, ranking, label or best/worst/top/bottom designation exists anywhere in the model**. A chargeback rate is not a performance judgement. Every manager-grain read is governed by a **minimum-sample floor** (`warehouse.fn_minimum_sample_floor()`, project default 10 eligible deals) sourced from one constant rather than hard-coded per view — below the floor a figure is suppressed rather than shown small. |
 | **The F&I contract carries no personal data at all** (`DASH.6`) | An F&I contract is the richest source of personal data in a real dealership. ARPI's carries **no customer reference of any kind and no free-text field** — no `note`, `comment`, `reason_text` or `description` — because free text is where somebody eventually writes something about a customer. Adjustments carry no refund amount, remittance, bank detail, communication record, repossession narrative or collection activity. |
 
+### 7.0 What `DASH.7` publishes to a browser, and why each is allowed
+
+`DASH.6` built the F&I domain and exported none of it. `DASH.7` promotes four reporting views into the
+governed browser export and adds thirteen columns to the Deal Jacket. Every boundary above holds
+unchanged; what follows records the three decisions the promotion required, because a field that
+crosses into a public artifact is a decision and not a default.
+
+| Published | Why it is allowed | What still may not be published |
+|---|---|---|
+| **`lender_name`**, on the Deal Jacket only | The single human-readable vendor name in the F&I lane, and it names an **invented institution**. `dim_lender` contains ten fictional names, `DQ-LND-002` closes the set, and `tests/unit/test_fi_privacy.py` asserts no committed name collides with a real institution a reader would recognise. It is published because the Deal Jacket's whole claim is that one transaction is explained, and "a lender was assigned" with the lender withheld explains nothing while implying the model is hiding something. It appears on **one route**, at deal grain, beside the statement that it is a fictional finance source recorded as an assignment only. | Any real lender name; any rate sheet, program, buy rate or decision record; any application, approval, decline, counter-offer, stipulation, adverse-action reason or funding event. A lender appearing on a jacket implies none of them, and the jacket says so. |
+| **`lender_category`** and **`lender_program_tier`** | Both classify the **lender's program**, never a person, and both are constant across that lender's deals. The tier's vocabulary is closed by a `CHECK` so no value that merely reads like a credit grade can enter it. They are published because a reader who can see one lender name and no context has no way to tell a captive from an independent, which is the only analytically meaningful thing about the assignment. | Any per-deal tier, score, grade, band or classification of a customer. None exists to publish: the assignment's entire input set is the store, the derived structure and seeded randomness. |
+| **`finance_manager_code`**, on three F&I datasets | A synthetic `EMP-#####` identifier for a fictional employee, published nullable — `null` means **nobody was on the F&I desk**, a real population of real deliveries, and never "manager unknown". Every manager-grain ratio is governed by the exported `minimum_sample_floor`, so the console cannot disagree with the warehouse about when a figure is publishable. | Any name, contact detail, hire date, compensation, protected characteristic or personnel record. And any rank: no exported column carries a rank, percentile-of-peers or best/worst flag, and **no F&I dataset sorts by a performance measure**, because a default sort by a metric is a leaderboard whatever the column header says. |
+
+**What the promotion did not carry, checked rather than asserted.** No dataset in the whole export
+declares a column whose name contains `apr`, `buy_rate`, `sell_rate`, `rate_spread`, `money_factor`,
+`monthly_payment`, `payment_amount`, `credit_score`, `fico`, `customer_income`, `stipulation`,
+`adverse_action`, `ssn`, `social_security` or `date_of_birth` —
+`tests/unit/test_export_dashboard_dataset.py::TestFiContract` sweeps all fifteen tokens over every
+dataset, not only the F&I ones. This is a property of the warehouse before it is a property of the
+boundary: the model contains none of them, so none can be exported.
+
+**No customer-grain F&I dataset exists.** `deal-product-detail` is one grain below a deal — one row
+per product contract — and carries no customer reference of any kind. There is still no
+customer-grain dataset anywhere in the export.
+
 ### 7.1 The FTC Safeguards Rule — context, not a compliance claim
 
 `docs/research.md` §10.1 records that **most automobile dealers that finance or lease vehicles are treated

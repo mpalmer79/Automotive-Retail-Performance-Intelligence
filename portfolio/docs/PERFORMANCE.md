@@ -635,7 +635,82 @@ is the local convention would have been pre-optimisation with a maintenance cost
 the boundary suite asserts in both directions. 16.6 kB is small enough that it is imported
 whole rather than partitioned, and nothing reads the file system at runtime.
 
+## 9.6 The F&I page, measured (`DASH.7`)
+
+Measured by `npm run bundle` against a production build served locally, cold, compressed,
+by the same method as §9.3, §9.4 and §9.5. **A baseline, not a budget.** `DASH.13-02`
+sets budgets from measurements.
+
+| Route                                                    |     HTML | Route JS |    Total |
+| -------------------------------------------------------- | -------: | -------: | -------: |
+| `/dashboard/fi`                                          |  48.6 kB | 164.2 kB | 342.9 kB |
+| `/dashboard/fi?store=GSA-001&period=2025-11&product=gap` |  43.8 kB | 164.2 kB | 338.0 kB |
+| `/dashboard/deals/SLE-00000646` (itemized, `DASH.7`)     |  47.0 kB | 162.1 kB | 339.1 kB |
+| `/dashboard` (the heaviest console route, for scale)     | 120.9 kB | 164.2 kB | 414.9 kB |
+
+**Zero new client JavaScript.** 164.2 kB on `/dashboard/fi`, the same figure every other
+console route reports. The site still has one client island — the filter bar — and
+`DASH.7` added none: all eight sections, all five tables and the whole methodology
+disclosure are server components. `fi-sections.tsx` contains no `'use client'` directive
+and `dashboard-boundaries.test.ts` fails the build if a second island appears without a
+decision. **`DASH.7` needed no chart library** and would not have been permitted one.
+
+**The F&I page is the second-lightest console route in HTML**, at 48.6 kB against
+`/dashboard`'s 120.9 kB, despite rendering five tables and ten category rows twice. The
+reason is grain: the Executive Overview renders six KPI families across three stores with
+sparklines, and this page renders sums.
+
+**The filtered measurement is the interesting one.** `product=gap` narrows the penetration
+and economics tables from ten category rows to one and costs 43.8 kB against 48.6 kB —
+**4.8 kB less**. A page that filtered in the browser would have shipped all ten rows and
+hidden nine, and the payload would not have moved. The difference is the cheapest available
+evidence that the filter reaches the server.
+
+**Data lane.**
+
+| Artifact                                              |      Bytes |
+| ----------------------------------------------------- | ---------: |
+| Root export, `fi-summary.json`                        |    267,204 |
+| Root export, `fi-product-penetration.json`            |  2,170,439 |
+| Root export, `fi-adjustment-summary.json`             |     32,858 |
+| Root export, `deal-product-detail.json`               |    885,282 |
+| Generated, `datasets/fi-summary.json`                 |     79,488 |
+| Generated, `datasets/fi-adjustment-summary.json`      |     14,860 |
+| Generated, `datasets/fi-product-penetration/` (18)    |    758,976 |
+| Generated, `datasets/deal-product-detail/` (18)       |    363,079 |
+| Largest single generated partition                    |     57,674 |
+| Root export tree, all 27 files                        | 13,608,954 |
+| Generated tree, all 180 files                         |  4,605,990 |
+
+**Chunking was decided from these numbers, not from the local convention.**
+`fi-product-penetration` at 2.17 MB in the root export is the second-largest dataset in
+the project, and `deal-product-detail` at 885 kB is the fourth; both are partitioned.
+`fi-summary` at 267 kB and `fi-adjustment-summary` at 33 kB are single files, well inside
+the 256 KB generated ceiling. Copying the partition table for all four because it is the
+local pattern would have added two boundary rules and two manifest chunk indexes to save
+nothing.
+
+The adjustment summary has a second reason that has nothing to do with size: its first
+date column is the ADJUSTMENT date, so partitioning it would key partitions by a different
+month than every other partition in the console, and `2025-08` would mean two different
+things depending on which directory it was read from.
+
+**Server graph.** Four modules, and the split is route scoping rather than taste.
+`fi-data.ts` carries the two unchunked datasets into `/dashboard/fi` only. `fi-chunks.ts`
+carries the penetration partitions into `/dashboard/fi` and the product partitions into
+`/dashboard/deals/[saleId]` — one module because they share a partition key and a lookup
+shape, and the boundary suite asserts which route reaches which function. Neither is
+imported by `chunks.ts` or `data.ts`, so the Executive Overview's graph is unchanged, and
+the boundary suite asserts the importer set in both directions.
+
+**The Deal Jacket grew by nothing measurable.** 47.0 kB of HTML against `DASH.4`'s
+measurement for the same deal, for a product table, a back-gross panel, three more
+integrity checks and four lender fields. The jacket partition itself grew from 443,448 to
+568,225 bytes generated — 13 more columns on 650 rows — and the largest partition from
+34,439 to 44,190 bytes, still well inside the 256 KB ceiling.
+
 ## 10. What has not been measured
+
 
 Stated rather than implied.
 

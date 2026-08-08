@@ -74,7 +74,11 @@ one commit is a check failure.
 | `reporting.vw_gross_change_bridge` | `gross-change-bridge` | Store × month pair × bridge component (`DASH.3`) |
 | `reporting.vw_target_attainment` | `target-attainment` | Store × target scope × targeted KPI × month (`DASH.5`) |
 | `reporting.vw_deal_explorer` | `deal-explorer` | One finalized transaction (`DASH.3`) |
-| `reporting.vw_deal_jacket` | `deal-jacket` | One finalized transaction, presentation-complete (`DASH.4`) |
+| `reporting.vw_deal_jacket` | `deal-jacket` | One finalized transaction, presentation-complete (`DASH.4`, extended `DASH.7`) |
+| `reporting.vw_fi_summary` | `fi-summary` | Store × sale date × finance manager × finance structure (`DASH.7`) |
+| `reporting.vw_fi_product_penetration` | `fi-product-penetration` | Store × sale month × finance manager × product category (`DASH.7`) |
+| `reporting.vw_fi_adjustment_summary` | `fi-adjustment-summary` | Store × adjustment month × product category × adjustment type (`DASH.7`) |
+| `reporting.vw_deal_product_detail` | `deal-product-detail` | One product contract on one transaction (`DASH.7`) |
 | `reporting.vw_reconciliation_status` | `reconciliation-status` | Reconciliation, for the export's own run |
 | `reporting.vw_pipeline_run_summary` | `pipeline-run` | The export's own run |
 
@@ -120,15 +124,20 @@ none defines a new measure:
   recomputes both arithmetic identities itself, because a verification that reads a stored flag
   verifies nothing.
 
-Later increments extend the allowlist with their views (targets at `DASH.5`; F&I at
-`DASH.6`/`DASH.7`; accounting at `DASH.8`; employees at `DASH.11`; actions at `DASH.12`).
+**Four views were added by `DASH.7`** — the four `DASH.6` built and deliberately left unexported. They
+are described in §3.3.
 
-> **`DASH.6` built four F&I reporting views and added none of them to this allowlist.** That is the intended
+Later increments extend the allowlist with their views (accounting at `DASH.8`; employees at
+`DASH.11`; actions at `DASH.12`).
+
+> **`DASH.6` built four F&I reporting views and added none of them to this allowlist.** That was the intended
 > outcome, not an omission: `DASH.7` owns the F&I presentation surface, and a view that exists in `reporting`
-> is not thereby exportable. `tests/integration/test_fi_reporting_views.py` asserts that no F&I view appears
-> in `arpi.dashboard.contract.DATASETS`, so the boundary fails a test rather than relying on nobody adding
-> one. The views are listed in `DASHBOARD_LANE_SQL_FILES` — which is what keeps the **28 MVP reporting view**
-> baseline from moving when a dashboard-program lane adds views beside it.
+> is not thereby exportable. Through `DASH.6`, `tests/integration/test_fi_reporting_views.py` asserted that no
+> F&I view appeared in `arpi.dashboard.contract.DATASETS`, so the boundary failed a test rather than relying on
+> nobody adding one. **`DASH.7` promotes all four**, and that test is re-aimed: it now asserts the exported set
+> is exactly those four and that the promotion carried no column the contract does not declare. The views stay
+> listed in `DASHBOARD_LANE_SQL_FILES` — which is what keeps the **28 MVP reporting view** baseline from moving
+> when a dashboard-program lane adds views beside it.
 
 Each extension lands as a diff to this table **and** to `arpi.dashboard.contract` in the
 same PR as the exporter change; the paired unit test refuses a change to only one of them.
@@ -193,6 +202,49 @@ available", never as a division.
 `stretch_target_value` exists on the fact and is deliberately **not exported**. No `DASH.5` surface
 renders it, and publishing an unused planning figure invites a consumer to invent a meaning for it.
 
+### 3.3 The four F&I datasets (`DASH.7`)
+
+`DASH.6` built `vw_fi_summary`, `vw_fi_product_penetration`, `vw_fi_adjustment_summary` and
+`vw_deal_product_detail` and exported none of them. `DASH.7` promotes all four unchanged: no view was
+edited to make it exportable, and the contract declares a strict subset of each view's columns.
+
+**Everything is fictional, and the manifest says so per dataset.** Every lender, product, provider and
+finance manager in this data is invented for the fictional Granite Auto Group. `lender_name` is the
+one human-readable vendor name in the F&I lane and it appears on the Deal Jacket only, under the
+allowlist justification in [PRIVACY_AND_ETHICS.md §7](../../PRIVACY_AND_ETHICS.md).
+
+**No consumer-credit field exists anywhere in the lane.** No APR, buy rate, sell rate, rate spread,
+monthly payment, term, credit score, income, stipulation, adverse-action reason, SSN or bank decision
+record is modelled, so none can be exported. This is a property of the warehouse, not a filter applied
+at the boundary.
+
+**The three date bases are three datasets, never one.** `fi-summary` is deal-date. Its retained-gross
+columns are as-of. `fi-adjustment-summary` is on the **adjustment date** — the event's own business
+date — so an August chargeback against a June contract is an August row and nothing may restate it
+into June. The datasets are shipped separately and the console's F&I module never joins them.
+
+**Penetration arrives with its own denominator, per category.** `penetration_numerator` is the count
+of DISTINCT deals with at least one contract in that category; `penetration_denominator` is the count
+of deals eligible for that category under `eligibility_rule_id`. A second contract on the same deal
+raises the contract count and not the numerator, which is visible in the committed data: Other
+Aftermarket Product has 53 attached deals against 60 contracts. Because both sides are exported per
+store × month × manager × category, any filter the console applies scopes numerator and denominator
+together by construction — an average of store penetrations cannot be formed from this data at all.
+The eligible denominator is never "all retail deals": VSC is 558, GAP is 388, Lease Wear is 54.
+
+**`minimum_sample_floor` travels with the data.** The floor is governed centrally by
+`warehouse.fn_minimum_sample_floor()` and exported as a column rather than restated as a constant in
+the page, so the console cannot disagree with the warehouse about when a manager-level figure is
+publishable.
+
+**No leaderboard column exists.** There is no rank, no percentile-of-peers, no best/worst flag and no
+performance-ordered sort key. `sort_keys` are store, then date, then the synthetic manager code.
+
+**`deal-product-detail` is the fourth deal-grain dataset and is route-scoped like the others.** One row
+per product contract on one transaction: category, product code, provider code, term, coverage,
+original gross, cumulative adjustment, net gross as-of, and the contract's own status. It carries no
+customer attribute and no rate of any kind.
+
 ## 4. Column rules
 
 For every dataset the contract declares — and both stages check — the column list and order, the JSON
@@ -252,7 +304,8 @@ change cannot mislabel a chart:
 
 | Basis | Datasets |
 |---|---|
-| sale date | `sales-summary`, `gross-summary`, `days-to-sale` |
+| sale date | `sales-summary`, `gross-summary`, `days-to-sale`, `deal-explorer`, `deal-jacket`, `fi-summary`, `fi-product-penetration`, `deal-product-detail` |
+| adjustment date | `fi-adjustment-summary` |
 | snapshot date | `inventory-health`, `inventory-aging`, `inventory-turn` |
 | as-of date | `days-supply` |
 | lead creation date | `lead-funnel`, `lead-response` |
@@ -261,7 +314,14 @@ change cannot mislabel a chart:
 | calendar date | `calendar` |
 | none | `stores`, `lead-sources`, `campaigns`, `reconciliation-status`, `pipeline-run` |
 
-`balance date` (`DASH.8`) joins the set with its increment. **`adjustment date` exists in the warehouse since `DASH.6`** — it is the third governed date basis, distinct from deal date and as-of — and it reaches no exported dataset until `DASH.7`. Period
+The three F&I datasets state their basis more fully than one phrase, because a retained-gross column is
+measured as-of while the production columns beside it are measured on the deal date; `fi-summary`'s
+declared basis reads *"sale date for every production measure; as-of for the retained ones"*, and the
+console renders both labels rather than picking one. `fi-adjustment-summary` is the only dataset in the
+export on the **adjustment date**, which is the third governed basis and the reason it is a separate
+dataset rather than extra columns on the summary.
+
+`balance date` (`DASH.8`) joins the set with its increment. Period
 filters resolve against the `calendar` dataset's selling-day fields, exported once — so the console
 and the warehouse cannot disagree about which days a month contains or which of them a showroom was
 open. The transformer asserts every dated row's date exists in `calendar`.
@@ -373,9 +433,12 @@ portfolio/src/generated/dashboard/
 ```
 
 `stores`, `calendar`, `lead-sources`, `campaigns`, `sales-summary`, `gross-summary`, `days-to-sale`,
-`inventory-turn`, `appointment-funnel`, `marketing-performance`, `reconciliation-status` and
-`pipeline-run` are whole files. `inventory-health`, `inventory-aging`, `days-supply`, `lead-funnel`
-and `lead-response` are chunked: 18 partitions each (3 stores × 6 months).
+`inventory-turn`, `appointment-funnel`, `marketing-performance`, `sales-gross-trend`,
+`gross-change-bridge`, `target-attainment`, `fi-summary`, `fi-adjustment-summary`,
+`reconciliation-status` and `pipeline-run` are whole files — 17 of them. `inventory-health`,
+`inventory-aging`, `days-supply`, `lead-funnel`, `lead-response`, `deal-explorer`, `deal-jacket`,
+`fi-product-penetration` and `deal-product-detail` are chunked: 18 partitions each (3 stores × 6
+months), 162 partitions in all.
 
 **The generated dataset files are columnar** — `{ dataset, rowCount, columns, rows: [[…], …] }`, one
 row array per line, values in `columns` order. Every value is preserved exactly; this is a
@@ -442,6 +505,36 @@ asserts zero importers today, so the first one arrives in the same diff as the e
   120 MB is what decides it. The route is complete HTML without JavaScript either way, which is the
   property the choice was not allowed to cost. Recorded in `PERFORMANCE.md` §9.4.
 
+- **`DASH.7` adds a fourth partition module,** `lib/dashboard/fi-chunks.ts`, holding two tables rather
+  than one because both are partitioned on the same key and neither belongs in `chunks.ts`:
+
+  | Dataset | Root export | Generated | Partitions | Largest | Read by |
+  |---|---|---|---|---|---|
+  | `fi-product-penetration` | 2,170,439 B | 758,976 B | 18 | 57,674 B | `/dashboard/fi` |
+  | `deal-product-detail` | 885,282 B | 363,079 B | 18 | 34,769 B | `/dashboard/deals/[saleId]` |
+
+  Both were chunked on the measurement: `fi-product-penetration` at 2.17 MB in the root export is the
+  second-largest dataset in the project, and the 3,012 rows compress to a largest partition four times
+  inside the 256 KB ceiling. `deal-product-detail` partitions on store × **sale** month deliberately —
+  the same key `deal-jacket` uses — so opening one jacket resolves one product partition and it is the
+  partition the route already opened for that deal. A contract's own adjustment dates are a different
+  question and are never the partition key.
+
+  `fi-summary` (267,204 B root, 79,488 B generated, 354 rows) and `fi-adjustment-summary` (32,858 B
+  root, 14,860 B generated, 57 rows) are **not** chunked. Both are well inside the whole-file ceiling,
+  and the adjustment summary for a second and stronger reason: its first date column is the
+  ADJUSTMENT date, so partitioning it would key partitions by a different month than every other
+  partition in the console, and `2025-08` would mean two different things depending on which directory
+  it was read from.
+
+- **The penetration partitions must be decoded under one cache key per partition.** The generated
+  decoder memoises by cache key, so reading eighteen partitions under a single key returns the first
+  partition eighteen times. That defect is not visually obvious — it inflates numerator and
+  denominator together, so the ratio still looks plausible — and it was caught during `DASH.7` by
+  comparing the selector's output against the manifest's own published totals rather than by looking
+  at the page. `fi-chunks.ts` therefore keys on `fi-product-penetration/<store>/<month>`, and
+  `dashboard-fi.test.tsx` reconciles both sides of every penetration ratio against the manifest.
+
 ## 10. File-size constraints
 
 **Measured, not assumed.** The figures below are what the development profile actually produces,
@@ -450,12 +543,12 @@ measured by `python scripts/export_dashboard_dataset.py --check --sizes` and
 
 | Artifact | Ceiling | Measured (development profile) |
 |---|---|---|
-| Any single committed export file | **3 MB** | 2,269,345 B — `lead-response.json`, 4,099 rows |
-| Total committed `data/dashboard/` | 20 MB | 9,883,189 B across 23 files, 18,855 rows in 22 datasets (`DASH.5`) |
-| Any single generated chunk | 256 KB | 47,325 B — `datasets/lead-funnel/GSA-001/2025-07.json`; largest deal-jacket partition 34,439 B, largest deal-explorer partition 17,206 B |
-| Any single generated whole-dataset file | 256 KB (same ceiling) | 95,189 B — `datasets/sales-gross-trend.json` (`DASH.3`); `datasets/target-attainment.json` is 16,582 B (`DASH.5`) |
-| Client-safe manifest | not separately budgeted | 132,965 B (the largest generated file) (`DASH.5`) |
-| Total generated `portfolio/src/generated/dashboard/` | not yet budgeted | 3,225,993 B across 142 files (15 whole datasets, 126 chunks, 1 manifest) (`DASH.5`) |
+| Any single committed export file | **3 MB** | 2,269,345 B — `lead-response.json`, 4,099 rows; `fi-product-penetration.json` is next at 2,170,439 B (`DASH.7`) |
+| Total committed `data/dashboard/` | 20 MB | 13,608,954 B across 27 files, 23,328 rows in 26 datasets (`DASH.7`) |
+| Any single generated chunk | 256 KB | 57,674 B — `datasets/fi-product-penetration/GSA-001/2025-07.json` (`DASH.7`); largest lead-funnel partition 47,325 B, largest deal-jacket partition 44,190 B, largest deal-product-detail partition 34,769 B |
+| Any single generated whole-dataset file | 256 KB (same ceiling) | 95,189 B — `datasets/sales-gross-trend.json` (`DASH.3`); `datasets/fi-summary.json` is 79,488 B and `datasets/fi-adjustment-summary.json` 14,860 B (`DASH.7`) |
+| Client-safe manifest | not separately budgeted | 169,500 B (the largest generated file) (`DASH.7`) |
+| Total generated `portfolio/src/generated/dashboard/` | not yet budgeted | 4,605,990 B across 180 files (17 whole datasets, 162 chunks, 1 manifest) (`DASH.7`) |
 | Any page's initial data payload | measured per route in `PERFORMANCE.md` §9 | see `PERFORMANCE.md` §9.4 for the Deal Jacket |
 
 > **Correction, `DASH.4`.** The committed-export row count in this table read *19,209 rows across 21
@@ -545,6 +638,21 @@ changing it moves the hash exactly as changing a column list does. Both consumer
 over the declared rows rather than guessing which ones the exporter meant, and an unreadable subset
 fails rather than silently summing everything.
 
+**`DASH.7` adds nine totals, and two of them are subsets for the same reason `DASH.5`'s were.**
+`finance_reserve_gross` (`160244.79`), `original_product_gross` (`505828.54`),
+`net_product_gross_as_of` (`483696.08`) and `fi_contract_count` (`1012`) are plain column sums over
+`fi-summary`; `products_per_retail_unit` publishes `1012 / 558`. The first two carry the identity the
+F&I page is built on: reserve `160244.79` + product `505828.54` = `back_end_gross` `666073.33`, which
+`gross-summary` already publishes independently, so the two datasets reconcile against each other and
+not merely against themselves.
+
+`vsc_penetration` and `gap_penetration` each name their category as a subset and publish both sides —
+`227 / 558` and `200 / 388`. Two different denominators on the same 650 deals is the whole point: a
+single group penetration figure over this dataset would be meaningless, and it is not derivable from
+this block. `chargeback_amount` (`10664.51`) and `cancellation_amount` (`12087.89`) subset
+`fi-adjustment-summary` by `adjustment_type`, on the adjustment-date basis, and are never additive with
+anything on the deal-date basis.
+
 **Non-additive figures carry no group total at all** — medians, percentiles, days supply and inventory
 turn. A group median is not the average of store medians, and the only reliable protection is for the
 wrong number to be unavailable. Their evidence is row-level equality between the export and the
@@ -587,3 +695,6 @@ Recorded rather than quietly absorbed:
 | 2 MB single-file ceiling | 3 MB | Measured, with documented headroom. See §10. |
 | `pipeline_run.logical_run_key` populated | `null` | The reporting layer does not publish it and the exporter may not read the audit schema. See §7. |
 | Generated tree mirrors the export's row-object shape | Columnar | Measured 5 MB saving with every value preserved exactly. See §8. |
+| `DASH.7` exports the four F&I views unchanged | It does, and the Deal Jacket view was CHANGED | `vw_deal_jacket` gained thirteen columns and one corrected one. The F&I itemisation and the back-gross reconciliation panel `DASH.7-02` requires cannot be assembled from a jacket that carries only a back-gross total, and reconstructing the split in TypeScript is the second calculation engine ADR-0013 condition 2 forbids. The correction is separate and is recorded below. |
+| `vw_deal_jacket.finance_structure` derived inline in the view | Derived by `warehouse.fn_finance_structure` | The view's inline `CASE` labelled every wholesale and dealer-trade disposal `Cash`, because neither finances anything — 92 rows in the committed data. `DASH.6` had already governed the derivation in one function for exactly this reason; the view now calls it, publishes `finance_structure_basis` naming the branch taken, and publishes `is_retail_structure` so a consumer never has to re-enumerate the set. A defect fixed, not a shape changed, and `deal-jacket`'s bytes move because of it. |
+| Four F&I datasets, chunking to be decided | Two chunked, two whole files | Decided on the measurement, not by symmetry. See §9. |
