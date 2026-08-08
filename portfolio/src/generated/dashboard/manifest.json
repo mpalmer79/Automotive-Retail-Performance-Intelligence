@@ -1,17 +1,17 @@
 {
   "schema": "arpi.dashboard_client/1",
-  "datasetVersion": 4,
+  "datasetVersion": 5,
   "contractVersion": 1,
   "contractSha256": "d2f90edc9c1c776623cd787994a76529c65ff0a965f03d7ff18e1879228b98c0",
-  "generatedAt": "2026-08-07T20:32:01+00:00",
+  "generatedAt": "2026-08-08T03:40:21+00:00",
   "asOfDate": "2025-12-31",
   "profile": "development",
   "randomSeed": 20250701,
-  "sourceCommit": "1b9be8c339c0cb85d0e1e700c54d396ffb7cc555",
+  "sourceCommit": "dc6ecaa19f4e83b22fa351888a12ee7d516c629b",
   "exporterVersion": "0.1.0",
   "syntheticData": true,
   "fictionalDealerGroup": true,
-  "pipelineRunUuid": "2e878277-7633-40ec-a575-0a099b1dc142",
+  "pipelineRunUuid": "6b1a78ae-0a44-42ba-96e7-a12e7bb16363",
   "pipelineRunStatus": "succeeded",
   "sourceViews": [
     "reporting.vw_appointment_funnel",
@@ -369,7 +369,7 @@
   "privacyScanStatus": "passed",
   "validationCriticalFailures": 0,
   "validationWarnings": 0,
-  "reconciliationsEvaluated": 69,
+  "reconciliationsEvaluated": 96,
   "reconciliationsFailed": 0,
   "stale": false,
   "limitations": [
@@ -4668,7 +4668,7 @@
       ],
       "dateBasis": null,
       "kpiIds": [],
-      "rowCount": 69,
+      "rowCount": 96,
       "columns": [
         {
           "name": "reconciliation_id",
@@ -4933,12 +4933,12 @@
     }
   ],
   "sizes": {
-    "totalBytes": 3093028,
+    "totalBytes": 3095310,
     "fileCount": 141,
     "largestFile": {
       "file": "datasets/sales-gross-trend.json",
       "bytes": 95189
     },
-    "rootExportBytes": 9710354
+    "rootExportBytes": 9716524
   }
 }
