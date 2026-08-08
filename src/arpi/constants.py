@@ -1400,6 +1400,117 @@ FI_KPI_VIEW_OWNERSHIP: Final[Mapping[str, tuple[str, ...]]] = MappingProxyType(
     }
 )
 
+# ---------------------------------------------------------------------------------------
+# The inventory-accounting control domain (DASH.8)
+# ---------------------------------------------------------------------------------------
+#: The inventory control-account categories an accounting snapshot may resolve to.
+#:
+#: THREE, NOT THE FOUR THE PLAN NAMED, AND THE MISSING ONE IS A DELIBERATE REFUSAL.
+#: ``KPI_EXTENSION_PLAN.md`` listed a fourth category, ``Wholesale Inventory``. Nothing in
+#: the model distinguishes a unit HELD FOR WHOLESALE at a snapshot date: ``condition_type``
+#: is New / Used / Certified, ``acquisition_source`` describes where the unit came FROM,
+#: and the only thing that would separate a wholesale population is how the unit eventually
+#: left -- which is a fact about the future of that snapshot date. Classifying inventory by
+#: its eventual disposal is exactly the leakage the increment forbids, and it would corrupt
+#: every balance it touched: a unit would move between control accounts retroactively as
+#: soon as it sold. The category is therefore not created. See ``docs/reviews/DASH-8-REVIEW.md``.
+#:
+#: CERTIFIED IS ITS OWN CONTROL ACCOUNT, AND THAT IS NOT THE SALES RULE. The sales KPIs
+#: group Certified with Used for condition reporting (``CONDITION_GROUPS``); the accounting
+#: model does not, because a certified unit carries its own capitalized certification cost
+#: and a controller schedules it separately. Accounting classification and KPI grouping are
+#: allowed to differ, and they do.
+INVENTORY_CONTROL_CATEGORIES: Final[tuple[str, ...]] = (
+    "New Vehicle Inventory",
+    "Used Vehicle Inventory",
+    "Certified Vehicle Inventory",
+)
+
+#: The vehicle condition each control category schedules. One condition, one account, and
+#: the mapping is total over ``dim_vehicle.condition_type`` -- a unit cannot land in two
+#: inventory control balances, and cannot land in none.
+CONDITION_TO_CONTROL_CATEGORY: Final[Mapping[str, str]] = MappingProxyType(
+    {
+        "New": "New Vehicle Inventory",
+        "Used": "Used Vehicle Inventory",
+        "Certified": "Certified Vehicle Inventory",
+    }
+)
+
+#: The GL account types the synthetic control catalogue may declare.
+GL_ACCOUNT_TYPES: Final[tuple[str, ...]] = ("Asset", "Liability")
+
+#: The normal balance vocabulary, closed so no third spelling can enter.
+GL_NORMAL_BALANCES: Final[tuple[str, ...]] = ("Debit", "Credit")
+
+#: Every accounting KPI identifier, in KPI_CATALOG.md order.
+#:
+#: HELD SEPARATE FROM :data:`KPI_IDS` FOR THE SAME REASON :data:`FI_KPI_IDS` IS. ``KPI_IDS``
+#: is the 29-strong MVP set the Power BI semantic model implements as DAX measures. These
+#: twelve are governed and computed in SQL and no DAX measure reads them. Folding them into
+#: ``KPI_IDS`` would restate a historical baseline that describes 29 KPIs and still does.
+ACCOUNTING_KPI_IDS: Final[tuple[str, ...]] = (
+    "KPI-ACC-001",  # Inventory subledger balance
+    "KPI-ACC-002",  # GL inventory control balance
+    "KPI-ACC-003",  # Inventory reconciliation variance
+    "KPI-ACC-004",  # Unreconciled stock count
+    "KPI-ACC-005",  # Unbalanced front-gross identity count
+    "KPI-ACC-006",  # Unbalanced back-gross reconciliation count
+    "KPI-ACC-007",  # Unbalanced total-gross identity count
+    "KPI-ACC-008",  # Orphaned F&I product count
+    "KPI-ACC-009",  # Product adjustment without original contract count
+    "KPI-ACC-010",  # Missing inventory book record count
+    "KPI-ACC-011",  # Inventory posting lag
+    "KPI-ACC-012",  # Data-quality exception count
+)
+
+#: The reporting view each accounting KPI is computed from.
+ACCOUNTING_KPI_VIEW_OWNERSHIP: Final[Mapping[str, tuple[str, ...]]] = MappingProxyType(
+    {
+        "KPI-ACC-001": ("vw_inventory_accounting", "vw_inventory_gl_reconciliation"),
+        "KPI-ACC-002": ("vw_inventory_gl_reconciliation",),
+        "KPI-ACC-003": ("vw_inventory_gl_reconciliation",),
+        "KPI-ACC-004": ("vw_accounting_exceptions",),
+        "KPI-ACC-005": ("vw_accounting_exceptions",),
+        "KPI-ACC-006": ("vw_accounting_exceptions",),
+        "KPI-ACC-007": ("vw_accounting_exceptions",),
+        "KPI-ACC-008": ("vw_accounting_exceptions",),
+        "KPI-ACC-009": ("vw_accounting_exceptions",),
+        "KPI-ACC-010": ("vw_accounting_exceptions",),
+        "KPI-ACC-011": ("vw_inventory_accounting",),
+        "KPI-ACC-012": ("vw_accounting_exceptions",),
+    }
+)
+
+#: The governed accounting exception vocabulary, closed.
+#:
+#: One code per control QUESTION, not per symptom. A single physical defect must produce a
+#: single exception row: ``vw_accounting_exceptions`` gives every row a stable identifier
+#: built from its code and its entity so a UNION branch cannot report the same defect twice.
+ACCOUNTING_EXCEPTION_CODES: Final[tuple[str, ...]] = (
+    "ACC-GL-VARIANCE",
+    "ACC-MISSING-GL-BALANCE",
+    "ACC-MISSING-SUBLEDGER-BALANCE",
+    "ACC-MISSING-BOOK-ROW",
+    "ACC-ORPHAN-BOOK-ROW",
+    "ACC-FRONT-GROSS-IDENTITY",
+    "ACC-BACK-GROSS-IDENTITY",
+    "ACC-TOTAL-GROSS-IDENTITY",
+    "ACC-ORPHAN-FI-PRODUCT",
+    "ACC-ORPHAN-FI-ADJUSTMENT",
+    "ACC-DQ-FAILURE",
+)
+
+#: The reconciliation comparison states. ``Reconciled`` and ``Variance`` both mean BOTH
+#: SIDES WERE PRESENT AND COMPARED; the two missing states mean no comparison was possible
+#: and the variance is NULL. Missing is never zero.
+RECONCILIATION_COMPARISON_STATES: Final[tuple[str, ...]] = (
+    "Reconciled",
+    "Variance",
+    "Missing GL balance",
+    "Missing subledger balance",
+)
+
 #: The eligibility rule identifiers, in the order the configuration declares them.
 #:
 #: The configuration in ``config/reference/fi_product_eligibility.yaml`` is the authority
@@ -1485,6 +1596,24 @@ SQL_RECONCILIATION_IDS: Final[tuple[str, ...]] = (
     "RECON-REPORT-FI-SUMMARY-ROWS",
     "RECON-REPORT-FI-PENETRATION-ROWS",
     "RECON-REPORT-FI-ADJUSTMENT-ROWS",
+    # The inventory-accounting control domain (DASH.8). RECON-ACC-BOOK-IDENTITY is the
+    # headline: it proves current book value is EXPLAINED, to the cent, by its declared
+    # components. RECON-ACC-GL-SUBLEDGER is deliberately NOT an equality: it records the
+    # compared amounts and the signed variance, because a controlled variance is a valid
+    # reconciliation OUTCOME and not a structural defect. See sql/08_validation.
+    "RECON-FACT-INVENTORY-ACCOUNTING-WAREHOUSE",
+    "RECON-FACT-GL-CONTROL-BALANCE-WAREHOUSE",
+    "RECON-ACC-BOOK-IDENTITY",
+    "RECON-ACC-BOOK-COMPONENTS",
+    "RECON-ACC-PACK-EXCLUDED",
+    "RECON-ACC-FLOORPLAN-EXCLUDED",
+    "RECON-ACC-POPULATION",
+    "RECON-ACC-CATEGORY-TOTALS",
+    "RECON-ACC-GL-SUBLEDGER",
+    "RECON-ACC-GRAIN",
+    "RECON-GLB-GRAIN",
+    "RECON-REPORT-ACCOUNTING-ROWS",
+    "RECON-REPORT-GL-RECON-ROWS",
 )
 
 #: The reconciliations whose failure invalidates the numbers built on them.
@@ -1494,7 +1623,17 @@ SQL_RECONCILIATION_IDS: Final[tuple[str, ...]] = (
 #: appointments, so that product is an approximation and cannot be made an identity; a
 #: breach is a finding to explain, not a defect. ``reporting.vw_reconciliation_status``
 #: derives the same distinction in SQL.
-NON_CRITICAL_RECONCILIATION_IDS: Final[frozenset[str]] = frozenset({"RECON-FUNNEL-CHAIN"})
+#: ``RECON-ACC-GL-SUBLEDGER`` joins them for a different and stronger reason. It compares
+#: a GL control balance with the inventory subledger it schedules, and the increment
+#: DELIBERATELY plants variances so the reconciliation surface can be seen working. A
+#: nonzero variance there is the intended demonstration, not a defect: both sides are
+#: structurally valid data, they simply do not agree. Marking a run failed because a
+#: controlled accounting variance exists would make the exception surface unusable, and
+#: would teach a reader that a variance means broken data. It does not. The variance is
+#: still calculated, recorded and rendered -- it is the STATUS that is not critical.
+NON_CRITICAL_RECONCILIATION_IDS: Final[frozenset[str]] = frozenset(
+    {"RECON-FUNNEL-CHAIN", "RECON-ACC-GL-SUBLEDGER"}
+)
 
 CRITICAL_SQL_RECONCILIATION_IDS: Final[tuple[str, ...]] = tuple(
     identifier
