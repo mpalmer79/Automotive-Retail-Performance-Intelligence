@@ -21,11 +21,16 @@ from arpi.pipeline import GENERATION_ORDER, SKIP_REASON_NOT_REQUESTED, run_found
 #: checks, with one ``DQ-GEN-001`` schema result per entity.
 #:
 #: Raised from 80 when the inventory snapshot, lead, appointment and marketing spend
-#: entities joined the generation order, and from 114 when ``DASH.5`` added the
-#: ``sales_target`` entity: fourteen ``DQ-TGT-*`` checks plus its own ``DQ-GEN-001``
-#: schema result. Deriving this from the registry would defeat the assertion, so it is
-#: updated deliberately whenever the emitted set genuinely changes.
-EXPECTED_CHECK_COUNT = 129
+#: entities joined the generation order, from 114 when ``DASH.5`` added the
+#: ``sales_target`` entity, and from 129 when ``DASH.6`` added the F&I domain. The
+#: DASH.6 arithmetic, so a reviewer can check it rather than take the number on trust:
+#: four new entities contribute four ``DQ-GEN-001`` schema results, their suites
+#: contribute 12 ``DQ-FPD-*`` + 10 ``DQ-LND-*`` + 16 ``DQ-FPS-*`` + 13 ``DQ-FPA-*`` = 51,
+#: and ``sale_event`` gained two (``DQ-SLE-011`` and ``DQ-SLE-012``) for the reserve and
+#: lender structure rules. 129 + 4 + 51 + 2 = 186. Deriving this from the registry would
+#: defeat the assertion, so it is updated deliberately whenever the emitted set genuinely
+#: changes.
+EXPECTED_CHECK_COUNT = 186
 
 
 @pytest.fixture

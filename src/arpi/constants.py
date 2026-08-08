@@ -336,6 +336,34 @@ PROHIBITED_PII_FIELD_NAMES: Final[frozenset[str]] = frozenset(
         "veteran_status",
         "wage",
         "zip_code",
+        # The F&I lane (DASH.6). ARPI models a finance-office INCOME AMOUNT and nothing
+        # about how a rate produced it. Every name below is a lending or credit mechanic
+        # the platform deliberately does not have, and a column carrying one would turn a
+        # descriptive analytics model into something that looks like desking software.
+        "adverse_action",
+        "adverse_action_reason",
+        "annual_percentage_rate",
+        "apr",
+        "approval_status",
+        "buy_rate",
+        "credit_application",
+        "credit_tier",
+        "debt_to_income",
+        "down_payment_percent",
+        "fico",
+        "fico_score",
+        "income",
+        "loan_term",
+        "loan_to_value",
+        "money_factor",
+        "monthly_payment",
+        "payment_amount",
+        "rate_markup",
+        "rate_spread",
+        "residual_value",
+        "sell_rate",
+        "stipulation",
+        "stipulations",
     }
 )
 
@@ -422,6 +450,29 @@ PROHIBITED_PII_SUBSTRINGS: Final[frozenset[str]] = frozenset(
         "message_body",
         "message_content",
         "voicemail",
+        # Lending and credit mechanics (DASH.6). Each token is one ARPI deliberately
+        # does not model, and each is safe as a SUBSTRING because no legitimate ARPI
+        # column can contain it. Deliberately absent are `rate` and `term`, which are
+        # fragments of wholly innocent names -- `closing_rate_index`, `cancellation_rate`,
+        # `contract_term_months` -- and are covered by the exact-name list instead.
+        "adverse_action",
+        "annual_percentage_rate",
+        "buy_rate",
+        "credit_application",
+        "credit_decision",
+        "credit_tier",
+        "debt_to_income",
+        "fico",
+        "income",
+        "interest_rate",
+        "loan_to_value",
+        "money_factor",
+        "payment_amount",
+        "payoff_quote",
+        "rate_markup",
+        "rate_spread",
+        "sell_rate",
+        "stipulation",
     }
 )
 
@@ -474,6 +525,17 @@ PROHIBITED_PII_WORD_TOKENS: Final[frozenset[str]] = frozenset(
         "remarks",
         "transcript",
         "transcripts",
+        # Lending and credit mechanics (DASH.6) that are unsafe as substrings but
+        # unambiguous as whole words. `apr` is a fragment of `april`; `payment` would
+        # reject nothing today but must reject `monthly_payment` tomorrow; `fico` and
+        # `stips` are trade shorthand a future generator might reach for.
+        "apr",
+        "approval",
+        "buyrate",
+        "declined",
+        "payment",
+        "sellrate",
+        "stips",
     }
 )
 
@@ -499,7 +561,27 @@ APPROVED_NAME_COLUMNS: Final[Mapping[str, str]] = MappingProxyType(
             "organisational unit, never a person, and carries no headcount or identity."
         ),
         "entity_name": "Warehouse entity such as dim_date. Names a table, never a person.",
+        "finance_product_name": (
+            "Fictional F&I product label such as 'Granite Shield Powertrain Plus'. Names "
+            "a synthetic product of a fictional administrator, never a person, and never "
+            "a real F&I product or program."
+        ),
         "holiday_name": "Recognised holiday label such as 'Independence Day'.",
+        "lender_name": (
+            "Fictional lender label such as 'Granite Financial Services'. Names a "
+            "SYNTHETIC INSTITUTION THAT DOES NOT EXIST, never a person and never a real "
+            "financial institution. tests/unit/test_fi_privacy.py asserts no committed "
+            "lender name resembles a real one."
+        ),
+        "product_name": (
+            "Synonym of finance_product_name retained for the reporting boundary. Names a "
+            "fictional product, never a person."
+        ),
+        "provider_name": (
+            "Fictional F&I product administrator label such as 'Northbridge Protection "
+            "Services'. Names a synthetic business that does not exist, never a person "
+            "and never a real product administrator."
+        ),
         "lead_source_name": (
             "Normalised, generic lead-source label such as 'Dealer Website'. Names a "
             "channel, never a person."
@@ -763,12 +845,20 @@ INVENTORY_LISTING_VIEWS: Final[tuple[str, ...]] = (
 #: (``vw_gross_change_bridge``), and a public-safe deal-grain projection
 #: (``vw_deal_explorer``). ADR-0013 condition 2 is what makes them views rather than
 #: console code.
+#: ``DASH.6`` adds the four F&I views. They are database-and-reporting only: no browser
+#: dataset is exported for them and no console route reads them, because ``DASH.7`` owns
+#: the F&I presentation surface. Leaving them here rather than in
+#: :data:`MVP_REPORTING_VIEWS` keeps the 28-view MVP baseline exactly where it was.
 DASHBOARD_PROGRAM_VIEWS: Final[tuple[str, ...]] = (
     "vw_sales_gross_trend",
     "vw_gross_change_bridge",
     "vw_deal_explorer",
     "vw_deal_jacket",
     "vw_target_attainment",
+    "vw_deal_product_detail",
+    "vw_fi_summary",
+    "vw_fi_product_penetration",
+    "vw_fi_adjustment_summary",
 )
 
 #: Every view the ``reporting`` schema is expected to contain, and nothing else.
@@ -1062,6 +1152,270 @@ TARGET_KPI_VIEW_OWNERSHIP: Final[Mapping[str, tuple[str, ...]]] = MappingProxyTy
 )
 
 # ---------------------------------------------------------------------------------------
+# The F&I domain (delivery increment DASH.6)
+# ---------------------------------------------------------------------------------------
+# Everything below governs the finance-and-insurance model: the product catalogue's
+# controlled vocabulary, the derived finance structure, the fictional lender
+# classification, the adjustment event vocabulary and the twenty-two KPI identifiers.
+#
+# NOTHING HERE IS A LENDING MECHANIC. ARPI models no APR, no buy rate, no sell rate, no
+# rate spread, no payment, no term of a loan, no approval, no decline, no credit tier and
+# no credit file. A lender's category and program tier classify the FICTIONAL LENDER, and
+# never a customer. See PRIVACY_AND_ETHICS.md section 7.
+
+#: The ten governed F&I product categories. Permanent on assignment.
+#:
+#: CATEGORIES ARE ROWS, NEVER COLUMNS. There is no ``vsc_gross`` column and there never
+#: will be one: a category-per-column model cannot answer "which categories exist?"
+#: without a schema change, and it makes the eleventh category a migration rather than a
+#: catalogue row. ``warehouse.fact_finance_product_sale`` carries one row per contract and
+#: the category is an attribute of the product dimension it resolves.
+#:
+#: "Extended warranty" is a permitted USER-FACING ALIAS for Vehicle Service Contract. It
+#: is never a model category, never a column and never a stored value.
+FINANCE_PRODUCT_CATEGORIES: Final[tuple[str, ...]] = (
+    "Vehicle Service Contract",
+    "GAP",
+    "Tire & Wheel",
+    "Prepaid Maintenance",
+    "Appearance Protection",
+    "Key Replacement",
+    "Theft or Security Product",
+    "Paintless Dent Protection",
+    "Lease Wear Protection",
+    "Other Aftermarket Product",
+)
+
+#: The derived finance structure of a retail transaction.
+#:
+#: Derived from ``sale_type`` and ``amount_financed`` and never stored on the source
+#: entity: ``sale_type`` keeps its existing meaning, and changing it would need its own
+#: ADR and migration plan. ``warehouse.dim_sale_type`` remains Deferred.
+FINANCE_STRUCTURE_CASH: Final = "Cash"
+FINANCE_STRUCTURE_RETAIL_FINANCE: Final = "Retail Finance"
+FINANCE_STRUCTURE_LEASE: Final = "Lease"
+
+#: The three RETAIL structures, which are the only ones an eligibility rule may name and
+#: the only ones ``KPI-FNI-019`` shares out. They partition the retail population exactly.
+RETAIL_FINANCE_STRUCTURES: Final[tuple[str, ...]] = (
+    FINANCE_STRUCTURE_CASH,
+    FINANCE_STRUCTURE_RETAIL_FINANCE,
+    FINANCE_STRUCTURE_LEASE,
+)
+
+#: The two non-retail structures. A disposal has no consumer, so no product and no
+#: consumer lender may ever attach to one. They are NOT components of the structure mix.
+FINANCE_STRUCTURE_WHOLESALE: Final = "Wholesale"
+FINANCE_STRUCTURE_DEALER_TRADE: Final = "Dealer Trade"
+
+NON_RETAIL_FINANCE_STRUCTURES: Final[tuple[str, ...]] = (
+    FINANCE_STRUCTURE_WHOLESALE,
+    FINANCE_STRUCTURE_DEALER_TRADE,
+)
+
+#: Every value the finance-structure derivation may return.
+FINANCE_STRUCTURES: Final[tuple[str, ...]] = (
+    *RETAIL_FINANCE_STRUCTURES,
+    *NON_RETAIL_FINANCE_STRUCTURES,
+)
+
+#: The lender classification vocabulary. Classifies the FICTIONAL LENDER, never a person.
+LENDER_CATEGORIES: Final[tuple[str, ...]] = (
+    "Captive",
+    "Bank",
+    "Credit Union",
+    "Independent Finance Company",
+)
+
+#: The lender PROGRAM tier vocabulary.
+#:
+#: READ THIS BEFORE USING IT. A program tier describes the kind of business a fictional
+#: lender's program is written for. It is NOT a customer's credit score, NOT a credit
+#: tier, NOT an approval result and NOT an adverse-action reason. Nothing in ARPI assigns
+#: a tier to a customer, and no ARPI value is derived from any credit datum, because no
+#: credit datum exists anywhere in the platform.
+LENDER_PROGRAM_TIERS: Final[tuple[str, ...]] = ("Prime", "Near-prime", "Subprime")
+
+#: The four F&I adjustment event types. Permanent on assignment.
+ADJUSTMENT_TYPE_CANCELLATION: Final = "Cancellation"
+ADJUSTMENT_TYPE_CHARGEBACK: Final = "Chargeback"
+ADJUSTMENT_TYPE_REINSTATEMENT: Final = "Reinstatement"
+ADJUSTMENT_TYPE_APPROVED: Final = "Approved Adjustment"
+
+ADJUSTMENT_TYPES: Final[tuple[str, ...]] = (
+    ADJUSTMENT_TYPE_CANCELLATION,
+    ADJUSTMENT_TYPE_CHARGEBACK,
+    ADJUSTMENT_TYPE_REINSTATEMENT,
+    ADJUSTMENT_TYPE_APPROVED,
+)
+
+#: THE SIGN CONVENTION, stated once so no layer can adopt a second one.
+#:
+#:     net_product_gross_as_of = original_product_gross
+#:                             - SUM(adjustment_amount WHERE adjustment_date <= as_of)
+#:
+#: A POSITIVE adjustment_amount REDUCES retained gross. A NEGATIVE one restores it.
+#: Cancellation and Chargeback are therefore positive; Reinstatement is negative, because
+#: it reverses a reduction that already happened; Approved Adjustment is signed and
+#: carries a governed reason category that says which direction it went and why.
+#:
+#: The mapping records the sign each type is CONSTRAINED to, and ``None`` where the type
+#: is legitimately signed. ``warehouse.fact_finance_product_adjustment`` enforces it as a
+#: CHECK constraint and ``DQ-FPA-006`` asserts it in Python.
+ADJUSTMENT_SIGN_CONVENTION: Final[Mapping[str, str | None]] = MappingProxyType(
+    {
+        ADJUSTMENT_TYPE_CANCELLATION: "positive",
+        ADJUSTMENT_TYPE_CHARGEBACK: "positive",
+        ADJUSTMENT_TYPE_REINSTATEMENT: "negative",
+        ADJUSTMENT_TYPE_APPROVED: None,
+    }
+)
+
+#: The governed reason categories, and the adjustment type each belongs to.
+#:
+#: A closed vocabulary, because a free-text reason would become a place to write
+#: something about a customer. None of these describes a person: each describes what
+#: happened to a contract.
+ADJUSTMENT_REASON_CATEGORIES: Final[Mapping[str, tuple[str, ...]]] = MappingProxyType(
+    {
+        ADJUSTMENT_TYPE_CANCELLATION: (
+            "Customer Request",
+            "Vehicle Sold or Traded",
+            "Total Loss",
+            "Early Payoff",
+        ),
+        ADJUSTMENT_TYPE_CHARGEBACK: (
+            "Early Payoff",
+            "Contract Cancelled",
+            "Repossession",
+            "Total Loss",
+        ),
+        ADJUSTMENT_TYPE_REINSTATEMENT: (
+            "Cancellation Rescinded",
+            "Administrative Correction",
+        ),
+        ADJUSTMENT_TYPE_APPROVED: (
+            "Administrative Correction",
+            "Pricing Correction",
+            "Remittance Correction",
+        ),
+    }
+)
+
+#: Every governed reason category, deduplicated, for the DDL's CHECK domain.
+ADJUSTMENT_REASON_CATEGORY_VALUES: Final[tuple[str, ...]] = tuple(
+    sorted({reason for reasons in ADJUSTMENT_REASON_CATEGORIES.values() for reason in reasons})
+)
+
+#: THE PROJECT-DEFAULT MINIMUM SAMPLE FLOOR, and the one place it is written.
+#:
+#: An employee- or manager-level ratio is published with its components at every
+#: denominator, but is marked as NOT MEETING THE FLOOR below this count of eligible
+#: deals. Below the floor a consumer must render an explicit "insufficient sample (n = X)"
+#: state rather than a comparable percentage, must exclude the row from ranking, and must
+#: not fire an action rule on it.
+#:
+#: A PROJECT DEFAULT FOR A FICTIONAL GROUP. Not a statistical significance threshold, not
+#: an industry convention and not a legal standard. ``warehouse.fn_minimum_sample_floor``
+#: is the SQL side of the same number, and
+#: ``tests/integration/test_fi_reporting_views.py`` asserts the two agree, so the value
+#: exists once per layer with a proof of equality rather than twice with a hope.
+MINIMUM_SAMPLE_ELIGIBLE_DEALS: Final = 10
+
+#: Every F&I KPI identifier, in KPI_CATALOG.md order.
+#:
+#: HELD SEPARATE FROM :data:`KPI_IDS` FOR THE SAME REASON :data:`TARGET_KPI_IDS` IS.
+#: ``KPI_IDS`` is the 29-strong MVP set the Power BI semantic model implements as DAX
+#: measures, and ``powerbi/validation/model_expectations.json`` asserts its size against
+#: the measures that exist. These twenty-two are governed and computed in SQL; no DAX
+#: measure reads them, because the semantic model is awaiting real-engine validation and
+#: adding measures before that validation would change what is being validated. Folding
+#: them into ``KPI_IDS`` would restate a historical baseline that describes 29 KPIs and
+#: still does.
+#:
+#: BACK-END GROSS AND BACK PVR ARE NOT HERE. They remain ``KPI-GRS-002`` and
+#: ``KPI-GRS-005``. DASH.6 adds a reconciliation identity BENEATH them; it does not
+#: redefine them, and reissuing an unchanged definition under a new id is forbidden by
+#: KPI_CATALOG.md section 37.2.
+FI_KPI_IDS: Final[tuple[str, ...]] = (
+    "KPI-FNI-001",  # Finance reserve gross
+    "KPI-FNI-002",  # Finance reserve PVR
+    "KPI-FNI-003",  # Original product gross
+    "KPI-FNI-004",  # Net product gross (as-of)
+    "KPI-FNI-005",  # Product gross PVR
+    "KPI-FNI-006",  # Products per retail unit
+    "KPI-FNI-007",  # Vehicle Service Contract penetration
+    "KPI-FNI-008",  # GAP penetration
+    "KPI-FNI-009",  # Tire & Wheel penetration
+    "KPI-FNI-010",  # Prepaid Maintenance penetration
+    "KPI-FNI-011",  # Product gross per contract
+    "KPI-FNI-012",  # Chargeback amount
+    "KPI-FNI-013",  # Chargeback count
+    "KPI-FNI-014",  # Chargeback rate by amount
+    "KPI-FNI-015",  # Chargeback rate by contract count
+    "KPI-FNI-016",  # Cancellation amount
+    "KPI-FNI-017",  # Cancellation count
+    "KPI-FNI-018",  # Cancellation rate
+    "KPI-FNI-019",  # Deal structure mix
+    "KPI-FNI-020",  # Product-category mix
+    "KPI-FNI-021",  # F&I manager penetration
+    "KPI-FNI-022",  # F&I manager back PVR
+)
+
+#: The reporting view each F&I KPI is computed from. The first entry is the governed SQL
+#: owner named in KPI_CATALOG.md.
+#:
+#: AS-BUILT OWNER CORRECTION, RECORDED RATHER THAN SMOOTHED OVER. The planning document
+#: assigned ``KPI-FNI-020`` (product-category mix) to ``reporting.vw_fi_summary``
+#: "(category grain)". ``vw_fi_summary``'s declared grain has no category in it, and
+#: adding one would repeat that store-day's finance reserve and retail units on every
+#: category row -- the exact double count section 34 of the increment forbids. The
+#: category-grain owner is therefore ``reporting.vw_fi_product_penetration``, which
+#: already holds the category and deliberately carries NO reserve and NO retail-unit
+#: column. Correct governance beats preserving a planning assignment.
+FI_KPI_VIEW_OWNERSHIP: Final[Mapping[str, tuple[str, ...]]] = MappingProxyType(
+    {
+        "KPI-FNI-001": ("vw_fi_summary",),
+        "KPI-FNI-002": ("vw_fi_summary",),
+        "KPI-FNI-003": ("vw_fi_summary", "vw_deal_product_detail"),
+        "KPI-FNI-004": ("vw_fi_summary", "vw_deal_product_detail"),
+        "KPI-FNI-005": ("vw_fi_summary",),
+        "KPI-FNI-006": ("vw_fi_summary",),
+        "KPI-FNI-007": ("vw_fi_product_penetration",),
+        "KPI-FNI-008": ("vw_fi_product_penetration",),
+        "KPI-FNI-009": ("vw_fi_product_penetration",),
+        "KPI-FNI-010": ("vw_fi_product_penetration",),
+        "KPI-FNI-011": ("vw_fi_summary", "vw_fi_product_penetration"),
+        "KPI-FNI-012": ("vw_fi_adjustment_summary",),
+        "KPI-FNI-013": ("vw_fi_adjustment_summary",),
+        "KPI-FNI-014": ("vw_fi_adjustment_summary", "vw_fi_summary"),
+        "KPI-FNI-015": ("vw_fi_adjustment_summary", "vw_fi_summary"),
+        "KPI-FNI-016": ("vw_fi_adjustment_summary",),
+        "KPI-FNI-017": ("vw_fi_adjustment_summary",),
+        "KPI-FNI-018": ("vw_fi_adjustment_summary", "vw_fi_summary"),
+        "KPI-FNI-019": ("vw_fi_summary",),
+        "KPI-FNI-020": ("vw_fi_product_penetration",),
+        "KPI-FNI-021": ("vw_fi_product_penetration",),
+        "KPI-FNI-022": ("vw_fi_summary",),
+    }
+)
+
+#: The eligibility rule identifiers, in the order the configuration declares them.
+#:
+#: The configuration in ``config/reference/fi_product_eligibility.yaml`` is the authority
+#: on what each rule MEANS; this tuple exists so a consumer can assert the set has not
+#: silently changed, and so the SQL DDL's CHECK domain and the Python evaluator cannot
+#: drift apart. ``tests/unit/test_fi_eligibility.py`` asserts the two agree.
+ELIGIBILITY_RULE_IDS: Final[tuple[str, ...]] = (
+    "ELIG-VSC",
+    "ELIG-GAP",
+    "ELIG-TW",
+    "ELIG-PPM",
+    "ELIG-LWP",
+    "ELIG-OTH",
+)
+
+# ---------------------------------------------------------------------------------------
 # Reconciliation identifiers evaluated in SQL
 # ---------------------------------------------------------------------------------------
 #: Every reconciliation ``audit.vw_recon_all`` publishes, and the loader records on each
@@ -1108,6 +1462,29 @@ SQL_RECONCILIATION_IDS: Final[tuple[str, ...]] = (
     "RECON-REPORT-TARGET-ROWS",
     "RECON-TGT-ACTUAL-UNITS",
     "RECON-TGT-ACTUAL-GROSS",
+    # The F&I domain (DASH.6). RECON-FI-001 is the promoted headline: it proves the
+    # stored deal-date back-end gross is EXPLAINED, to the cent, by finance reserve plus
+    # original product gross. The rest prove the chain, the grains, the eligibility
+    # subset, the adjustment cap and the reporting layer's freedom from fan-out.
+    "RECON-FACT-FINANCE-PRODUCT-SALE-WAREHOUSE",
+    "RECON-FACT-FINANCE-PRODUCT-ADJUSTMENT-WAREHOUSE",
+    "RECON-FI-001",
+    "RECON-FI-PRODUCT-IDENTITY",
+    "RECON-FI-DEAL-LEVEL",
+    "RECON-FI-STORE-TOTALS",
+    "RECON-FI-PERIOD-TOTALS",
+    "RECON-FI-TOTAL-GROSS",
+    "RECON-FI-RESERVE-STRUCTURE",
+    "RECON-FI-ELIGIBILITY",
+    "RECON-FI-PRODUCT-GRAIN",
+    "RECON-FI-ADJUSTMENT-GRAIN",
+    "RECON-FI-ADJUSTMENT-CAP",
+    "RECON-FI-ADJUSTMENT-SEQUENCE",
+    "RECON-FI-NET-GROSS",
+    "RECON-REPORT-FI-DETAIL-ROWS",
+    "RECON-REPORT-FI-SUMMARY-ROWS",
+    "RECON-REPORT-FI-PENETRATION-ROWS",
+    "RECON-REPORT-FI-ADJUSTMENT-ROWS",
 )
 
 #: The reconciliations whose failure invalidates the numbers built on them.

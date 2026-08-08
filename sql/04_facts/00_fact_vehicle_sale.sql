@@ -86,6 +86,8 @@ CREATE TABLE IF NOT EXISTS warehouse.fact_vehicle_sale (
     trade_acv                   numeric(12,2)  NOT NULL,
     cash_down                   numeric(12,2)  NOT NULL,
     amount_financed             numeric(12,2)  NOT NULL,
+    finance_reserve_gross       numeric(12,2)  NOT NULL DEFAULT 0.00,
+    lender_key                  integer        NULL,
     days_in_inventory_at_sale   integer        NOT NULL,
     source_system               varchar(40)    NOT NULL,
 
@@ -126,7 +128,28 @@ CREATE TABLE IF NOT EXISTS warehouse.fact_vehicle_sale (
         CHECK (front_end_gross
                = sale_price - acquisition_cost - reconditioning_cost - pack_amount),
     CONSTRAINT ck_fact_vehicle_sale_total_gross_identity
-        CHECK (total_gross = front_end_gross + back_end_gross)
+        CHECK (total_gross = front_end_gross + back_end_gross),
+    -- DASH.6. Reserve is an AMOUNT and never a rate mechanic: no APR, buy rate,
+    -- sell rate, spread, money factor, term or payment exists anywhere in ARPI. It
+    -- is never negative, and 0.00 on a financed deal is a modelled outcome rather
+    -- than a missing value -- which is why the column is NOT NULL.
+    CONSTRAINT ck_fact_vehicle_sale_finance_reserve_nonnegative
+        CHECK (finance_reserve_gross >= 0),
+    -- Reserve is earned on financing. A Lease is deliberately excluded: ARPI models
+    -- no money factor, so there is no mechanic a lease reserve could be attributed
+    -- to, and inventing one would assume retail-finance mechanics apply to a lease.
+    -- The cross-table half of this rule -- that a financed deal's structure really is
+    -- Retail Finance -- is DQ-SLE-011 and RECON-FI-RESERVE-STRUCTURE, because a CHECK
+    -- cannot read another table.
+    CONSTRAINT ck_fact_vehicle_sale_reserve_requires_financing
+        CHECK (finance_reserve_gross = 0
+               OR (sale_type NOT IN ('Lease', 'Wholesale', 'Dealer Trade')
+                   AND amount_financed > 0)),
+    -- A lender exists only where something was funded. NULL means NO LENDER EXISTS.
+    CONSTRAINT ck_fact_vehicle_sale_lender_requires_funding
+        CHECK (lender_key IS NULL
+               OR sale_type = 'Lease'
+               OR (is_retail AND amount_financed > 0))
 );
 
 -- Conformed-dimension foreign keys. Declared with guarded ALTER TABLE rather than
@@ -147,7 +170,8 @@ BEGIN
             ('fk_fact_vehicle_sale_salesperson',    'salesperson_key',     'dim_employee',   'employee_key'),
             ('fk_fact_vehicle_sale_desk_manager',   'desk_manager_key',    'dim_employee',   'employee_key'),
             ('fk_fact_vehicle_sale_finance_manager','finance_manager_key', 'dim_employee',   'employee_key'),
-            ('fk_fact_vehicle_sale_lead_source',    'lead_source_key',     'dim_lead_source','lead_source_key')
+            ('fk_fact_vehicle_sale_lead_source',    'lead_source_key',     'dim_lead_source','lead_source_key'),
+            ('fk_fact_vehicle_sale_lender',         'lender_key',          'dim_lender',     'lender_key')
         ) AS t(constraint_name, column_name, parent_table, parent_column)
     LOOP
         IF NOT EXISTS (
@@ -167,8 +191,9 @@ $fk$;
 COMMENT ON TABLE warehouse.fact_vehicle_sale IS
     'Grain: one row per finalized vehicle transaction. Transaction fact. Cancelled and unwound deals are '
     'never present. Manufacturer incentives, holdback and floorplan credits are excluded from every gross '
-    'measure by design (see docs/source-to-target/STM-008-fact-vehicle-sale.md). Currently EMPTY: the '
-    'generator and load script arrive in a later Phase 1.2 increment.';
+    'measure by design (see docs/source-to-target/STM-008-fact-vehicle-sale.md). DASH.6 added '
+    'finance_reserve_gross and lender_key: back_end_gross is now EXPLAINED by reserve plus deal-date '
+    'product gross from warehouse.fact_finance_product_sale, and neither existing identity changed.';
 
 COMMENT ON COLUMN warehouse.fact_vehicle_sale.sale_key IS 'Primary key. Warehouse-assigned surrogate key, deterministic by sale_id.';
 COMMENT ON COLUMN warehouse.fact_vehicle_sale.sale_id IS 'Natural key from the source system, SLE-########. Unique.';
@@ -192,11 +217,13 @@ COMMENT ON COLUMN warehouse.fact_vehicle_sale.acquisition_cost IS 'What the stor
 COMMENT ON COLUMN warehouse.fact_vehicle_sale.reconditioning_cost IS 'Reconditioning spend on the vehicle before sale. Additive.';
 COMMENT ON COLUMN warehouse.fact_vehicle_sale.pack_amount IS 'Internal pack withheld from front-end gross. Additive.';
 COMMENT ON COLUMN warehouse.fact_vehicle_sale.front_end_gross IS 'sale_price - acquisition_cost - reconditioning_cost - pack_amount, enforced by ck_fact_vehicle_sale_front_end_gross_identity. Additive. Excludes manufacturer incentives.';
-COMMENT ON COLUMN warehouse.fact_vehicle_sale.back_end_gross IS 'Finance and insurance gross on the deal. Additive.';
+COMMENT ON COLUMN warehouse.fact_vehicle_sale.back_end_gross IS 'Finance and insurance gross on the deal, on the DEAL-DATE basis. Additive. KPI-GRS-002, whose definition DASH.6 did not change. From DASH.6 it is EXPLAINED rather than redefined: finance_reserve_gross + SUM(original_product_gross) over warehouse.fact_finance_product_sale equals this value to the cent on every deal, with other_fi_income exactly 0.00 and no balancing plug. RECON-FI-001 proves it. It is NEVER rewritten when a later cancellation or chargeback posts: that is a separate event, and the difference between this and as-of net gross is the point of the distinction.';
 COMMENT ON COLUMN warehouse.fact_vehicle_sale.total_gross IS 'front_end_gross + back_end_gross, enforced by ck_fact_vehicle_sale_total_gross_identity. Additive.';
 COMMENT ON COLUMN warehouse.fact_vehicle_sale.trade_allowance IS 'Allowance credited to the customer for a trade-in. Additive.';
 COMMENT ON COLUMN warehouse.fact_vehicle_sale.trade_acv IS 'Actual cash value the store assigned to the trade-in. Additive.';
 COMMENT ON COLUMN warehouse.fact_vehicle_sale.cash_down IS 'Cash the customer put down. Additive.';
 COMMENT ON COLUMN warehouse.fact_vehicle_sale.amount_financed IS 'Amount financed on the deal. Additive.';
+COMMENT ON COLUMN warehouse.fact_vehicle_sale.finance_reserve_gross IS 'DASH.6. The finance-office income earned on the financing itself, separated from product gross so back-end mix is explainable. Additive. Exact to the cent. 0.00 on Cash, Lease, Wholesale and Dealer Trade by rule, and legitimately 0.00 on a Retail Finance deal that earned none -- NOT NULL, because a null would make "no reserve" and "not modelled" indistinguishable. AN AMOUNT ONLY: no APR, buy rate, sell rate, rate spread, money factor, term or payment is modelled anywhere in ARPI, and this value must never be presented as rate guidance. KPI-FNI-001.';
+COMMENT ON COLUMN warehouse.fact_vehicle_sale.lender_key IS 'DASH.6. Foreign key to warehouse.dim_lender: the FICTIONAL lender behind the deal. NULL means NO LENDER EXISTS -- a cash deal borrowed nothing and a disposal has no consumer -- and never means "lender unknown". Assignment depends on the store, the derived finance structure and seeded randomness, and on nothing about any customer.';
 COMMENT ON COLUMN warehouse.fact_vehicle_sale.days_in_inventory_at_sale IS 'Days the vehicle had been in stock when it sold. NON-ADDITIVE: average it, never sum it.';
 COMMENT ON COLUMN warehouse.fact_vehicle_sale.source_system IS 'Originating system; constant arpi_synthetic_generator in Phase 1.';

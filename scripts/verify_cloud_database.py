@@ -127,7 +127,7 @@ TABLE_PRIVILEGES: tuple[str, ...] = (
 #: so the duplication cannot drift.
 EXPECTED_MVP_REPORTING_VIEW_COUNT: int = 28
 EXPECTED_LISTING_REPORTING_VIEW_COUNT: int = 6
-EXPECTED_DASHBOARD_REPORTING_VIEW_COUNT: int = 5
+EXPECTED_DASHBOARD_REPORTING_VIEW_COUNT: int = 9
 EXPECTED_REPORTING_VIEW_COUNT: int = (
     EXPECTED_MVP_REPORTING_VIEW_COUNT
     + EXPECTED_LISTING_REPORTING_VIEW_COUNT
@@ -149,6 +149,8 @@ EXPECTED_DIMENSION_TABLES: tuple[str, ...] = (
 #: The five MVP facts. Each must exist and hold at least one row.
 EXPECTED_FACT_TABLES: tuple[str, ...] = (
     "fact_appointment",
+    "fact_finance_product_adjustment",
+    "fact_finance_product_sale",
     "fact_lead",
     "fact_marketing_spend",
     "fact_sales_target",
@@ -181,6 +183,15 @@ EXPECTED_REPORTING_ROW_COUNTS: dict[str, int] = {
     "vw_inventory_turn": 30,
     "vw_days_supply": 920,
     "vw_marketing_performance": 537,
+    # The DASH.6 F&I lane. Grained on the warehouse like every other entry here, so a
+    # correct cloud load reproduces each one exactly. vw_fi_product_penetration is much
+    # larger than the contract fact because it is built from the DEALS: every retail deal
+    # contributes a row per category it was ELIGIBLE for, which is what makes a category
+    # with an eligible population and no sales visible as a zero rather than as an absence.
+    "vw_deal_product_detail": 1012,
+    "vw_fi_summary": 354,
+    "vw_fi_product_penetration": 3012,
+    "vw_fi_adjustment_summary": 57,
     # The six vw_vehicle_listing_* views are DELIBERATELY absent. They are the sanitized
     # public listing lane (ADR-0011), which loads on a workbook cadence rather than on a
     # pipeline run, so a correct cloud database holds those views with no rows until an
@@ -216,14 +227,14 @@ EXPECTED_REPORTING_ROW_COUNTS: dict[str, int] = {
 #: load before being written here, not inferred from a failing run.
 EXPECTED_REPORTING_ROW_COUNTS_PER_RUN: dict[str, int] = {
     "vw_data_quality_trend": 9,
-    "vw_reconciliation_status": 69,
+    "vw_reconciliation_status": 96,
     "vw_pipeline_run_summary": 1,
-    "vw_data_quality_summary": 129,
+    "vw_data_quality_summary": 186,
 }
 
 #: Reconciliations the loader records on every run, and how many may fail.
 #: Per run, for the reason recorded above.
-EXPECTED_RECONCILIATION_COUNT_PER_RUN: int = 69
+EXPECTED_RECONCILIATION_COUNT_PER_RUN: int = 96
 EXPECTED_FAILING_RECONCILIATION_COUNT: int = 0
 
 #: The profile and seed the cloud database must have been loaded from.

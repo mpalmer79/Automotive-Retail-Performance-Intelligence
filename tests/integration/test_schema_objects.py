@@ -38,6 +38,11 @@ RAW_ENTITIES = (
     "inventory_listing_snapshot_load",
     # The dashboard program's operating plan (ADR-0013, DASH.5).
     "sales_target_load",
+    # The DASH.6 F&I lane (ADR-0013): two dimensions and two facts in natural-key form.
+    "finance_product_load",
+    "lender_load",
+    "finance_product_sale_load",
+    "finance_product_adjustment_load",
 )
 
 #: Entities whose staging layer follows the Phase 1 three-view pattern:
@@ -57,6 +62,13 @@ STAGING_ENTITIES = (
     "inventory_snapshot",
     "inventory_listing_snapshot",
     "sales_target",
+    # The DASH.6 F&I lane. Two dimensions and two facts in natural-key form, landed
+    # like every other entity so they get the same rejected-record path and the same
+    # five-layer row-count chain.
+    "finance_product",
+    "lender",
+    "finance_product_sale",
+    "finance_product_adjustment",
 )
 
 #: The conformed dimensions.
@@ -69,6 +81,15 @@ DIMENSION_TABLES = (
     "dim_customer",
     "dim_lead_source",
     "dim_marketing_campaign",
+)
+
+#: The DASH.6 F&I dimensions. Held apart from DIMENSION_TABLES for the same reason
+#: fact_sales_target is held apart from the MVP facts: "eight conformed dimensions" is
+#: the number the semantic model and the SQL baseline were measured against, and these
+#: two belong to the dashboard-program lane that the model does not read.
+FI_DIMENSION_TABLES = (
+    "dim_finance_product",
+    "dim_lender",
 )
 
 #: The fact tables. Five MVP facts, the listing lane's, and the target lane's; this module builds a
@@ -90,6 +111,11 @@ FACT_TABLES = (
     # measured against describes five, and this table holds a PLAN rather than a measured
     # result. It IS in arpi.ingestion.spec.ENTITY_SPECS and loads on every pipeline run.
     "fact_sales_target",
+    # The DASH.6 F&I facts (ADR-0013). Structurally the eighth and ninth, and
+    # deliberately not MVP facts either: they belong to the dashboard-program lane.
+    # Both ARE in arpi.ingestion.spec.ENTITY_SPECS and load on every pipeline run.
+    "fact_finance_product_sale",
+    "fact_finance_product_adjustment",
 )
 
 EXPECTED_TABLES = {
@@ -101,6 +127,7 @@ EXPECTED_TABLES = {
     ("audit", "validation_result"),
     *(("raw", name) for name in RAW_ENTITIES),
     *(("warehouse", name) for name in DIMENSION_TABLES),
+    *(("warehouse", name) for name in FI_DIMENSION_TABLES),
     ("warehouse", "dim_observed_vehicle"),
     *(("warehouse", name) for name in FACT_TABLES),
 }
@@ -116,6 +143,7 @@ AUDIT_VIEWS = (
     "vw_recon_all",
     "vw_recon_funnel",
     "vw_recon_gross",
+    "vw_recon_fi",
     "vw_recon_ingestion",
     # The listing lane's reconciliations. Deliberately NOT unioned into vw_recon_all --
     # that view is the pipeline's per-run set with a published identifier list and an
@@ -408,6 +436,10 @@ def test_merge_scripts_contain_no_psql_meta_commands(sql_root: Path) -> None:
         "15_dim_customer_merge.sql",
         "16_dim_lead_source_merge.sql",
         "17_dim_marketing_campaign_merge.sql",
+        # DASH.6. Numbered 21 and 22 so they sort after every MVP merge and after the
+        # two F&I dimension DDL files (19 and 20) that create the tables they write.
+        "21_dim_finance_product_merge.sql",
+        "22_dim_lender_merge.sql",
     ], "the loader runs these in sorted order; the list must stay explicit"
 
     forbidden = ("\\i ", "\\set ", "\\c ", "\\gexec", "\\copy", "\\echo")

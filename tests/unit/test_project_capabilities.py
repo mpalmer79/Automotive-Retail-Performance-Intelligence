@@ -53,10 +53,11 @@ from project_capabilities import (  # noqa: E402  (path set above)
 #: The fact-load scripts the pipeline runs on every execution, spelled out rather than
 #: derived, so a test fixture cannot agree with a broken derivation by construction.
 #:
-#: Five MVP loads plus the dashboard program's operating-plan load, added by ``DASH.5``.
-#: The sixth is listed here because the PIPELINE runs it; it is deliberately excluded
-#: from the "five MVP facts" baseline the semantic model was measured against, which is
-#: a claim about that model and not about this registry.
+#: Five MVP loads, plus the dashboard program's operating-plan load added by ``DASH.5``
+#: and its two F&I loads added by ``DASH.6``. The last three are listed here because the
+#: PIPELINE runs them; all three are deliberately excluded from the "five MVP facts"
+#: baseline the semantic model was measured against, which is a claim about that model
+#: and not about this registry.
 REQUIRED_FACT_LOADS = (
     "10_fact_vehicle_sale_load.sql",
     "11_fact_vehicle_inventory_snapshot_load.sql",
@@ -64,6 +65,8 @@ REQUIRED_FACT_LOADS = (
     "13_fact_appointment_load.sql",
     "14_fact_marketing_spend_load.sql",
     "16_fact_sales_target_load.sql",
+    "17_fact_finance_product_sale_load.sql",
+    "18_fact_finance_product_adjustment_load.sql",
 )
 
 #: The sanitized listing lane's fact-load script, declared by arpi.inventory.spec rather

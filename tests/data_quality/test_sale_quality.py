@@ -160,7 +160,9 @@ def _tampered(dataset: GeneratedDataset, frame: pd.DataFrame) -> GeneratedDatase
 # --------------------------------------------------------------------------------------
 def test_the_column_order_is_exactly_the_contract(sale_dataset: GeneratedDataset) -> None:
     assert sale_dataset.actual_columns == SALE_EVENT_COLUMNS
-    assert len(SALE_EVENT_COLUMNS) == 29
+    # 29 through DASH.5; DASH.6 added finance_reserve_gross and lender_id, which are
+    # the two columns that make back-end gross explainable rather than merely stored.
+    assert len(SALE_EVENT_COLUMNS) == 31
 
 
 def test_the_column_set_is_exactly_the_contract(sale_dataset: GeneratedDataset) -> None:

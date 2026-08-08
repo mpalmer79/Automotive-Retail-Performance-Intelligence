@@ -62,6 +62,8 @@ from arpi.constants import (
     CHECK_CATEGORY_REFERENTIAL,
     CHECK_CATEGORY_STRUCTURAL,
     CHECK_CATEGORY_UNIQUENESS,
+    FINANCE_STRUCTURE_RETAIL_FINANCE,
+    RETAIL_FINANCE_STRUCTURES,
     SOURCE_SYSTEM,
 )
 from arpi.exceptions import GenerationError
@@ -76,6 +78,9 @@ from arpi.generation.customer import (
     customer_selection_pool,
     select_customer_for_sale,
 )
+from arpi.generation.fi_eligibility import finance_structure_for
+from arpi.generation.finance_deal import DealFinance, DealInput, decompose_deals
+from arpi.generation.lender import LENDERS_BY_ID
 from arpi.generation.employee import (
     JOB_ROLE_DESK_MANAGER,
     JOB_ROLE_FINANCE_MANAGER,
@@ -147,6 +152,8 @@ SALE_EVENT_COLUMNS: Final[tuple[str, ...]] = (
     "trade_acv",
     "cash_down",
     "amount_financed",
+    "finance_reserve_gross",
+    "lender_id",
     "days_in_inventory_at_sale",
     "source_system",
 )
@@ -159,12 +166,19 @@ SALE_EVENT_COLUMNS: Final[tuple[str, ...]] = (
 #:   no finance manager on staff on the day books no F&I participant.
 #: * ``lead_source_id`` -- reserved for ``P1.4``; see :data:`LEAD_SOURCE_IS_DEFERRED`.
 #: * ``msrp`` -- a used or certified unit has no manufacturer sticker in ARPI.
+#: * ``lender_id`` -- a cash deal borrows nothing and a disposal has no consumer, so
+#:   NULL here means NO LENDER EXISTS and never "lender unknown". ``DASH.6``.
+#:
+#: ``finance_reserve_gross`` is deliberately ABSENT from this list. Reserve is an amount,
+#: and a deal that earned none earned ``0.00``; a NULL would make "no reserve" and "we did
+#: not model reserve on this row" indistinguishable.
 SALE_EVENT_NULLABLE_COLUMNS: Final[tuple[str, ...]] = (
     "customer_id",
     "salesperson_id",
     "desk_manager_id",
     "finance_manager_id",
     "lead_source_id",
+    "lender_id",
     "msrp",
 )
 
@@ -184,6 +198,7 @@ SALE_MONEY_COLUMNS: Final[tuple[str, ...]] = (
     "trade_acv",
     "cash_down",
     "amount_financed",
+    "finance_reserve_gross",
 )
 
 #: Monetary columns that may never be negative. ``front_end_gross`` and ``total_gross``
@@ -200,6 +215,7 @@ SALE_NON_NEGATIVE_MONEY_COLUMNS: Final[tuple[str, ...]] = (
     "trade_acv",
     "cash_down",
     "amount_financed",
+    "finance_reserve_gross",
 )
 
 SALE_EVENT_DTYPES: Final[dict[str, str]] = {
@@ -230,6 +246,8 @@ SALE_EVENT_DTYPES: Final[dict[str, str]] = {
     "trade_acv": "object",
     "cash_down": "object",
     "amount_financed": "object",
+    "finance_reserve_gross": "object",
+    "lender_id": "string",
     "days_in_inventory_at_sale": "int32",
     "source_system": "string",
 }
@@ -455,6 +473,8 @@ CHECK_SALE_UNIT_COUNT: Final = "DQ-SLE-007"
 CHECK_SALE_EMPLOYEE_ROLES: Final = "DQ-SLE-008"
 CHECK_SALE_NO_PROHIBITED_PII: Final = "DQ-SLE-009"
 CHECK_SALE_NEGATIVE_GROSS_PRESENT: Final = "DQ-SLE-010"
+CHECK_SALE_RESERVE_STRUCTURE_RULE: Final = "DQ-SLE-011"
+CHECK_SALE_LENDER_STRUCTURE_RULE: Final = "DQ-SLE-012"
 
 #: Every check identifier this module emits, in identifier order.
 SALE_CHECK_IDS: Final[tuple[str, ...]] = (
@@ -468,6 +488,8 @@ SALE_CHECK_IDS: Final[tuple[str, ...]] = (
     CHECK_SALE_EMPLOYEE_ROLES,
     CHECK_SALE_NO_PROHIBITED_PII,
     CHECK_SALE_NEGATIVE_GROSS_PRESENT,
+    CHECK_SALE_RESERVE_STRUCTURE_RULE,
+    CHECK_SALE_LENDER_STRUCTURE_RULE,
 )
 
 #: Inclusive band the negative-front-end-gross share must fall inside. The lower bound is
@@ -621,6 +643,36 @@ register_checks(
                 "share is a modelling choice, its absence is a defect."
             ),
             applies_to=(_WAREHOUSE_FACT_VEHICLE_SALE,),
+        ),
+        CheckDefinition(
+            check_id=CHECK_SALE_RESERVE_STRUCTURE_RULE,
+            check_name="finance reserve appears only where the structure can produce it",
+            category=CHECK_CATEGORY_BUSINESS_RULE,
+            severity=CheckSeverity.CRITICAL,
+            layer=CheckLayer.BOTH,
+            entity=ENTITY_SALE_EVENT,
+            description=(
+                "Reserve is earned on financing. A Cash deal financed nothing, a Lease "
+                "has no rate mechanic ARPI models, and a Wholesale or Dealer Trade "
+                "disposal has no consumer at all, so all three carry exactly 0.00. Zero "
+                "on a Retail Finance deal is a modelled outcome and never a defect."
+            ),
+            applies_to=(_WAREHOUSE_FACT_VEHICLE_SALE,),
+        ),
+        CheckDefinition(
+            check_id=CHECK_SALE_LENDER_STRUCTURE_RULE,
+            check_name="a lender is present exactly where one exists",
+            category=CHECK_CATEGORY_REFERENTIAL,
+            severity=CheckSeverity.CRITICAL,
+            layer=CheckLayer.BOTH,
+            entity=ENTITY_SALE_EVENT,
+            description=(
+                "A Retail Finance deal and a Lease name a fictional lender; a Cash deal "
+                "and a disposal name none, because none exists. A NULL that meant "
+                "'unknown' rather than 'none' would make the lender mix a share of an "
+                "unstated population."
+            ),
+            applies_to=(_WAREHOUSE_FACT_VEHICLE_SALE, "warehouse.dim_lender"),
         ),
     )
 )
@@ -1276,6 +1328,64 @@ def _weighted_choice(rng: random.Random, weights: dict[str, float]) -> str:
 # ---------------------------------------------------------------------------------------
 # Generator
 # ---------------------------------------------------------------------------------------
+#: Seeding namespace for the F&I decomposition.
+#:
+#: DELIBERATELY ITS OWN NAMESPACE, and this is load-bearing. Drawing the reserve and the
+#: product basket from the sale generator's own stream would have shifted every draw made
+#: after them and rebased the entire synthetic sale population -- the exact outcome the
+#: decomposition-preserving strategy exists to avoid. A separate namespace means every
+#: pre-DASH.6 value in ``sale_event`` is bit-identical to what it was.
+FINANCE_DECOMPOSITION_NAMESPACE: Final = "fi_deal_finance"
+
+
+def deal_finance_records(
+    config: ArpiConfig, catalogue_path: Path | None = None
+) -> dict[str, DealFinance]:
+    """Decompose every finalized deal's back-end gross into its F&I components.
+
+    THE ONE ENTRY POINT for the F&I decomposition. ``sale_event`` reads it for the two
+    columns it publishes, and ``arpi.generation.finance_product_sale`` reads it for the
+    product rows. Both call it, so both see the same decomposition of the same deals --
+    which is what makes the back-gross reconciliation an identity rather than a
+    coincidence between two generators.
+
+    Args:
+        config: Resolved configuration supplying the master seed and the window.
+        catalogue_path: Explicit vehicle model catalogue path; defaults to the
+            source-controlled copy.
+
+    Returns:
+        A mapping from ``sale_id`` to its :class:`DealFinance`, covering every finalized
+        sale. Iteration order is ``sale_id`` order, which is the order the decomposition
+        consumed its random stream in.
+    """
+    records = build_sale_records(config, catalogue_path)
+    profiles = employee_performance_profiles(config)
+    inputs = tuple(
+        DealInput(
+            sale_id=record.sale_id,
+            sale_date=record.sale_date,
+            dealership_id=record.dealership_id,
+            sale_type=record.sale_type,
+            is_retail=record.is_retail,
+            amount_financed=record.amount_financed,
+            back_end_gross=record.back_end_gross,
+            finance_manager_id=record.finance_manager_id,
+            manager_skill=(
+                profiles[record.finance_manager_id].gross_retention_index
+                if record.finance_manager_id is not None
+                else None
+            ),
+            condition_type=record.condition_type,
+        )
+        for record in records
+    )
+    rng = rng_for(config.random_seed, FINANCE_DECOMPOSITION_NAMESPACE)
+    return {
+        finance.sale_id: finance for finance in decompose_deals(inputs, rng)
+    }
+
+
 class SaleGenerator(BaseGenerator):
     """Build one ``sale_event`` row per finalized vehicle transaction."""
 
@@ -1290,20 +1400,25 @@ class SaleGenerator(BaseGenerator):
             config: Resolved configuration supplying the seed, scale mode and window.
 
         Returns:
-            A frame with the 29 contract columns, in order, ordered by ``sale_id``.
+            A frame with the 31 contract columns, in order, ordered by ``sale_id``.
         """
         records = build_sale_records(config)
+        finance = deal_finance_records(config)
         frame = pd.DataFrame.from_records(
-            [sale_row(record) for record in records], columns=list(SALE_EVENT_COLUMNS)
+            [sale_row(record, finance[record.sale_id]) for record in records],
+            columns=list(SALE_EVENT_COLUMNS),
         )
         return frame.astype(SALE_EVENT_DTYPES)
 
 
-def sale_row(record: SaleRecord) -> dict[str, Any]:
+def sale_row(record: SaleRecord, finance: DealFinance) -> dict[str, Any]:
     """Render one sale record as its declared row.
 
     Args:
         record: The record to render.
+        finance: The deal's F&I decomposition, supplying the two ``DASH.6`` columns.
+            Passed in rather than recomputed so that one decomposition serves both this
+            fact and ``warehouse.fact_finance_product_sale``.
 
     Returns:
         A mapping keyed by :data:`SALE_EVENT_COLUMNS`.
@@ -1336,6 +1451,8 @@ def sale_row(record: SaleRecord) -> dict[str, Any]:
         "trade_acv": record.trade_acv,
         "cash_down": record.cash_down,
         "amount_financed": record.amount_financed,
+        "finance_reserve_gross": finance.finance_reserve_gross,
+        "lender_id": finance.lender_id,
         "days_in_inventory_at_sale": record.days_in_inventory_at_sale,
         "source_system": SOURCE_SYSTEM,
     }
@@ -1486,6 +1603,8 @@ def validate_sale_dataset(
                 target_object=ENTITY_SALE_EVENT,
             ),
             _check_negative_gross_present(frame),
+            _check_reserve_structure_rule(frame),
+            _check_lender_structure_rule(frame),
         )
     )
 
@@ -1714,4 +1833,77 @@ def _check_negative_gross_present(frame: pd.DataFrame) -> CheckResult:
         f"{negative} of {total} sale(s) carry a negative front-end gross, a share of "
         f"{share:.4f}, outside the plausibility band [{minimum}, {maximum}]. No losing "
         "deals at all is unrealistically clean; a majority of them is not a business."
+    )
+
+
+def _check_reserve_structure_rule(frame: pd.DataFrame) -> CheckResult:
+    """``DQ-SLE-011`` -- reserve exists only where the structure can produce it.
+
+    Cash, Lease, Wholesale and Dealer Trade all carry exactly ``0.00``. Only a Retail
+    Finance deal may carry a positive figure, and it may legitimately carry zero: a flat
+    or no-reserve program is ordinary, and a zero there is a modelled outcome rather
+    than a missing value.
+    """
+    base = _base_result(
+        CHECK_SALE_RESERVE_STRUCTURE_RULE,
+        "finance reserve appears only where the structure can produce it",
+        CHECK_CATEGORY_BUSINESS_RULE,
+    )
+    offending: list[str] = []
+    for sale_id, sale_type, amount_financed, reserve in zip(
+        frame["sale_id"],
+        frame["sale_type"],
+        frame["amount_financed"],
+        frame["finance_reserve_gross"],
+        strict=True,
+    ):
+        value = Decimal(str(reserve))
+        structure = finance_structure_for(str(sale_type), Decimal(str(amount_financed)))
+        if value < 0:
+            offending.append(f"{sale_id}: negative reserve {value}")
+        elif structure != FINANCE_STRUCTURE_RETAIL_FINANCE and value != _ZERO:
+            offending.append(f"{sale_id}: {structure} deal carries reserve {value}")
+    result = replace(base, observed_value=float(len(offending)))
+    if not offending:
+        return result
+    return result.failed(
+        f"{len(offending)} sale(s) carry finance reserve their structure cannot produce: "
+        f"{'; '.join(offending[:5])}. Reserve is earned on financing; a cash deal "
+        "financed nothing and ARPI models no lease rate mechanic.",
+        failed_record_count=len(offending),
+    )
+
+
+def _check_lender_structure_rule(frame: pd.DataFrame) -> CheckResult:
+    """``DQ-SLE-012`` -- a lender is present exactly where one exists, and resolves."""
+    base = _base_result(
+        CHECK_SALE_LENDER_STRUCTURE_RULE,
+        "a lender is present exactly where one exists",
+        CHECK_CATEGORY_REFERENTIAL,
+    )
+    offending: list[str] = []
+    for sale_id, sale_type, amount_financed, lender_id in zip(
+        frame["sale_id"],
+        frame["sale_type"],
+        frame["amount_financed"],
+        frame["lender_id"],
+        strict=True,
+    ):
+        structure = finance_structure_for(str(sale_type), Decimal(str(amount_financed)))
+        missing = lender_id is None or pd.isna(lender_id)
+        expected = structure in RETAIL_FINANCE_STRUCTURES and structure != "Cash"
+        if expected and missing:
+            offending.append(f"{sale_id}: {structure} deal names no lender")
+        elif not expected and not missing:
+            offending.append(f"{sale_id}: {structure} deal names lender {lender_id}")
+        elif not missing and str(lender_id) not in LENDERS_BY_ID:
+            offending.append(f"{sale_id}: lender {lender_id} is not in the catalogue")
+    result = replace(base, observed_value=float(len(offending)))
+    if not offending:
+        return result
+    return result.failed(
+        f"{len(offending)} sale(s) carry a lender relationship that contradicts their "
+        f"finance structure or does not resolve: {'; '.join(offending[:5])}. NULL means "
+        "NO LENDER EXISTS, never 'lender unknown'.",
+        failed_record_count=len(offending),
     )

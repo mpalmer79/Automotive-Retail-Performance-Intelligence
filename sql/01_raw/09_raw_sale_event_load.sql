@@ -52,6 +52,8 @@ CREATE TABLE IF NOT EXISTS raw.sale_event_load (
     trade_acv                  text         NULL,
     cash_down                  text         NULL,
     amount_financed            text         NULL,
+    finance_reserve_gross      text         NULL,
+    lender_id                  text         NULL,
     days_in_inventory_at_sale  text         NULL,
     source_system              text         NULL,
 
@@ -105,6 +107,10 @@ COMMENT ON COLUMN raw.sale_event_load.trade_allowance IS 'Untyped source value. 
 COMMENT ON COLUMN raw.sale_event_load.trade_acv IS 'Untyped source value. Actual cash value the store assigned to the trade-in.';
 COMMENT ON COLUMN raw.sale_event_load.cash_down IS 'Untyped source value. Cash the customer put down.';
 COMMENT ON COLUMN raw.sale_event_load.amount_financed IS 'Untyped source value. Amount financed on the deal.';
+COMMENT ON COLUMN raw.sale_event_load.finance_reserve_gross IS 'Untyped source value. The finance-office income earned on the financing itself, exact to the cent. 0.00 on every Cash, Lease, Wholesale and Dealer Trade deal by rule, and legitimately 0.00 on a Retail Finance deal that earned none. NEVER NULL: a null would make "no reserve" and "not modelled" indistinguishable. DASH.6.'
+;
+COMMENT ON COLUMN raw.sale_event_load.lender_id IS 'Untyped source value. The fictional lender behind the deal, LND-###; empty when NO LENDER EXISTS, which is what a cash deal and a disposal carry. Never means "lender unknown". No APR, rate, term or payment accompanies it: ARPI models none. DASH.6.'
+;
 COMMENT ON COLUMN raw.sale_event_load.days_in_inventory_at_sale IS 'Untyped source value. Days the vehicle had been in stock when it sold.';
 COMMENT ON COLUMN raw.sale_event_load.source_system IS 'Untyped source value. Originating system; constant arpi_synthetic_generator in Phase 1.';
 COMMENT ON COLUMN raw.sale_event_load.load_batch_id IS 'UUID identifying one ingestion batch. Every row written by a single load shares this value.';

@@ -19,6 +19,7 @@ from pathlib import Path
 import pytest
 
 from arpi.constants import (
+    FI_KPI_IDS,
     INVENTORY_LISTING_KPI_IDS,
     KPI_IDS,
     REPORTING_VIEWS,
@@ -67,7 +68,12 @@ def matrix_text() -> str:
 #: Traceability is not a property of the semantic model, though -- it is a property of the
 #: catalogue -- so all three sets are held to it here. ``TARGET_KPI_IDS`` joined with
 #: ``DASH.5``; every one of its ten anchors to SQ-31.
-ALL_KPI_IDS: tuple[str, ...] = (*KPI_IDS, *INVENTORY_LISTING_KPI_IDS, *TARGET_KPI_IDS)
+ALL_KPI_IDS: tuple[str, ...] = (
+    *KPI_IDS,
+    *INVENTORY_LISTING_KPI_IDS,
+    *TARGET_KPI_IDS,
+    *FI_KPI_IDS,
+)
 
 
 def test_every_kpi_is_cited_by_at_least_one_question(matrix_text: str) -> None:

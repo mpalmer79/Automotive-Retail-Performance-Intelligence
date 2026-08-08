@@ -797,7 +797,7 @@ source it describes — which is precisely how the statements corrected in this 
 | Fact load scripts | 5 | Implemented. Facts are **not** merely planned. |
 | Reporting views | 28 | The only surface the semantic model may read. |
 | Audit row-count layers recorded | 5 of 5 | `source`, `raw`, `staging`, `warehouse`, `rejected`. |
-| Forward migrations | 3 | Ordered, immutable once released, recorded in `audit.schema_migration`. |
+| Forward migrations | 4 | Ordered, immutable once released, recorded in `audit.schema_migration`. |
 
 Counted apart from every row above, because folding either lane in would move a baseline that was measured against a specific run:
 
@@ -805,10 +805,10 @@ Counted apart from every row above, because folding either lane in would move a 
 |---|---:|---|
 | Sanitized public listing SQL files (ADR-0011) | 15 | Implemented, and outside the MVP warehouse the semantic model reads. |
 | Sanitized public listing reporting views | 6 | Implemented. |
-| Dashboard program SQL files (ADR-0013) | 10 | Implemented. |
-| Dashboard program fact DDL scripts | 1 | Implemented. `DASH.5` added the first fact this lane owns; the MVP fact count above is unchanged. |
-| Dashboard program reporting views | 5 | Implemented, and **not** part of the reporting-view baseline the semantic model binds to. |
-| Dashboard program KPIs | 10 | Implemented in SQL and on the web console. The 29 governed KPIs above are unchanged: no DAX measure reads these, so the two numbers are reported side by side and never summed. |
+| Dashboard program SQL files (ADR-0013) | 33 | Implemented. |
+| Dashboard program fact DDL scripts | 3 | Implemented. `DASH.5` added the first fact this lane owns; the MVP fact count above is unchanged. |
+| Dashboard program reporting views | 9 | Implemented, and **not** part of the reporting-view baseline the semantic model binds to. |
+| Dashboard program KPIs | 32 | Implemented in SQL and on the web console. The 29 governed KPIs above are unchanged: no DAX measure reads these, so the two numbers are reported side by side and never summed. |
 <!-- ARPI:CAPABILITIES:END warehouse -->
 
 <!-- ARPI:CAPABILITIES:BEGIN semantic-model -->

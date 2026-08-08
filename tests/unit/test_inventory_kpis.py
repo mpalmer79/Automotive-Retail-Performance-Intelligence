@@ -57,10 +57,20 @@ def catalogue() -> str:
 
 @pytest.fixture(scope="module")
 def domain_section(catalogue: str) -> str:
-    """The Inventory Listings section, which is the last section of the catalogue."""
+    """The Inventory Listings section, bounded by the next top-level heading.
+
+    Bounded rather than read to the end of the file. Section 38 WAS the last section when
+    this fixture was written; ``DASH.5`` appended section 39 and ``DASH.6`` appended
+    section 40, and an unbounded slice quietly started asserting the listing lane's rules
+    over two domains that are not the listing lane. It failed the moment a legitimate F&I
+    display name -- "F&I manager back gross per retail unit" -- contained a phrase this
+    module prohibits *for listings*, which is exactly the right time to notice.
+    """
     marker = "## 38. Inventory Listings domain"
     assert marker in catalogue, "the Inventory Listings domain section is missing"
-    return catalogue[catalogue.index(marker) :]
+    start = catalogue.index(marker)
+    following = catalogue.find("\n## ", start + len(marker))
+    return catalogue[start:] if following == -1 else catalogue[start:following]
 
 
 # --------------------------------------------------------------------------------------
@@ -199,14 +209,17 @@ def test_the_dashboard_program_views_are_not_part_of_the_mvp_reporting_surface()
     """
     assert set(MVP_REPORTING_VIEWS) & set(DASHBOARD_PROGRAM_VIEWS) == set()
     assert set(INVENTORY_LISTING_VIEWS) & set(DASHBOARD_PROGRAM_VIEWS) == set()
-    assert len(DASHBOARD_PROGRAM_VIEWS) == 5
+    # Five through DASH.5; DASH.6 added the four F&I views, which are
+    # database-and-reporting only -- no browser dataset and no console route, because
+    # DASH.7 owns the F&I surface.
+    assert len(DASHBOARD_PROGRAM_VIEWS) == 9
 
 
 def test_the_full_reporting_surface_is_the_union_of_the_three() -> None:
     assert set(REPORTING_VIEWS) == (
         set(MVP_REPORTING_VIEWS) | set(INVENTORY_LISTING_VIEWS) | set(DASHBOARD_PROGRAM_VIEWS)
     )
-    assert len(REPORTING_VIEWS) == 39
+    assert len(REPORTING_VIEWS) == 43
     assert list(REPORTING_VIEWS) == sorted(REPORTING_VIEWS)
 
 

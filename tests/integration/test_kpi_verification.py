@@ -26,13 +26,17 @@ and that the view's median matches ``percentile_cont`` over that population.
 
 from __future__ import annotations
 
+from datetime import timedelta
 from decimal import Decimal
 from typing import Any
 
 import pytest
 
 from arpi.constants import (
+    FI_KPI_IDS,
+    FI_KPI_VIEW_OWNERSHIP,
     KPI_IDS,
+    MINIMUM_SAMPLE_ELIGIBLE_DEALS,
     KPI_VIEW_OWNERSHIP,
     TARGET_KPI_IDS,
     TARGET_KPI_VIEW_OWNERSHIP,
@@ -1300,6 +1304,13 @@ def test_a_month_with_no_elapsed_selling_day_has_no_pace_and_no_projection(
     # The two funnel facts are removed entirely rather than by date, because an
     # appointment dated before the cutoff can legitimately reference a sale after it, and
     # the as-of rule only needs their contribution gone.
+    # DASH.6: the two F&I facts reference the sale fact, and the adjustment fact
+    # references the contract fact, so they come off first. Removed entirely rather
+    # than by date for the same reason the funnel facts are: what the as-of rule needs
+    # is their contribution gone, and a contract dated before the cutoff can carry an
+    # adjustment after it.
+    loaded_cursor.execute("DELETE FROM warehouse.fact_finance_product_adjustment")
+    loaded_cursor.execute("DELETE FROM warehouse.fact_finance_product_sale")
     loaded_cursor.execute("DELETE FROM warehouse.fact_appointment")
     loaded_cursor.execute("DELETE FROM warehouse.fact_lead")
     for statement in (
@@ -1354,6 +1365,13 @@ def test_a_mid_month_as_of_date_produces_a_partial_clock(loaded_cursor: Any) -> 
     """
     month = _target_month(loaded_cursor)
     cutoff = _scalar(loaded_cursor, f"SELECT ('{month}'::date + INTERVAL '13 days')::date")
+    # DASH.6: the two F&I facts reference the sale fact, and the adjustment fact
+    # references the contract fact, so they come off first. Removed entirely rather
+    # than by date for the same reason the funnel facts are: what the as-of rule needs
+    # is their contribution gone, and a contract dated before the cutoff can carry an
+    # adjustment after it.
+    loaded_cursor.execute("DELETE FROM warehouse.fact_finance_product_adjustment")
+    loaded_cursor.execute("DELETE FROM warehouse.fact_finance_product_sale")
     loaded_cursor.execute("DELETE FROM warehouse.fact_appointment")
     loaded_cursor.execute("DELETE FROM warehouse.fact_lead")
     for statement in (
@@ -1609,3 +1627,873 @@ def test_removing_one_selling_day_breaks_the_selling_day_verification(
         "the selling-day count did not follow dim_date, so it is being derived somewhere "
         "else -- which is exactly what ADR-0002 forbids"
     )
+
+
+# ======================================================================================
+# The F&I domain (DASH.6): KPI-FNI-001 .. KPI-FNI-022
+# ======================================================================================
+# Every one of the twenty-two is computed from the reporting layer and independently
+# re-derived from `warehouse`, with the warehouse expression written from KPI_CATALOG.md
+# section 40's numerator and denominator text rather than by reading the view. Several of
+# them additionally compute the TEMPTING WRONG ANSWER and assert it differs from the right
+# one, because a test in which the correct and incorrect formulas coincide proves nothing.
+
+
+def _fi_as_of(cursor: Any) -> str:
+    """The governed as-of date, derived the same way the views derive it."""
+    return str(
+        _scalar(
+            cursor,
+            """
+            SELECT max(d.full_date)
+            FROM warehouse.dim_date AS d
+            WHERE d.date_key IN (
+                SELECT s.sale_date_key FROM warehouse.fact_vehicle_sale AS s
+                UNION ALL
+                SELECT i.snapshot_date_key FROM warehouse.fact_vehicle_inventory_snapshot AS i
+                UNION ALL
+                SELECT l.lead_created_date_key FROM warehouse.fact_lead AS l)
+            """,
+        )
+    )
+
+
+@pytest.mark.parametrize("kpi_id", FI_KPI_IDS)
+def test_every_fi_kpi_resolves_to_an_existing_reporting_view(
+    loaded_cursor: Any, kpi_id: str
+) -> None:
+    """All 22 F&I identifiers own at least one reporting view, and each view exists."""
+    owners = FI_KPI_VIEW_OWNERSHIP[kpi_id]
+    assert owners, f"{kpi_id} has no reporting view registered in arpi.constants"
+    for view_name in owners:
+        exists = _scalar(
+            loaded_cursor,
+            "SELECT count(*) FROM information_schema.views "
+            f"WHERE table_schema = 'reporting' AND table_name = '{view_name}'",
+        )
+        assert exists == 1, f"{kpi_id} names reporting.{view_name}, which does not exist"
+
+
+def test_the_fi_index_covers_exactly_twenty_two_kpis() -> None:
+    """KPI_CATALOG.md section 40 specifies 22 F&I KPIs; the index must match."""
+    assert len(FI_KPI_IDS) == 22
+    assert len(set(FI_KPI_IDS)) == 22
+    assert set(FI_KPI_VIEW_OWNERSHIP) == set(FI_KPI_IDS)
+    assert FI_KPI_IDS == tuple(f"KPI-FNI-{index:03d}" for index in range(1, 23))
+
+
+def test_the_fi_family_is_held_apart_from_the_mvp_baseline() -> None:
+    """29 MVP KPIs is a claim about the semantic model, and DASH.6 did not change it."""
+    assert len(KPI_IDS) == 29
+    assert not set(FI_KPI_IDS) & set(KPI_IDS)
+    assert "KPI-GRS-002" in KPI_IDS and "KPI-GRS-002" not in FI_KPI_IDS
+    assert "KPI-GRS-005" in KPI_IDS and "KPI-GRS-005" not in FI_KPI_IDS
+
+
+# --------------------------------------------------------------------------------------
+# The back-gross identity: the most important assertion in DASH.6
+# --------------------------------------------------------------------------------------
+
+
+def test_every_deal_back_end_gross_is_explained_by_its_components(loaded_cursor: Any) -> None:
+    """RECON-FI-001, asserted per deal rather than in aggregate.
+
+    Two deals with offsetting errors would hide each other in a total, so this counts the
+    deals that DO NOT satisfy the identity and requires zero of them.
+    """
+    offending = _scalar(
+        loaded_cursor,
+        """
+        SELECT count(*)
+        FROM warehouse.fact_vehicle_sale AS s
+        LEFT JOIN (
+            SELECT ps.sale_key, sum(ps.original_product_gross) AS product_gross
+            FROM warehouse.fact_finance_product_sale AS ps
+            GROUP BY ps.sale_key
+        ) AS p ON p.sale_key = s.sale_key
+        WHERE s.back_end_gross
+              <> s.finance_reserve_gross + coalesce(p.product_gross, 0.00)
+        """,
+    )
+    assert offending == 0, (
+        f"{offending} deal(s) carry a back-end gross that reserve plus deal-date product "
+        "gross does not explain. other_fi_income is exactly 0.00 and there is no plug, so "
+        "any difference is a defect rather than a residual."
+    )
+
+
+def test_the_total_gross_identity_survives_the_fi_increment(loaded_cursor: Any) -> None:
+    """DASH.6 added two columns and redefined none, so front + back = total is unchanged."""
+    offending = _scalar(
+        loaded_cursor,
+        "SELECT count(*) FROM warehouse.fact_vehicle_sale "
+        "WHERE total_gross <> front_end_gross + back_end_gross",
+    )
+    assert offending == 0
+
+
+def test_the_product_price_identity_holds_on_every_contract(loaded_cursor: Any) -> None:
+    offending = _scalar(
+        loaded_cursor,
+        "SELECT count(*) FROM warehouse.fact_finance_product_sale "
+        "WHERE original_product_gross <> product_retail_price - product_dealer_cost",
+    )
+    assert offending == 0
+
+
+def test_other_fi_income_is_not_a_column_anywhere(loaded_cursor: Any) -> None:
+    """A zero that is never anything else is where a balancing plug would hide."""
+    present = _scalar(
+        loaded_cursor,
+        "SELECT count(*) FROM information_schema.columns "
+        "WHERE table_schema IN ('warehouse', 'reporting') "
+        "AND column_name IN ('other_fi_income', 'other_f_and_i_income', 'residual_fi_gross')",
+    )
+    assert present == 0
+
+
+# --------------------------------------------------------------------------------------
+# KPI-FNI-001 .. -006: the additive measures and the per-unit ratios
+# --------------------------------------------------------------------------------------
+
+
+def test_kpi_fni_001_finance_reserve_gross(loaded_cursor: Any) -> None:
+    reported = _scalar(
+        loaded_cursor, "SELECT sum(finance_reserve_gross) FROM reporting.vw_fi_summary"
+    )
+    expected = _scalar(
+        loaded_cursor,
+        "SELECT sum(finance_reserve_gross) FROM warehouse.fact_vehicle_sale WHERE is_retail",
+    )
+    _assert_equal(reported, expected, "KPI-FNI-001")
+
+
+def test_kpi_fni_001_is_zero_on_every_structure_that_cannot_earn_it(
+    loaded_cursor: Any,
+) -> None:
+    """Cash, Lease and both disposals carry exactly 0.00 -- by rule, not by coincidence."""
+    offending = _scalar(
+        loaded_cursor,
+        """
+        SELECT count(*) FROM warehouse.fact_vehicle_sale AS s
+        WHERE s.finance_reserve_gross <> 0
+          AND warehouse.fn_finance_structure(s.sale_type, s.amount_financed)
+              <> 'Retail Finance'
+        """,
+    )
+    assert offending == 0, "reserve appeared on a deal whose structure cannot produce it"
+
+    # And the other direction: a zero on a financed deal is a MODELLED outcome, so the
+    # population must actually contain some. Otherwise the rule above is vacuous.
+    financed_with_reserve = _scalar(
+        loaded_cursor,
+        "SELECT count(*) FROM warehouse.fact_vehicle_sale AS s "
+        "WHERE s.finance_reserve_gross > 0",
+    )
+    assert financed_with_reserve > 0, "no deal earned reserve; the measure is untested"
+
+
+def test_kpi_fni_002_finance_reserve_pvr(loaded_cursor: Any) -> None:
+    """Components, not a quotient: a group figure is SUM(n)/SUM(d), never an average."""
+    numerator = _scalar(
+        loaded_cursor, "SELECT sum(finance_reserve_gross) FROM reporting.vw_fi_summary"
+    )
+    denominator = _scalar(loaded_cursor, "SELECT sum(retail_units) FROM reporting.vw_fi_summary")
+    expected_denominator = _scalar(
+        loaded_cursor,
+        "SELECT sum(unit_count) FROM warehouse.fact_vehicle_sale WHERE is_retail",
+    )
+    _assert_equal(denominator, expected_denominator, "KPI-FNI-002 denominator")
+    assert denominator > 0
+    assert Decimal(str(numerator)) / Decimal(str(denominator)) > 0
+
+
+def test_kpi_fni_002_denominator_includes_cash_deals(loaded_cursor: Any) -> None:
+    """The SQ-20 caution, made checkable: cash deals are inside the denominator."""
+    cash_deals = _scalar(loaded_cursor, "SELECT sum(cash_deal_count) FROM reporting.vw_fi_summary")
+    assert cash_deals > 0, (
+        "the dataset contains no cash deals, so the caution that they sit inside a "
+        "denominator they cannot contribute to is untested"
+    )
+    cash_reserve = _scalar(
+        loaded_cursor,
+        """
+        SELECT coalesce(sum(s.finance_reserve_gross), 0) FROM warehouse.fact_vehicle_sale AS s
+        WHERE warehouse.fn_finance_structure(s.sale_type, s.amount_financed) = 'Cash'
+        """,
+    )
+    assert Decimal(str(cash_reserve)) == Decimal("0.00")
+
+
+def test_kpi_fni_003_original_product_gross(loaded_cursor: Any) -> None:
+    reported = _scalar(
+        loaded_cursor, "SELECT sum(original_product_gross) FROM reporting.vw_fi_summary"
+    )
+    expected = _scalar(
+        loaded_cursor,
+        "SELECT sum(product_retail_price - product_dealer_cost) "
+        "FROM warehouse.fact_finance_product_sale",
+    )
+    _assert_equal(reported, expected, "KPI-FNI-003")
+
+
+def test_kpi_fni_004_net_product_gross_as_of(loaded_cursor: Any) -> None:
+    as_of = _fi_as_of(loaded_cursor)
+    reported = _scalar(
+        loaded_cursor, "SELECT sum(net_product_gross_as_of) FROM reporting.vw_fi_summary"
+    )
+    expected = _scalar(
+        loaded_cursor,
+        f"""
+        SELECT (SELECT coalesce(sum(ps.original_product_gross), 0)
+                FROM warehouse.fact_finance_product_sale AS ps)
+             - (SELECT coalesce(sum(a.adjustment_amount), 0)
+                FROM warehouse.fact_finance_product_adjustment AS a
+                JOIN warehouse.dim_date AS d ON d.date_key = a.adjustment_date_key
+                WHERE d.full_date <= '{as_of}'::date)
+        """,
+    )
+    _assert_equal(reported, expected, "KPI-FNI-004")
+
+
+def test_kpi_fni_004_as_of_arithmetic_holds_at_three_points_around_one_adjustment(
+    loaded_cursor: Any,
+) -> None:
+    """The as-of basis, evaluated BEFORE, ON and AFTER a single adjustment.
+
+    Deliberately computed against ``warehouse`` at three chosen dates rather than against
+    the view at its one governed as-of date. Testing only the final as-of would hide every
+    timing defect there is: a rule that ignored ``adjustment_date`` entirely would agree
+    with a rule that honoured it, as long as both were asked after the last event.
+
+    The identity at each point is the catalogue's own:
+        net = original - SUM(amount WHERE adjustment_date <= as_of)
+    """
+    loaded_cursor.execute(
+        """
+        SELECT ps.product_sale_key, ps.original_product_gross,
+               d.full_date, a.adjustment_amount
+        FROM warehouse.fact_finance_product_adjustment AS a
+        JOIN warehouse.fact_finance_product_sale AS ps
+          ON ps.product_sale_key = a.product_sale_key
+        JOIN warehouse.dim_date AS d ON d.date_key = a.adjustment_date_key
+        ORDER BY a.adjustment_key
+        LIMIT 1
+        """
+    )
+    row = loaded_cursor.fetchone()
+    assert row is not None, (
+        "the fixture carries no adjustment at all, so the as-of arithmetic is untested"
+    )
+    product_sale_key, original, posted, amount = row
+
+    def net_at(as_of: str) -> Decimal:
+        value = _scalar(
+            loaded_cursor,
+            f"""
+            SELECT ps.original_product_gross - coalesce((
+                       SELECT sum(a.adjustment_amount)
+                       FROM warehouse.fact_finance_product_adjustment AS a
+                       JOIN warehouse.dim_date AS d ON d.date_key = a.adjustment_date_key
+                       WHERE a.product_sale_key = ps.product_sale_key
+                         AND d.full_date <= '{as_of}'::date), 0)
+            FROM warehouse.fact_finance_product_sale AS ps
+            WHERE ps.product_sale_key = {product_sale_key}
+            """,
+        )
+        return Decimal(str(value))
+
+    day_before = str(posted - timedelta(days=1))
+    on_the_day = str(posted)
+    day_after = str(posted + timedelta(days=1))
+
+    # BEFORE: the event has not happened, so nothing is netted off.
+    assert net_at(day_before) == Decimal(str(original)), (
+        "an adjustment reduced the net gross of a date before it posted, so the as-of "
+        "filter is not being applied"
+    )
+    # ON the day: the event counts. `<=` rather than `<` is the governed rule.
+    assert net_at(on_the_day) == Decimal(str(original)) - Decimal(str(amount))
+    # AFTER: unchanged by this event, since there is nothing further on this contract on
+    # the following day.
+    assert net_at(day_after) <= net_at(on_the_day)
+
+
+def test_kpi_fni_004_moves_when_an_adjustment_lands_on_or_before_the_as_of_date(
+    loaded_cursor: Any,
+) -> None:
+    """The other direction, so the previous test is not passing vacuously."""
+    before = _scalar(
+        loaded_cursor, "SELECT sum(net_product_gross_as_of) FROM reporting.vw_fi_summary"
+    )
+    loaded_cursor.execute(
+        """
+        INSERT INTO warehouse.fact_finance_product_adjustment (
+            adjustment_key, adjustment_id, product_sale_key, sale_key, adjustment_date_key,
+            dealership_key, finance_manager_key, finance_product_key, adjustment_type,
+            adjustment_amount, adjustment_reason_category, sequence_ordinal, source_system)
+        SELECT (SELECT coalesce(max(x.adjustment_key), 0) + 1
+                FROM warehouse.fact_finance_product_adjustment AS x),
+               'FPA-ONDATE', ps.product_sale_key, ps.sale_key, ps.sale_date_key,
+               ps.dealership_key, ps.finance_manager_key, ps.finance_product_key,
+               'Chargeback', 100.00, 'Early Payoff', 93, ps.source_system
+        FROM warehouse.fact_finance_product_sale AS ps
+        WHERE ps.product_sale_key = (SELECT min(y.product_sale_key)
+                                     FROM warehouse.fact_finance_product_sale AS y)
+        """
+    )
+    assert loaded_cursor.rowcount == 1
+    after = _scalar(
+        loaded_cursor, "SELECT sum(net_product_gross_as_of) FROM reporting.vw_fi_summary"
+    )
+    assert Decimal(str(before)) - Decimal(str(after)) == Decimal("100.00")
+
+
+def test_kpi_fni_005_product_gross_pvr_components(loaded_cursor: Any) -> None:
+    """Both numerators exist and are different, which is why the basis must be labelled."""
+    original = _scalar(
+        loaded_cursor, "SELECT sum(original_product_gross) FROM reporting.vw_fi_summary"
+    )
+    net = _scalar(
+        loaded_cursor, "SELECT sum(net_product_gross_as_of) FROM reporting.vw_fi_summary"
+    )
+    units = _scalar(loaded_cursor, "SELECT sum(retail_units) FROM reporting.vw_fi_summary")
+    assert units > 0
+    assert Decimal(str(original)) >= Decimal(str(net)), (
+        "net product gross exceeds original, which the adjustment cap forbids"
+    )
+
+
+def test_kpi_fni_006_products_per_retail_unit(loaded_cursor: Any) -> None:
+    numerator = _scalar(loaded_cursor, "SELECT sum(contract_count) FROM reporting.vw_fi_summary")
+    denominator = _scalar(loaded_cursor, "SELECT sum(retail_units) FROM reporting.vw_fi_summary")
+    expected_numerator = _scalar(
+        loaded_cursor,
+        "SELECT sum(product_sale_count) FROM warehouse.fact_finance_product_sale",
+    )
+    expected_denominator = _scalar(
+        loaded_cursor, "SELECT sum(unit_count) FROM warehouse.fact_vehicle_sale WHERE is_retail"
+    )
+    _assert_equal(numerator, expected_numerator, "KPI-FNI-006 numerator")
+    _assert_equal(denominator, expected_denominator, "KPI-FNI-006 denominator")
+
+
+def test_kpi_fni_006_denominator_is_all_retail_units_not_product_carrying_deals(
+    loaded_cursor: Any,
+) -> None:
+    """THE TEMPTING WRONG DENOMINATOR, computed and proved different.
+
+    Dividing by the deals that carried a product answers "how many products did the deals
+    that bought something buy?", which is a different and much flatter measure. The two
+    differ here because the generator deliberately produces eligible deals that carried
+    nothing.
+    """
+    all_units = _scalar(loaded_cursor, "SELECT sum(retail_units) FROM reporting.vw_fi_summary")
+    carrying = _scalar(
+        loaded_cursor, "SELECT sum(deals_with_a_product) FROM reporting.vw_fi_summary"
+    )
+    assert carrying < all_units, (
+        "every retail delivery carried a product, so the correct and incorrect "
+        "denominators coincide and this test proves nothing"
+    )
+
+
+# --------------------------------------------------------------------------------------
+# KPI-FNI-007 .. -011: penetration and per-contract economics
+# --------------------------------------------------------------------------------------
+
+
+def _penetration(cursor: Any, category: str) -> tuple[Any, Any]:
+    """The reported numerator and denominator for one category."""
+    cursor.execute(
+        "SELECT sum(penetration_numerator), sum(penetration_denominator) "
+        "FROM reporting.vw_fi_product_penetration WHERE product_category = %s",
+        (category,),
+    )
+    return cursor.fetchone()
+
+
+def _expected_penetration(cursor: Any, category: str) -> tuple[Any, Any]:
+    """The same two figures, derived independently from the warehouse."""
+    numerator = _scalar(
+        cursor,
+        """
+        SELECT count(DISTINCT ps.sale_key)
+        FROM warehouse.fact_finance_product_sale AS ps
+        JOIN warehouse.dim_finance_product AS p
+          ON p.finance_product_key = ps.finance_product_key
+        WHERE p.product_category = %s
+        """.replace("%s", f"'{category}'"),
+    )
+    denominator = _scalar(
+        cursor,
+        f"""
+        SELECT count(*)
+        FROM warehouse.fact_vehicle_sale AS s
+        JOIN warehouse.dim_vehicle AS v ON v.vehicle_key = s.vehicle_key
+        WHERE s.is_retail
+          AND warehouse.fn_product_category_is_eligible(
+                  '{category}',
+                  warehouse.fn_finance_structure(s.sale_type, s.amount_financed),
+                  v.condition_type)
+        """,
+    )
+    return numerator, denominator
+
+
+@pytest.mark.parametrize(
+    ("kpi_id", "category"),
+    [
+        ("KPI-FNI-007", "Vehicle Service Contract"),
+        ("KPI-FNI-008", "GAP"),
+        ("KPI-FNI-009", "Tire & Wheel"),
+        ("KPI-FNI-010", "Prepaid Maintenance"),
+    ],
+)
+def test_category_penetration_components(loaded_cursor: Any, kpi_id: str, category: str) -> None:
+    reported = _penetration(loaded_cursor, category)
+    expected = _expected_penetration(loaded_cursor, category)
+    _assert_equal(reported[0], expected[0], f"{kpi_id} numerator")
+    _assert_equal(reported[1], expected[1], f"{kpi_id} denominator")
+    assert reported[0] <= reported[1], (
+        f"{kpi_id} numerator exceeds its denominator, so a contract sits outside its own "
+        "eligible population"
+    )
+
+
+def test_kpi_fni_008_gap_denominator_is_financed_deals_not_all_retail_deals(
+    loaded_cursor: Any,
+) -> None:
+    """THE TEMPTING WRONG DENOMINATOR, computed and proved different.
+
+    This is the specific misleading number ELIG-GAP exists to prevent. A cash buyer owes
+    nothing for GAP to cover, so a GAP penetration over all retail deals divides a
+    financed-only numerator by a population that includes deals which could never have
+    bought it -- and the resulting figure is smaller for a reason no reader can see.
+    """
+    _, correct = _penetration(loaded_cursor, "GAP")
+    tempting = _scalar(
+        loaded_cursor, "SELECT count(*) FROM warehouse.fact_vehicle_sale WHERE is_retail"
+    )
+    assert correct < tempting, (
+        "the eligible GAP denominator equals the whole retail population, so the correct "
+        "and incorrect formulas coincide and this test proves nothing"
+    )
+    numerator, _ = _penetration(loaded_cursor, "GAP")
+    correct_rate = Decimal(str(numerator)) / Decimal(str(correct))
+    tempting_rate = Decimal(str(numerator)) / Decimal(str(tempting))
+    assert correct_rate > tempting_rate
+
+
+def test_kpi_fni_010_ppm_denominator_excludes_used_vehicles(loaded_cursor: Any) -> None:
+    """ELIG-PPM narrows on vehicle condition, which must be visible in the denominator."""
+    _, correct = _penetration(loaded_cursor, "Prepaid Maintenance")
+    all_retail = _scalar(
+        loaded_cursor, "SELECT count(*) FROM warehouse.fact_vehicle_sale WHERE is_retail"
+    )
+    assert correct < all_retail, (
+        "the Prepaid Maintenance denominator includes used deals, so the condition rule "
+        "is not being applied"
+    )
+    used_with_ppm = _scalar(
+        loaded_cursor,
+        """
+        SELECT count(*)
+        FROM warehouse.fact_finance_product_sale AS ps
+        JOIN warehouse.dim_finance_product AS p
+          ON p.finance_product_key = ps.finance_product_key
+        JOIN warehouse.fact_vehicle_sale AS s ON s.sale_key = ps.sale_key
+        JOIN warehouse.dim_vehicle AS v ON v.vehicle_key = s.vehicle_key
+        WHERE p.product_category = 'Prepaid Maintenance' AND v.condition_type = 'Used'
+        """,
+    )
+    assert used_with_ppm == 0
+
+
+def test_penetration_counts_distinct_deals_not_contract_rows(loaded_cursor: Any) -> None:
+    """THE TEMPTING WRONG NUMERATOR, computed and proved different.
+
+    One deal may carry two DIFFERENT products of one category -- a windscreen plan and a
+    roadside plan are both Other Aftermarket Products. Counting contract rows would let a
+    penetration exceed the share of deals that bought anything, and could exceed 100%.
+    """
+    loaded_cursor.execute(
+        """
+        SELECT sum(attached_deal_count), sum(contract_count)
+        FROM reporting.vw_fi_product_penetration
+        WHERE product_category = 'Other Aftermarket Product'
+        """
+    )
+    deals, contracts = loaded_cursor.fetchone()
+    assert contracts > deals, (
+        "no deal carried two contracts of one category, so counting deals and counting "
+        "rows coincide and the distinct-deal rule is untested"
+    )
+
+
+def test_kpi_fni_011_product_gross_per_contract(loaded_cursor: Any) -> None:
+    numerator = _scalar(
+        loaded_cursor, "SELECT sum(original_product_gross) FROM reporting.vw_fi_summary"
+    )
+    denominator = _scalar(loaded_cursor, "SELECT sum(contract_count) FROM reporting.vw_fi_summary")
+    expected_numerator = _scalar(
+        loaded_cursor,
+        "SELECT sum(original_product_gross) FROM warehouse.fact_finance_product_sale",
+    )
+    expected_denominator = _scalar(
+        loaded_cursor, "SELECT count(*) FROM warehouse.fact_finance_product_sale"
+    )
+    _assert_equal(numerator, expected_numerator, "KPI-FNI-011 numerator")
+    _assert_equal(denominator, expected_denominator, "KPI-FNI-011 denominator")
+
+
+# --------------------------------------------------------------------------------------
+# KPI-FNI-012 .. -018: adjustments, on the adjustment-date basis
+# --------------------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("kpi_amount", "kpi_count", "adjustment_type"),
+    [
+        ("KPI-FNI-012", "KPI-FNI-013", "Chargeback"),
+        ("KPI-FNI-016", "KPI-FNI-017", "Cancellation"),
+    ],
+)
+def test_adjustment_amount_and_count(
+    loaded_cursor: Any, kpi_amount: str, kpi_count: str, adjustment_type: str
+) -> None:
+    loaded_cursor.execute(
+        "SELECT coalesce(sum(adjustment_amount), 0), coalesce(sum(adjustment_count), 0) "
+        "FROM reporting.vw_fi_adjustment_summary WHERE adjustment_type = %s",
+        (adjustment_type,),
+    )
+    amount, count = loaded_cursor.fetchone()
+    loaded_cursor.execute(
+        "SELECT coalesce(sum(adjustment_amount), 0), count(*) "
+        "FROM warehouse.fact_finance_product_adjustment WHERE adjustment_type = %s",
+        (adjustment_type,),
+    )
+    expected_amount, expected_count = loaded_cursor.fetchone()
+    _assert_equal(amount, expected_amount, f"{kpi_amount}")
+    _assert_equal(count, expected_count, f"{kpi_count}")
+
+
+def test_adjustments_are_attributed_to_their_own_date_not_the_sale_month(
+    loaded_cursor: Any,
+) -> None:
+    """The date-basis rule, planted rather than hoped for.
+
+    A chargeback is moved to a month other than its contract's sale month. The adjustment
+    view must follow it, and the sale-date views must not move at all -- because the
+    contract's own gross is never restated.
+    """
+    sale_side_before = _scalar(
+        loaded_cursor, "SELECT sum(original_product_gross) FROM reporting.vw_fi_summary"
+    )
+    loaded_cursor.execute(
+        """
+        INSERT INTO warehouse.fact_finance_product_adjustment (
+            adjustment_key, adjustment_id, product_sale_key, sale_key, adjustment_date_key,
+            dealership_key, finance_manager_key, finance_product_key, adjustment_type,
+            adjustment_amount, adjustment_reason_category, sequence_ordinal, source_system)
+        SELECT (SELECT coalesce(max(x.adjustment_key), 0) + 1
+                FROM warehouse.fact_finance_product_adjustment AS x),
+               'FPA-XMONTH', ps.product_sale_key, ps.sale_key,
+               (SELECT max(d.date_key) FROM warehouse.dim_date AS d),
+               ps.dealership_key, ps.finance_manager_key, ps.finance_product_key,
+               'Chargeback', 50.00, 'Early Payoff', 92, ps.source_system
+        FROM warehouse.fact_finance_product_sale AS ps
+        WHERE ps.product_sale_key = (SELECT min(y.product_sale_key)
+                                     FROM warehouse.fact_finance_product_sale AS y)
+        """
+    )
+    assert loaded_cursor.rowcount == 1
+
+    planted_month = _scalar(
+        loaded_cursor,
+        "SELECT to_char(max(d.month_start_date), 'YYYY-MM-DD') FROM warehouse.dim_date AS d",
+    )
+    contract_month = _scalar(
+        loaded_cursor,
+        """
+        SELECT to_char(d.month_start_date, 'YYYY-MM-DD')
+        FROM warehouse.fact_finance_product_sale AS ps
+        JOIN warehouse.dim_date AS d ON d.date_key = ps.sale_date_key
+        WHERE ps.product_sale_key = (SELECT min(y.product_sale_key)
+                                     FROM warehouse.fact_finance_product_sale AS y)
+        """,
+    )
+    assert planted_month != contract_month, (
+        "the planted adjustment landed in its own contract's month, so the cross-month "
+        "rule is untested"
+    )
+
+    in_planted_month = _scalar(
+        loaded_cursor,
+        f"""
+        SELECT coalesce(sum(v.adjustment_amount), 0)
+        FROM reporting.vw_fi_adjustment_summary AS v
+        JOIN warehouse.dim_date AS d ON d.date_key = v.adjustment_date_key
+        WHERE d.month_start_date = '{planted_month}'::date
+          AND v.adjustment_type = 'Chargeback'
+        """,
+    )
+    assert Decimal(str(in_planted_month)) >= Decimal("50.00"), (
+        "the adjustment did not appear in the month it posted in"
+    )
+
+    sale_side_after = _scalar(
+        loaded_cursor, "SELECT sum(original_product_gross) FROM reporting.vw_fi_summary"
+    )
+    assert Decimal(str(sale_side_after)) == Decimal(str(sale_side_before)), (
+        "an adjustment changed a deal-date product gross figure. The original contract is "
+        "never rewritten: that is the whole design."
+    )
+
+
+def test_the_mixed_basis_rates_publish_their_disclosure_as_data(loaded_cursor: Any) -> None:
+    """KPI-FNI-014, -015 and -018 are period proxies, and the view has to say so."""
+    loaded_cursor.execute(
+        "SELECT DISTINCT numerator_date_basis, rate_denominator_date_basis, "
+        "rate_denominator_source, rate_basis_disclosure "
+        "FROM reporting.vw_fi_adjustment_summary"
+    )
+    rows = loaded_cursor.fetchall()
+    assert rows, "the adjustment view returned no rows, so the disclosure is untested"
+    for numerator_basis, denominator_basis, source, disclosure in rows:
+        assert numerator_basis == "adjustment date"
+        assert denominator_basis == "sale date"
+        assert numerator_basis != denominator_basis, "a mixed-basis rate that is not mixed"
+        assert "vw_fi_summary" in source
+        assert "not a contract-cohort loss rate" in disclosure
+
+
+def test_kpi_fni_014_and_015_components_come_from_the_two_declared_bases(
+    loaded_cursor: Any,
+) -> None:
+    """The two sides are computed here exactly as the catalogue specifies them."""
+    numerator_amount = _scalar(
+        loaded_cursor,
+        "SELECT coalesce(sum(adjustment_amount), 0) FROM reporting.vw_fi_adjustment_summary "
+        "WHERE adjustment_type = 'Chargeback'",
+    )
+    numerator_count = _scalar(
+        loaded_cursor,
+        "SELECT coalesce(sum(adjustment_count), 0) FROM reporting.vw_fi_adjustment_summary "
+        "WHERE adjustment_type = 'Chargeback'",
+    )
+    denominator_gross = _scalar(
+        loaded_cursor, "SELECT sum(original_product_gross) FROM reporting.vw_fi_summary"
+    )
+    denominator_contracts = _scalar(
+        loaded_cursor, "SELECT sum(contract_count) FROM reporting.vw_fi_summary"
+    )
+    assert denominator_gross > 0 and denominator_contracts > 0
+    # The rates themselves are bounded by nothing in principle -- a month can post more
+    # chargebacks than it wrote -- so what is asserted is that both sides exist and are
+    # drawn from the two DIFFERENT views the catalogue names, which is the disclosure.
+    assert Decimal(str(numerator_amount)) >= 0
+    assert Decimal(str(numerator_count)) >= 0
+
+
+def test_the_adjustment_cap_holds_on_every_contract(loaded_cursor: Any) -> None:
+    """Cumulative net reduction stays inside [0, original gross]."""
+    offending = _scalar(
+        loaded_cursor,
+        """
+        SELECT count(*) FROM (
+            SELECT ps.original_product_gross AS original, sum(a.adjustment_amount) AS reduction
+            FROM warehouse.fact_finance_product_adjustment AS a
+            JOIN warehouse.fact_finance_product_sale AS ps
+              ON ps.product_sale_key = a.product_sale_key
+            GROUP BY ps.product_sale_key, ps.original_product_gross
+        ) AS per_contract
+        WHERE reduction < 0 OR reduction > original
+        """,
+    )
+    assert offending == 0
+
+
+# --------------------------------------------------------------------------------------
+# KPI-FNI-019 .. -022: mix, category economics and manager measures
+# --------------------------------------------------------------------------------------
+
+
+def test_kpi_fni_019_deal_structure_mix_partitions_retail_units(loaded_cursor: Any) -> None:
+    """The three shares sum to 100% by construction, which is what makes them a mix."""
+    loaded_cursor.execute(
+        "SELECT sum(cash_deal_count), sum(retail_finance_deal_count), sum(lease_deal_count), "
+        "sum(retail_units) FROM reporting.vw_fi_summary"
+    )
+    cash, finance, lease, units = loaded_cursor.fetchone()
+    assert cash + finance + lease == units, (
+        "the three structure counts do not partition retail units, so the shares do not "
+        "sum to 100% and the mix describes no population"
+    )
+    for count in (cash, finance, lease):
+        assert count > 0, "a structure with no deals makes its share untestable"
+
+
+def test_kpi_fni_019_excludes_wholesale_and_dealer_trade(loaded_cursor: Any) -> None:
+    """Disposals are not retail structures, so they are not components of the mix."""
+    non_retail = _scalar(
+        loaded_cursor, "SELECT count(*) FROM warehouse.fact_vehicle_sale WHERE NOT is_retail"
+    )
+    assert non_retail > 0, "the dataset contains no disposals, so the exclusion is untested"
+    view_units = _scalar(loaded_cursor, "SELECT sum(retail_units) FROM reporting.vw_fi_summary")
+    all_sales = _scalar(loaded_cursor, "SELECT count(*) FROM warehouse.fact_vehicle_sale")
+    assert view_units == all_sales - non_retail
+
+
+def test_kpi_fni_020_category_mix_components_reconcile_to_the_fact(loaded_cursor: Any) -> None:
+    """Every category component is the warehouse's own, at the same grain and basis."""
+    loaded_cursor.execute(
+        """
+        SELECT product_category, sum(contract_count), sum(original_product_gross),
+               sum(product_retail_price), sum(product_dealer_cost)
+        FROM reporting.vw_fi_product_penetration
+        GROUP BY product_category ORDER BY product_category
+        """
+    )
+    reported = {row[0]: row[1:] for row in loaded_cursor.fetchall()}
+    loaded_cursor.execute(
+        """
+        SELECT p.product_category, sum(ps.product_sale_count),
+               sum(ps.original_product_gross), sum(ps.product_retail_price),
+               sum(ps.product_dealer_cost)
+        FROM warehouse.fact_finance_product_sale AS ps
+        JOIN warehouse.dim_finance_product AS p
+          ON p.finance_product_key = ps.finance_product_key
+        GROUP BY p.product_category ORDER BY p.product_category
+        """
+    )
+    expected = {row[0]: row[1:] for row in loaded_cursor.fetchall()}
+    assert set(expected) <= set(reported), (
+        "a category with contracts is missing from the penetration view, which means a "
+        "contract sits outside its own eligible population"
+    )
+    for category, values in expected.items():
+        for index, label in enumerate(("contracts", "gross", "price", "cost")):
+            _assert_equal(
+                reported[category][index], values[index], f"KPI-FNI-020 {category} {label}"
+            )
+
+
+def test_kpi_fni_020_every_category_has_a_row_even_with_no_sales(loaded_cursor: Any) -> None:
+    """A category nobody sold and a category nobody could sell are different statements."""
+    categories = _scalar(
+        loaded_cursor,
+        "SELECT count(DISTINCT product_category) FROM reporting.vw_fi_product_penetration",
+    )
+    assert categories == 10, (
+        f"only {categories} of the ten governed categories appear in the penetration view; "
+        "a category with an eligible population must produce a row with a zero numerator"
+    )
+
+
+def test_kpi_fni_021_manager_penetration_uses_that_managers_denominator(
+    loaded_cursor: Any,
+) -> None:
+    """THE TEMPTING WRONG DENOMINATOR, computed and proved different.
+
+    Using the store's eligible-deal count for an individual divides one person's numerator
+    by everybody's population, which makes every manager look weak by a factor of however
+    many managers the store has.
+    """
+    loaded_cursor.execute(
+        """
+        SELECT dealership_key, finance_manager_grain_key,
+               sum(penetration_numerator), sum(penetration_denominator)
+        FROM reporting.vw_fi_product_penetration
+        WHERE product_category = 'Vehicle Service Contract'
+        GROUP BY dealership_key, finance_manager_grain_key
+        ORDER BY dealership_key, finance_manager_grain_key
+        """
+    )
+    rows = loaded_cursor.fetchall()
+    assert len(rows) > 1, "only one manager group exists, so the distinction is untestable"
+
+    store_totals: dict[Any, Any] = {}
+    for store, _manager, _numerator, denominator in rows:
+        store_totals[store] = store_totals.get(store, 0) + denominator
+
+    differing = [
+        (store, manager)
+        for store, manager, _numerator, denominator in rows
+        if denominator != store_totals[store]
+    ]
+    assert differing, (
+        "every manager's eligible-deal count equals their store's, so the correct and "
+        "incorrect denominators coincide and this test proves nothing"
+    )
+
+
+def test_kpi_fni_022_manager_back_pvr_components(loaded_cursor: Any) -> None:
+    """The numerator is the AS-OF retained figure, not the stored deal-date back gross."""
+    loaded_cursor.execute(
+        "SELECT sum(net_fi_gross_as_of), sum(back_end_gross_deal_date), sum(retail_units) "
+        "FROM reporting.vw_fi_summary"
+    )
+    net, deal_date, units = loaded_cursor.fetchone()
+    assert units > 0
+    assert Decimal(str(net)) <= Decimal(str(deal_date)), (
+        "as-of retained F&I gross exceeds deal-date production, which the adjustment cap "
+        "forbids"
+    )
+    expected_deal_date = _scalar(
+        loaded_cursor,
+        "SELECT sum(back_end_gross) FROM warehouse.fact_vehicle_sale WHERE is_retail",
+    )
+    _assert_equal(deal_date, expected_deal_date, "KPI-FNI-022 deal-date comparison")
+
+
+def test_kpi_fni_022_is_not_the_same_measure_as_kpi_grs_005(loaded_cursor: Any) -> None:
+    """Back PVR and manager back PVR differ by every adjustment posted, and must not be
+    presented interchangeably. If the dataset carried no adjustments the two would
+    coincide, so the test asserts the dataset actually distinguishes them."""
+    adjustments = _scalar(
+        loaded_cursor, "SELECT count(*) FROM warehouse.fact_finance_product_adjustment"
+    )
+    assert adjustments > 0, "the dataset carries no adjustments, so the two bases coincide"
+    loaded_cursor.execute(
+        "SELECT sum(net_fi_gross_as_of), sum(back_end_gross_deal_date) FROM reporting.vw_fi_summary"
+    )
+    net, deal_date = loaded_cursor.fetchone()
+    assert Decimal(str(net)) < Decimal(str(deal_date)), (
+        "the as-of and deal-date bases produced the same total despite adjustments "
+        "existing, so one of them is not being applied"
+    )
+
+
+def test_the_minimum_sample_floor_agrees_between_sql_and_python(loaded_cursor: Any) -> None:
+    """One value per layer, with the equality proved rather than hoped for."""
+    sql_floor = _scalar(loaded_cursor, "SELECT warehouse.fn_minimum_sample_floor()")
+    assert sql_floor == MINIMUM_SAMPLE_ELIGIBLE_DEALS
+    published = _scalar(
+        loaded_cursor, "SELECT DISTINCT minimum_sample_floor FROM reporting.vw_fi_summary"
+    )
+    assert published == MINIMUM_SAMPLE_ELIGIBLE_DEALS
+
+
+def test_the_minimum_sample_flag_is_published_and_never_blanks_a_value(
+    loaded_cursor: Any,
+) -> None:
+    """Below the floor the row is MARKED, not emptied: a NULL would be indistinguishable
+    from a manager who genuinely had no eligible deals."""
+    loaded_cursor.execute(
+        "SELECT count(*) FILTER (WHERE meets_minimum_sample), "
+        "       count(*) FILTER (WHERE NOT meets_minimum_sample) "
+        "FROM reporting.vw_fi_summary"
+    )
+    meets, below = loaded_cursor.fetchone()
+    assert below > 0, (
+        "no row falls below the minimum-sample floor, so the rule is untested; the "
+        "store-day grain should produce plenty"
+    )
+    blanked = _scalar(
+        loaded_cursor,
+        "SELECT count(*) FROM reporting.vw_fi_summary "
+        "WHERE NOT meets_minimum_sample AND (retail_units IS NULL "
+        "   OR finance_reserve_gross IS NULL OR original_product_gross IS NULL)",
+    )
+    assert blanked == 0, "a below-floor row had its components blanked by the reporting layer"
