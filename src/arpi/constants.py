@@ -566,6 +566,13 @@ APPROVED_NAME_COLUMNS: Final[Mapping[str, str]] = MappingProxyType(
             "a synthetic product of a fictional administrator, never a person, and never "
             "a real F&I product or program."
         ),
+        "gl_account_name": (
+            "Fictional GL control-account label such as 'New Vehicle Inventory Control'. "
+            "Names an INVENTED ACCOUNT in a synthetic control catalogue, never a person "
+            "and never a real dealer group's chart of accounts. DQ-GLA-009 additionally "
+            "scans this column for general-ledger vocabulary, so it cannot quietly become "
+            "something the project does not build."
+        ),
         "holiday_name": "Recognised holiday label such as 'Independence Day'.",
         "lender_name": (
             "Fictional lender label such as 'Granite Financial Services'. Names a "
@@ -665,6 +672,33 @@ APPROVED_ASSET_AGE_COLUMNS: Final[Mapping[str, str]] = MappingProxyType(
             "KPI-LST-022, reporting.vw_vehicle_listing_summary. Days between a capture "
             "date and the store's newest capture. This is SNAPSHOT FRESHNESS. Describes "
             "an observation, never a person."
+        ),
+    }
+)
+
+# Columns whose ``account_number`` denotes a LEDGER account, not a person's.
+#
+# ``account_number`` is in `PROHIBITED_PII_SUBSTRINGS` because a customer's bank or card
+# account number is a direct financial identifier of a person. A GL control-account number
+# is not: it is a code in a synthetic chart of accounts belonging to a fictional company,
+# it identifies no one, and "account number" is exactly what a controller calls it --
+# renaming the column to dodge the tripwire would be the wrong instinct.
+#
+# The distinction is drawn by an explicit allowlist rather than by weakening the substring
+# rule, for the same reason `APPROVED_ASSET_AGE_COLUMNS` exists: ``bank_account_number``
+# and ``customer_account_number`` must keep failing, and a new entry here is a visible act
+# in a diff that a reviewer can challenge. Every entry names the ledger it belongs to.
+APPROVED_LEDGER_ACCOUNT_COLUMNS: Final[Mapping[str, str]] = MappingProxyType(
+    {
+        "account_number": (
+            "The synthetic GL control-account number on warehouse.dim_gl_account, in a "
+            "conventional dealership inventory block. INVENTED; identifies an account in "
+            "a fictional company's catalogue, never a person and never a real dealer "
+            "group's account."
+        ),
+        "gl_account_number": (
+            "The same value republished by reporting.vw_inventory_accounting and "
+            "reporting.vw_inventory_gl_reconciliation under its qualified name."
         ),
     }
 )

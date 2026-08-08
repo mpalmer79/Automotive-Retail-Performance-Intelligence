@@ -22,6 +22,12 @@ How a name is judged
 3. **Substring match** against :data:`~arpi.constants.PROHIBITED_PII_SUBSTRINGS`. Every
    token there is one no legitimate ARPI column can contain, so ``customer_email`` and
    ``home_phone_number`` are caught rather than only their bare forms.
+
+   One narrow allowlist qualifies rules 2 and 3 together:
+   :data:`~arpi.constants.APPROVED_LEDGER_ACCOUNT_COLUMNS` covers the two names whose
+   ``account_number`` is a GL control-account code in a fictional company's catalogue
+   rather than a person's bank account. It matches the **whole** normalised name and never
+   a fragment, so ``bank_account_number`` and ``customer_account_number`` keep failing.
 4. **Whole-word match** against :data:`~arpi.constants.PROHIBITED_PII_WORD_TOKENS`, over
    the ``_``-separated words of the name. This reaches ``customer_notes`` and
    ``call_recording_url`` without the false positives a substring rule would cause.
@@ -67,6 +73,7 @@ from typing import TYPE_CHECKING, Any
 from arpi.constants import (
     APPROVED_AGE_COLUMNS,
     APPROVED_ASSET_AGE_COLUMNS,
+    APPROVED_LEDGER_ACCOUNT_COLUMNS,
     APPROVED_NAME_COLUMNS,
     CHECK_CATEGORY_PRIVACY,
     CSV_DELIMITER,
@@ -164,9 +171,14 @@ def is_prohibited_column(name: str) -> bool:
     normalised = normalise_column_name(name)
     if not normalised:
         return False
-    if normalised in PROHIBITED_PII_FIELD_NAMES:
-        return True
-    if any(token in normalised for token in PROHIBITED_PII_SUBSTRINGS):
+    # The ledger allowlist qualifies the exact-name and substring rules alike, because it
+    # is an allowlist of WHOLE normalised names: `account_number` is both an exact
+    # prohibited name and a prohibited substring, and a GL control-account code is neither
+    # a person's bank account nor a fragment of one.
+    if normalised not in APPROVED_LEDGER_ACCOUNT_COLUMNS and (
+        normalised in PROHIBITED_PII_FIELD_NAMES
+        or any(token in normalised for token in PROHIBITED_PII_SUBSTRINGS)
+    ):
         return True
 
     words = frozenset(normalised.split("_"))

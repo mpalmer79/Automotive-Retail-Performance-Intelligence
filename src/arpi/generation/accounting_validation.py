@@ -58,6 +58,7 @@ from arpi.generation.inventory_accounting import (
     INVENTORY_ACCOUNTING_COLUMNS,
     INVENTORY_ACCOUNTING_MONEY_COLUMNS,
 )
+from arpi.validation.privacy import prohibited_columns
 from arpi.validation.registry import CheckDefinition, CheckLayer, register_checks
 from arpi.validation.results import CheckResult, CheckSeverity, ValidationReport
 
@@ -632,7 +633,21 @@ def _source_system_check(
 
 
 def _prohibited_columns_check(frame: pd.DataFrame, entity: str, check_id: str) -> CheckResult:
-    """No column name carries a prohibited fragment."""
+    """No column name carries a prohibited fragment, by either standard.
+
+    TWO VOCABULARIES, DELIBERATELY, because they forbid different things.
+
+    ``PROHIBITED_ACCOUNTING_FRAGMENTS`` is domain-specific: it refuses the journal,
+    posting, trial-balance and period-close vocabulary that would turn a control schedule
+    into a general ledger. Nothing in the project-wide list would catch a
+    ``journal_entry_id``, because a journal entry is not personal data -- it is simply
+    something ARPI does not build.
+
+    ``arpi.validation.privacy`` is the project-wide personal-data tripwire every other
+    generated dataset is held to. Running only the domain list here would have left the
+    accounting datasets outside the platform's own privacy standard: a ``customer_email``
+    on a schedule line would have passed, because the domain list has no reason to name it.
+    """
     base = _result(
         check_id,
         "no accounting column names personal or confidential data",
@@ -640,17 +655,19 @@ def _prohibited_columns_check(frame: pd.DataFrame, entity: str, check_id: str) -
         frame,
         CHECK_CATEGORY_PRIVACY,
     )
-    offending = sorted(
+    domain_offences = {
         column
         for column in frame.columns
         for fragment in PROHIBITED_ACCOUNTING_FRAGMENTS
         if fragment in column.lower()
-    )
+    }
+    offending = sorted(domain_offences | set(prohibited_columns(frame.columns)))
     if not offending:
         return base
     return base.failed(
         f"prohibited column name(s) {offending}. The accounting layer is where a real "
-        "dealership's most sensitive data lives; ARPI models none of it.",
+        "dealership's most sensitive data lives; ARPI models none of it, and it does not "
+        "build a general ledger either.",
         observed_value=0.0,
         failed_record_count=len(offending),
     )
