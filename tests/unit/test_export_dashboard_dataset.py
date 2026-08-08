@@ -964,6 +964,9 @@ class TestFiContract:
 
     def test_the_adjustment_dataset_is_on_its_own_date_basis(self) -> None:
         entry = spec.dataset("fi-adjustment-summary")
+        # A null basis is legitimate for a dimension and is a defect here: a dated F&I
+        # dataset that declared none would be one a consumer had to guess the basis of.
+        assert entry.date_basis is not None, "fi-adjustment-summary declares no date basis"
         assert "adjustment date" in entry.date_basis.lower(), entry.date_basis
         assert "adjustment_date" in entry.business_key
         # And it does not carry the parent sale's date, so nothing can restate it.
@@ -972,6 +975,7 @@ class TestFiContract:
     def test_the_production_datasets_are_not_on_the_adjustment_basis(self) -> None:
         for name in ("fi-summary", "fi-product-penetration", "deal-product-detail"):
             entry = spec.dataset(name)
+            assert entry.date_basis is not None, f"{name} declares no date basis"
             assert "adjustment date" not in entry.date_basis.lower(), entry.name
 
     def test_no_fi_dataset_sorts_by_a_performance_measure(self) -> None:
