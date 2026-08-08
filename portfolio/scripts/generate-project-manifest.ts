@@ -401,6 +401,34 @@ function inDashboardLane(dir: string, name: string): boolean {
   return dashboardLaneSqlFiles.has(`${dir}/${name}`)
 }
 
+// The inventory accounting and GL control lane (`DASH.8`), subtracted for the same reason
+// as the two above. It is declared in `arpi.constants` rather than in the dashboard
+// contract because that increment adds no browser dataset and no console route, so the
+// contract module is deliberately untouched by it.
+const accountingLaneSqlFiles = readAccountingLaneSqlFiles()
+
+function readAccountingLaneSqlFiles(): Set<string> {
+  const source = readText('src/arpi/constants.py')
+  const block = /ACCOUNTING_LANE_SQL_FILES[^=]*=\s*\(([\s\S]*?)\)/.exec(source)
+  if (!block) {
+    fail(
+      'src/arpi/constants.py no longer declares ACCOUNTING_LANE_SQL_FILES. The manifest ' +
+        'cannot tell the MVP warehouse and the accounting control lane apart without it.'
+    )
+    return new Set()
+  }
+  const names = [...block[1]!.matchAll(/"([^"]+\.sql)"/g)].map((m) => m[1]!)
+  if (names.length === 0) {
+    fail('ACCOUNTING_LANE_SQL_FILES is declared but empty.')
+  }
+  return new Set(names)
+}
+
+/** Whether a file under `sql/<dir>/` belongs to the accounting control lane. */
+function inAccountingLane(dir: string, name: string): boolean {
+  return accountingLaneSqlFiles.has(`${dir}/${name}`)
+}
+
 // The MVP dimension DDL. Both lanes are subtracted for the same reason the fact DDL
 // subtracts them below: `data-model.json`, the Power BI SQL baseline and every count this
 // website publishes describe the EIGHT MVP dimensions. `DASH.6` added two more beside them,
@@ -412,7 +440,8 @@ const dimensionDdl = listFiles('sql/03_dimensions', '.sql').filter(
     !f.includes('_merge') &&
     !f.includes('_functions') &&
     !inLane('03_dimensions', f) &&
-    !inDashboardLane('03_dimensions', f)
+    !inDashboardLane('03_dimensions', f) &&
+    !inAccountingLane('03_dimensions', f)
 )
 /** The dashboard program's own dimension DDL: `dim_finance_product`, `dim_lender` (`DASH.6`). */
 const dashboardDimensionDdl = listFiles('sql/03_dimensions', '.sql').filter(
@@ -426,7 +455,18 @@ const dashboardDimensionDdl = listFiles('sql/03_dimensions', '.sql').filter(
 // fact table that the semantic model has never measured. Counting it here would restate a
 // historical baseline rather than record a new capability.
 const factDdl = listFiles('sql/04_facts', '.sql').filter(
-  (f) => !f.includes('_load') && !inLane('04_facts', f) && !inDashboardLane('04_facts', f)
+  (f) =>
+    !f.includes('_load') &&
+    !inLane('04_facts', f) &&
+    !inDashboardLane('04_facts', f) &&
+    !inAccountingLane('04_facts', f)
+)
+/** The accounting control lane's own dimension and fact DDL (`DASH.8`). */
+const accountingDimensionDdl = listFiles('sql/03_dimensions', '.sql').filter(
+  (f) => !f.includes('_merge') && inAccountingLane('03_dimensions', f)
+)
+const accountingFactDdl = listFiles('sql/04_facts', '.sql').filter(
+  (f) => !f.includes('_load') && inAccountingLane('04_facts', f)
 )
 /**
  * The dashboard program's own fact DDL: `fact_sales_target` (`DASH.5`),
@@ -439,7 +479,11 @@ const reportingViewFiles = listFiles('sql/05_reporting', '.sql').filter(
   (f) =>
     !f.includes('reporting_scope') &&
     !inLane('05_reporting', f) &&
-    !inDashboardLane('05_reporting', f)
+    !inDashboardLane('05_reporting', f) &&
+    !inAccountingLane('05_reporting', f)
+)
+const accountingReportingViewFiles = listFiles('sql/05_reporting', '.sql').filter((f) =>
+  inAccountingLane('05_reporting', f)
 )
 const dashboardReportingViewFiles = listFiles('sql/05_reporting', '.sql').filter((f) =>
   inDashboardLane('05_reporting', f)
@@ -496,6 +540,26 @@ requireTrue(
     `${dashboardFactDdl.length}. A DASH.* fact added to the tree and not to ` +
     'DASHBOARD_LANE_SQL_FILES would be counted as a sixth MVP fact, which would restate ' +
     'a baseline the semantic model was measured against.'
+)
+requireTrue(
+  accountingDimensionDdl.length === 1,
+  `Expected one accounting control dimension DDL script under sql/03_dimensions/, found ` +
+    `${accountingDimensionDdl.length}. A DASH.8 dimension added to the tree and not to ` +
+    'ACCOUNTING_LANE_SQL_FILES would be counted as a ninth MVP dimension.'
+)
+requireTrue(
+  accountingFactDdl.length === 2,
+  `Expected two accounting control fact DDL scripts under sql/04_facts/, found ` +
+    `${accountingFactDdl.length}. A DASH.8 fact added to the tree and not to ` +
+    'ACCOUNTING_LANE_SQL_FILES would be counted as a sixth MVP fact, which would restate ' +
+    'a baseline the semantic model was measured against.'
+)
+requireTrue(
+  accountingReportingViewFiles.length === 3,
+  `Expected three accounting control reporting views under sql/05_reporting/, found ` +
+    `${accountingReportingViewFiles.length}. A DASH.8 view added to the tree and not to ` +
+    'ACCOUNTING_LANE_SQL_FILES would be counted against the Power BI SQL baseline, which ' +
+    'never measured it.'
 )
 requireTrue(
   !baseline.credentials_recorded,
