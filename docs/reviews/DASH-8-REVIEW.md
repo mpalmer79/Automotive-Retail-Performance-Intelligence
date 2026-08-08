@@ -10,11 +10,11 @@
 [STM-024](../source-to-target/STM-024-fact-gl-control-balance.md)
 
 Every answer below names its implementation and its test. Where an answer is qualified,
-the qualification is stated first and is not softened. **Six answers are qualified**, and
-**five record a defect this increment found and fixed** rather than a property it merely
+the qualification is stated first and is not softened. **Seven answers are qualified**, and
+**six record a defect this increment found and fixed** rather than a property it merely
 maintained.
 
-Measured on a fresh warehouse built by the canonical 172-step sequence and loaded by the
+Measured on a fresh warehouse built by the canonical 173-step sequence and loaded by the
 `development` profile: 1,501 schedule lines over 6 month-ends, 42 control balances, 43
 comparison rows, 13 accounting reconciliations all passing, 226 data-quality checks with 0
 critical failures.
@@ -52,6 +52,34 @@ and no real dealer group's chart of accounts was consulted, copied or approximat
 *Implementation:* the three literals in `GL_ACCOUNT_DEFINITIONS`.
 *Evidence:* recorded in STM-023 §1.2, on the table comment and on the column comment.
 
+**A4. The accounting datasets are held to the project-wide privacy standard. Yes — and
+this is one of the six defects the review found.**
+*Qualification stated first:* they were not. `DQ-IAS-018` checked only
+`PROHIBITED_ACCOUNTING_FRAGMENTS`, a **domain-local** list that refuses journal, posting,
+trial-balance and period-close vocabulary. That list has no reason to name `customer_email`
+— so a personal-data column on a schedule line would have passed the accounting suite
+while failing everywhere else in the platform.
+*Fix:* `DQ-IAS-018` now runs `arpi.validation.privacy.prohibited_columns` **as well as**
+the domain list. Two vocabularies, deliberately: neither is a superset of the other. A
+`journal_entry_id` is not personal data, it is simply something ARPI does not build.
+*Test:* seeded defect 10 plants an empty `customer_name` and proves the combined check
+fires.
+
+**A5. Two column names were refused by the privacy tripwire, and the exception is
+governed rather than local. Yes, qualified.**
+*Qualification:* `gl_account_name` fails the `_name` suffix rule, and `gl_account_number`
+fails **both** the exact-name and substring rules, because a customer's bank or card
+account number is a direct financial identifier of a person.
+*What was not done:* the column was not renamed to dodge the check. "Account number" is
+exactly what a controller calls it, and renaming to satisfy a tripwire is how a project
+loses the tripwire.
+*What was done:* `APPROVED_LEDGER_ACCOUNT_COLUMNS`, a whole-name allowlist with a written
+justification per entry, drawn exactly as `APPROVED_ASSET_AGE_COLUMNS` is drawn so that
+inventory age is not refused as if it were a birthday. It matches the **whole** normalised
+name and never a fragment.
+*Test:* `tests/unit/test_privacy.py` — `bank_account_number` and `customer_account_number`
+still fail, and so does `salesperson_name`.
+
 ---
 
 ## B. The book-value identity
@@ -68,7 +96,7 @@ with exactly one offending row; the reconciliation's corruption case drops the C
 and proves the **reconciliation** fires too, which is what tests a deployed database whose
 constraints are no longer intact.
 
-**B2. There is no balancing plug. Yes — and this is one of the five defects the review
+**B2. There is no balancing plug. Yes — and this is one of the six defects the review
 found.**
 *Qualification stated first:* when the increment was first written there was **no check on
 this at all**. `other_capitalized_costs` is the one book component with no external
@@ -104,8 +132,8 @@ acquisition_cost − reconditioning_cost − pack_amount` on all 650 deals on ev
 its corruption case drops the front-gross CHECK and moves pack by `100.00` to prove the
 rule fires. `KPI-ACC-005` asks the same question as an exception and reports `0`.
 
-**C2. Floorplan principal is never netted into book value. Yes — and this is the second
-defect the review found.**
+**C2. Floorplan principal is never netted into book value. Yes — and this is another of
+the six.**
 *Qualification stated first:* `DQ-IAS-014` as first written re-asked the book-value
 identity restricted to floorplanned rows. That is **already covered** by `DQ-IAS-011`, so
 the check added nothing — and a floorplan balance capitalized **into a component** closes
@@ -224,8 +252,8 @@ fire is not evidence on its own.
 
 ## F. The KPI family
 
-**F1. `KPI-ACC-006` uses original product gross, not net. Yes — and this is the third
-defect the review found.**
+**F1. `KPI-ACC-006` uses original product gross, not net. Yes — and this is another of
+the six.**
 *Qualification stated first:* the increment plan specified **net** product gross. On this
 dataset that definition reports a nonzero count on every run purely because adjustments
 exist: a later cancellation is *supposed* to make retained gross differ from produced
@@ -238,7 +266,7 @@ the corrected definition yields zero **and** that the planned one would have fir
 data. That is what makes it a decision rather than a coincidence.
 
 **F2. `KPI-ACC-011` measures what it says and nothing more. Yes, qualified — and this is
-the fourth defect the review found.**
+another of the six.**
 *Qualification:* the plan implied a posting lag with an F&I half. ARPI holds **no separate
 posting timestamp on either side**, so no journal-posting delay is computable and no F&I
 posting-lag pair exists to compute. Fabricating one would have invented an operational fact
@@ -283,8 +311,7 @@ sale.
 observable at a month-end distinguishes a unit held for wholesale and only the eventual
 disposal would. Seeded defect 7 plants exactly that category and proves `DQ-IAS-008` fires.
 
-**G2. The variance scenarios exercise every profile. Yes — and this is the fifth defect the
-review found.**
+**G2. The variance scenarios exercise every profile. Yes — and this is another of the six.**
 *Qualification stated first:* the scenarios were written with **literal month-end dates**
 in the development window. The `test` profile — the profile the integration suite runs on —
 is two months long and reached none of them, so every reconciliation state the increment
@@ -355,7 +382,7 @@ Every account, balance, schedule line and variance is synthetic. The planted var
 
 ## What this review found that the implementation had not
 
-Five things, each fixed in the same change rather than recorded as a known gap.
+Six things, each fixed in the same change rather than recorded as a known gap.
 
 1. **`other_capitalized_costs` had no plug guard.** The book-value identity cannot detect a
    balancing residual, because a plug makes an identity close by construction. `DQ-IAS-019`
@@ -379,3 +406,9 @@ Five things, each fixed in the same change rather than recorded as a known gap.
    lag would have silently rejected 360 legitimate schedule lines — a quarter of the
    subledger balance — because a quarter of the fleet entered stock before the governed
    calendar opens. `days_in_stock` already carried the interval.
+
+6. **The accounting datasets sat outside the project-wide privacy tripwire.** They were
+   checked against a domain-local vocabulary that refuses general-ledger structure, which
+   is a different thing from refusing personal data. Found by the reporting-layer privacy
+   test firing on two legitimate column names — the investigation into why it fired is
+   what surfaced that the generator side was not running the same rule at all.
