@@ -75,8 +75,8 @@ deal" state, never zeros.
 ## 7. Finance structure
 
 Structure (Cash / Retail Finance / Lease) · amount financed · cash down · synthetic lender and
-lender category (after `DASH.6`; "Not applicable" for cash) · finance reserve gross (after
-`DASH.6`). **No APR, term, payment, buy/sell rate, or spread appears anywhere** — the boundary of
+lender category (**the data exists since `DASH.6`**; "Not applicable" for cash) · finance reserve gross
+(**likewise**) — **neither is displayed yet: the jacket surface is `DASH.7`'s**. **No APR, term, payment, buy/sell rate, or spread appears anywhere** — the boundary of
 [PRIVACY_AND_ETHICS.md §7](../../PRIVACY_AND_ETHICS.md), restated in the drawer.
 
 ## 8. F&I product section (`DASH.7`)
@@ -85,9 +85,16 @@ One row per product: category · product name · provider · eligibility rule sa
 retail price · dealer cost · original gross · cancellation amount · chargeback amount · current net
 gross · contract status (Active / Cancelled / Charged back / Reinstated). Totals beneath: finance
 reserve gross · original product gross · net product gross · back-end gross · **back-gross
-reconciliation state** (`back_end_gross = reserve + net product gross + other F&I income (0.00)`,
-verified to the cent). Until `DASH.7`, the section shows aggregate back gross labeled "aggregate —
-product itemization arrives with the F&I model increment".
+reconciliation state**. **The identity as built is on the DEAL-DATE basis** —
+`back_end_gross = finance_reserve_gross + SUM(original_product_gross) + other_fi_income (exactly 0.00)` —
+**not net product gross**, which would make the check fail every time a cancellation posted, since
+`back_end_gross` is never rewritten. `RECON-FI-001` verifies it per deal to the cent.
+
+**`DASH.6` built the data and deliberately built none of this section.** The warehouse now holds one row
+per product contract and one row per adjustment event, and `reporting.vw_deal_product_detail` publishes
+them. Until `DASH.7`, the jacket still shows aggregate back gross labelled "aggregate — product itemization
+arrives with the F&I model increment", and **no F&I browser dataset is exported**, which
+`tests/integration/test_fi_reporting_views.py` asserts.
 
 ## 9. Total deal gross
 
@@ -224,12 +231,12 @@ which is the property the choice was not allowed to cost. See `DATA_CONTRACT.md`
 |---|---|---|
 | §4 "synthetic stock number" | **Vehicle code, not captioned as a stock number** | `dim_vehicle` records no stock number. The model contains none, so publishing `vehicle_code` under that caption would be inventing a DMS field. The column is labelled as the unit identifier and the limitation is stated on the page. |
 | §4 "acquisition date" | **Days in inventory at sale** | `dim_vehicle` records no acquisition date either. `fact_vehicle_sale.days_in_inventory_at_sale` is the modelled fact, it answers the same question a reader asks, and it is what `KPI-INV-007` is built from. |
-| §12 back-gross reconciliation, product eligibility, product-adjustment validity | **Absent, not shown as passing** | All three need the F&I model (`DASH.7`). A check that cannot fail is not a check, and a green row for one is worse than no row: it asserts that something was verified when nothing was. The checklist says why they are absent. |
+| §12 back-gross reconciliation, product eligibility, product-adjustment validity | **Absent, not shown as passing** | All three now have data behind them — `DASH.6` built the F&I model, and `RECON-FI-001`, `RECON-FI-ELIGIBILITY` and `RECON-FI-ADJUSTMENT-CAP` verify exactly these three properties in the warehouse. **Surfacing them on the jacket is `DASH.7`'s work and was deliberately not done here.** A check that cannot fail is not a check, and a green row for one is worse than no row: it asserts that something was verified when nothing was. The checklist says why they are absent. |
 | §12 "chunk hash matches manifest" for source lineage | **Dataset version, contract fingerprint and as-of date** | The generated tree carries no per-chunk hash the runtime can read; the contract SHA-256 and dataset version are what the manifest publishes, and they identify the export the figures came from just as specifically. |
 | §13 "the source reporting view" as page copy | **Resolved from the manifest at build time** | The console names no database object in its own source — `dashboard-boundaries.test.ts` fails the build over one — because a view name in dashboard code is how somebody starts writing a query. The name is looked up in the list of views the exporter published, so the lineage states what was actually read and cannot drift. |
 | §14 "reconciliation state chip" | **Built, wording "All checks passed" / "N checks need review"** | As specified. It reports §12's outcome, and the corrupted-fixture tests prove the second wording is reachable. |
 | §17 print: "not printed … dashboard navigation" | **Built, and it needed three attributes that did not exist** | `data-arpi-print="omit"` now marks the site header, the site footer and the console navigation. The first attempt put it on the `<Section>` primitive, which takes a declared prop list and silently dropped it; the paper recap printed its navigation until the Playwright print assertion caught it. `dashboard-boundaries.test.ts` now fails the build if the attribute is placed on a component that would swallow it. |
-| §19 "multiple products incl. a cancelled contract" | **Not testable and not tested** | No finance-product fact exists. The row remains in §19 as a `DASH.7` obligation rather than being deleted. |
+| §19 "multiple products incl. a cancelled contract" | **Now testable; still not tested here** | `DASH.6` built `warehouse.fact_finance_product_sale` and `warehouse.fact_finance_product_adjustment`, and the development profile contains deals matching this case. The row remains a `DASH.7` obligation, because the thing it tests is a **jacket surface** that does not exist. |
 
 ### 20.4 Evidence
 

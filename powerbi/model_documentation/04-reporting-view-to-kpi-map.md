@@ -160,7 +160,7 @@ completeness before any of them exists. It is a readiness statement, not a progr
 | 4. Lead Funnel | `vw_leads`, `vw_lead_funnel`, `vw_appointments`, `vw_appointment_funnel`, `vw_lead_response`, `vw_lead_source`, `vw_marketing_campaign` | No |
 | 5. Employee Performance | `vw_vehicle_sales`, `vw_employee`, `vw_lead_funnel`, `vw_appointment_funnel`, `vw_inventory_health` | No — the fairness context [ARCHITECTURE.md §23](../../ARCHITECTURE.md) requires is available and asserted by `tests/integration/test_gate1_readiness.py` |
 | 6. Marketing Performance | `vw_marketing_performance`, `vw_marketing_spend`, `vw_lead_source`, `vw_marketing_campaign`, `vw_lead_funnel` | No |
-| 7. F&I Performance | `vw_vehicle_sales` (back-end gross only) | **Yes** — `fact_finance_product_sale` is Deferred, so no product-level detail exists and no product-mix narrative is supportable |
+| 7. F&I Performance | `vw_vehicle_sales` (back-end gross only) | **Yes, and the reason changed with `DASH.6`.** Product-level detail now exists: four `reporting.vw_*` views publish twenty-two `KPI-FNI-*` definitions over `fact_finance_product_sale` and `fact_finance_product_adjustment`. **None of them is bound in the semantic model** — no TMDL table, relationship or measure was added — so the gap is now the binding rather than the data, and no product-mix narrative is supportable **from Power BI** |
 | 8. Customer and Service Opportunities | `vw_customer` | **Yes** — `fact_service_visit` is Deferred |
 | 9. Data Quality and Definitions | `vw_data_quality_trend`, `vw_data_quality_summary`, `vw_reconciliation_status`, `vw_pipeline_run_summary` | No |
 

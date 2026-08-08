@@ -189,7 +189,7 @@ Assessed against the audit; nothing below is Implemented until code, SQL, loadin
 reporting, documentation, and tests all exist. Source-to-target numbers `STM-016` onward are reserved
 in the backlog items.
 
-### 9.1 `warehouse.dim_finance_product` — promote (DASH.6)
+### 9.1 `warehouse.dim_finance_product` — promote (DASH.6) — **DONE**
 
 One row per finance product definition: product id, name, category (governed ten-category list:
 Vehicle Service Contract, GAP, Tire & Wheel, Prepaid Maintenance, Appearance Protection, Key
@@ -200,7 +200,7 @@ system. "Extended warranty" is a user-facing alias for Vehicle Service Contract 
 columns:** no `warranty_gross` / `gap_gross` / `tire_wheel_gross` / `maintenance_gross` column may
 exist anywhere in the model.
 
-### 9.2 `warehouse.dim_finance_product_provider` — decide (DASH.6)
+### 9.2 `warehouse.dim_finance_product_provider` — decide (DASH.6) — **DECIDED: NOT BUILT**
 
 A provider dimension is justified only if it answers questions a `provider` attribute on
 `dim_finance_product` cannot: provider-level chargeback concentration across categories, and
@@ -208,7 +208,18 @@ provider mix per store. The `DASH.6` design item makes the call; the default is 
 attribute first**, promoted to a dimension only if the generator models per-provider behaviour
 (distinct cancellation/chargeback profiles). Decorative complexity is explicitly rejected.
 
-### 9.3 `warehouse.dim_lender` — promote (DASH.6)
+**The call, as made.** The generator does **not** model per-provider behaviour: cancellation and chargeback
+sensitivity are properties of the **product**, so the provider mix *is* the product mix and both questions
+above are answerable by joining through `finance_product_key`. `provider_name` is therefore an **attribute**
+of `warehouse.dim_finance_product`, and `warehouse.dim_finance_product_provider` was **not built**.
+
+Two consequences, recorded honestly: a provider rollup joins through the product rather than directly, and a
+provider that administered zero products could not be represented. Neither costs anything at this scale, and
+**promoting the provider later changes no fact** — none carries a provider key. **STM-021 is reserved and
+Deferred** so that a future promotion arrives as STM-021 rather than as a renumbering. See
+[DATA_DICTIONARY.md §42.6](../../DATA_DICTIONARY.md).
+
+### 9.3 `warehouse.dim_lender` — promote (DASH.6) — **DONE**
 
 Synthetic lenders only: lender id, fictional name, lender category (Captive, Bank, Credit Union,
 Independent Finance Company), program tier (Prime, Near-prime, Subprime) as non-sensitive
@@ -217,7 +228,7 @@ any finance-application PII, and any real lender identity — per
 [PRIVACY_AND_ETHICS.md §7](../../PRIVACY_AND_ETHICS.md). `fact_vehicle_sale.lender_key` (already
 documented as a Deferred FK) becomes real, nullable for cash deals.
 
-### 9.4 `warehouse.fact_finance_product_sale` — promote (DASH.6)
+### 9.4 `warehouse.fact_finance_product_sale` — promote (DASH.6) — **DONE**
 
 Grain: **one row per finance product sold on a finalized vehicle transaction.** Keys: sale date,
 dealership, vehicle sale, finance manager, finance product, provider (if promoted), lender where
@@ -225,7 +236,16 @@ applicable. Measures: product sale count (1), `product_retail_price`, `product_d
 `original_product_gross`, `contract_term_months`, eligible indicator. Identity, exact `numeric`:
 `original_product_gross = product_retail_price − product_dealer_cost`.
 
-### 9.5 `warehouse.fact_finance_product_adjustment` — new (DASH.6)
+**As built**, with two departures. The grain is enforced as `uq_fact_finance_product_sale_grain
+(sale_key, finance_product_key)` — one contract per product definition per deal — which still permits two
+**different** products inside one category and is why every penetration measure counts **distinct deals**
+rather than contract rows. And there is **no eligible indicator**: on a *sold* contract it could only ever
+read `true`, so the governed `eligibility_rule_id` is stored instead and a penetration figure names its own
+denominator. Eligibility is enforced by `DQ-FPS-011` and `RECON-FI-ELIGIBILITY` rather than by a flag.
+There is **no provider key**, per §9.2, and **no customer reference of any kind**. Contract:
+[DATA_DICTIONARY.md §44](../../DATA_DICTIONARY.md).
+
+### 9.5 `warehouse.fact_finance_product_adjustment` — new (DASH.6) — **DONE**
 
 Grain: **one row per product cancellation, chargeback, reinstatement, or approved adjustment event.**
 Adjustment id, adjustment date, original product-sale key, dealership, finance-manager attribution,
@@ -234,7 +254,7 @@ sale row is never overwritten; an August chargeback against a June contract live
 Defines `net_product_gross_as_of = original_product_gross − cumulative adjustments through the as-of
 date`, and the three documented bases (deal-date, as-of, adjustment-period).
 
-### 9.6 Finance reserve — extend `fact_vehicle_sale` (DASH.6)
+### 9.6 Finance reserve — extend `fact_vehicle_sale` (DASH.6) — **DONE**
 
 New deal-grain measure `finance_reserve_gross numeric(12,2)`. Reconciliation, cross-table and
 therefore **never a single-table CHECK constraint**:
@@ -244,13 +264,35 @@ it. Enforced by reporting reconciliation views, integration tests, audit reconci
 (promoting `RECON-FI-001` from Deferred), and the console's validation status. Reserve is an amount
 only — no APR/term/payment/rate mechanics, keeping the PRIVACY_AND_ETHICS.md §7 boundary.
 
-### 9.7 Deal structure (DASH.6 design decision)
+**As built.** `finance_reserve_gross` and a nullable `lender_key` were added by migration
+`0003_add_fi_domain_objects.sql`; the source entity went from 29 columns to 31. **`back_end_gross` was not
+made a derived sum.** It keeps the draw it always had, and the decomposition *explains* it — a diff of the
+committed `sale_event.csv` reports two added columns and **zero changed values**, so DASH.2–DASH.5 keep the
+numbers they were reviewed against. `other_fi_income` is exactly `0.00` and **is not a column anywhere**;
+the allocation reaches the cent by largest remainder across real product lines rather than parking a residue
+in a plug. `RECON-FI-001` is exact (**tolerance `0`**) and **per deal**, not on a group total, and reconciles
+the **deal-date** basis only — `RECON-FI-NET-GROSS` reconciles the as-of side separately, because a later
+cancellation is supposed to make the two differ.
+
+### 9.7 Deal structure (DASH.6 design decision) — **DECIDED**
 
 `sale_type` currently mixes disposition and structure. The MVP mapping derives structure
 deterministically: `Lease` → Lease; `Wholesale`/`Dealer Trade` → non-retail; retail rows with
 `amount_financed > 0` → Retail Finance, else Cash. `DASH.6` evaluates promoting a conformed
 finance-structure attribute (values Cash, Retail Finance, Lease, Wholesale, Dealer Trade); changing
 `sale_type` itself requires a separate ADR and migration plan and is **not** assumed.
+
+**The call, as made. `sale_type` was not changed and `dim_sale_type` was not created.** The structure is
+**derived**, by exactly one authority on each side: `arpi.generation.fi_eligibility.finance_structure_for`
+in Python and `warehouse.fn_finance_structure` (`IMMUTABLE`) in SQL, proved equal **over the whole input
+cross product** by `tests/integration/test_fi_reporting_views.py`.
+
+The stored vocabulary is the **three retail structures only** — `Cash`, `Retail Finance`, `Lease` — because
+a Wholesale or Dealer Trade disposal has no consumer, so no product and no consumer lender can attach to it
+and it is not part of the structure mix. An unknown `sale_type` **raises** rather than defaulting to `Cash`:
+a silent default would put products on a disposal and move it into three eligibility denominators.
+`warehouse.dim_sale_type` remains **Deferred**. See
+[DATA_DICTIONARY.md §44.2](../../DATA_DICTIONARY.md).
 
 ### 9.8 `warehouse.fact_sales_target` — promote (DASH.5) — **DONE**
 
@@ -331,7 +373,8 @@ identity header with persistent synthetic disclosure; vehicle section; the exact
 calculation as ARPI defines it (`sale_price − acquisition_cost − reconditioning_cost − pack_amount`,
 with trade variance shown separately, never folded into front gross); trade section with
 "Not applicable" semantics; finance structure without rate mechanics; itemized F&I products with
-original and net gross once `DASH.6` lands; total-gross identity; role-based staff attribution using
+original and net gross — **the data for which `DASH.6` delivered and which `DASH.7` presents; `DASH.6`
+deliberately built no jacket itemization**; total-gross identity; role-based staff attribution using
 synthetic identifiers; lead-and-appointment timeline without any message content; accounting checks;
 and a KPI/lineage drawer. Full specification:
 [`DEAL_JACKET_SPEC.md`](../dashboard/DEAL_JACKET_SPEC.md).
@@ -373,10 +416,10 @@ and never one giant mixed-grain denormalization):
 | `reporting.vw_gross_change_bridge` | store × period pair × component | DASH.3 |
 | `reporting.vw_deal_explorer` | one row per finalized deal (projection of `vw_vehicle_sales`) | DASH.3 |
 | `reporting.vw_deal_jacket` | one row per deal, presentation-complete | DASH.4 |
-| `reporting.vw_deal_product_detail` | one row per product sale (+ adjustments rollup) | DASH.6 |
-| `reporting.vw_fi_summary` | store × period (manager and category slices) | DASH.6 |
-| `reporting.vw_fi_product_penetration` | store × category × period (+ manager) | DASH.6 |
-| `reporting.vw_fi_adjustment_summary` | store × adjustment period × category | DASH.6 |
+| `reporting.vw_deal_product_detail` | **Implemented.** One row per product contract, carrying deal-date gross and as-of net gross | DASH.6 |
+| `reporting.vw_fi_summary` | **Implemented.** As built: store × sale date × finance manager — **and deliberately no category.** It carries finance reserve and retail units, both properties of a *deal*; adding a category would repeat and multiply them on every category row | DASH.6 |
+| `reporting.vw_fi_product_penetration` | **Implemented.** As built: store × sale date × finance manager × governed category — **and deliberately no reserve and no retail-unit column**, which is the other half of the same rule. Rows are built from the **deals**, not the contracts, so a category with an eligible population and no sales produces a zero-numerator row rather than vanishing | DASH.6 |
+| `reporting.vw_fi_adjustment_summary` | **Implemented.** As built: store × **adjustment date** × finance manager × category × adjustment type — the only F&I view on the adjustment-date basis, which is why it is a separate view rather than more columns on an existing one | DASH.6 |
 | `reporting.vw_inventory_accounting` | vehicle × snapshot date | DASH.8 |
 | `reporting.vw_inventory_gl_reconciliation` | store × account × date | DASH.8 |
 | `reporting.vw_accounting_exceptions` | one row per exception | DASH.8 |
