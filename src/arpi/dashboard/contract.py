@@ -351,6 +351,9 @@ DASHBOARD_LANE_SQL_FILES: Final[tuple[str, ...]] = (
     "05_reporting/46_vw_fi_summary.sql",
     "05_reporting/47_vw_fi_product_penetration.sql",
     "05_reporting/48_vw_fi_adjustment_summary.sql",
+    # DASH.9. The operating console's unit-grain inventory surface. It is a dashboard-lane
+    # view, not an MVP one: the 28-view MVP baseline predates it and is unchanged.
+    "05_reporting/52_vw_inventory_units.sql",
     "06_indexes/03_fi_indexes.sql",
     "08_validation/11_recon_target.sql",
     "08_validation/13_recon_fi.sql",
