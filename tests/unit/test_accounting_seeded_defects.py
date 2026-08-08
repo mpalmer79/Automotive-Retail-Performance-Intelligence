@@ -101,6 +101,40 @@ def _mutated(
     )
 
 
+def _seed_amount(frame: pd.DataFrame, position: int, column: str, amount: Decimal) -> None:
+    """Write one exact ``Decimal`` into one monetary cell, by row position.
+
+    ARPI's monetary columns are object columns holding ``Decimal``, which is the whole
+    point of the exact-arithmetic contract. ``pandas-stubs`` cannot express that: its
+    ``_LocIndexerFrame.__setitem__`` overloads accept ``str``, ``bytes``, the date types,
+    the numeric tower and ``ExtensionArray``, and ``Decimal`` is in none of them. A direct
+    ``frame.loc[row, column] = Decimal(...)`` is therefore a type error even though it is
+    exactly what a defect seed needs to do.
+
+    Rebuilding the column as a list is modelled by the stubs, so this needs no ``cast`` and
+    no ``type: ignore`` and the contract stays checked rather than suppressed. It also
+    preserves the object dtype that holds the ``Decimal`` values.
+
+    The row is addressed by POSITION rather than by label because that is what a defect
+    seed means -- "the first line of the schedule" -- and because ``Index.get_loc`` is
+    typed as returning an ``int``, a slice or a boolean mask, none of which is a list
+    index. The bounds check makes a seed aimed at a row the frame does not have fail
+    loudly instead of writing somewhere else.
+
+    The other ``.loc`` writes in this module do not need it: they assign a ``str``, a
+    ``bool`` or a ``float``, or an expression whose operands came back from ``.loc`` as
+    ``Any``. That last case type-checks by accident rather than by design, which is the
+    reason this helper carries the explanation rather than the three call sites.
+    """
+    values = list(frame[column])
+    assert 0 <= position < len(values), (
+        f"the seeded defect targets row {position} of {column}, which the frame does not "
+        "have; the fixture is not the one this defect was written against"
+    )
+    values[position] = amount
+    frame[column] = values
+
+
 def _result(report: ValidationReport, check_id: str) -> Any:
     for result in report.results:
         if result.check_id == check_id:
@@ -259,7 +293,7 @@ def test_defect_03_a_balancing_plug_in_other_capitalized_costs_is_caught(
 
     def mutate(frame: pd.DataFrame) -> pd.DataFrame:
         row = frame.index[0]
-        frame.loc[row, "other_capitalized_costs"] = Decimal("137.42")
+        _seed_amount(frame, 0, "other_capitalized_costs", Decimal("137.42"))
         frame.loc[row, "current_book_value"] = (
             frame.loc[row, "acquisition_cost"]
             + frame.loc[row, "capitalized_transportation"]
@@ -289,7 +323,7 @@ def test_defect_04_a_negative_capitalized_component_is_caught(
 
     def mutate(frame: pd.DataFrame) -> pd.DataFrame:
         row = frame.index[0]
-        frame.loc[row, "capitalized_reconditioning"] = Decimal("-250.00")
+        _seed_amount(frame, 0, "capitalized_reconditioning", Decimal("-250.00"))
         frame.loc[row, "current_book_value"] = (
             frame.loc[row, "acquisition_cost"]
             + frame.loc[row, "capitalized_transportation"]
@@ -319,7 +353,7 @@ def test_defect_05_a_negative_write_down_is_caught(
 
     def mutate(frame: pd.DataFrame) -> pd.DataFrame:
         row = frame.index[0]
-        frame.loc[row, "write_down_amount"] = Decimal("-500.00")
+        _seed_amount(frame, 0, "write_down_amount", Decimal("-500.00"))
         frame.loc[row, "current_book_value"] = (
             frame.loc[row, "acquisition_cost"]
             + frame.loc[row, "capitalized_transportation"]
