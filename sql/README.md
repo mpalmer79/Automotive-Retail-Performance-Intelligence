@@ -201,10 +201,10 @@ header block.
 | 165 | `08_validation/13_recon_fi.sql` | **Dashboard program lane.** Creates `audit.vw_recon_fi` — `RECON-FI-001` and the rest of the F&I family: the two chains, both grains, the product price identity, that `total = front + back` is exactly as true after `DASH.6` as before it, the reserve-and-lender structure rule, the eligibility subset, the adjustment cap and sequence, as-of net gross, and the fan-out guard on all four F&I views. Unioned into `audit.vw_recon_all`, which is why it is numbered before it |
 | 166 | `08_validation/15_recon_accounting.sql` | **Accounting control lane.** Creates `audit.vw_recon_accounting` — `RECON-ACC-BOOK-IDENTITY` and the rest of the family: the two chains, both grains, the negative-component guard, that pack is still outside the front-gross identity, that floorplan is outside the book identity while being materially non-zero, the population at matched dates, the per-account totals and the mapping behind them, the well-formedness of every GL comparison, and the fan-out guards on two views. Unioned into `audit.vw_recon_all`, which is why it is numbered before it |
 | 167 | `08_validation/16_recon_all.sql` | Creates `audit.vw_recon_all` and `audit.fn_record_all_reconciliations`. Renumbered from 11 by `DASH.5`, from 13 by `DASH.6` and from 14 by `DASH.8`, so `audit.vw_recon_target`, `audit.vw_recon_fi` and `audit.vw_recon_accounting` all exist before this file unions them |
-| 168–171 | `09_migrations/0000_migration_history.sql` … `0003_add_fi_domain_objects.sql` | The migration ledger and the three recorded migrations. Each is idempotent and records itself. `0003` is the second to contain DDL rather than only assertions: `CREATE TABLE IF NOT EXISTS` on a live table is a no-op, so `fact_vehicle_sale.finance_reserve_gross` and `lender_key` would never appear on a deployed database without it |
-| 172 | `07_security/01_grants.sql` **(again)** | Privilege-normalisation pass over the objects created in the validation and migration steps |
+| 168–172 | `09_migrations/0000_migration_history.sql` … `0004_add_accounting_control_objects.sql` | The migration ledger and the four recorded migrations. Each is idempotent and records itself. `0003` is the second to contain DDL rather than only assertions: `CREATE TABLE IF NOT EXISTS` on a live table is a no-op, so `fact_vehicle_sale.finance_reserve_gross` and `lender_key` would never appear on a deployed database without it. `0004` creates nothing, because `DASH.8` changes no existing table — it asserts the whole accounting lane arrived, including the book-value identity and both declared grains, and dates the change in `audit.schema_migration` |
+| 173 | `07_security/01_grants.sql` **(again)** | Privilege-normalisation pass over the objects created in the validation and migration steps |
 
-The sequence is **172 files** in total; the table groups consecutive files of one kind
+The sequence is **173 files** in total; the table groups consecutive files of one kind
 rather than listing all of them, and the grouped ranges are contiguous. The count and the
 order are both derived from the directory by
 `tests/integration/conftest.py::init_sequence_files`, and
@@ -276,7 +276,7 @@ exist, so the file is absent rather than empty. The numbering gap is intentional
 
 ### 3.1 As a loop
 
-The sequence is 172 files, so pasting each one is not the readable option.
+The sequence is 173 files, so pasting each one is not the readable option.
 It does not need to be: the numeric directory and file prefixes are designed so
 that plain sorted order **is** the correct order. Section 2 above lists every step
 explicitly if you want to see them.

@@ -800,7 +800,7 @@ source it describes — which is precisely how the statements corrected in this 
 | Fact load scripts | 5 | Implemented. Facts are **not** merely planned. |
 | Reporting views | 28 | The only surface the semantic model may read. |
 | Audit row-count layers recorded | 5 of 5 | `source`, `raw`, `staging`, `warehouse`, `rejected`. |
-| Forward migrations | 4 | Ordered, immutable once released, recorded in `audit.schema_migration`. |
+| Forward migrations | 5 | Ordered, immutable once released, recorded in `audit.schema_migration`. |
 
 Counted apart from every row above, because folding either lane in would move a baseline that was measured against a specific run:
 
