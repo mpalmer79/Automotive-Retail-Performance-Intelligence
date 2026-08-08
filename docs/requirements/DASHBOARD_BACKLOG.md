@@ -647,7 +647,7 @@ view's own `COMMENT`, in `arpi.constants.FI_KPI_VIEW_OWNERSHIP` and in the exten
 | **Architecture references** | Program §7; KPI_EXTENSION_PLAN §4 |
 | **Anchoring question** | **SQ-21** — answered on a surface, not only in the warehouse. `DASH.6` made the data real; this makes it readable. |
 | **Status** | **Implemented** |
-| **Evidence** | Four F&I datasets promoted into the export allowlist ([DATA_CONTRACT.md §3.3](../dashboard/DATA_CONTRACT.md)); `/dashboard/fi` renders eight sections as complete HTML with scripting disabled; the Deal Jacket itemizes every product contract and reconciles back-end gross to the cent on all 650 deals; `tests/unit/dashboard-fi.test.tsx` reconciles every headline figure against the export manifest's own published totals; `tests/e2e/dashboard-fi.spec.ts` covers the browser-only claims. |
+| **Evidence** | Four F&I datasets promoted into the export allowlist ([DATA_CONTRACT.md §3.3](../dashboard/DATA_CONTRACT.md)); `/dashboard/fi` renders eight sections as complete HTML with scripting disabled; the Deal Jacket itemizes every product contract and reconciles back-end gross to the cent on all 650 deals; `tests/unit/dashboard-fi.test.tsx` reconciles every headline figure against the export manifest's own published totals; `tests/e2e/dashboard-fi.spec.ts` covers the browser-only claims; **24 seeded export corruptions**, at least one per F&I dataset, each refused by the production `check_export` path (`TestSeededFiExportDefects`). Staff-level review: [DASH-7-REVIEW.md](../reviews/DASH-7-REVIEW.md). |
 | **Deliberately not done** | No `DASH.8+` work of any kind. No new warehouse object, no new reporting view, **no TMDL change and Gate 2 remains CLOSED**. No product recommendation, no menu simulation, no payment calculation, no credit decisioning, no leaderboard and no benchmark of any kind. No write-back workflow. |
 | **Baselines preserved** | 29 MVP KPIs, 28 MVP reporting views, 5 MVP facts, 8 MVP dimensions — all unchanged. No F&I view was edited to make it exportable: the contract declares a reviewed SUBSET of each view's columns, asserted by `tests/integration/test_fi_reporting_views.py`. |
 
@@ -695,7 +695,23 @@ half points rendered as `+350.9 percentage points`. The field now carries a prop
 unit every other difference in the console carries — and the formatter owns the one conversion. Found
 by the browser suite reading what the page actually said, which is the only place it was visible.
 
-**(f) One Deal Jacket limitation became false and was replaced rather than kept.** `DASH.4`'s jacket
+**(f) `deal-product-detail` carried no reconciliation total, and the seeded-defect suite is
+what found it.** Three of the four F&I datasets published a total that `--check` re-derives
+from the committed bytes; the fourth — the largest deal-grain F&I export, 1,012 rows — did
+not, so a one-cent mutation of `original_product_gross` passed the offline check. Two totals
+close it, chosen so the check is evidence rather than a tautology:
+`product_contract_original_gross` and `product_contract_net_gross_as_of` must equal the same
+figures summed over `fi-summary`, a different dataset at a different grain over a different
+view. A paired assertion now requires every F&I dataset to carry at least one total.
+
+**(g) The finance-structure integration test duplicated the mapping it was checking.** It
+compared `vw_deal_jacket` against a `CASE` written out in the test — the same three-branch
+mapping the view used — so both were wrong in the same way and agreed perfectly. It now
+compares against `warehouse.fn_finance_structure` and writes no mapping at all. Two new
+tests pin the defect directly, and one requires the disposal population to be non-trivial so
+the check cannot pass vacuously.
+
+**(h) One Deal Jacket limitation became false and was replaced rather than kept.** `DASH.4`'s jacket
 stated "back-end gross is aggregate" and "no lender … exists anywhere in ARPI". Both were true then
 and neither is true now. They are replaced by the statements the itemization makes necessary: the
 back-end gross total is on the deal-date basis and is never rewritten by a later event, and the

@@ -369,6 +369,35 @@ describe('every headline figure reproduces the published total exactly', () => {
     )
   })
 
+  it('pins the committed development-profile penetration counts exactly', () => {
+    /*
+     * THE CACHE-KEY DEFECT, PINNED AS LITERALS RATHER THAN ONLY AS A COMPARISON.
+     *
+     * The test below reconciles the page against the manifest, which is the stronger
+     * check and the one that keeps working when the profile is regenerated. It has one
+     * blind spot: if a future change corrupted BOTH the selector and the export in the
+     * same way, the comparison would still agree.
+     *
+     * These four numbers are what the warehouse actually holds in the committed
+     * development profile, and they are the numbers the defect got wrong -- it read
+     * 288/720 for VSC where the truth is 227/558, and 40.0% instead of 40.7%. Pinning
+     * them here means the regression has to survive a literal, not just a comparison.
+     *
+     * They live in the TEST, never in production code: a selector carrying a hardcoded
+     * penetration count would be publishing a figure it did not compute.
+     */
+    const vsc = view.categories.find((row) => row.category === 'Vehicle Service Contract')
+    expect(exactToString(vsc!.attachedDeals)).toBe('227')
+    expect(exactToString(vsc!.eligibleDeals)).toBe('558')
+
+    const gap = view.categories.find((row) => row.category === 'GAP')
+    expect(exactToString(gap!.attachedDeals)).toBe('200')
+    expect(exactToString(gap!.eligibleDeals)).toBe('388')
+
+    // And the two denominators genuinely differ, which is the whole eligibility rule.
+    expect(exactToString(vsc!.eligibleDeals)).not.toBe(exactToString(gap!.eligibleDeals))
+  })
+
   it.each([
     ['Vehicle Service Contract', 'vsc_penetration'],
     ['GAP', 'gap_penetration'],
@@ -772,6 +801,28 @@ describe('period comparison', () => {
       compared,
       'no category formed a comparison, so nothing was checked'
     ).toBeGreaterThan(0)
+  })
+
+  it('renders a 3.5-point move as +3.5, and never as +350.9', () => {
+    /*
+     * THE DOUBLE-CONVERSION DEFECT, PINNED ON THE EXACT RENDERED STRING.
+     *
+     * A proportion delta of 0.035 is three and a half percentage points. The selector
+     * pre-multiplied by 100 and the shared formatter multiplied again, so the page read
+     * `+350.9 percentage points` for a move of that size. The regex test below covers the
+     * shape; this covers the value, on the text a reader actually sees.
+     */
+    expect(formatPointsDifference({ units: 35000n, scale: 6 }, 1)).toBe(
+      '+3.5 percentage points'
+    )
+    expect(formatPointsDifference({ units: -104000n, scale: 6 }, 1)).toBe(
+      '-10.4 percentage points'
+    )
+    // The wrong answer, computed deliberately: a pre-multiplied value renders as the
+    // absurd figure the defect produced, so the two are visibly different numbers.
+    expect(formatPointsDifference({ units: 35000n * 100n, scale: 6 }, 1)).toBe(
+      '+350.0 percentage points'
+    )
   })
 
   it('renders that difference in percentage points, not in percent', () => {
