@@ -316,7 +316,7 @@ export const ROUTES = {
     navLabel: 'F&I',
     title: 'F&I performance',
     description:
-      'Finance reserve against product gross, product penetration on its own eligible denominator, category economics, cancellations and chargebacks on their own posting dates, and a finance-manager comparison with the minimum-sample rule applied. Synthetic data for a fictional dealer group; every lender, product and provider is invented.',
+      'Finance reserve against product gross, product penetration on its own eligible denominator, category economics, cancellations and chargebacks on their own posting dates, and a finance-manager comparison under the minimum-sample rule. Synthetic data; every lender, product and provider is invented.',
     inPrimaryNav: false,
     indexable: true,
     priority: 0.8,

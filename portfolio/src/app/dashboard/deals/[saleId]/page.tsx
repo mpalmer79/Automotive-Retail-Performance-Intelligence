@@ -276,7 +276,7 @@ export default async function DealJacketPage({
           <SectionHeader
             eyebrow="Integrity"
             title="What this page checked before showing you the figures"
-            lede="Only checks this increment can actually perform. A check that cannot fail is not a check, so the ones needing the F&amp;I model are absent rather than green."
+            lede="Eight checks, each recomputing something from the figures on this page rather than reading a stored flag. A check that cannot fail is not a check, so the three that needed the F&amp;I model were named as absent until DASH.7 gave them something to verify."
           />
           <div className="flex flex-col gap-6 pt-6">
             <ChecksSection

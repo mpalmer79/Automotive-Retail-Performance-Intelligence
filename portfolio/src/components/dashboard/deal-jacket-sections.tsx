@@ -425,7 +425,18 @@ export function ProductSectionBlock({ jacket }: { readonly jacket: DealJacket })
   return (
     <div className="flex flex-col gap-4">
       {/* Table: md and up */}
-      <div className="hidden overflow-x-auto md:block">
+      {/*
+        `tabIndex={0}` and the region role are an ACCESSIBILITY requirement, not a
+        styling choice: a container that scrolls horizontally is unreachable by keyboard
+        unless it is focusable, so a keyboard-only reader can see the first four columns
+        of this table and never the other four. Caught by axe on the Deal Jacket route.
+      */}
+      <div
+        className="hidden overflow-x-auto md:block"
+        tabIndex={0}
+        role="region"
+        aria-label="F&I product contracts, scrollable"
+      >
         <table className="w-full min-w-[48rem] text-sm">
           <caption className="sr-only">
             F&amp;I product contracts written on this deal, with original and retained
@@ -792,9 +803,11 @@ export function ChecksSection({
         {needingReview === 0
           ? 'All checks passed.'
           : `${String(needingReview)} check${needingReview === 1 ? '' : 's'} need review.`}{' '}
-        Back-gross reconciliation, product eligibility and product-adjustment validity are
-        absent rather than shown as passing: they need the F&amp;I model, and a check that
-        cannot fail is not a check.
+        Eight checks, and every one of them recomputes something from the figures on this
+        page rather than reading a stored flag. Back-gross reconciliation, product
+        eligibility and product-adjustment validity were named as absent through{' '}
+        <code className="font-mono text-[0.6875rem]">DASH.4</code> because the F&amp;I
+        model had no surface here; they are real now, and each can fail.
       </Text>
     </div>
   )

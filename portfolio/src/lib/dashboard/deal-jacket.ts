@@ -598,7 +598,7 @@ export function buildDealJacket(saleId: string): DealJacket | null {
         'A product contract term is the COVERAGE term and is never a loan term.',
         'The odometer reading is banded, never exact.',
         'Trade payoff and equity are not modelled: no trade fact exists.',
-        'No lender, APR, term, payment, buy rate, sell rate or rate spread exists anywhere in ARPI.',
+        'The lender is a fictional finance source recorded as an assignment only. No credit application, decision, tier, stipulation or adverse-action record exists in ARPI, and none is implied by a lender appearing here.',
         'The vehicle identifier is not a stock number. The model contains none.',
       ],
     },

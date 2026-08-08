@@ -218,12 +218,22 @@ export interface FiCategoryRow {
   /** The same ratio over the comparison period, or `null` when none was formed. */
   readonly priorPenetration: FiRatio | null
   /**
-   * Change in PERCENTAGE POINTS, not percent.
+   * The change in penetration, as a PROPORTION difference.
    *
-   * `null` when either period has no eligible denominator. 42.8% against 37.1% is
-   * +5.7 pp; calling it +15.4% would be a different and unrequested metric.
+   * `null` when either period has no eligible denominator. 0.428 against 0.371 is
+   * `0.057`, which `formatPointsDifference` renders as `+5.7 percentage points`.
+   *
+   * WHY THIS IS NOT PRE-MULTIPLIED BY 100
+   * -------------------------------------
+   * It was, briefly, and the page rendered `+350.9 percentage points` for a change of
+   * three and a half. The console's shared formatter already performs the proportion
+   * to points conversion, exactly as it does for every other ratio difference on every
+   * other route, so a module that converts first converts twice. The field carries the
+   * same unit every other difference in the console carries, and the formatter owns
+   * the presentation -- which is the only arrangement where there is one place to be
+   * wrong instead of two.
    */
-  readonly changeInPoints: Exact | null
+  readonly penetrationChange: Exact | null
   readonly productRetailPrice: Exact
   readonly productDealerCost: Exact
   readonly originalProductGross: Exact
@@ -544,13 +554,12 @@ function accumulateCategories(
  * and "a population that bought nothing" are different statements and subtracting across
  * them would produce a number that means neither.
  */
-function pointChange(current: FiRatio, prior: FiRatio | null): Exact | null {
+function penetrationChange(current: FiRatio, prior: FiRatio | null): Exact | null {
   if (current.value === null || prior === null || prior.value === null) return null
-  // x100 to turn a proportion into percentage POINTS, on the unscaled integer so the
-  // conversion is exact. 0.428 - 0.371 = 0.057 becomes 5.7 pp, and never "+15.4%",
-  // which is a relative change and a different metric nobody asked for.
-  const difference = subtractExact(current.value, prior.value)
-  return { units: difference.units * 100n, scale: difference.scale }
+  // An ABSOLUTE difference between two proportions, and nothing else. Rendered as
+  // percentage points by the shared formatter; never as "+15.4%", which is a relative
+  // change and a different metric nobody asked for.
+  return subtractExact(current.value, prior.value)
 }
 
 function buildCategories(
@@ -590,7 +599,7 @@ function buildCategories(
       contracts: entry.contracts,
       penetration,
       priorPenetration,
-      changeInPoints: pointChange(penetration, priorPenetration),
+      penetrationChange: penetrationChange(penetration, priorPenetration),
       productRetailPrice: entry.retail,
       productDealerCost: entry.cost,
       originalProductGross: entry.gross,

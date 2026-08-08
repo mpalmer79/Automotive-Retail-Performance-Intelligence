@@ -480,7 +480,15 @@ export function PenetrationTable({
 }) {
   return (
     <div className="flex flex-col gap-4">
-      <div className="overflow-x-auto">
+      {/* Focusable: a horizontally scrolling region is unreachable by keyboard
+           otherwise, so a keyboard-only reader would see the first columns and
+           never the rest. */}
+      <div
+        className="overflow-x-auto"
+        tabIndex={0}
+        role="region"
+        aria-label="Back-end gross composition, scrollable"
+      >
         <table className="w-full min-w-[52rem] text-sm">
           <caption className="sr-only">
             Product penetration by category, each over its own eligible denominator
@@ -563,10 +571,10 @@ function PenetrationRow({ row }: { readonly row: FiCategoryRow }) {
         )}
       </td>
       <td className="numeric py-2 text-right">
-        {row.changeInPoints === null ? (
+        {row.penetrationChange === null ? (
           <span className="text-ink-muted">—</span>
         ) : (
-          formatPointsDifference(row.changeInPoints, 1)
+          formatPointsDifference(row.penetrationChange, 1)
         )}
       </td>
       <td className="py-2">
@@ -588,7 +596,15 @@ function PenetrationRow({ row }: { readonly row: FiCategoryRow }) {
 export function CategoryEconomics({ view }: { readonly view: FiView }) {
   return (
     <div className="flex flex-col gap-4">
-      <div className="overflow-x-auto">
+      {/* Focusable: a horizontally scrolling region is unreachable by keyboard
+           otherwise, so a keyboard-only reader would see the first columns and
+           never the rest. */}
+      <div
+        className="overflow-x-auto"
+        tabIndex={0}
+        role="region"
+        aria-label="Retail deliveries by finance structure, scrollable"
+      >
         <table className="w-full min-w-[52rem] text-sm">
           <caption className="sr-only">
             Product economics by category, on the deal-date and as-of bases
@@ -699,7 +715,15 @@ export function AdjustmentSection({ view }: { readonly view: FiView }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="overflow-x-auto">
+      {/* Focusable: a horizontally scrolling region is unreachable by keyboard
+           otherwise, so a keyboard-only reader would see the first columns and
+           never the rest. */}
+      <div
+        className="overflow-x-auto"
+        tabIndex={0}
+        role="region"
+        aria-label="Product penetration by category, scrollable"
+      >
         <table className="w-full min-w-[44rem] text-sm">
           <caption className="sr-only">
             Adjustment events posted in the selected period, by event type
@@ -828,7 +852,15 @@ function AdjustmentRow({ row }: { readonly row: FiAdjustmentTypeRow }) {
 export function ManagerComparison({ view }: { readonly view: FiView }) {
   return (
     <div className="flex flex-col gap-4">
-      <div className="overflow-x-auto">
+      {/* Focusable: a horizontally scrolling region is unreachable by keyboard
+           otherwise, so a keyboard-only reader would see the first columns and
+           never the rest. */}
+      <div
+        className="overflow-x-auto"
+        tabIndex={0}
+        role="region"
+        aria-label="Product economics by category, scrollable"
+      >
         <table className="w-full min-w-[52rem] text-sm">
           <caption className="sr-only">
             Finance managers compared, in store and identifier order
