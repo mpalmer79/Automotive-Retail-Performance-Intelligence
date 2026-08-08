@@ -245,6 +245,23 @@ def test_a_condition_filter_reaching_the_funnel_is_caught(fresh: Any) -> None:
     assert any("Used" in finding.detail for finding in fresh.findings)
 
 
+def test_a_condition_filter_reaching_turn_and_days_supply_is_caught(
+    fresh: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Both tables carry a condition_group column and neither is reachable by a condition
+    # filter, which comes from vw_vehicle. Applying it to them is the plausible mistake:
+    # the column is right there, and the resulting number looks entirely reasonable.
+    monkeypatch.setattr(
+        harness.truth,
+        "CONDITION_TABLES",
+        (*harness.truth.CONDITION_TABLES, "vw_inventory_turn", "vw_days_supply"),
+    )
+    fresh.check_expressions()
+    fresh.check_filter_context()
+    assert any("Inventory Turn" in finding.detail for finding in fresh.findings)
+    assert any("Dealer Days Supply" in finding.detail for finding in fresh.findings)
+
+
 def test_a_renamed_column_in_the_fact_source_is_caught(fresh: Any) -> None:
     fresh.fact_source["vw_leads"][0]["valid_leads"] = 1
     fresh.check_fact_source()

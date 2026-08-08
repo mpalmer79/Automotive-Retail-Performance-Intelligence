@@ -212,9 +212,13 @@ RATIO_MEASURES = frozenset(
 )
 
 #: Measures a condition filter must not move, because no relationship carries it to their
-#: source table. The funnel is the case a report author gets wrong most often.
+#: source table. The funnel is the case a report author gets wrong most often; Inventory
+#: Turn and Dealer Days Supply are the case an *implementer* gets wrong, because both read
+#: a table with a `condition_group` column that the filter never reaches.
 CONDITION_BLIND_MEASURES = frozenset(
     {
+        "Inventory Turn",
+        "Dealer Days Supply",
         "Leads Received",
         "Contact Rate",
         "Appointment-Set Rate",

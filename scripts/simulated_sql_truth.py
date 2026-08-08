@@ -23,12 +23,18 @@ pending. See ADR-0014.
 
 THE ONE CONVENTION WORTH STATING
 --------------------------------
-There is no conformed condition dimension in this model: `condition_group` is a column on
-each of four tables. A "New" or "Used" context therefore filters each of those tables on
-its own column, which is what `scripts/generate_sql_baseline.py` does on the SQL side and
-what a report author would have to do with four slicers. A condition context does **not**
-reach the lead and appointment tables, and the funnel measures are expected to be
-unchanged by it — an expectation this module states and the comparison then checks.
+A condition context is **not** a filter on every table that happens to have a
+`condition_group` column. In the model it comes from `vw_vehicle`, so it reaches
+`vw_vehicle_sales` and `vw_inventory_snapshots` and **nothing else** — not the lead and
+appointment grain, and not `vw_inventory_turn` or `vw_days_supply`, both of which carry a
+`condition_group` column of their own that the filter never touches. That is the
+propagation `scripts/generate_sql_baseline.py` models, for the reason its docstring gives:
+a baseline that applied the filter everywhere would disagree with a correct model.
+
+This simulation's fact source has no `vw_vehicle` rows, so it applies the condition
+directly to the two reached tables' own columns as a stand-in for that path. The
+consequence is checked rather than assumed: the funnel measures, Inventory Turn and Dealer
+Days Supply must all be unmoved by a condition context, and the harness asserts it.
 """
 
 from __future__ import annotations
@@ -44,12 +50,13 @@ NOT_MODELLED = "NOT_MODELLED"
 #: so that neither implementation can borrow the other's notion of emptiness.
 BLANK = "BLANK"
 
-#: Tables carrying their own `condition_group` column.
+#: The tables a condition filter actually reaches, which is the model's propagation and
+#: not the set of tables holding a `condition_group` column. `vw_inventory_turn` and
+#: `vw_days_supply` hold one and are deliberately absent: no relationship carries the
+#: filter to them.
 CONDITION_TABLES = (
     "vw_vehicle_sales",
     "vw_inventory_snapshots",
-    "vw_inventory_turn",
-    "vw_days_supply",
 )
 
 #: Seconds in a minute — both response-time measures divide by it.
