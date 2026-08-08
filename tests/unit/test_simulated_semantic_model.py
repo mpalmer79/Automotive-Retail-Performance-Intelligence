@@ -307,11 +307,14 @@ def test_the_label_check_rejects_an_artifact_claiming_a_passing_engine(
 def test_the_label_check_rejects_a_document_calling_the_simulation_validated(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    # The offending sentence is assembled at runtime rather than written out. A test file
+    # is a tracked text file, so a source line carrying both the artifact name and the
+    # claim would be caught by the very check it exists to exercise -- which is the check
+    # working, and would still be a broken build. Neither line below trips it alone.
+    artifact = "simulated_semantic_model_results.json"
+    claim = "shows the model is Power BI " + "validated"
     offender = tmp_path / "notes.md"
-    offender.write_text(
-        "The simulated_semantic_model_results.json shows the model is Power BI validated.\n",
-        encoding="utf-8",
-    )
+    offender.write_text(f"The {artifact} {claim}.\n", encoding="utf-8")
     monkeypatch.setattr(labels, "tracked_files", lambda: [offender])
     monkeypatch.setattr(labels, "REPO_ROOT", tmp_path)
     failures: list[str] = []
