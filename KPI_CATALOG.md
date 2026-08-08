@@ -98,6 +98,11 @@ Three further rules are binding for this catalogue:
 | `KPI-FUN-###` | Lead funnel | `KPI-FUN-001` … `KPI-FUN-008` |
 | `KPI-MKT-###` | Marketing | `KPI-MKT-001` … `KPI-MKT-003` |
 
+Four further prefixes belong to domains delivered after the MVP and counted separately from it, each in
+its own section below: `KPI-LST-###` (Inventory Listings, §38), `KPI-TGT-###` (Targets and pace, §39),
+`KPI-FNI-###` (F&I, §40) and `KPI-ACC-###` (inventory accounting and GL controls, §41). **None of them is
+a semantic-model measure**, which is why the "29 MVP KPIs" figure above is unchanged by any of them.
+
 Identifiers are permanent. A retired KPI keeps its ID and is marked `Out of scope`; the number is never
 reused. A KPI whose *definition* changes materially gets a new ID, so that a historical finding citing
 `KPI-INV-006` always refers to the same arithmetic.
@@ -1145,6 +1150,43 @@ readable without any privilege on `audit` through `reporting.vw_reconciliation_s
 > — including a product-gross reduction that leaves the stored back-end gross untouched, an ineligible
 > contract, an over-cap adjustment, a reinstatement with nothing to reinstate, and a substituted view
 > expression — so each rule has been observed reporting `failed`.
+
+### 36.1 The inventory accounting family, promoted by DASH.8
+
+Thirteen rules in `audit.vw_recon_accounting`, unioned into `audit.vw_recon_all` and recorded on every
+database run.
+
+| Reconciliation ID | Description | Left source | Right source | Tolerance | Status |
+|---|---|---|---|---|---|
+| `RECON-FACT-INVENTORY-ACCOUNTING-WAREHOUSE` | Every accepted staging schedule line reached the fact | `staging.stg_inventory_accounting` | `warehouse.fact_inventory_accounting_snapshot` | 0 (exact) | **Implemented** |
+| `RECON-FACT-GL-CONTROL-BALANCE-WAREHOUSE` | Every accepted staging control balance reached the fact | `staging.stg_gl_control_balance` | `warehouse.fact_gl_control_balance` | 0 (exact) | **Implemented** |
+| `RECON-ACC-BOOK-IDENTITY` | `current_book_value` equals its declared components on **every line**, to the cent | `fact_inventory_accounting_snapshot` (conforming lines) | `fact_inventory_accounting_snapshot` (all lines) | 0 (exact) | **Implemented** |
+| `RECON-ACC-BOOK-COMPONENTS` | No component, write-down, carrying value or floorplan balance is negative | lines with a negative value | zero permitted | 0 (exact) | **Implemented** |
+| `RECON-ACC-PACK-EXCLUDED` | The front-gross identity is exactly as true after `DASH.8` as before it | `fact_vehicle_sale` (conforming deals) | `fact_vehicle_sale` (all deals) | 0 (exact) | **Implemented** |
+| `RECON-ACC-FLOORPLAN-EXCLUDED` | The book identity holds **while** floorplan principal is materially non-zero | conforming lines | all lines | 0 (exact) | **Implemented** |
+| `RECON-ACC-POPULATION` | The schedule covers the stock it claims to, at matched dates only | `fact_vehicle_inventory_snapshot` on accounting dates | `fact_inventory_accounting_snapshot` | 0 (exact) | **Implemented** |
+| `RECON-ACC-CATEGORY-TOTALS` | Per-account totals add back to the schedule **and** no line is misrouted | schedule total | sum of per-account totals | 0 (exact) | **Implemented** |
+| `RECON-ACC-GRAIN` | The schedule's declared grain is still enforced on the deployed table | row count | distinct declared grain | 0 (exact) | **Implemented** |
+| `RECON-GLB-GRAIN` | The balance fact's declared grain is still enforced | row count | distinct declared grain | 0 (exact) | **Implemented** |
+| `RECON-ACC-GL-SUBLEDGER` | Every comparison row is **well formed** — see the note below | well-formed comparison rows | all comparison rows | 0 (exact) | **Implemented** — *informational, not critical* |
+| `RECON-REPORT-ACCOUNTING-ROWS` | `reporting.vw_inventory_accounting` neither fans out nor drops a row | view row count | fact row count | 0 (exact) | **Implemented** |
+| `RECON-REPORT-GL-RECON-ROWS` | The FULL JOIN in the reconciliation view duplicates no comparison | view row count | distinct declared grain | 0 (exact) | **Implemented** |
+
+> **Note on `RECON-ACC-GL-SUBLEDGER`.** It is **deliberately not an equality**, and it is the second rule
+> in the whole register marked non-critical. `DASH.8` plants controlled variances so the reconciliation
+> surface can be seen working in both its states; a rule that failed a pipeline run because such a variance
+> exists would make the exception surface unusable and would teach a reader that a variance means broken
+> data. It does not. The rule instead proves the comparison is **well formed**: a comparable row carries a
+> variance and a non-null reconciled flag whose value agrees with whether that variance is zero, and a row
+> with a missing side carries neither — which is what stops an absent balance from being reported as a
+> zeroed account. The variance is still calculated, recorded and rendered; **it is the status that is not
+> critical.** See §41.8.
+>
+> **The whole accounting family is exercised by seeded corruptions** in
+> `tests/integration/test_reconciliations.py` — including a broken book-value identity, a negative
+> component, pack moved into inventory, a duplicated schedule line, a duplicated control balance, a
+> misrouted control account and a schedule line for a unit that is not in stock — so each rule has been
+> observed reporting `failed`.
 
 ---
 
@@ -2317,3 +2359,382 @@ The prohibitions in this section are unchanged by that, and are enforced on the 
 model: no benchmark, no target penetration, no ranking, no recommendation, no menu simulation, no payment,
 no rate. `/dashboard/fi` states each of them as rendered text rather than only in this catalogue, and
 `portfolio/tests/e2e/dashboard-fi.spec.ts` sweeps the rendered page for affirmative uses of every one.
+
+---
+
+## 41. Inventory accounting and GL controls — does the schedule agree with the ledger?
+
+This domain is governed by [ADR-0013](docs/architecture-decisions/ADR-0013-governed-web-operating-console.md),
+delivered by increment `DASH.8`, and is **separate from the 29 MVP KPIs above** in exactly the way §38's
+listing domain, §39's target domain and §40's F&I domain are. Everything here is computed over
+`warehouse.fact_inventory_accounting_snapshot`, `warehouse.fact_gl_control_balance`,
+`warehouse.dim_gl_account` and the existing sale, F&I and inventory facts, which this domain only ever
+**reads**.
+
+**No definition above is changed by this section.** `KPI-GRS-001` (front-end gross) in particular is
+untouched: pack is still deducted from front gross at the point of sale, pack is not a capitalized
+inventory cost, and `RECON-ACC-PACK-EXCLUDED` re-proves the front-gross identity over every deal on every
+run so that an accounting increment cannot quietly move it.
+
+### 41.1 The standing constraints, before any definition
+
+> **ARPI is building a focused inventory control schedule and its reconciliation. ARPI is not building a
+> general ledger.** There is no journal entry, no journal line, no debit/credit pair, no posting batch, no
+> trial balance, no period-close state, no suspense account, no aged trial balance, no approval workflow
+> and no financial statement anywhere in this project. `KPI-ACC-002` is a **control-account balance**, not
+> a trial-balance figure, and must never be presented as one.
+
+> **The GL control balances are generated from the same subledger they are reconciled against.** An exact
+> reconciliation proves the reconciliation **arithmetic** is correct. It does **not** prove that two
+> independent accounting systems agree, because there is only one source. This is recorded in
+> [LIMITATIONS.md](LIMITATIONS.md), on the table comment, on both reporting views that publish a variance,
+> and in `RECON-ACC-GL-SUBLEDGER`'s own description. No surface may claim otherwise.
+
+> **A reconciliation variance is not a data-quality exception, and the two are never totalled.** A variance
+> means two structurally **valid** balances were compared and did not agree; nothing is broken and somebody
+> has to find out why. A data-quality exception means a rule the model asserts about itself does not hold.
+> `KPI-ACC-003` counts variances, `KPI-ACC-012` counts data-quality exceptions, and **there is deliberately
+> no KPI that adds them together.**
+
+> **Six concepts stay separate.** Inventory book value, floorplan principal, GL inventory control balance,
+> front-end gross cost basis, reconciliation variance and data-quality exception each have exactly one home
+> and are never merged. Floorplan principal is a **liability** carried as context on an asset schedule: it
+> is never added to, subtracted from or netted against book value, and **ARPI publishes no
+> "net inventory position" figure anywhere.** `floorplan_principal = 0.00` is a legitimate unfloored unit,
+> never missing data.
+
+> **Every account number and name is invented.** No real dealer group's chart of accounts was consulted,
+> copied or approximated, and none may be. The catalogue is three inventory control accounts and nothing
+> else; `DQ-GLA-009` scans account **names** for general-ledger vocabulary so the boundary fails a run
+> rather than a review.
+
+> **No favourable direction, no benchmark, no grade.** This domain publishes no acceptable variance
+> threshold, no materiality level, no close-quality score and no target exception count. It describes
+> synthetic outcomes; it does not state what a controller's variance "should" be.
+
+> **Nothing here is accounting advice, an audit opinion, or evidence about a real close.** No figure in
+> this domain describes a real dealership, a real ledger or a real month.
+
+### 41.2 Semi-additivity, and matched-date comparability
+
+Every balance in this domain — subledger and control alike — is **additive across units, stores and
+accounts at one date** and is **never additive across dates**. Summing two month-ends produces a number
+that is not a balance of anything; a period-ending balance is the **last** comparable date.
+
+A schedule and a control balance are comparable only when the store, the account **and the date** all
+match. Both sides are month-end **by construction**, so the classic reconciliation error — comparing a
+month-end control balance with a mid-month schedule — is not available rather than merely discouraged.
+
+### 41.3 The variance sign, which is load-bearing
+
+```
+variance_amount  =  gl_balance  −  subledger_balance
+```
+
+**Positive** means the control account carries **more** than the stock schedule supports. **Negative**
+means the schedule carries **more** than the account. These are different investigations with different
+causes, and a surface that published only an absolute value would send a controller in the wrong direction
+half the time. `absolute_variance_amount` is published **alongside** for ranking by size, never instead.
+
+**A missing side is NULL, never zero.** `reporting.vw_inventory_gl_reconciliation` FULL JOINs the two
+sides, so a store-account-date present on one side only still produces a row — that absence is the
+finding. `COALESCE`-ing an absent balance to `0.00` would report a variance equal to the entire subledger
+and would present a **missing balance** as a **zeroed account**. Those are different facts about the world
+and only one of them is true. `comparison_state` makes the distinction explicit over a closed vocabulary:
+`Reconciled`, `Variance`, `Missing GL balance`, `Missing subledger balance` — the first two mean a
+comparison happened, the last two mean it could not.
+
+### 41.4 Shared fields
+
+| Field | Value for every KPI in this domain |
+|---|---|
+| **Status** | **Implemented** (`DASH.8`) — computable from the `reporting` schema, and independently re-derived from `warehouse` by `tests/integration/test_kpi_verification.py`. |
+| **Business owner persona** | Controller; office manager; dealer principal. |
+| **Stakeholder question** | [`SQ-43`](docs/requirements/STAKEHOLDER_QUESTIONS.md) — *Does the inventory on my stock schedule agree with what the general ledger says the inventory control account holds, and if not, where exactly does it differ?* All twelve anchor to it. |
+| **Source facts** | `warehouse.fact_inventory_accounting_snapshot`, `warehouse.fact_gl_control_balance`, `warehouse.dim_gl_account`, and — read only — `warehouse.fact_vehicle_inventory_snapshot`, `warehouse.fact_vehicle_sale`, `warehouse.fact_finance_product_sale`, `warehouse.fact_finance_product_adjustment`. |
+| **Future Power BI measure owner** | **None, deliberately.** No TMDL was written for this domain, no relationship to either new fact exists, and no DAX has ever computed one of these twelve. The semantic model is awaiting real-engine validation and adding tables to it would change the validation target. |
+| **Reconciliation** | `RECON-ACC-*` and `RECON-GLB-*` in `audit.vw_recon_accounting`, headed by `RECON-ACC-BOOK-IDENTITY`, unioned into `audit.vw_recon_all` and recorded on every pipeline run. |
+| **Web presentation** | **None.** `DASH.8` exports no browser dataset, adds no console route and leaves `src/arpi/dashboard/contract.py` unchanged. It is a database and reporting increment. |
+| **Project-default thresholds** | None. No materiality level, no acceptable variance, no exception budget. |
+| **Null / zero-denominator behaviour** | Every measure that cannot be computed returns **NULL** — never zero, never infinity. A NULL variance means *no comparison was possible*, which is a different statement from *the two agreed*. |
+
+### 41.5 `KPI-ACC-001` — Inventory subledger balance
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-ACC-001` |
+| **Display name** | Inventory subledger balance |
+| **Business purpose** | What the stock schedule says the store has in its inventory at a month-end — the figure the GL inventory control account is expected to carry. |
+| **Definition (plain English)** | The total carrying amount of every unit on the schedule at one accounting date. |
+| **Formula** | `SUM(current_book_value)` at one accounting date |
+| **Numerator (precise)** | n/a — additive measure |
+| **Denominator (precise)** | n/a — additive measure |
+| **Grain** | Vehicle; aggregable to store × control account × accounting date. |
+| **Date basis** | Accounting date (month-end). **Semi-additive** — never summed across dates. |
+| **Filters** | None. Every carried unit is on the schedule. |
+| **Exclusions** | **Floorplan principal is excluded**, because it is a liability. **Pack is excluded**, because it is not a capitalized inventory cost. |
+| **Null / zero-denominator behaviour** | No denominator. `0.00` at a position with no units is a real empty schedule; a **missing** schedule is NULL, and the two are distinguished by `comparison_state`. |
+| **Unit and formatting** | Currency, USD, exact `numeric(14,2)`. |
+| **SQL ownership** | `reporting.vw_inventory_accounting.current_book_value`; aggregated as `reporting.vw_inventory_gl_reconciliation.subledger_balance`. |
+| **Reconciliation rule** | `RECON-ACC-BOOK-IDENTITY`, `RECON-ACC-CATEGORY-TOTALS`, `RECON-ACC-FLOORPLAN-EXCLUDED`. |
+| **Interpretation caution** | **This is an asset carrying amount, not a net position.** It is never reduced by floorplan principal, and no ARPI surface publishes a net-inventory figure. The identity behind it — acquisition cost plus capitalized transportation, reconditioning, accessories and other costs, less write-down — is enforced as a database CHECK, so a violating row is unloadable rather than merely flagged. |
+| **Implementation status** | **Implemented** (`DASH.8`) |
+| **Depends on (entities)** | `warehouse.fact_inventory_accounting_snapshot`, `warehouse.dim_gl_account`, `warehouse.dim_dealership`, `warehouse.dim_vehicle`, `warehouse.dim_date` |
+
+### 41.6 `KPI-ACC-002` — GL inventory control balance
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-ACC-002` |
+| **Display name** | GL inventory control balance |
+| **Business purpose** | What the ledger says the inventory control account holds at a month-end — the other side of the reconciliation. |
+| **Formula** | `SUM(net_balance)` at one balance date |
+| **Numerator (precise)** | n/a — additive measure |
+| **Denominator (precise)** | n/a — additive measure |
+| **Grain** | Store × control account × balance date. |
+| **Date basis** | Balance date (month-end). **Semi-additive.** |
+| **Filters** | None. |
+| **Exclusions** | The catalogue contains inventory control accounts only; no revenue, cost-of-sales, payable or liability account exists to include. |
+| **Null / zero-denominator behaviour** | **NULL when no balance exists** for the store, account and date — never `0.00`. A missing balance is not a zeroed account. |
+| **Unit and formatting** | Currency, USD, exact `numeric(16,2)`. |
+| **SQL ownership** | `reporting.vw_inventory_gl_reconciliation.gl_balance`. |
+| **Reconciliation rule** | `RECON-FACT-GL-CONTROL-BALANCE-WAREHOUSE`, `RECON-GLB-GRAIN`. |
+| **Interpretation caution** | **Not a trial-balance figure and not evidence of a real ledger.** One signed balance per account; no debit/credit detail, no journal reference and no posting batch exists, because manufacturing them to look accounting-like would be inventing a general ledger a column at a time. `dim_gl_account.normal_balance` states the account's natural side, which is what makes the sign unambiguous. **These balances are generated from the subledger they are compared against** (§41.1). |
+| **Implementation status** | **Implemented** (`DASH.8`) |
+| **Depends on (entities)** | `warehouse.fact_gl_control_balance`, `warehouse.dim_gl_account`, `warehouse.dim_dealership`, `warehouse.dim_date` |
+
+### 41.7 `KPI-ACC-003` — Inventory reconciliation variance
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-ACC-003` |
+| **Display name** | Inventory reconciliation variance |
+| **Business purpose** | The signed difference between the ledger and the schedule at a matched date — the number a controller acts on. |
+| **Formula** | `KPI-ACC-002 − KPI-ACC-001` at one matched date, per store and control account |
+| **Numerator (precise)** | `SUM(net_balance)` over comparable rows |
+| **Denominator (precise)** | n/a — a difference, not a ratio |
+| **Grain** | Store × control account × comparison date. |
+| **Date basis** | Matched month-end. **Both sides at the same date, always.** |
+| **Filters** | Comparable rows only — rows where **both** sides are present. |
+| **Exclusions** | Rows with a missing side carry a NULL variance and are excluded from the total rather than contributing zero. |
+| **Null / zero-denominator behaviour** | **NULL when either side is absent.** A variance against an absent side is not a variance. |
+| **Unit and formatting** | Currency, USD, signed. `absolute_variance_amount` published alongside for ranking only. |
+| **SQL ownership** | `reporting.vw_inventory_gl_reconciliation.variance_amount`. |
+| **Reconciliation rule** | `RECON-ACC-GL-SUBLEDGER` — **deliberately not an equality** (§41.8). |
+| **Interpretation caution** | **The sign is load-bearing and must never be flipped or absorbed into an absolute value** (§41.3). **A variance is not a defect**: both sides are structurally valid data, and `DASH.8` deliberately plants controlled variances so the reconciliation surface can be seen working in both its states. It is never a finding about a real dealership, a real ledger or a real close. `Reconciled` means exactly `0.00`, not within a tolerance: both sides are exact `Decimal` arithmetic and there is nothing for a tolerance to absorb except a defect. |
+| **Implementation status** | **Implemented** (`DASH.8`) |
+| **Depends on (entities)** | `warehouse.fact_inventory_accounting_snapshot`, `warehouse.fact_gl_control_balance`, `warehouse.dim_gl_account` |
+
+### 41.8 Why `RECON-ACC-GL-SUBLEDGER` is not an equality
+
+Every other reconciliation in this repository asserts that two derivations of the same number agree.
+This one does not, and the difference is deliberate.
+
+The increment plants controlled variances so the reconciliation surface can be observed in both its
+states. A rule that failed a pipeline run because such a variance exists would make the exception surface
+unusable and would teach a reader that a variance means broken data. It does not.
+
+So the rule passes when every comparison row is **well formed**: a comparable row carries a variance and a
+non-null reconciled flag whose value agrees with whether that variance is zero, and a row with a missing
+side carries neither. It is registered in `arpi.constants.NON_CRITICAL_RECONCILIATION_IDS` alongside
+`RECON-FUNNEL-CHAIN`, and the variance is still calculated, recorded and rendered — **it is the status that
+is not critical.**
+
+### 41.9 `KPI-ACC-004` — Unreconciled stock count
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-ACC-004` |
+| **Display name** | Unreconciled stock count |
+| **Business purpose** | How many units the schedule and the operational inventory disagree about — in **either** direction. |
+| **Formula** | `COUNT` of `ACC-MISSING-BOOK-ROW` exceptions **plus** `COUNT` of `ACC-ORPHAN-BOOK-ROW` exceptions |
+| **Numerator (precise)** | n/a — a count |
+| **Denominator (precise)** | n/a — a count |
+| **Grain** | Vehicle × store × accounting date. |
+| **Date basis** | Accounting date. **Matched dates only**: the accounting calendar is a month-end subset of the inventory calendar, so comparing every date would report each mid-month snapshot as a missing schedule line. |
+| **Filters** | Restricted to the dates the accounting calendar contains. |
+| **Exclusions** | None within those dates. |
+| **Null / zero-denominator behaviour** | A count; `0` means genuinely none. On unmodified synthetic data it is `0` in both directions. |
+| **Unit and formatting** | Integer count. |
+| **SQL ownership** | `reporting.vw_accounting_exceptions`, codes `ACC-MISSING-BOOK-ROW` and `ACC-ORPHAN-BOOK-ROW`. |
+| **Reconciliation rule** | `RECON-ACC-POPULATION`. |
+| **Interpretation caution** | **Both directions are counted, and they have different causes.** A unit in stock with no schedule line means carrying amount is missing from the control balance; a schedule line with no unit in stock means the control account is being asked to support a unit that is not on the floor. `KPI-ACC-010` publishes the first direction alone, and the two are reported side by side rather than one standing in for the other. |
+| **Implementation status** | **Implemented** (`DASH.8`) |
+| **Depends on (entities)** | `warehouse.fact_inventory_accounting_snapshot`, `warehouse.fact_vehicle_inventory_snapshot` |
+
+### 41.10 `KPI-ACC-005` — Unbalanced front-gross identity count
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-ACC-005` |
+| **Display name** | Unbalanced front-gross identity count |
+| **Business purpose** | Deals whose stored front-end gross does not equal its own components — the control that proves `KPI-GRS-001`'s arithmetic still holds. |
+| **Formula** | `COUNT` of deals where `front_end_gross ≠ sale_price − acquisition_cost − reconditioning_cost − pack_amount` |
+| **Grain** | Deal. |
+| **Date basis** | Sale date. |
+| **Filters / Exclusions** | None — every finalized transaction is checked, retail and disposal alike. |
+| **Null behaviour** | A count; `0` on a healthy run. |
+| **Unit and formatting** | Integer count. |
+| **SQL ownership** | `reporting.vw_accounting_exceptions`, code `ACC-FRONT-GROSS-IDENTITY`. |
+| **Reconciliation rule** | `RECON-ACC-PACK-EXCLUDED`. |
+| **Interpretation caution** | **Pack is subtracted here and is a capitalized inventory cost nowhere.** This KPI exists partly so that an accounting increment that had quietly moved pack into book value would show up as a nonzero count rather than as a silently changed `KPI-GRS-001`. |
+| **Implementation status** | **Implemented** (`DASH.8`) |
+| **Depends on (entities)** | `warehouse.fact_vehicle_sale` |
+
+### 41.11 `KPI-ACC-006` — Unbalanced back-gross reconciliation count
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-ACC-006` |
+| **Display name** | Unbalanced back-gross reconciliation count |
+| **Business purpose** | Deals whose stored back-end gross is not explained by its components. |
+| **Formula** | `COUNT` of deals where `back_end_gross ≠ finance_reserve_gross + SUM(original_product_gross) + other_fi_income` |
+| **Grain** | Deal. |
+| **Date basis** | **Deal date, on both sides.** |
+| **Filters / Exclusions** | None. |
+| **Null behaviour** | A count; `0` on a healthy run. |
+| **Unit and formatting** | Integer count. |
+| **SQL ownership** | `reporting.vw_accounting_exceptions`, code `ACC-BACK-GROSS-IDENTITY`. |
+| **Reconciliation rule** | The same identity `RECON-FI-001` proves; this KPI asks it per deal as an exception. |
+| **Interpretation caution** | **`SUM(original_product_gross)`, never post-adjustment net product gross.** A later cancellation or chargeback is *supposed* to make retained gross differ from produced gross; comparing the stored deal-date back gross against a net figure would flag **every adjusted deal in the dataset** as an accounting defect, which is exactly backwards. `other_fi_income` is the literal `0.00` — no such column exists anywhere, because a zero that is never anything else is where a balancing plug would hide. |
+| **Implementation status** | **Implemented** (`DASH.8`) |
+| **Depends on (entities)** | `warehouse.fact_vehicle_sale`, `warehouse.fact_finance_product_sale` |
+
+> **This definition was corrected during `DASH.8` planning.** The increment's plan specified net product
+> gross. On this dataset that definition would have reported a nonzero count on every run purely because
+> adjustments exist, so `tests/integration/test_kpi_verification.py` asserts both: that the corrected
+> definition yields zero, **and** that the planned one would have fired. That is what makes the correction
+> a decision rather than a coincidence.
+
+### 41.12 `KPI-ACC-007` — Unbalanced total-gross identity count
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-ACC-007` |
+| **Display name** | Unbalanced total-gross identity count |
+| **Business purpose** | Deals where `total_gross ≠ front_end_gross + back_end_gross` — the identity that predates both extension increments and must be exactly as true after them. |
+| **Formula** | `COUNT` of deals breaking the identity |
+| **Grain** | Deal. |
+| **Date basis** | Sale date. |
+| **Filters / Exclusions** | None. |
+| **Null behaviour** | A count; `0` on a healthy run. |
+| **Unit and formatting** | Integer count. |
+| **SQL ownership** | `reporting.vw_accounting_exceptions`, code `ACC-TOTAL-GROSS-IDENTITY`. |
+| **Reconciliation rule** | `RECON-FI-TOTAL-GROSS`. |
+| **Interpretation caution** | A nonzero count means an increment changed something it had no business changing. |
+| **Implementation status** | **Implemented** (`DASH.8`) |
+| **Depends on (entities)** | `warehouse.fact_vehicle_sale` |
+
+### 41.13 `KPI-ACC-008` — Orphaned F&I product count
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-ACC-008` |
+| **Display name** | Orphaned F&I product count |
+| **Business purpose** | F&I contracts whose parent deal does not resolve, and whose gross is therefore counted in no deal's back-end gross. |
+| **Formula** | `COUNT` of contracts with no resolvable `sale_key` |
+| **Grain** | Contract. |
+| **Date basis** | Sale date. |
+| **Filters / Exclusions** | None. |
+| **Null behaviour** | A count; **`0` on every healthy run, and unreachable while the foreign key stands.** |
+| **Unit and formatting** | Integer count. |
+| **SQL ownership** | `reporting.vw_accounting_exceptions`, code `ACC-ORPHAN-FI-PRODUCT`. |
+| **Reconciliation rule** | `RECON-FACT-FINANCE-PRODUCT-SALE-WAREHOUSE`. |
+| **Interpretation caution** | **This branch is unreachable while `fk_fact_fi_product_sale_sale` is on the table, and it is written anyway.** A control surface that only asks questions the schema already answers proves nothing about the schema it is deployed against: if this count is ever nonzero, the constraint is not on the deployed database. `tests/integration/test_kpi_verification.py` asserts the constraint's presence, because a zero from a branch that cannot fire is not evidence on its own. |
+| **Implementation status** | **Implemented** (`DASH.8`) |
+| **Depends on (entities)** | `warehouse.fact_finance_product_sale`, `warehouse.fact_vehicle_sale` |
+
+### 41.14 `KPI-ACC-009` — Product adjustment without original contract count
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-ACC-009` |
+| **Display name** | Product adjustment without original contract count |
+| **Business purpose** | Adjustments whose contract does not resolve, and whose reduction therefore applies to no original gross. |
+| **Formula** | `COUNT` of adjustments with no resolvable `product_sale_key` |
+| **Grain** | Adjustment event. |
+| **Date basis** | Adjustment date. |
+| **Filters / Exclusions** | None. |
+| **Null behaviour** | A count; **`0` on every healthy run, and unreachable while the foreign key stands.** |
+| **Unit and formatting** | Integer count. |
+| **SQL ownership** | `reporting.vw_accounting_exceptions`, code `ACC-ORPHAN-FI-ADJUSTMENT`. |
+| **Reconciliation rule** | `RECON-FACT-FINANCE-PRODUCT-ADJUSTMENT-WAREHOUSE`, `RECON-FI-ADJUSTMENT-SEQUENCE`. |
+| **Interpretation caution** | As `KPI-ACC-008`: unreachable while `fk_fact_fi_adjustment_product_sale` is on the table, written so a dropped constraint fails a run rather than passing one. |
+| **Implementation status** | **Implemented** (`DASH.8`) |
+| **Depends on (entities)** | `warehouse.fact_finance_product_adjustment`, `warehouse.fact_finance_product_sale` |
+
+### 41.15 `KPI-ACC-010` — Missing inventory book record count
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-ACC-010` |
+| **Display name** | Missing inventory book record count |
+| **Business purpose** | Units in stock at an accounting date with no line on the control schedule — carrying amount absent from the subledger balance. |
+| **Formula** | `COUNT` of `ACC-MISSING-BOOK-ROW` exceptions |
+| **Grain** | Vehicle × store × accounting date. |
+| **Date basis** | Accounting date, matched dates only. |
+| **Filters / Exclusions** | Restricted to the dates the accounting calendar contains. |
+| **Null behaviour** | A count; `0` on a healthy run. |
+| **Unit and formatting** | Integer count. |
+| **SQL ownership** | `reporting.vw_accounting_exceptions`, code `ACC-MISSING-BOOK-ROW`. |
+| **Reconciliation rule** | `RECON-ACC-POPULATION`. |
+| **Interpretation caution** | **A strict direction of `KPI-ACC-004`, published separately on purpose.** The two directions have different causes and different remedies, and a single combined figure would hide which one occurred. |
+| **Implementation status** | **Implemented** (`DASH.8`) |
+| **Depends on (entities)** | `warehouse.fact_vehicle_inventory_snapshot`, `warehouse.fact_inventory_accounting_snapshot` |
+
+### 41.16 `KPI-ACC-011` — Inventory posting lag
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-ACC-011` |
+| **Display name** | Inventory posting lag |
+| **Business purpose** | How long, on average, a unit is in stock before it first appears on a control schedule. |
+| **Formula** | `AVG(posting_lag_days)` over each unit's **first** schedule appearance |
+| **Numerator (precise)** | `SUM(accounting_date − acquisition_date)` over first appearances |
+| **Denominator (precise)** | `COUNT` of distinct units with a first appearance |
+| **Grain** | Vehicle. |
+| **Date basis** | Acquisition date to first accounting date. |
+| **Filters** | `is_first_accounting_appearance = true`. |
+| **Exclusions** | Later appearances of the same unit — averaging over every appearance would grow the mean purely because a unit stayed in stock, which is a different measurement. |
+| **Null / zero-denominator behaviour** | **NULL** when no unit has a first appearance. Never negative: a unit cannot be scheduled before it entered stock. |
+| **Unit and formatting** | Days, mean, one decimal place. |
+| **SQL ownership** | `reporting.vw_inventory_accounting.posting_lag_days` with `is_first_accounting_appearance`. |
+| **Reconciliation rule** | Bounded by `ck_fact_inventory_accounting_days_in_stock_nonnegative`. |
+| **Interpretation caution** | **This is NOT a journal posting delay, and the narrowing is deliberate.** ARPI holds no separate posting timestamp, and manufacturing one would invent an operational fact the synthetic data does not contain. The measure is acquisition date to first month-end schedule appearance and nothing more; `tests/integration/test_kpi_verification.py` asserts that no column named for a posting timestamp exists anywhere in `warehouse` or `reporting`. **There is deliberately no F&I equivalent**: the F&I domain carries no separate posting date, so no second posting-lag pair is supportable and none was fabricated. Because the accounting calendar is month-end only, the lag is bounded below by how far into a month a unit arrived — it measures schedule cadence as much as promptness. |
+| **Implementation status** | **Implemented** (`DASH.8`) |
+| **Depends on (entities)** | `warehouse.fact_inventory_accounting_snapshot`, `warehouse.dim_date` |
+
+### 41.17 `KPI-ACC-012` — Data-quality exception count
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-ACC-012` |
+| **Display name** | Data-quality exception count |
+| **Business purpose** | How many governed data-quality checks are currently failing — the state that has to be settled before any figure above is trusted. |
+| **Formula** | `COUNT` of failing checks on their most recent evaluation |
+| **Grain** | Check identifier. |
+| **Date basis** | Latest pipeline run per check. |
+| **Filters** | `is_failed AND is_latest_run_for_check`. |
+| **Exclusions** | A check that failed once and has passed on every run since is **not** an open exception. |
+| **Null behaviour** | A count; `0` on a healthy run. |
+| **Unit and formatting** | Integer count. |
+| **SQL ownership** | `reporting.vw_accounting_exceptions`, code `ACC-DQ-FAILURE`, over `reporting.vw_data_quality_summary`. |
+| **Reconciliation rule** | None — this measure *is* the data-quality state. |
+| **Interpretation caution** | **Never added to `KPI-ACC-003`.** A reconciliation variance and a data-quality exception are different findings (§41.1), and `tests/integration/test_kpi_verification.py` asserts that a controlled variance is not recorded as a data-quality failure. Unlike every other measure in this domain, this one names no store and no date: a failing check is a property of a pipeline run, not of a dealership. |
+| **Implementation status** | **Implemented** (`DASH.8`) |
+| **Depends on (entities)** | `audit.validation_result`, `audit.pipeline_run` |
+
+### 41.18 What this domain deliberately does not define
+
+There is **no** journal entry, journal line, debit or credit amount, posting batch, posting timestamp,
+trial balance, aged trial balance, period-close state, suspense account, adjusting entry, reversal,
+approval or sign-off workflow, remediation status, or financial statement of any kind. There is no
+materiality threshold, no acceptable variance, no close-quality score, no exception budget and no
+favourable direction. There is no floorplan cost analysis — no rate, no interest, no curtailment and no
+maturity is modelled, so none can be derived. There is no `net inventory position`, because netting an
+asset against a liability produces a figure no controller would recognise. There is no `Wholesale
+Inventory` control category, because nothing observable at a month-end distinguishes a unit held for
+wholesale and only the eventual disposal would — which would be future-outcome leakage.
+
+There is also **no accounting surface**, deliberately. `DASH.8` exports no browser dataset and adds no
+console route: the increment stops at the data model, and `src/arpi/dashboard/contract.py` is unchanged.

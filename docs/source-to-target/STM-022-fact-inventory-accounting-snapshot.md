@@ -175,21 +175,21 @@ All 16 business columns of the source entity, in declared order, plus the lineag
 | Source field | Source type | Target field | Target type | Transformation | Default behaviour | Validation | Rejection behaviour | Lineage field | Owner |
 |---|---|---|---|---|---|---|---|---|---|
 | `inventory_accounting_id` | `text` | *(not stored — the grain is the identity)* | — | Format `IAS-########`. The **staging** natural key. Deliberately **not** a fact column: the fact's identity is `(accounting date, store, vehicle)`, and carrying a second identifier would invite the two to disagree. | `n/a — required` | `DQ-IAS-001` unique | `REJ-NULL-001` if blank; `REJ-KEY-001` on duplicate — the highest `raw_record_id` survives | `load_batch_id`, `source_row_number` | Accounting generator |
-| `dealership_id` | `text` | `dealership_key` | `integer` FK | Resolved to `dim_dealership.dealership_key` **as at the accounting date** (SCD Type 2). **Part of the declared grain.** | `n/a — required` | `DQ-IAS-002`; `fk_fact_inventory_accounting_dealership` | Dropped by the load's **inner** join if it does not resolve, recorded as `REJ-REF-001` | `load_batch_id` | Accounting generator |
-| `vehicle_id` | `text` | `vehicle_key` | `integer` FK | Resolved to `dim_vehicle.vehicle_key`. **Part of the declared grain.** | `n/a — required` | `DQ-IAS-003`; `fk_fact_inventory_accounting_vehicle` | Dropped by the inner join, recorded as `REJ-REF-001` | `load_batch_id` | Accounting generator |
-| `accounting_date` | `text` | `accounting_date_key` | `integer` FK | Cast to `date`, resolved to `dim_date.date_key`. **Always a month-end** (§4.1). **Part of the declared grain.** Comparable with a control balance only at the **same** date. | `n/a — required` | `DQ-IAS-004`, `DQ-IAS-005` month-end; `fk_fact_inventory_accounting_date` | `REJ-TYPE-001` if not castable; dropped by the inner join if absent from `dim_date` | `load_batch_id` | Accounting generator |
+| `dealership_id` | `text` | `dealership_key` | `integer` FK | Resolved to `dim_dealership.dealership_key` **as at the accounting date** (SCD Type 2). **Part of the declared grain.** | `n/a — required` | `DQ-IAS-003`; `fk_fact_inventory_accounting_dealership` | Dropped by the load's **inner** join if it does not resolve, recorded as `REJ-REF-001` | `load_batch_id` | Accounting generator |
+| `vehicle_id` | `text` | `vehicle_key` | `integer` FK | Resolved to `dim_vehicle.vehicle_key`. **Part of the declared grain.** | `n/a — required` | `DQ-IAS-004`; `fk_fact_inventory_accounting_vehicle` | Dropped by the inner join, recorded as `REJ-REF-001` | `load_batch_id` | Accounting generator |
+| `accounting_date` | `text` | `accounting_date_key` | `integer` FK | Cast to `date`, resolved to `dim_date.date_key`. **Always a month-end** (§4.1). **Part of the declared grain.** Comparable with a control balance only at the **same** date. | `n/a — required` | `DQ-IAS-005` in window, `DQ-IAS-006` month-end; `fk_fact_inventory_accounting_date` | `REJ-TYPE-001` if not castable; dropped by the inner join if absent from `dim_date` | `load_batch_id` | Accounting generator |
 | `acquisition_date` | `text` | *(not stored — see §4.6)* | — | Cast to `date` in staging, where `DQ-IAS-016` proves `days_in_stock` is its difference from `accounting_date`. **Deliberately not keyed onto the fact**: it routinely predates the governed calendar, and `days_in_stock` already carries the whole of what `KPI-ACC-011` needs. | `n/a — required` | `DQ-IAS-016` | `REJ-TYPE-001` if not castable | `load_batch_id` | Acquisition generator |
 | `control_account_category` | `text` | `control_account_category` | `varchar(40)` | Direct. One of `New Vehicle Inventory`, `Used Vehicle Inventory`, `Certified Vehicle Inventory`, derived from `dim_vehicle.condition_type` (§4.5). Also resolves `gl_account_key`. | `n/a — required` | `DQ-IAS-008`; `ck_fact_inventory_accounting_category_domain` | `REJ-DOMAIN-001` outside the three governed categories | `load_batch_id` | Accounting generator |
 | `acquisition_cost` | `text` | `acquisition_cost` | `numeric(14,2)` | Cast to `numeric(14,2)`. What the store paid — the acquisition event's own figure, never re-derived. **A book-value component.** | `n/a — required` | `DQ-IAS-009` ≥ 0; `ck_fact_inventory_accounting_components_nonnegative` | `REJ-TYPE-001` if not castable; `REJ-DOMAIN-001` if negative | `load_batch_id` | Acquisition generator |
-| `capitalized_transportation` | `text` | `capitalized_transportation` | `numeric(14,2)` | Cast to `numeric(14,2)`. Driven by acquisition source (§4.2). `0.00` where the source incurs none. **A book-value component.** | `n/a — required` | `DQ-IAS-010` ≥ 0; `ck_..._components_nonnegative` | `REJ-TYPE-001` / `REJ-DOMAIN-001` | `load_batch_id` | Accounting generator |
-| `capitalized_reconditioning` | `text` | `capitalized_reconditioning` | `numeric(14,2)` | Cast to `numeric(14,2)`. The unit's own reconditioning, capitalized. **A book-value component.** | `n/a — required` | `DQ-IAS-011` ≥ 0; `ck_..._components_nonnegative` | `REJ-TYPE-001` / `REJ-DOMAIN-001` | `load_batch_id` | Accounting generator |
-| `capitalized_accessories` | `text` | `capitalized_accessories` | `numeric(14,2)` | Cast to `numeric(14,2)`. Dealer-installed accessories on a modelled share of units (§4.2). **A book-value component.** | `n/a — required` | `DQ-IAS-012` ≥ 0; `ck_..._components_nonnegative` | `REJ-TYPE-001` / `REJ-DOMAIN-001` | `load_batch_id` | Accounting generator |
-| `other_capitalized_costs` | `text` | `other_capitalized_costs` | `numeric(14,2)` | Cast to `numeric(14,2)`. Includes the certification cost on a certified unit. **A book-value component — never a balancing plug**: it is derived from named rules, and `DQ-IAS-013` asserts it is not the residual of the identity. | `n/a — required` | `DQ-IAS-013`; `ck_..._components_nonnegative` | `REJ-TYPE-001` / `REJ-DOMAIN-001` | `load_batch_id` | Accounting generator |
-| `write_down_amount` | `text` | `write_down_amount` | `numeric(14,2)` | Cast to `numeric(14,2)`. Age-driven (§4.3). **Subtracted** in the identity. Always ≥ 0: a negative write-down is a write-**up**, which this model does not represent. | `n/a — required` | `DQ-IAS-015`; `ck_fact_inventory_accounting_write_down_nonnegative` | `REJ-TYPE-001` / `REJ-DOMAIN-001` | `load_batch_id` | Accounting generator |
-| `current_book_value` | `text` | `current_book_value` | `numeric(14,2)` | Cast to `numeric(14,2)`. **The identity, computed once in the generator and never recomputed by the load.** The CHECK re-derives it in the database and refuses the row if the two disagree — recomputing it in the load would make the constraint tautological. | `n/a — required` | `DQ-IAS-006`; `ck_fact_inventory_accounting_book_value_identity`; `ck_..._book_value_nonnegative`; `RECON-ACC-BOOK-IDENTITY` | `REJ-TYPE-001` if not castable; `REJ-RULE-001` if the identity fails | `load_batch_id` | Accounting generator |
+| `capitalized_transportation` | `text` | `capitalized_transportation` | `numeric(14,2)` | Cast to `numeric(14,2)`. Driven by acquisition source (§4.2). `0.00` where the source incurs none. **A book-value component.** | `n/a — required` | `DQ-IAS-009` ≥ 0; `ck_..._components_nonnegative` | `REJ-TYPE-001` / `REJ-DOMAIN-001` | `load_batch_id` | Accounting generator |
+| `capitalized_reconditioning` | `text` | `capitalized_reconditioning` | `numeric(14,2)` | Cast to `numeric(14,2)`. The unit's own reconditioning, capitalized. **A book-value component.** | `n/a — required` | `DQ-IAS-009` ≥ 0; `ck_..._components_nonnegative` | `REJ-TYPE-001` / `REJ-DOMAIN-001` | `load_batch_id` | Accounting generator |
+| `capitalized_accessories` | `text` | `capitalized_accessories` | `numeric(14,2)` | Cast to `numeric(14,2)`. Dealer-installed accessories on a modelled share of units (§4.2). **A book-value component.** | `n/a — required` | `DQ-IAS-009` ≥ 0; `ck_..._components_nonnegative` | `REJ-TYPE-001` / `REJ-DOMAIN-001` | `load_batch_id` | Accounting generator |
+| `other_capitalized_costs` | `text` | `other_capitalized_costs` | `numeric(14,2)` | Cast to `numeric(14,2)`. Includes the certification cost on a certified unit. **A book-value component — never a balancing plug**: it is derived from named rules, and `DQ-IAS-019` asserts it is not the residual of the identity. | `n/a — required` | `DQ-IAS-009`, `DQ-IAS-019`; `ck_..._components_nonnegative` | `REJ-TYPE-001` / `REJ-DOMAIN-001` | `load_batch_id` | Accounting generator |
+| `write_down_amount` | `text` | `write_down_amount` | `numeric(14,2)` | Cast to `numeric(14,2)`. Age-driven (§4.3). **Subtracted** in the identity. Always ≥ 0: a negative write-down is a write-**up**, which this model does not represent. | `n/a — required` | `DQ-IAS-010`; `ck_fact_inventory_accounting_write_down_nonnegative` | `REJ-TYPE-001` / `REJ-DOMAIN-001` | `load_batch_id` | Accounting generator |
+| `current_book_value` | `text` | `current_book_value` | `numeric(14,2)` | Cast to `numeric(14,2)`. **The identity, computed once in the generator and never recomputed by the load.** The CHECK re-derives it in the database and refuses the row if the two disagree — recomputing it in the load would make the constraint tautological. | `n/a — required` | `DQ-IAS-011`, `DQ-IAS-015`; `ck_fact_inventory_accounting_book_value_identity`; `ck_..._book_value_nonnegative`; `RECON-ACC-BOOK-IDENTITY` | `REJ-TYPE-001` if not castable; `REJ-RULE-001` if the identity fails | `load_batch_id` | Accounting generator |
 | `floorplan_principal` | `text` | `floorplan_principal` | `numeric(14,2)` | Cast to `numeric(14,2)`. **A LIABILITY, carried as context.** Never in the identity, never netted. `0.00` means genuinely unfloored. | `n/a — required` | `DQ-IAS-014`; `ck_fact_inventory_accounting_floorplan_nonnegative`; `RECON-ACC-FLOORPLAN-EXCLUDED` | `REJ-TYPE-001` / `REJ-DOMAIN-001` | `load_batch_id` | Accounting generator |
 | `days_in_stock` | `text` | `days_in_stock` | `integer` | Cast to `integer`. `accounting_date − acquisition_date`. Drives the write-down rule and **is** `KPI-ACC-011`'s posting lag (§4.6). **Never additive** — an age, not a quantity. | `n/a — required` | `DQ-IAS-016`; `ck_fact_inventory_accounting_days_in_stock_nonnegative` | `REJ-TYPE-001` / `REJ-DOMAIN-001` | `load_batch_id` | Accounting generator |
-| `source_system` | `text` | `source_system` | `varchar(40)` | **Constant** `SYNTHETIC-DMS-ACC`. | `n/a — constant` | `DQ-IAS-018`; `ck_fact_inventory_accounting_source_system_not_blank` | `REJ-NULL-001` if absent | itself | Accounting generator |
+| `source_system` | `text` | `source_system` | `varchar(40)` | **Constant** `SYNTHETIC-DMS-ACC`. | `n/a — constant` | `DQ-IAS-017`; `ck_fact_inventory_accounting_source_system_not_blank` | `REJ-NULL-001` if absent | itself | Accounting generator |
 | *(database)* | — | `gl_account_key` | `integer` FK | Resolved from `control_account_category` against `warehouse.dim_gl_account` (STM-023). **The generator never names an account**: the category is the contract between the subledger and the catalogue. | `n/a — required` | `fk_fact_inventory_accounting_account`; `RECON-ACC-CATEGORY-TOTALS` | Dropped by the inner join if the category has no control account | itself | Fact load |
 | *(database)* | — | `inventory_accounting_key` | `bigint` PK | Warehouse-assigned surrogate, deterministic by the declared grain order. | `n/a — database-assigned` | `pk_fact_inventory_accounting_snapshot`; `ck_fact_inventory_accounting_key_positive` | n/a | itself | Fact load |
 | *(database)* | — | `raw_record_id` | `bigserial` | Database-assigned. **Raw layer only.** | `n/a — database-assigned` | PK uniqueness | n/a | itself | Database |
@@ -202,7 +202,7 @@ All 16 business columns of the source entity, in declared order, plus the lineag
 > amount, posting batch, posting timestamp, period-close state, trial-balance bucket, suspense
 > account, approval or sign-off; no floorplan rate, interest, curtailment, maturity or lender terms;
 > no pack column; no "net inventory position"; and **no customer or employee reference of any kind**.
-> `DQ-IAS-017` inspects the **schema** and fails the run even when such a column is empty, because a
+> `DQ-IAS-018` inspects the **schema** and fails the run even when such a column is empty, because a
 > column that exists will eventually be populated.
 
 ---
@@ -234,7 +234,7 @@ rather than be told it.
 | `other_capitalized_costs` | The certification cost of `425.00` on a **Certified** unit, `0.00` otherwise. |
 
 `other_capitalized_costs` is the column a balancing plug would hide in, so it is derived from a named
-rule and `DQ-IAS-013` asserts it is not the residual of the identity.
+rule and `DQ-IAS-019` asserts it is not the residual of the identity.
 
 ### 4.3 The write-down
 
@@ -366,16 +366,16 @@ key they were assigned on their first load, so a key is never reused and never r
 
 ## 8. Validation checks gating the load
 
-`DQ-IAS-001` … `DQ-IAS-018`, in `src/arpi/generation/accounting_validation.py`. They run against the
+`DQ-IAS-001` … `DQ-IAS-019`, in `src/arpi/generation/accounting_validation.py`. They run against the
 generated frame **before** anything is written, so a defect never reaches the database. The four that
 carry the domain are:
 
 | Check | What it proves |
 |---|---|
-| `DQ-IAS-006` | The book-value identity holds on every row, exactly, in `Decimal` |
-| `DQ-IAS-013` | `other_capitalized_costs` is derived from named rules and is not the residual of the identity |
-| `DQ-IAS-014` | `floorplan_principal` is outside the identity — a liability is not part of an asset carrying amount |
-| `DQ-IAS-017` | No prohibited column exists in the schema, even empty |
+| `DQ-IAS-011` | The book-value identity holds on every row, exactly, in `Decimal` |
+| `DQ-IAS-019` | `other_capitalized_costs` is derived from named rules and is not the residual of the identity |
+| `DQ-IAS-014` | No capitalized component carries the floorplan advance — a liability is not part of an asset carrying amount, and the identity closes just as neatly around one that is |
+| `DQ-IAS-018` | No prohibited column exists in the schema, even empty |
 
 ---
 

@@ -53,6 +53,7 @@ from arpi.generation.gl_control import (
 )
 from arpi.generation.inventory_accounting import (
     ACCOUNTING_SOURCE_SYSTEM,
+    CERTIFICATION_COST,
     ENTITY_INVENTORY_ACCOUNTING_SNAPSHOT,
     INVENTORY_ACCOUNTING_COLUMNS,
     INVENTORY_ACCOUNTING_MONEY_COLUMNS,
@@ -81,6 +82,7 @@ CHECK_IAS_EXACT_PRECISION: Final = "DQ-IAS-015"
 CHECK_IAS_DAYS_IN_STOCK_AGREES: Final = "DQ-IAS-016"
 CHECK_IAS_SOURCE_SYSTEM: Final = "DQ-IAS-017"
 CHECK_IAS_NO_PROHIBITED_PII: Final = "DQ-IAS-018"
+CHECK_IAS_OTHER_COSTS_NOT_A_PLUG: Final = "DQ-IAS-019"
 
 CHECK_GLA_UNIQUE_ACCOUNT_ID: Final = "DQ-GLA-001"
 CHECK_GLA_SCHEMA_MATCHES: Final = "DQ-GLA-002"
@@ -473,13 +475,36 @@ def _ias_floorplan_nonnegative(frame: pd.DataFrame) -> CheckResult:
     return _fail(base, f"{offenders} negative floorplan principal(s).", offenders, frame.shape[0])
 
 
+#: The book components a floorplan balance could be smuggled into, and the one it cannot.
+#:
+#: ``acquisition_cost`` is deliberately absent. A new unit is floorplanned AT COST by rule,
+#: so ``floorplan_principal == acquisition_cost`` is the ordinary, correct state on a large
+#: share of the schedule and testing it would fail on clean data. Every other component is
+#: derived from a rule that has nothing to do with the advance, so a component that equals
+#: the principal is a liability that has been capitalized.
+_FLOORPLAN_SMUGGLING_COLUMNS: Final[tuple[str, ...]] = (
+    "capitalized_transportation",
+    "capitalized_reconditioning",
+    "capitalized_accessories",
+    "other_capitalized_costs",
+    "write_down_amount",
+)
+
+
 def _ias_floorplan_excluded(frame: pd.DataFrame) -> CheckResult:
     """``DQ-IAS-014`` -- floorplan principal is not inside book value.
 
-    ASSERTED AS A PROPERTY OF THE DATA, not merely as a comment. The identity in
-    ``DQ-IAS-011`` already excludes floorplan, but a future edit that added it would
-    satisfy neither check, and stating the exclusion separately is what makes the asset /
-    liability boundary a governed rule rather than an implementation detail.
+    ASSERTED AS A PROPERTY OF THE DATA, not merely as a comment, and asked in the one way
+    that is not already answered by the identity.
+
+    ``DQ-IAS-011`` proves ``current_book_value`` equals the sum of its components. That
+    catches a floorplan balance ADDED TO THE TOTAL -- but not one capitalized INTO a
+    component, because the identity closes just as neatly around it. So this check asks
+    the separate question: does any component carry the advance? A component equal to the
+    floorplan principal is the shape that defect takes.
+
+    Both failure modes are counted, because the first is still possible on a database
+    whose constraint has been dropped.
     """
     base = _result(
         CHECK_IAS_FLOORPLAN_EXCLUDED_FROM_BOOK,
@@ -491,18 +516,23 @@ def _ias_floorplan_excluded(frame: pd.DataFrame) -> CheckResult:
     expected = _book_components(frame)
     actual = _decimals(frame, "current_book_value")
     floorplan = _decimals(frame, "floorplan_principal")
+    components = {column: _decimals(frame, column) for column in _FLOORPLAN_SMUGGLING_COLUMNS}
     offenders = sum(
         1
         for index in range(frame.shape[0])
-        if floorplan[index] != Decimal("0.00") and actual[index] != expected[index]
+        if floorplan[index] != Decimal("0.00")
+        and (
+            actual[index] != expected[index]
+            or any(values[index] == floorplan[index] for values in components.values())
+        )
     )
     if offenders == 0:
         return base
     return _fail(
         base,
-        f"{offenders} row(s) whose book value moves with floorplan principal. Floorplan "
-        "is a liability position and is never added to, subtracted from or netted "
-        "against inventory value.",
+        f"{offenders} row(s) whose book value moves with floorplan principal, or whose "
+        "capitalized components carry the advance. Floorplan is a liability position and "
+        "is never added to, subtracted from or netted against inventory value.",
         offenders,
         frame.shape[0],
     )
@@ -526,6 +556,41 @@ def _ias_precision(frame: pd.DataFrame) -> CheckResult:
         base,
         f"{offenders} amount(s) are not exact two-place Decimals. A float in a monetary "
         "column is the defect the whole contract exists to prevent.",
+        offenders,
+        frame.shape[0],
+    )
+
+
+def _ias_other_costs_not_a_plug(frame: pd.DataFrame) -> CheckResult:
+    """``DQ-IAS-019`` -- other capitalized costs are derived, never a balancing residual.
+
+    ``other_capitalized_costs`` is the column a plug would hide in. Every other component
+    of the book-value identity has an obvious external meaning, so a generator that could
+    not make the identity close would be tempted to absorb the difference here -- and the
+    identity check would pass, because a plug makes an identity close by construction.
+
+    So the values are constrained to the ones the rule actually produces: ``0.00``, or the
+    certification cost on a Certified unit. A residual would be neither.
+    """
+    base = _result(
+        CHECK_IAS_OTHER_COSTS_NOT_A_PLUG,
+        "other capitalized costs are derived from named rules, not a balancing residual",
+        ENTITY_INVENTORY_ACCOUNTING_SNAPSHOT,
+        frame,
+        CHECK_CATEGORY_BUSINESS_RULE,
+    )
+    permitted = {Decimal("0.00"), CERTIFICATION_COST}
+    offenders = sum(
+        1 for amount in _decimals(frame, "other_capitalized_costs") if amount not in permitted
+    )
+    if offenders == 0:
+        return base
+    return _fail(
+        base,
+        f"{offenders} row(s) carry an other-capitalized-cost that no governed rule "
+        "produces. A value here that is neither 0.00 nor the certification cost is a "
+        "balancing residual, and a plug makes the book-value identity close by "
+        "construction rather than by being true.",
         offenders,
         frame.shape[0],
     )
@@ -631,6 +696,7 @@ def validate_inventory_accounting_dataset(
             _ias_floorplan_nonnegative(frame),
             _ias_floorplan_excluded(frame),
             _ias_precision(frame),
+            _ias_other_costs_not_a_plug(frame),
             _ias_days_in_stock(frame),
             _source_system_check(
                 frame,

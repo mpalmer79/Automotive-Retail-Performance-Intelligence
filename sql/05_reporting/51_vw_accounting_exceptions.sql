@@ -43,8 +43,8 @@
 -- TWO BRANCHES ARE UNREACHABLE WHILE THEIR FOREIGN KEYS STAND, AND THAT IS THE POINT
 -- ----------------------------------------------------------------------------------
 -- ACC-ORPHAN-FI-PRODUCT and ACC-ORPHAN-FI-ADJUSTMENT look for a child row whose parent
--- does not resolve. fk_fact_finance_product_sale_sale and
--- fk_fact_finance_product_adjustment_product_sale make that impossible in a database whose
+-- does not resolve. fk_fact_fi_product_sale_sale and
+-- fk_fact_fi_adjustment_product_sale make that impossible in a database whose
 -- constraints are intact, so both branches return zero rows on every healthy run.
 --
 -- They are written anyway, as LEFT JOINs with an IS NULL test, for the same reason

@@ -154,7 +154,18 @@ class VarianceScenario:
         scenario_id: Stable identifier, recorded in documentation and asserted in tests.
         dealership_id: The store whose control account differs.
         category: The inventory control category.
-        balance_date: The month-end the difference exists on.
+        month_offset_from_last: Which month-end the difference exists on, counted
+            BACKWARDS from the last month-end of the accounting calendar -- 0 is the last
+            month-end, 1 the one before it. Taken modulo the number of month-ends the
+            configured window contains.
+
+            An offset rather than a literal date, because a literal date only exists in
+            the profile it was written against. The scenarios were originally dated
+            against the development window and the shorter ``test`` profile simply never
+            reached them, so every reconciliation state the increment exists to
+            demonstrate was absent from the profile the integration suite runs on. An
+            offset lands every scenario in every profile, and reproduces the original
+            development dates exactly.
         variance: Signed, in the KPI-ACC-003 direction -- GL minus subledger. Positive
             means the control account is HIGHER than the schedule.
         omit_gl: When true no GL balance row is written at all, which produces the
@@ -171,7 +182,7 @@ class VarianceScenario:
     scenario_id: str
     dealership_id: str
     category: str
-    balance_date: date
+    month_offset_from_last: int
     variance: Decimal
     omit_gl: bool = False
     orphan_gl: Decimal | None = None
@@ -192,28 +203,28 @@ VARIANCE_SCENARIOS: Final[tuple[VarianceScenario, ...]] = (
         scenario_id="ACC-SCN-001",
         dealership_id="GSA-001",
         category="Used Vehicle Inventory",
-        balance_date=date(2025, 9, 30),
+        month_offset_from_last=3,
         variance=Decimal("1250.00"),
     ),
     VarianceScenario(
         scenario_id="ACC-SCN-002",
         dealership_id="GSA-002",
         category="New Vehicle Inventory",
-        balance_date=date(2025, 10, 31),
+        month_offset_from_last=2,
         variance=Decimal("-865.40"),
     ),
     VarianceScenario(
         scenario_id="ACC-SCN-003",
         dealership_id="GSA-003",
         category="Certified Vehicle Inventory",
-        balance_date=date(2025, 11, 30),
+        month_offset_from_last=1,
         variance=Decimal("412.75"),
     ),
     VarianceScenario(
         scenario_id="ACC-SCN-004",
         dealership_id="GSA-002",
         category="Certified Vehicle Inventory",
-        balance_date=date(2025, 8, 31),
+        month_offset_from_last=4,
         variance=Decimal("0.00"),
         omit_gl=True,
     ),
@@ -221,20 +232,49 @@ VARIANCE_SCENARIOS: Final[tuple[VarianceScenario, ...]] = (
         scenario_id="ACC-SCN-005",
         dealership_id="GSA-003",
         category="New Vehicle Inventory",
-        balance_date=date(2025, 12, 31),
+        month_offset_from_last=0,
         variance=Decimal("0.00"),
         orphan_gl=Decimal("18400.00"),
     ),
 )
 
 
-def scenario_for(dealership_id: str, category: str, balance_date: date) -> VarianceScenario | None:
+def scenario_dates(month_ends: Sequence[date]) -> dict[str, date]:
+    """Resolve every scenario's month-end against the calendar it will be planted in.
+
+    Args:
+        month_ends: The accounting calendar, ascending.
+
+    Returns:
+        Scenario identifier to the month-end it lands on.
+
+    Raises:
+        ValueError: If the calendar is empty, which would leave every scenario homeless
+            and the reconciliation surface undemonstrated.
+    """
+    if not month_ends:
+        raise ValueError(
+            "the accounting calendar is empty, so no variance scenario can be planted and "
+            "the reconciliation surface would be published having never been exercised"
+        )
+    ordered = sorted(month_ends)
+    return {
+        scenario.scenario_id: ordered[
+            len(ordered) - 1 - (scenario.month_offset_from_last % len(ordered))
+        ]
+        for scenario in VARIANCE_SCENARIOS
+    }
+
+
+def scenario_for(
+    dealership_id: str, category: str, balance_date: date, resolved: Mapping[str, date]
+) -> VarianceScenario | None:
     """The planted scenario at one position, or ``None`` when it should reconcile."""
     for scenario in VARIANCE_SCENARIOS:
         if (
             scenario.dealership_id == dealership_id
             and scenario.category == category
-            and scenario.balance_date == balance_date
+            and resolved[scenario.scenario_id] == balance_date
         ):
             return scenario
     return None
@@ -327,22 +367,22 @@ def build_gl_balance_rows(
     """
     records = build_inventory_accounting_records(config, catalogue_path)
     totals = subledger_totals(records)
+    resolved = scenario_dates(sorted({record.accounting_date for record in records}))
 
     rows: list[dict[str, Any]] = []
     ordinal = 0
     # A GL balance with no subledger behind it. Emitted first so the ordering below stays
     # keyed on the subledger positions rather than on scenario bookkeeping.
     orphans: dict[tuple[str, str, date], Decimal] = {
-        (planted.dealership_id, planted.category, planted.balance_date): planted.orphan_gl
+        (
+            planted.dealership_id,
+            planted.category,
+            resolved[planted.scenario_id],
+        ): planted.orphan_gl
         for planted in VARIANCE_SCENARIOS
         if planted.orphan_gl is not None
     }
     for (dealership_id, category, balance_date), amount in sorted(orphans.items()):
-        if not (config.reporting.start_date <= balance_date <= config.reporting.end_date):
-            # The scenarios are dated against the committed development window. A shorter
-            # profile simply does not reach them, and planting a balance outside the
-            # window would land on a date `dim_date` does not carry.
-            continue
         if (dealership_id, category, balance_date) in totals:
             raise ValueError(
                 f"a scenario plants an orphan GL balance at {dealership_id}/{category}/"
@@ -363,7 +403,7 @@ def build_gl_balance_rows(
     for (dealership_id, category, balance_date), subledger in sorted(
         totals.items(), key=lambda item: (item[0][2], item[0][0], item[0][1])
     ):
-        scenario = scenario_for(dealership_id, category, balance_date)
+        scenario = scenario_for(dealership_id, category, balance_date, resolved)
         if scenario is not None and scenario.orphan_gl is not None:
             continue
         if scenario is not None and scenario.omit_gl:
@@ -424,6 +464,7 @@ __all__ = [
     "build_gl_balance_rows",
     "generate_gl_account_dataset",
     "generate_gl_control_balance_dataset",
+    "scenario_dates",
     "scenario_for",
     "subledger_totals",
 ]

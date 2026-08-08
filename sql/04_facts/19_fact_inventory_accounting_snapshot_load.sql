@@ -54,8 +54,8 @@
 --   * vehicle_key            -- a schedule line with no unit is not a stock schedule.
 --   * gl_account_key         -- resolved from control_account_category through
 --                              dim_gl_account. A category with no control account has
---                              nowhere to reconcile TO, which is exactly the condition
---                              DQ-IAS-014 exists to surface.
+--                              nowhere to reconcile TO, and DQ-IAS-008 refuses a category
+--                              the governed domain does not contain before it gets here.
 -- A row that fails any of these is excluded here and recorded as a REJ-REF-001
 -- rejection by the loader, rather than being defaulted to a nearby date, store or
 -- account. Defaulting would move book value onto the wrong control account, which is

@@ -2943,8 +2943,8 @@ def test_the_foreign_keys_behind_kpi_acc_008_and_009_are_on_the_deployed_tables(
     loaded_cursor: Any,
 ) -> None:
     for constraint in (
-        "fk_fact_finance_product_sale_sale",
-        "fk_fact_finance_product_adjustment_product_sale",
+        "fk_fact_fi_product_sale_sale",
+        "fk_fact_fi_adjustment_product_sale",
     ):
         present = _scalar(
             loaded_cursor,

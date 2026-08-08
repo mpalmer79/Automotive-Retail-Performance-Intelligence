@@ -43,7 +43,9 @@
 -- floorplan_principal is a LIABILITY POSITION. It is never added to book value, never
 -- subtracted from it, and never netted against inventory value to manufacture a "net
 -- inventory" figure that means nothing. The CHECK above excludes it by construction, and
--- DQ-IAS-014 asserts the exclusion as a property of the data.
+-- DQ-IAS-014 asserts the exclusion as a property of the data:
+-- the identity closes just as neatly around a component that carries the advance, so the
+-- check asks the separate question of whether any component equals the principal.
 --
 -- A unit with floorplan_principal = 0.00 is an OWNED, UNFLOORED unit -- a legitimate
 -- synthetic position and never missing data. After a write-down a unit may legitimately

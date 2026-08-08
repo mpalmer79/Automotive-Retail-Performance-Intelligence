@@ -169,10 +169,19 @@ def test_the_reporting_view_exposes_every_recorded_reconciliation(loaded_cursor:
     assert non_critical <= NON_CRITICAL_RECONCILIATION_IDS
 
 
-def test_only_the_funnel_chain_is_non_critical() -> None:
-    """Criticality is a deliberate, narrow exception, not a convenience."""
-    assert {"RECON-FUNNEL-CHAIN"} == NON_CRITICAL_RECONCILIATION_IDS
-    assert len(CRITICAL_SQL_RECONCILIATION_IDS) == len(SQL_RECONCILIATION_IDS) - 1
+def test_criticality_is_waived_for_exactly_two_rules() -> None:
+    """Criticality is a deliberate, narrow exception, not a convenience.
+
+    ``RECON-FUNNEL-CHAIN`` multiplies two lead-grain rates by two appointment-grain rates,
+    so its product is an approximation that cannot be made an identity.
+    ``RECON-ACC-GL-SUBLEDGER`` joins it for a different reason: ``DASH.8`` deliberately
+    plants controlled variances so the reconciliation surface can be seen working in both
+    its states, and failing a run because such a variance exists would make the exception
+    surface unusable. Both are still falsifiable -- see the two tests at the end of this
+    module -- and both still record their verdict on every run.
+    """
+    assert {"RECON-FUNNEL-CHAIN", "RECON-ACC-GL-SUBLEDGER"} == NON_CRITICAL_RECONCILIATION_IDS
+    assert len(CRITICAL_SQL_RECONCILIATION_IDS) == len(SQL_RECONCILIATION_IDS) - 2
 
 
 # --------------------------------------------------------------------------------------
@@ -273,6 +282,12 @@ DATA_CORRUPTIONS: dict[str, tuple[str, ...]] = {
         "ALTER TABLE warehouse.fact_vehicle_sale DROP CONSTRAINT fk_fact_vehicle_sale_vehicle",
         "ALTER TABLE warehouse.fact_vehicle_inventory_snapshot "
         "DROP CONSTRAINT fk_fact_inventory_snapshot_vehicle",
+        # DASH.8: a third fact now references dim_vehicle. Deleting a unit is the
+        # corruption these rules need, so the accounting schedule's reference has to
+        # be released too -- otherwise the case would test the new foreign key rather
+        # than the reconciliation it was written for.
+        "ALTER TABLE warehouse.fact_inventory_accounting_snapshot "
+        "DROP CONSTRAINT fk_fact_inventory_accounting_vehicle",
         """
         DELETE FROM warehouse.dim_vehicle
         WHERE vehicle_key = (
@@ -284,6 +299,12 @@ DATA_CORRUPTIONS: dict[str, tuple[str, ...]] = {
         "ALTER TABLE warehouse.fact_vehicle_sale DROP CONSTRAINT fk_fact_vehicle_sale_vehicle",
         "ALTER TABLE warehouse.fact_vehicle_inventory_snapshot "
         "DROP CONSTRAINT fk_fact_inventory_snapshot_vehicle",
+        # DASH.8: a third fact now references dim_vehicle. Deleting a unit is the
+        # corruption these rules need, so the accounting schedule's reference has to
+        # be released too -- otherwise the case would test the new foreign key rather
+        # than the reconciliation it was written for.
+        "ALTER TABLE warehouse.fact_inventory_accounting_snapshot "
+        "DROP CONSTRAINT fk_fact_inventory_accounting_vehicle",
         """
         DELETE FROM warehouse.dim_vehicle
         WHERE vehicle_key = (
@@ -295,6 +316,12 @@ DATA_CORRUPTIONS: dict[str, tuple[str, ...]] = {
         "ALTER TABLE warehouse.fact_vehicle_sale DROP CONSTRAINT fk_fact_vehicle_sale_vehicle",
         "ALTER TABLE warehouse.fact_vehicle_inventory_snapshot "
         "DROP CONSTRAINT fk_fact_inventory_snapshot_vehicle",
+        # DASH.8: a third fact now references dim_vehicle. Deleting a unit is the
+        # corruption these rules need, so the accounting schedule's reference has to
+        # be released too -- otherwise the case would test the new foreign key rather
+        # than the reconciliation it was written for.
+        "ALTER TABLE warehouse.fact_inventory_accounting_snapshot "
+        "DROP CONSTRAINT fk_fact_inventory_accounting_vehicle",
         """
         DELETE FROM warehouse.dim_vehicle
         WHERE vehicle_key = (
@@ -305,6 +332,12 @@ DATA_CORRUPTIONS: dict[str, tuple[str, ...]] = {
         "ALTER TABLE warehouse.fact_vehicle_sale DROP CONSTRAINT fk_fact_vehicle_sale_vehicle",
         "ALTER TABLE warehouse.fact_vehicle_inventory_snapshot "
         "DROP CONSTRAINT fk_fact_inventory_snapshot_vehicle",
+        # DASH.8: a third fact now references dim_vehicle. Deleting a unit is the
+        # corruption these rules need, so the accounting schedule's reference has to
+        # be released too -- otherwise the case would test the new foreign key rather
+        # than the reconciliation it was written for.
+        "ALTER TABLE warehouse.fact_inventory_accounting_snapshot "
+        "DROP CONSTRAINT fk_fact_inventory_accounting_vehicle",
         """
         DELETE FROM warehouse.dim_vehicle
         WHERE vehicle_key = (
@@ -316,6 +349,12 @@ DATA_CORRUPTIONS: dict[str, tuple[str, ...]] = {
         "ALTER TABLE warehouse.fact_vehicle_sale DROP CONSTRAINT fk_fact_vehicle_sale_vehicle",
         "ALTER TABLE warehouse.fact_vehicle_inventory_snapshot "
         "DROP CONSTRAINT fk_fact_inventory_snapshot_vehicle",
+        # DASH.8: a third fact now references dim_vehicle. Deleting a unit is the
+        # corruption these rules need, so the accounting schedule's reference has to
+        # be released too -- otherwise the case would test the new foreign key rather
+        # than the reconciliation it was written for.
+        "ALTER TABLE warehouse.fact_inventory_accounting_snapshot "
+        "DROP CONSTRAINT fk_fact_inventory_accounting_vehicle",
         """
         DELETE FROM warehouse.dim_vehicle
         WHERE vehicle_key = (
@@ -327,6 +366,12 @@ DATA_CORRUPTIONS: dict[str, tuple[str, ...]] = {
         "ALTER TABLE warehouse.fact_vehicle_sale DROP CONSTRAINT fk_fact_vehicle_sale_vehicle",
         "ALTER TABLE warehouse.fact_vehicle_inventory_snapshot "
         "DROP CONSTRAINT fk_fact_inventory_snapshot_vehicle",
+        # DASH.8: a third fact now references dim_vehicle. Deleting a unit is the
+        # corruption these rules need, so the accounting schedule's reference has to
+        # be released too -- otherwise the case would test the new foreign key rather
+        # than the reconciliation it was written for.
+        "ALTER TABLE warehouse.fact_inventory_accounting_snapshot "
+        "DROP CONSTRAINT fk_fact_inventory_accounting_vehicle",
         """
         DELETE FROM warehouse.dim_vehicle
         WHERE vehicle_key = (
@@ -694,6 +739,132 @@ DATA_CORRUPTIONS: dict[str, tuple[str, ...]] = {
         "WHERE sales_target_key = (SELECT min(sales_target_key) "
         "FROM warehouse.fact_sales_target WHERE department_name = 'Sales')",
     ),
+    # ----------------------------------------------------------------------------------
+    # The inventory accounting and GL control domain (DASH.8)
+    # ----------------------------------------------------------------------------------
+    # Several of these DROP A CONSTRAINT before corrupting the row, which is deliberate:
+    # the rule they test exists precisely to catch a database whose constraints are no
+    # longer intact, and a corruption the CHECK refuses would test the CHECK instead.
+    "RECON-FACT-INVENTORY-ACCOUNTING-WAREHOUSE": (
+        # ONE SCHEDULE LINE LOST BETWEEN STAGING AND THE WAREHOUSE. Its carrying amount
+        # disappears from the subledger balance and manufactures a GL variance that
+        # describes nothing.
+        "DELETE FROM warehouse.fact_inventory_accounting_snapshot "
+        "WHERE inventory_accounting_key = "
+        "(SELECT min(inventory_accounting_key) FROM warehouse.fact_inventory_accounting_snapshot)",
+    ),
+    "RECON-FACT-GL-CONTROL-BALANCE-WAREHOUSE": (
+        # ONE CONTROL BALANCE LOST. The reconciliation would report it as a missing GL
+        # side -- a different finding from a variance -- and this names which layer lost it.
+        "DELETE FROM warehouse.fact_gl_control_balance WHERE gl_control_balance_key = "
+        "(SELECT min(gl_control_balance_key) FROM warehouse.fact_gl_control_balance)",
+    ),
+    "RECON-ACC-BOOK-IDENTITY": (
+        # ONE CENT ON ONE LINE, with the CHECK removed first. The identity is exact and
+        # per line, so a single cent on a single unit must fail it -- and dropping the
+        # constraint is what makes this a test of the RECONCILIATION rather than of the
+        # constraint that normally makes the row unloadable.
+        "ALTER TABLE warehouse.fact_inventory_accounting_snapshot "
+        "DROP CONSTRAINT ck_fact_inventory_accounting_book_value_identity",
+        "UPDATE warehouse.fact_inventory_accounting_snapshot "
+        "SET current_book_value = current_book_value + 0.01 "
+        "WHERE inventory_accounting_key = "
+        "(SELECT min(inventory_accounting_key) FROM warehouse.fact_inventory_accounting_snapshot)",
+    ),
+    "RECON-ACC-BOOK-COMPONENTS": (
+        # A NEGATIVE WRITE-DOWN, which is a write-UP this model does not represent -- with
+        # the carrying value moved to match so the book-value IDENTITY still closes. That
+        # is the whole point of this rule being separate: the identity closes just as
+        # neatly with a nonsense component inside it.
+        "ALTER TABLE warehouse.fact_inventory_accounting_snapshot "
+        "DROP CONSTRAINT ck_fact_inventory_accounting_write_down_nonnegative",
+        "UPDATE warehouse.fact_inventory_accounting_snapshot "
+        "SET write_down_amount = -100.00, current_book_value = current_book_value "
+        "                                                    + write_down_amount + 100.00 "
+        "WHERE inventory_accounting_key = "
+        "(SELECT min(inventory_accounting_key) FROM warehouse.fact_inventory_accounting_snapshot)",
+    ),
+    "RECON-ACC-PACK-EXCLUDED": (
+        # PACK MOVED OUT OF THE FRONT-GROSS IDENTITY on one deal. This is the corruption
+        # that stands in for an accounting increment quietly capitalizing pack: KPI-GRS-001
+        # would change and nothing else in DASH.8 would notice.
+        "ALTER TABLE warehouse.fact_vehicle_sale "
+        "DROP CONSTRAINT ck_fact_vehicle_sale_front_end_gross_identity",
+        "UPDATE warehouse.fact_vehicle_sale SET pack_amount = pack_amount + 100.00 "
+        "WHERE sale_key = (SELECT min(sale_key) FROM warehouse.fact_vehicle_sale)",
+    ),
+    "RECON-ACC-FLOORPLAN-EXCLUDED": (
+        # EVERY FLOORPLAN BALANCE ZEROED. The book identity still holds afterwards, which
+        # is exactly the point: an identity that closes proves nothing about floorplan
+        # exclusion if there is no floorplan principal left to exclude.
+        "UPDATE warehouse.fact_inventory_accounting_snapshot SET floorplan_principal = 0.00 "
+        "WHERE floorplan_principal > 0",
+    ),
+    "RECON-ACC-POPULATION": (
+        # ONE UNIT REMOVED FROM THE OPERATIONAL INVENTORY on an accounting date, leaving a
+        # schedule line the control account is asked to support for a unit that is not on
+        # the floor.
+        """
+        DELETE FROM warehouse.fact_vehicle_inventory_snapshot AS i
+        WHERE i.inventory_snapshot_key = (
+            SELECT min(x.inventory_snapshot_key)
+            FROM warehouse.fact_vehicle_inventory_snapshot AS x
+            JOIN warehouse.fact_inventory_accounting_snapshot AS f
+              ON f.accounting_date_key = x.snapshot_date_key
+             AND f.dealership_key = x.dealership_key
+             AND f.vehicle_key = x.vehicle_key)
+        """,
+    ),
+    "RECON-ACC-CATEGORY-TOTALS": (
+        # ONE LINE MISROUTED to a different control account. The grand total is unchanged
+        # -- both account totals are wrong in offsetting directions -- so a rule that
+        # checked only the sum would pass. This is why the rule checks the MAPPING too.
+        """
+        UPDATE warehouse.fact_inventory_accounting_snapshot AS f
+        SET gl_account_key = (
+            SELECT min(a.gl_account_key) FROM warehouse.dim_gl_account AS a
+            WHERE a.gl_account_key <> f.gl_account_key)
+        WHERE f.inventory_accounting_key = (
+            SELECT min(x.inventory_accounting_key)
+            FROM warehouse.fact_inventory_accounting_snapshot AS x)
+        """,
+    ),
+    "RECON-ACC-GRAIN": (
+        # A SECOND SCHEDULE LINE FOR ONE UNIT ON ONE DATE, with the grain constraint
+        # dropped first. The unit's carrying amount would be counted twice in the control
+        # balance and would manufacture a variance that is not there.
+        "ALTER TABLE warehouse.fact_inventory_accounting_snapshot "
+        "DROP CONSTRAINT uq_fact_inventory_accounting_snapshot_grain",
+        """
+        INSERT INTO warehouse.fact_inventory_accounting_snapshot
+        SELECT (SELECT max(x.inventory_accounting_key) + 1
+                FROM warehouse.fact_inventory_accounting_snapshot AS x),
+               f.accounting_date_key, f.dealership_key, f.vehicle_key, f.gl_account_key,
+               f.control_account_category, f.acquisition_cost, f.capitalized_transportation,
+               f.capitalized_reconditioning, f.capitalized_accessories,
+               f.other_capitalized_costs, f.write_down_amount, f.current_book_value,
+               f.floorplan_principal, f.days_in_stock, f.source_system
+        FROM warehouse.fact_inventory_accounting_snapshot AS f
+        WHERE f.inventory_accounting_key = (
+            SELECT min(y.inventory_accounting_key)
+            FROM warehouse.fact_inventory_accounting_snapshot AS y)
+        """,
+    ),
+    "RECON-GLB-GRAIN": (
+        # A SECOND CONTROL BALANCE AT ONE POSITION, which would double the control side.
+        "ALTER TABLE warehouse.fact_gl_control_balance "
+        "DROP CONSTRAINT uq_fact_gl_control_balance_grain",
+        """
+        INSERT INTO warehouse.fact_gl_control_balance
+        SELECT (SELECT max(x.gl_control_balance_key) + 1
+                FROM warehouse.fact_gl_control_balance AS x),
+               b.balance_date_key, b.dealership_key, b.gl_account_key, b.net_balance,
+               b.source_system
+        FROM warehouse.fact_gl_control_balance AS b
+        WHERE b.gl_control_balance_key = (
+            SELECT min(y.gl_control_balance_key) FROM warehouse.fact_gl_control_balance AS y)
+        """,
+    ),
 }
 
 #: Reconciliations that no data change can break, and the view substitution that does.
@@ -845,6 +1016,19 @@ VIEW_CORRUPTIONS: dict[str, tuple[str, str, str]] = {
         "    actual_mtd_value - 0.01::numeric AS actual_mtd_value,"
         "\n    actual_mtd_value AS attainment_numerator,",
     ),
+    # DASH.8. Both accounting reporting views are at a declared grain, and both rules
+    # compare a row count to that grain, so a fan-out is the corruption that tests them.
+    "RECON-REPORT-ACCOUNTING-ROWS": (
+        "vw_inventory_accounting",
+        "FROM warehouse.fact_inventory_accounting_snapshot f",
+        "FROM warehouse.fact_inventory_accounting_snapshot f\n"
+        "  CROSS JOIN (VALUES (1), (2)) AS dup(n)",
+    ),
+    "RECON-REPORT-GL-RECON-ROWS": (
+        "vw_inventory_gl_reconciliation",
+        "FROM compared x",
+        "FROM compared x\n  CROSS JOIN (VALUES (1), (2)) AS dup(n)",
+    ),
 }
 
 
@@ -910,3 +1094,48 @@ def test_the_funnel_chain_is_informational_but_still_falsifiable(loaded_cursor: 
     assert loaded_cursor.rowcount > 0
 
     assert _status(loaded_cursor, "RECON-FUNNEL-CHAIN") == "failed"
+
+
+def test_the_gl_subledger_rule_is_informational_but_still_falsifiable(
+    loaded_cursor: Any,
+) -> None:
+    """The second non-critical rule still has to be able to report a breach.
+
+    ``RECON-ACC-GL-SUBLEDGER`` is not an equality: it passes when every comparison row is
+    WELL FORMED, because ``DASH.8`` deliberately plants controlled variances and a rule
+    that failed a run because one exists would make the exception surface unusable.
+
+    A rule that can only ever pass is decoration, so this proves the one thing it does
+    assert. Making the state say ``Reconciled`` on a row whose variance is not zero
+    decouples the state from the arithmetic behind it -- which is exactly how a missing
+    balance would come to be reported as a zeroed account -- and must flip it to failed.
+    """
+    assert _status(loaded_cursor, "RECON-ACC-GL-SUBLEDGER") == "passed"
+
+    _corrupt_view(
+        loaded_cursor,
+        "vw_inventory_gl_reconciliation",
+        "WHEN x.gl_balance = x.subledger_balance THEN 'Reconciled'::text",
+        "WHEN true THEN 'Reconciled'::text",
+    )
+
+    assert _status(loaded_cursor, "RECON-ACC-GL-SUBLEDGER") == "failed", (
+        "the comparison state was decoupled from the variance behind it and the rule "
+        "still passes, so it is not proving anything"
+    )
+
+
+def test_a_controlled_variance_alone_never_fails_the_rule(loaded_cursor: Any) -> None:
+    """The other direction, which matters just as much.
+
+    The dataset carries planted variances on purpose. If their mere existence failed this
+    rule, every pipeline run would report a failure and the exception surface would be
+    unreadable.
+    """
+    variances = _scalar(
+        loaded_cursor,
+        "SELECT count(*) FROM reporting.vw_inventory_gl_reconciliation "
+        "WHERE comparison_state = 'Variance'",
+    )
+    assert variances > 0, "no variance is planted, so this test proves nothing"
+    assert _status(loaded_cursor, "RECON-ACC-GL-SUBLEDGER") == "passed"
