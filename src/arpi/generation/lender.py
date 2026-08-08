@@ -192,26 +192,67 @@ def _lender(
 #: independent finance company writing no lease is a modelling choice, recorded here and
 #: visible as a zero weight rather than hidden in a branch.
 LENDER_DEFINITIONS: Final[tuple[LenderDefinition, ...]] = (
-    _lender(1, "Granite Motors Acceptance", "Captive", "Prime",
-            retail_weight=0.30, lease_weight=0.46, franchise_affinity=("GSA-001",)),
-    _lender(2, "Northstar Automotive Credit", "Captive", "Prime",
-            retail_weight=0.22, lease_weight=0.38, franchise_affinity=("GSA-002",)),
-    _lender(3, "Merrimack Valley Bank", "Bank", "Prime",
-            retail_weight=0.34, lease_weight=0.10),
-    _lender(4, "Pinnacle Ridge Bank", "Bank", "Prime",
-            retail_weight=0.26, lease_weight=0.06),
-    _lender(5, "Harborline Bank", "Bank", "Near-prime",
-            retail_weight=0.18, lease_weight=0.00),
-    _lender(6, "Granite State Members Credit Union", "Credit Union", "Prime",
-            retail_weight=0.24, lease_weight=0.00),
-    _lender(7, "Riverbend Community Credit Union", "Credit Union", "Prime",
-            retail_weight=0.16, lease_weight=0.00),
-    _lender(8, "Kearsarge Federal Credit Union", "Credit Union", "Near-prime",
-            retail_weight=0.11, lease_weight=0.00),
-    _lender(9, "Sablewood Acceptance Company", "Independent Finance Company", "Near-prime",
-            retail_weight=0.14, lease_weight=0.00),
-    _lender(10, "Ledgemont Finance Company", "Independent Finance Company", "Subprime",
-            retail_weight=0.09, lease_weight=0.00),
+    _lender(
+        1,
+        "Granite Motors Acceptance",
+        "Captive",
+        "Prime",
+        retail_weight=0.30,
+        lease_weight=0.46,
+        franchise_affinity=("GSA-001",),
+    ),
+    _lender(
+        2,
+        "Northstar Automotive Credit",
+        "Captive",
+        "Prime",
+        retail_weight=0.22,
+        lease_weight=0.38,
+        franchise_affinity=("GSA-002",),
+    ),
+    _lender(3, "Merrimack Valley Bank", "Bank", "Prime", retail_weight=0.34, lease_weight=0.10),
+    _lender(4, "Pinnacle Ridge Bank", "Bank", "Prime", retail_weight=0.26, lease_weight=0.06),
+    _lender(5, "Harborline Bank", "Bank", "Near-prime", retail_weight=0.18, lease_weight=0.00),
+    _lender(
+        6,
+        "Granite State Members Credit Union",
+        "Credit Union",
+        "Prime",
+        retail_weight=0.24,
+        lease_weight=0.00,
+    ),
+    _lender(
+        7,
+        "Riverbend Community Credit Union",
+        "Credit Union",
+        "Prime",
+        retail_weight=0.16,
+        lease_weight=0.00,
+    ),
+    _lender(
+        8,
+        "Kearsarge Federal Credit Union",
+        "Credit Union",
+        "Near-prime",
+        retail_weight=0.11,
+        lease_weight=0.00,
+    ),
+    _lender(
+        9,
+        "Sablewood Acceptance Company",
+        "Independent Finance Company",
+        "Near-prime",
+        retail_weight=0.14,
+        lease_weight=0.00,
+    ),
+    _lender(
+        10,
+        "Ledgemont Finance Company",
+        "Independent Finance Company",
+        "Subprime",
+        retail_weight=0.09,
+        lease_weight=0.00,
+    ),
 )
 
 #: The catalogue keyed by lender id.
@@ -223,9 +264,7 @@ LENDERS_BY_ID: Final[dict[str, LenderDefinition]] = {
 # ---------------------------------------------------------------------------------------
 # Assignment
 # ---------------------------------------------------------------------------------------
-def assign_lender(
-    rng: random.Random, *, dealership_id: str, finance_structure: str
-) -> str | None:
+def assign_lender(rng: random.Random, *, dealership_id: str, finance_structure: str) -> str | None:
     """Choose the fictional lender behind one transaction, or ``None`` where none exists.
 
     THE ASSIGNMENT'S ENTIRE INPUT SET is the store, the derived finance structure and
@@ -362,7 +401,9 @@ register_checks(
             severity=CheckSeverity.CRITICAL,
             layer=CheckLayer.PYTHON,
             entity=ENTITY_DIM_LENDER,
-            description="The raw loader maps positionally; a reordered column loads silently wrong.",
+            description=(
+                "The raw loader maps positionally; a reordered column loads silently wrong."
+            ),
             applies_to=(_WAREHOUSE_DIM_LENDER,),
         ),
         CheckDefinition(

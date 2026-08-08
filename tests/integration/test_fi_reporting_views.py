@@ -197,9 +197,7 @@ def test_no_grain_column_is_null(loaded_cursor: Any, view_name: str) -> None:
 
 def test_the_detail_view_preserves_the_facts_grain_exactly(loaded_cursor: Any) -> None:
     view_rows = _scalar(loaded_cursor, "SELECT count(*) FROM reporting.vw_deal_product_detail")
-    fact_rows = _scalar(
-        loaded_cursor, "SELECT count(*) FROM warehouse.fact_finance_product_sale"
-    )
+    fact_rows = _scalar(loaded_cursor, "SELECT count(*) FROM warehouse.fact_finance_product_sale")
     assert view_rows == fact_rows
 
 
@@ -295,7 +293,9 @@ def test_the_sale_date_views_publish_the_deal_date_basis(loaded_cursor: Any) -> 
     for view_name in ("vw_fi_summary", "vw_fi_product_penetration"):
         bases = {
             row[0]
-            for row in _rows(loaded_cursor, f"SELECT DISTINCT deal_date_basis FROM reporting.{view_name}")
+            for row in _rows(
+                loaded_cursor, f"SELECT DISTINCT deal_date_basis FROM reporting.{view_name}"
+            )
         }
         assert bases == {"sale date"}
 
@@ -315,8 +315,7 @@ def test_the_adjustment_view_is_on_a_different_basis_from_the_others(
         row[0]
         for row in _rows(
             loaded_cursor,
-            "SELECT DISTINCT rate_denominator_date_basis "
-            "FROM reporting.vw_fi_adjustment_summary",
+            "SELECT DISTINCT rate_denominator_date_basis FROM reporting.vw_fi_adjustment_summary",
         )
     }
     assert numerator == {"adjustment date"}
@@ -355,7 +354,9 @@ def test_the_as_of_date_is_the_governed_one_and_is_identical_across_the_views(
     penetration = _scalar(
         loaded_cursor, "SELECT DISTINCT as_of_date FROM reporting.vw_fi_product_penetration"
     )
-    target = _scalar(loaded_cursor, "SELECT DISTINCT as_of_date FROM reporting.vw_target_attainment")
+    target = _scalar(
+        loaded_cursor, "SELECT DISTINCT as_of_date FROM reporting.vw_target_attainment"
+    )
     assert fi_summary == detail == penetration == target
 
 
@@ -423,7 +424,9 @@ def test_the_sql_eligibility_predicate_matches_python_over_the_whole_cross_produ
                     # anyone having written that rule twice.
                     expected = False
                 if observed != expected:
-                    disagreements.append(f"{category}/{structure}/{condition}: {observed} vs {expected}")
+                    disagreements.append(
+                        f"{category}/{structure}/{condition}: {observed} vs {expected}"
+                    )
     assert disagreements == [], (
         f"the SQL and Python eligibility predicates disagree: {disagreements}"
     )
@@ -501,10 +504,7 @@ def test_the_view_exposes_no_customer_reference_and_no_lending_mechanic(
         "adverse_action",
     )
     offending = [
-        f"{name} (contains {token!r})"
-        for name in columns
-        for token in forbidden
-        if token in name
+        f"{name} (contains {token!r})" for name in columns for token in forbidden if token in name
     ]
     assert offending == [], f"reporting.{view_name} exposes {offending}"
 

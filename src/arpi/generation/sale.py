@@ -78,9 +78,6 @@ from arpi.generation.customer import (
     customer_selection_pool,
     select_customer_for_sale,
 )
-from arpi.generation.fi_eligibility import finance_structure_for
-from arpi.generation.finance_deal import DealFinance, DealInput, decompose_deals
-from arpi.generation.lender import LENDERS_BY_ID
 from arpi.generation.employee import (
     JOB_ROLE_DESK_MANAGER,
     JOB_ROLE_FINANCE_MANAGER,
@@ -92,6 +89,9 @@ from arpi.generation.employee import (
     build_employee_assignments,
     employee_performance_profiles,
 )
+from arpi.generation.fi_eligibility import finance_structure_for
+from arpi.generation.finance_deal import DealFinance, DealInput, decompose_deals
+from arpi.generation.lender import LENDERS_BY_ID
 from arpi.generation.vehicle import CONDITION_CERTIFIED, CONDITION_NEW
 from arpi.logging_config import get_logger
 from arpi.utilities.seeding import rng_for
@@ -1381,9 +1381,7 @@ def deal_finance_records(
         for record in records
     )
     rng = rng_for(config.random_seed, FINANCE_DECOMPOSITION_NAMESPACE)
-    return {
-        finance.sale_id: finance for finance in decompose_deals(inputs, rng)
-    }
+    return {finance.sale_id: finance for finance in decompose_deals(inputs, rng)}
 
 
 class SaleGenerator(BaseGenerator):

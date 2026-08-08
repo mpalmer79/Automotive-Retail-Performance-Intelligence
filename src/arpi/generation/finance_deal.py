@@ -89,9 +89,9 @@ from arpi.generation.lender import assign_lender
 
 __all__ = [
     "CATEGORY_ATTACH_BASE",
+    "MINIMUM_PRODUCT_GROSS",
     "DealFinance",
     "DealInput",
-    "MINIMUM_PRODUCT_GROSS",
     "ProductLine",
     "decompose_deals",
 ]
@@ -275,9 +275,7 @@ class DealFinance:
     @property
     def original_product_gross(self) -> Decimal:
         """Total deal-date product gross on this deal, exact."""
-        return sum(
-            (line.original_product_gross for line in self.products), start=_ZERO
-        )
+        return sum((line.original_product_gross for line in self.products), start=_ZERO)
 
     @property
     def decomposed_back_end_gross(self) -> Decimal:
@@ -343,9 +341,7 @@ def _decompose_one(
 ) -> DealFinance:
     """Decompose one deal. Every branch sums to ``deal.back_end_gross`` exactly."""
     structure = finance_structure_for(deal.sale_type, deal.amount_financed)
-    lender_id = assign_lender(
-        rng, dealership_id=deal.dealership_id, finance_structure=structure
-    )
+    lender_id = assign_lender(rng, dealership_id=deal.dealership_id, finance_structure=structure)
 
     if not deal.is_retail:
         # A disposal has no consumer: no reserve, no product, no consumer lender. The
@@ -423,12 +419,16 @@ def _draw_basket(
             continue
         products = by_category[category]
         chosen.append(_pick_product(rng, products, exclude=()))
-        if category == "Other Aftermarket Product" and len(products) > 1:
-            # The one category where a second, DIFFERENT contract on one deal is
-            # realistic. It is what makes "penetration counts distinct deals, not
-            # contract rows" a rule with teeth rather than an identity.
-            if rng.random() < SECOND_OTHER_PRODUCT_SHARE:
-                chosen.append(_pick_product(rng, products, exclude=(chosen[-1],)))
+        # The one category where a second, DIFFERENT contract on one deal is realistic.
+        # It is what makes "penetration counts distinct deals, not contract rows" a rule
+        # with teeth rather than an identity. Short-circuit order is load-bearing: the
+        # variate is drawn only for this category, so no other category's stream moves.
+        if (
+            category == "Other Aftermarket Product"
+            and len(products) > 1
+            and rng.random() < SECOND_OTHER_PRODUCT_SHARE
+        ):
+            chosen.append(_pick_product(rng, products, exclude=(chosen[-1],)))
     return tuple(chosen)
 
 
@@ -547,9 +547,7 @@ def _allocate(total: Decimal, weights: tuple[Decimal, ...]) -> tuple[Decimal, ..
     exact = [Decimal(units) * weight / weight_total for weight in weights]
     floors = [int(value.to_integral_value(rounding=ROUND_FLOOR)) for value in exact]
     remainder = units - sum(floors)
-    order = sorted(
-        range(len(weights)), key=lambda index: (-(exact[index] - floors[index]), index)
-    )
+    order = sorted(range(len(weights)), key=lambda index: (-(exact[index] - floors[index]), index))
     for position in range(remainder):
         floors[order[position % len(order)]] += 1
     return tuple(Decimal(count) * _CENTS for count in floors)
@@ -573,9 +571,10 @@ def _build_line(
     """
     low, high = DEALER_COST_RATIO_JITTER
     jitter = Decimal(str(round(rng.uniform(low, high), 6)))
-    dealer_cost = _money(gross * product.dealer_cost_ratio * jitter)
-    if dealer_cost < _ZERO:  # pragma: no cover - every ratio and jitter is positive
-        dealer_cost = _ZERO
+    # Floored at zero: every declared ratio and every jitter bound is positive, so this
+    # never binds today. It is kept because a negative COST is a defect rather than a
+    # thin product, and a future ratio change should not be able to introduce one silently.
+    dealer_cost = max(_money(gross * product.dealer_cost_ratio * jitter), _ZERO)
     offset = rng.choice(CONTRACT_TERM_OFFSETS)
     minimum, maximum = CONTRACT_TERM_BOUNDS
     term = min(max(product.default_contract_term_months + offset, minimum), maximum)

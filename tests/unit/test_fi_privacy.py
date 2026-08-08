@@ -169,11 +169,19 @@ def test_no_fi_sql_object_declares_a_lending_mechanic() -> None:
 
 def test_the_platform_tripwire_covers_the_fi_vocabulary() -> None:
     """DASH.6 extended the shared vocabulary, so a future column fails on the schema."""
-    vocabulary = (
-        PROHIBITED_PII_FIELD_NAMES | PROHIBITED_PII_SUBSTRINGS | PROHIBITED_PII_WORD_TOKENS
-    )
-    for token in ("apr", "buy_rate", "sell_rate", "rate_spread", "credit_score", "fico",
-                  "income", "stipulation", "adverse_action", "payment"):
+    vocabulary = PROHIBITED_PII_FIELD_NAMES | PROHIBITED_PII_SUBSTRINGS | PROHIBITED_PII_WORD_TOKENS
+    for token in (
+        "apr",
+        "buy_rate",
+        "sell_rate",
+        "rate_spread",
+        "credit_score",
+        "fico",
+        "income",
+        "stipulation",
+        "adverse_action",
+        "payment",
+    ):
         assert token in vocabulary, (
             f"{token!r} is not in the platform privacy vocabulary, so a column carrying it "
             "would reach the warehouse without failing a check"
@@ -182,12 +190,21 @@ def test_the_platform_tripwire_covers_the_fi_vocabulary() -> None:
 
 @pytest.mark.parametrize(
     "column",
-    ["apr", "buy_rate", "sell_rate", "rate_spread", "monthly_payment", "credit_score",
-     "fico_score", "household_income", "adverse_action_reason", "stipulations", "ssn"],
+    [
+        "apr",
+        "buy_rate",
+        "sell_rate",
+        "rate_spread",
+        "monthly_payment",
+        "credit_score",
+        "fico_score",
+        "household_income",
+        "adverse_action_reason",
+        "stipulations",
+        "ssn",
+    ],
 )
-def test_a_planted_prohibited_column_fails_the_tripwire(
-    config: ArpiConfig, column: str
-) -> None:
+def test_a_planted_prohibited_column_fails_the_tripwire(config: ArpiConfig, column: str) -> None:
     """Seeded defect. A tripwire that has never fired is a tripwire nobody has tested."""
     frame = generate_finance_product_sale_dataset(config).frame.copy()
     frame[column] = None

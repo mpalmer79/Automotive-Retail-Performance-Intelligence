@@ -36,8 +36,8 @@ from arpi.constants import (
     FI_KPI_IDS,
     FI_KPI_VIEW_OWNERSHIP,
     KPI_IDS,
-    MINIMUM_SAMPLE_ELIGIBLE_DEALS,
     KPI_VIEW_OWNERSHIP,
+    MINIMUM_SAMPLE_ELIGIBLE_DEALS,
     TARGET_KPI_IDS,
     TARGET_KPI_VIEW_OWNERSHIP,
 )
@@ -1679,7 +1679,7 @@ def test_the_fi_index_covers_exactly_twenty_two_kpis() -> None:
     assert len(FI_KPI_IDS) == 22
     assert len(set(FI_KPI_IDS)) == 22
     assert set(FI_KPI_VIEW_OWNERSHIP) == set(FI_KPI_IDS)
-    assert FI_KPI_IDS == tuple(f"KPI-FNI-{index:03d}" for index in range(1, 23))
+    assert tuple(f"KPI-FNI-{index:03d}" for index in range(1, 23)) == FI_KPI_IDS
 
 
 def test_the_fi_family_is_held_apart_from_the_mvp_baseline() -> None:
@@ -1787,8 +1787,7 @@ def test_kpi_fni_001_is_zero_on_every_structure_that_cannot_earn_it(
     # population must actually contain some. Otherwise the rule above is vacuous.
     financed_with_reserve = _scalar(
         loaded_cursor,
-        "SELECT count(*) FROM warehouse.fact_vehicle_sale AS s "
-        "WHERE s.finance_reserve_gross > 0",
+        "SELECT count(*) FROM warehouse.fact_vehicle_sale AS s WHERE s.finance_reserve_gross > 0",
     )
     assert financed_with_reserve > 0, "no deal earned reserve; the measure is untested"
 
@@ -1954,9 +1953,7 @@ def test_kpi_fni_005_product_gross_pvr_components(loaded_cursor: Any) -> None:
     original = _scalar(
         loaded_cursor, "SELECT sum(original_product_gross) FROM reporting.vw_fi_summary"
     )
-    net = _scalar(
-        loaded_cursor, "SELECT sum(net_product_gross_as_of) FROM reporting.vw_fi_summary"
-    )
+    net = _scalar(loaded_cursor, "SELECT sum(net_product_gross_as_of) FROM reporting.vw_fi_summary")
     units = _scalar(loaded_cursor, "SELECT sum(retail_units) FROM reporting.vw_fi_summary")
     assert units > 0
     assert Decimal(str(original)) >= Decimal(str(net)), (
@@ -2010,7 +2007,8 @@ def _penetration(cursor: Any, category: str) -> tuple[Any, Any]:
         "FROM reporting.vw_fi_product_penetration WHERE product_category = %s",
         (category,),
     )
-    return cursor.fetchone()
+    numerator, denominator = cursor.fetchone()
+    return numerator, denominator
 
 
 def _expected_penetration(cursor: Any, category: str) -> tuple[Any, Any]:
@@ -2437,8 +2435,7 @@ def test_kpi_fni_022_manager_back_pvr_components(loaded_cursor: Any) -> None:
     net, deal_date, units = loaded_cursor.fetchone()
     assert units > 0
     assert Decimal(str(net)) <= Decimal(str(deal_date)), (
-        "as-of retained F&I gross exceeds deal-date production, which the adjustment cap "
-        "forbids"
+        "as-of retained F&I gross exceeds deal-date production, which the adjustment cap forbids"
     )
     expected_deal_date = _scalar(
         loaded_cursor,
@@ -2448,9 +2445,12 @@ def test_kpi_fni_022_manager_back_pvr_components(loaded_cursor: Any) -> None:
 
 
 def test_kpi_fni_022_is_not_the_same_measure_as_kpi_grs_005(loaded_cursor: Any) -> None:
-    """Back PVR and manager back PVR differ by every adjustment posted, and must not be
-    presented interchangeably. If the dataset carried no adjustments the two would
-    coincide, so the test asserts the dataset actually distinguishes them."""
+    """Back PVR and manager back PVR are different measures on different date bases.
+
+    They differ by every adjustment posted and must not be presented interchangeably. If
+    the dataset carried no adjustments the two would coincide, so the test asserts the
+    dataset actually distinguishes them.
+    """
     adjustments = _scalar(
         loaded_cursor, "SELECT count(*) FROM warehouse.fact_finance_product_adjustment"
     )
@@ -2478,14 +2478,17 @@ def test_the_minimum_sample_floor_agrees_between_sql_and_python(loaded_cursor: A
 def test_the_minimum_sample_flag_is_published_and_never_blanks_a_value(
     loaded_cursor: Any,
 ) -> None:
-    """Below the floor the row is MARKED, not emptied: a NULL would be indistinguishable
-    from a manager who genuinely had no eligible deals."""
+    """Below the floor the row is MARKED, not emptied.
+
+    A NULL would be indistinguishable from a manager who genuinely had no eligible deals,
+    which is a different statement about a different situation.
+    """
     loaded_cursor.execute(
         "SELECT count(*) FILTER (WHERE meets_minimum_sample), "
         "       count(*) FILTER (WHERE NOT meets_minimum_sample) "
         "FROM reporting.vw_fi_summary"
     )
-    meets, below = loaded_cursor.fetchone()
+    _meets, below = loaded_cursor.fetchone()
     assert below > 0, (
         "no row falls below the minimum-sample floor, so the rule is untested; the "
         "store-day grain should produce plenty"

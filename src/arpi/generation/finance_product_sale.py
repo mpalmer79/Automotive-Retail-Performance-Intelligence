@@ -646,9 +646,7 @@ def validate_finance_product_sale_dataset(
         A report containing sixteen results, in check-id order.
     """
     frame = dataset.frame
-    parents = {
-        record.sale_id: record for record in build_sale_records(config, catalogue_path)
-    }
+    parents = {record.sale_id: record for record in build_sale_records(config, catalogue_path)}
     finance = deal_finance_records(config, catalogue_path)
     rules = eligibility_configuration()
     return ValidationReport(
@@ -723,9 +721,7 @@ def _check_parent_resolves(frame: pd.DataFrame, parents: dict[str, Any]) -> Chec
     )
     offending = [
         f"{product_sale_id}: sale {sale_id} does not exist"
-        for product_sale_id, sale_id in zip(
-            frame["product_sale_id"], frame["sale_id"], strict=True
-        )
+        for product_sale_id, sale_id in zip(frame["product_sale_id"], frame["sale_id"], strict=True)
         if str(sale_id) not in parents
     ]
     return _fail(base, offending, "contract(s) name a transaction that does not exist")
@@ -780,9 +776,7 @@ def _check_product_resolves(frame: pd.DataFrame) -> CheckResult:
         if definition is None:
             offending.append(f"{product_sale_id}: product {product_id} is not catalogued")
         elif str(category) != definition.product_category:
-            offending.append(
-                f"{product_sale_id}: category {category} disagrees with the catalogue"
-            )
+            offending.append(f"{product_sale_id}: category {category} disagrees with the catalogue")
         elif str(category) not in FINANCE_PRODUCT_CATEGORIES:  # pragma: no cover
             offending.append(f"{product_sale_id}: category {category} is not governed")
     return _fail(base, offending, "contract(s) name an uncatalogued product or category")
@@ -808,8 +802,7 @@ def _check_manager_matches(frame: pd.DataFrame, parents: dict[str, Any]) -> Chec
         observed = None if manager is None or pd.isna(manager) else str(manager)
         if observed != parent.finance_manager_id:
             offending.append(
-                f"{product_sale_id}: credited {observed}, deal credited "
-                f"{parent.finance_manager_id}"
+                f"{product_sale_id}: credited {observed}, deal credited {parent.finance_manager_id}"
             )
     return _fail(base, offending, "contract(s) credit a manager who did not write the deal")
 
@@ -929,7 +922,9 @@ def _check_eligibility(
             offending.append(f"{product_sale_id}: category {category} owns no rule")
             continue
         if str(rule_id) != owning.rule_id:
-            offending.append(f"{product_sale_id}: carries {rule_id}, category owns {owning.rule_id}")
+            offending.append(
+                f"{product_sale_id}: carries {rule_id}, category owns {owning.rule_id}"
+            )
             continue
         if not is_category_eligible(
             str(category),

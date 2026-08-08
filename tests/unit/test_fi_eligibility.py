@@ -98,10 +98,12 @@ def test_only_the_three_retail_structures_are_retail() -> None:
 
 
 def test_every_governed_category_resolves_to_exactly_one_rule() -> None:
-    """THE BINDING RULE. Not zero -- a category with no rule has no denominator, so every
-    penetration over it is undefined and renders as an empty cell rather than as a
-    governance failure. Not two -- a category with two denominators can be computed two
-    ways and both look correct.
+    """THE BINDING RULE: every governed category maps to exactly one eligibility rule.
+
+    Not zero -- a category with no rule has no denominator, so every penetration over it
+    is undefined and renders as an empty cell rather than as a governance failure. Not
+    two -- a category with two denominators can be computed two ways, and both look
+    correct.
     """
     config = eligibility_configuration()
     assert set(config.rule_by_category) == set(FINANCE_PRODUCT_CATEGORIES)
@@ -146,9 +148,7 @@ def test_a_configuration_that_is_not_a_partition_is_refused(tmp_path: Path) -> N
     # first and left the partition rule unexercised.
     for rule in source["rules"]:
         if rule["rule_id"] == "ELIG-OTH":
-            rule["categories"] = [
-                name for name in rule["categories"] if name != "Key Replacement"
-            ]
+            rule["categories"] = [name for name in rule["categories"] if name != "Key Replacement"]
     broken = tmp_path / "fi_product_eligibility.yaml"
     broken.write_text(yaml.safe_dump(source), encoding="utf-8")
     with pytest.raises(GenerationError, match="not a partition"):
@@ -194,8 +194,7 @@ def test_no_category_is_eligible_on_a_disposal() -> None:
     for structure in (FINANCE_STRUCTURE_WHOLESALE, FINANCE_STRUCTURE_DEALER_TRADE):
         for condition in CONDITIONS:
             assert (
-                eligible_categories(finance_structure=structure, vehicle_condition=condition)
-                == ()
+                eligible_categories(finance_structure=structure, vehicle_condition=condition) == ()
             )
 
 
@@ -252,9 +251,9 @@ def test_every_retail_deal_has_at_least_one_eligible_category() -> None:
     """
     for structure in RETAIL_FINANCE_STRUCTURES:
         for condition in CONDITIONS:
-            assert eligible_categories(
-                finance_structure=structure, vehicle_condition=condition
-            ), f"{structure}/{condition} has no eligible category"
+            assert eligible_categories(finance_structure=structure, vehicle_condition=condition), (
+                f"{structure}/{condition} has no eligible category"
+            )
 
 
 def test_eligible_categories_returns_governed_order() -> None:
@@ -278,8 +277,14 @@ def test_the_predicate_takes_no_customer_attribute() -> None:
     assert parameters == {"category", "finance_structure", "vehicle_condition", "config"}
 
     declared = yaml.safe_load(resolve_eligibility_path().read_text(encoding="utf-8"))
-    permitted_keys = {"rule_id", "label", "categories", "finance_structures",
-                      "vehicle_conditions", "rationale"}
+    permitted_keys = {
+        "rule_id",
+        "label",
+        "categories",
+        "finance_structures",
+        "vehicle_conditions",
+        "rationale",
+    }
     for rule in declared["rules"]:
         assert set(rule) <= permitted_keys, (
             f"{rule.get('rule_id')} declares keys outside the permitted schema: "

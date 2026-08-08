@@ -389,9 +389,9 @@ def _dashboard_program_kpi_ids() -> frozenset[str]:
     thirty-two are computed in SQL and no DAX measure reads any of them. Summing the two
     would produce a number that is true of nothing.
     """
-    return _declared_lane_sql_files(
-        CONSTANTS_SOURCE, "TARGET_KPI_IDS"
-    ) | _declared_lane_sql_files(CONSTANTS_SOURCE, "FI_KPI_IDS")
+    return _declared_lane_sql_files(CONSTANTS_SOURCE, "TARGET_KPI_IDS") | _declared_lane_sql_files(
+        CONSTANTS_SOURCE, "FI_KPI_IDS"
+    )
 
 
 def _declared_lane_sql_files(source: Path, name: str) -> frozenset[str]:

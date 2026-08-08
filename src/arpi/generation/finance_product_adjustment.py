@@ -340,19 +340,74 @@ def build_finance_product_adjustment_records(
     )
 
 
-def _events_for(
-    contract: FinanceProductSaleRecord, rng: random.Random, window_end: date
-) -> list[dict[str, Any]]:
-    """Draw the event sequence for one contract.
+@dataclass(frozen=True, slots=True)
+class _ContractVariates:
+    """Every random value one contract consumes, drawn before any branch is taken.
 
-    THE RANDOM STREAM IS FIXED per contract regardless of which branch is taken: the
-    primary-event variate, its lag, its fraction, the reinstatement variate and its two
-    parameters, and the approved-adjustment variate and its three parameters are all
+    The class exists so the draw order is stated in one place and cannot drift. Its
+    fields are deliberately in draw order.
+    """
+
+    primary_draw: float
+    cancel_lag: int
+    chargeback_lag: int
+    cancel_fraction: Decimal
+    chargeback_fraction: Decimal
+    cancel_reason: str
+    chargeback_reason: str
+    reinstatement_draw: float
+    reinstatement_lag: int
+    reinstatement_fraction: Decimal
+    reinstatement_reason: str
+    approved_draw: float
+    approved_lag: int
+    approved_fraction: Decimal
+    approved_restores: bool
+    approved_reason: str
+
+
+def _draw_contract_variates(rng: random.Random) -> _ContractVariates:
+    """Consume the contract's whole variate budget, in a fixed order, unconditionally.
+
+    THE RANDOM STREAM IS FIXED per contract regardless of which branch is taken later:
+    the primary-event variate, its lag, its fraction, the reinstatement variate and its
+    two parameters, and the approved-adjustment variate and its three parameters are all
     drawn every time. Consuming a variable number of variates would make one contract's
     outcome depend on the previous contract's branch, and a change to any probability
     would then reshuffle the whole population.
     """
-    original = contract.original_product_gross
+    return _ContractVariates(
+        primary_draw=rng.random(),
+        cancel_lag=int(rng.triangular(*CANCELLATION_LAG_DAYS)),
+        chargeback_lag=int(rng.triangular(*CHARGEBACK_LAG_DAYS)),
+        cancel_fraction=Decimal(str(round(rng.triangular(*CANCELLATION_FRACTION), 6))),
+        chargeback_fraction=Decimal(str(round(rng.triangular(*CHARGEBACK_FRACTION), 6))),
+        cancel_reason=_reason(rng, ADJUSTMENT_TYPE_CANCELLATION),
+        chargeback_reason=_reason(rng, ADJUSTMENT_TYPE_CHARGEBACK),
+        reinstatement_draw=rng.random(),
+        reinstatement_lag=int(rng.triangular(*REINSTATEMENT_LAG_DAYS)),
+        reinstatement_fraction=Decimal(str(round(rng.triangular(*REINSTATEMENT_FRACTION), 6))),
+        reinstatement_reason=_reason(rng, ADJUSTMENT_TYPE_REINSTATEMENT),
+        approved_draw=rng.random(),
+        approved_lag=int(rng.triangular(*APPROVED_LAG_DAYS)),
+        approved_fraction=Decimal(str(round(rng.triangular(*APPROVED_FRACTION), 6))),
+        approved_restores=rng.random() < APPROVED_RESTORES_SHARE,
+        approved_reason=_reason(rng, ADJUSTMENT_TYPE_APPROVED),
+    )
+
+
+def _primary_event(
+    contract: FinanceProductSaleRecord,
+    drawn: _ContractVariates,
+    window_end: date,
+) -> dict[str, Any] | None:
+    """The contract's first reduction, if one happens and it lands inside the window.
+
+    Cancellation and Chargeback share one variate and are therefore mutually exclusive:
+    a contract is cancelled or charged back, never both on the same draw. The
+    probabilities are zero wherever the product's sensitivity flag is false, which is
+    what stops the two catalogue columns being decoration.
+    """
     cancel_probability = (
         CANCELLATION_BASE.get(contract.product_category, 0.0)
         if contract.cancellation_sensitive
@@ -363,92 +418,127 @@ def _events_for(
         if contract.chargeback_sensitive
         else 0.0
     )
+    if drawn.primary_draw < cancel_probability:
+        event_type = ADJUSTMENT_TYPE_CANCELLATION
+        lag, fraction, reason = drawn.cancel_lag, drawn.cancel_fraction, drawn.cancel_reason
+    elif drawn.primary_draw < cancel_probability + chargeback_probability:
+        event_type = ADJUSTMENT_TYPE_CHARGEBACK
+        lag = drawn.chargeback_lag
+        fraction = drawn.chargeback_fraction
+        reason = drawn.chargeback_reason
+    else:
+        return None
 
-    primary_draw = rng.random()
-    cancel_lag = int(rng.triangular(*CANCELLATION_LAG_DAYS))
-    chargeback_lag = int(rng.triangular(*CHARGEBACK_LAG_DAYS))
-    cancel_fraction = Decimal(str(round(rng.triangular(*CANCELLATION_FRACTION), 6)))
-    chargeback_fraction = Decimal(str(round(rng.triangular(*CHARGEBACK_FRACTION), 6)))
-    cancel_reason = _reason(rng, ADJUSTMENT_TYPE_CANCELLATION)
-    chargeback_reason = _reason(rng, ADJUSTMENT_TYPE_CHARGEBACK)
+    posted = contract.sale_date + timedelta(days=lag)
+    if posted > window_end:
+        # THE WINDOW TRUNCATION, and it is a modelled property rather than a defect: an
+        # event with no dim_date row to resolve is not emitted, so recent cohorts carry
+        # structurally fewer adjustments. LIMITATIONS.md section 15.10 records it.
+        return None
+    amount = _capped_reduction(
+        contract.original_product_gross, _ZERO, _money(contract.original_product_gross * fraction)
+    )
+    if amount <= _ZERO:
+        return None
+    return _event(contract, posted, event_type, amount, reason)
 
-    reinstatement_draw = rng.random()
-    reinstatement_lag = int(rng.triangular(*REINSTATEMENT_LAG_DAYS))
-    reinstatement_fraction = Decimal(str(round(rng.triangular(*REINSTATEMENT_FRACTION), 6)))
-    reinstatement_reason = _reason(rng, ADJUSTMENT_TYPE_REINSTATEMENT)
 
-    approved_draw = rng.random()
-    approved_lag = int(rng.triangular(*APPROVED_LAG_DAYS))
-    approved_fraction = Decimal(str(round(rng.triangular(*APPROVED_FRACTION), 6)))
-    approved_restores = rng.random() < APPROVED_RESTORES_SHARE
-    approved_reason = _reason(rng, ADJUSTMENT_TYPE_APPROVED)
+def _reinstatement_event(
+    contract: FinanceProductSaleRecord,
+    drawn: _ContractVariates,
+    window_end: date,
+    *,
+    prior: dict[str, Any],
+    cumulative: Decimal,
+) -> dict[str, Any] | None:
+    """A rescinded cancellation, which restores part of what the cancellation took.
 
-    if original <= _ZERO:
+    Only a Cancellation is rescindable, and only up to what it removed: a reinstatement
+    that restored more than was taken would create gross the deal never produced.
+    """
+    if prior["adjustment_type"] != ADJUSTMENT_TYPE_CANCELLATION:
+        return None
+    if drawn.reinstatement_draw >= REINSTATEMENT_SHARE:
+        return None
+    posted = prior["adjustment_date"] + timedelta(days=drawn.reinstatement_lag)
+    if posted > window_end:
+        return None
+    restored = min(_money(cumulative * drawn.reinstatement_fraction), cumulative)
+    if restored <= _ZERO:
+        return None
+    return _event(
+        contract, posted, ADJUSTMENT_TYPE_REINSTATEMENT, -restored, drawn.reinstatement_reason
+    )
+
+
+def _approved_event(
+    contract: FinanceProductSaleRecord,
+    drawn: _ContractVariates,
+    window_end: date,
+    *,
+    cumulative: Decimal,
+) -> dict[str, Any] | None:
+    """An administrative, pricing or remittance correction, drawn independently.
+
+    It may move gross either way. A RESTORING correction is bounded by the reductions
+    that precede it: net retained gross may never exceed the original gross, and an
+    "administrative correction" is not a governed exception to that.
+    """
+    if drawn.approved_draw >= APPROVED_ADJUSTMENT_SHARE:
+        return None
+    posted = contract.sale_date + timedelta(days=drawn.approved_lag)
+    if posted > window_end:
+        return None
+    magnitude = _money(contract.original_product_gross * drawn.approved_fraction)
+    amount = (
+        -min(magnitude, cumulative)
+        if drawn.approved_restores
+        else _capped_reduction(contract.original_product_gross, cumulative, magnitude)
+    )
+    if amount == _ZERO:
+        return None
+    return _event(contract, posted, ADJUSTMENT_TYPE_APPROVED, amount, drawn.approved_reason)
+
+
+def _events_for(
+    contract: FinanceProductSaleRecord, rng: random.Random, window_end: date
+) -> list[dict[str, Any]]:
+    """Draw the event sequence for one contract.
+
+    Every variate is consumed first, unconditionally, by
+    :func:`_draw_contract_variates`; the three helpers above only decide which of the
+    drawn values are *used*, and none of them touches the generator. That is what makes
+    the stream independent of which branch a contract takes.
+
+    The running ``cumulative`` is threaded through deliberately: THE CAP HOLDS AFTER
+    EVERY EVENT, not merely at the end of the sequence.
+    """
+    if contract.original_product_gross <= _ZERO:
         # Nothing to take back. A zero-gross contract is possible in principle and no
         # adjustment against it could satisfy the cap, so none is emitted.
+        _draw_contract_variates(rng)
         return []
 
+    drawn = _draw_contract_variates(rng)
     events: list[dict[str, Any]] = []
     cumulative = _ZERO
 
-    primary_type: str | None = None
-    if primary_draw < cancel_probability:
-        primary_type = ADJUSTMENT_TYPE_CANCELLATION
-        lag, fraction, reason = cancel_lag, cancel_fraction, cancel_reason
-    elif primary_draw < cancel_probability + chargeback_probability:
-        primary_type = ADJUSTMENT_TYPE_CHARGEBACK
-        lag, fraction, reason = chargeback_lag, chargeback_fraction, chargeback_reason
+    primary = _primary_event(contract, drawn, window_end)
+    if primary is not None:
+        cumulative += primary["adjustment_amount"]
+        events.append(primary)
 
-    if primary_type is not None:
-        posted = contract.sale_date + timedelta(days=lag)
-        if posted <= window_end:
-            amount = _capped_reduction(original, cumulative, _money(original * fraction))
-            if amount > _ZERO:
-                cumulative += amount
-                events.append(_event(contract, posted, primary_type, amount, reason))
+        reinstatement = _reinstatement_event(
+            contract, drawn, window_end, prior=primary, cumulative=cumulative
+        )
+        if reinstatement is not None:
+            cumulative += reinstatement["adjustment_amount"]
+            events.append(reinstatement)
 
-    if (
-        events
-        and primary_type == ADJUSTMENT_TYPE_CANCELLATION
-        and reinstatement_draw < REINSTATEMENT_SHARE
-    ):
-        posted = events[-1]["adjustment_date"] + timedelta(days=reinstatement_lag)
-        if posted <= window_end:
-            restored = _money(cumulative * reinstatement_fraction)
-            restored = min(restored, cumulative)
-            if restored > _ZERO:
-                cumulative -= restored
-                events.append(
-                    _event(
-                        contract,
-                        posted,
-                        ADJUSTMENT_TYPE_REINSTATEMENT,
-                        -restored,
-                        reinstatement_reason,
-                    )
-                )
-
-    if approved_draw < APPROVED_ADJUSTMENT_SHARE:
-        posted = contract.sale_date + timedelta(days=approved_lag)
-        if posted <= window_end:
-            magnitude = _money(original * approved_fraction)
-            if approved_restores:
-                # Only ever as far back as zero. Net retained gross may not exceed the
-                # original gross, and there is no governed exception that lets it.
-                amount = -min(magnitude, cumulative)
-            else:
-                amount = _capped_reduction(original, cumulative, magnitude)
-            if amount != _ZERO:
-                cumulative += amount
-                events.append(
-                    _event(
-                        contract,
-                        posted,
-                        ADJUSTMENT_TYPE_APPROVED,
-                        amount,
-                        approved_reason,
-                    )
-                )
+    approved = _approved_event(contract, drawn, window_end, cumulative=cumulative)
+    if approved is not None:
+        cumulative += approved["adjustment_amount"]
+        events.append(approved)
 
     events.sort(key=lambda event: (event["adjustment_date"], event["adjustment_type"]))
     return events
@@ -511,11 +601,7 @@ def net_product_gross_as_of(
         ``as_of`` are excluded, which is the entire point of the basis.
     """
     applied = sum(
-        (
-            event.adjustment_amount
-            for event in adjustments
-            if event.adjustment_date <= as_of
-        ),
+        (event.adjustment_amount for event in adjustments if event.adjustment_date <= as_of),
         start=_ZERO,
     )
     return _money(original_product_gross - applied)
@@ -626,7 +712,9 @@ register_checks(
             severity=CheckSeverity.CRITICAL,
             layer=CheckLayer.PYTHON,
             entity=ENTITY_FINANCE_PRODUCT_ADJUSTMENT,
-            description="The raw loader maps positionally; a reordered column loads silently wrong.",
+            description=(
+                "The raw loader maps positionally; a reordered column loads silently wrong."
+            ),
             applies_to=(_WAREHOUSE_FACT,),
         ),
         CheckDefinition(
@@ -1011,9 +1099,7 @@ def _check_cumulative_cap(frame: pd.DataFrame, contracts: dict[str, Any]) -> Che
     return _fail(base, offending, "contract(s) breach the cumulative adjustment cap")
 
 
-def _check_reinstatement_integrity(
-    frame: pd.DataFrame, contracts: dict[str, Any]
-) -> CheckResult:
+def _check_reinstatement_integrity(frame: pd.DataFrame, contracts: dict[str, Any]) -> CheckResult:
     """``DQ-FPA-008`` -- a reinstatement follows a reduction and never exceeds it."""
     base = _base(
         CHECK_FPA_REINSTATEMENT_INTEGRITY,
@@ -1125,10 +1211,7 @@ def _check_sensitivity_respected(frame: pd.DataFrame, contracts: dict[str, Any])
                 f"{adjustment_id}: cancellation on {contract.finance_product_id}, which the "
                 "catalogue says cannot be cancelled"
             )
-        if (
-            str(adjustment_type) == ADJUSTMENT_TYPE_CHARGEBACK
-            and not contract.chargeback_sensitive
-        ):
+        if str(adjustment_type) == ADJUSTMENT_TYPE_CHARGEBACK and not contract.chargeback_sensitive:
             offending.append(
                 f"{adjustment_id}: chargeback on {contract.finance_product_id}, which the "
                 "catalogue says carries no chargeback exposure"

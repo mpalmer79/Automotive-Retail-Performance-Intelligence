@@ -31,8 +31,8 @@ from arpi.constants import (
 from arpi.exceptions import GenerationError
 from arpi.generation.finance_deal import (
     DealInput,
+    _allocate,
     decompose_deals,
-    _allocate,  # noqa: PLC2701 -- the allocation is the identity's mechanism and is tested directly
 )
 from arpi.generation.finance_product import (
     FICTIONAL_PROVIDERS,
@@ -165,9 +165,7 @@ def test_lender_assignment_depends_only_on_store_structure_and_seed() -> None:
 def test_a_cash_deal_and_a_disposal_carry_no_lender() -> None:
     rng = random.Random(1)
     for structure in ("Cash", "Wholesale", "Dealer Trade"):
-        assert (
-            assign_lender(rng, dealership_id="GSA-001", finance_structure=structure) is None
-        )
+        assert assign_lender(rng, dealership_id="GSA-001", finance_structure=structure) is None
 
 
 def test_a_captive_writes_its_own_franchise_and_almost_never_another() -> None:
@@ -229,15 +227,19 @@ def test_no_monetary_value_is_a_float(finance: dict[str, Any]) -> None:
                 line.original_product_gross,
             ):
                 assert isinstance(value, Decimal)
-                assert -value.as_tuple().exponent <= 2
+                # Quantized to the cent. `exponent` is an int on a finite Decimal; the
+                # 'n'/'N'/'F' literals belong to NaN and infinity, which a monetary value
+                # can never be -- and which the isinstance check above does not exclude.
+                exponent = value.as_tuple().exponent
+                assert isinstance(exponent, int), f"{value!r} is not a finite Decimal"
+                assert -exponent <= 2
 
 
 def test_the_product_price_identity_holds_on_every_line(finance: dict[str, Any]) -> None:
     for deal in finance.values():
         for line in deal.products:
             assert (
-                line.original_product_gross
-                == line.product_retail_price - line.product_dealer_cost
+                line.original_product_gross == line.product_retail_price - line.product_dealer_cost
             )
             assert line.product_retail_price >= 0
             assert line.product_dealer_cost >= 0
@@ -256,9 +258,12 @@ def test_reserve_appears_only_on_a_retail_finance_deal(
 
 
 def test_a_lease_gets_a_lender_but_never_reserve(finance: dict[str, Any]) -> None:
-    """The recorded design decision: ARPI models no money factor, so a lease has no rate
-    mechanic a reserve could be attributed to -- but its funding source exists and is
-    analytically useful, so the lender is carried."""
+    """The recorded design decision, in one test.
+
+    ARPI models no money factor, so a lease has no rate mechanic a reserve could be
+    attributed to -- but its funding source exists and is analytically useful, so the
+    lender is carried and the reserve is not.
+    """
     leases = [deal for deal in finance.values() if deal.finance_structure == "Lease"]
     assert leases, "the fixture contains no lease, so the rule is untested"
     for deal in leases:
@@ -270,9 +275,7 @@ def test_a_disposal_carries_no_reserve_no_lender_and_no_product(
     finance: dict[str, Any],
 ) -> None:
     disposals = [
-        deal
-        for deal in finance.values()
-        if deal.finance_structure in ("Wholesale", "Dealer Trade")
+        deal for deal in finance.values() if deal.finance_structure in ("Wholesale", "Dealer Trade")
     ]
     assert disposals, "the fixture contains no disposal, so the rule is untested"
     for deal in disposals:
@@ -331,9 +334,7 @@ def test_lease_wear_protection_appears_only_on_a_lease(finance: dict[str, Any]) 
     for deal in finance.values():
         if deal.finance_structure == "Lease":
             continue
-        assert all(
-            line.product_category != "Lease Wear Protection" for line in deal.products
-        )
+        assert all(line.product_category != "Lease Wear Protection" for line in deal.products)
 
 
 def test_the_population_contains_every_required_basket_state(
@@ -436,8 +437,11 @@ def test_every_contract_resolves_to_a_finalized_deal(
 
 
 def test_a_transaction_without_a_finance_manager_is_permitted(config: ArpiConfig) -> None:
-    """A store with nobody on the F&I desk still delivers cars. That is a modelled state,
-    not a missing value, and contracts written on such a deal are legitimate."""
+    """A store with nobody on the F&I desk still delivers cars.
+
+    That is a modelled state, not a missing value, and contracts written on such a deal
+    are legitimate rather than defective.
+    """
     records = build_finance_product_sale_records(config)
     assert any(record.finance_manager_id is None for record in records), (
         "no contract was written without a finance manager, so the allowed-transaction "
@@ -543,9 +547,11 @@ def test_every_reason_belongs_to_its_own_type(adjustments: tuple[Any, ...]) -> N
 def test_the_cumulative_cap_holds_after_every_event(
     adjustments: tuple[Any, ...], contracts: dict[str, Any]
 ) -> None:
-    """Checked step by step, not only at the end: a pair of events that breached the cap
-    and came back inside it would otherwise pass, and the net gross between them would
-    have been a figure the model says is impossible."""
+    """The cap is checked after every event, not only at the end of the sequence.
+
+    A pair of events that breached the cap and came back inside it would otherwise pass,
+    and the net gross between them would have been a figure the model says is impossible.
+    """
     by_contract: dict[str, list[Any]] = {}
     for record in adjustments:
         by_contract.setdefault(record.product_sale_id, []).append(record)
@@ -604,7 +610,7 @@ def test_the_as_of_arithmetic_excludes_a_later_event(
         original, same_contract, event.adjustment_date - timedelta(days=1)
     )
     on_day = net_product_gross_as_of(original, same_contract, event.adjustment_date)
-    assert before == original or before > on_day or before == on_day
+    assert before in (original, on_day) or before > on_day
     assert on_day <= before
     assert on_day == original - sum(
         (

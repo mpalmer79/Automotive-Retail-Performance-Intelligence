@@ -325,9 +325,7 @@ def _load_configuration(path: Path) -> EligibilityConfiguration:
 
     rules = tuple(_build_rule(entry, path) for entry in declared_rules)
     rule_by_category = _partition(rules, path)
-    return EligibilityConfiguration(
-        version=version, rules=rules, rule_by_category=rule_by_category
-    )
+    return EligibilityConfiguration(version=version, rules=rules, rule_by_category=rule_by_category)
 
 
 def _build_rule(entry: Any, path: Path) -> EligibilityRule:
@@ -454,9 +452,9 @@ def _partition(rules: tuple[EligibilityRule, ...], path: Path) -> dict[str, Elig
 # ---------------------------------------------------------------------------------------
 # The public predicate
 # ---------------------------------------------------------------------------------------
-def rule_for_category(category: str, config: EligibilityConfiguration | None = None) -> (
-    EligibilityRule
-):
+def rule_for_category(
+    category: str, config: EligibilityConfiguration | None = None
+) -> EligibilityRule:
     """Return the one rule that owns a product category.
 
     Args:

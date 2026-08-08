@@ -88,11 +88,6 @@ from arpi.generation.finance_product_sale import (
     generate_finance_product_sale_dataset,
     validate_finance_product_sale_dataset,
 )
-from arpi.generation.lender import (
-    ENTITY_DIM_LENDER,
-    generate_lender_dataset,
-    validate_lender_dataset,
-)
 from arpi.generation.inventory_snapshot import (
     ENTITY_INVENTORY_SNAPSHOT_EVENT,
     generate_inventory_snapshot_dataset,
@@ -107,6 +102,11 @@ from arpi.generation.lead_source import (
     ENTITY_DIM_LEAD_SOURCE,
     generate_lead_source_dataset,
     validate_lead_source_dataset,
+)
+from arpi.generation.lender import (
+    ENTITY_DIM_LENDER,
+    generate_lender_dataset,
+    validate_lender_dataset,
 )
 from arpi.generation.marketing import (
     ENTITY_DIM_MARKETING_CAMPAIGN,
