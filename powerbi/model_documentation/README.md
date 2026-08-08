@@ -78,6 +78,7 @@ and measure named in these documents is in the committed TMDL.
 | [07-power-query-parameters.md](07-power-query-parameters.md) | The two parameters, the M shape every partition uses, and where the credential boundary actually sits. |
 | [08-desktop-validation.md](08-desktop-validation.md) | What Desktop validation is, why CI cannot perform it, the five states CI distinguishes, the freshness mechanism, and the current status — **PENDING**. |
 | [09-sql-to-dax-reconciliation.md](09-sql-to-dax-reconciliation.md) | The method for comparing SQL baselines against measures evaluated in the model: the filter contexts that must be tested and the identities that must hold. |
+| [10-simulated-semantic-model-validation.md](10-simulated-semantic-model-validation.md) | The **SIMULATED SEMANTIC-MODEL VALIDATION** layer: what a DAX-subset evaluator and an independently written SQL-side reference can check without an engine, the ten families of check, the hand-built fact source, and — at length — what none of it can prove. Not a Power BI validation, not Gate 2 evidence. |
 
 ---
 

@@ -516,6 +516,13 @@ every increment leaves the repository green.
 - External: none. No new paid service, no live AI, no third-party data. A charting library is not
   assumed; visualization needs are met by extending the existing hand-built SVG/DOM primitives unless
   a measured evaluation in `DASH.3` concludes otherwise.
+- **Gate 2 real-engine validation is an external manual dependency and does not block `DASH.9`–`DASH.13`.**
+  [ADR-0014](../architecture-decisions/ADR-0014-gate-2-external-manual-validation-dependency.md) records the
+  reclassification and defines the one case that would block: an increment that cannot be completed without a
+  number only a Microsoft semantic-model engine can produce. No remaining increment is in that case — the
+  console reads versioned `reporting`-schema exports, not the semantic model. The status itself is unchanged
+  and stays **PENDING** on both paths, reported from the evidence files rather than from prose, and the
+  release audit in `DASH.13` still reads it.
 
 ## 20. Risks
 
@@ -536,7 +543,9 @@ The program is releasable when every non-optional increment's acceptance criteri
 validation suite is green (Python, SQL integration, export checks, portfolio unit/e2e including axe,
 capability and naming and secret checks), the measured performance baselines and budgets are
 documented, the live deployment renders the console with correct trust states, and no claim anywhere
-exceeds the evidence — with Gate 2 still honestly reported in whatever state it is actually in.
+exceeds the evidence — with Gate 2 still honestly reported in whatever state it is actually in. Reading that
+state is one of the five situations in which ADR-0014 requires it to be stated; a release audit that omitted
+it would be the omission that record exists to prevent.
 
 ## 22. Status rules
 

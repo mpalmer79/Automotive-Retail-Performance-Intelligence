@@ -49,6 +49,7 @@ flowchart TD
 | [`architecture-decisions/ADR-0002-phase-0-technology-baseline.md`](architecture-decisions/ADR-0002-phase-0-technology-baseline.md) | Records the non-obvious Phase 0 engineering choices and their trade-offs | Technical reviewers, contributors | Accepted |
 | [`architecture-decisions/ADR-0009-portfolio-ui-foundation-before-gate-2.md`](architecture-decisions/ADR-0009-portfolio-ui-foundation-before-gate-2.md) | Separates the portfolio UI foundation, which may be built before Gate 2, from the public analytical case study, which may not; records the five controls that enforce the separation | Anyone reviewing the website, or wondering how it coexists with a closed Gate 2 | Accepted |
 | [`architecture-decisions/ADR-0013-governed-web-operating-console.md`](architecture-decisions/ADR-0013-governed-web-operating-console.md) | Authorizes the governed web operating console under fifteen binding conditions; keeps Power BI canonical, scopes ADR-0009's no-KPI-value control to the documentation routes, and leaves Gate 2 CLOSED | Anyone touching the dashboard program, or wondering how a console coexists with the second-dashboard exclusion | Accepted |
+| [`architecture-decisions/ADR-0014-gate-2-external-manual-validation-dependency.md`](architecture-decisions/ADR-0014-gate-2-external-manual-validation-dependency.md) | Reclassifies Gate 2 real-engine validation as an external manual dependency that does not block `DASH.9`–`DASH.13`, fixes when its status is mentioned and when a single line suffices, and authorizes a simulated semantic-model validation layer that may never be called a real one | Anyone reporting on an increment, or reading a simulated validation result | Accepted |
 | [`architecture-decisions/README.md`](architecture-decisions/README.md) | ADR format, `ADR-NNNN-kebab-title.md` convention, required sections, and the index of current records | Contributors writing a new ADR | Implemented |
 | [`../README.md`](../README.md) | Project entry point: value proposition, status, stack, structure, and how to run it | Everyone, first | Implemented |
 
@@ -284,6 +285,7 @@ python scripts/check_secrets.py
 | [`requirements/DASHBOARD_PROGRAM.md`](requirements/DASHBOARD_PROGRAM.md) | Planning |
 | [`requirements/DASHBOARD_BACKLOG.md`](requirements/DASHBOARD_BACKLOG.md) | Planning |
 | [`architecture-decisions/ADR-0013-governed-web-operating-console.md`](architecture-decisions/ADR-0013-governed-web-operating-console.md) | Governing |
+| [`architecture-decisions/ADR-0014-gate-2-external-manual-validation-dependency.md`](architecture-decisions/ADR-0014-gate-2-external-manual-validation-dependency.md) | Governing |
 | [`dashboard/README.md`](dashboard/README.md) | Planning |
 | [`dashboard/INFORMATION_ARCHITECTURE.md`](dashboard/INFORMATION_ARCHITECTURE.md) | Planning |
 | [`dashboard/DATA_CONTRACT.md`](dashboard/DATA_CONTRACT.md) | **As-built through `DASH.5`** |

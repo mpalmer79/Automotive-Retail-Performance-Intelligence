@@ -259,7 +259,7 @@ disagree with each other, which is the drift this register exists to stop, so ea
 | **Classification** | Temporary delivery gap |
 | **Current status** | Source complete and statically checked. Both real-engine paths pending. |
 | **Impact** | No number the model would report has been demonstrated. Every measure is text that has never returned a value, so the DAX is unproven and the SQL-to-DAX reconciliation has only its SQL half. |
-| **Current mitigation** | `scripts/check_powerbi_model.py` parses the TMDL as text and fails on any departure from `powerbi/model_documentation/` — an undocumented table, relationship, hidden column or measure, a bidirectional filter, a schema other than `reporting`, or a PII-bearing column. It is a real control and it is not execution. |
+| **Current mitigation** | `scripts/check_powerbi_model.py` parses the TMDL as text and fails on any departure from `powerbi/model_documentation/` — an undocumented table, relationship, hidden column or measure, a bidirectional filter, a schema other than `reporting`, or a PII-bearing column. Since [ADR-0014](docs/architecture-decisions/ADR-0014-gate-2-external-manual-validation-dependency.md), `scripts/simulate_semantic_model.py` adds a **SIMULATED SEMANTIC-MODEL VALIDATION** layer: a DAX-subset evaluator and an independently written SQL-side reference, compared measure by measure across eleven filter contexts. Both are real controls and **neither is execution**; see §4.1.1. |
 | **Evidence** | `powerbi/validation/desktop_validation_results.json`, `powerbi/validation/fabric_validation_results.json` — both record a null `validated_at` |
 | **Exit condition** | Either evidence file carries a non-null `validated_at` **and** a `model_source_hash` matching the committed TMDL. A hash that no longer matches is reported as STALE, not as a pass. |
 | **Owner** | `P2.1-14`, [PHASE_2_BACKLOG.md](docs/requirements/PHASE_2_BACKLOG.md); governed by [ADR-0008](docs/architecture-decisions/ADR-0008-real-engine-validation-paths.md) |
@@ -272,6 +272,30 @@ not strict, it is stuck, and a stuck gate produces exactly the pressure governan
 
 **This gap blocks four others**: Lifecycle Phase 5 completion, dashboard development, the SQL-to-DAX
 reconciliation, and through those, Gate 2.
+
+**Since 2026-08-08 this gap is handled as an external manual dependency rather than a blocker.**
+[ADR-0014](docs/architecture-decisions/ADR-0014-gate-2-external-manual-validation-dependency.md) records
+why: nothing that can be typed in this repository advances it, and sequencing unrelated increments behind it
+would be false sequencing. The status above is unchanged, the evidence files are unchanged, and the gate
+script still runs on every branch. What changed is that the status is now stated where it applies rather
+than in every increment, and that a simulated layer exists to catch what a simulation can.
+
+### 4.1.1 The simulated validation layer is a proxy, and cannot become the thing it proxies
+
+| Field | Value |
+|---|---|
+| **Classification** | Temporary delivery gap — the mitigation, not the gap |
+| **Current status** | Built and green. `powerbi/validation/simulated_semantic_model_results.json` records the run. |
+| **Impact** | It is easy to read a large number of passing checks about a semantic model as validation of that semantic model. It is not. The layer evaluates a **subset of DAX** against **eleven rows of hand-built arithmetic**, and agreement there is not agreement on the development database, let alone on an engine. |
+| **What it does not cover** | Refresh, Power Query, credentials, data-type coercion, currency rounding, format strings, performance, memory, row context, iterators, context transition, time intelligence, calculation groups, blank-row and referential-integrity semantics, and every number in the production data. A measure using DAX outside the subset is reported as NOT SIMULATED rather than as a pass. |
+| **A shared author is a shared blind spot** | The two implementations are independent code paths, written by the same hands from the same governed definitions. A defect in the governed definition itself is invisible to both. |
+| **Evidence** | `powerbi/validation/simulated_semantic_model_results.json` — `validation_kind: SIMULATED SEMANTIC-MODEL VALIDATION`, `is_real_engine_result: false`, and three engine-state fields read from the real evidence files |
+| **Exit condition** | None. This layer never exits into validation. §4.1's exit condition is the only one that closes the gap, and when a real engine disagrees with this simulation the engine is right. |
+| **Owner** | [ADR-0014](docs/architecture-decisions/ADR-0014-gate-2-external-manual-validation-dependency.md); labelling enforced by `scripts/check_simulation_labels.py` |
+
+The layer may never be described as **Power BI validated**, **Desktop validated**, **Fabric validated**, or
+**Gate 2 passed**. The full method and its limits are in
+[`powerbi/model_documentation/10-simulated-semantic-model-validation.md`](powerbi/model_documentation/10-simulated-semantic-model-validation.md).
 
 ### 4.2 No dashboard, no report page, no screenshot
 

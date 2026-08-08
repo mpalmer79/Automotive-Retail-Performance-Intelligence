@@ -147,6 +147,56 @@ python scripts/check_desktop_validation_freshness.py
 python scripts/check_desktop_validation_freshness.py --print-hash
 ```
 
+### `simulate_semantic_model.py`, `dax_simulation.py`, `simulated_sql_truth.py`
+
+**SIMULATED SEMANTIC-MODEL VALIDATION.** A development proxy for the real-engine
+validation that is an external manual dependency
+([ADR-0014](../docs/architecture-decisions/ADR-0014-gate-2-external-manual-validation-dependency.md)).
+It is **not** a Power BI, Desktop or Fabric validation, and it is **not** Gate 2
+evidence. No Microsoft engine is launched or contacted; the whole thing is text,
+rows and arithmetic.
+
+Three files, and their separation is the point:
+
+- `dax_simulation.py` parses the committed TMDL and evaluates the subset of DAX
+  the model uses, with real filter context: one-directional propagation,
+  `CALCULATE` overwrite semantics, `USERELATIONSHIP`, `LASTNONBLANKVALUE`,
+  `DIVIDE`'s blank-on-zero rule and DAX's BLANK arithmetic. An expression outside
+  the subset raises rather than returning a number nobody can justify.
+- `simulated_sql_truth.py` computes the same measures **straight from the rows**,
+  from the governed definition in `KPI_CATALOG.md` and nothing from the TMDL.
+- `simulate_semantic_model.py` runs ten families of check, compares the two
+  implementations in eleven filter contexts, checks the identities the measure
+  graph implies against the real governed numbers in
+  `powerbi/validation/sql_baseline.json`, and writes
+  `powerbi/validation/simulated_semantic_model_results.json`.
+
+The artifact is deterministic — no timestamp, no random input — so `--check` is a
+byte comparison and a model change that moves a number fails CI until the result
+is regenerated and reviewed. The method and, at greater length, the limits are in
+[`powerbi/model_documentation/10-simulated-semantic-model-validation.md`](../powerbi/model_documentation/10-simulated-semantic-model-validation.md).
+
+```bash
+python scripts/simulate_semantic_model.py
+python scripts/simulate_semantic_model.py --check
+```
+
+### `check_simulation_labels.py`
+
+The labelling guard for the layer above, and the enforcement clause of ADR-0014.
+
+- **Fails on:** a simulated artifact that drops its `SIMULATED SEMANTIC-MODEL
+  VALIDATION` label or its `is_real_engine_result: false` field; a simulated
+  artifact recording an engine state the real evidence files do not support; and
+  any tracked text line that names a simulated artifact and also claims the model
+  is Power BI, Desktop or Fabric validated, or that Gate 2 has passed.
+- **Allows a denial.** "This is not a Power BI validation" is the sentence the
+  whole layer depends on, and a check that forbade it would be useless.
+
+```bash
+python scripts/check_simulation_labels.py
+```
+
 ### `check_reference_data.py`
 
 Guards the one lane of committed data that is **not** synthetic: the sanitized
