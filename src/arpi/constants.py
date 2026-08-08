@@ -883,6 +883,11 @@ INVENTORY_LISTING_VIEWS: Final[tuple[str, ...]] = (
 #: dataset is exported for them and no console route reads them, because ``DASH.7`` owns
 #: the F&I presentation surface. Leaving them here rather than in
 #: :data:`MVP_REPORTING_VIEWS` keeps the 28-view MVP baseline exactly where it was.
+#: ``DASH.9`` adds ``vw_inventory_units``, the console's unit-grain inventory surface. It
+#: shares its grain with the MVP view ``vw_inventory_snapshots`` and belongs in this lane
+#: rather than in that baseline: the MVP view publishes surrogate keys for the semantic
+#: model, this one publishes business identifiers for the browser, and only the second is a
+#: dashboard-program deliverable.
 DASHBOARD_PROGRAM_VIEWS: Final[tuple[str, ...]] = (
     "vw_sales_gross_trend",
     "vw_gross_change_bridge",
@@ -893,6 +898,7 @@ DASHBOARD_PROGRAM_VIEWS: Final[tuple[str, ...]] = (
     "vw_fi_summary",
     "vw_fi_product_penetration",
     "vw_fi_adjustment_summary",
+    "vw_inventory_units",
 )
 
 #: The inventory accounting and GL control views, added by DASH.8.
