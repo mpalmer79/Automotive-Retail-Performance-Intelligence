@@ -14,7 +14,7 @@ deliberately corrupted fixture that proves it can fail.
 
 ## 1. Python (pytest, `tests/unit` + `tests/data_quality`)
 
-- New generators (**targets — delivered, see §10.3**; F&I dims/facts, adjustments, accounting snapshot,
+- New generators (**targets — delivered, see §10.3**; **F&I dims/facts and adjustments — delivered by `DASH.6`**; accounting snapshot,
   GL balances): column
   contracts via `GeneratedDataset.schema_matches`, namespace-seeded determinism (double-generate,
   frame-equal), edge-case coverage per program §9 (negative front gross, zero back gross, cash,
@@ -211,7 +211,11 @@ Asserted at the narrowest layer that can observe each equality:
    (`vw_vehicle_sales`, `vw_leads`, `vw_appointments`, `vw_marketing_spend`) rather than from the
    aggregates the export read, so agreement is evidence rather than tautology.
 5. Front gross and total gross reconcile on every exported deal (export test + jacket check).
-6. Back gross = reserve + net product gross + 0.00 on every deal (`DASH.6`+).
+6. Back gross = reserve + **original** product gross + `other_fi_income` (exactly `0.00`) on every deal
+   — **delivered by `DASH.6`** as `RECON-FI-001`, exact (tolerance `0`) and **per deal**, not on a group
+   total. It is the **deal-date** basis deliberately: net product gross would make the identity fail
+   every time a cancellation posted, because `back_end_gross` is never rewritten. The as-of side is
+   reconciled separately by `RECON-FI-NET-GROSS`.
 7. Product net gross = original − adjustments on every contract.
 8. Inventory subledger = Σ book value per store/account/date; displayed GL variance = control −
    subledger (`DASH.8`+).

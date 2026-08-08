@@ -1,0 +1,152 @@
+# =====================================================================================
+# ARPI reference data: F&I product eligibility rules  (delivery increment DASH.6)
+# =====================================================================================
+# Purpose
+#   THE SINGLE AUTHORITY for the question "could this finance product have been sold on
+#   this deal under ARPI's synthetic rule?". Every layer consumes this file or the
+#   metadata derived from it; no layer restates the rule:
+#
+#     * `arpi.generation.fi_eligibility` loads it and is the only Python evaluator.
+#     * The product-basket generator asks that evaluator which categories are eligible.
+#     * `DQ-FPS-*` re-asks the same evaluator, so an ineligible row is a critical failure.
+#     * `warehouse.dim_finance_product.eligibility_rule_id` is stamped from it.
+#     * `reporting.vw_fi_product_penetration` publishes the rule id beside every
+#       numerator and denominator, so a penetration figure names its own denominator.
+#     * A future TypeScript or DAX consumer reads the published rule id and label. It
+#       never re-implements the predicate.
+#
+# WHAT ELIGIBILITY IS NOT
+#   Eligibility is NOT sales propensity and NOT a recommendation. It answers whether the
+#   product could be written, never whether a customer should buy it. No customer
+#   attribute of any kind participates: no demographic, no protected characteristic, no
+#   credit data, no income, no age, no geography, no inferred willingness to buy. The
+#   only inputs are the transaction's own structure and the vehicle's condition, both of
+#   which are properties of the deal rather than of the person.
+#
+# WHAT THESE RULES ARE
+#   Synthetic analytical rules for a fictional dealer group. They are NOT an industry
+#   standard, NOT a regulator's definition, NOT any real dealership's product menu, and
+#   NOT a statement about what a store "should" offer. No penetration figure computed
+#   over them may be compared to a published market figure.
+#
+# STRUCTURE
+#   version                 integer, incremented when a predicate changes meaning
+#   finance_structures      the closed structure vocabulary a rule may name
+#   vehicle_conditions      the closed condition vocabulary a rule may name
+#   rules                   one entry per ELIG-* rule
+#
+#   Rule keys
+#     rule_id               required, ELIG-<TOKEN>, permanent on assignment
+#     label                 required, the human-readable denominator description
+#     categories            required, non-empty list of governed product categories
+#     finance_structures    required, non-empty subset of `finance_structures`
+#     vehicle_conditions    required, non-empty subset of `vehicle_conditions`
+#     rationale             required, why the rule narrows the way it does
+#
+# THE PARTITION RULE -- BINDING
+#   Every one of the ten governed product categories resolves to EXACTLY ONE rule. Not
+#   zero (a category with no rule would have no denominator and every penetration figure
+#   over it would be undefined), and not two (a category with two rules would have two
+#   denominators and the same figure could be computed two ways). The planning document
+#   said "one rule per category" while its own table grouped five categories under
+#   ELIG-OTH; this file resolves that ambiguity by making the mapping EXPLICIT -- the
+#   shared rule names its five categories rather than being reached by a fallback hidden
+#   in code. `arpi.generation.fi_eligibility` refuses to load a file that is not a
+#   partition, and `tests/unit/test_fi_eligibility.py` asserts it.
+#
+#   Wholesale and Dealer Trade are absent from every rule's `finance_structures` and
+#   cannot be added: a non-retail disposal has no consumer to write a product for. The
+#   loader rejects a rule naming either, rather than trusting that none does.
+# =====================================================================================
+
+version: 1
+
+# The closed finance-structure vocabulary. Derived once, from sale_type and
+# amount_financed, by `arpi.generation.fi_eligibility.finance_structure_for` on the
+# Python side and by `warehouse.fn_finance_structure` on the SQL side; the two are
+# proved equal over the whole input cross product by the test suite.
+finance_structures:
+  - Cash
+  - Retail Finance
+  - Lease
+
+# The closed vehicle-condition vocabulary, exactly as warehouse.dim_vehicle constrains it.
+vehicle_conditions:
+  - New
+  - Used
+  - Certified
+
+rules:
+  - rule_id: ELIG-VSC
+    label: Finalized retail deals of any structure and any vehicle condition
+    categories:
+      - Vehicle Service Contract
+    finance_structures: [Cash, Retail Finance, Lease]
+    vehicle_conditions: [New, Used, Certified]
+    rationale: >-
+      A service contract covers the vehicle rather than the money, so no structure
+      excludes it and no condition does either. This is the widest denominator in the
+      file and it is deliberately the flagship attachment measure's denominator.
+
+  - rule_id: ELIG-GAP
+    label: Financed retail deals only -- cash and lease excluded
+    categories:
+      - GAP
+    finance_structures: [Retail Finance]
+    vehicle_conditions: [New, Used, Certified]
+    rationale: >-
+      GAP covers the difference between what is owed on a loan and what the vehicle is
+      worth. A cash deal owes nothing, so the product cannot exist on one, and a GAP
+      penetration computed over all retail deals is the misleading number this rule
+      exists to prevent. Lease is excluded because ARPI's fictional group does not
+      write GAP on a lease; the exclusion is a configuration choice, not a market fact.
+
+  - rule_id: ELIG-TW
+    label: Finalized retail deals of any structure and any vehicle condition
+    categories:
+      - Tire & Wheel
+    finance_structures: [Cash, Retail Finance, Lease]
+    vehicle_conditions: [New, Used, Certified]
+    rationale: >-
+      Road-hazard coverage attaches to the vehicle, so it is offered on every retail
+      structure including cash.
+
+  - rule_id: ELIG-PPM
+    label: New and Certified retail deals of any structure -- Used excluded
+    categories:
+      - Prepaid Maintenance
+    finance_structures: [Cash, Retail Finance, Lease]
+    vehicle_conditions: [New, Certified]
+    rationale: >-
+      The fictional group writes its prepaid-maintenance plan against the manufacturer
+      service schedule, which it holds only for New and Certified inventory. This is
+      the one rule that narrows on vehicle condition, and it is why the condition
+      dimension of this file is behavioural rather than decorative: a store with a
+      heavier used mix has a structurally smaller ELIG-PPM denominator, and the
+      penetration view publishes that denominator so the difference is visible.
+
+  - rule_id: ELIG-LWP
+    label: Lease transactions only
+    categories:
+      - Lease Wear Protection
+    finance_structures: [Lease]
+    vehicle_conditions: [New, Used, Certified]
+    rationale: >-
+      Excess wear and tear is a lease-end liability. There is no lease end on a
+      purchase, so the product cannot exist on one.
+
+  - rule_id: ELIG-OTH
+    label: Finalized retail deals of any structure and any vehicle condition
+    categories:
+      - Appearance Protection
+      - Key Replacement
+      - Theft or Security Product
+      - Paintless Dent Protection
+      - Other Aftermarket Product
+    finance_structures: [Cash, Retail Finance, Lease]
+    vehicle_conditions: [New, Used, Certified]
+    rationale: >-
+      Five categories share one predicate because their predicate genuinely is the
+      same: each attaches to the vehicle and none depends on how the deal was funded.
+      They are named here explicitly rather than reached by a fallback, so the mapping
+      from category to rule stays a total function that a reader can check by eye.

@@ -108,6 +108,8 @@ WITH src AS (
         s.trade_acv,
         s.cash_down,
         s.amount_financed,
+        s.finance_reserve_gross,
+        lender.lender_key,
         s.days_in_inventory_at_sale,
         s.source_system
     FROM staging.stg_sale_event AS s
@@ -126,6 +128,12 @@ WITH src AS (
     -- Optional by contract: NULL means 'no retail buyer', never 'buyer unknown'.
     LEFT JOIN warehouse.dim_customer AS cust
       ON cust.customer_id = s.customer_id
+    -- DASH.6. Optional by contract, and for the same class of reason: NULL means NO
+    -- LENDER EXISTS -- a cash deal borrowed nothing -- never 'lender unknown'. LEFT so
+    -- a cash deal is not silently dropped from the fact by an inner join on a value it
+    -- is not supposed to have.
+    LEFT JOIN warehouse.dim_lender AS lender
+      ON lender.lender_id = s.lender_id
     -- Optional by contract, and resolved AS AT THE SALE DATE, not as at today.
     LEFT JOIN warehouse.dim_employee AS sales_person
       ON sales_person.employee_id = s.salesperson_id
@@ -192,6 +200,8 @@ INSERT INTO warehouse.fact_vehicle_sale AS f (
     trade_acv,
     cash_down,
     amount_financed,
+    finance_reserve_gross,
+    lender_key,
     days_in_inventory_at_sale,
     source_system
 )
@@ -224,6 +234,8 @@ SELECT
     k.trade_acv,
     k.cash_down,
     k.amount_financed,
+    k.finance_reserve_gross,
+    k.lender_key,
     k.days_in_inventory_at_sale,
     k.source_system
 FROM merged AS k
@@ -254,6 +266,8 @@ SET sale_date_key             = EXCLUDED.sale_date_key,
     trade_acv                 = EXCLUDED.trade_acv,
     cash_down                 = EXCLUDED.cash_down,
     amount_financed           = EXCLUDED.amount_financed,
+    finance_reserve_gross     = EXCLUDED.finance_reserve_gross,
+    lender_key                = EXCLUDED.lender_key,
     days_in_inventory_at_sale = EXCLUDED.days_in_inventory_at_sale,
     source_system             = EXCLUDED.source_system
 WHERE (
@@ -283,6 +297,8 @@ WHERE (
     f.trade_acv,
     f.cash_down,
     f.amount_financed,
+    f.finance_reserve_gross,
+    f.lender_key,
     f.days_in_inventory_at_sale,
     f.source_system
 ) IS DISTINCT FROM (
@@ -312,6 +328,8 @@ WHERE (
     EXCLUDED.trade_acv,
     EXCLUDED.cash_down,
     EXCLUDED.amount_financed,
+    EXCLUDED.finance_reserve_gross,
+    EXCLUDED.lender_key,
     EXCLUDED.days_in_inventory_at_sale,
     EXCLUDED.source_system
 );

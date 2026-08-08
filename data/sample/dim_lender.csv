@@ -1,0 +1,11 @@
+lender_key,lender_id,lender_name,lender_category,program_tier,active_start_date,active_end_date,is_active,source_system
+1,LND-001,Granite Motors Acceptance,Captive,Prime,2015-01-01,9999-12-31,true,arpi_synthetic_generator
+2,LND-002,Northstar Automotive Credit,Captive,Prime,2015-01-01,9999-12-31,true,arpi_synthetic_generator
+3,LND-003,Merrimack Valley Bank,Bank,Prime,2015-01-01,9999-12-31,true,arpi_synthetic_generator
+4,LND-004,Pinnacle Ridge Bank,Bank,Prime,2015-01-01,9999-12-31,true,arpi_synthetic_generator
+5,LND-005,Harborline Bank,Bank,Near-prime,2015-01-01,9999-12-31,true,arpi_synthetic_generator
+6,LND-006,Granite State Members Credit Union,Credit Union,Prime,2015-01-01,9999-12-31,true,arpi_synthetic_generator
+7,LND-007,Riverbend Community Credit Union,Credit Union,Prime,2015-01-01,9999-12-31,true,arpi_synthetic_generator
+8,LND-008,Kearsarge Federal Credit Union,Credit Union,Near-prime,2015-01-01,9999-12-31,true,arpi_synthetic_generator
+9,LND-009,Sablewood Acceptance Company,Independent Finance Company,Near-prime,2015-01-01,9999-12-31,true,arpi_synthetic_generator
+10,LND-010,Ledgemont Finance Company,Independent Finance Company,Subprime,2015-01-01,9999-12-31,true,arpi_synthetic_generator

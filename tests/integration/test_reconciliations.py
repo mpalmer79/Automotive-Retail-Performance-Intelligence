@@ -192,6 +192,12 @@ DATA_CORRUPTIONS: dict[str, tuple[str, ...]] = {
             WHERE NOT EXISTS (SELECT 1 FROM warehouse.fact_lead AS l WHERE l.sale_key = s.sale_key)
               AND NOT EXISTS (SELECT 1 FROM warehouse.fact_appointment AS a
                               WHERE a.sale_key = s.sale_key)
+              -- DASH.6: and no F&I contract, so this corruption still tests the count rule
+              -- and nothing else. A deal that carried products would fail on the foreign
+              -- key instead, which proves the constraint rather than the reconciliation --
+              -- and the generator produces plenty of deals carrying none.
+              AND NOT EXISTS (SELECT 1 FROM warehouse.fact_finance_product_sale AS ps
+                              WHERE ps.sale_key = s.sale_key)
             ORDER BY s.sale_key LIMIT 1)
         """,
     ),
@@ -469,6 +475,214 @@ DATA_CORRUPTIONS: dict[str, tuple[str, ...]] = {
               (SELECT min(y.sales_target_key) FROM warehouse.fact_sales_target AS y)
         """,
     ),
+    # ----------------------------------------------------------------------------------
+    # The F&I domain (DASH.6)
+    # ----------------------------------------------------------------------------------
+    "RECON-FACT-FINANCE-PRODUCT-SALE-WAREHOUSE": (
+        # ONE CONTRACT REMOVED, chosen from the ones carrying no adjustment so the delete
+        # tests the count rule rather than the foreign key. A contract lost between
+        # staging and the warehouse reduces a deal's EXPLAINED back-end gross without
+        # reducing the stored back-end gross.
+        """
+        DELETE FROM warehouse.fact_finance_product_sale
+        WHERE product_sale_key = (
+            SELECT min(ps.product_sale_key) FROM warehouse.fact_finance_product_sale AS ps
+            WHERE NOT EXISTS (SELECT 1 FROM warehouse.fact_finance_product_adjustment AS a
+                              WHERE a.product_sale_key = ps.product_sale_key))
+        """,
+    ),
+    "RECON-FACT-FINANCE-PRODUCT-ADJUSTMENT-WAREHOUSE": (
+        # ONE EVENT THE STAGING VIEW NEVER PRODUCED, inserted straight into the warehouse.
+        # Planted as an INSERT rather than a DELETE because the fixture's short window
+        # legitimately produces very few adjustments, and a corruption that depends on a
+        # particular row existing is a corruption that silently stops testing anything.
+        """
+        INSERT INTO warehouse.fact_finance_product_adjustment (
+            adjustment_key, adjustment_id, product_sale_key, sale_key, adjustment_date_key,
+            dealership_key, finance_manager_key, finance_product_key, adjustment_type,
+            adjustment_amount, adjustment_reason_category, sequence_ordinal, source_system)
+        SELECT (SELECT coalesce(max(x.adjustment_key), 0) + 1
+                FROM warehouse.fact_finance_product_adjustment AS x),
+               'FPA-CHAINBRK', ps.product_sale_key, ps.sale_key, ps.sale_date_key,
+               ps.dealership_key, ps.finance_manager_key, ps.finance_product_key,
+               'Chargeback', 1.00, 'Early Payoff', 99, ps.source_system
+        FROM warehouse.fact_finance_product_sale AS ps
+        WHERE ps.product_sale_key = (SELECT min(y.product_sale_key)
+                                     FROM warehouse.fact_finance_product_sale AS y)
+        """,
+    ),
+    "RECON-FI-001": (
+        # ONE CENT ON ONE DEAL -- the increment's second named seeded defect. The identity
+        # is exact, so a single cent must fail it. total_gross moves with back_end_gross so
+        # ck_fact_vehicle_sale_total_gross_identity stays satisfied and the corruption
+        # tests RECON-FI-001 rather than that CHECK.
+        """
+        UPDATE warehouse.fact_vehicle_sale
+        SET back_end_gross = back_end_gross + 0.01,
+            total_gross    = total_gross + 0.01
+        WHERE sale_key = (SELECT min(ps.sale_key) FROM warehouse.fact_finance_product_sale AS ps)
+        """,
+    ),
+    "RECON-FI-DEAL-LEVEL": (
+        "UPDATE warehouse.fact_vehicle_sale "
+        "SET back_end_gross = back_end_gross + 0.01, total_gross = total_gross + 0.01 "
+        "WHERE sale_key = (SELECT min(ps.sale_key) "
+        "FROM warehouse.fact_finance_product_sale AS ps)",
+    ),
+    "RECON-FI-TOTAL-GROSS": (
+        # The pre-existing identity, which DASH.6 must not have disturbed. Seeded by
+        # dropping the CHECK first: the rule exists to prove the constraint is STILL on
+        # the table, and that is the only way to plant the defect it guards against.
+        "ALTER TABLE warehouse.fact_vehicle_sale "
+        "DROP CONSTRAINT ck_fact_vehicle_sale_total_gross_identity",
+        "UPDATE warehouse.fact_vehicle_sale SET total_gross = total_gross + 0.01 "
+        "WHERE sale_key = (SELECT min(sale_key) FROM warehouse.fact_vehicle_sale)",
+    ),
+    "RECON-FI-PRODUCT-IDENTITY": (
+        # PRICE MINUS COST, OFF BY ONE CENT -- the increment's first named seeded defect.
+        # The CHECK is dropped first for the same reason as above.
+        "ALTER TABLE warehouse.fact_finance_product_sale "
+        "DROP CONSTRAINT ck_fact_finance_product_sale_gross_identity",
+        "UPDATE warehouse.fact_finance_product_sale "
+        "SET product_retail_price = product_retail_price + 0.01 "
+        "WHERE product_sale_key = (SELECT min(product_sale_key) "
+        "FROM warehouse.fact_finance_product_sale)",
+    ),
+    "RECON-FI-PRODUCT-GRAIN": (
+        # A SECOND CONTRACT FOR THE SAME PRODUCT ON THE SAME DEAL. Impossible while the
+        # grain constraint is on the table, which is exactly what the rule proves.
+        "ALTER TABLE warehouse.fact_finance_product_sale "
+        "DROP CONSTRAINT uq_fact_finance_product_sale_grain",
+        """
+        INSERT INTO warehouse.fact_finance_product_sale (
+            product_sale_key, product_sale_id, sale_key, sale_date_key, dealership_key,
+            finance_manager_key, finance_product_key, lender_key, finance_structure,
+            eligibility_rule_id, line_ordinal, product_sale_count, product_retail_price,
+            product_dealer_cost, original_product_gross, contract_term_months, source_system)
+        SELECT (SELECT max(x.product_sale_key) FROM warehouse.fact_finance_product_sale AS x) + 1,
+               ps.product_sale_id || '-D', ps.sale_key, ps.sale_date_key, ps.dealership_key,
+               ps.finance_manager_key, ps.finance_product_key, ps.lender_key,
+               ps.finance_structure, ps.eligibility_rule_id, ps.line_ordinal + 1,
+               ps.product_sale_count, ps.product_retail_price, ps.product_dealer_cost,
+               ps.original_product_gross, ps.contract_term_months, ps.source_system
+        FROM warehouse.fact_finance_product_sale AS ps
+        WHERE ps.product_sale_key = (SELECT min(y.product_sale_key)
+                                     FROM warehouse.fact_finance_product_sale AS y)
+        """,
+    ),
+    "RECON-FI-ADJUSTMENT-GRAIN": (
+        # TWO EVENTS SHARING ONE adjustment_id. Impossible while the grain constraint is
+        # on the table, which is exactly what the rule proves. Both rows are inserted so
+        # the corruption does not depend on the fixture already containing an event.
+        "ALTER TABLE warehouse.fact_finance_product_adjustment "
+        "DROP CONSTRAINT uq_fact_finance_product_adjustment_adjustment_id",
+        """
+        INSERT INTO warehouse.fact_finance_product_adjustment (
+            adjustment_key, adjustment_id, product_sale_key, sale_key, adjustment_date_key,
+            dealership_key, finance_manager_key, finance_product_key, adjustment_type,
+            adjustment_amount, adjustment_reason_category, sequence_ordinal, source_system)
+        SELECT (SELECT coalesce(max(x.adjustment_key), 0) + 1
+                FROM warehouse.fact_finance_product_adjustment AS x),
+               'FPA-DUPGRAIN', ps.product_sale_key, ps.sale_key, ps.sale_date_key,
+               ps.dealership_key, ps.finance_manager_key, ps.finance_product_key,
+               'Chargeback', 1.00, 'Early Payoff', 97, ps.source_system
+        FROM warehouse.fact_finance_product_sale AS ps
+        WHERE ps.product_sale_key = (SELECT min(y.product_sale_key)
+                                     FROM warehouse.fact_finance_product_sale AS y)
+        """,
+        """
+        INSERT INTO warehouse.fact_finance_product_adjustment (
+            adjustment_key, adjustment_id, product_sale_key, sale_key, adjustment_date_key,
+            dealership_key, finance_manager_key, finance_product_key, adjustment_type,
+            adjustment_amount, adjustment_reason_category, sequence_ordinal, source_system)
+        SELECT (SELECT coalesce(max(x.adjustment_key), 0) + 1
+                FROM warehouse.fact_finance_product_adjustment AS x),
+               'FPA-DUPGRAIN', ps.product_sale_key, ps.sale_key, ps.sale_date_key,
+               ps.dealership_key, ps.finance_manager_key, ps.finance_product_key,
+               'Chargeback', 1.00, 'Early Payoff', 98, ps.source_system
+        FROM warehouse.fact_finance_product_sale AS ps
+        WHERE ps.product_sale_key = (SELECT min(y.product_sale_key)
+                                     FROM warehouse.fact_finance_product_sale AS y)
+        """,
+    ),
+    "RECON-FI-RESERVE-STRUCTURE": (
+        # RESERVE ON A CASH DEAL: the one thing this domain must never do. The CHECK is
+        # dropped first because it makes the row unstorable, which is the intended
+        # protection -- the reconciliation proves the CHECK is still there.
+        "ALTER TABLE warehouse.fact_vehicle_sale "
+        "DROP CONSTRAINT ck_fact_vehicle_sale_reserve_requires_financing",
+        """
+        UPDATE warehouse.fact_vehicle_sale
+        SET finance_reserve_gross = 100.00
+        WHERE sale_key = (
+            SELECT min(s.sale_key) FROM warehouse.fact_vehicle_sale AS s
+            WHERE s.is_retail AND s.amount_financed = 0 AND s.sale_type <> 'Lease')
+        """,
+    ),
+    "RECON-FI-ELIGIBILITY": (
+        # GAP ON A CASH DEAL -- the increment's third named seeded defect. Repointing one
+        # contract at a GAP product on a cash deal puts a numerator outside its own
+        # denominator, which is what would make a penetration figure exceed 100%.
+        """
+        UPDATE warehouse.fact_finance_product_sale
+        SET finance_product_key = (SELECT p.finance_product_key
+                                   FROM warehouse.dim_finance_product AS p
+                                   WHERE p.product_category = 'GAP'
+                                   ORDER BY p.finance_product_key LIMIT 1),
+            eligibility_rule_id = 'ELIG-GAP'
+        WHERE product_sale_key = (
+            SELECT min(ps.product_sale_key)
+            FROM warehouse.fact_finance_product_sale AS ps
+            WHERE ps.finance_structure = 'Cash')
+        """,
+    ),
+    "RECON-FI-ADJUSTMENT-CAP": (
+        # A CHARGEBACK EXCEEDING THE ORIGINAL PRODUCT GROSS -- the increment's fifth named
+        # seeded defect. Inserted rather than mutated, so the case does not depend on the
+        # fixture's short window happening to have produced an adjustment. Taking back
+        # more than was ever produced is a figure the model says is impossible.
+        """
+        INSERT INTO warehouse.fact_finance_product_adjustment (
+            adjustment_key, adjustment_id, product_sale_key, sale_key, adjustment_date_key,
+            dealership_key, finance_manager_key, finance_product_key, adjustment_type,
+            adjustment_amount, adjustment_reason_category, sequence_ordinal, source_system)
+        SELECT (SELECT coalesce(max(x.adjustment_key), 0) + 1
+                FROM warehouse.fact_finance_product_adjustment AS x),
+               'FPA-OVERCAP', ps.product_sale_key, ps.sale_key, ps.sale_date_key,
+               ps.dealership_key, ps.finance_manager_key, ps.finance_product_key,
+               'Chargeback', ps.original_product_gross + 1000.00, 'Early Payoff', 96,
+               ps.source_system
+        FROM warehouse.fact_finance_product_sale AS ps
+        WHERE ps.product_sale_key = (
+            SELECT min(y.product_sale_key) FROM warehouse.fact_finance_product_sale AS y
+            WHERE NOT EXISTS (SELECT 1 FROM warehouse.fact_finance_product_adjustment AS a
+                              WHERE a.product_sale_key = y.product_sale_key))
+        """,
+    ),
+    "RECON-FI-ADJUSTMENT-SEQUENCE": (
+        # AN ADJUSTMENT DATED BEFORE ITS OWN CONTRACT -- the increment's seventh named
+        # seeded defect. Cancelling a contract before it was written is an impossible
+        # sequence, and no CHECK can see it because it spans two tables.
+        """
+        INSERT INTO warehouse.fact_finance_product_adjustment (
+            adjustment_key, adjustment_id, product_sale_key, sale_key, adjustment_date_key,
+            dealership_key, finance_manager_key, finance_product_key, adjustment_type,
+            adjustment_amount, adjustment_reason_category, sequence_ordinal, source_system)
+        SELECT (SELECT coalesce(max(x.adjustment_key), 0) + 1
+                FROM warehouse.fact_finance_product_adjustment AS x),
+               'FPA-PRESALE', ps.product_sale_key, ps.sale_key,
+               (SELECT min(d.date_key) FROM warehouse.dim_date AS d),
+               ps.dealership_key, ps.finance_manager_key, ps.finance_product_key,
+               'Chargeback', 1.00, 'Early Payoff', 95, ps.source_system
+        FROM warehouse.fact_finance_product_sale AS ps
+        -- The LAST contract written, so the calendar's first day is strictly before its
+        -- sale date. Picking the first contract would place the event ON its sale date on
+        -- a fixture whose window opens with a delivery, and 'not before' would hold.
+        WHERE ps.product_sale_key = (
+            SELECT y.product_sale_key FROM warehouse.fact_finance_product_sale AS y
+            ORDER BY y.sale_date_key DESC, y.product_sale_key DESC LIMIT 1)
+        """,
+    ),
     "RECON-TGT-DEPT-SPLIT": (
         # ONE TARGET, CHANGED BY 1.00. The Sales and Finance department gross plans are a
         # partition of the store's total-gross plan, mirroring total = front + back on the
@@ -563,6 +777,67 @@ VIEW_CORRUPTIONS: dict[str, tuple[str, str, str]] = {
         "    actual_mtd_value,\n    actual_mtd_value AS attainment_numerator,",
         "    actual_mtd_value - 1::numeric AS actual_mtd_value,"
         "\n    actual_mtd_value AS attainment_numerator,",
+    ),
+    # ----------------------------------------------------------------------------------
+    # The F&I domain (DASH.6)
+    # ----------------------------------------------------------------------------------
+    # These compare an F&I reporting view against the warehouse it projects, or check a
+    # view for fan-out. Both sides read the same rows, so no data change can separate
+    # them: the regression they guard against is a change to the view's own expression.
+    "RECON-FI-STORE-TOTALS": (
+        # ONE STORE DROPPED FROM THE VIEW. Compared per store rather than in total, so
+        # two offsetting stores cannot hide each other -- and this proves it.
+        "vw_fi_summary",
+        "FROM deal_totals t",
+        "FROM (SELECT * FROM deal_totals WHERE dealership_key <> "
+        "(SELECT min(x.dealership_key) FROM deal_totals x)) t",
+    ),
+    "RECON-FI-PERIOD-TOTALS": (
+        # ONE DAY OF CONTRACT GROSS DROPPED, which moves exactly one month. A month lost
+        # by the reporting frame would otherwise render as a month in which the F&I
+        # office wrote nothing.
+        "vw_fi_summary",
+        "LEFT JOIN contract_totals c ON c.dealership_key = t.dealership_key",
+        "LEFT JOIN (SELECT * FROM contract_totals WHERE sale_date_key <> "
+        "(SELECT min(x.sale_date_key) FROM contract_totals x)) c "
+        "ON c.dealership_key = t.dealership_key",
+    ),
+    "RECON-FI-NET-GROSS": (
+        # ONE CENT ON THE AS-OF SIDE. The rule reconciles net product gross on its OWN
+        # basis, and a cent of drift between the warehouse derivation and the view is
+        # exactly what it exists to catch.
+        "vw_fi_summary",
+        "COALESCE(c.original_product_gross, 0.00) - "
+        "COALESCE(adj.cumulative_adjustment_amount, 0.00) AS net_product_gross_as_of,",
+        "COALESCE(c.original_product_gross, 0.00) - "
+        "COALESCE(adj.cumulative_adjustment_amount, 0.00) - 0.01 AS net_product_gross_as_of,",
+    ),
+    "RECON-REPORT-FI-DETAIL-ROWS": (
+        # A FAN-OUT. Doubling every row would double every product gross figure computed
+        # from the view, and nothing else in the platform would notice.
+        "vw_deal_product_detail",
+        "CROSS JOIN governed_as_of g;",
+        "CROSS JOIN governed_as_of g CROSS JOIN (VALUES (1), (2)) AS dup(n);",
+    ),
+    "RECON-REPORT-FI-SUMMARY-ROWS": (
+        # A fan-out here would double the store's retail units AND its finance reserve,
+        # which is invisible in a PVR because both sides move together.
+        "vw_fi_summary",
+        "CROSS JOIN governed_as_of g;",
+        "CROSS JOIN governed_as_of g CROSS JOIN (VALUES (1), (2)) AS dup(n);",
+    ),
+    "RECON-REPORT-FI-PENETRATION-ROWS": (
+        # A fan-out inflates the eligible denominator, which makes every penetration
+        # figure SMALLER -- the direction that looks like a finding rather than a defect.
+        "vw_fi_product_penetration",
+        "CROSS JOIN governed_as_of g;",
+        "CROSS JOIN governed_as_of g CROSS JOIN (VALUES (1), (2)) AS dup(n);",
+    ),
+    "RECON-REPORT-FI-ADJUSTMENT-ROWS": (
+        "vw_fi_adjustment_summary",
+        "AND cg.adjustment_type::text = t.adjustment_type::text;",
+        "AND cg.adjustment_type::text = t.adjustment_type::text "
+        "CROSS JOIN (VALUES (1), (2)) AS dup(n);",
     ),
     "RECON-TGT-ACTUAL-GROSS": (
         "vw_target_attainment",

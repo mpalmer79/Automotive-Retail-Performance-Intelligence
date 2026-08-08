@@ -77,6 +77,8 @@ trimmed AS (
         nullif(btrim(r.trade_acv), '')                                         AS src_trade_acv,
         nullif(btrim(r.cash_down), '')                                         AS src_cash_down,
         nullif(btrim(r.amount_financed), '')                                   AS src_amount_financed,
+        nullif(btrim(r.finance_reserve_gross), '')                             AS src_finance_reserve_gross,
+        nullif(btrim(r.lender_id), '')                                         AS src_lender_id,
         nullif(btrim(r.days_in_inventory_at_sale), '')                         AS src_days_in_inventory_at_sale,
         nullif(btrim(r.source_system), '')                                     AS src_source_system,
         r.raw_record_id,
@@ -117,6 +119,8 @@ cast_attempt AS (
         staging.fn_try_money(t.src_trade_acv) AS trade_acv,
         staging.fn_try_money(t.src_cash_down) AS cash_down,
         staging.fn_try_money(t.src_amount_financed) AS amount_financed,
+        staging.fn_try_money(t.src_finance_reserve_gross) AS finance_reserve_gross,
+        CASE WHEN length(t.src_lender_id) <= 16 THEN t.src_lender_id::varchar(16) END AS lender_id,
         staging.fn_try_integer(t.src_days_in_inventory_at_sale) AS days_in_inventory_at_sale,
         CASE WHEN length(t.src_source_system) <= 40 THEN t.src_source_system::varchar(40) END AS source_system,
         t.src_sale_id,
@@ -146,6 +150,8 @@ cast_attempt AS (
         t.src_trade_acv,
         t.src_cash_down,
         t.src_amount_financed,
+        t.src_finance_reserve_gross,
+        t.src_lender_id,
         t.src_days_in_inventory_at_sale,
         t.src_source_system,
         t.raw_record_id,
@@ -188,6 +194,8 @@ flagged AS (
             CASE WHEN c.src_trade_acv IS NOT NULL AND c.trade_acv IS NULL THEN 'trade_acv' END,
             CASE WHEN c.src_cash_down IS NOT NULL AND c.cash_down IS NULL THEN 'cash_down' END,
             CASE WHEN c.src_amount_financed IS NOT NULL AND c.amount_financed IS NULL THEN 'amount_financed' END,
+            CASE WHEN c.src_finance_reserve_gross IS NOT NULL AND c.finance_reserve_gross IS NULL THEN 'finance_reserve_gross' END,
+            CASE WHEN c.src_lender_id IS NOT NULL AND c.lender_id IS NULL THEN 'lender_id' END,
             CASE WHEN c.src_days_in_inventory_at_sale IS NOT NULL AND c.days_in_inventory_at_sale IS NULL THEN 'days_in_inventory_at_sale' END,
             CASE WHEN c.src_source_system IS NOT NULL AND c.source_system IS NULL THEN 'source_system' END
         ], NULL) AS cast_failures,
@@ -214,6 +222,7 @@ flagged AS (
             CASE WHEN c.trade_acv IS NULL THEN 'trade_acv' END,
             CASE WHEN c.cash_down IS NULL THEN 'cash_down' END,
             CASE WHEN c.amount_financed IS NULL THEN 'amount_financed' END,
+            CASE WHEN c.finance_reserve_gross IS NULL THEN 'finance_reserve_gross' END,
             CASE WHEN c.days_in_inventory_at_sale IS NULL THEN 'days_in_inventory_at_sale' END,
             CASE WHEN c.source_system IS NULL THEN 'source_system' END
         ], NULL) AS missing_required,
@@ -221,7 +230,12 @@ flagged AS (
         array_remove(ARRAY[
             CASE WHEN c.sale_type IS NOT NULL AND c.sale_type NOT IN ('New Retail', 'Used Retail', 'Certified Retail', 'Lease', 'Wholesale', 'Dealer Trade') THEN 'sale_type' END,
             CASE WHEN c.unit_count IS NOT NULL AND (c.unit_count < 1 OR c.unit_count > 1) THEN 'unit_count' END,
-            CASE WHEN c.days_in_inventory_at_sale IS NOT NULL AND (c.days_in_inventory_at_sale < 0 OR c.days_in_inventory_at_sale > 3650) THEN 'days_in_inventory_at_sale' END
+            CASE WHEN c.days_in_inventory_at_sale IS NOT NULL AND (c.days_in_inventory_at_sale < 0 OR c.days_in_inventory_at_sale > 3650) THEN 'days_in_inventory_at_sale' END,
+            -- DASH.6: reserve is an amount and is never negative. A negative reserve
+            -- would subtract from a deal's back-end gross with no component to
+            -- attribute the subtraction to, and RECON-FI-001 would fail downstream
+            -- with no indication of which layer introduced it.
+            CASE WHEN c.finance_reserve_gross IS NOT NULL AND c.finance_reserve_gross < 0 THEN 'finance_reserve_gross' END
         ], NULL) AS domain_failures
     FROM cast_attempt AS c
 ),
@@ -278,6 +292,8 @@ SELECT
     c.trade_acv,
     c.cash_down,
     c.amount_financed,
+    c.finance_reserve_gross,
+    c.lender_id,
     c.days_in_inventory_at_sale,
     c.source_system,
     -- Untyped natural-key text, kept so a rejected row can still be identified
@@ -335,6 +351,8 @@ SELECT DISTINCT ON (v.sale_id)
     v.trade_acv,
     v.cash_down,
     v.amount_financed,
+    v.finance_reserve_gross,
+    v.lender_id,
     v.days_in_inventory_at_sale,
     v.source_system,
     v.load_batch_id,
@@ -379,6 +397,8 @@ COMMENT ON COLUMN staging.stg_sale_event.trade_allowance IS 'Allowance credited 
 COMMENT ON COLUMN staging.stg_sale_event.trade_acv IS 'Actual cash value the store assigned to the trade-in.';
 COMMENT ON COLUMN staging.stg_sale_event.cash_down IS 'Cash the customer put down.';
 COMMENT ON COLUMN staging.stg_sale_event.amount_financed IS 'Amount financed on the deal.';
+COMMENT ON COLUMN staging.stg_sale_event.finance_reserve_gross IS 'The finance-office income earned on the financing itself, exact to the cent. 0.00 on Cash, Lease and both disposal types by rule, and legitimately 0.00 on a Retail Finance deal that earned none. Never NULL. DASH.6.';
+COMMENT ON COLUMN staging.stg_sale_event.lender_id IS 'The fictional lender behind the deal; NULL means NO LENDER EXISTS, never "lender unknown". DASH.6.';
 COMMENT ON COLUMN staging.stg_sale_event.days_in_inventory_at_sale IS 'Days the vehicle had been in stock when it sold.';
 COMMENT ON COLUMN staging.stg_sale_event.source_system IS 'Originating system; constant arpi_synthetic_generator in Phase 1.';
 COMMENT ON COLUMN staging.stg_sale_event.load_batch_id IS 'Lineage: the load batch this row came from.';

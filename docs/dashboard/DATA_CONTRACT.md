@@ -121,7 +121,16 @@ none defines a new measure:
   verifies nothing.
 
 Later increments extend the allowlist with their views (targets at `DASH.5`; F&I at
-`DASH.6`/`DASH.7`; accounting at `DASH.8`; employees at `DASH.11`; actions at `DASH.12`). Each extension lands as a diff to this table **and** to `arpi.dashboard.contract` in the
+`DASH.6`/`DASH.7`; accounting at `DASH.8`; employees at `DASH.11`; actions at `DASH.12`).
+
+> **`DASH.6` built four F&I reporting views and added none of them to this allowlist.** That is the intended
+> outcome, not an omission: `DASH.7` owns the F&I presentation surface, and a view that exists in `reporting`
+> is not thereby exportable. `tests/integration/test_fi_reporting_views.py` asserts that no F&I view appears
+> in `arpi.dashboard.contract.DATASETS`, so the boundary fails a test rather than relying on nobody adding
+> one. The views are listed in `DASHBOARD_LANE_SQL_FILES` — which is what keeps the **28 MVP reporting view**
+> baseline from moving when a dashboard-program lane adds views beside it.
+
+Each extension lands as a diff to this table **and** to `arpi.dashboard.contract` in the
 same PR as the exporter change; the paired unit test refuses a change to only one of them.
 
 **Never exported:** any `raw`/`staging`/`warehouse`/`audit` object (the exporter cannot see them, and
@@ -252,7 +261,7 @@ change cannot mislabel a chart:
 | calendar date | `calendar` |
 | none | `stores`, `lead-sources`, `campaigns`, `reconciliation-status`, `pipeline-run` |
 
-`balance date` (`DASH.8`) and `adjustment date` (`DASH.6`) join the set with their increments. Period
+`balance date` (`DASH.8`) joins the set with its increment. **`adjustment date` exists in the warehouse since `DASH.6`** — it is the third governed date basis, distinct from deal date and as-of — and it reaches no exported dataset until `DASH.7`. Period
 filters resolve against the `calendar` dataset's selling-day fields, exported once — so the console
 and the warehouse cannot disagree about which days a month contains or which of them a showroom was
 open. The transformer asserts every dated row's date exists in `calendar`.

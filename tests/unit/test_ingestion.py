@@ -171,7 +171,8 @@ def test_the_required_fact_set_is_derived_from_the_ingestion_registry() -> None:
     # (DASH.5). The pipeline runs all six on every execution; the MVP baseline the
     # semantic model was measured against still describes five facts, which is a
     # statement about that model rather than about this registry.
-    assert len(REQUIRED_FACT_SQL) == 6
+    # Five MVP facts, the DASH.5 operating plan, and the two DASH.6 F&I facts.
+    assert len(REQUIRED_FACT_SQL) == 8
     assert list(REQUIRED_FACT_SQL) == sorted(REQUIRED_FACT_SQL), "execution order is by file name"
 
 

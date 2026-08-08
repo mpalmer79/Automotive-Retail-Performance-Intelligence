@@ -498,6 +498,22 @@ Key attributes:
 - Cancellation-sensitive flag
 - Active flag
 
+> **Built by DASH.6.** The binding contract is
+> [DATA_DICTIONARY.md §42](DATA_DICTIONARY.md) and the mapping is
+> [STM-017](docs/source-to-target/STM-017-dim-finance-product.md). Three refinements against the target
+> description above are worth naming here, because they shaped the rest of the domain:
+>
+> - **Product category is a row value from a closed ten-value vocabulary, never a column.** A
+>   category-per-column model makes the eleventh category a schema migration instead of a catalogue row.
+> - **"Eligible deal types" is DERIVED metadata, not an authority.**
+>   `config/reference/fi_product_eligibility.yaml` is the one authority; the dimension's structure and
+>   condition columns are generated from it, so they cannot disagree with it.
+> - **A `chargeback_sensitive` flag was added beside the cancellation one.** A store's income being charged
+>   back and a customer cancelling a contract are different events with different reasons.
+>
+> The **provider is an attribute, not a dimension** (`DASH.6-01`). `warehouse.dim_finance_product_provider`
+> and STM-021 remain Deferred; promoting them later changes no fact, because none carries a provider key.
+
 #### `warehouse.dim_lender`
 
 **Grain:** One row per synthetic lender.
@@ -509,6 +525,15 @@ Key attributes:
 - Lender type
 - Prime, near-prime, or subprime category
 - Active flag
+
+> **Built by DASH.6.** Contract: [DATA_DICTIONARY.md §43](DATA_DICTIONARY.md). Mapping:
+> [STM-018](docs/source-to-target/STM-018-dim-lender.md).
+>
+> The tier classifies the **lender's program, never a customer**. It is not a credit grade and is assigned to
+> no person. Lender assignment reads the selling store, the derived finance structure and seeded randomness
+> only — **no customer attribute participates**. `DQ-LND-007` fails the run on any rate, payment, credit or
+> decisioning column **even when it is empty**, because the defect is claiming to model a mechanic ARPI does
+> not have.
 
 #### `warehouse.dim_sale_type`
 
@@ -805,6 +830,30 @@ Rules:
 
 - Ineligible product sales are validation failures.
 - Net product gross equals product gross minus cancellation and chargeback amounts.
+
+> **Built by DASH.6, and the column model changed on the way.** Contract:
+> [DATA_DICTIONARY.md §44](DATA_DICTIONARY.md). Mapping:
+> [STM-019](docs/source-to-target/STM-019-fact-finance-product-sale.md).
+>
+> **Cancellation and chargeback are EVENTS, not columns.** The target description above puts
+> `canceled_amount`, `chargeback_amount`, `net_product_gross` and three flags on the contract row. Building it
+> that way would mean **rewriting the June contract when an August chargeback posts**, which moves production
+> out of the month it happened in and destroys the distinction between what the F&I office *produced* and
+> what the store *retained*. The domain is therefore split: this fact holds the **deal-date** figures and is
+> never rewritten, and **`warehouse.fact_finance_product_adjustment`**
+> ([DATA_DICTIONARY.md §45](DATA_DICTIONARY.md), [STM-020](docs/source-to-target/STM-020-fact-finance-product-adjustment.md))
+> holds cancellations, chargebacks, reinstatements and approved adjustments as events with their own business
+> dates. Net product gross is **computed as of a stated date**, not stored. The rule above still holds — it is
+> now an arithmetic rule over two facts rather than a column on one.
+>
+> **There is no customer key.** An F&I contract is the richest source of personal data in a real dealership;
+> ARPI's carries no customer reference of any kind, and no free-text field.
+>
+> **There is no `eligible` flag.** Eligibility is a property of the deal and the category, not of the contract
+> that was written, and a flag on a *sold* contract could only ever read `true`. The governed
+> `eligibility_rule_id` is stored instead, so a penetration figure can name its own denominator. The rule
+> "ineligible product sales are validation failures" is kept and enforced by `DQ-FPS-011` and
+> `RECON-FI-ELIGIBILITY`.
 
 ### 12.9 `warehouse.fact_service_visit`
 
@@ -1414,6 +1463,19 @@ Questions answered:
 - Which products and managers generate sustainable back-end results?
 - Where do cancellations and chargebacks reduce gross?
 
+> **The SQL and reporting side is delivered by `DASH.6`; the semantic model is not.** Four governed reporting
+> views and twenty-two `KPI-FNI-*` definitions exist and are verified
+> ([KPI_CATALOG.md §40](KPI_CATALOG.md)), so both questions above are answerable from `reporting` today. The
+> Power BI semantic model binds none of them, and the **presentation surface — an F&I console page, an
+> itemized deal jacket, a finance-manager view — belongs to `DASH.7` and does not exist.** DASH.6 exports no
+> browser dataset from any F&I view, which `tests/integration/test_fi_reporting_views.py` asserts.
+>
+> Two limits apply to how the second question may be answered. Cancellations and chargebacks are **events on
+> their own dates**, so an adjustment-period figure over a sale-date denominator is a **period proxy, never a
+> cohort loss rate**. And the reporting window truncates the event distribution, so the most recent sale
+> months carry structurally fewer adjustments than the earliest — a property of the dataset, recorded in
+> [LIMITATIONS.md](LIMITATIONS.md), not a finding about a store.
+
 #### 8. Customer and Service Opportunities
 
 Questions answered:
@@ -1520,6 +1582,16 @@ Required reconciliations:
 - Lead totals by source match source-level staging counts after exclusions.
 - F&I product totals reconcile to transaction-level back-end gross.
 - Excel summary totals match approved SQL reporting views.
+
+> **The F&I reconciliation is implemented.** `RECON-FI-001` was Deferred for as long as its dependency was;
+> DASH.6 promoted it, and it now runs on every database execution. It proves that
+> `finance_reserve_gross + SUM(original_product_gross)` equals `back_end_gross` **per deal, to the cent, with
+> tolerance `0`** — not on a group total, which would pass while individual deals were wrong in offsetting
+> directions. It reconciles the **deal-date** basis only: a later cancellation is *supposed* to make produced
+> and retained gross differ, so `RECON-FI-NET-GROSS` reconciles the as-of side separately on its own basis.
+> Seventeen further `RECON-FI-*` and `RECON-REPORT-FI-*` rules cover the layer chain, the grains, the
+> eligibility subset, the adjustment cap and the reporting views' freedom from fan-out
+> ([KPI_CATALOG.md §36](KPI_CATALOG.md)).
 
 ### 21.4 Data-quality output
 

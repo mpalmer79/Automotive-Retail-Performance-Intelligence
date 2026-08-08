@@ -395,7 +395,7 @@ list the acceptance criteria bind to.
 | **Reporting view** | `reporting.vw_gross_summary`, `reporting.vw_vehicle_sales`, `reporting.vw_employee` |
 | **Intended future report page** | 2. Sales and Gross / 7. F&I Performance |
 | **Decision enabled** | Where to focus finance-office coaching. |
-| **Interpretation caution** | **The denominator includes cash deals**, which cannot generate finance reserve, so a store with an unusual cash mix shows a lower figure for reasons unrelated to finance-office skill. In the MVP, back-end gross is a **single generated number with no product-level detail behind it**: it cannot answer "which product drove this?", and any narrative about product mix is unsupported. |
+| **Interpretation caution** | **The denominator includes cash deals**, which cannot generate finance reserve, so a store with an unusual cash mix shows a lower figure for reasons unrelated to finance-office skill. `reporting.vw_fi_summary` now publishes `cash_deal_count` beside `retail_units`, so that caution is checkable from the data rather than only stated here. **`DASH.6` made back-end gross explainable beneath the aggregate**: `KPI-GRS-002` keeps its definition unchanged, and `RECON-FI-001` proves that every cent of it is `finance_reserve_gross + SUM(original_product_gross)`, with `other_fi_income` exactly `0.00`. A product-mix narrative is therefore now supported — but only on the basis it is computed on: deal-date gross and as-of net gross are different reads and are not comparable without stating both. |
 | **Implementation status** | **Implemented** |
 
 
@@ -405,14 +405,14 @@ list the acceptance criteria bind to.
 |---|---|
 | **Persona** | Finance director |
 | **Business question** | *Which finance products have weak or inconsistent penetration, and what do cancellations cost us?* |
-| **Required dimensions** | `dim_finance_product` (Deferred) |
-| **Required facts** | `fact_finance_product_sale` (Deferred) |
-| **KPI IDs** | None -- the F&I product KPIs are Deferred |
-| **Reporting view** | None. **The MVP cannot answer this question.** |
-| **Intended future report page** | 7. F&I Performance (blocked) |
-| **Decision enabled** | None today. Recorded so the gap is visible rather than absent. |
-| **Interpretation caution** | `warehouse.fact_finance_product_sale` is Deferred, so no product-level detail exists. `KPI-GRS-002` gives the total and nothing beneath it. Any product-mix narrative built on the MVP would be fabricated. |
-| **Implementation status** | **Deferred** |
+| **Required dimensions** | `dim_date`, `dim_dealership`, `dim_employee`, `dim_vehicle`, `dim_finance_product`, `dim_lender` |
+| **Required facts** | `fact_finance_product_sale`, `fact_finance_product_adjustment`, `fact_vehicle_sale` |
+| **KPI IDs** | `KPI-FNI-001`, `KPI-FNI-002`, `KPI-FNI-003`, `KPI-FNI-004`, `KPI-FNI-005`, `KPI-FNI-006`, `KPI-FNI-007`, `KPI-FNI-008`, `KPI-FNI-009`, `KPI-FNI-010`, `KPI-FNI-011`, `KPI-FNI-012`, `KPI-FNI-013`, `KPI-FNI-014`, `KPI-FNI-015`, `KPI-FNI-016`, `KPI-FNI-017`, `KPI-FNI-018`, `KPI-FNI-019`, `KPI-FNI-020`, `KPI-FNI-021`, `KPI-FNI-022` |
+| **Reporting view** | `reporting.vw_fi_product_penetration`, `reporting.vw_fi_adjustment_summary`, `reporting.vw_fi_summary`, `reporting.vw_deal_product_detail` |
+| **Intended future report page** | 7. F&I Performance (`DASH.7` owns the surface; the data exists from `DASH.6`) |
+| **Decision enabled** | Which products to renegotiate, retrain on, or stop offering; where cancellation and chargeback exposure actually sits, by store, manager and category. |
+| **Interpretation caution** | **Penetration is meaningless without its denominator, and the denominator is the thing that is easy to get wrong.** Every penetration figure names its `ELIG-*` rule and publishes both sides as counts: GAP penetration is over **financed** retail deals, because a cash buyer has no loan for GAP to cover, and Prepaid Maintenance is over **New and Certified** deals only. Penetration counts **distinct deals**, never contract rows. **Three date bases, never blended**: deal-date gross, as-of net gross, and adjustment-period impact; `KPI-FNI-014`, `-015` and `-018` are explicitly **mixed-basis period proxies and not cohort loss rates**, because the contracts charged back in a month are mostly not the ones written in it. **Manager comparisons inherit store mix, structure mix and eligibility mix** and are subject to the minimum-sample rule; no manager is ranked or labelled by the model. **Every product, administrator and lender is fictional and every price, penetration and adjustment rate is a configured synthetic distribution** — none is an industry benchmark, and there is no "good" or "bad" penetration rate. The reporting window truncates the adjustment lag distribution, so the most recent months carry structurally fewer cancellations and chargebacks. **The pre-`DASH.6` warning still stands for anything built on the MVP alone**: before `warehouse.fact_finance_product_sale` existed, `KPI-GRS-002` gave the total and nothing beneath it, and any product-mix narrative over that period would have been fabricated. |
+| **Implementation status** | **Implemented** (`DASH.6`) |
 
 
 ### SQ-22 — Marketing manager
@@ -796,19 +796,22 @@ adding data no question requires. No exported column identifies an employee.
 
 ## 5. Unattributed KPIs and orphan views
 
-**None.** All 29 MVP KPI identifiers, all 24 Inventory Listings KPI identifiers and all 10 Targets and
-pace KPI identifiers in [KPI_CATALOG.md](../../KPI_CATALOG.md) are cited by at least one question above,
-and all 39 views in the `reporting` schema support at least one. Both directions are asserted by
-`tests/integration/test_stakeholder_question_traceability.py`, which reads `arpi.constants.KPI_IDS`,
-`arpi.constants.INVENTORY_LISTING_KPI_IDS`, `arpi.constants.TARGET_KPI_IDS` and
-`arpi.constants.REPORTING_VIEWS` and fails if any of them gains a member this document does not cite.
+**None.** All 29 MVP KPI identifiers, all 24 Inventory Listings KPI identifiers, all 10 Targets and
+pace KPI identifiers and all 22 F&I KPI identifiers in [KPI_CATALOG.md](../../KPI_CATALOG.md) are cited
+by at least one question above, and all 43 views in the `reporting` schema support at least one. Both
+directions are asserted by `tests/integration/test_stakeholder_question_traceability.py`, which reads
+`arpi.constants.KPI_IDS`, `arpi.constants.INVENTORY_LISTING_KPI_IDS`,
+`arpi.constants.TARGET_KPI_IDS`, `arpi.constants.FI_KPI_IDS` and `arpi.constants.REPORTING_VIEWS` and
+fails if any of them gains a member this document does not cite.
 
-**The three KPI registers are counted separately and deliberately.** `29/29` is the MVP coverage
-baseline the semantic model was measured against and it is unchanged. The Inventory Listings family
-and the Targets and pace family are governed, documented and computed in SQL, and neither is a
-semantic-model measure: folding either into the MVP figure would restate a historical baseline
-rather than record a new capability. `SQ-31` is the only question the Targets and pace family
-anchors, and it anchors all ten.
+**The four KPI registers are counted separately and deliberately.** `29/29` is the MVP coverage
+baseline the semantic model was measured against and it is unchanged. The Inventory Listings family,
+the Targets and pace family and the F&I family are governed, documented and computed in SQL, and none
+is a semantic-model measure: folding any of them into the MVP figure would restate a historical
+baseline rather than record a new capability. `SQ-31` is the only question the Targets and pace family
+anchors, and it anchors all ten. `SQ-21` is the only question the F&I family anchors, and it anchors
+all twenty-two; `SQ-20` is deepened by the same increment but keeps `KPI-GRS-002` and `KPI-GRS-005`
+unchanged, because `DASH.6` explained back-end gross rather than redefining it.
 
 Eight dimension views and four operational views own no KPI. They are cited here through the questions they
 make answerable — a dimension supplies grain and context, and the data-quality views answer the question
@@ -819,15 +822,29 @@ that has to be settled before any other page is read. The reasoning is recorded 
 
 ## 6. Questions the MVP cannot answer
 
-Three, listed above with full detail: `SQ-21` (F&I product penetration), `SQ-29` (service-to-sales
-opportunities), `SQ-32` (customer retention). Each is blocked by a **Deferred fact**, not by a gap in
-the reporting layer:
+Two, listed above with full detail: `SQ-29` (service-to-sales opportunities) and `SQ-32` (customer
+retention). Each is blocked by a **Deferred fact**, not by a gap in the reporting layer:
 
 | Question | Blocked by | Status in [DATA_DICTIONARY.md](../../DATA_DICTIONARY.md) |
 |---|---|---|
-| `SQ-21` | `warehouse.fact_finance_product_sale` | Deferred |
 | `SQ-29` | `warehouse.fact_service_visit` | Deferred |
 | `SQ-32` | Full purchase history beyond the generated window | Deferred |
+
+**`SQ-21` was the third and is no longer blocked.** `DASH.6` promoted
+`warehouse.dim_finance_product`, `warehouse.dim_lender`, `warehouse.fact_finance_product_sale` and
+`warehouse.fact_finance_product_adjustment` from Deferred through the four Gate 4 conditions
+([ARCHITECTURE.md §28](../../ARCHITECTURE.md)), and the evidence for each is recorded rather than
+asserted. **The question predates the increment** and has been on this register, unanswerable, since
+the MVP. **The grains are declared** in [DATA_DICTIONARY.md](../../DATA_DICTIONARY.md) and enforced
+physically: `uq_fact_finance_product_sale_grain` over `(sale_key, finance_product_key)` and
+`uq_fact_finance_product_adjustment_adjustment_id` over the event's own identifier. **KPI ownership**
+is `KPI-FNI-001`…`KPI-FNI-022` in [KPI_CATALOG.md](../../KPI_CATALOG.md), each naming its governed SQL
+owner among the four F&I reporting views. **The testing requirements** are the `DQ-FPD-*`, `DQ-LND-*`,
+`DQ-FPS-*` and `DQ-FPA-*` families, the `RECON-FI-*` family — headed by `RECON-FI-001`, which proves
+the deal-date back-gross identity to the cent on every deal — with a seeded corruption case per
+critical rule, and an independent warehouse derivation per KPI in
+`tests/integration/test_kpi_verification.py`. The promotion happened in the same change that made the
+KPIs computable, which is what §7 requires.
 
 **`SQ-31` was the fourth and is no longer blocked.** `DASH.5` promoted
 `warehouse.fact_sales_target` from Deferred through the four Gate 4 conditions

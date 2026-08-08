@@ -56,6 +56,18 @@
       "content_digest": "e7d9a0c4b022b3867e69f7bb2a0bf9af7f1af2cc43ed98edd78debfbbb8a1358"
     },
     {
+      "entity": "dim_finance_product",
+      "row_count": 19,
+      "column_count": 15,
+      "content_digest": "fff088a390921f1df356cc0138a393f7206379d112b36a5fc4b4b10c45d07675"
+    },
+    {
+      "entity": "dim_lender",
+      "row_count": 10,
+      "column_count": 9,
+      "content_digest": "05419217671ff66d6d8b4315e51f4a516fbb7b97278c00e797b7726785ee1aaf"
+    },
+    {
       "entity": "acquisition_event",
       "row_count": 400,
       "column_count": 11,
@@ -64,8 +76,8 @@
     {
       "entity": "sale_event",
       "row_count": 400,
-      "column_count": 29,
-      "content_digest": "1097c238fa6d34b6091f5289c9bc2c4f5bd3c18801a9df6555ee170ff0d8a5a9"
+      "column_count": 31,
+      "content_digest": "bf92c403cf78ecbeca1d7e556c7857207f17efa3c688852cbe27f8dc56974732"
     },
     {
       "entity": "inventory_snapshot_event",
@@ -96,6 +108,18 @@
       "row_count": 72,
       "column_count": 11,
       "content_digest": "b2dea9696a1f5f952de7d163306bc0c61deba6ef8d596a65e9296dda4aefaf7a"
+    },
+    {
+      "entity": "finance_product_sale",
+      "row_count": 400,
+      "column_count": 17,
+      "content_digest": "f8940d9d23bc16a9656d6ed9585194efe7f0ee4a9caebe113f10e36d656f363b"
+    },
+    {
+      "entity": "finance_product_adjustment",
+      "row_count": 57,
+      "column_count": 13,
+      "content_digest": "081f28c6c88b6bbf0264f3145deeb563881592b8a737ee5416595760573a1651"
     }
   ],
   "synthetic_data_notice": "SYNTHETIC DATA -- 100% machine generated. Granite Auto Group and every store, employee role and transaction referenced by this project are fictional. No real customer, employee, dealership or vendor data is present, and no record here describes a real person or a real business.",

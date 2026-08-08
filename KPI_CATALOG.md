@@ -1078,13 +1078,32 @@ recorded in `audit.reconciliation_result` ([DATA_DICTIONARY.md §22](DATA_DICTIO
 | `RECON-REPORT-APPOINTMENTS-ROWS` | `vw_appointments` preserves the fact grain and the funnel view accounts for every appointment | `reporting.vw_appointments` | `warehouse.fact_appointment` | 0 (exact) | **Implemented** |
 | `RECON-REPORT-SPEND-ROWS` | `vw_marketing_spend` preserves the fact grain | `reporting.vw_marketing_spend` | `warehouse.fact_marketing_spend` | 0 (exact) | **Implemented** |
 | `RECON-REPORT-DAYS-TO-SALE` | The days-to-sale population is exactly the retail units sold | `reporting.vw_days_to_sale` | `warehouse.fact_vehicle_sale` | 0 (exact) | **Implemented** |
-| `RECON-FI-001` | F&I product totals reconcile to transaction-level back-end gross | `warehouse.fact_finance_product_sale` net product gross | `warehouse.fact_vehicle_sale.back_end_gross` | 0.01 absolute | **Deferred** — see the note below |
+| `RECON-FI-001` | **Every cent of a deal's back-end gross is explained**: `finance_reserve_gross + SUM(original_product_gross)` equals `back_end_gross`, **per deal** | `warehouse.fact_vehicle_sale.back_end_gross` | `warehouse.fact_vehicle_sale.finance_reserve_gross` + `warehouse.fact_finance_product_sale.original_product_gross` | 0 (exact) | **Implemented** — promoted by DASH.6; see the note below |
+| `RECON-FI-DEAL-LEVEL` | The same identity as a group total | `warehouse.fact_vehicle_sale` | `warehouse.fact_finance_product_sale` | 0.01 absolute | **Implemented** |
+| `RECON-FI-TOTAL-GROSS` | The pre-existing `total = front + back` identity still holds after the decomposition | `warehouse.fact_vehicle_sale` | `warehouse.fact_vehicle_sale` | 0.01 absolute | **Implemented** |
+| `RECON-FI-PRODUCT-IDENTITY` | `original_product_gross = product_retail_price − product_dealer_cost` on every contract | `warehouse.fact_finance_product_sale` (conforming rows) | `warehouse.fact_finance_product_sale` (all rows) | 0 (exact) | **Implemented** |
+| `RECON-FI-PRODUCT-GRAIN` | No deal carries the same product definition twice | `warehouse.fact_finance_product_sale` row count | distinct `(sale_key, finance_product_key)` | 0 (exact) | **Implemented** |
+| `RECON-FI-STORE-TOTALS` | Store totals agree between the sale fact and the contract fact | `warehouse.fact_vehicle_sale` | `warehouse.fact_finance_product_sale` | 0.01 absolute | **Implemented** |
+| `RECON-FI-PERIOD-TOTALS` | Period totals agree between the same two | `warehouse.fact_vehicle_sale` | `warehouse.fact_finance_product_sale` | 0.01 absolute | **Implemented** |
+| `RECON-FI-RESERVE-STRUCTURE` | No Cash deal carries finance reserve or a lender | `warehouse.fact_vehicle_sale` (violations) | zero violations required | 0 (exact) | **Implemented** |
+| `RECON-FI-ELIGIBILITY` | Every contract's category is eligible under the rule the catalogue stamps | `warehouse.fact_finance_product_sale` | `warehouse.fn_product_category_is_eligible` | 0 (exact) | **Implemented** |
+| `RECON-FI-ADJUSTMENT-GRAIN` | Row count equals distinct `adjustment_id` — the grain is the **event** | `warehouse.fact_finance_product_adjustment` row count | distinct `adjustment_id` | 0 (exact) | **Implemented** |
+| `RECON-FI-ADJUSTMENT-CAP` | Cumulative net reduction stays inside `[0, original_product_gross]` on every contract | `warehouse.fact_finance_product_adjustment` | `warehouse.fact_finance_product_sale` | 0 (exact) | **Implemented** |
+| `RECON-FI-ADJUSTMENT-SEQUENCE` | No event predates its own contract, and no contract carries a reinstatement with nothing to reinstate | `warehouse.fact_finance_product_adjustment` (violations) | zero violations required | 0 (exact) | **Implemented** |
+| `RECON-FI-NET-GROSS` | As-of net product gross agrees between an independent warehouse derivation and the reporting view — reconciled on its **own** basis, never against deal-date back gross | `warehouse` net as of the governed date | `reporting.vw_fi_summary.net_product_gross_as_of` | 0.01 absolute | **Implemented** |
+| `RECON-FACT-FINANCE-PRODUCT-SALE-WAREHOUSE` | Every `product_sale_id` staging accepted reached the fact | `staging.stg_finance_product_sale` | `warehouse.fact_finance_product_sale` | 0 (exact) | **Implemented** |
+| `RECON-FACT-FINANCE-PRODUCT-ADJUSTMENT-WAREHOUSE` | Every `adjustment_id` staging accepted reached the fact | `staging.stg_finance_product_adjustment` | `warehouse.fact_finance_product_adjustment` | 0 (exact) | **Implemented** |
+| `RECON-REPORT-FI-DETAIL-ROWS` | `vw_deal_product_detail` preserves the contract fact's grain | `reporting.vw_deal_product_detail` | `warehouse.fact_finance_product_sale` | 0 (exact) | **Implemented** |
+| `RECON-REPORT-FI-SUMMARY-ROWS` | `vw_fi_summary` totals equal the warehouse's, unmultiplied | `reporting.vw_fi_summary` | `warehouse` | 0.01 absolute | **Implemented** |
+| `RECON-REPORT-FI-PENETRATION-ROWS` | `vw_fi_product_penetration` neither invents nor loses a category row | `reporting.vw_fi_product_penetration` | `warehouse` | 0 (exact) | **Implemented** |
+| `RECON-REPORT-FI-ADJUSTMENT-ROWS` | `vw_fi_adjustment_summary` neither invents nor loses a row | `reporting.vw_fi_adjustment_summary` | `warehouse` | 0 (exact) | **Implemented** |
 | `RECON-EXCEL-001` | Excel summary totals match approved SQL reporting views | `excel/ARPI_Operating_Report.xlsx` (not yet created) | `reporting.*` views | 0.01 absolute | Planned (post-MVP) |
 
-**Fifty-eight reconciliation results are recorded on every `development` database run**: thirty from the
-Python loader (the raw-to-staging chain for every entity, plus staging-to-warehouse and generated-row-count
-for every dimension) and twenty-eight from `audit.vw_recon_all`, which the loader evaluates and persists
-through `audit.fn_record_all_reconciliations`. Results land in `audit.reconciliation_result` and are
+**Ninety-six reconciliation results are recorded on every `development` database run**: the Python loader
+contributes the raw-to-staging chain for every entity plus staging-to-warehouse and generated-row-count for
+every dimension, and `audit.vw_recon_all` contributes the rest, which the loader evaluates and persists
+through `audit.fn_record_all_reconciliations`. DASH.6 added eighteen `RECON-FI-*` / `RECON-REPORT-FI-*` /
+`RECON-FACT-FINANCE-*` rules and the loader-side chain entries for the four new F&I entities. Results land in `audit.reconciliation_result` and are
 readable without any privilege on `audit` through `reporting.vw_reconciliation_status`.
 
 > **Only two tolerance values exist anywhere in ARPI.** `0` means exact and covers every count and identity
@@ -1108,10 +1127,24 @@ readable without any privilege on `audit` through `reporting.vw_reconciliation_s
 > converting by a path the funnel does not model, which is a finding to explain rather than a defect.
 > `reporting.vw_reconciliation_status.is_critical` marks it, and it is the only rule so marked.
 
-> **Note on `RECON-FI-001`.** [ARCHITECTURE.md §21.3](ARCHITECTURE.md) lists this as a required
-> reconciliation, but its dependency `warehouse.fact_finance_product_sale` is **Deferred**
-> ([DATA_DICTIONARY.md §27.8](DATA_DICTIONARY.md)). A reconciliation cannot be Planned when the table it
-> reconciles is not, so it is recorded as Deferred and will be promoted at the same time as the F&I domain.
+> **Note on `RECON-FI-001`, promoted by DASH.6.** [ARCHITECTURE.md §21.3](ARCHITECTURE.md) lists this as a
+> required reconciliation. It was Deferred for as long as its dependency
+> `warehouse.fact_finance_product_sale` was, and it is now **Implemented** and evaluated on every database
+> run ([DATA_DICTIONARY.md §44.1](DATA_DICTIONARY.md)).
+>
+> Three things about it are deliberate. **It is exact, not tolerant** — tolerance `0`, per deal, not on a
+> group total. A rule that reconciled only the grand total would pass while individual deals were wrong in
+> offsetting directions. **It reconciles the deal-date basis only.** A later cancellation is *supposed* to
+> make produced and retained gross differ, so blending the as-of side into this rule would turn an ordinary
+> chargeback into a permanent failing check; `RECON-FI-NET-GROSS` reconciles the as-of side separately, on
+> its own basis. **It proves an explanation, not a definition change** — `back_end_gross` and `KPI-GRS-002`
+> mean exactly what they meant before DASH.6, and `other_fi_income` is exactly `0.00` with no balancing
+> plug.
+>
+> **The whole F&I family is exercised by seeded corruptions** in `tests/integration/test_reconciliations.py`
+> — including a product-gross reduction that leaves the stored back-end gross untouched, an ineligible
+> contract, an over-cap adjustment, a reinstatement with nothing to reinstate, and a substituted view
+> expression — so each rule has been observed reporting `failed`.
 
 ---
 
@@ -1848,3 +1881,433 @@ one would publish a judgement rather than a figure. The one comparison the conso
 
 There is also **no target-editing surface**: no edit, save, approve, assign, lock or submit. `DASH.5` is
 read-only analytics over governed generated plan data, and the console is not a planning-entry application.
+
+---
+
+## 40. F&I domain — what is beneath back-end gross
+
+This domain is governed by [ADR-0013](docs/architecture-decisions/ADR-0013-governed-web-operating-console.md),
+delivered by increment `DASH.6`, and is **separate from the 29 MVP KPIs above** in exactly the way §38's
+listing domain and §39's target domain are. Everything here is computed over
+`warehouse.fact_finance_product_sale`, `warehouse.fact_finance_product_adjustment` and
+`warehouse.fact_vehicle_sale` (extended with `finance_reserve_gross` and `lender_key`). The identifiers
+were reserved from first mention in
+[`docs/dashboard/KPI_EXTENSION_PLAN.md §4`](docs/dashboard/KPI_EXTENSION_PLAN.md) and are permanent.
+
+**`KPI-GRS-002` (back-end gross) and `KPI-GRS-005` (back gross per retail unit) are NOT reissued here.**
+Their definitions are unchanged. What `DASH.6` added is a *reconciliation identity beneath* them, proved
+per deal and to the cent by `RECON-FI-001`:
+
+```
+back_end_gross = finance_reserve_gross
+               + SUM(original_product_gross) on that finalized deal
+               + other_fi_income                (exactly 0.00; not a column anywhere)
+```
+
+Reissuing an unchanged definition under a new identifier is forbidden by §37.2, and explaining a measure
+is not redefining it.
+
+### 40.1 The standing constraints, before any definition
+
+> **Every product, every administrator and every lender in ARPI is invented.** No real F&I product,
+> program, administrator, underwriter, vendor, bank, captive finance arm, credit union or finance company
+> is named anywhere, and none may be added. Every price, cost, penetration, cancellation and chargeback
+> figure is a **configured synthetic distribution**. None is an industry benchmark, a market observation
+> or a real dealership's result.
+
+> **There is no "good" penetration rate and no "bad" one.** This domain publishes no favourable direction,
+> no benchmark, no grade and no target. It describes synthetic outcomes; it does not recommend what a store
+> should sell, what it should charge, how to increase acceptance, which customer should be offered what, or
+> what any penetration "should" be.
+
+> **ARPI is not a lending model and this domain does not make it one.** There is no APR, buy rate, sell
+> rate, rate spread, money factor, payment, loan term, approval status, decline, stipulation,
+> adverse-action reason, credit score, credit file, income or debt-to-income figure — not as a column, not
+> as a generation parameter, and not as a derived value. `finance_reserve_gross` is an **amount only** and
+> must never be presented as rate guidance. `dim_lender.program_tier` classifies the **fictional lender's
+> program** and is never a customer's credit tier: no ARPI entity carries a customer credit attribute, so
+> there is nothing for one to be derived from.
+
+> **Eligibility is not sales propensity.** An `ELIG-*` rule answers *could this product have been written
+> on this deal?* and never *should this customer buy it?*. Its only inputs are the transaction's derived
+> finance structure and the vehicle's condition. **No customer attribute of any kind participates** in
+> eligibility, in pricing, in lender assignment, in reserve or in attachment probability — no demographic,
+> no protected characteristic, no credit datum, no income, no age and no geography.
+
+> **`contract_term_months` is the term of the PRODUCT CONTRACT.** It is how long the coverage lasts. It is
+> not a finance loan term; ARPI models none. The two must never be conflated.
+
+### 40.2 The three date bases, which every KPI here names
+
+| Basis | What it means | Which KPIs |
+|---|---|---|
+| **Deal date** | What the F&I office **produced**, attributed to the day the deal was struck. Never rewritten by a later event. | `KPI-FNI-001`, `-002`, `-003`, `-005`, `-006`, `-007`…`-011`, `-019`, `-020` |
+| **As-of** | What the store **retained** as at a stated as-of date: original gross minus cumulative adjustments with `adjustment_date <= as_of_date`. | `KPI-FNI-004`, `-022` |
+| **Adjustment period** | Adjustment events grouped by **their own** business date. An August chargeback on a June contract belongs to August. | `KPI-FNI-012`, `-013`, `-016`, `-017` |
+| **Mixed, and disclosed** | An adjustment-period numerator over a sale-date denominator. A **period proxy**, never a cohort loss rate. | `KPI-FNI-014`, `-015`, `-018` |
+
+**The as-of date is the dataset's own** — the last day any measured thing happened, the same definition
+`reporting.vw_target_attainment` and the dashboard export manifest carry. **No wall-clock read exists
+anywhere in the chain.**
+
+### 40.3 The eligibility rules, and why the denominator is the whole argument
+
+`config/reference/fi_product_eligibility.yaml` is the **single authority**. Python evaluates it through
+`arpi.generation.fi_eligibility`, SQL through `warehouse.fn_product_category_is_eligible` (which *reads*
+the configuration as stamped onto `warehouse.dim_finance_product` rather than restating it), and
+`tests/integration/test_fi_eligibility_parity.py` proves the two agree over the whole input cross product.
+**Every one of the ten governed categories resolves to exactly one rule — not zero, and not two.**
+
+| Rule | Categories | Eligible denominator |
+|---|---|---|
+| `ELIG-VSC` | Vehicle Service Contract | Finalized retail deals, any structure, any vehicle condition |
+| `ELIG-GAP` | GAP | **Financed retail deals only.** Cash and Lease excluded |
+| `ELIG-TW` | Tire & Wheel | Finalized retail deals, any structure, any condition |
+| `ELIG-PPM` | Prepaid Maintenance | **New and Certified only.** Used excluded |
+| `ELIG-LWP` | Lease Wear Protection | **Lease transactions only** |
+| `ELIG-OTH` | Appearance Protection, Key Replacement, Theft or Security Product, Paintless Dent Protection, Other Aftermarket Product | Finalized retail deals, any structure, any condition |
+
+Wholesale and Dealer Trade are absent from every rule and cannot be added: a disposal has no consumer.
+
+**Two denominator rules are binding and are the reason this section exists.** *(1)* Every penetration KPI
+names its `ELIG-*` rule and publishes both sides as counts. GAP penetration over **all** retail deals is a
+smaller number than GAP penetration over **financed** retail deals, both look plausible, and only the
+second means anything — a cash buyer has no loan for GAP to cover.
+`tests/integration/test_kpi_verification.py` computes both and asserts they differ, so the rule is proved
+rather than asserted. *(2)* Penetration counts **distinct deals**, never contract rows: one deal may carry
+two different products of one category, so a contract-row penetration can exceed 100%.
+
+### 40.4 Shared fields
+
+| Field | Value for every KPI in this domain |
+|---|---|
+| **Status** | **Implemented** (`DASH.6`) — computable from the `reporting` schema, and independently re-derived from `warehouse` by `tests/integration/test_kpi_verification.py`. |
+| **Business owner persona** | Finance director; general sales manager. |
+| **Stakeholder question** | [`SQ-21`](docs/requirements/STAKEHOLDER_QUESTIONS.md) — *Which finance products have weak or inconsistent penetration, and what do cancellations cost us?* All twenty-two anchor to it. `SQ-20` is deepened by the same increment and keeps `KPI-GRS-002` and `KPI-GRS-005`. |
+| **Source facts** | `warehouse.fact_finance_product_sale`, `warehouse.fact_finance_product_adjustment`, `warehouse.fact_vehicle_sale`, `warehouse.dim_finance_product`, `warehouse.dim_lender`. |
+| **Future Power BI measure owner** | **None yet, deliberately.** The plan names an *F&I Measures* group ([`powerbi/model_documentation/03-measure-groups.md`](powerbi/model_documentation/03-measure-groups.md)) as the future owner; that is ownership planning, not implementation. **No TMDL was written for this domain, no relationship to either F&I fact exists, and no DAX has ever computed one of these twenty-two.** |
+| **Reconciliation** | `RECON-FI-*` in `audit.vw_recon_fi`, headed by `RECON-FI-001`, unioned into `audit.vw_recon_all` and recorded on every pipeline run. |
+| **Web presentation** | **None in `DASH.6`.** No browser dataset is exported and no console route reads these views: `DASH.7` owns the F&I surface and the itemized Deal Jacket. |
+| **Project-default thresholds** | Only the shared minimum-sample floor (§40.5). No rating, no grade, no favourable direction. |
+| **Null / zero-denominator behaviour** | Every ratio returns **NULL** on an empty denominator — never zero, never infinity, never a division error. |
+
+### 40.5 The minimum-sample rule
+
+An employee- or manager-level **ratio** is published with its components at every denominator and is
+**marked** as not meeting the floor below `warehouse.fn_minimum_sample_floor()` — a **project default for a
+fictional group**, currently **10 eligible deals**, and never a statistical significance threshold, an
+industry convention or a legal standard. `arpi.constants.MINIMUM_SAMPLE_ELIGIBLE_DEALS` is the Python side
+of the same number and the integration suite asserts the two agree.
+
+**The reporting layer publishes the flag and never blanks the value.** Suppression is a rendering decision,
+and a NULL below the floor would be indistinguishable from a manager who genuinely had no eligible deals.
+Below the floor a consumer renders an explicit *insufficient sample (n = X)* state, excludes the row from
+ranking, and fires no action rule on it.
+
+**No manager is ranked, scored or labelled anywhere in this domain.** Manager differences inherit store
+mix, finance-structure mix, product-eligibility mix and assignment mix, and none of these figures is a
+measure of an individual's skill. The words *best*, *worst*, *top*, *bottom* and *underperformer* appear
+nowhere in the model, and `DASH.7` and `DASH.11` must carry that context onto any surface that shows them.
+
+### 40.6 `KPI-FNI-001` — Finance reserve gross
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-FNI-001` |
+| **Display name** | Finance reserve gross |
+| **Business purpose** | The finance-office income earned on the financing itself, separated from product gross so back-end mix is explainable rather than a single opaque total. |
+| **Definition (plain English)** | What the store earned for arranging the financing, across the selected finalized retail deals. |
+| **Formula** | `SUM(finance_reserve_gross)` over finalized retail deals |
+| **Numerator (precise)** | n/a — additive measure |
+| **Denominator (precise)** | n/a — additive measure |
+| **Grain** | Deal; aggregable to store × sale date × finance manager. |
+| **Date basis** | Sale date. |
+| **Filters** | `is_retail = true`. |
+| **Exclusions** | Wholesale and Dealer Trade produce no F&I income at all. |
+| **Eligibility rules** | None — additive measure. |
+| **Null / zero-denominator behaviour** | No denominator. **`0.00` is a modelled outcome, never a missing value**: a Cash deal and a Lease carry `0.00` by rule, and a Retail Finance deal that earned none also carries `0.00`. The column is `NOT NULL` precisely so those cannot be confused with "not modelled". |
+| **Unit and formatting** | Currency, USD, exact `numeric(12,2)`. |
+| **SQL ownership** | `reporting.vw_fi_summary.finance_reserve_gross`. |
+| **Future DAX ownership** | F&I Measures group (planned; no measure exists — see §40.4). |
+| **Reconciliation rule** | `RECON-FI-001`, `RECON-FI-DEAL-LEVEL` and `RECON-FI-RESERVE-STRUCTURE`. |
+| **Web presentation** | None in `DASH.6`. |
+| **Interpretation caution** | **An amount only.** No APR, buy rate, sell rate, rate spread or money factor is modelled anywhere in ARPI, and this figure must never be presented as rate guidance or as evidence about how a rate was set. |
+| **Implementation status** | **Implemented** (`DASH.6`) |
+| **Depends on (entities)** | `warehouse.fact_vehicle_sale`, `warehouse.dim_dealership`, `warehouse.dim_employee`, `warehouse.dim_date` |
+
+### 40.7 `KPI-FNI-002` — Finance reserve PVR
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-FNI-002` |
+| **Display name** | Finance reserve per retail unit |
+| **Business purpose** | Reserve normalised by delivery volume, so two stores of different size are comparable on the same basis. |
+| **Formula** | `KPI-FNI-001 / KPI-SLS-001` |
+| **Numerator (precise)** | `SUM(finance_reserve_gross)` over finalized retail deals |
+| **Denominator (precise)** | `SUM(unit_count)` over finalized retail deals — **exactly `KPI-SLS-001`**, shared rather than recomputed |
+| **Grain** | Store × period; manager × period subject to §40.5. |
+| **Date basis** | Sale date. |
+| **Filters / Exclusions** | As `KPI-FNI-001`. |
+| **Null / zero-denominator behaviour** | **NULL on zero retail units**, never `$0`. A store with no deliveries did not earn zero reserve per unit; the figure is undefined. |
+| **Unit and formatting** | Currency per unit, USD. |
+| **SQL ownership** | `reporting.vw_fi_summary` — the components `finance_reserve_gross` and `retail_units`, published separately so a group figure is `SUM(numerator) / SUM(denominator)` and never the average of store figures. |
+| **Reconciliation rule** | `RECON-FI-001`; the denominator is reconciled by `RECON-UNITS-001`. |
+| **Interpretation caution** | **The denominator includes cash deals, which cannot generate reserve by rule.** A store with an unusual cash mix shows a lower figure for reasons unrelated to finance-office skill — the `SQ-20` caution, now checkable rather than merely stated: `reporting.vw_fi_summary` publishes `cash_deal_count` beside `retail_units`. |
+| **Implementation status** | **Implemented** (`DASH.6`) |
+
+### 40.8 `KPI-FNI-003` — Original product gross
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-FNI-003` |
+| **Display name** | Original product gross |
+| **Business purpose** | Product gross **as written at the deal**, before any later cancellation or chargeback — the F&I office's production number. |
+| **Formula** | `SUM(original_product_gross)` = `SUM(product_retail_price − product_dealer_cost)` |
+| **Numerator / Denominator** | n/a — additive measure |
+| **Grain** | Product contract; aggregable to deal, store, sale date, manager, category and provider. |
+| **Date basis** | **Sale date of the parent deal.** |
+| **Filters** | All contracts on finalized deals. |
+| **Exclusions** | None. An ineligible contract is a **critical data-quality failure**, never a silent exclusion. |
+| **Eligibility rules** | Every row satisfied its category's `ELIG-*` rule in order to exist. |
+| **Null / zero-denominator behaviour** | No denominator; `0.00` over an empty set in a display context, NULL in a ratio context. |
+| **Unit and formatting** | Currency, USD, exact `numeric(12,2)`. |
+| **SQL ownership** | `reporting.vw_fi_summary.original_product_gross`, itemised by `reporting.vw_deal_product_detail`. |
+| **Reconciliation rule** | `RECON-FI-PRODUCT-IDENTITY`, `RECON-FI-001`, `RECON-FI-STORE-TOTALS`, `RECON-FI-PERIOD-TOTALS`. |
+| **Interpretation caution** | **Deal-date basis only. It overstates RETAINED gross wherever adjustments followed** — that is what `KPI-FNI-004` is for, and the two are not comparable unless both bases are stated. |
+| **Implementation status** | **Implemented** (`DASH.6`) |
+
+### 40.9 `KPI-FNI-004` — Net product gross (as-of)
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-FNI-004` |
+| **Display name** | Net product gross |
+| **Business purpose** | What the store **retained** from product sales as at a stated date, against what it produced. |
+| **Formula** | `KPI-FNI-003 − SUM(adjustment_amount WHERE adjustment_date <= as_of_date)` |
+| **Numerator / Denominator** | n/a — additive within the as-of basis |
+| **Grain** | Product contract; aggregable as `KPI-FNI-003`. |
+| **Date basis** | **As-of.** Adjustments after `as_of_date` are excluded by design. |
+| **Sign convention** | A **positive** `adjustment_amount` reduces retained gross; a **negative** one restores it. Cancellation and Chargeback are constrained positive, Reinstatement negative, Approved Adjustment signed. |
+| **Null / zero behaviour** | `0.00` cumulative adjustment rather than NULL when nothing was taken back: "nothing was taken back" is a statement. |
+| **SQL ownership** | `reporting.vw_fi_summary.net_product_gross_as_of`; per contract in `reporting.vw_deal_product_detail`. |
+| **Reconciliation rule** | `RECON-FI-NET-GROSS`, `RECON-FI-ADJUSTMENT-CAP`. |
+| **Interpretation caution** | **Always displayed with its as-of date, and never compared to `KPI-FNI-003` without stating both bases.** Cumulative net reductions are capped at the original gross, so this figure never goes negative and never exceeds the original. |
+| **Implementation status** | **Implemented** (`DASH.6`) |
+
+### 40.10 `KPI-FNI-005` — Product gross PVR
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-FNI-005` |
+| **Display name** | Product gross per retail unit |
+| **Formula** | `KPI-FNI-003 / KPI-SLS-001` on the deal-date basis, **or** `KPI-FNI-004 / KPI-SLS-001` on the as-of basis |
+| **Numerator (precise)** | `original_product_gross` **or** `net_product_gross_as_of` — **the basis is part of the measure and must be labelled** |
+| **Denominator (precise)** | `SUM(unit_count)` over finalized retail deals — exactly `KPI-SLS-001` |
+| **Null behaviour** | **NULL on zero retail units.** |
+| **SQL ownership** | `reporting.vw_fi_summary` — components only. |
+| **Interpretation caution** | **An unlabelled "Product PVR" is prohibited.** The two numerators differ by every adjustment posted, and a reader cannot tell which was used. Same denominator discipline as `KPI-GRS-005`, including the cash-mix caveat. |
+| **Implementation status** | **Implemented** (`DASH.6`) |
+
+### 40.11 `KPI-FNI-006` — Products per retail unit
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-FNI-006` |
+| **Display name** | Products per retail unit |
+| **Business purpose** | Product-attachment depth per delivery. The Deferred candidate in §35, now holding its permanent identifier. |
+| **Formula** | `SUM(product_sale_count) / SUM(unit_count)` over finalized retail deals |
+| **Numerator (precise)** | `product_sale_count`, which is `1` on every contract row — a **column**, not a `count(*)`, so a join fan-out cannot inflate it |
+| **Denominator (precise)** | **All retail units in scope — not only the deals that carried a product.** |
+| **Grain** | Store × period; manager × period subject to §40.5. |
+| **Date basis** | Sale date. |
+| **Null behaviour** | **NULL on zero retail units.** |
+| **SQL ownership** | `reporting.vw_fi_summary` — `contract_count` over `retail_units`. `deals_with_a_product` is published beside them **so a reader can see how many deliveries carried nothing, and so that nobody divides by it**. |
+| **Reconciliation rule** | `RECON-FI-STORE-TOTALS`; the denominator by `RECON-UNITS-001`. |
+| **Interpretation caution** | **Counts contracts, not gross.** A high count of thin products can mask weak economics; read beside `KPI-FNI-011`. |
+| **Implementation status** | **Implemented** (`DASH.6`) |
+
+### 40.12 `KPI-FNI-007` — Vehicle Service Contract penetration
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-FNI-007` |
+| **Display name** | Vehicle Service Contract penetration |
+| **Business purpose** | The share of eligible deals that carried a VSC — the flagship attachment measure. |
+| **Formula** | `distinct eligible deals containing >= 1 VSC contract / eligible deals (ELIG-VSC)` |
+| **Numerator (precise)** | `count(DISTINCT sale_key)` over contracts whose product category is Vehicle Service Contract. **A deal with two VSC contracts counts once.** |
+| **Denominator (precise)** | `count(DISTINCT sale_key)` over finalized retail deals satisfying `ELIG-VSC` |
+| **Grain** | Store × sale date × manager × category; aggregable by summing both components. |
+| **Date basis** | Sale date. |
+| **Eligibility rules** | `ELIG-VSC`, **named in every rendering, with both sides shown as counts.** |
+| **Null behaviour** | **NULL when the eligible denominator is empty.** |
+| **Unit and formatting** | Percentage, one decimal. **The exact components are retained; only the rendered figure is rounded.** |
+| **SQL ownership** | `reporting.vw_fi_product_penetration` — `penetration_numerator` and `penetration_denominator`. |
+| **Reconciliation rule** | `RECON-FI-ELIGIBILITY`, `RECON-REPORT-FI-PENETRATION-ROWS`. |
+| **Interpretation caution** | **Penetration says nothing about product economics or customer value.** Synthetic penetrations are configured distributions and there is no benchmark to compare them to. A group figure is `SUM(numerator) / SUM(denominator)` and **never** the average of store or manager percentages. |
+| **Implementation status** | **Implemented** (`DASH.6`) |
+
+### 40.13 `KPI-FNI-008` — GAP penetration
+
+As `KPI-FNI-007` with category **GAP** and denominator **`ELIG-GAP`: financed retail deals only.** Cash is
+excluded because a cash buyer owes nothing for GAP to cover, and Lease is excluded by configuration.
+**A GAP penetration computed over all retail deals is the misleading number this rule exists to prevent**,
+and `tests/integration/test_kpi_verification.py` computes both and asserts they differ. Status
+**Implemented** (`DASH.6`).
+
+### 40.14 `KPI-FNI-009` — Tire & Wheel penetration
+
+As `KPI-FNI-007` with category **Tire & Wheel** and denominator `ELIG-TW`. Status **Implemented** (`DASH.6`).
+
+### 40.15 `KPI-FNI-010` — Prepaid Maintenance penetration
+
+As `KPI-FNI-007` with category **Prepaid Maintenance** and denominator **`ELIG-PPM`: New and Certified
+deals only.** A store with a heavier used mix has a structurally smaller denominator, which the published
+`eligible_deal_count` makes visible rather than leaving to be inferred. Status **Implemented** (`DASH.6`).
+
+### 40.16 `KPI-FNI-011` — Product gross per contract
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-FNI-011` |
+| **Display name** | Product gross per contract |
+| **Formula** | `KPI-FNI-003 / SUM(product_sale_count)` |
+| **Numerator (precise)** | `original_product_gross` (deal-date basis) |
+| **Denominator (precise)** | `contract_count` — **contracts, not deals.** |
+| **Null behaviour** | **NULL on zero contracts.** |
+| **SQL ownership** | `reporting.vw_fi_summary` overall; `reporting.vw_fi_product_penetration` for the category slice. Both carry the same definition. |
+| **Interpretation caution** | Read beside `KPI-FNI-006`: depth and value move independently, and a store can raise one while lowering the other. |
+| **Implementation status** | **Implemented** (`DASH.6`) |
+
+### 40.17 `KPI-FNI-012` — Chargeback amount
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-FNI-012` |
+| **Display name** | Chargeback amount |
+| **Formula** | `SUM(adjustment_amount)` where `adjustment_type = 'Chargeback'` |
+| **Grain** | Store × adjustment date × manager × category × type. |
+| **Date basis** | **Adjustment date.** A chargeback belongs to the period it posts in and is **never restated into the original sale month**; the contract's own gross is unchanged. |
+| **Null behaviour** | No denominator; `0.00` over an empty period. |
+| **SQL ownership** | `reporting.vw_fi_adjustment_summary.adjustment_amount`, filtered on the type. |
+| **Reconciliation rule** | `RECON-FACT-FINANCE-PRODUCT-ADJUSTMENT-WAREHOUSE`, `RECON-REPORT-FI-ADJUSTMENT-ROWS`. |
+| **Interpretation caution** | **Timing and volume are a configured synthetic distribution, never an observed loss rate.** The reporting window truncates the lag distribution, so the most recent months carry structurally fewer chargebacks — comparing an early month to a late one reads that truncation, not the business. |
+| **Implementation status** | **Implemented** (`DASH.6`) |
+
+### 40.18 `KPI-FNI-013` — Chargeback count
+
+`COUNT(*)` of chargeback adjustment rows on the **adjustment-date** basis. Every other field as
+`KPI-FNI-012`. Status **Implemented** (`DASH.6`).
+
+### 40.19 `KPI-FNI-014` — Chargeback rate by amount
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-FNI-014` |
+| **Display name** | Chargeback rate by amount |
+| **Formula** | `chargeback amount posted in the period / original product gross of contracts SOLD in the period` |
+| **Numerator (precise)** | `KPI-FNI-012` — **adjustment-date basis** |
+| **Denominator (precise)** | `KPI-FNI-003` — **sale-date basis** |
+| **Date basis** | **MIXED, AND DISCLOSED.** The numerator's period is posting time; the denominator's is selling time. `reporting.vw_fi_adjustment_summary` publishes `numerator_date_basis`, `rate_denominator_date_basis`, `rate_denominator_source` and `rate_basis_disclosure` **as data**, so a consumer renders the disclosure from the row rather than from a sentence somebody remembered to write. |
+| **Null behaviour** | **NULL on zero denominator.** |
+| **SQL ownership** | Numerator `reporting.vw_fi_adjustment_summary`; denominator `reporting.vw_fi_summary`. The denominator is deliberately **not** copied onto the adjustment view: a sale-date figure on an adjustment-date row is exactly the silent blend this design avoids. Both views share a compatible store/date/manager/category shape, so a consumer aligns them by key. |
+| **Interpretation caution** | **A PERIOD PROXY, NOT A CONTRACT-COHORT LOSS RATE.** The contracts charged back in a month are mostly not the contracts written in it. A cohort loss rate is a different measure and ARPI does not compute one. Any surface showing this figure must state the mixed basis. |
+| **Implementation status** | **Implemented** (`DASH.6`) |
+
+### 40.20 `KPI-FNI-015` — Chargeback rate by contract count
+
+`chargeback count / contracts sold in the period`. **The same mixed-basis disclosure discipline as
+`KPI-FNI-014` applies in full**, including the prohibition on presenting it as a cohort loss rate. NULL on
+zero denominator. Status **Implemented** (`DASH.6`).
+
+### 40.21 `KPI-FNI-016` — Cancellation amount
+
+As `KPI-FNI-012` with `adjustment_type = 'Cancellation'`. Adjustment-date basis. Status **Implemented**
+(`DASH.6`).
+
+### 40.22 `KPI-FNI-017` — Cancellation count
+
+As `KPI-FNI-013` for cancellations. Adjustment-date basis. Status **Implemented** (`DASH.6`).
+
+### 40.23 `KPI-FNI-018` — Cancellation rate
+
+`cancellation count / contracts sold in the period`, with **the same mixed-basis disclosure as
+`KPI-FNI-014`**. NULL on zero denominator. Status **Implemented** (`DASH.6`).
+
+### 40.24 `KPI-FNI-019` — Deal structure mix
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-FNI-019` |
+| **Display name** | Deal structure mix |
+| **Business purpose** | The share of finalized retail deals by how they were funded, which is the context every reserve and GAP figure has to be read against. |
+| **Formula** | For each structure: `structure deal count / all retail deals in period` |
+| **Numerator (precise)** | `cash_deal_count`, `retail_finance_deal_count` or `lease_deal_count` |
+| **Denominator (precise)** | `retail_units` |
+| **Derivation** | The structure is **derived**, not stored: `warehouse.fn_finance_structure(sale_type, amount_financed)` — Lease when the sale type is; Retail Finance when a retail purchase financed something; Cash otherwise. `sale_type` itself is unchanged and `warehouse.dim_sale_type` remains Deferred. `arpi.generation.fi_eligibility.finance_structure_for` is the Python side, and the two are proved equal over the whole input cross product. |
+| **Null behaviour** | **NULL on zero retail units.** |
+| **SQL ownership** | `reporting.vw_fi_summary` — the three counts and `retail_units`, as components. |
+| **Interpretation caution** | **The three shares sum to 100% of retail deals by construction**, subject only to display rounding: the three counts sum exactly to `retail_units`. **Wholesale and Dealer Trade are not components** — they are not retail. **Never add percentages and never average them**; a group share is `SUM(numerator) / SUM(denominator)`. |
+| **Implementation status** | **Implemented** (`DASH.6`) |
+
+### 40.25 `KPI-FNI-020` — Product-category mix
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-FNI-020` |
+| **Display name** | Product-category mix |
+| **Business purpose** | Where product gross actually comes from, by category, with the components a reader needs to see whether a category is thin, expensive or heavily adjusted. |
+| **Components (each additive at the view's grain)** | `contract_count`, `product_retail_price`, `product_dealer_cost`, `original_product_gross`, `cumulative_adjustment_amount`, `net_product_gross_as_of`; gross per contract is `original_product_gross / contract_count` |
+| **Mix share** | `category value / all-category value` **at the same grain and on the same basis** |
+| **Grain** | Store × sale date × manager × **category**. |
+| **Date basis** | Sale date, including the adjustment columns, which are attributed to the **contract's** sale date. |
+| **Null behaviour** | NULL on a zero all-category denominator; `0` components rather than NULL where a category was eligible and nothing was sold. |
+| **SQL ownership** | **`reporting.vw_fi_product_penetration`.** |
+| **As-built owner correction** | [`KPI_EXTENSION_PLAN.md §4`](docs/dashboard/KPI_EXTENSION_PLAN.md) assigned this to `reporting.vw_fi_summary` "(category grain)". **That view has no category grain and cannot acquire one**: it carries finance reserve and retail units, both properties of a *deal*, and adding a category would repeat them on every category row and multiply both for anything that summed the result. The category-grain owner as built is therefore `reporting.vw_fi_product_penetration`, which deliberately carries **no** reserve and **no** retail-unit column. Correct governance beats preserving a planning assignment. |
+| **Interpretation caution** | **Never add percentages and never average category percentages.** A category with no sales and an eligible population is a row with a zero numerator — a finding, not an absence. |
+| **Implementation status** | **Implemented** (`DASH.6`) |
+
+### 40.26 `KPI-FNI-021` — F&I manager penetration
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-FNI-021` |
+| **Display name** | F&I manager penetration |
+| **Formula** | `KPI-FNI-007`-style penetration computed **per finance manager over that manager's own eligible deals**, per category |
+| **Numerator (precise)** | That manager's distinct eligible deals carrying at least one contract of the category |
+| **Denominator (precise)** | **That manager's eligible deals — never the store's.** Using the store's denominator would divide one person's numerator by everybody's population and make every manager look weak. `tests/integration/test_kpi_verification.py` computes both and asserts they differ. |
+| **Attribution** | `fact_finance_product_sale.finance_manager_key`: the manager credited on the **deal**. A deal written with nobody on the F&I desk forms its own group and is never dropped. |
+| **Grain** | Store × sale date × manager × category. |
+| **Minimum sample** | §40.5 applies. Below the floor the row is marked, never blanked, and is excluded from ranking. |
+| **SQL ownership** | `reporting.vw_fi_product_penetration`. |
+| **Interpretation caution** | **Manager comparisons inherit store mix, finance-structure mix, product-eligibility mix and assignment mix.** A manager who happens to be scheduled on cash-heavy days has a structurally different GAP denominator. **No manager is ranked or labelled by the model**, and the eligible-deal count must appear beside every figure. |
+| **Implementation status** | **Implemented** (`DASH.6`) |
+
+### 40.27 `KPI-FNI-022` — F&I manager back PVR
+
+| Field | Definition |
+|---|---|
+| **KPI ID** | `KPI-FNI-022` |
+| **Display name** | F&I manager back gross per retail unit |
+| **Formula** | `(finance_reserve_gross + net_product_gross_as_of) for the manager's deals / that manager's retail units` |
+| **Numerator (precise)** | `net_fi_gross_as_of` — **as-of basis**, so it is what the store retained rather than what was produced |
+| **Denominator (precise)** | `retail_units` for **that manager's own deals**, not the store's |
+| **Grain** | Manager × period, within a store. |
+| **Date basis** | Deal date for the denominator and the reserve; as-of for the net product gross. **Both are labelled on the row.** |
+| **Null behaviour** | **NULL on zero retail units.** |
+| **Minimum sample** | §40.5 applies. |
+| **SQL ownership** | `reporting.vw_fi_summary` — components only. |
+| **Interpretation caution** | **This is not `KPI-GRS-005`.** Back PVR in §14 is the stored deal-date `back_end_gross` per retail unit; this is the **as-of retained** figure per retail unit, and the two differ by every adjustment posted. Presenting either without its basis is the error. The same mix caveats as `KPI-FNI-021` apply, and eligible-deal context must be shown beside it. |
+| **Implementation status** | **Implemented** (`DASH.6`) |
+
+### 40.28 What this domain deliberately does not define
+
+There is **no** favourable direction, no benchmark, no target penetration, no product recommendation, no
+customer segmentation, no menu-selling simulation, no lender recommendation, no rate optimisation and no
+"good" or "bad" grade of any kind. There is no cohort loss rate — `KPI-FNI-014`, `-015` and `-018` are
+period proxies and say so. There is no `other_fi_income` measure, because the value is exactly `0.00` and
+is not a column: a zero that is never anything else is where a balancing plug would hide.
+
+There is also **no F&I operating surface** in `DASH.6`. No `/dashboard/fi` route exists, no browser dataset
+is exported from any of these views, and the Deal Jacket is not itemized. `DASH.7` owns all of that, and
+this increment deliberately stops at the data model so that increment is a presentation problem rather
+than a data problem.

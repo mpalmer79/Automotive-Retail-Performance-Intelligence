@@ -45,7 +45,7 @@
 | `DASH.3` | Sales, Gross, and Deal Explorer | Large | **Implemented** |
 | `DASH.4` | Basic Deal Jacket | Large | **Implemented** |
 | `DASH.5` | Targets and pace | Large | **Implemented** |
-| `DASH.6` | F&I model | Large | Planned |
+| `DASH.6` | F&I model | Large | **Implemented** |
 | `DASH.7` | F&I dashboard and expanded Deal Jacket | Large | Planned |
 | `DASH.8` | Inventory accounting and GL controls | Large | Planned |
 | `DASH.9` | Accounting dashboard and inventory integration | Large | Planned |
@@ -535,13 +535,17 @@ the reporting layer does not define.
 | **Purpose** | The F&I domain becomes real: product dimension, lender dimension, product-sale and adjustment facts, finance reserve, eligibility configuration — generation through reporting with exact identities. |
 | **Dependencies** | `DASH.2` (consumer exists); independent of `DASH.3`–`DASH.5` |
 | **Estimated complexity** | Large |
-| **Blocking gate** | Gate 4 — satisfied within the increment (SQ-21 already records the blocked question) |
+| **Blocking gate** | Gate 4 (new domain) — **satisfied within the increment and recorded** in [STAKEHOLDER_QUESTIONS.md §5](STAKEHOLDER_QUESTIONS.md) |
 | **Architecture references** | §11–13, §28 Gate 4, §35.2; PRIVACY_AND_ETHICS §7; program §9.1–9.7 |
-| **Status** | Planned |
+| **Anchoring question** | **SQ-21** — "What is our F&I performance, by product and by store?" — promoted Deferred → Implemented |
+| **Status** | **Implemented** |
+| **Evidence** | Four warehouse objects + four reporting views exist and load; `KPI-FNI-001..022` in [KPI_CATALOG.md §40](../../KPI_CATALOG.md); contracts in [DATA_DICTIONARY.md §42–§45](../../DATA_DICTIONARY.md); mappings [STM-017](../source-to-target/STM-017-dim-finance-product.md)–[STM-020](../source-to-target/STM-020-fact-finance-product-adjustment.md); 51 `DQ-FPD/LND/FPS/FPA-*` checks plus two new `DQ-SLE-*`; 18 F&I reconciliations, each with a seeded corruption; `RECON-FI-001` promoted from Deferred and passing per deal at tolerance `0`; migration `0003_add_fi_domain_objects.sql` |
+| **Deliberately not done** | **No `DASH.7` work of any kind**: no `/dashboard/fi`, no itemized Deal Jacket, no F&I manager page, no action centre, and **no browser dataset exported from any F&I view** (asserted by `tests/integration/test_fi_reporting_views.py`). No `dim_finance_product_provider` and no STM-021 (the provider is an attribute — `DASH.6-01`). No `dim_sale_type` and **no change to `sale_type`**. **No TMDL file was modified and Gate 2 remains CLOSED.** |
+| **Baselines preserved** | 29 MVP KPIs, 28 MVP reporting views, 5 MVP facts, 8 MVP dimensions — all unchanged. `back_end_gross` and `KPI-GRS-002` were **explained, not redefined**: a diff of the committed `sale_event.csv` reports two added columns, no removed columns and **zero changed values**. |
 
 ### `DASH.6-01` — Design decisions on the record
 
-Medium; Planned. Records, in `DATA_CONTRACT.md` and DATA_DICTIONARY.md Part G updates: the provider
+Medium; **Implemented**. Records, in `DATA_CONTRACT.md` and DATA_DICTIONARY.md Part G updates: the provider
 decision (attribute vs `dim_finance_product_provider`, justified by the analytical questions it
 enables), the deal-structure mapping (program §9.7), lender classification vocabulary, and the
 adjustment-type vocabulary (Cancellation, Chargeback, Reinstatement, Approved Adjustment). Evidence:
@@ -549,7 +553,7 @@ documented decisions with rationale; no code.
 
 ### `DASH.6-02` — `dim_finance_product`, `dim_lender`, eligibility config
 
-Large; Planned. Generators (seeded catalogues; ten governed categories; fictional lenders across
+Large; **Implemented**. Generators (seeded catalogues; ten governed categories; fictional lenders across
 Captive/Bank/Credit Union/Independent with Prime/Near-prime/Subprime tiers), SQL dims with SCD
 policy recorded (Type 1 both, ADR-0006 pattern), `config/reference/fi_product_eligibility.yaml`
 with `ELIG-*` rules, `DQ-FPD-*`/`DQ-LND-*` checks, `STM-017`/`STM-018`. Prohibited: any real lender
@@ -558,7 +562,7 @@ unit + integration per convention. Evidence: dims populated and validated.
 
 ### `DASH.6-03` — `fact_finance_product_sale` and finance reserve
 
-Large; Planned. Sale generator extension: per-deal product baskets driven by eligibility, manager
+Large; **Implemented**. Sale generator extension: per-deal product baskets driven by eligibility, manager
 skill indices, structure mix; reserve amounts on financed retail deals only (cash deals: reserve
 impossible); `back_end_gross` becomes the derived sum `finance_reserve_gross + Σ original product
 gross at deal date` so the existing stored column remains exact; migration `0003+` adds
@@ -574,7 +578,7 @@ passing, back-gross rollup). Evidence: 58+ reconciliations still green plus the 
 
 ### `DASH.6-04` — `fact_finance_product_adjustment`
 
-Large; Planned. Adjustment generator (post-sale timing distributions; chargebacks after sale, varied
+Large; **Implemented**. Adjustment generator (post-sale timing distributions; chargebacks after sale, varied
 lag; cancellation vs chargeback vs reinstatement mix; adjustment never exceeding original gross
 except through an explicitly modelled and tested reason — default: capped), DDL with grain UNIQUE on
 adjustment id, `DQ-FPA-*`, `STM-020`, `net_product_gross_as_of` defined in reporting, three date
@@ -583,10 +587,52 @@ arithmetic). Evidence: adjustment analytics reconcile.
 
 ### `DASH.6-05` — F&I reporting views and KPI promotion
 
-Large; Planned. `vw_deal_product_detail`, `vw_fi_summary`, `vw_fi_product_penetration`,
+Large; **Implemented**. `vw_deal_product_detail`, `vw_fi_summary`, `vw_fi_product_penetration`,
 `vw_fi_adjustment_summary`; `KPI-FNI-001..022` promoted into the catalogue; `RECON-FI-001` and the
 new reconciliation entries in §36; stakeholder questions registered; `test_kpi_verification.py`
 extended. Evidence: every FNI KPI verified against an independent derivation.
+
+### `DASH.6` as built — five divergences from the plan above, stated rather than smoothed over
+
+**(a) The provider became an attribute, not a dimension.** `DASH.6-01` left the call open with a
+"conformed dimension" default. The decision recorded is **attribute**: a provider has no behaviour in this
+model independent of the product it administers, no fact needs a provider key that `finance_product_key`
+does not already resolve, and promoting it later changes **no fact**. `warehouse.dim_finance_product_provider`
+and **STM-021 remain Deferred**, with the number reserved so a future promotion arrives as STM-021 rather
+than a renumbering.
+
+**(b) `back_end_gross` is explained, not derived.** `DASH.6-03` proposed making it *"the derived sum"* of
+reserve plus product gross. Building it that way would have rebased the synthetic baseline of every retail
+deal in the repository and moved several hundred committed artifact values for no analytical gain. The
+**decomposition-preserving** strategy was chosen instead: the existing draw stays, and every cent of it is
+allocated to a named component. The consequence was measured — two added columns, no removed columns, **zero
+changed values** — and the cost is stated plainly in
+[STM-019 §1.2](../source-to-target/STM-019-fact-finance-product-sale.md): reserve and product amounts are
+*shares of a total drawn first*, so they are decompositions rather than independent draws.
+
+**(c) The contract grain is `(sale_key, finance_product_key)`, not `(sale_id, product_id, line_ordinal)`.**
+The planned key would have made the grain constraint decorative: `line_ordinal` is an ordinal over the
+basket, so including it in the uniqueness key permits the *same product twice on one deal* — which is a
+duplicate, not a second sale. The tighter grain still permits two **different** products inside one category
+(a windscreen plan and a roadside plan are both `Other Aftermarket Product`), which is exactly why every
+penetration measure counts **distinct deals** rather than contract rows. `line_ordinal` is retained as a
+non-key attribute so the basket stays readable and reproducible.
+
+**(d) Cancellation and chargeback are events, and the contract fact carries no `is_eligible` flag.** The
+deferred-era column model in [DATA_DICTIONARY.md §27.8](../../DATA_DICTIONARY.md) put `canceled_amount`,
+`chargeback_amount`, `net_product_gross` and three flags on the contract row. That would mean **rewriting the
+June contract when an August chargeback posts**, which moves production out of the month it happened in and
+destroys the produced-versus-retained distinction the domain exists to make. Net product gross is **computed
+as of a stated date**, not stored. An `is_eligible` flag was dropped because on a *sold* contract it could
+only ever read `true`; the governed `eligibility_rule_id` is stored instead, so a penetration figure names
+its own denominator.
+
+**(e) `KPI-FNI-020`'s owning view changed.** [KPI_EXTENSION_PLAN.md](../dashboard/KPI_EXTENSION_PLAN.md)
+assigned it to `vw_fi_summary` *"at category grain"*. `vw_fi_summary` has no category grain and **cannot
+acquire one**: it carries finance reserve and retail units, both properties of a *deal*, and adding a
+category would repeat and multiply them on every category row. `KPI-FNI-020`'s owner as built is
+**`vw_fi_product_penetration`**, which is where the category grain lives. The correction is recorded on the
+view's own `COMMENT`, in `arpi.constants.FI_KPI_VIEW_OWNERSHIP` and in the extension plan's as-built section.
 
 ---
 

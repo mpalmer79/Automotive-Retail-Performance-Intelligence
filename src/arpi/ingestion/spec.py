@@ -297,6 +297,22 @@ ENTITY_SPECS: Final[tuple[EntityIngestionSpec, ...]] = (
         natural_key=("campaign_id",),
         merge_script="17_dim_marketing_campaign_merge.sql",
     ),
+    # The two F&I dimensions (DASH.6). Registered like any other, because the loader must
+    # treat them identically: same raw landing table, same staging accept/reject split,
+    # same five-layer row-count chain, same idempotent merge. They belong to the dashboard
+    # program lane rather than to the MVP warehouse, which is recorded in
+    # arpi.dashboard.contract.DASHBOARD_LANE_SQL_FILES so the "eight conformed
+    # dimensions" baseline the semantic model was measured against does not move.
+    _dimension(
+        "finance_product",
+        natural_key=("finance_product_id",),
+        merge_script="21_dim_finance_product_merge.sql",
+    ),
+    _dimension(
+        "lender",
+        natural_key=("lender_id",),
+        merge_script="22_dim_lender_merge.sql",
+    ),
     # acquisition_event feeds no fact of its own: an acquisition is an attribute of the
     # vehicle and a term of the sale, so it reaches staging and is consumed there.
     _source_entity("acquisition_event", natural_key=("acquisition_id",)),
@@ -348,6 +364,21 @@ ENTITY_SPECS: Final[tuple[EntityIngestionSpec, ...]] = (
         natural_key=("sales_target_id",),
         fact_table="fact_sales_target",
         fact_load_script="16_fact_sales_target_load.sql",
+    ),
+    # The two F&I facts (DASH.6), in dependency order: an adjustment resolves the
+    # product-sale row it acts on, so the contract fact must be loaded first. Counted
+    # apart from the five MVP facts for the same reason fact_sales_target is.
+    _source_entity(
+        "finance_product_sale",
+        natural_key=("product_sale_id",),
+        fact_table="fact_finance_product_sale",
+        fact_load_script="17_fact_finance_product_sale_load.sql",
+    ),
+    _source_entity(
+        "finance_product_adjustment",
+        natural_key=("adjustment_id",),
+        fact_table="fact_finance_product_adjustment",
+        fact_load_script="18_fact_finance_product_adjustment_load.sql",
     ),
 )
 

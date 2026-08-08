@@ -320,6 +320,76 @@ Binding rules: every penetration KPI names its `ELIG-*` denominator; every produ
 satisfy its rule or fail `DQ-FPS-*` validation; an empty eligible denominator returns NULL; React and
 DAX consume the exported rule, never restate it.
 
+### 4.2 As-built: what changed between this plan and the implementation
+
+A planning document that is quietly edited to match what shipped stops being evidence of anything. These
+are the divergences, stated rather than smoothed over. All twenty-two `KPI-FNI-*` definitions are
+**Implemented**; every per-KPI *Status* line below still reads **Planned** and is superseded by this section
+and by [KPI_CATALOG.md §40](../../KPI_CATALOG.md), which is the authority.
+
+1. **`KPI-FNI-020`'s owning view changed, and this is the correction most worth reading.** The plan
+   assigned it to `reporting.vw_fi_summary` "at category grain". **`vw_fi_summary` has no category grain and
+   cannot acquire one**: it carries finance reserve and retail units, both properties of a *deal*, and adding
+   a category would repeat them on every category row and multiply both for anything that summed the result.
+   `KPI-FNI-020`'s owner as built is **`reporting.vw_fi_product_penetration`**, which is where the category
+   grain lives and which deliberately carries **no reserve and no retail-unit column**. The correction is
+   recorded on the view's own `COMMENT`, in `arpi.constants.FI_KPI_VIEW_OWNERSHIP`, and asserted by
+   `tests/integration/test_fi_reporting_views.py`.
+
+2. **The back-gross identity is on the DEAL-DATE basis, not "the stated date basis".** The plan's identity
+   reads `back_end_gross = finance_reserve_gross + net product gross at the stated date basis +
+   other_fi_income`. As built it is `finance_reserve_gross + SUM(original_product_gross)` — the **original**
+   figure, not the net one. Using net gross would make the identity **fail every time a cancellation
+   posted**, because `back_end_gross` is never rewritten. `RECON-FI-001` proves the deal-date identity per
+   deal at tolerance `0`; `RECON-FI-NET-GROSS` reconciles the as-of side **separately, on its own basis**.
+
+3. **`other_fi_income` is exactly `0.00` and is not a column anywhere.** The plan left it as a term. It is
+   not a balancing plug and there is no residual bucket: the allocation reaches the cent by **largest
+   remainder** across real product lines.
+
+4. **The eligibility table in §4.1 was ambiguous and the configuration resolved it.** The plan said "one rule
+   per product category" while the table itself grouped five categories under `ELIG-OTH` as a fallback. As
+   built, `config/reference/fi_product_eligibility.yaml` makes the mapping **explicit**: `ELIG-OTH` names its
+   five categories rather than being reached by a fallback hidden in code, and the loader **refuses a file
+   that is not a partition** over the ten categories — not zero rules for a category, not two.
+
+5. **Two of the plan's denominators narrowed, and one widened.** `ELIG-GAP` is **Retail Finance only** — the
+   plan's "lease-GAP flag" was not implemented, because a flag with one setting is a decision written as a
+   configuration option. `ELIG-PPM` narrows to **New and Certified** vehicles, which the plan did not
+   specify and which is why a store with a heavier used mix has a structurally smaller Prepaid Maintenance
+   denominator. `ELIG-VSC` and `ELIG-TW` cover **all three retail structures and all three conditions**.
+
+6. **The plan's `is_retail` denominator became a three-value finance structure.** `is_retail` includes
+   Lease, which is correct for a retail-unit count and wrong for a GAP denominator. The structure is derived
+   by one authority in Python and one in SQL, proved equal over the whole input cross product.
+
+7. **Penetration counts DISTINCT DEALS, not contract rows.** One deal may legitimately carry two *different*
+   products in one category (a windscreen plan and a roadside plan are both `Other Aftermarket Product`),
+   which is generated on purpose so that the rule is testable rather than an identity on this dataset.
+
+8. **Views publish numerator, denominator and rule id; the ratio is left to the consumer.** As with
+   `KPI-TGT`, a ratio cannot be re-aggregated. `penetration_numerator`, `penetration_denominator` and the
+   governing `ELIG-*` id are on **every row**, so a group figure is `SUM(numerator) / SUM(denominator)` and
+   never an average of store percentages.
+
+9. **Three KPIs are mixed-basis period proxies and say so as data.** `KPI-FNI-014`, `-015` and `-018` divide
+   an adjustment-period numerator by a sale-date denominator. They are **not contract-cohort loss rates**,
+   because the contracts charged back in a month are mostly not the ones written in it. The disclosure is
+   published in the row (`numerator_date_basis`, `rate_denominator_date_basis`, `rate_denominator_source`,
+   `rate_basis_disclosure`) rather than left to a sentence somebody remembered.
+
+10. **A minimum-sample floor governs every manager-grain read.** The plan did not specify one. As built it is
+    `warehouse.fn_minimum_sample_floor()` — project default **10** eligible deals, sourced from
+    `arpi.constants.MINIMUM_SAMPLE_ELIGIBLE_DEALS` rather than hard-coded per view. **No leaderboard, ranking
+    or best/worst label exists anywhere in the model**, and none may be built on these KPIs.
+
+11. **`Future Power BI measure owner` is still future.** No TMDL was modified. The F&I Measures group remains
+    a documented gap in `powerbi/model_documentation/03-measure-groups.md`, and Gate 2 stays **CLOSED**.
+
+12. **No console surface was built.** Every "Web presentation" line below describes a `DASH.7` surface.
+    `DASH.6` exports **no browser dataset from any F&I view**, which
+    `tests/integration/test_fi_reporting_views.py` asserts.
+
 ### `KPI-FNI-001` — Finance reserve gross
 
 | Field | Value |

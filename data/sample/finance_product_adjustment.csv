@@ -1,0 +1,58 @@
+adjustment_id,product_sale_id,sale_id,adjustment_date,dealership_id,finance_manager_id,finance_product_id,product_category,adjustment_type,adjustment_amount,adjustment_reason_category,sequence_ordinal,source_system
+FPA-00000001,FPS-00000006,SLE-00000003,2025-08-03,GSA-003,EMP-00028,FP-006,Tire & Wheel,Cancellation,244.35,Early Payoff,1,arpi_synthetic_generator
+FPA-00000002,FPS-00000007,SLE-00000004,2025-10-03,GSA-001,EMP-00005,FP-003,Vehicle Service Contract,Chargeback,470.38,Contract Cancelled,1,arpi_synthetic_generator
+FPA-00000003,FPS-00000033,SLE-00000020,2025-09-25,GSA-002,EMP-00017,FP-005,GAP,Cancellation,704.89,Customer Request,1,arpi_synthetic_generator
+FPA-00000004,FPS-00000038,SLE-00000022,2025-08-20,GSA-003,EMP-00028,FP-002,Vehicle Service Contract,Cancellation,1203.38,Total Loss,1,arpi_synthetic_generator
+FPA-00000005,FPS-00000048,SLE-00000027,2025-11-22,GSA-002,EMP-00017,FP-002,Vehicle Service Contract,Cancellation,707.86,Vehicle Sold or Traded,1,arpi_synthetic_generator
+FPA-00000006,FPS-00000075,SLE-00000042,2025-11-09,GSA-002,EMP-00017,FP-004,GAP,Chargeback,146.30,Early Payoff,1,arpi_synthetic_generator
+FPA-00000007,FPS-00000085,SLE-00000046,2025-10-24,GSA-003,EMP-00028,FP-005,GAP,Chargeback,244.32,Early Payoff,1,arpi_synthetic_generator
+FPA-00000008,FPS-00000094,SLE-00000051,2025-08-25,GSA-002,EMP-00017,FP-002,Vehicle Service Contract,Chargeback,976.32,Early Payoff,1,arpi_synthetic_generator
+FPA-00000009,FPS-00000106,SLE-00000062,2025-11-09,GSA-002,EMP-00017,FP-003,Vehicle Service Contract,Chargeback,494.41,Contract Cancelled,1,arpi_synthetic_generator
+FPA-00000010,FPS-00000143,SLE-00000083,2025-11-05,GSA-002,EMP-00017,FP-005,GAP,Chargeback,59.38,Contract Cancelled,1,arpi_synthetic_generator
+FPA-00000011,FPS-00000150,SLE-00000088,2025-09-08,GSA-003,,FP-005,GAP,Cancellation,193.49,Early Payoff,1,arpi_synthetic_generator
+FPA-00000012,FPS-00000151,SLE-00000090,2025-11-27,GSA-001,EMP-00005,FP-009,Prepaid Maintenance,Cancellation,73.87,Early Payoff,1,arpi_synthetic_generator
+FPA-00000013,FPS-00000172,SLE-00000098,2025-11-10,GSA-002,EMP-00017,FP-004,GAP,Chargeback,281.03,Repossession,1,arpi_synthetic_generator
+FPA-00000014,FPS-00000199,SLE-00000115,2025-09-12,GSA-001,,FP-004,GAP,Chargeback,62.00,Contract Cancelled,1,arpi_synthetic_generator
+FPA-00000015,FPS-00000218,SLE-00000130,2025-12-02,GSA-003,EMP-00028,FP-001,Vehicle Service Contract,Chargeback,481.19,Repossession,1,arpi_synthetic_generator
+FPA-00000016,FPS-00000229,SLE-00000134,2025-10-17,GSA-001,EMP-00005,FP-009,Prepaid Maintenance,Chargeback,104.54,Early Payoff,1,arpi_synthetic_generator
+FPA-00000017,FPS-00000233,SLE-00000140,2025-09-03,GSA-001,EMP-00005,FP-001,Vehicle Service Contract,Cancellation,695.33,Vehicle Sold or Traded,1,arpi_synthetic_generator
+FPA-00000018,FPS-00000237,SLE-00000141,2025-08-21,GSA-002,,FP-001,Vehicle Service Contract,Cancellation,301.12,Customer Request,1,arpi_synthetic_generator
+FPA-00000019,FPS-00000240,SLE-00000142,2025-12-01,GSA-003,EMP-00028,FP-006,Tire & Wheel,Cancellation,174.53,Early Payoff,1,arpi_synthetic_generator
+FPA-00000020,FPS-00000242,SLE-00000143,2025-11-19,GSA-001,EMP-00005,FP-003,Vehicle Service Contract,Cancellation,1439.16,Vehicle Sold or Traded,1,arpi_synthetic_generator
+FPA-00000021,FPS-00000254,SLE-00000155,2025-10-20,GSA-003,EMP-00028,FP-007,Tire & Wheel,Cancellation,342.39,Customer Request,1,arpi_synthetic_generator
+FPA-00000022,FPS-00000257,SLE-00000158,2025-12-12,GSA-003,EMP-00028,FP-001,Vehicle Service Contract,Chargeback,182.08,Early Payoff,1,arpi_synthetic_generator
+FPA-00000023,FPS-00000263,SLE-00000161,2025-10-28,GSA-002,,FP-005,GAP,Chargeback,295.00,Early Payoff,1,arpi_synthetic_generator
+FPA-00000024,FPS-00000269,SLE-00000165,2025-10-25,GSA-002,EMP-00017,FP-004,GAP,Chargeback,991.61,Contract Cancelled,1,arpi_synthetic_generator
+FPA-00000025,FPS-00000271,SLE-00000167,2025-10-10,GSA-001,EMP-00005,FP-008,Prepaid Maintenance,Chargeback,188.39,Total Loss,1,arpi_synthetic_generator
+FPA-00000026,FPS-00000339,SLE-00000213,2025-11-17,GSA-003,EMP-00028,FP-004,GAP,Chargeback,515.50,Total Loss,1,arpi_synthetic_generator
+FPA-00000027,FPS-00000351,SLE-00000221,2025-12-19,GSA-001,EMP-00005,FP-008,Prepaid Maintenance,Cancellation,521.58,Total Loss,1,arpi_synthetic_generator
+FPA-00000028,FPS-00000357,SLE-00000224,2025-10-11,GSA-001,EMP-00005,FP-001,Vehicle Service Contract,Cancellation,580.02,Customer Request,1,arpi_synthetic_generator
+FPA-00000029,FPS-00000357,SLE-00000224,2025-11-22,GSA-001,EMP-00005,FP-001,Vehicle Service Contract,Reinstatement,-372.86,Cancellation Rescinded,2,arpi_synthetic_generator
+FPA-00000030,FPS-00000370,SLE-00000231,2025-11-10,GSA-002,EMP-00017,FP-009,Prepaid Maintenance,Cancellation,217.14,Early Payoff,1,arpi_synthetic_generator
+FPA-00000031,FPS-00000370,SLE-00000231,2025-12-19,GSA-002,EMP-00017,FP-009,Prepaid Maintenance,Reinstatement,-148.27,Cancellation Rescinded,2,arpi_synthetic_generator
+FPA-00000032,FPS-00000378,SLE-00000236,2025-12-19,GSA-001,EMP-00005,FP-005,GAP,Chargeback,619.35,Contract Cancelled,1,arpi_synthetic_generator
+FPA-00000033,FPS-00000401,SLE-00000248,2025-10-19,GSA-003,EMP-00028,FP-004,GAP,Chargeback,1064.18,Total Loss,1,arpi_synthetic_generator
+FPA-00000034,FPS-00000403,SLE-00000251,2025-12-06,GSA-001,EMP-00005,FP-001,Vehicle Service Contract,Chargeback,453.44,Repossession,1,arpi_synthetic_generator
+FPA-00000035,FPS-00000412,SLE-00000254,2025-10-10,GSA-002,EMP-00017,FP-001,Vehicle Service Contract,Chargeback,440.46,Repossession,1,arpi_synthetic_generator
+FPA-00000036,FPS-00000423,SLE-00000260,2025-11-01,GSA-001,EMP-00005,FP-002,Vehicle Service Contract,Cancellation,948.40,Total Loss,1,arpi_synthetic_generator
+FPA-00000037,FPS-00000428,SLE-00000262,2025-12-18,GSA-001,EMP-00005,FP-001,Vehicle Service Contract,Chargeback,641.03,Total Loss,1,arpi_synthetic_generator
+FPA-00000038,FPS-00000431,SLE-00000264,2025-10-08,GSA-002,EMP-00017,FP-001,Vehicle Service Contract,Approved Adjustment,136.88,Administrative Correction,1,arpi_synthetic_generator
+FPA-00000039,FPS-00000432,SLE-00000264,2025-11-20,GSA-002,EMP-00017,FP-004,GAP,Cancellation,302.56,Total Loss,1,arpi_synthetic_generator
+FPA-00000040,FPS-00000434,SLE-00000265,2025-11-15,GSA-003,EMP-00028,FP-004,GAP,Cancellation,65.34,Early Payoff,1,arpi_synthetic_generator
+FPA-00000041,FPS-00000455,SLE-00000279,2025-10-21,GSA-001,EMP-00005,FP-005,GAP,Cancellation,584.83,Total Loss,1,arpi_synthetic_generator
+FPA-00000042,FPS-00000474,SLE-00000287,2025-10-10,GSA-003,EMP-00028,FP-002,Vehicle Service Contract,Cancellation,284.67,Early Payoff,1,arpi_synthetic_generator
+FPA-00000043,FPS-00000474,SLE-00000287,2025-10-23,GSA-003,EMP-00028,FP-002,Vehicle Service Contract,Reinstatement,-201.94,Cancellation Rescinded,2,arpi_synthetic_generator
+FPA-00000044,FPS-00000478,SLE-00000290,2025-12-15,GSA-003,EMP-00028,FP-004,GAP,Chargeback,397.76,Early Payoff,1,arpi_synthetic_generator
+FPA-00000045,FPS-00000491,SLE-00000299,2025-10-17,GSA-001,EMP-00005,FP-001,Vehicle Service Contract,Cancellation,328.87,Total Loss,1,arpi_synthetic_generator
+FPA-00000046,FPS-00000500,SLE-00000304,2025-10-23,GSA-001,EMP-00005,FP-004,GAP,Cancellation,201.50,Early Payoff,1,arpi_synthetic_generator
+FPA-00000047,FPS-00000500,SLE-00000304,2025-12-01,GSA-001,EMP-00005,FP-004,GAP,Reinstatement,-148.93,Administrative Correction,2,arpi_synthetic_generator
+FPA-00000048,FPS-00000523,SLE-00000315,2025-10-15,GSA-002,,FP-004,GAP,Approved Adjustment,20.74,Pricing Correction,1,arpi_synthetic_generator
+FPA-00000049,FPS-00000588,SLE-00000359,2025-12-07,GSA-003,EMP-00028,FP-002,Vehicle Service Contract,Cancellation,981.38,Customer Request,1,arpi_synthetic_generator
+FPA-00000050,FPS-00000589,SLE-00000360,2025-11-11,GSA-003,EMP-00028,FP-003,Vehicle Service Contract,Chargeback,353.40,Repossession,1,arpi_synthetic_generator
+FPA-00000051,FPS-00000602,SLE-00000367,2025-11-16,GSA-002,EMP-00017,FP-001,Vehicle Service Contract,Chargeback,699.70,Early Payoff,1,arpi_synthetic_generator
+FPA-00000052,FPS-00000644,SLE-00000397,2025-11-15,GSA-001,EMP-00005,FP-001,Vehicle Service Contract,Chargeback,415.71,Total Loss,1,arpi_synthetic_generator
+FPA-00000053,FPS-00000737,SLE-00000464,2025-12-20,GSA-002,EMP-00017,FP-014,Paintless Dent Protection,Approved Adjustment,94.44,Administrative Correction,1,arpi_synthetic_generator
+FPA-00000054,FPS-00000742,SLE-00000469,2025-12-31,GSA-002,EMP-00017,FP-004,GAP,Cancellation,68.39,Total Loss,1,arpi_synthetic_generator
+FPA-00000055,FPS-00000763,SLE-00000482,2025-12-05,GSA-003,EMP-00028,FP-004,GAP,Chargeback,87.03,Early Payoff,1,arpi_synthetic_generator
+FPA-00000056,FPS-00000785,SLE-00000494,2025-12-12,GSA-003,EMP-00028,FP-004,GAP,Cancellation,82.73,Total Loss,1,arpi_synthetic_generator
+FPA-00000057,FPS-00000795,SLE-00000500,2025-12-11,GSA-002,EMP-00017,FP-004,GAP,Cancellation,840.11,Total Loss,1,arpi_synthetic_generator

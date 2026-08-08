@@ -309,24 +309,27 @@ reconciliation, and through those, Gate 2.
 | **Exit condition** | A workbook committed, with `RECON-EXCEL-001` recording its totals against `reporting` |
 | **Owner** | Post-MVP, [PHASE_2_BACKLOG.md](docs/requirements/PHASE_2_BACKLOG.md) |
 
-### 4.5 Three deferred domains, and the three questions they block
+### 4.5 Two deferred domains, and the two questions they block
 
-> **One of the four was resolved.** `warehouse.fact_sales_target` was Deferred when this section was
-> written; `DASH.5` implemented it, and **`SQ-31` target attainment is answered** — with its own
-> limitations, recorded in §4.5.1 below rather than dropped. The heading and counts moved with the fact.
+> **Two of the four were resolved, in two increments.** `warehouse.fact_sales_target` was Deferred when this
+> section was written; `DASH.5` implemented it, and **`SQ-31` target attainment is answered** — with its own
+> limitations, in §4.5.1. `warehouse.fact_finance_product_sale`, `dim_finance_product` and `dim_lender` were
+> Deferred too; **`DASH.6` implemented them and `SQ-21` F&I product penetration is answered** — with fifteen
+> limitations, in **[§15](#15-what-the-governed-fi-model-cannot-support-adr-0013-dash6)**. The headings and
+> counts moved with the facts, and neither set of limitations was dropped on the way.
 
-`fact_finance_product_sale` and `fact_service_visit` are Deferred, together with the
-dimensions that support them, and so is customer purchase history beyond the generated window. The three
-stakeholder questions they block — `SQ-21` F&I product penetration, `SQ-29` service-to-sales opportunities,
-`SQ-32` customer retention — are **recorded** in
+`fact_service_visit` is Deferred, together with the dimensions that support it, and so is customer purchase
+history beyond the generated window. The two stakeholder questions they block — `SQ-29` service-to-sales
+opportunities and `SQ-32` customer retention — are **recorded** in
 [`docs/requirements/STAKEHOLDER_QUESTIONS.md`](docs/requirements/STAKEHOLDER_QUESTIONS.md) §6 rather than
 quietly dropped, which is the point: a question with no data behind it is a scope decision, and a scope
-decision that leaves no trace is indistinguishable from an oversight. Adding any of these domains requires
+decision that leaves no trace is indistinguishable from an oversight. Adding either domain requires
 Gate 4 ([ARCHITECTURE.md §28](ARCHITECTURE.md)), whose first condition — a stakeholder question that requires
 it — is the one already satisfied.
 
-The analytical consequences of their absence — back-end gross with no product detail, no repeat-customer or
-service-to-sales measure — are in section 6, at the KPIs where they bite.
+The analytical consequences of their absence — no repeat-customer or service-to-sales measure — are in
+section 6, at the KPIs where they bite. **Back-end gross is no longer among them:** `RECON-FI-001` proves
+that every cent of it is explained by finance reserve plus original product gross, per deal and to the cent.
 
 #### 4.5.1 What the implemented target domain still cannot tell you
 
@@ -797,7 +800,7 @@ source it describes — which is precisely how the statements corrected in this 
 | Fact load scripts | 5 | Implemented. Facts are **not** merely planned. |
 | Reporting views | 28 | The only surface the semantic model may read. |
 | Audit row-count layers recorded | 5 of 5 | `source`, `raw`, `staging`, `warehouse`, `rejected`. |
-| Forward migrations | 3 | Ordered, immutable once released, recorded in `audit.schema_migration`. |
+| Forward migrations | 4 | Ordered, immutable once released, recorded in `audit.schema_migration`. |
 
 Counted apart from every row above, because folding either lane in would move a baseline that was measured against a specific run:
 
@@ -805,10 +808,10 @@ Counted apart from every row above, because folding either lane in would move a 
 |---|---:|---|
 | Sanitized public listing SQL files (ADR-0011) | 15 | Implemented, and outside the MVP warehouse the semantic model reads. |
 | Sanitized public listing reporting views | 6 | Implemented. |
-| Dashboard program SQL files (ADR-0013) | 10 | Implemented. |
-| Dashboard program fact DDL scripts | 1 | Implemented. `DASH.5` added the first fact this lane owns; the MVP fact count above is unchanged. |
-| Dashboard program reporting views | 5 | Implemented, and **not** part of the reporting-view baseline the semantic model binds to. |
-| Dashboard program KPIs | 10 | Implemented in SQL and on the web console. The 29 governed KPIs above are unchanged: no DAX measure reads these, so the two numbers are reported side by side and never summed. |
+| Dashboard program SQL files (ADR-0013) | 33 | Implemented. |
+| Dashboard program fact DDL scripts | 3 | Implemented. `DASH.5` added the first fact this lane owns; the MVP fact count above is unchanged. |
+| Dashboard program reporting views | 9 | Implemented, and **not** part of the reporting-view baseline the semantic model binds to. |
+| Dashboard program KPIs | 32 | Implemented in SQL and on the web console. The 29 governed KPIs above are unchanged: no DAX measure reads these, so the two numbers are reported side by side and never summed. |
 <!-- ARPI:CAPABILITIES:END warehouse -->
 
 <!-- ARPI:CAPABILITIES:BEGIN semantic-model -->
@@ -1159,3 +1162,177 @@ published no price field at all, and evidences no choice by anyone. Reporting th
 as the first would attribute a decision to a dealership on no evidence. Where a single
 number is genuinely wanted, `unpriced_units` is published and is defined as the complement
 of `Listed`, so it stays exhaustive however many statuses exist.
+
+---
+
+## 15. What the governed F&I model cannot support (ADR-0013, `DASH.6`)
+
+`SQ-21` — *what is our F&I performance, by product and by store?* — is answered. Twenty-two `KPI-FNI-*`
+definitions are verified, `RECON-FI-001` proves the back-gross identity per deal to the cent, and four
+governed reporting views publish the domain.
+
+**Fifteen limitations travel with that answer.** They are not caveats added afterwards; each one is a
+consequence of a decision recorded in [STM-017](docs/source-to-target/STM-017-dim-finance-product.md)
+… [STM-020](docs/source-to-target/STM-020-fact-finance-product-adjustment.md) and
+[DATA_DICTIONARY.md §42–§45](DATA_DICTIONARY.md), and each is enforced or asserted somewhere rather than
+merely stated here.
+
+### 15.1 Every product, provider and lender is invented, so no product or lender comparison means anything outside this dataset
+
+Nineteen products, four administrators and ten lenders, all fictional. The catalogue attaches invented
+economics, invented cancellation behaviour and an invented lender mix to every row. **No figure computed over
+them may be compared to a real product, a real administrator, a real institution or a published market
+figure**, and no surface may describe a product as standard or a lender as preferred.
+
+`DQ-FPD-004` and `DQ-LND-002` close both name sets. `tests/unit/test_fi_privacy.py` asserts no committed name
+collides with a real institution or administrator a reader would recognise — a **synthetic-catalogue contract
+test**, deliberately not a claim to detect every real company in the world.
+
+### 15.2 The eligibility rules are synthetic, so no penetration figure is a benchmark
+
+`config/reference/fi_product_eligibility.yaml` states, for a fictional group, which categories *could* be
+written on which deal structures and vehicle conditions. It is **not an industry standard, not a regulator's
+definition, not any real dealership's menu and not a statement about what a store should offer**.
+
+A penetration figure is only meaningful beside the population it was computed over, which is why
+`reporting.vw_fi_product_penetration` publishes the numerator, the denominator and the governing `ELIG-*`
+rule on **every row** and leaves the ratio to the consumer. **No surface may describe a penetration as good,
+bad, average, standard or recommended.**
+
+### 15.3 Eligibility is not sales propensity, and the model has nothing to say about who buys
+
+Eligibility answers whether a product *could* have been written. It never answers whether a customer
+*should* buy one, or is *likely* to.
+
+**No customer, demographic, protected, credit, income, age or geographic attribute influences eligibility,
+pricing, lender assignment, reserve or attachment anywhere in the model** — there is no such attribute in the
+inputs at all, which is the strongest form the guarantee can take. The consequence is a real analytical
+limit: ARPI cannot segment F&I performance by anything about a buyer, and will not acquire the ability.
+
+### 15.4 The reserve and product amounts are decompositions, not independent draws
+
+DASH.6 chose the **decomposition-preserving** strategy over a component-first rebase
+([STM-019 §1.2](docs/source-to-target/STM-019-fact-finance-product-sale.md)). `back_end_gross` was drawn
+first and is explained afterwards, so every pre-existing generated value is unchanged — a diff of the
+committed `sale_event.csv` reports two added columns, no removed columns and **zero changed values**.
+
+**The cost is stated rather than hidden.** Reserve and product gross on a deal are *shares of a total drawn
+first*. Every component still obeys its own generation rule and no component is a plug, but a study of
+"does reserve co-vary with product gross?" over this dataset would be measuring the allocation, not a
+dealership.
+
+### 15.5 There is no fourth back-end component, and `other_fi_income` is exactly zero
+
+The identity is `reserve + product gross + other_fi_income`, and the third term is `0.00` by construction.
+**It is not a column anywhere.** A dealer group with a genuine fourth component — a documentation fee treated
+as F&I income, say — has nothing here to map it to. Adding one would be a new modelled component, not a
+balancing plug: the allocation reaches the cent by largest remainder across real product lines precisely so
+that no residual bucket is needed.
+
+### 15.6 ARPI is not a lending model, and no lender question is answerable
+
+**No APR, buy rate, sell rate, rate spread, money factor, payment, loan term, loan-to-value, approval,
+decline, counter-offer, stipulation, adverse-action reason, credit score, credit file, credit application,
+income or debt-to-income figure exists anywhere.** ARPI approves nothing, declines nothing, tiers nobody,
+recommends no lender, optimizes no rate and prices nothing.
+
+A store cannot ask this model "which lender approves more of my paper?", "what rate should we sell?" or
+"which customers should we send where?". Those are not gaps to fill — they are the boundary.
+
+`DQ-LND-007`, `DQ-FPS-016` and `DQ-FPA-013` inspect the **schema** and fail the run even when the offending
+column is empty, because the defect is claiming to model a mechanic the platform does not have.
+
+**`program_tier` classifies the LENDER'S PROGRAM, never a customer.** It is not a credit grade, it is
+assigned to no person, and because it is an attribute of the lender it is constant across that lender's
+deals — so a "tier mix" is a lender mix by another name and may not be read as a portfolio credit profile.
+
+### 15.7 Reserve is an amount and can never become a rate
+
+`finance_reserve_gross` is currency. It is never divided by anything financed, and **no rate, spread or
+markup is derivable from it** because the model contains no rate to compare it against.
+
+### 15.8 A lease earns no reserve, so a lease-heavy store shows a lower reserve PVR for reasons unrelated to its F&I office
+
+ARPI models no money factor and no lease rate mechanic, so there is no mechanism a lease reserve could be
+attributed to; inventing one would assume retail-finance mechanics apply to a lease. Cash deals earn none for
+the simpler reason that nothing was financed.
+
+**`KPI-FNI-001` and `KPI-FNI-002` are therefore structurally zero on Lease and Cash volume.** A store with a
+heavier lease mix shows a lower reserve PVR as a property of the model, and no surface may read that as a
+finding about the store. The decision is recorded in
+[STM-019 §6](docs/source-to-target/STM-019-fact-finance-product-sale.md).
+
+### 15.9 Three date bases are not interchangeable, and three KPIs are period proxies rather than loss rates
+
+**Deal-date** gross is what the F&I office produced. **As-of** net gross is what the store retained through a
+stated date. **Adjustment-period** figures group events by their own business date. An August chargeback on a
+June contract belongs to August, and the June contract keeps June's gross forever.
+
+`KPI-FNI-014`, `-015` and `-018` divide an adjustment-period numerator by a sale-date denominator. **They are
+period proxies and explicitly not contract-cohort loss rates**, because the contracts charged back in a month
+are mostly not the ones written in it. The disclosure is published *as data* on the view — not left to a
+sentence somebody remembered — and `tests/integration/test_fi_reporting_views.py` asserts it.
+
+### 15.10 The reporting window truncates the adjustment distribution, so adjustment volume is not comparable across months
+
+An event dated past the window's end has no `dim_date` row and is not emitted. **The most recent months of
+sales therefore carry structurally fewer adjustments than the earliest ones** — as a real store's most recent
+cohort does, because those contracts have not had time to fail.
+
+Any comparison of adjustment volume between an early month and a late one is reading that truncation. On the
+`development` profile the whole domain holds 57 adjustment events over 1,012 contracts, which is small enough
+that a single event moves a category rate materially.
+
+### 15.11 Net gross is capped, so a genuine over-recovery could not be represented
+
+Cumulative net reduction stays inside `[0, original_product_gross]` after **every** event in a contract's
+sequence. Retained gross can never go negative and never exceed the original.
+
+That is the right default and it is the **only** behaviour this generator produces — which means a real
+situation where a store ends up worse off than the contract's original gross has no representation here.
+`DQ-FPA-007` and `RECON-FI-ADJUSTMENT-CAP` enforce the cap; lifting it would be a modelling decision, not a
+bug fix.
+
+### 15.12 No menu, offer or decline is modelled, so no closing-rate analysis is possible
+
+ARPI records what was **sold**. It records nothing about what was offered and declined, in what order, at
+what price, or by whom. Menu-to-close analysis is impossible by construction.
+
+That is deliberate rather than incidental: a declined offer is a customer interaction, and modelling it would
+be the first step toward modelling the customer.
+
+### 15.13 No adjustment carries money, a narrative, or anything about a person
+
+An adjustment records its effect on the store's retained gross and nothing else. **There is no refund amount,
+no remittance, no settlement, no bank detail, no communication record, no repossession narrative, no
+collection activity, no customer reference and no free-text field** — because free text is where somebody
+eventually writes something about a customer.
+
+Reason categories are a closed vocabulary describing what happened to a **contract**. Data minimization
+applies: a field is not created merely because it could exist in a real DMS.
+
+### 15.14 Manager-grain F&I figures are governed, not evaluative, and small denominators are suppressed
+
+`finance_manager_key` exists on both F&I facts. **No leaderboard, ranking, label, or best/worst/top/bottom
+designation exists anywhere in the model**, and none may be built on it. A chargeback rate is not a
+performance judgement.
+
+Every manager-grain read is governed by a **minimum-sample floor** — `warehouse.fn_minimum_sample_floor()`,
+project default **10** eligible deals, sourced from one place (`arpi.constants.MINIMUM_SAMPLE_ELIGIBLE_DEALS`)
+rather than hard-coded per view. Below the floor a figure is suppressed rather than shown small, because a
+one-deal penetration of 100% is a number that will be repeated and cannot be defended.
+
+The floor is a real limitation as well as a control: on a short window, a store with a thin F&I desk may
+produce **no** publishable manager-grain figure at all.
+
+### 15.15 The domain has no presentation surface, and the semantic model binds none of it
+
+DASH.6 delivers SQL, generation, validation and reporting views. It delivers **no console page, no itemized
+deal jacket, no F&I manager view, no action centre and no browser dataset** — `DASH.7` owns the presentation
+surface, and `tests/integration/test_fi_reporting_views.py` asserts that no F&I view appears in the export
+contract.
+
+The Power BI semantic model binds **none** of the four views and **none** of the twenty-two `KPI-FNI-*`
+definitions. The F&I gap recorded in `powerbi/model_documentation/` is therefore no longer "the domain does
+not exist" — it is now **"the SQL and reporting domain is implemented; the semantic model is not yet bound
+to it"**, which is a smaller and more specific gap, and Gate 2 stays CLOSED regardless.

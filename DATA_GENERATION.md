@@ -182,7 +182,7 @@ Portfolio-scale targets come from [ARCHITECTURE.md §8.5](ARCHITECTURE.md) and a
 | Marketing spend records | 500 to 2,000 | Planned (Phase 1.5) |
 | Lead activities | 150,000 to 400,000 | Deferred |
 | Price-history events | 20,000 to 75,000 | Deferred |
-| F&I product sales | 10,000 to 30,000 | Deferred |
+| F&I product sales | 10,000 to 30,000 | **Implemented** (`DASH.6`). The portfolio-scale band is unreached at the current profile scale: the `development` profile produces 1,012 contracts over 650 sales, because contract volume follows retail volume and the attachment model rather than a fixed multiple |
 | Service visits | 60,000 to 150,000 | Deferred |
 
 These are **volume targets for a fictional business**. They are not claims about real dealership volumes.
@@ -365,7 +365,7 @@ names "if names are used at all", and ARPI's answer is that they are not.
 | Street address | `county`, `state_code`, `market_area` |
 | Customer name | `customer_id` (`CUS-########`) |
 | Employee name | `employee_id` (`EMP-#####`) |
-| Precise credit score | Nothing. A broad synthetic tier is permitted only if a future F&I domain requires one ([ARCHITECTURE.md §22.4](ARCHITECTURE.md)), and that domain is Deferred. |
+| Precise credit score | **Nothing, and the F&I domain did not change that.** `DASH.6` implemented the domain and generated **no** customer tier of any kind: `dim_lender.program_tier` classifies the **LENDER'S PROGRAM**, is assigned to no person, and is not a credit grade. The permission in [ARCHITECTURE.md §22.4](ARCHITECTURE.md) was deliberately not exercised — the domain turned out not to need it, and a tier nobody needs is a tier somebody eventually reads as a credit grade. |
 | Communication content | `first_response_seconds` only |
 | Real VIN | `synthetic_vin` — structurally VIN-like, fabricated, never decoded from a real vehicle |
 | Household composition | `household_key` only, and only where repeat-purchase analysis requires it |
@@ -432,9 +432,9 @@ Rules that apply to every scheme:
 | 9 | Stores differ in traffic, inventory mix, and customer profiles | Phase 1.1 / 1.2 |
 | 10 | Seasonality affects lead volume, vehicle sales, and service visits | Phase 1.1 / 1.4 |
 | 11 | Some high-volume models have compressed gross because of excessive supply | Phase 1.1 / 1.2 |
-| 12 | F&I penetration differs by finance manager and deal type | Deferred |
-| 13 | Product eligibility affects available F&I opportunities | Deferred |
-| 14 | Chargebacks and cancellations occur after the original sale | Deferred |
+| 12 | F&I penetration differs by finance manager and deal type | **Implemented** (`DASH.6`) — via the manager's synthetic skill index and the derived finance structure, never via anything about a customer |
+| 13 | Product eligibility affects available F&I opportunities | **Implemented** (`DASH.6`) — one governed authority, `config/reference/fi_product_eligibility.yaml`; eligibility is **not** sales propensity |
+| 14 | Chargebacks and cancellations occur after the original sale | **Implemented** (`DASH.6`) — as **events on their own dates**; the original contract is never rewritten |
 | 15 | Service-to-sales opportunities increase with vehicle age, mileage, repair amount, and declined work | Deferred |
 | 16 | Marketing campaigns may create leads outside their primary target segment | Phase 1.5 |
 
@@ -661,18 +661,23 @@ is being refreshed.
 | Marketing spend | `warehouse.fact_marketing_spend` | — | Planned | Phase 1.5 |
 | Lead activity | `warehouse.fact_lead_activity` | — | Deferred | |
 | Price history | `warehouse.fact_inventory_price_history` | — | Deferred | |
-| F&I product sale | `warehouse.fact_finance_product_sale` | — | Deferred | |
 | Service visit | `warehouse.fact_service_visit` | — | Deferred | |
 | Sales target | `warehouse.fact_sales_target` | `sales_target.csv` | **Implemented** | `DASH.5`. 11 columns; the monthly operating **plan**, generated from exogenous planning inputs only. |
+| Finance product | `warehouse.dim_finance_product` | `finance_product.csv` | **Implemented** | `DASH.6`. 15 columns; 19 declared products across ten governed categories. **Consumes no random variate** — a menu is a declared fact about the group, not a sampled one. |
+| Lender | `warehouse.dim_lender` | `lender.csv` | **Implemented** | `DASH.6`. 9 columns; 10 fictional institutions. Also consumes no variate; the *assignment* draw lives in the sale generator. |
+| F&I product sale | `warehouse.fact_finance_product_sale` | `finance_product_sale.csv` | **Implemented** | `DASH.6`. 17 columns; the deal decomposition. See §12.2. |
+| F&I product adjustment | `warehouse.fact_finance_product_adjustment` | `finance_product_adjustment.csv` | **Implemented** | `DASH.6`. 13 columns; cancellations, chargebacks, reinstatements and approved adjustments as **events**. See §12.3. |
 
 **Two of nineteen generators exist.** Both produce dimensions. **No generator produces a fact table.**
 
-> **This table is stale and the staleness is not `DASH.5`'s to fix.** The paragraph above describes the
-> Phase 0 slice; fourteen generator modules exist in `src/arpi/generation/` today. `DASH.5` updated the
-> one row it owns — leaving it saying *Deferred* while [DATA_DICTIONARY.md §41](DATA_DICTIONARY.md) says
-> *Implemented* would be exactly the kind of divergence this repository refuses — and deliberately did not
-> rewrite the other seventeen rows, because a delivery increment that quietly restates unrelated baselines
-> is harder to review, not easier. Recorded for the documentation backlog.
+> **This table is stale and the staleness is not `DASH.5`'s or `DASH.6`'s to fix.** The paragraph above
+> describes the Phase 0 slice; nineteen generator modules exist in `src/arpi/generation/` today. Each
+> increment updates the rows it owns — leaving one saying *Deferred* while
+> [DATA_DICTIONARY.md](DATA_DICTIONARY.md) says *Implemented* would be exactly the kind of divergence this
+> repository refuses — and deliberately does not rewrite unrelated rows, because a delivery increment that
+> quietly restates unrelated baselines is harder to review, not easier. `DASH.6` updated four rows: the two
+> F&I dimensions, the contract fact, and the adjustment fact it added. Recorded for the documentation
+> backlog.
 
 ### 12.1 The sales-target generator, and the rule it obeys
 
@@ -699,6 +704,97 @@ The plan is **calibrated, not fitted**: the baselines were chosen so the committ
 shows both beats and misses in both units and gross, because a demonstration surface where every store
 beats every target proves nothing about the arithmetic. That calibration was done by adjusting exogenous
 inputs and regenerating, never by reading the results and adjusting the plan to match.
+
+### 12.2 The F&I decomposition engine, and the strategy it chose
+
+`src/arpi/generation/finance_deal.py` decides, for every finalized transaction: its derived finance
+structure, the fictional lender behind it (or the fact that none exists), the finance reserve it earned, and
+the basket of product contracts written on it — each with an exact retail price, dealer cost and original
+gross. `src/arpi/generation/finance_product_sale.py` then writes one row per product line.
+
+**Two strategies were available and the choice is recorded, not implied.**
+
+**A — component-first rebase:** draw reserve and products first, then set `back_end_gross` from their sum.
+Honest and simple, and it moves the synthetic baseline of every retail deal in the repository.
+
+**B — decomposition-preserving (chosen):** the existing back-end gross draw in `arpi.generation.sale` stays
+exactly as it is, and this module *explains* it. Every cent of a deal's `back_end_gross` is allocated to a
+named component.
+
+B was chosen because `DASH.6` was asked for an **explanation of an aggregate that already exists**, and
+because a rebase would have moved several hundred committed artifact values for no analytical gain. The
+consequence was **measured rather than asserted**: a diff of the committed `data/sample/sale_event.csv`
+before and after reports two added columns (`finance_reserve_gross`, `lender_id`), no removed columns, and
+**zero changed values**.
+
+**The cost of B, stated plainly.** Reserve and product amounts on a deal are shares of a total that was drawn
+first, so they are *decompositions* rather than independent draws. What that does **not** cost is
+correctness: every component obeys its own generation rule, every category has its own economics, and no
+component is a plug.
+
+**There is no balancing plug.** `other_fi_income` is exactly `0.00` and is not a column anywhere. The
+allocation reaches the cent by **largest remainder** over the basket's declared gross weights, which
+distributes the rounding residue across real product lines. A give-the-remainder-to-the-last-product rule
+would make the final line of every basket a disguised plug; largest remainder does not.
+`decompose_deals()` asserts the identity on every deal before returning, and `DQ-FPS-014` re-asserts it over
+the whole dataset.
+
+**There is no circularity, and it is structural rather than promised.** `finance_deal.py` **does not import**
+`arpi.generation.sale`. The dependency runs one way: `sale.py` imports the engine, builds lightweight
+`DealInput` records from its own draws, and takes the reserve and lender back. `back_end_gross` is an input
+and is never written back.
+
+**The engine draws from a dedicated seeding namespace** (`fi_deal_finance`), separate from `sale_event`. That
+is what preserves every pre-DASH.6 draw bit-for-bit: adding an entity to a shared namespace would have
+shifted the variate stream of everything generated after it.
+
+**What drives attachment, and what may never.** Attachment probability varies with the store's operating
+model, the finance manager's synthetic skill index (clamped to `[0.70, 1.30]` so no single latent parameter
+can drive a deal to certainty), the derived finance structure, the product category, the vehicle's condition
+through eligibility, and seeded randomness.
+
+It varies with **nothing about a customer** — no demographic, no protected characteristic, no credit datum,
+no income, no age, no geography and no inferred willingness to buy. **There is no such attribute anywhere in
+the inputs**, which is the strongest form the guarantee can take. Nothing the engine produces is a
+recommendation: it describes synthetic outcomes and does not say what a store should sell, what it should
+charge, or what any penetration ought to be.
+
+**One variate is consumed per eligible category on every deal**, whether or not the category attaches, so
+adding a category cannot shift an earlier category's stream.
+
+### 12.3 The adjustment generator, and why the contract is never rewritten
+
+`src/arpi/generation/finance_product_adjustment.py` emits cancellations, chargebacks, reinstatements and
+approved adjustments as **events with their own business dates**. The
+`fact_finance_product_sale` row each one refers to keeps the gross it was written with, **forever**.
+
+Restating the contract would be easier and would be wrong twice over. It would move production out of the
+month it happened in, so every historical month would change whenever a later event posted. And it would
+destroy the distinction between what the F&I office **produced** and what the store **retained** — the
+distinction the domain exists to make.
+
+**Sign convention**, declared once in `arpi.constants.ADJUSTMENT_SIGN_CONVENTION`: a **positive** amount
+reduces retained gross and a **negative** one restores it. Cancellation and Chargeback are constrained
+positive, Reinstatement negative, and Approved Adjustment is signed with a governed reason category that says
+which way it went.
+
+**The cap:** cumulative net reduction stays inside `[0, original_product_gross]` after **every** event in a
+contract's sequence, not merely at the end. An ordinary adjustment cannot take back more than was produced,
+and a reinstatement cannot restore more than was taken.
+
+**The sensitivity flags do real work.** A product that is not `cancellation_sensitive` produces **no**
+Cancellation row, ever; a product that is not `chargeback_sensitive` produces **no** Chargeback row. That is
+what stops the two catalogue columns from being decoration, and `DQ-FPA-011` asserts it.
+
+**Window truncation is a modelled property, not a defect.** Event lags are drawn from triangular
+distributions whose long right tails extend past the reporting window; an event with no `dim_date` row to
+resolve is not emitted. The most recent months of sales therefore carry structurally fewer adjustments than
+the earliest ones — exactly as a real store's most recent cohort does, because those contracts have not had
+time to fail. [LIMITATIONS.md §15.10](LIMITATIONS.md) records it.
+
+**Nothing here is about a person.** Reason categories are a closed vocabulary describing what happened to a
+**contract**. There is no free-text field, because a free-text reason is where somebody eventually writes
+something about a customer, and no customer reference of any kind.
 
 ---
 

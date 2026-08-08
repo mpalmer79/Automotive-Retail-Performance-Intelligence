@@ -73,6 +73,21 @@ from arpi.generation.employee import (
     generate_employee_dataset,
     validate_employee_dataset,
 )
+from arpi.generation.finance_product import (
+    ENTITY_DIM_FINANCE_PRODUCT,
+    generate_finance_product_dataset,
+    validate_finance_product_dataset,
+)
+from arpi.generation.finance_product_adjustment import (
+    ENTITY_FINANCE_PRODUCT_ADJUSTMENT,
+    generate_finance_product_adjustment_dataset,
+    validate_finance_product_adjustment_dataset,
+)
+from arpi.generation.finance_product_sale import (
+    ENTITY_FINANCE_PRODUCT_SALE,
+    generate_finance_product_sale_dataset,
+    validate_finance_product_sale_dataset,
+)
 from arpi.generation.inventory_snapshot import (
     ENTITY_INVENTORY_SNAPSHOT_EVENT,
     generate_inventory_snapshot_dataset,
@@ -87,6 +102,11 @@ from arpi.generation.lead_source import (
     ENTITY_DIM_LEAD_SOURCE,
     generate_lead_source_dataset,
     validate_lead_source_dataset,
+)
+from arpi.generation.lender import (
+    ENTITY_DIM_LENDER,
+    generate_lender_dataset,
+    validate_lender_dataset,
 )
 from arpi.generation.marketing import (
     ENTITY_DIM_MARKETING_CAMPAIGN,
@@ -158,6 +178,10 @@ GENERATION_ORDER: tuple[str, ...] = (
     ENTITY_DIM_CUSTOMER,
     ENTITY_DIM_LEAD_SOURCE,
     ENTITY_DIM_MARKETING_CAMPAIGN,
+    # The two DASH.6 dimensions. Both are fixed reference catalogues that draw nothing,
+    # and both must exist before the product-sale fact resolves a product or a lender.
+    ENTITY_DIM_FINANCE_PRODUCT,
+    ENTITY_DIM_LENDER,
     ENTITY_ACQUISITION_EVENT,
     ENTITY_SALE_EVENT,
     ENTITY_INVENTORY_SNAPSHOT_EVENT,
@@ -165,6 +189,10 @@ GENERATION_ORDER: tuple[str, ...] = (
     ENTITY_APPOINTMENT_EVENT,
     ENTITY_MARKETING_SPEND,
     ENTITY_SALES_TARGET,
+    # The two DASH.6 facts, after the sale they decompose. The adjustment entity reads
+    # the product-sale entity, so their order between themselves is load-bearing too.
+    ENTITY_FINANCE_PRODUCT_SALE,
+    ENTITY_FINANCE_PRODUCT_ADJUSTMENT,
 )
 
 
@@ -358,6 +386,8 @@ def generate_all_datasets(config: ArpiConfig) -> tuple[GeneratedDataset, ...]:
         generate_customer_dataset(config),
         generate_lead_source_dataset(config),
         generate_marketing_campaign_dataset(config),
+        generate_finance_product_dataset(config),
+        generate_lender_dataset(config),
         generate_acquisition_dataset(config),
         generate_sale_dataset(config),
         generate_inventory_snapshot_dataset(config),
@@ -365,6 +395,8 @@ def generate_all_datasets(config: ArpiConfig) -> tuple[GeneratedDataset, ...]:
         generate_appointment_dataset(config),
         generate_marketing_spend_dataset(config),
         generate_sales_target_dataset(config),
+        generate_finance_product_sale_dataset(config),
+        generate_finance_product_adjustment_dataset(config),
     )
     produced = tuple(dataset.entity_name for dataset in datasets)
     if produced != GENERATION_ORDER:
@@ -405,6 +437,8 @@ def validate_all_datasets(
         validate_customer_dataset(by_entity[ENTITY_DIM_CUSTOMER], config),
         validate_lead_source_dataset(by_entity[ENTITY_DIM_LEAD_SOURCE]),
         validate_marketing_campaign_dataset(by_entity[ENTITY_DIM_MARKETING_CAMPAIGN]),
+        validate_finance_product_dataset(by_entity[ENTITY_DIM_FINANCE_PRODUCT]),
+        validate_lender_dataset(by_entity[ENTITY_DIM_LENDER]),
         validate_acquisition_dataset(by_entity[ENTITY_ACQUISITION_EVENT], config),
         validate_sale_dataset(by_entity[ENTITY_SALE_EVENT], config),
         validate_inventory_snapshot_dataset(by_entity[ENTITY_INVENTORY_SNAPSHOT_EVENT], config),
@@ -412,6 +446,10 @@ def validate_all_datasets(
         validate_appointment_dataset(by_entity[ENTITY_APPOINTMENT_EVENT], config),
         validate_marketing_spend_dataset(by_entity[ENTITY_MARKETING_SPEND], config),
         validate_sales_target_dataset(by_entity[ENTITY_SALES_TARGET], config),
+        validate_finance_product_sale_dataset(by_entity[ENTITY_FINANCE_PRODUCT_SALE], config),
+        validate_finance_product_adjustment_dataset(
+            by_entity[ENTITY_FINANCE_PRODUCT_ADJUSTMENT], config
+        ),
         validate_generation(datasets, config),
     )
     return ensure_registry_coverage(report, entities=tuple(by_entity))

@@ -150,17 +150,24 @@ describe('every displayed count traces to repository evidence', () => {
   it('counts the eight dimensions and five facts from the DDL on disk', () => {
     // Two lanes are subtracted, for the same reason and from the same kind of source.
     // The sanitized public listing lane (ADR-0011) puts its own dimension and fact in
-    // these directories, and the dashboard program (ADR-0013) puts `fact_sales_target`
-    // in `sql/04_facts/` from `DASH.5`. Neither is part of the MVP warehouse the
-    // semantic model reads, and the MVP baseline still describes FIVE facts. Both are
-    // subtracted exactly as the manifest generator subtracts them, from the one place
-    // that declares which files belong to each, so this test cannot pass by agreeing
-    // with a broken derivation.
+    // these directories; the dashboard program (ADR-0013) puts `fact_sales_target` there
+    // from `DASH.5`, and `dim_finance_product`, `dim_lender`,
+    // `fact_finance_product_sale` and `fact_finance_product_adjustment` from `DASH.6`.
+    // None of them is part of the MVP warehouse the semantic model reads, and the MVP
+    // baseline still describes EIGHT dimensions and FIVE facts. Both lanes are subtracted
+    // exactly as the manifest generator subtracts them, from the one place that declares
+    // which files belong to each, so this test cannot pass by agreeing with a broken
+    // derivation. `_functions` is excluded on its own terms: a script that creates
+    // governed SQL functions declares no dimension, in either lane.
     const lane = laneSqlFiles()
     const dashboardLane = dashboardLaneSqlFiles()
     const dims = readdirSync(join(REPO, 'sql/03_dimensions')).filter(
       (f) =>
-        f.endsWith('.sql') && !f.includes('_merge') && !lane.has(`03_dimensions/${f}`)
+        f.endsWith('.sql') &&
+        !f.includes('_merge') &&
+        !f.includes('_functions') &&
+        !lane.has(`03_dimensions/${f}`) &&
+        !dashboardLane.has(`03_dimensions/${f}`)
     ).length
     const facts = readdirSync(join(REPO, 'sql/04_facts')).filter(
       (f) =>
@@ -177,15 +184,33 @@ describe('every displayed count traces to repository evidence', () => {
 
   it('keeps the dashboard program lane out of the MVP counts and declares it once', () => {
     /*
-     * `DASH.5` is the first dashboard increment to add a WAREHOUSE FACT rather than only
-     * a view over existing ones. The MVP baseline the semantic model was measured
-     * against describes five facts and 28 reporting views, and it still does: the sixth
-     * fact and the fifth dashboard view belong to a lane that model has never read. This
-     * is the line that says so, and it fails if the lane grows without a decision.
+     * `DASH.5` was the first dashboard increment to add a WAREHOUSE FACT rather than only
+     * a view over existing ones, and `DASH.6` added two more facts and two dimensions.
+     * The MVP baseline the semantic model was measured against describes eight
+     * dimensions, five facts and 28 reporting views, and it still does: everything the
+     * dashboard program adds belongs to a lane that model has never read. These are the
+     * lines that say so, and they fail if the lane grows without a decision.
+     *
+     * The numbers are asserted per increment rather than in one total, so a file added to
+     * the wrong increment's range is a failure rather than an arithmetic coincidence.
      */
     const lane = dashboardLaneSqlFiles()
+    const dimensionDdl = [...lane].filter(
+      (f) =>
+        f.startsWith('03_dimensions/') &&
+        !f.includes('_merge') &&
+        !f.includes('_functions')
+    )
+    const factDdl = [...lane].filter(
+      (f) => f.startsWith('04_facts/') && !f.includes('_load')
+    )
+    // DASH.5: fact_sales_target. DASH.6: the two F&I facts.
     expect([...lane].filter((f) => f.startsWith('04_facts/06_'))).toHaveLength(1)
-    expect([...lane].filter((f) => f.startsWith('05_reporting/'))).toHaveLength(5)
+    expect(factDdl).toHaveLength(3)
+    // DASH.6: dim_finance_product and dim_lender, and nothing before them.
+    expect(dimensionDdl).toHaveLength(2)
+    // DASH.2-DASH.5 contributed five views; DASH.6 contributed four.
+    expect([...lane].filter((f) => f.startsWith('05_reporting/'))).toHaveLength(9)
   })
 
   it('keeps the sanitized listing lane out of the MVP counts and declares it once', () => {

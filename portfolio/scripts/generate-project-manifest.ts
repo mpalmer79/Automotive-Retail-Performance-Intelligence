@@ -401,8 +401,25 @@ function inDashboardLane(dir: string, name: string): boolean {
   return dashboardLaneSqlFiles.has(`${dir}/${name}`)
 }
 
+// The MVP dimension DDL. Both lanes are subtracted for the same reason the fact DDL
+// subtracts them below: `data-model.json`, the Power BI SQL baseline and every count this
+// website publishes describe the EIGHT MVP dimensions. `DASH.6` added two more beside them,
+// and counting those here would restate a baseline the semantic model never measured.
+// `_functions` is excluded on its own terms: a script that creates governed SQL functions
+// declares no dimension, in either lane.
 const dimensionDdl = listFiles('sql/03_dimensions', '.sql').filter(
-  (f) => !f.includes('_merge') && !inLane('03_dimensions', f)
+  (f) =>
+    !f.includes('_merge') &&
+    !f.includes('_functions') &&
+    !inLane('03_dimensions', f) &&
+    !inDashboardLane('03_dimensions', f)
+)
+/** The dashboard program's own dimension DDL: `dim_finance_product`, `dim_lender` (`DASH.6`). */
+const dashboardDimensionDdl = listFiles('sql/03_dimensions', '.sql').filter(
+  (f) =>
+    !f.includes('_merge') &&
+    !f.includes('_functions') &&
+    inDashboardLane('03_dimensions', f)
 )
 // The MVP fact DDL. Both lanes are subtracted for the same reason: the Power BI SQL
 // baseline and `data-model.json` describe the FIVE MVP facts, and `DASH.5` added a sixth
@@ -411,7 +428,10 @@ const dimensionDdl = listFiles('sql/03_dimensions', '.sql').filter(
 const factDdl = listFiles('sql/04_facts', '.sql').filter(
   (f) => !f.includes('_load') && !inLane('04_facts', f) && !inDashboardLane('04_facts', f)
 )
-/** The dashboard program's own fact DDL: `warehouse.fact_sales_target` (`DASH.5`). */
+/**
+ * The dashboard program's own fact DDL: `fact_sales_target` (`DASH.5`),
+ * `fact_finance_product_sale` and `fact_finance_product_adjustment` (`DASH.6`).
+ */
 const dashboardFactDdl = listFiles('sql/04_facts', '.sql').filter(
   (f) => !f.includes('_load') && inDashboardLane('04_facts', f)
 )
@@ -448,6 +468,13 @@ requireTrue(
   `Expected eight MVP dimension DDL scripts under sql/03_dimensions/, found ${dimensionDdl.length}.`
 )
 requireTrue(
+  dashboardDimensionDdl.length === 2,
+  `Expected two dashboard program dimension DDL scripts under sql/03_dimensions/, found ` +
+    `${dashboardDimensionDdl.length}. A DASH.* dimension added to the tree and not to ` +
+    'DASHBOARD_LANE_SQL_FILES would be counted as a ninth MVP dimension, which would ' +
+    'restate a baseline the semantic model was measured against.'
+)
+requireTrue(
   factDdl.length === 5,
   `Expected five MVP fact DDL scripts under sql/04_facts/, found ${factDdl.length}.`
 )
@@ -457,15 +484,15 @@ requireTrue(
     `${listingReportingViewFiles.length}.`
 )
 requireTrue(
-  dashboardReportingViewFiles.length === 5,
-  `Expected five dashboard program reporting views under sql/05_reporting/, found ` +
+  dashboardReportingViewFiles.length === 9,
+  `Expected nine dashboard program reporting views under sql/05_reporting/, found ` +
     `${dashboardReportingViewFiles.length}. A DASH.* view added to the tree and not to ` +
     'DASHBOARD_LANE_SQL_FILES would be counted against the Power BI SQL baseline, which ' +
     'never measured it.'
 )
 requireTrue(
-  dashboardFactDdl.length === 1,
-  `Expected one dashboard program fact DDL script under sql/04_facts/, found ` +
+  dashboardFactDdl.length === 3,
+  `Expected three dashboard program fact DDL scripts under sql/04_facts/, found ` +
     `${dashboardFactDdl.length}. A DASH.* fact added to the tree and not to ` +
     'DASHBOARD_LANE_SQL_FILES would be counted as a sixth MVP fact, which would restate ' +
     'a baseline the semantic model was measured against.'

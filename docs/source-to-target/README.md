@@ -2,7 +2,7 @@
 
 **Project:** Automotive Retail Performance Intelligence (ARPI)
 **Owner:** Michael Palmer
-**Last reviewed:** 2026-07-29
+**Last reviewed:** 2026-08-08
 **Parent documents:** [ARCHITECTURE.md](../../ARCHITECTURE.md) · [DATA_DICTIONARY.md](../../DATA_DICTIONARY.md) · [DATA_GENERATION.md](../../DATA_GENERATION.md)
 
 ---
@@ -85,10 +85,10 @@ SQL.
 | `REJ-SCHEMA-001` | The source file's columns do not match the declared schema | A column added, removed, renamed, or reordered |
 | `REJ-TYPE-001` | A value could not be cast to its target type | Non-numeric text in a numeric column, an unparseable date |
 | `REJ-NULL-001` | A required field was NULL or empty | A missing mandatory value |
-| `REJ-DOMAIN-001` | A value fell outside its allowed domain | An enumeration value that is not in the permitted set, a number outside its range |
-| `REJ-KEY-001` | Duplicate natural key within the load batch | Two rows for the same date, or two current rows for the same store |
-| `REJ-REF-001` | A foreign key did not resolve | A date key with no matching `dim_date` row |
-| `REJ-RULE-001` | A business rule was violated | `date_key` not matching `full_date`; a franchise store with no brand |
+| `REJ-DOMAIN-001` | A value fell outside its allowed domain | An enumeration value that is not in the permitted set, a number outside its range; an F&I product category outside the ten governed values, an adjustment reason that is governed but belongs to a different adjustment type |
+| `REJ-KEY-001` | Duplicate natural key within the load batch | Two rows for the same date, or two current rows for the same store; two adjustment events at one position on one contract |
+| `REJ-REF-001` | A foreign key did not resolve | A date key with no matching `dim_date` row; an F&I contract whose parent deal is not in `fact_vehicle_sale`, or an adjustment whose contract is not in `fact_finance_product_sale` |
+| `REJ-RULE-001` | A business rule was violated | `date_key` not matching `full_date`; a franchise store with no brand; `original_product_gross <> product_retail_price − product_dealer_cost`; an adjustment dated before the contract it adjusts |
 
 **Rejected rows are preserved, never discarded.** The full payload is written to
 `audit.rejected_record.record_payload` so the rejection can be diagnosed. Because all ARPI source data is
@@ -158,11 +158,25 @@ A mapping is ready for review when all of the following are true:
 | [STM-014](STM-014-fact-marketing-spend.md) | Marketing spend fact | `warehouse.fact_marketing_spend` (via `raw.marketing_spend_load`, `staging.stg_marketing_spend`) | 1.0 | **Implemented** |
 | [STM-015](STM-015-inventory-listing-snapshot.md) | Sanitized public inventory listing snapshot | `warehouse.fact_vehicle_listing_snapshot`, `warehouse.dim_observed_vehicle` (via `raw.inventory_listing_snapshot_load`, `staging.stg_inventory_listing_snapshot`) | 1.0 | **Implemented** |
 | [STM-016](STM-016-fact-sales-target.md) | Sales target fact — the monthly operating plan | `warehouse.fact_sales_target` (via `raw.sales_target_load`, `staging.stg_sales_target`) | 1.0 | **Implemented** |
+| [STM-017](STM-017-dim-finance-product.md) | Finance product catalogue — the governed F&I menu | `warehouse.dim_finance_product` (via `raw.finance_product_load`, `staging.stg_finance_product`) | 1.0 | **Implemented** |
+| [STM-018](STM-018-dim-lender.md) | Lender catalogue — the fictional institutions behind financed deals | `warehouse.dim_lender` (via `raw.lender_load`, `staging.stg_lender`) | 1.0 | **Implemented** |
+| [STM-019](STM-019-fact-finance-product-sale.md) | Finance product contract — what the back-end gross is made of | `warehouse.fact_finance_product_sale` (via `raw.finance_product_sale_load`, `staging.stg_finance_product_sale`) | 1.0 | **Implemented** |
+| [STM-020](STM-020-fact-finance-product-adjustment.md) | Finance product adjustment — what happened to the contract afterwards | `warehouse.fact_finance_product_adjustment` (via `raw.finance_product_adjustment_load`, `staging.stg_finance_product_adjustment`) | 1.0 | **Implemented** |
+| STM-021 | Finance product provider dimension | `warehouse.dim_finance_product_provider` *(does not exist)* | — | **Deferred** |
 
-**All sixteen mappings are written, and every MVP dimension and fact has one.**
+**All twenty written mappings are current, and every dimension and fact in the warehouse has one.**
 `tests/integration/test_gate1_readiness.py` asserts a mapping exists for each of the thirteen warehouse
-entities; it does not verify that a mapping's *content* is current, which stays a review responsibility and
-is why the Definition of Done requires an STM update in the same change as its target object.
+entities it covers; it does not verify that a mapping's *content* is current, which stays a review
+responsibility and is why the Definition of Done requires an STM update in the same change as its target
+object.
+
+**STM-021 is reserved, not missing.** DASH.6-01 recorded the provider as an **attribute** of
+`warehouse.dim_finance_product` rather than a dimension of its own: in this model a provider has no
+behaviour independent of the product it administers, and no fact needs a provider key that
+`finance_product_key` does not already resolve. The number is held so that promoting the provider later —
+if one ever acquires its own behaviour, such as a remittance cadence or an administrator-level
+reconciliation — arrives as STM-021 rather than as a renumbering. **No fact would change**, because none
+carries a provider key today. See [STM-017 §1.2](STM-017-dim-finance-product.md).
 
 **STM-015 is the one mapping whose source is not a generator.** It documents the sanitized public dealership
 listing lane ([ADR-0011](../architecture-decisions/ADR-0011-sanitized-public-inventory-reference-data.md)),
@@ -178,6 +192,15 @@ index records how something that happened reaches the warehouse. STM-016 records
 an insert, because a plan is a current statement and not an event; and the mapping carries an explicit
 **no-outcome-leakage rule** with the tests that enforce it, because the one way to make a target fact
 worthless is to derive it from the month it targets.
+
+**STM-017 through STM-020 are the F&I domain, and they are read as a set.** STM-019 is where the
+load-bearing decision lives: `warehouse.fact_vehicle_sale.back_end_gross` was **not redefined** by DASH.6,
+it was **explained**. The decomposition-preserving strategy leaves every pre-existing generated value
+untouched — a before-and-after diff of the committed `sale_event.csv` reports two added columns, no removed
+columns and **zero changed values** — while `RECON-FI-001` proves, per deal and to the cent, that reserve
+plus product gross accounts for all of it with no balancing plug. STM-020 is the counterweight: it records
+why the original contract is **never rewritten**, and why the domain therefore carries three date bases
+(deal-date, as-of, adjustment-period) that no view or KPI may blend without saying so.
 
 **No mapping covers the reporting layer**, and none should: an STM records how a value reaches the
 warehouse. How it is then projected for reporting is documented on the view itself — every reporting view

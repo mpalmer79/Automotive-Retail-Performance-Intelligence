@@ -2,19 +2,19 @@
   "schema": "arpi.dashboard_export/1",
   "contract_version": 1,
   "contract_sha256": "d2f90edc9c1c776623cd787994a76529c65ff0a965f03d7ff18e1879228b98c0",
-  "dataset_version": 4,
-  "generated_at": "2026-08-07T20:32:01+00:00",
+  "dataset_version": 5,
+  "generated_at": "2026-08-08T03:40:21+00:00",
   "as_of_date": "2025-12-31",
   "profile": "development",
   "random_seed": 20250701,
-  "source_commit": "1b9be8c339c0cb85d0e1e700c54d396ffb7cc555",
+  "source_commit": "dc6ecaa19f4e83b22fa351888a12ee7d516c629b",
   "exporter_version": "0.1.0",
   "query_normalisation": "arpi.sql_whitespace_canonical/1",
   "reporter_role": "arpi_reporter",
   "synthetic_data": true,
   "fictional_dealer_group": true,
   "pipeline_run": {
-    "run_uuid": "2e878277-7633-40ec-a575-0a099b1dc142",
+    "run_uuid": "6b1a78ae-0a44-42ba-96e7-a12e7bb16363",
     "logical_run_key": null,
     "status": "succeeded"
   },
@@ -4566,10 +4566,10 @@
       ],
       "notes": "The source view's grain is reconciliation x run; this dataset selects the export's own run, so the console shows the evidence belonging to the data it is rendering. Three of the view's columns are deliberately NOT exported -- the two source columns and the prose description -- because all three embed schema-qualified names of internal warehouse and audit objects, which ADR-0013 condition 8 keeps out of the public lane. The governed reconciliation_id is the public handle: KPI_CATALOG.md section 36 documents what each identifier compares, so the console links to the definition instead of restating an internal object path. The values, the tolerance and the outcome are what make a reconciliation public evidence.",
       "query_sha256": "aa70b6a47c645d0784272a562223ec2fb1eabb499dac4e403e8a1cc0e0d6f50e",
-      "row_count": 69,
+      "row_count": 96,
       "file": "reconciliation-status.json",
-      "file_sha256": "56328ecd286ef507808763b97e926d6275d0db762351d6e8a78ecdf26f353bc5",
-      "file_bytes": 15719
+      "file_sha256": "dedf4db7cb96d5fe3509cbf0e899eb690f201ee8597a08c35b9b8e82ec26a097",
+      "file_bytes": 21885
     },
     {
       "name": "pipeline-run",
@@ -4790,8 +4790,8 @@
       "query_sha256": "adca98ad620f10e4795dec1cda7735ca8ccc2a03111636becea487320e109e43",
       "row_count": 1,
       "file": "pipeline-run.json",
-      "file_sha256": "1753a1fdc1d39d98f5df8f8e9378334f1df5a5e5be6b951f9bc784b081f552d0",
-      "file_bytes": 537
+      "file_sha256": "30518d0b8d94f144d77b892d213d78420ca26d2c6d936441f2205fbe70e4d929",
+      "file_bytes": 541
     }
   ],
   "reconciliation": {
@@ -5110,12 +5110,12 @@
   "validation": {
     "critical_failures": 0,
     "warnings": 0,
-    "checks_evaluated": 129,
-    "reconciliations_evaluated": 69,
+    "checks_evaluated": 186,
+    "reconciliations_evaluated": 96,
     "reconciliations_failed": 0
   },
   "sizes": {
-    "dataset_bytes_total": 9710354,
+    "dataset_bytes_total": 9716524,
     "largest_dataset": {
       "name": "lead-response",
       "bytes": 2269345,

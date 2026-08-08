@@ -117,21 +117,26 @@ All operational data is synthetic.
 
 ## 4. Entity index
 
-> **Status reality check.** Fifty-eight objects are Implemented, including all eight MVP dimensions, all
-> five MVP facts, and the twenty-eight views of the reporting layer. Every one of the 29 KPIs in
-> [KPI_CATALOG.md](KPI_CATALOG.md) is computable from `reporting`, asserted by
-> `tests/integration/test_kpi_verification.py`. Nine entities remain **Deferred**; none of them is an MVP
-> object, and the questions they block are recorded in
+> **Status reality check.** Every one of the 29 MVP KPIs in [KPI_CATALOG.md](KPI_CATALOG.md) is computable
+> from `reporting`, asserted by `tests/integration/test_kpi_verification.py`, alongside the ten `KPI-TGT-*`
+> and twenty-two `KPI-FNI-*` definitions the dashboard program owns. All eight MVP dimensions, all five MVP
+> facts and the twenty-eight views of the MVP reporting layer are Implemented. **Six** entities remain
+> **Deferred**; none of them is an MVP object, and the questions they block are recorded in
 > [`docs/requirements/STAKEHOLDER_QUESTIONS.md`](docs/requirements/STAKEHOLDER_QUESTIONS.md) §6 rather than
 > left absent.
 
-> **The baseline did not move.** Two lanes have been implemented *beside* the MVP baseline, not inside it:
-> the sanitized public inventory listing lane (ADR-0011, §40) and the dashboard-program target lane
-> (ADR-0013, [§41](#41-warehousefactsalestarget--implemented-contract-dash5)). `warehouse.fact_sales_target`
-> is the tenth Deferred entity promoted to Implemented, and it is a **dashboard-program fact, not a sixth
-> MVP fact**. The MVP baseline is still **five MVP facts and 29 MVP KPIs**; the ten `KPI-TGT-*` definitions
-> and `reporting.vw_target_attainment` belong to the dashboard program and are counted separately
-> ([KPI_CATALOG.md §39](KPI_CATALOG.md)).
+> **The baseline did not move.** Three lanes have been implemented *beside* the MVP baseline, not inside it:
+> the sanitized public inventory listing lane (ADR-0011, §40), the dashboard-program target lane (ADR-0013,
+> [§41](#41-warehousefactsalestarget--implemented-contract-dash5)), and the dashboard-program **F&I lane**
+> (ADR-0013, [§42](#42-warehousedimfinanceproduct--implemented-contract-dash6)–[§45](#45-warehousefactfinanceproductadjustment--implemented-contract-dash6)).
+> The MVP baseline is still **eight MVP dimensions, five MVP facts, twenty-eight MVP reporting views and
+> 29 MVP KPIs**; `warehouse.fact_sales_target` with its ten `KPI-TGT-*` definitions, and the four F&I objects
+> with their twenty-two `KPI-FNI-*` definitions, belong to the dashboard program and are counted separately
+> ([KPI_CATALOG.md §39, §40](KPI_CATALOG.md)).
+>
+> **DASH.6 explained an existing measure rather than redefining one.** `fact_vehicle_sale.back_end_gross`
+> means exactly what it meant before; `KPI-GRS-002` is unchanged. What changed is that every cent of it is
+> now attributable to a named component, and `RECON-FI-001` proves that per deal to the cent.
 
 > **Scope of this index.** It lists every database object ARPI creates, including the six `audit.vw_dq_*`
 > helper views in `sql/08_validation/`. Those views are internal query helpers over the audit schema, not
@@ -155,6 +160,10 @@ All operational data is synthetic.
 | `warehouse.fact_appointment` | Warehouse | One row per scheduled appointment | **Implemented** |
 | `warehouse.fact_marketing_spend` | Warehouse | One row per dealership, campaign, and calendar month | **Implemented** |
 | `warehouse.fact_sales_target` | Warehouse | One row per dealership, target month, targeted KPI, and target scope (scope type + scope id) | **Implemented** (dashboard program, not an MVP fact — [§41](#41-warehousefactsalestarget--implemented-contract-dash5)) |
+| `warehouse.dim_finance_product` | Warehouse | One row per finance product definition | **Implemented** (dashboard program — [§42](#42-warehousedimfinanceproduct--implemented-contract-dash6)) |
+| `warehouse.dim_lender` | Warehouse | One row per lender | **Implemented** (dashboard program — [§43](#43-warehousedimlender--implemented-contract-dash6)) |
+| `warehouse.fact_finance_product_sale` | Warehouse | One row per finance product contract sold on a finalized vehicle transaction | **Implemented** (dashboard program, not a sixth MVP fact — [§44](#44-warehousefactfinanceproductsale--implemented-contract-dash6)) |
+| `warehouse.fact_finance_product_adjustment` | Warehouse | One row per product adjustment event | **Implemented** (dashboard program, not a seventh MVP fact — [§45](#45-warehousefactfinanceproductadjustment--implemented-contract-dash6)) |
 | `audit.pipeline_run` | Audit | One row per pipeline execution | **Implemented** |
 | `audit.pipeline_run_row_count` | Audit | One row per run, entity, and layer | **Implemented** |
 | `audit.validation_result` | Audit | One row per validation check evaluation per run | **Implemented** |
@@ -174,20 +183,25 @@ All operational data is synthetic.
 | `audit.vw_dq_referential` | Audit | One row per `DQ-REF-*` check | **Implemented** |
 | `audit.vw_dq_audit` | Audit | One row per `DQ-AUD-*` check | **Implemented** |
 | `audit.vw_dq_all` | Audit | One row per SQL data-quality check across all four check views | **Implemented** |
-| `warehouse.dim_finance_product` | Warehouse | One row per finance product definition | Deferred |
-| `warehouse.dim_lender` | Warehouse | One row per synthetic lender | Deferred |
 | `warehouse.dim_sale_type` | Warehouse | One row per sale classification | Deferred |
 | `warehouse.dim_inventory_source` | Warehouse | One row per acquisition source | Deferred |
 | `warehouse.dim_geography` | Warehouse | One row per approved geographic market grouping | Deferred |
 | `warehouse.fact_lead_activity` | Warehouse | One row per CRM activity event | Deferred |
 | `warehouse.fact_inventory_price_history` | Warehouse | One row per vehicle price-change event | Deferred |
-| `warehouse.fact_finance_product_sale` | Warehouse | One row per finance product sold on a finalized transaction | Deferred |
 | `warehouse.fact_service_visit` | Warehouse | One row per closed repair-order visit | Deferred |
 
-**Counts:** 22 Implemented · 11 Planned · 9 Deferred.
+**Counts:** 26 Implemented · 11 Planned · 6 Deferred.
 
-The Implemented count moved by one and the Deferred count by one, in the same direction, for the same
-object: `warehouse.fact_sales_target`. **No MVP count changed.**
+**DASH.6 moved three objects out of Deferred and created one that was never deferred at all.**
+`warehouse.dim_finance_product`, `warehouse.dim_lender` and `warehouse.fact_finance_product_sale` were
+Deferred and are now Implemented; `warehouse.fact_finance_product_adjustment` is new, because the deferred-era
+model had no way to record what happens to a contract after it is written and could not distinguish what the
+F&I office **produced** from what the store **retained**.
+
+**No MVP count changed.** The MVP baseline is still eight MVP dimensions, five MVP facts, twenty-eight MVP
+reporting views and 29 MVP KPIs. The four F&I objects, the four `reporting.vw_fi_*`/`vw_deal_product_detail`
+views and the twenty-two `KPI-FNI-*` definitions belong to the **dashboard program** and are counted
+separately, exactly as `warehouse.fact_sales_target` and the ten `KPI-TGT-*` definitions are.
 
 ---
 
@@ -777,7 +791,7 @@ Type 1 examples given in [ARCHITECTURE.md §14](ARCHITECTURE.md).
 | **Declared grain** | **One row per finalized vehicle transaction.** A transaction includes retail sales, leases, wholesale sales, and dealer trades. **Canceled transactions must not remain as finalized sales.** |
 | **Primary key** | `vehicle_sale_key` |
 | **Natural / source key** | `sale_id` |
-| **Foreign keys** | `sale_date_key`, `delivery_date_key` → `dim_date`; `dealership_key`; `vehicle_key`; `customer_key` (nullable for wholesale); `salesperson_key`, `desk_manager_key`, `finance_manager_key` → `dim_employee`; `lead_source_key`; `sale_type_key` → `dim_sale_type` *(Deferred — denormalized to a `sale_type` text column in the MVP)*; `lender_key` → `dim_lender` *(Deferred)* |
+| **Foreign keys** | `sale_date_key`, `delivery_date_key` → `dim_date`; `dealership_key`; `vehicle_key`; `customer_key` (nullable for wholesale); `salesperson_key`, `desk_manager_key`, `finance_manager_key` → `dim_employee`; `lead_source_key`; `sale_type_key` → `dim_sale_type` *(Deferred — denormalized to a `sale_type` text column in the MVP, and DASH.6 deliberately did not change that: see [§44.2](#442-why-saletype-was-not-changed-and-no-dimsaletype-was-created))*; `lender_key` → `dim_lender` **(Implemented by DASH.6, nullable — NULL means NO LENDER EXISTS, never "lender unknown")** |
 | **Implementation status** | **Implemented** |
 
 ### 14.1 Measures and degenerate attributes
@@ -793,16 +807,18 @@ Type 1 examples given in [ARCHITECTURE.md §14](ARCHITECTURE.md).
 | `reconditioning_cost` | numeric(12,2) | no | ≥ 0 | Reconditioning spend. | Generated. | Non-personal |
 | `pack_amount` | numeric(12,2) | no | ≥ 0 | Internal pack applied before front-end gross. | Generated. | Non-personal |
 | `front_end_gross` | numeric(12,2) | no | May be negative | `sale_price − acquisition_cost − reconditioning_cost − pack_amount`. Negative values are legitimate and must remain visible ([ARCHITECTURE.md §19.6](ARCHITECTURE.md)). | Derived. | Non-personal |
-| `back_end_gross` | numeric(12,2) | no | May be negative | Net finance reserve plus net F&I product gross. In the MVP this is generated directly; once `fact_finance_product_sale` exists it must reconcile to the product detail. | Generated. | Non-personal |
+| `back_end_gross` | numeric(12,2) | no | May be negative | Finance and insurance gross on the **deal-date** basis. **Its definition did not change in DASH.6 — it is now EXPLAINED rather than merely stated:** `finance_reserve_gross + SUM(original_product_gross)` over `warehouse.fact_finance_product_sale` equals this value **to the cent on every deal**, with `other_fi_income` exactly `0.00` and no balancing plug. `RECON-FI-001` proves it. **Never rewritten** when a later cancellation or chargeback posts — that is a separate event, and the difference between this and the as-of net figure is the point of the distinction. | Generated (drawn first; DASH.6 decomposes it without rebasing it). | Non-personal |
+| `finance_reserve_gross` | numeric(12,2) | no | ≥ 0 | **Added by DASH.6.** The finance reserve component of `back_end_gross`, on the deal-date basis. **An amount, never a rate**: it is never divided by anything financed, and no rate, spread or markup is derivable from it. `0.00` on Cash (nothing financed to earn it on), on Lease (ARPI models no money factor, so there is no mechanic it could be attributed to — [STM-019 §6](docs/source-to-target/STM-019-fact-finance-product-sale.md)), and on the ~9% of financed deals written on a flat or no-reserve program. Enforced by `ck_fact_vehicle_sale_reserve_requires_financing` and `DQ-SLE-011`. | Generated (decomposition of `back_end_gross`). | Non-personal |
+| `lender_key` | integer | yes | resolves to `dim_lender` | **Added by DASH.6.** The fictional institution behind a financed or leased deal. **NULL means NO LENDER EXISTS** — a Cash deal borrowed nothing and a Wholesale or Dealer Trade disposal has no consumer — and never "lender unknown". Assigned from the store, the derived finance structure and seeded randomness only; **no customer attribute participates**. Enforced by `ck_fact_vehicle_sale_lender_requires_funding` and `DQ-SLE-012`. | Generated. | Non-personal |
 | `total_gross` | numeric(12,2) | no | May be negative | `front_end_gross + back_end_gross`. Stored, not recomputed at query time, and reconciled by `RECON-GROSS-001`. | Derived. | Non-personal |
 | `discount_from_msrp` | numeric(12,2) | yes | — | `msrp − sale_price`. NULL where `msrp` is NULL. | Derived. | Non-personal |
 | `discount_from_original_asking` | numeric(12,2) | no | — | `original_asking_price − sale_price`. | Derived. | Non-personal |
 | `days_in_inventory_at_sale` | integer | no | ≥ 0 | Calendar days between acquisition and sale. The days-to-sale measure source. | Derived. | Non-personal |
-| `finance_amount` | numeric(12,2) | yes | ≥ 0 | Amount financed. NULL for cash deals. **No APR, term, or payment is modelled** — see [PRIVACY_AND_ETHICS.md](PRIVACY_AND_ETHICS.md). | Generated. | Non-personal |
+| `finance_amount` | numeric(12,2) | yes | ≥ 0 | Amount financed. NULL for cash deals. **No APR, buy rate, sell rate, rate spread, money factor, term or payment is modelled**, and DASH.6 added none — see [PRIVACY_AND_ETHICS.md](PRIVACY_AND_ETHICS.md). It is one of the two inputs to the derived finance structure ([§44.2](#442-why-saletype-was-not-changed-and-no-dimsaletype-was-created)). | Generated. | Non-personal |
 | `cash_down_payment` | numeric(12,2) | yes | ≥ 0 | Cash down. NULL where not applicable. | Generated. | Non-personal |
 | `trade_allowance` | numeric(12,2) | yes | ≥ 0 | Allowance credited for a trade. NULL where there is no trade. | Generated. | Non-personal |
 | `trade_actual_cash_value` | numeric(12,2) | yes | ≥ 0 | Appraised value of the trade. NULL where there is no trade. | Generated. | Non-personal |
-| `sale_type` | text | no | `New Retail`, `Used Retail`, `Certified Retail`, `Lease`, `Wholesale`, `Dealer Trade` | Transaction classification. Denormalized text in the MVP; becomes an FK when `dim_sale_type` is built. | Generated. | Non-personal |
+| `sale_type` | text | no | `New Retail`, `Used Retail`, `Certified Retail`, `Lease`, `Wholesale`, `Dealer Trade` | Transaction classification. Denormalized text in the MVP; becomes an FK when `dim_sale_type` is built. **DASH.6 did not change it.** The F&I lane derives a separate three-value `finance_structure` from this column plus `finance_amount`, rather than widening or restating the sale type — [§44.2](#442-why-saletype-was-not-changed-and-no-dimsaletype-was-created). | Generated. | Non-personal |
 | `is_retail` | boolean | no | `true` / `false` | True for retail and lease deliveries; false for wholesale and dealer trades. **This is the single flag that defines every "retail unit" denominator in [KPI_CATALOG.md](KPI_CATALOG.md).** | Derived from `sale_type`. | Non-personal |
 
 ### 14.2 Business rules
@@ -1625,25 +1641,56 @@ Exposes `check_id`, `check_name`, `check_category`, `target_object`, `severity`,
 
 # Part G — Deferred domains
 
-> Everything below is **Deferred** — with one exception, §27.10, which has been **promoted** and now
-> forwards to its implemented contract. Deferred means present in the target architecture, absent from the
-> current roadmap. Each is unlocked only by the release stage named. Grains are stated now so that a future
-> implementation starts from a decision rather than a debate. Adding any of these facts requires an ADR
-> ([ARCHITECTURE.md §35](ARCHITECTURE.md)).
+> Everything below is **Deferred** — with four exceptions (§27.1, §27.2, §27.8 and §27.10) which have been
+> **promoted** and now forward to their implemented contracts. Deferred means present in the target
+> architecture, absent from the current roadmap. Each is unlocked only by the release stage named. Grains are
+> stated now so that a future implementation starts from a decision rather than a debate. Adding any of these
+> facts requires an ADR ([ARCHITECTURE.md §35](ARCHITECTURE.md)).
+>
+> **A promoted entry is a forwarding address, not a second definition.** Where a promoted entry and its
+> implemented contract disagree, the implemented contract is correct. The deferred-era wording is preserved
+> so that what was promised can be compared against what was built.
 
-### 27.1 `warehouse.dim_finance_product`
+### 27.1 `warehouse.dim_finance_product` — **promoted**
 
-**Grain: one row per finance product definition.** Describes the F&I products the group can sell — service
-contract, GAP, maintenance plan, tire and wheel, appearance protection — with product category, eligible
-deal types, a cancellation-sensitivity flag, and an active flag. **Unlocked by the strong portfolio release
-(F&I product analysis, [ARCHITECTURE.md §31](ARCHITECTURE.md)).** Status: **Deferred**.
+**This entity is no longer Deferred.** It was implemented by dashboard increment **DASH.6** under
+[ADR-0013](docs/architecture-decisions/ADR-0013-governed-web-operating-console.md) to answer **SQ-21**, and
+its binding contract is [§42](#42-warehousedimfinanceproduct--implemented-contract-dash6).
 
-### 27.2 `warehouse.dim_lender`
+The deferred-era wording was: *"describes the F&I products the group can sell — service contract, GAP,
+maintenance plan, tire and wheel, appearance protection — with product category, eligible deal types, a
+cancellation-sensitivity flag, and an active flag."* All four clauses survived, and two acquired a discipline
+the deferred wording did not state:
 
-**Grain: one row per synthetic lender.** Fictional lending institutions with a lender type and a broad
-prime / near-prime / subprime category. Every lender is invented; **no real lender name, rate sheet, or
-decision record may ever appear**. **Unlocked by the strong portfolio release (F&I product analysis).**
-Status: **Deferred**.
+- **Survived** — product category, eligible deal types, cancellation sensitivity, active flag.
+- **Sharpened** — "product category" is a **row value from a closed ten-value vocabulary, never a column**.
+  There is no `vsc_gross` column anywhere in ARPI and there never will be.
+- **Sharpened** — "eligible deal types" is **descriptive metadata derived from a single authority**,
+  `config/reference/fi_product_eligibility.yaml`, not a second place the rule is stated. `DQ-FPD-006` proves
+  the derived text cannot disagree with the configuration.
+- **Added** — a `chargeback_sensitive` flag beside the cancellation one, because a store's income being
+  charged back and a customer cancelling a contract are different events with different reasons.
+- **Recorded (DASH.6-01)** — `provider_name` is an **attribute**, not a foreign key into a provider
+  dimension. `warehouse.dim_finance_product_provider` and STM-021 remain Deferred; see
+  [§42.6](#426-the-provider-decision-dash6-01). Status: **Implemented**.
+
+### 27.2 `warehouse.dim_lender` — **promoted**
+
+**This entity is no longer Deferred.** It was implemented by **DASH.6**; its binding contract is
+[§43](#43-warehousedimlender--implemented-contract-dash6).
+
+The deferred-era wording was: *"fictional lending institutions with a lender type and a broad prime /
+near-prime / subprime category. Every lender is invented; no real lender name, rate sheet, or decision record
+may ever appear."* Every clause survived, and the last one was strengthened rather than merely kept:
+
+- **Survived** — invented institutions, a lender type (four governed categories), a program tier.
+- **Sharpened** — the tier classifies the **LENDER'S PROGRAM, never a customer**. It is not a credit grade
+  and is assigned to no person. The vocabulary is closed deliberately so that no value which *reads* like a
+  credit grade — `A+`, `Tier 3` — can ever enter it.
+- **Enforced rather than promised** — "no rate sheet or decision record" is now a **schema tripwire**.
+  `DQ-LND-007` fails the run on an `apr`, `buy_rate`, `sell_rate`, `rate_spread`, `credit_score` or
+  `adverse_action` column **even when it is empty**, because the defect is claiming to model a mechanic the
+  platform does not have. Status: **Implemented**.
 
 ### 27.3 `warehouse.dim_sale_type`
 
@@ -1684,14 +1731,32 @@ inventory snapshot already carries `markdown_count_to_date`, which covers the MV
 this fact adds event-level timing analysis. **Unlocked by price-history analysis in the strong release
 ([ARCHITECTURE.md §31](ARCHITECTURE.md)).** Status: **Deferred**.
 
-### 27.8 `warehouse.fact_finance_product_sale`
+### 27.8 `warehouse.fact_finance_product_sale` — **promoted**
 
-**Grain: one row per finance product sold on a finalized vehicle transaction.** Product sale count, price,
-cost, gross, canceled amount, chargeback amount, and net product gross, with eligible / canceled /
-charged-back flags. Net product gross equals product gross minus cancellation and chargeback amounts.
-Once this fact exists, `fact_vehicle_sale.back_end_gross` must reconcile to it — reconciliation
-`RECON-FI-001` in [KPI_CATALOG.md](KPI_CATALOG.md). **Unlocked by the strong portfolio release.**
-Status: **Deferred**.
+**This entity is no longer Deferred.** It was implemented by **DASH.6**; its binding contract is
+[§44](#44-warehousefactfinanceproductsale--implemented-contract-dash6). The deferred-era promise that
+`fact_vehicle_sale.back_end_gross` *"must reconcile to it — reconciliation `RECON-FI-001`"* is **kept**:
+`RECON-FI-001` exists, runs on every database execution, and proves the identity **per deal, to the cent,
+with tolerance `0`**.
+
+The deferred-era grain survived unchanged. The **column model did not**, and the change is the single most
+consequential design decision in the increment:
+
+- **Changed — cancellation and chargeback are EVENTS, not columns.** The deferred wording put
+  `canceled_amount`, `chargeback_amount`, `net_product_gross` and three flags on the contract row. Building
+  it that way would have meant **rewriting the June contract when an August chargeback posted**, which moves
+  production out of the month it happened in and destroys the distinction between what the F&I office
+  *produced* and what the store *retained*. DASH.6 therefore split the domain in two: this fact holds the
+  **deal-date** figures and is never rewritten, and
+  [§45 `warehouse.fact_finance_product_adjustment`](#45-warehousefactfinanceproductadjustment--implemented-contract-dash6)
+  holds the events with their own business dates. Net product gross is **computed as of a stated date**, not
+  stored.
+- **Changed — no `is_eligible` flag.** Eligibility is a property of the *deal and the category*, not of the
+  contract that was written, and a flag on a sold contract could only ever read `true`. The governed
+  `eligibility_rule_id` is stored instead, so a penetration figure can name its own denominator.
+- **Survived** — product sale count, price, cost, gross; and the reconciliation obligation.
+
+Status: **Implemented**.
 
 ### 27.9 `warehouse.fact_service_visit`
 
@@ -2541,12 +2606,23 @@ that would be silently interchangeable if the order drifted.
 | 24 | `trade_allowance` | `numeric(12,2)` | NN | `0.00` when there is no trade |
 | 25 | `trade_acv` | `numeric(12,2)` | NN | `0.00` when there is no trade |
 | 26 | `cash_down` | `numeric(12,2)` | NN | `0.00` on non-retail |
-| 27 | `amount_financed` | `numeric(12,2)` | NN | `0.00` on a cash deal and on non-retail |
-| 28 | `days_in_inventory_at_sale` | `integer` | NN | `sale_date - acquisition_date`; `>= 0` |
-| 29 | `source_system` | `varchar(40)` | NN | `arpi_synthetic_generator` |
+| 27 | `amount_financed` | `numeric(12,2)` | NN | `0.00` on a cash deal and on non-retail. One of the two inputs to the derived finance structure |
+| 28 | `finance_reserve_gross` | `numeric(12,2)` | NN | **Added by DASH.6.** `>= 0`. The reserve component of `back_end_gross`. `0.00` on Cash, on Lease and on flat/no-reserve financed deals. **An amount, never a rate** |
+| 29 | `lender_id` | `varchar(16)` | NULL | **Added by DASH.6.** Resolves to `dim_lender`. **NULL means NO LENDER EXISTS**, never "lender unknown" |
+| 30 | `days_in_inventory_at_sale` | `integer` | NN | `sale_date - acquisition_date`; `>= 0` |
+| 31 | `source_system` | `varchar(40)` | NN | `arpi_synthetic_generator` |
 
 `front_end_gross` and `total_gross` are the only columns permitted to be negative. That is deliberate:
 suppressing a loss would be the fabrication, not the loss itself.
+
+**DASH.6 added two columns and changed no value.** The contract went from 29 columns to 31. Every
+pre-existing column keeps the value it had: a diff of the committed `data/sample/sale_event.csv` before and
+after reports two added columns, no removed columns and **zero changed values**. That is the
+decomposition-preserving strategy recorded in
+[STM-019 §1.2](docs/source-to-target/STM-019-fact-finance-product-sale.md), and it is why the DASH.2–DASH.5
+exports, target attainment figures and gross bridge all still hold the numbers they were reviewed against.
+The two new columns are drawn from a **dedicated seeding namespace** (`fi_deal_finance`), which is what makes
+that guarantee structural rather than lucky.
 
 ### 14B.2 What this entity deliberately excludes
 
@@ -3187,3 +3263,514 @@ inventing them to look thorough would add an unowned table to the warehouse. It 
 
 Also deliberately absent: any approval state, any author or approver identity, any target-change
 notification, any target-editing path. The console **reads** targets and cannot write them.
+
+---
+
+## 42. `warehouse.dim_finance_product` — implemented contract (`DASH.6`)
+
+The governed F&I **menu**. Authorized by
+[ADR-0013](docs/architecture-decisions/ADR-0013-governed-web-operating-console.md) and delivery increment
+**DASH.6**, to answer **SQ-21** ("What is our F&I performance, by product and by store?").
+
+| Field | Value |
+|---|---|
+| **Entity name** | `finance_product` (source entity) → `warehouse.dim_finance_product` |
+| **Layer** | Warehouse dimension (reference catalogue) |
+| **Declared grain** | **One row per finance product definition.** |
+| **Grain key** | `finance_product_key` (PK); `uq_dim_finance_product_finance_product_id`; `uq_dim_finance_product_product_name` |
+| **Natural / source key** | `finance_product_id` (`FP-###`) |
+| **Foreign keys** | None. A product row references nothing. |
+| **History policy** | **SCD Type 1** ([ADR-0006](docs/architecture-decisions/ADR-0006-scd-type-selection-phase-1.md)). A corrected name or restated rule is a **correction**, applied retroactively. There is no `effective_date`, `expiration_date`, `is_current` or `attribute_hash`, and `DQ-FPD-010` asserts their absence. |
+| **Generator** | `src/arpi/generation/finance_product.py` |
+| **Source-to-target mapping** | [STM-017](docs/source-to-target/STM-017-dim-finance-product.md) |
+| **Downstream** | `fact_finance_product_sale`, `fact_finance_product_adjustment`, `reporting.vw_deal_product_detail`, `reporting.vw_fi_product_penetration`, `reporting.vw_fi_adjustment_summary` |
+| **KPI ownership** | Category dimension of `KPI-FNI-007` … `KPI-FNI-011`, `KPI-FNI-020`, `KPI-FNI-021` ([KPI_CATALOG.md §40](KPI_CATALOG.md)) |
+| **Implementation status** | **Implemented** end to end: generator, raw, staging, dimension, merge, reporting views, data-quality suite. |
+| **Row counts** | **19 on every profile.** The catalogue is declared, not sampled: it consumes no random variate, so it does not scale with the window, the store count or the seed. |
+| **Lane** | **Dashboard program.** Not a ninth MVP dimension, not in `MVP_REPORTING_VIEWS`, not bound by the Power BI semantic model. |
+
+### 42.1 Column contract (exact names, exact order)
+
+| # | Column | Type | Null | Allowed values / domain | Description | **PII class** |
+|---:|---|---|---|---|---|---|
+| 1 | `finance_product_key` | `integer` | no | > 0 | Surrogate primary key, assigned by the merge as `max(existing) + row_number() OVER (ORDER BY finance_product_id)`. Never taken from the source, never reused. | Non-personal |
+| 2 | `finance_product_id` | `varchar(16)` | no | `FP-###`, unique | Natural key. What every product contract resolves through. | Non-personal |
+| 3 | `product_name` | `varchar(80)` | no | unique | **Fictional** product label such as `Granite Shield Powertrain Plus`. Names an invented product of an invented administrator — never a person, never a real F&I product or program. | Non-personal |
+| 4 | `product_category` | `varchar(40)` | no | the ten governed categories | **A ROW VALUE, never a column.** See §42.5. | Non-personal |
+| 5 | `provider_name` | `varchar(60)` | no | four declared administrators | **Fictional** administrator label. An **attribute by deliberate decision** — see §42.6. | Non-personal |
+| 6 | `eligibility_rule_id` | `varchar(16)` | no | `ELIG-VSC`, `ELIG-GAP`, `ELIG-TW`, `ELIG-PPM`, `ELIG-LWP`, `ELIG-OTH` | **Stamped** from `config/reference/fi_product_eligibility.yaml`, the one eligibility authority. | Non-personal |
+| 7 | `eligible_finance_structures` | `varchar(60)` | no | pipe-delimited subset of `Cash`, `Retail Finance`, `Lease` | **Derived** descriptive metadata, not an authority. `DQ-FPD-006` proves it cannot disagree with the configuration. | Non-personal |
+| 8 | `eligible_vehicle_conditions` | `varchar(40)` | no | pipe-delimited subset of `New`, `Used`, `Certified` | Derived the same way. `ELIG-PPM` narrows to `Certified \| New`. | Non-personal |
+| 9 | `default_contract_term_months` | `smallint` | no | `12`–`120` | **The PRODUCT CONTRACT's default coverage term. THIS IS NOT A FINANCE LOAN TERM** — ARPI models no loan term, no APR, no payment and no rate of any kind, and the two must never be conflated. | Non-personal |
+| 10 | `cancellation_sensitive` | `boolean` | no | `true` / `false` | Whether the contract can be cancelled for a refund. **Behavioural, not descriptive**: no `Cancellation` event is generated against a product where this is `false`, and `DQ-FPA-011` asserts it. | Non-personal |
+| 11 | `chargeback_sensitive` | `boolean` | no | `true` / `false` | Whether the store's income is charged back when the contract ends early. Behavioural in the same way. | Non-personal |
+| 12 | `active_start_date` | `date` | no | — | First date the product was **offered**. An attribute of the product, **not** an SCD Type 2 effective date. | Non-personal |
+| 13 | `active_end_date` | `date` | no | `>= active_start_date` | Last date offered, or the `9999-12-31` open-ended sentinel. | Non-personal |
+| 14 | `is_active` | `boolean` | no | derived | `active_end_date = DATE '9999-12-31'`, enforced by `ck_dim_finance_product_is_active_derivation`. Never assigned independently: a flag that can contradict its own dates lets a withdrawn product back into a current menu. | Non-personal |
+| 15 | `source_system` | `varchar(40)` | no | `arpi_synthetic_generator` | The lineage marker that stops an invented catalogue being read as a real dealership's F&I menu. | Non-personal |
+
+### 42.2 What is deliberately absent
+
+**No price, no cost, no rate, no commission, no remittance schedule, no reserve formula.** A price here
+would be a **second authority** beside the price actually struck on the contract, and the day the two
+disagreed nobody could say which one was the sale.
+
+The generator's latent parameters — `gross_weight`, `dealer_cost_ratio`, `attach_affinity` — live in Python
+beside the code that reads them and **are never columns**. The fifteen columns above are the whole of what
+leaves the generator.
+
+**No personal data of any kind.** A product row describes a product. `DQ-FPD-012` fails the run on a
+prohibited column **even when it is empty**.
+
+### 42.3 Every product and every administrator is fictional
+
+No real F&I product, program, administrator, underwriter or vendor is named, and **none may be added**. The
+catalogue attaches invented economics and invented cancellation behaviour to every row, and attaching those
+to a real company's name would be a fabricated claim about that company.
+
+`tests/unit/test_fi_privacy.py` asserts that no committed provider name collides with a real administrator a
+reader would recognise. That is a **synthetic-catalogue contract test**, deliberately *not* a claim to detect
+every real administrator in the world — no such check is possible, and pretending otherwise would be the
+dishonest version.
+
+### 42.4 Business rules
+
+- `product_category` is one of the ten governed values (`ck_dim_finance_product_category_domain`), and
+  **all ten are represented** by at least one product (`DQ-FPD-005`).
+- `eligibility_rule_id` is the product's **own category's** governed rule — not any valid rule
+  (`DQ-FPD-006`).
+- `default_contract_term_months` is inside `[12, 120]`
+  (`ck_dim_finance_product_contract_term_range`).
+- `active_end_date >= active_start_date`, and `is_active` agrees with the sentinel.
+- Two products may not share a name: the name is what a reader identifies a contract by, and two identical
+  names make a category mix unreadable.
+
+### 42.5 Categories are rows, never columns
+
+`product_category` takes one of **ten** governed values, and there is no `vsc_gross`, `gap_gross` or
+`tire_wheel_gross` column anywhere in ARPI.
+
+A category-per-column model makes the eleventh category a **schema migration** instead of a catalogue row,
+and it cannot answer "which categories exist?" without reading the schema. The ten:
+
+`Vehicle Service Contract` · `GAP` · `Tire & Wheel` · `Prepaid Maintenance` · `Appearance Protection` ·
+`Key Replacement` · `Theft or Security Product` · `Paintless Dent Protection` · `Lease Wear Protection` ·
+`Other Aftermarket Product`
+
+**"Extended warranty" is a permitted user-facing alias for `Vehicle Service Contract` and is never a stored
+value.**
+
+### 42.6 The provider decision (DASH.6-01)
+
+`provider_name` is a **column here rather than a foreign key** into a
+`warehouse.dim_finance_product_provider` that does not exist.
+
+In this model a provider has **no behaviour independent of the product it administers**: cancellation and
+chargeback sensitivity belong to the product, the provider mix *is* the product mix, and no fact needs a
+provider key that `finance_product_key` does not already resolve. A dimension would add a join, a merge
+script, an STM and a `DQ-*` family in exchange for an attribute lookup.
+
+**The consequence, recorded honestly:** a provider-level rollup joins through the product rather than
+directly, and a provider that administered zero products could not be represented. Neither costs anything at
+this scale.
+
+**Promoting the provider later requires no change to any fact**, because no fact carries a provider key
+today. `warehouse.dim_finance_product_provider` and **STM-021 remain Deferred**.
+
+### 42.7 Data-quality checks
+
+`DQ-FPD-001` … `DQ-FPD-012`, all `critical`: uniqueness, the column contract, the category domain, the closed
+provider set, ten-category coverage, eligibility-rule agreement with the configuration, the active window,
+the contract-term range, the sensitivity flags, the **absence of Type 2 history columns**, `source_system`,
+and the personal-data schema tripwire. Five of them re-run **post-load** against the warehouse table, so a
+defect introduced by the merge itself cannot pass.
+
+---
+
+## 43. `warehouse.dim_lender` — implemented contract (`DASH.6`)
+
+The fictional institutions behind financed and leased transactions.
+
+| Field | Value |
+|---|---|
+| **Entity name** | `lender` (source entity) → `warehouse.dim_lender` |
+| **Layer** | Warehouse dimension (reference catalogue) |
+| **Declared grain** | **One row per lender.** |
+| **Grain key** | `lender_key` (PK); `uq_dim_lender_lender_id`; `uq_dim_lender_lender_name` |
+| **Natural / source key** | `lender_id` (`LND-###`) |
+| **Foreign keys** | None. |
+| **History policy** | **SCD Type 1.** A corrected institution name or restated category applies retroactively. See §43.4 for the recorded trade this implies for a tier change. |
+| **Generator** | `src/arpi/generation/lender.py` |
+| **Source-to-target mapping** | [STM-018](docs/source-to-target/STM-018-dim-lender.md) |
+| **Downstream** | `fact_vehicle_sale.lender_key`, `fact_finance_product_sale.lender_key`, `reporting.vw_deal_product_detail` |
+| **KPI ownership** | **None, deliberately.** Lender mix is a dimension of the detail view and is not promoted to a governed measure — see §43.5. |
+| **Implementation status** | **Implemented** end to end. |
+| **Row counts** | **10 on every profile.** Declared, not sampled. |
+| **Lane** | **Dashboard program.** |
+
+### 43.1 Column contract (exact names, exact order)
+
+| # | Column | Type | Null | Allowed values / domain | Description | **PII class** |
+|---:|---|---|---|---|---|---|
+| 1 | `lender_key` | `integer` | no | > 0 | Surrogate primary key, `max(existing) + row_number() OVER (ORDER BY lender_id)`. | Non-personal |
+| 2 | `lender_id` | `varchar(16)` | no | `LND-###`, unique | Natural key. | Non-personal |
+| 3 | `lender_name` | `varchar(80)` | no | unique, from the declared fictional set | **Invented institution label.** Names a synthetic institution that does not exist — never a person and never a real financial institution. | Non-personal |
+| 4 | `lender_category` | `varchar(40)` | no | `Captive`, `Bank`, `Credit Union`, `Independent Finance Company` | The institution type. All four are represented (`DQ-LND-008`). | Non-personal |
+| 5 | `program_tier` | `varchar(20)` | no | `Prime`, `Near-prime`, `Subprime` | **Classifies the LENDER'S PROGRAM, never a customer.** Not a credit grade, assigned to no person. Closed deliberately — see §43.3. | Non-personal |
+| 6 | `active_start_date` | `date` | no | — | First date the program was available. Not an SCD Type 2 effective date. | Non-personal |
+| 7 | `active_end_date` | `date` | no | `>= active_start_date` | Last date available, or the `9999-12-31` sentinel. | Non-personal |
+| 8 | `is_active` | `boolean` | no | derived | `active_end_date = DATE '9999-12-31'`, enforced by `ck_dim_lender_is_active_derivation`. | Non-personal |
+| 9 | `source_system` | `varchar(40)` | no | `arpi_synthetic_generator` | Lineage marker. | Non-personal |
+
+### 43.2 ARPI is not a lending model
+
+**No APR, buy rate, sell rate, rate spread, money factor, payment, loan term, loan-to-value, approval,
+decline, stipulation, adverse-action reason, credit score, credit file, credit application, income or
+debt-to-income figure exists in this dimension, in the facts that reference it, or anywhere in ARPI.**
+
+ARPI approves nothing, declines nothing, tiers nobody, recommends no lender, optimizes no rate and prices
+nothing. `DQ-LND-007` inspects the **schema** and fails the run even when such a column is empty, because the
+defect is claiming to model a mechanic the platform does not have — not that a value is wrong. The same
+promise is asserted against the committed DDL of every F&I SQL object by `tests/unit/test_fi_privacy.py`.
+
+**No lender decision record exists and none will.** There is no application, no approval, no counter-offer,
+no stipulation and no funding event. A store cannot ask "which lender approves more of my paper?" of this
+model. That is the intended limit, not an omission to fill.
+
+### 43.3 Why the tier vocabulary is closed
+
+An open vocabulary would eventually admit a value that *reads* like a credit grade — `A+`, `Tier 3` — and a
+reader would take it for one. `ck_dim_lender_program_tier_domain` makes that impossible rather than
+discouraged.
+
+### 43.4 How a deal acquires a lender, and what may never influence it
+
+`assign_lender(rng, dealership_id=…, finance_structure=…)` is the **only** lender assignment in the
+platform. Its **entire input set** is the selling store, the derived finance structure and seeded
+randomness. **No customer attribute participates and none may**: a lender chosen from anything about a
+person would be a credit decision wearing an analytics costume.
+
+The one non-uniformity is a **captive franchise affinity** — a captive is weighted `3.2` at its own
+franchise and `0.05` elsewhere. That is a property of the **store**, not of any customer, which is the whole
+point: it gives lender mix a genuine store-to-store difference without any consumer attribute entering the
+draw.
+
+`NULL` on a fact means **no lender exists** — a Cash deal borrowed nothing, and a Wholesale or Dealer Trade
+disposal has no consumer — and never "lender unknown".
+
+**The Type 1 trade, recorded.** If an institution's program moved from `Near-prime` to `Prime`, the change
+would apply retroactively across the whole history and a lender-mix-by-tier series would restate. That is
+correct for a *correction* and wrong for a genuine *repositioning*. ARPI's catalogue is static, so the case
+does not arise; promoting `dim_lender` to Type 2 later would require an ADR.
+
+### 43.5 Why there is no lender KPI
+
+Lender mix is available as a dimension of `reporting.vw_deal_product_detail` and is deliberately **not**
+promoted to a governed measure. A "lender penetration" KPI would be one short step from a lender
+recommendation, and ARPI recommends no lender.
+
+### 43.6 Data-quality checks
+
+`DQ-LND-001` … `DQ-LND-010`, all `critical`. `DQ-LND-002` closes the fictional-name set; `DQ-LND-007` is the
+lending-mechanic schema tripwire; `DQ-LND-008` proves every governed category is represented. Six re-run
+post-load.
+
+---
+
+## 44. `warehouse.fact_finance_product_sale` — implemented contract (`DASH.6`)
+
+**What the back-end gross is actually made of.**
+
+| Field | Value |
+|---|---|
+| **Entity name** | `finance_product_sale` (source entity) → `warehouse.fact_finance_product_sale` |
+| **Layer** | Warehouse fact (transaction fact) |
+| **Declared grain** | **One row per finance product contract sold on a finalized vehicle transaction** — one contract per product definition per deal. |
+| **Grain key** | `(sale_key, finance_product_key)` — `uq_fact_finance_product_sale_grain` |
+| **Natural / source key** | `product_sale_id` (`FPS-########`) |
+| **Foreign keys** | `sale_key` → `fact_vehicle_sale`; `sale_date_key` → `dim_date`; `dealership_key` → `dim_dealership`; `finance_manager_key` → `dim_employee` (nullable); `finance_product_key` → `dim_finance_product`; `lender_key` → `dim_lender` (nullable) |
+| **History policy** | **Never rewritten.** A cancellation or chargeback is an **event** in §45, not a restatement here. |
+| **Generator** | `src/arpi/generation/finance_product_sale.py`, over the decomposition engine `src/arpi/generation/finance_deal.py` |
+| **Source-to-target mapping** | [STM-019](docs/source-to-target/STM-019-fact-finance-product-sale.md) |
+| **Downstream** | `fact_finance_product_adjustment`, `reporting.vw_deal_product_detail`, `reporting.vw_fi_summary`, `reporting.vw_fi_product_penetration` |
+| **KPI ownership** | `KPI-FNI-001` … `KPI-FNI-011`, `KPI-FNI-019` … `KPI-FNI-022` ([KPI_CATALOG.md §40](KPI_CATALOG.md)) |
+| **Implementation status** | **Implemented** end to end. |
+| **Row counts** | 1,012 (development, over 650 sales). Scales with retail volume and the attachment model, not with a fixed multiple. |
+| **Lane** | **Dashboard program. Not a sixth MVP fact.** |
+
+### 44.1 The identity this fact exists to make true
+
+For **every retail deal**, exactly:
+
+```
+back_end_gross  =  finance_reserve_gross
+                 + SUM(original_product_gross) over this fact
+                 + other_fi_income               (exactly 0.00; not a column anywhere)
+```
+
+**`RECON-FI-001` proves it per deal, to the cent, with tolerance `0`.** `DQ-FPS-014` proves the same identity
+in Python over every generated deal before a row is written.
+
+`fact_vehicle_sale.back_end_gross` was **not redefined**. `KPI-GRS-002` means exactly what it meant before.
+What changed is that it is now **explained** rather than merely stated.
+
+**The decomposition-preserving strategy, and its measured consequence.** Two strategies were available:
+rebase `back_end_gross` from freshly drawn components, or keep the existing draw and explain it. The second
+was chosen, because DASH.6 was asked for an explanation of an aggregate that already exists and a rebase
+would have moved several hundred committed artifact values for no analytical gain. A diff of the committed
+`data/sample/sale_event.csv` before and after reports **two added columns, no removed columns and zero
+changed values**.
+
+**The cost, stated plainly:** reserve and product amounts are *shares of a total drawn first*, so they are
+decompositions rather than independent draws. What that does **not** cost is correctness — every component
+obeys its own generation rule, every category has its own economics, and **no component is a plug**.
+`other_fi_income` is exactly `0.00` and is not a column anywhere; the allocation reaches the cent by
+**largest remainder** across real product lines, so no line is a disguised residual bucket.
+
+**No circularity.** `finance_deal.py` does not import `sale.py`. The dependency runs one way and the engine
+draws from a dedicated seeding namespace, which makes the guarantee structural rather than promised.
+
+### 44.2 Why `sale_type` was not changed and no `dim_sale_type` was created
+
+The F&I lane needs a three-value **finance structure** (`Cash`, `Retail Finance`, `Lease`).
+`fact_vehicle_sale.sale_type` has six values on a different axis (new/used/certified/lease/wholesale/dealer
+trade), and conflating the two would either widen `sale_type` — restating a column five MVP KPIs depend on —
+or bury the retail/wholesale distinction.
+
+The structure is therefore **derived, by one authority on each side**:
+`arpi.generation.fi_eligibility.finance_structure_for` in Python and `warehouse.fn_finance_structure`
+(`IMMUTABLE`) in SQL. `tests/integration/test_fi_reporting_views.py` proves them equal **over the whole
+input cross product**.
+
+| `sale_type` | `amount_financed` | Structure |
+|---|---|---|
+| `New Retail`, `Used Retail`, `Certified Retail` | `> 0.00` | `Retail Finance` |
+| `New Retail`, `Used Retail`, `Certified Retail` | `0.00` | `Cash` |
+| `Lease` | any | `Lease` — a lease is a lease however it was funded |
+| `Wholesale`, `Dealer Trade` | any | *(non-retail: no consumer, so no product and no consumer lender may attach)* |
+
+An unknown `sale_type` **raises** rather than defaulting to `Cash`: a silent default would put products on a
+disposal and move it into three eligibility denominators. `warehouse.dim_sale_type` remains **Deferred**.
+
+### 44.3 Column contract (exact names, exact order)
+
+| # | Column | Type | Null | Allowed values / domain | Description | **PII class** |
+|---:|---|---|---|---|---|---|
+| 1 | `product_sale_key` | `bigint` | no | > 0 | Surrogate primary key. | Non-personal |
+| 2 | `product_sale_id` | `varchar(16)` | no | `FPS-########`, unique | Natural key; the load's conflict target and what every adjustment resolves through. | Non-personal |
+| 3 | `sale_key` | `bigint` | no | resolves to `fact_vehicle_sale` | The parent deal, **resolved against the FACT** rather than re-derived. Part of the grain. | Non-personal |
+| 4 | `sale_date_key` | `integer` | no | resolves to `dim_date` | **The DEAL DATE.** Never rewritten by a later event. | Non-personal |
+| 5 | `dealership_key` | `integer` | no | resolves to `dim_dealership` | The selling store as at the sale date (SCD2). Always the parent deal's. | Non-personal |
+| 6 | `finance_manager_key` | `integer` | **yes** | resolves to `dim_employee` | The credited manager. **NULL means nobody was on the F&I desk** — a modelled state, not a missing value. | Non-personal |
+| 7 | `finance_product_key` | `integer` | no | resolves to `dim_finance_product` | Part of the grain. | Non-personal |
+| 8 | `lender_key` | `integer` | **yes** | resolves to `dim_lender` | The parent deal's own lender. **NULL means NO LENDER EXISTS.** `ck_fact_finance_product_sale_cash_has_no_lender` refuses a lender on a Cash contract. | Non-personal |
+| 9 | `finance_structure` | `varchar(20)` | no | `Cash`, `Retail Finance`, `Lease` | Derived per §44.2. **The three retail structures only** — a disposal has no consumer, so no product can be written on one. | Non-personal |
+| 10 | `eligibility_rule_id` | `varchar(16)` | no | the six `ELIG-*` rules | The governed rule the category owns. Stored so a penetration figure can name its own denominator without a second join. | Non-personal |
+| 11 | `line_ordinal` | `smallint` | no | `>= 1` | 1-based position of the contract in the deal's basket, ordered by category. | Non-personal |
+| 12 | `product_sale_count` | `smallint` | no | **always `1`** | The grain is one contract, so the additive contract measure is 1. Any other value means the grain was violated upstream. | Non-personal |
+| 13 | `product_retail_price` | `numeric(12,2)` | no | `>= 0` | Exact `numeric`, generated as `Decimal`, never a float. | Non-personal |
+| 14 | `product_dealer_cost` | `numeric(12,2)` | no | `>= 0` | The catalogue's declared cost ratio with a `(0.90, 1.10)` jitter. | Non-personal |
+| 15 | `original_product_gross` | `numeric(12,2)` | no | **may be negative** | `= product_retail_price − product_dealer_cost`, exact to the cent (`ck_fact_finance_product_sale_gross_identity`). **The DEAL-DATE figure, never rewritten.** Deliberately unconstrained in sign: a product sold below cost is a real event, and suppressing it would be the fabrication. | Non-personal |
+| 16 | `contract_term_months` | `smallint` | no | `12`–`120` | **The COVERAGE's term. Not a loan term — ARPI models none.** | Non-personal |
+| 17 | `source_system` | `varchar(40)` | no | `arpi_synthetic_generator` | Lineage marker. | Non-personal |
+
+`product_category` is **not** a column: it is the product's, and storing it twice invites the two to
+disagree. It is carried on the source CSV only, so a rejection payload is readable.
+
+### 44.4 Why two contracts in one category on one deal are permitted
+
+The grain forbids the **same product definition** twice on one deal — a customer does not buy the identical
+contract twice, so a repeat is a duplicate rather than a second sale. Two **different** products inside one
+category *are* permitted and are generated: a windscreen plan and a roadside plan are both
+`Other Aftermarket Product`.
+
+That is exactly why **every penetration measure counts DISTINCT DEALS rather than contract rows**. Forbidding
+it would make "count the deal once" an identity on this dataset and the rule untestable.
+
+### 44.5 What drives attachment, and what may never
+
+Attachment probability varies with the store's operating model, the finance manager's synthetic skill index
+(clamped to `[0.70, 1.30]`), the derived finance structure, the product category, the vehicle's condition
+through eligibility, and seeded randomness.
+
+It varies with **nothing about a customer**: no demographic, no protected characteristic, no credit datum, no
+income, no age, no geography and no inferred willingness to buy. **There is no such attribute anywhere in the
+inputs**, which is the strongest form the guarantee can take.
+
+**Eligibility is not sales propensity.** It answers whether a product *could* have been written, never
+whether a customer *should* buy it. Nothing here is a recommendation.
+
+### 44.6 Business rules
+
+- `product_sale_count = 1` on every row.
+- `original_product_gross = product_retail_price − product_dealer_cost`, exact.
+- Every contract satisfies its category's governed eligibility rule (`DQ-FPS-011`, `RECON-FI-ELIGIBILITY`) —
+  re-asked of the **same evaluator** the generator used.
+- Store, sale date, finance structure, credited manager and lender all match the parent deal
+  (`DQ-FPS-004`, `-006`, `-007`).
+- A `Cash` contract carries no lender.
+
+### 44.7 Data-quality checks and reconciliations
+
+`DQ-FPS-001` … `DQ-FPS-016`, all `critical`. `DQ-FPS-014` is the back-gross decomposition over every deal;
+`DQ-FPS-016` is the personal-data schema tripwire.
+
+Reconciliations: `RECON-FI-001` (the headline, per deal, tolerance `0`), `RECON-FI-DEAL-LEVEL`,
+`RECON-FI-TOTAL-GROSS`, `RECON-FI-PRODUCT-IDENTITY`, `RECON-FI-PRODUCT-GRAIN`, `RECON-FI-STORE-TOTALS`,
+`RECON-FI-PERIOD-TOTALS`, `RECON-FI-RESERVE-STRUCTURE`, `RECON-FI-ELIGIBILITY`,
+`RECON-FACT-FINANCE-PRODUCT-SALE-WAREHOUSE` and the four `RECON-REPORT-FI-*-ROWS` rules. Each is exercised by
+a **seeded corruption** in `tests/integration/test_reconciliations.py`, so the suite proves the rules detect
+what they claim to detect rather than merely returning `Passed`.
+
+### 44.8 Privacy
+
+**No customer reference of any kind, and no free-text field.** An F&I contract is the richest source of
+personal data in a real dealership; ARPI's carries none.
+
+Employee attribution exists only as `finance_manager_key`. **No manager leaderboard, ranking, label or
+best/worst designation exists anywhere in the model**, and the minimum-sample floor
+(`warehouse.fn_minimum_sample_floor()`, project default **10** eligible deals, sourced from
+`arpi.constants.MINIMUM_SAMPLE_ELIGIBLE_DEALS`) governs every manager-grain read.
+
+---
+
+## 45. `warehouse.fact_finance_product_adjustment` — implemented contract (`DASH.6`)
+
+**What happened to the contract afterwards.**
+
+| Field | Value |
+|---|---|
+| **Entity name** | `finance_product_adjustment` (source entity) → `warehouse.fact_finance_product_adjustment` |
+| **Layer** | Warehouse fact (event fact) |
+| **Declared grain** | **One row per product adjustment event.** |
+| **Grain key** | `adjustment_id` — `uq_fact_finance_product_adjustment_adjustment_id`; plus `uq_fact_finance_product_adjustment_sequence (product_sale_key, sequence_ordinal)` |
+| **Natural / source key** | `adjustment_id` (`FPA-########`) |
+| **Foreign keys** | `product_sale_key` → `fact_finance_product_sale`; `sale_key` → `fact_vehicle_sale`; `adjustment_date_key` → `dim_date`; `dealership_key` → `dim_dealership`; `finance_manager_key` → `dim_employee` (nullable); `finance_product_key` → `dim_finance_product` |
+| **History policy** | **Insert-only event log in effect.** Nothing is ever deleted; an adjustment that was itself reversed is expressed by a **further event**. |
+| **Generator** | `src/arpi/generation/finance_product_adjustment.py` |
+| **Source-to-target mapping** | [STM-020](docs/source-to-target/STM-020-fact-finance-product-adjustment.md) |
+| **Downstream** | `reporting.vw_fi_adjustment_summary`, `reporting.vw_deal_product_detail`, `reporting.vw_fi_summary` |
+| **KPI ownership** | `KPI-FNI-004`, `KPI-FNI-012` … `KPI-FNI-018`, `KPI-FNI-022` ([KPI_CATALOG.md §40](KPI_CATALOG.md)) |
+| **Implementation status** | **Implemented** end to end. |
+| **Row counts** | 57 (development, over 1,012 contracts). See §45.6 for why this is structurally small and why that is a property rather than a defect. |
+| **Lane** | **Dashboard program. Not a seventh MVP fact.** |
+
+### 45.1 The original contract is never rewritten
+
+**This is the whole design.** An adjustment is an **event with its own business date**; the
+`fact_finance_product_sale` row it refers to keeps the gross it was written with, forever. A June contract
+charged back in August stays a June contract with June's gross, and **August carries the chargeback**.
+
+Restating the June row would be easier and would be wrong twice over. It would move production out of the
+month it happened in, so every historical month would change whenever a later event posted. And it would
+destroy the distinction between what the F&I office **produced** and what the store **retained** — the
+distinction the whole domain exists to make.
+
+### 45.2 Three date bases, never blended silently
+
+| Basis | Meaning | KPIs |
+|---|---|---|
+| **Deal date** | What the F&I office produced, attributed to the day the deal was struck. Never rewritten. | `KPI-FNI-001`, `-002`, `-003`, `-005`, `-006`, `-007`…`-011`, `-019`, `-020` |
+| **As-of** | What the store retained as at a stated as-of date. | `KPI-FNI-004`, `-022` |
+| **Adjustment period** | Events grouped by **their own** business date. | `KPI-FNI-012`, `-013`, `-016`, `-017` |
+| **Mixed, and disclosed** | An adjustment-period numerator over a sale-date denominator. A **period proxy**, never a cohort loss rate. | `KPI-FNI-014`, `-015`, `-018` |
+
+Every reporting view publishes its date basis **as data**, not merely in a comment, and
+`tests/integration/test_fi_reporting_views.py` asserts it — so a consumer renders the disclosure from the row
+rather than from a sentence somebody remembered.
+
+The governed as-of date is `max(sale date, snapshot date, lead-created date)` across the warehouse — **never
+the wall clock** — so a rerun on a different day produces the same figure.
+
+### 45.3 Column contract (exact names, exact order)
+
+| # | Column | Type | Null | Allowed values / domain | Description | **PII class** |
+|---:|---|---|---|---|---|---|
+| 1 | `adjustment_key` | `bigint` | no | > 0 | Surrogate primary key. | Non-personal |
+| 2 | `adjustment_id` | `varchar(16)` | no | `FPA-########`, unique | Natural key and the declared grain's identity; the load's conflict target. | Non-personal |
+| 3 | `product_sale_key` | `bigint` | no | resolves to `fact_finance_product_sale` | The contract this event acts on. The join is **inner and unforgiving**: an orphaned adjustment is a number with nothing to reduce. | Non-personal |
+| 4 | `sale_key` | `bigint` | no | resolves to `fact_vehicle_sale` | Taken **from the resolved contract**, so the event's deal cannot disagree with its contract's deal. | Non-personal |
+| 5 | `adjustment_date_key` | `integer` | no | resolves to `dim_date` | **The EVENT'S OWN business date.** Never before the contract's sale date. | Non-personal |
+| 6 | `dealership_key` | `integer` | no | resolves to `dim_dealership` | The store as at the event date (SCD2); the adjusted contract's own. | Non-personal |
+| 7 | `finance_manager_key` | `integer` | **yes** | resolves to `dim_employee` | The contract's own credited manager. NULL means nobody was credited. | Non-personal |
+| 8 | `finance_product_key` | `integer` | no | resolves to `dim_finance_product` | The contract's own product — the sensitivity flags that licensed this event live on it. | Non-personal |
+| 9 | `adjustment_type` | `varchar(24)` | no | `Cancellation`, `Chargeback`, `Reinstatement`, `Approved Adjustment` | The governed event vocabulary. | Non-personal |
+| 10 | `adjustment_amount` | `numeric(12,2)` | no | signed per type | **A positive amount REDUCES retained gross; a negative one RESTORES it.** See §45.4. | Non-personal |
+| 11 | `adjustment_reason_category` | `varchar(40)` | no | governed, **and belonging to its own type** | Describes what happened to a **contract**, never to a person. `Repossession` is a governed reason — for a `Chargeback`; against a `Reinstatement` it would be a governed word in a nonsensical place, and `ck_fact_fi_adjustment_reason_belongs_to_type` refuses it. | Non-personal |
+| 12 | `sequence_ordinal` | `smallint` | no | `>= 1` | 1-based position within the contract's ordered event sequence. Part of what makes "a reinstatement follows a reduction" checkable. | Non-personal |
+| 13 | `source_system` | `varchar(40)` | no | `arpi_synthetic_generator` | Lineage marker. | Non-personal |
+
+### 45.4 The sign convention and the cap
+
+```
+net_product_gross_as_of = original_product_gross
+                        − SUM(adjustment_amount WHERE adjustment_date <= as_of_date)
+```
+
+| Type | Sign | Constraint |
+|---|---|---|
+| `Cancellation` | positive | `> 0` |
+| `Chargeback` | positive | `> 0` |
+| `Reinstatement` | negative | `< 0` |
+| `Approved Adjustment` | either | `<> 0` — a zero-amount adjustment is not an adjustment |
+
+**The cap: cumulative net reduction stays inside `[0, original_product_gross]` after *every* event in a
+contract's sequence, not merely at the end.** An ordinary adjustment cannot take back more than was
+produced, and a reinstatement cannot restore more than was taken — retained gross may never exceed the
+original, and an "administrative correction" is not a governed exception to that.
+
+Capped behaviour is the default **and the only behaviour this generator produces**. Enforced in the
+generator, asserted by `DQ-FPA-007`, proved by `RECON-FI-ADJUSTMENT-CAP`, and exercised by a seeded
+corruption.
+
+Because of the cap, the as-of net figure **never goes negative and never exceeds the original**.
+
+### 45.5 Why the conflict target is `adjustment_id`
+
+`fact_sales_target` upserts on its grain because a plan is a **current statement** and a revision replaces
+it. An adjustment is an **event** and history is the point, so the conflict target is the event's own
+identity. It is deliberately **not** `(product_sale_key, adjustment_date)`: two genuine events on one
+contract on one day would then collapse into one, which is a silent loss of an event rather than a
+deduplication.
+
+### 45.6 Window truncation is a property, not a defect
+
+Event lags are drawn `(low, high, mode)` in days from the contract's sale date — cancellation `(8, 300, 40)`,
+chargeback `(12, 280, 55)`, reinstatement `(5, 90, 20)`, approved adjustment `(3, 150, 25)`. The modes sit
+early because a failure that is going to happen usually happens in the first months; the long right tails are
+kept because a contract cancelled a year in is a real event.
+
+**An event dated past the reporting window has no `dim_date` row to resolve and is not emitted.** The most
+recent months of sales therefore carry structurally **fewer** adjustments than the earliest ones — exactly as
+a real store's most recent cohort does, because those contracts have not had time to fail.
+
+**Any comparison of adjustment volume between an early month and a late one is reading that truncation.**
+`LIMITATIONS.md` records it, and `KPI-FNI-014`, `-015` and `-018` are labelled **period proxies, never cohort
+loss rates**, for exactly this reason.
+
+### 45.7 Privacy
+
+**No customer reference of any kind, and no free-text field** — no `note`, `comment`, `reason_text` or
+`description`. A free-text reason is where somebody eventually writes something about a customer.
+
+A cancellation in a real dealership is accompanied by a refund cheque, a customer conversation and often a
+repossession or total-loss narrative. **ARPI models none of them.** Data minimization applies: a field is not
+created merely because it could exist in a real DMS.
+
+A chargeback rate **is not a performance judgement** and no surface may present it as one. `DQ-FPA-013`
+inspects the schema and fails the run even when a prohibited column is empty.
+
+### 45.8 Data-quality checks and reconciliations
+
+`DQ-FPA-001` … `DQ-FPA-013`, all `critical`, including the cumulative cap (`-007`), reinstatement integrity
+(`-008`), reason-belongs-to-type (`-009`), context agreement with the contract (`-010`) and sensitivity-flag
+compliance (`-011`).
+
+Reconciliations: `RECON-FI-ADJUSTMENT-CAP`, `RECON-FI-ADJUSTMENT-SEQUENCE`, `RECON-FI-ADJUSTMENT-GRAIN`,
+`RECON-FI-NET-GROSS`, `RECON-FACT-FINANCE-PRODUCT-ADJUSTMENT-WAREHOUSE` and
+`RECON-REPORT-FI-ADJUSTMENT-ROWS`.
+
+**`RECON-FI-001` is deliberately unaffected by this fact.** The deal-date identity reconciles the produced
+side; `RECON-FI-NET-GROSS` reconciles the as-of side **separately, on its own basis**. Blending them would
+turn an ordinary cancellation into a permanent failing check — precisely the mistake the three-date-basis
+discipline exists to prevent.

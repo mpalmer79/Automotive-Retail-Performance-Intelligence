@@ -78,7 +78,7 @@ def test_the_reporting_view_count_matches_the_sql_that_creates_them() -> None:
     )
 
 
-def test_the_expected_fact_tables_are_the_pipeline_loaded_six_and_not_the_listing_fact() -> None:
+def test_the_expected_fact_tables_are_the_pipeline_loaded_eight_and_not_the_listing_fact() -> None:
     """The listing fact is deliberately absent from the cloud verifier's fact list.
 
     That list is checked for "exists and holds at least one row". The listing fact is
@@ -95,7 +95,11 @@ def test_the_expected_fact_tables_are_the_pipeline_loaded_six_and_not_the_listin
     """
     assert "fact_vehicle_listing_snapshot" not in verifier.EXPECTED_FACT_TABLES
     assert "fact_sales_target" in verifier.EXPECTED_FACT_TABLES
-    assert len(verifier.EXPECTED_FACT_TABLES) == 6
+    assert "fact_finance_product_sale" in verifier.EXPECTED_FACT_TABLES
+    assert "fact_finance_product_adjustment" in verifier.EXPECTED_FACT_TABLES
+    # Five MVP facts, the DASH.5 operating plan and the two DASH.6 F&I facts. Still not
+    # the same set as the five MVP facts the semantic model was measured against.
+    assert len(verifier.EXPECTED_FACT_TABLES) == 8
 
 
 def test_the_observed_vehicle_dimension_is_not_one_of_the_eight() -> None:
@@ -112,10 +116,12 @@ def test_the_reconciliation_count_excludes_the_listing_lane() -> None:
     on how many workbooks somebody had imported.
 
     69, not 58, since ``DASH.5``: ten target reconciliations plus the target ingestion
-    chain. That is a count of what the pipeline records on a run, and it moved because the
+    chain. 96 since ``DASH.6``: eighteen ``RECON-FI-*`` rules in ``audit.vw_recon_all``
+    plus the loader's own chain and warehouse reconciliations for the four new entities.
+    That is a count of what the pipeline records on a run, and it moved because the
     pipeline records more -- not because the expectation was relaxed to fit a failure.
     """
-    assert verifier.EXPECTED_RECONCILIATION_COUNT_PER_RUN == 69
+    assert verifier.EXPECTED_RECONCILIATION_COUNT_PER_RUN == 96
 
 
 def test_no_listing_view_carries_an_expected_row_count() -> None:

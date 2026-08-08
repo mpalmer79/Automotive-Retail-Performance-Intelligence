@@ -380,12 +380,18 @@ def _dashboard_lane_sql_files() -> frozenset[str]:
 def _dashboard_program_kpi_ids() -> frozenset[str]:
     """The dashboard program's own KPI identifiers, read from ``arpi.constants``.
 
+    Two families, read from their own declarations rather than restated: the ten
+    ``KPI-TGT`` identifiers ``DASH.5`` promoted and the twenty-two ``KPI-FNI``
+    identifiers ``DASH.6`` promoted.
+
     Deliberately NOT added to ``governed_kpis``. That count answers "how many KPIs did the
     semantic model bind and the SQL baseline measure", and the answer is still 29; these
-    ten are computed in SQL and rendered on the web console and no DAX measure reads them.
-    Summing the two would produce a number that is true of nothing.
+    thirty-two are computed in SQL and no DAX measure reads any of them. Summing the two
+    would produce a number that is true of nothing.
     """
-    return _declared_lane_sql_files(CONSTANTS_SOURCE, "TARGET_KPI_IDS")
+    return _declared_lane_sql_files(CONSTANTS_SOURCE, "TARGET_KPI_IDS") | _declared_lane_sql_files(
+        CONSTANTS_SOURCE, "FI_KPI_IDS"
+    )
 
 
 def _declared_lane_sql_files(source: Path, name: str) -> frozenset[str]:
