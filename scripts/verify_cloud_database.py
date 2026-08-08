@@ -196,6 +196,13 @@ EXPECTED_REPORTING_ROW_COUNTS: dict[str, int] = {
     "vw_fi_summary": 354,
     "vw_fi_product_penetration": 3012,
     "vw_fi_adjustment_summary": 57,
+    # DASH.8. Measured on a fresh warehouse: 1,501 schedule lines over six month-ends,
+    # 43 comparison rows (42 control balances, one of which has no schedule behind it, plus
+    # one schedule position whose balance is deliberately withheld), and 4 exceptions --
+    # 2 variances and the 2 missing sides, which is the whole of the planted set.
+    "vw_inventory_accounting": 1501,
+    "vw_inventory_gl_reconciliation": 43,
+    "vw_accounting_exceptions": 4,
     # The six vw_vehicle_listing_* views are DELIBERATELY absent. They are the sanitized
     # public listing lane (ADR-0011), which loads on a workbook cadence rather than on a
     # pipeline run, so a correct cloud database holds those views with no rows until an
@@ -229,16 +236,22 @@ EXPECTED_REPORTING_ROW_COUNTS: dict[str, int] = {
 #: ten `RECON-TGT-*` / `RECON-FACT-SALES-TARGET-*` plus the ingestion chain
 #: `RECON-INGEST-SALES-TARGET-CHAIN` (58 -> 69). Both were verified against a real
 #: load before being written here, not inferred from a failing run.
+#: `DASH.6` moved them again (129 -> 186 checks, 69 -> 96 reconciliations), and `DASH.8`
+#: once more on the same terms: the accounting lane registers 37 checks -- 19 `DQ-IAS-*`,
+#: 10 `DQ-GLA-*`, 8 `DQ-GLB-*` -- plus three ingestion schema checks (186 -> 226), and 18
+#: reconciliations -- the 13 `RECON-ACC-*` / `RECON-GLB-*` rules plus the three ingestion
+#: chains, the catalogue's warehouse chain and its row count (96 -> 114). Both were
+#: measured on a fresh warehouse built by the canonical sequence, not inferred.
 EXPECTED_REPORTING_ROW_COUNTS_PER_RUN: dict[str, int] = {
     "vw_data_quality_trend": 9,
-    "vw_reconciliation_status": 96,
+    "vw_reconciliation_status": 114,
     "vw_pipeline_run_summary": 1,
-    "vw_data_quality_summary": 186,
+    "vw_data_quality_summary": 226,
 }
 
 #: Reconciliations the loader records on every run, and how many may fail.
 #: Per run, for the reason recorded above.
-EXPECTED_RECONCILIATION_COUNT_PER_RUN: int = 96
+EXPECTED_RECONCILIATION_COUNT_PER_RUN: int = 114
 EXPECTED_FAILING_RECONCILIATION_COUNT: int = 0
 
 #: The profile and seed the cloud database must have been loaded from.

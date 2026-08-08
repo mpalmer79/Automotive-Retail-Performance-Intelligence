@@ -129,10 +129,14 @@ def test_the_reconciliation_count_excludes_the_listing_lane() -> None:
     69, not 58, since ``DASH.5``: ten target reconciliations plus the target ingestion
     chain. 96 since ``DASH.6``: eighteen ``RECON-FI-*`` rules in ``audit.vw_recon_all``
     plus the loader's own chain and warehouse reconciliations for the four new entities.
+    114 since ``DASH.8``: the thirteen ``RECON-ACC-*`` / ``RECON-GLB-*`` rules in
+    ``audit.vw_recon_all`` plus the loader's own chain reconciliations for the three new
+    entities and the catalogue's warehouse and row-count pair.
+
     That is a count of what the pipeline records on a run, and it moved because the
     pipeline records more -- not because the expectation was relaxed to fit a failure.
     """
-    assert verifier.EXPECTED_RECONCILIATION_COUNT_PER_RUN == 96
+    assert verifier.EXPECTED_RECONCILIATION_COUNT_PER_RUN == 114
 
 
 def test_no_listing_view_carries_an_expected_row_count() -> None:

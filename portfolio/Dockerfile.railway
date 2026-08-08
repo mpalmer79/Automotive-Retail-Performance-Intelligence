@@ -177,6 +177,13 @@ COPY src/arpi/inventory/spec.py ./src/arpi/inventory/spec.py
 # Without it the build counts thirty-one MVP reporting views against a Power BI
 # baseline that measured twenty-eight, and fails its own drift assertion.
 COPY src/arpi/dashboard/contract.py ./src/arpi/dashboard/contract.py
+# And the same for the inventory accounting and GL control lane (DASH.8). It is
+# declared in arpi.constants rather than in the dashboard contract because that
+# increment adds no browser dataset and no console route, so the contract module
+# is deliberately untouched by it. Without this file the build counts a ninth MVP
+# dimension, a sixth MVP fact and thirty-one MVP reporting views, and fails its
+# own drift assertions.
+COPY src/arpi/constants.py ./src/arpi/constants.py
 
 # --- Inventory evidence, read by generate-inventory-data.ts ----------------
 #
