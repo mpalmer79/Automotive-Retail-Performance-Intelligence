@@ -1,13 +1,13 @@
 {
   "schema": "arpi.dashboard_client/1",
-  "datasetVersion": 6,
+  "datasetVersion": 7,
   "contractVersion": 1,
-  "contractSha256": "1bd3f43629cc705df4eee15feb47812596d63acf617baf50f40a3bbf81a0c0fb",
-  "generatedAt": "2026-08-08T11:59:58+00:00",
+  "contractSha256": "6f41748f7b98c93f6fe44b3ce28f4740cfcb0a83cd0d050de13df9afe97e2114",
+  "generatedAt": "2026-08-08T12:28:39+00:00",
   "asOfDate": "2025-12-31",
   "profile": "development",
   "randomSeed": 20250701,
-  "sourceCommit": "7dcbeab8e4a307fea49c109e72d69a84f31fc737",
+  "sourceCommit": "2aad9b41781015aceff504779f3324865debb300",
   "exporterVersion": "0.1.0",
   "syntheticData": true,
   "fictionalDealerGroup": true,
@@ -4169,6 +4169,14 @@
           "enumeration": null
         },
         {
+          "name": "is_retail_structure",
+          "type": "boolean",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
           "name": "vehicle_code",
           "type": "string",
           "nullable": false,
@@ -4416,6 +4424,55 @@
           "enumeration": null
         },
         {
+          "name": "lender_code",
+          "type": "string",
+          "nullable": true,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "lender_name",
+          "type": "string",
+          "nullable": true,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "lender_category",
+          "type": "string",
+          "nullable": true,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": [
+            "Captive",
+            "Bank",
+            "Credit Union",
+            "Independent Finance Company"
+          ]
+        },
+        {
+          "name": "lender_program_tier",
+          "type": "string",
+          "nullable": true,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": [
+            "Prime",
+            "Near-prime",
+            "Subprime"
+          ]
+        },
+        {
+          "name": "finance_reserve_gross",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
           "name": "back_end_gross",
           "type": "currency",
           "nullable": false,
@@ -4425,6 +4482,46 @@
         },
         {
           "name": "total_gross",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "product_contract_count",
+          "type": "integer",
+          "nullable": false,
+          "unit": "contracts",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "original_product_gross",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "cumulative_adjustment_amount",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "adjustment_event_count",
+          "type": "integer",
+          "nullable": false,
+          "unit": "events",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "net_product_gross_as_of",
           "type": "currency",
           "nullable": false,
           "unit": "USD",
@@ -4630,6 +4727,30 @@
           "unit": "snapshots",
           "displayPrecision": null,
           "enumeration": null
+        },
+        {
+          "name": "as_of_date",
+          "type": "date",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "deal_date_basis",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "net_gross_date_basis",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
         }
       ],
       "chunks": [
@@ -4638,126 +4759,126 @@
           "month": "2025-07",
           "file": "datasets/deal-jacket/GSA-001/2025-07.json",
           "rowCount": 44,
-          "bytes": 29888
+          "bytes": 38156
         },
         {
           "dealershipId": "GSA-001",
           "month": "2025-08",
           "file": "datasets/deal-jacket/GSA-001/2025-08.json",
           "rowCount": 51,
-          "bytes": 34685
+          "bytes": 44190
         },
         {
           "dealershipId": "GSA-001",
           "month": "2025-09",
           "file": "datasets/deal-jacket/GSA-001/2025-09.json",
           "rowCount": 47,
-          "bytes": 32278
+          "bytes": 40934
         },
         {
           "dealershipId": "GSA-001",
           "month": "2025-10",
           "file": "datasets/deal-jacket/GSA-001/2025-10.json",
           "rowCount": 37,
-          "bytes": 25710
+          "bytes": 32685
         },
         {
           "dealershipId": "GSA-001",
           "month": "2025-11",
           "file": "datasets/deal-jacket/GSA-001/2025-11.json",
           "rowCount": 37,
-          "bytes": 25408
+          "bytes": 32269
         },
         {
           "dealershipId": "GSA-001",
           "month": "2025-12",
           "file": "datasets/deal-jacket/GSA-001/2025-12.json",
           "rowCount": 42,
-          "bytes": 28537
+          "bytes": 36229
         },
         {
           "dealershipId": "GSA-002",
           "month": "2025-07",
           "file": "datasets/deal-jacket/GSA-002/2025-07.json",
           "rowCount": 40,
-          "bytes": 27754
+          "bytes": 35334
         },
         {
           "dealershipId": "GSA-002",
           "month": "2025-08",
           "file": "datasets/deal-jacket/GSA-002/2025-08.json",
           "rowCount": 45,
-          "bytes": 30879
+          "bytes": 39440
         },
         {
           "dealershipId": "GSA-002",
           "month": "2025-09",
           "file": "datasets/deal-jacket/GSA-002/2025-09.json",
           "rowCount": 36,
-          "bytes": 25047
+          "bytes": 31887
         },
         {
           "dealershipId": "GSA-002",
           "month": "2025-10",
           "file": "datasets/deal-jacket/GSA-002/2025-10.json",
           "rowCount": 35,
-          "bytes": 24414
+          "bytes": 30716
         },
         {
           "dealershipId": "GSA-002",
           "month": "2025-11",
           "file": "datasets/deal-jacket/GSA-002/2025-11.json",
           "rowCount": 35,
-          "bytes": 24036
+          "bytes": 30767
         },
         {
           "dealershipId": "GSA-002",
           "month": "2025-12",
           "file": "datasets/deal-jacket/GSA-002/2025-12.json",
           "rowCount": 38,
-          "bytes": 26523
+          "bytes": 33562
         },
         {
           "dealershipId": "GSA-003",
           "month": "2025-07",
           "file": "datasets/deal-jacket/GSA-003/2025-07.json",
           "rowCount": 32,
-          "bytes": 21738
+          "bytes": 27758
         },
         {
           "dealershipId": "GSA-003",
           "month": "2025-08",
           "file": "datasets/deal-jacket/GSA-003/2025-08.json",
           "rowCount": 40,
-          "bytes": 27097
+          "bytes": 34635
         },
         {
           "dealershipId": "GSA-003",
           "month": "2025-09",
           "file": "datasets/deal-jacket/GSA-003/2025-09.json",
           "rowCount": 20,
-          "bytes": 14023
+          "bytes": 17559
         },
         {
           "dealershipId": "GSA-003",
           "month": "2025-10",
           "file": "datasets/deal-jacket/GSA-003/2025-10.json",
           "rowCount": 25,
-          "bytes": 17024
+          "bytes": 21349
         },
         {
           "dealershipId": "GSA-003",
           "month": "2025-11",
           "file": "datasets/deal-jacket/GSA-003/2025-11.json",
           "rowCount": 20,
-          "bytes": 14094
+          "bytes": 17833
         },
         {
           "dealershipId": "GSA-003",
           "month": "2025-12",
           "file": "datasets/deal-jacket/GSA-003/2025-12.json",
           "rowCount": 26,
-          "bytes": 18087
+          "bytes": 22922
         }
       ]
     },
@@ -6151,12 +6272,12 @@
     }
   ],
   "sizes": {
-    "totalBytes": 4315487,
+    "totalBytes": 4436490,
     "fileCount": 179,
     "largestFile": {
       "file": "datasets/sales-gross-trend.json",
       "bytes": 95189
     },
-    "rootExportBytes": 13076081
+    "rootExportBytes": 13386684
   }
 }

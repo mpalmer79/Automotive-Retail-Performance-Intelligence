@@ -1853,6 +1853,7 @@ _DEAL_JACKET = DatasetContract(
             enumeration=_FINANCE_STRUCTURES,
         ),
         _attribute("finance_structure_basis", "string", view="vw_deal_jacket"),
+        _attribute("is_retail_structure", "boolean", view="vw_deal_jacket"),
         # Vehicle
         _attribute("vehicle_code", "string", view="vw_deal_jacket"),
         _attribute("synthetic_vin", "string", view="vw_deal_jacket"),
@@ -1892,12 +1893,35 @@ _DEAL_JACKET = DatasetContract(
         _measure("trade_allowance", "currency", unit="USD", view="vw_deal_jacket"),
         _measure("trade_acv", "currency", unit="USD", view="vw_deal_jacket"),
         _measure("trade_variance", "currency", unit="USD", view="vw_deal_jacket"),
-        # Finance amounts
+        # Finance amounts and the fictional funding source. Still no rate mechanic.
         _measure("cash_down", "currency", unit="USD", view="vw_deal_jacket"),
         _measure("amount_financed", "currency", unit="USD", view="vw_deal_jacket"),
-        # Gross
+        _attribute("lender_code", "string", nullable=True, view="vw_deal_jacket"),
+        _attribute("lender_name", "string", nullable=True, view="vw_deal_jacket"),
+        _attribute(
+            "lender_category",
+            "string",
+            nullable=True,
+            view="vw_deal_jacket",
+            enumeration=_LENDER_CATEGORIES,
+        ),
+        _attribute(
+            "lender_program_tier",
+            "string",
+            nullable=True,
+            view="vw_deal_jacket",
+            enumeration=_LENDER_PROGRAM_TIERS,
+        ),
+        # Gross, with the back end now decomposed
+        _measure("finance_reserve_gross", "currency", unit="USD", view="vw_deal_jacket"),
         _measure("back_end_gross", "currency", unit="USD", view="vw_deal_jacket"),
         _measure("total_gross", "currency", unit="USD", view="vw_deal_jacket"),
+        # The deal's F&I product rollup, pre-aggregated to one row per deal.
+        _measure("product_contract_count", "integer", unit="contracts", view="vw_deal_jacket"),
+        _measure("original_product_gross", "currency", unit="USD", view="vw_deal_jacket"),
+        _measure("cumulative_adjustment_amount", "currency", unit="USD", view="vw_deal_jacket"),
+        _measure("adjustment_event_count", "integer", unit="events", view="vw_deal_jacket"),
+        _measure("net_product_gross_as_of", "currency", unit="USD", view="vw_deal_jacket"),
         # Staff, synthetic codes and roles only
         _attribute("salesperson_code", "string", nullable=True, view="vw_deal_jacket"),
         _attribute("salesperson_role", "string", nullable=True, view="vw_deal_jacket"),
@@ -1933,6 +1957,9 @@ _DEAL_JACKET = DatasetContract(
         # Supporting fact for the page's integrity checklist
         _attribute("delivery_on_or_after_sale", "boolean", view="vw_deal_jacket"),
         _measure("inventory_snapshot_count", "integer", unit="snapshots", view="vw_deal_jacket"),
+        _attribute("as_of_date", "date", view="vw_deal_jacket"),
+        _attribute("deal_date_basis", "string", view="vw_deal_jacket"),
+        _attribute("net_gross_date_basis", "string", view="vw_deal_jacket"),
     ),
     notes=(
         "The presentation-complete record of ONE deal, and the second deal-grain dataset. "

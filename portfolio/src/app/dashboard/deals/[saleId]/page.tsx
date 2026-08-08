@@ -4,7 +4,9 @@ import { notFound } from 'next/navigation'
 import { Canvas } from '@/components/shell/field'
 import {
   ChecksSection,
+  BackGrossSectionBlock,
   FinanceSectionBlock,
+  ProductSectionBlock,
   FrontGrossSection,
   IdentitySection,
   LineageSection,
@@ -220,12 +222,34 @@ export default async function DealJacketPage({
 
               <section id="finance">
                 <SectionHeader
-                  eyebrow="Finance and F&amp;I"
-                  title="What was financed, and what the finance office made"
-                  lede="Amounts only. No rate, term, payment or lender exists anywhere in this project, and the back-end gross is aggregate until the F&amp;I model itemizes it."
+                  eyebrow="Finance"
+                  title="How the deal was funded"
+                  lede="Amounts and a fictional funding source. No APR, term, payment, buy rate, sell rate or spread exists anywhere in this project, and none ever will: finance reserve is an amount, never a rate."
                 />
                 <div className="pt-6">
                   <FinanceSectionBlock jacket={jacket} />
+                </div>
+              </section>
+
+              <section id="products">
+                <SectionHeader
+                  eyebrow="F&amp;I products"
+                  title="What was written, and what remains"
+                  lede="One row per product contract, with the price, the cost, the gross it was written for and what survived every adjustment posted since. Original and net are separate columns because they answer different questions."
+                />
+                <div className="pt-6">
+                  <ProductSectionBlock jacket={jacket} />
+                </div>
+              </section>
+
+              <section id="back-gross">
+                <SectionHeader
+                  eyebrow="Back-end gross"
+                  title="What the finance office made, decomposed"
+                  lede="Finance reserve plus original product gross, recomputed here from the components and checked to the cent. Other F&amp;I income is exactly $0.00 and is not a balancing figure."
+                />
+                <div className="pt-6">
+                  <BackGrossSectionBlock jacket={jacket} />
                 </div>
               </section>
 

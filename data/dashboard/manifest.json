@@ -1,13 +1,13 @@
 {
   "schema": "arpi.dashboard_export/1",
   "contract_version": 1,
-  "contract_sha256": "1bd3f43629cc705df4eee15feb47812596d63acf617baf50f40a3bbf81a0c0fb",
-  "dataset_version": 6,
-  "generated_at": "2026-08-08T11:59:58+00:00",
+  "contract_sha256": "6f41748f7b98c93f6fe44b3ce28f4740cfcb0a83cd0d050de13df9afe97e2114",
+  "dataset_version": 7,
+  "generated_at": "2026-08-08T12:28:39+00:00",
   "as_of_date": "2025-12-31",
   "profile": "development",
   "random_seed": 20250701,
-  "source_commit": "7dcbeab8e4a307fea49c109e72d69a84f31fc737",
+  "source_commit": "2aad9b41781015aceff504779f3324865debb300",
   "exporter_version": "0.1.0",
   "query_normalisation": "arpi.sql_whitespace_canonical/1",
   "reporter_role": "arpi_reporter",
@@ -3866,6 +3866,16 @@
           "source_column": "reporting.vw_deal_jacket.finance_structure_basis"
         },
         {
+          "name": "is_retail_structure",
+          "type": "boolean",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.is_retail_structure"
+        },
+        {
           "name": "vehicle_code",
           "type": "string",
           "nullable": false,
@@ -4173,6 +4183,65 @@
           "source_column": "reporting.vw_deal_jacket.amount_financed"
         },
         {
+          "name": "lender_code",
+          "type": "string",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.lender_code"
+        },
+        {
+          "name": "lender_name",
+          "type": "string",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.lender_name"
+        },
+        {
+          "name": "lender_category",
+          "type": "string",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "Captive",
+            "Bank",
+            "Credit Union",
+            "Independent Finance Company"
+          ],
+          "source_column": "reporting.vw_deal_jacket.lender_category"
+        },
+        {
+          "name": "lender_program_tier",
+          "type": "string",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "Prime",
+            "Near-prime",
+            "Subprime"
+          ],
+          "source_column": "reporting.vw_deal_jacket.lender_program_tier"
+        },
+        {
+          "name": "finance_reserve_gross",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.finance_reserve_gross"
+        },
+        {
           "name": "back_end_gross",
           "type": "currency",
           "nullable": false,
@@ -4191,6 +4260,56 @@
           "display_precision": null,
           "enumeration": null,
           "source_column": "reporting.vw_deal_jacket.total_gross"
+        },
+        {
+          "name": "product_contract_count",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "contracts",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.product_contract_count"
+        },
+        {
+          "name": "original_product_gross",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.original_product_gross"
+        },
+        {
+          "name": "cumulative_adjustment_amount",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.cumulative_adjustment_amount"
+        },
+        {
+          "name": "adjustment_event_count",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "events",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.adjustment_event_count"
+        },
+        {
+          "name": "net_product_gross_as_of",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.net_product_gross_as_of"
         },
         {
           "name": "salesperson_code",
@@ -4441,14 +4560,44 @@
           "display_precision": null,
           "enumeration": null,
           "source_column": "reporting.vw_deal_jacket.inventory_snapshot_count"
+        },
+        {
+          "name": "as_of_date",
+          "type": "date",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.as_of_date"
+        },
+        {
+          "name": "deal_date_basis",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.deal_date_basis"
+        },
+        {
+          "name": "net_gross_date_basis",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_deal_jacket.net_gross_date_basis"
         }
       ],
       "notes": "The presentation-complete record of ONE deal, and the second deal-grain dataset. It carries the cost components deal-explorer deliberately omits, because a jacket must show the arithmetic behind its front gross and an index must not ship the whole population's cost structure. The two ARITHMETIC identities are NOT exported as flags: the route recomputes front gross, total gross and the back-gross decomposition from the displayed components with exact-decimal arithmetic, because a verification that reads a flag verifies nothing. trade_variance is published beside the front-gross components and is deliberately not one of them. DASH.7 MADE THE BACK END REAL: back_end_gross is no longer an unexplained aggregate, because finance_reserve_gross + original_product_gross equals it to the cent on every deal with other_fi_income exactly 0.00, and the contract itemization is the deal-product-detail dataset partitioned by the SAME store and sale month so one jacket opens one product partition. original_product_gross is the DEAL-DATE sum and is the one the identity uses; net_product_gross_as_of is the retained figure through the governed as-of date, and substituting it would make the identity fail on every adjusted deal. DASH.7 ALSO CORRECTED finance_structure: the view derived it with an inline CASE that had no non-retail branch and labelled 92 wholesale and dealer-trade disposals as Cash; it now calls the governed derivation function, the one authority, the enumeration widened to five values, and is_retail_structure separates them. The lender is FICTIONAL and null means NO LENDER EXISTS; lender_program_tier classifies the LENDER'S PROGRAM and never a customer; no APR, term, payment, buy rate, sell rate or spread is exported because none is modelled. No customer attribute is exported at any grain; staff are synthetic codes and roles with no name; the lead timeline is flags and dates with no message, note or free text, because none exists in the model.",
-      "query_sha256": "e989016c138ae991da8d8158137e20042e9251ba47f8060dfa3ca71aff7cc2ba",
+      "query_sha256": "e735b0db5269a72e052d63c6a62f6d72907c4f38e6dda69d89fbb683bc86dc3f",
       "row_count": 650,
       "file": "deal-jacket.json",
-      "file_sha256": "332fb149c70d319a6b56242147131ebdcd8e775b5cb59e4d6cf2e30835af039d",
-      "file_bytes": 1194651
+      "file_sha256": "a6e36e3b37542932370659a881437160a5348c8aeb7185c1184b6fc20dd74c0e",
+      "file_bytes": 1505254
     },
     {
       "name": "fi-summary",
@@ -6289,7 +6438,7 @@
   "privacy_scan": {
     "status": "passed",
     "prohibited_hits": 0,
-    "columns_scanned": 484,
+    "columns_scanned": 498,
     "primary_control": "contract allowlist",
     "secondary_control": "arpi.validation.privacy prohibited-name tripwire"
   },
@@ -6301,7 +6450,7 @@
     "reconciliations_failed": 0
   },
   "sizes": {
-    "dataset_bytes_total": 13076081,
+    "dataset_bytes_total": 13386684,
     "largest_dataset": {
       "name": "lead-response",
       "bytes": 2269345,
