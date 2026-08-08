@@ -1,0 +1,4 @@
+gl_account_id,account_number,account_name,account_category,account_type,normal_balance,inventory_control_flag,active_start_date,active_end_date,source_system
+GLA-1210,1210,New Vehicle Inventory,New Vehicle Inventory,Asset,Debit,True,2025-07-01,,SYNTHETIC-DMS-GL
+GLA-1220,1220,Used Vehicle Inventory,Used Vehicle Inventory,Asset,Debit,True,2025-07-01,,SYNTHETIC-DMS-GL
+GLA-1230,1230,Certified Vehicle Inventory,Certified Vehicle Inventory,Asset,Debit,True,2025-07-01,,SYNTHETIC-DMS-GL

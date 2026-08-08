@@ -168,6 +168,13 @@ RESERVED_CHECK_PREFIXES: Final[Mapping[str, str]] = MappingProxyType(
         "REF": "cross-object referential and grain integrity (SQL)",
         "AUD": "audit-layer integrity (SQL)",
         "ING": "ingestion and the row-count chain",
+        # The inventory-accounting control domain (DASH.8). Three families because three
+        # entities: the stock-level schedule, the selected control catalogue, and the
+        # control balances. Kept apart so a check cannot be written about "accounting"
+        # in general and end up applying to none of them precisely.
+        "IAS": "fact_inventory_accounting_snapshot (the stock-level accounting schedule)",
+        "GLA": "dim_gl_account (the selected synthetic control-account catalogue)",
+        "GLB": "fact_gl_control_balance (selected control-account balances)",
     }
 )
 

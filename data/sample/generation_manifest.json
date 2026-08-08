@@ -120,6 +120,24 @@
       "row_count": 57,
       "column_count": 13,
       "content_digest": "081f28c6c88b6bbf0264f3145deeb563881592b8a737ee5416595760573a1651"
+    },
+    {
+      "entity": "inventory_accounting_snapshot",
+      "row_count": 400,
+      "column_count": 16,
+      "content_digest": "8cdbf095c08fba0916be7d8774a411f699621fb7abe3e9509b26d358e7198baf"
+    },
+    {
+      "entity": "dim_gl_account",
+      "row_count": 3,
+      "column_count": 10,
+      "content_digest": "e1c78d096760b4fe99b70a0f886ff62d432d083e90a9893866b647dd37882447"
+    },
+    {
+      "entity": "gl_control_balance",
+      "row_count": 42,
+      "column_count": 6,
+      "content_digest": "9ee0f9d61954d1d0bbd8b6cd524ecb5894796dab8150805baa697381a64983f9"
     }
   ],
   "synthetic_data_notice": "SYNTHETIC DATA -- 100% machine generated. Granite Auto Group and every store, employee role and transaction referenced by this project are fictional. No real customer, employee, dealership or vendor data is present, and no record here describes a real person or a real business.",

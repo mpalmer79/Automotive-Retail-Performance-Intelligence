@@ -789,7 +789,22 @@ adding data no question requires. No exported column identifies an employee.
 | **Reporting view** | `reporting.vw_deal_jacket` |
 | **Intended future report page** | 2b. Deal Jacket |
 | **Decision enabled** | Whether to trust the aggregate. Every number above a deal is a sum of deals, and a manager who cannot open one transaction and see its arithmetic has to take the whole report on faith. This is the question that makes a reporting layer auditable rather than merely presentable: the jacket shows sale price less acquisition, reconditioning and pack, in that order, and the page recomputes the identity from those components rather than displaying the stored figure. |
-| **Interpretation caution** | **"Verified to the cent" is a statement about internal consistency, not about reality.** It means the exported components recompute the exported gross exactly; the transaction is synthetic and did not happen. The front-end gross **excludes** manufacturer holdback, dealer cash, stair-step money, floorplan credits and unposted accounting adjustments, none of which is modelled, so it is understated by design in the same way new-vehicle gross is. **Trade variance is shown beside the calculation and is deliberately not inside it** — folding it in would change what `KPI-GRS-001` means. Back-end gross is aggregate: no reserve, product or chargeback figure exists until the F&I fact does, and no product-mix statement about a deal is supportable. No lender, APR, term, payment or rate spread exists anywhere in ARPI, by policy rather than by omission. Employees appear as synthetic identifiers with no name and no pay, and no judgement of an individual may be drawn from a single transaction. |
+| **Interpretation caution** | **"Verified to the cent" is a statement about internal consistency, not about reality.** It means the exported components recompute the exported gross exactly; the transaction is synthetic and did not happen. The front-end gross **excludes** manufacturer holdback, dealer cash, stair-step money, floorplan credits and unposted accounting adjustments, none of which is modelled, so it is understated by design in the same way new-vehicle gross is. **Trade variance is shown beside the calculation and is deliberately not inside it** — folding it in would change what `KPI-GRS-001` means. Back-end gross is **explained rather than aggregate**: since `DASH.6` the jacket resolves finance reserve and every product contract behind the deal, and `RECON-FI-001` proves reserve plus deal-date product gross accounts for the stored figure to the cent. What is still unsupportable is a **rate** statement: no APR, buy rate, sell rate, rate spread, money factor, term or payment exists anywhere in ARPI, by policy rather than by omission, and the lender is an assignment record with no credit decision behind it. Employees appear as synthetic identifiers with no name and no pay, and no judgement of an individual may be drawn from a single transaction. |
+| **Implementation status** | **Implemented** |
+
+### SQ-43 — Controller / office manager
+
+| Field | Value |
+|---|---|
+| **Persona** | Controller, office manager, dealer principal |
+| **Business question** | *Does the inventory on my stock schedule agree with what the general ledger says the inventory control account holds, and if not, where exactly does it differ?* |
+| **Required dimensions** | `dim_date`, `dim_dealership`, `dim_vehicle`, `dim_gl_account` |
+| **Required facts** | `fact_inventory_accounting_snapshot`, `fact_gl_control_balance`, `fact_vehicle_inventory_snapshot`, `fact_vehicle_sale`, `fact_finance_product_sale`, `fact_finance_product_adjustment` |
+| **KPI IDs** | `KPI-ACC-001`, `KPI-ACC-002`, `KPI-ACC-003`, `KPI-ACC-004`, `KPI-ACC-005`, `KPI-ACC-006`, `KPI-ACC-007`, `KPI-ACC-008`, `KPI-ACC-009`, `KPI-ACC-010`, `KPI-ACC-011`, `KPI-ACC-012` |
+| **Reporting view** | `reporting.vw_inventory_accounting`, `reporting.vw_inventory_gl_reconciliation`, `reporting.vw_accounting_exceptions` |
+| **Intended future report page** | *(none — `DASH.8` is a database and reporting increment; no browser dataset is exported and no console route is added)* |
+| **Decision enabled** | Whether the month can be closed, and where to look when it cannot. A controller who can see only a total variance knows something is wrong and nothing about what; the schedule totals to the control account by store and by account at a matched date, so a difference names the store, the account and the month before anybody opens a binder. The exception surface separates the two findings a controller must never conflate: a **reconciliation variance**, where two structurally valid balances disagree and somebody has to find out why, and a **data-quality exception**, where a rule the model asserts about itself does not hold. |
+| **Interpretation caution** | **The GL control balances are generated from the same subledger they are reconciled against.** An exact reconciliation proves the reconciliation *arithmetic* is correct; it does **not** prove that two independent accounting systems agree, because there is only one source. **ARPI is building a focused inventory control schedule and its reconciliation. It is not building a general ledger** — there is no journal entry, no debit/credit pair, no posting batch, no trial balance, no period-close state and no financial statement anywhere in this project, and `KPI-ACC-002` is not a trial-balance figure. **A variance is not a defect**: both sides are valid data, `RECON-ACC-GL-SUBLEDGER` is registered non-critical for that reason, and the increment deliberately plants controlled variances so the surface can be seen working in both states. **A missing balance is NULL, never zero** — reporting an absent control balance as `0.00` would present a missing balance as a zeroed account. **Floorplan principal is a liability carried as context** and is never netted into book value; no net-inventory-position figure exists anywhere. **Pack is not a capitalized inventory cost** and `KPI-GRS-001` is unchanged. **`KPI-ACC-011` measures acquisition to first schedule appearance, not a journal posting delay** — ARPI holds no posting timestamp, and inventing one would manufacture an operational fact the synthetic data does not contain. Every account number and name is **invented**; no real dealer group's chart of accounts was consulted or approximated. |
 | **Implementation status** | **Implemented** |
 
 ---
@@ -797,21 +812,26 @@ adding data no question requires. No exported column identifies an employee.
 ## 5. Unattributed KPIs and orphan views
 
 **None.** All 29 MVP KPI identifiers, all 24 Inventory Listings KPI identifiers, all 10 Targets and
-pace KPI identifiers and all 22 F&I KPI identifiers in [KPI_CATALOG.md](../../KPI_CATALOG.md) are cited
-by at least one question above, and all 43 views in the `reporting` schema support at least one. Both
-directions are asserted by `tests/integration/test_stakeholder_question_traceability.py`, which reads
+pace KPI identifiers, all 22 F&I KPI identifiers and all 12 inventory accounting KPI identifiers in
+[KPI_CATALOG.md](../../KPI_CATALOG.md) are cited by at least one question above, and all 46 views in
+the `reporting` schema support at least one. Both directions are asserted by
+`tests/integration/test_stakeholder_question_traceability.py`, which reads
 `arpi.constants.KPI_IDS`, `arpi.constants.INVENTORY_LISTING_KPI_IDS`,
-`arpi.constants.TARGET_KPI_IDS`, `arpi.constants.FI_KPI_IDS` and `arpi.constants.REPORTING_VIEWS` and
-fails if any of them gains a member this document does not cite.
+`arpi.constants.TARGET_KPI_IDS`, `arpi.constants.FI_KPI_IDS`,
+`arpi.constants.ACCOUNTING_KPI_IDS` and `arpi.constants.REPORTING_VIEWS` and fails if any of them
+gains a member this document does not cite.
 
-**The four KPI registers are counted separately and deliberately.** `29/29` is the MVP coverage
+**The five KPI registers are counted separately and deliberately.** `29/29` is the MVP coverage
 baseline the semantic model was measured against and it is unchanged. The Inventory Listings family,
-the Targets and pace family and the F&I family are governed, documented and computed in SQL, and none
-is a semantic-model measure: folding any of them into the MVP figure would restate a historical
-baseline rather than record a new capability. `SQ-31` is the only question the Targets and pace family
-anchors, and it anchors all ten. `SQ-21` is the only question the F&I family anchors, and it anchors
-all twenty-two; `SQ-20` is deepened by the same increment but keeps `KPI-GRS-002` and `KPI-GRS-005`
-unchanged, because `DASH.6` explained back-end gross rather than redefining it.
+the Targets and pace family, the F&I family and the inventory accounting family are governed,
+documented and computed in SQL, and none is a semantic-model measure: folding any of them into the MVP
+figure would restate a historical baseline rather than record a new capability. `SQ-31` is the only
+question the Targets and pace family anchors, and it anchors all ten. `SQ-21` is the only question the
+F&I family anchors, and it anchors all twenty-two; `SQ-20` is deepened by the same increment but keeps
+`KPI-GRS-002` and `KPI-GRS-005` unchanged, because `DASH.6` explained back-end gross rather than
+redefining it. `SQ-43` is the only question the inventory accounting family anchors, and it anchors all
+twelve; `DASH.8` adds no browser dataset and no console route, so the family is computed in SQL and
+read nowhere else.
 
 Eight dimension views and four operational views own no KPI. They are cited here through the questions they
 make answerable — a dimension supplies grain and context, and the data-quality views answer the question
@@ -845,6 +865,22 @@ the deal-date back-gross identity to the cent on every deal — with a seeded co
 critical rule, and an independent warehouse derivation per KPI in
 `tests/integration/test_kpi_verification.py`. The promotion happened in the same change that made the
 KPIs computable, which is what §7 requires.
+
+**`SQ-43` is a new question, and `DASH.8` answered it in the same change that registered it.** The
+four Gate 4 conditions ([ARCHITECTURE.md §28](../../ARCHITECTURE.md)) are met and the evidence is
+recorded rather than asserted. **A registered stakeholder question requires the domain**: `SQ-43` above
+asks whether the stock schedule agrees with the inventory control account, and no object in the
+warehouse could answer it. **The grains are declared** in
+[DATA_DICTIONARY.md](../../DATA_DICTIONARY.md) and enforced physically:
+`uq_fact_inventory_accounting_snapshot_grain` over `(accounting_date_key, dealership_key,
+vehicle_key)` and `uq_fact_gl_control_balance_grain` over `(balance_date_key, dealership_key,
+gl_account_key)`, each over three NOT NULL columns so PostgreSQL's NULL-distinctness rule cannot let a
+duplicate logical row through. **KPI ownership** is `KPI-ACC-001`…`KPI-ACC-012` in
+[KPI_CATALOG.md](../../KPI_CATALOG.md), each naming its governed SQL owner among the three accounting
+reporting views. **The testing requirements** are the `DQ-IAS-*`, `DQ-GLA-*` and `DQ-GLB-*` families,
+the `RECON-ACC-*` and `RECON-GLB-*` families — headed by `RECON-ACC-BOOK-IDENTITY`, which proves the
+book-value identity per line and to the cent — with a seeded corruption case per critical rule, and an
+independent warehouse derivation per KPI in `tests/integration/test_kpi_verification.py`.
 
 **`SQ-31` was the fourth and is no longer blocked.** `DASH.5` promoted
 `warehouse.fact_sales_target` from Deferred through the four Gate 4 conditions

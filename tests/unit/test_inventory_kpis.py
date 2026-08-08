@@ -19,6 +19,7 @@ from pathlib import Path
 import pytest
 
 from arpi.constants import (
+    ACCOUNTING_REPORTING_VIEWS,
     DASHBOARD_PROGRAM_VIEWS,
     INVENTORY_LISTING_KPI_IDS,
     INVENTORY_LISTING_KPI_VIEW_OWNERSHIP,
@@ -213,13 +214,21 @@ def test_the_dashboard_program_views_are_not_part_of_the_mvp_reporting_surface()
     # database-and-reporting only -- no browser dataset and no console route, because
     # DASH.7 owns the F&I surface.
     assert len(DASHBOARD_PROGRAM_VIEWS) == 9
+    # DASH.8's three accounting views are a FOURTH lane, not part of this one. They add no
+    # browser dataset and no console route at all, so folding them into the dashboard
+    # program's register would misdescribe both.
+    assert set(DASHBOARD_PROGRAM_VIEWS) & set(ACCOUNTING_REPORTING_VIEWS) == set()
+    assert len(ACCOUNTING_REPORTING_VIEWS) == 3
 
 
-def test_the_full_reporting_surface_is_the_union_of_the_three() -> None:
+def test_the_full_reporting_surface_is_the_union_of_the_four() -> None:
     assert set(REPORTING_VIEWS) == (
-        set(MVP_REPORTING_VIEWS) | set(INVENTORY_LISTING_VIEWS) | set(DASHBOARD_PROGRAM_VIEWS)
+        set(MVP_REPORTING_VIEWS)
+        | set(INVENTORY_LISTING_VIEWS)
+        | set(DASHBOARD_PROGRAM_VIEWS)
+        | set(ACCOUNTING_REPORTING_VIEWS)
     )
-    assert len(REPORTING_VIEWS) == 43
+    assert len(REPORTING_VIEWS) == 46
     assert list(REPORTING_VIEWS) == sorted(REPORTING_VIEWS)
 
 

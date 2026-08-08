@@ -51,6 +51,11 @@ from arpi.constants import (
     PIPELINE_NAME_FOUNDATION,
     SYNTHETIC_DATA_NOTICE,
 )
+from arpi.generation.accounting_validation import (
+    validate_gl_account_dataset,
+    validate_gl_control_balance_dataset,
+    validate_inventory_accounting_dataset,
+)
 from arpi.generation.acquisition import (
     ENTITY_ACQUISITION_EVENT,
     generate_acquisition_dataset,
@@ -87,6 +92,16 @@ from arpi.generation.finance_product_sale import (
     ENTITY_FINANCE_PRODUCT_SALE,
     generate_finance_product_sale_dataset,
     validate_finance_product_sale_dataset,
+)
+from arpi.generation.gl_control import (
+    ENTITY_DIM_GL_ACCOUNT,
+    ENTITY_GL_CONTROL_BALANCE,
+    generate_gl_account_dataset,
+    generate_gl_control_balance_dataset,
+)
+from arpi.generation.inventory_accounting import (
+    ENTITY_INVENTORY_ACCOUNTING_SNAPSHOT,
+    generate_inventory_accounting_dataset,
 )
 from arpi.generation.inventory_snapshot import (
     ENTITY_INVENTORY_SNAPSHOT_EVENT,
@@ -193,6 +208,12 @@ GENERATION_ORDER: tuple[str, ...] = (
     # the product-sale entity, so their order between themselves is load-bearing too.
     ENTITY_FINANCE_PRODUCT_SALE,
     ENTITY_FINANCE_PRODUCT_ADJUSTMENT,
+    # The inventory-accounting control domain (DASH.8), in dependency order: the schedule
+    # is built from the acquisition population, and the control balances are built from
+    # the schedule, so a balance can never precede the thing it is meant to control.
+    ENTITY_INVENTORY_ACCOUNTING_SNAPSHOT,
+    ENTITY_DIM_GL_ACCOUNT,
+    ENTITY_GL_CONTROL_BALANCE,
 )
 
 
@@ -397,6 +418,9 @@ def generate_all_datasets(config: ArpiConfig) -> tuple[GeneratedDataset, ...]:
         generate_sales_target_dataset(config),
         generate_finance_product_sale_dataset(config),
         generate_finance_product_adjustment_dataset(config),
+        generate_inventory_accounting_dataset(config),
+        generate_gl_account_dataset(config),
+        generate_gl_control_balance_dataset(config),
     )
     produced = tuple(dataset.entity_name for dataset in datasets)
     if produced != GENERATION_ORDER:
@@ -449,6 +473,13 @@ def validate_all_datasets(
         validate_finance_product_sale_dataset(by_entity[ENTITY_FINANCE_PRODUCT_SALE], config),
         validate_finance_product_adjustment_dataset(
             by_entity[ENTITY_FINANCE_PRODUCT_ADJUSTMENT], config
+        ),
+        validate_inventory_accounting_dataset(
+            by_entity[ENTITY_INVENTORY_ACCOUNTING_SNAPSHOT], config
+        ),
+        validate_gl_account_dataset(by_entity[ENTITY_DIM_GL_ACCOUNT]),
+        validate_gl_control_balance_dataset(
+            by_entity[ENTITY_GL_CONTROL_BALANCE], config, by_entity[ENTITY_DIM_GL_ACCOUNT]
         ),
         validate_generation(datasets, config),
     )

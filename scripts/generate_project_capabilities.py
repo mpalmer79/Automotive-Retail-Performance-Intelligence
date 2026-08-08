@@ -151,6 +151,22 @@ def _warehouse_block(evidence: DerivedEvidence, _declared: dict[str, Any]) -> st
             f"SQL and on the web console. The {evidence.governed_kpis} governed KPIs above are "
             "unchanged: no DAX measure reads these, so the two numbers are reported side by "
             "side and never summed. |",
+            f"| Inventory accounting and GL control SQL files (`DASH.8`) | "
+            f"{evidence.accounting_control_sql_files} | Implemented. Database and reporting "
+            "only: no browser dataset is exported and no console route reads them. |",
+            f"| Inventory accounting fact DDL scripts | "
+            f"{evidence.accounting_control_fact_ddl_scripts} | Implemented. The MVP fact "
+            "count above is unchanged. |",
+            f"| Inventory accounting dimension merge scripts | "
+            f"{evidence.accounting_control_dimension_merge_scripts} | Implemented. The "
+            "conformed dimension count above is unchanged: a selected control-account "
+            "catalogue is not a conformed MVP dimension. |",
+            f"| Inventory accounting reporting views | "
+            f"{evidence.accounting_control_reporting_views} | Implemented, and **not** part "
+            "of the reporting-view baseline the semantic model binds to. |",
+            f"| Inventory accounting KPIs | {evidence.accounting_control_kpis} | Implemented "
+            "in SQL. No DAX measure reads them and no console route renders them, so this "
+            "number is reported beside the two above and never summed with either. |",
             "",
         ]
     )

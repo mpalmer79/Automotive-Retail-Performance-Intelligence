@@ -19,6 +19,7 @@ from pathlib import Path
 import pytest
 
 from arpi.constants import (
+    ACCOUNTING_KPI_IDS,
     FI_KPI_IDS,
     INVENTORY_LISTING_KPI_IDS,
     KPI_IDS,
@@ -61,18 +62,20 @@ def matrix_text() -> str:
     return MATRIX.read_text(encoding="utf-8")
 
 
-#: Every governed KPI identifier, MVP and Inventory Listings alike.
+#: Every governed KPI identifier, across all five registers.
 #:
-#: The three tuples are separate in ``arpi.constants`` because only the first is
-#: implemented as DAX and counted against the semantic model's expectation file.
-#: Traceability is not a property of the semantic model, though -- it is a property of the
-#: catalogue -- so all three sets are held to it here. ``TARGET_KPI_IDS`` joined with
-#: ``DASH.5``; every one of its ten anchors to SQ-31.
+#: The tuples are separate in ``arpi.constants`` because only the first is implemented as
+#: DAX and counted against the semantic model's expectation file. Traceability is not a
+#: property of the semantic model, though -- it is a property of the catalogue -- so every
+#: set is held to it here. ``TARGET_KPI_IDS`` joined with ``DASH.5`` and all ten anchor to
+#: SQ-31; ``FI_KPI_IDS`` joined with ``DASH.6`` and all twenty-two anchor to SQ-21;
+#: ``ACCOUNTING_KPI_IDS`` joined with ``DASH.8`` and all twelve anchor to SQ-43.
 ALL_KPI_IDS: tuple[str, ...] = (
     *KPI_IDS,
     *INVENTORY_LISTING_KPI_IDS,
     *TARGET_KPI_IDS,
     *FI_KPI_IDS,
+    *ACCOUNTING_KPI_IDS,
 )
 
 

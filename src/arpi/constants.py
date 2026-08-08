@@ -566,6 +566,13 @@ APPROVED_NAME_COLUMNS: Final[Mapping[str, str]] = MappingProxyType(
             "a synthetic product of a fictional administrator, never a person, and never "
             "a real F&I product or program."
         ),
+        "gl_account_name": (
+            "Fictional GL control-account label such as 'New Vehicle Inventory Control'. "
+            "Names an INVENTED ACCOUNT in a synthetic control catalogue, never a person "
+            "and never a real dealer group's chart of accounts. DQ-GLA-009 additionally "
+            "scans this column for general-ledger vocabulary, so it cannot quietly become "
+            "something the project does not build."
+        ),
         "holiday_name": "Recognised holiday label such as 'Independence Day'.",
         "lender_name": (
             "Fictional lender label such as 'Granite Financial Services'. Names a "
@@ -665,6 +672,33 @@ APPROVED_ASSET_AGE_COLUMNS: Final[Mapping[str, str]] = MappingProxyType(
             "KPI-LST-022, reporting.vw_vehicle_listing_summary. Days between a capture "
             "date and the store's newest capture. This is SNAPSHOT FRESHNESS. Describes "
             "an observation, never a person."
+        ),
+    }
+)
+
+# Columns whose ``account_number`` denotes a LEDGER account, not a person's.
+#
+# ``account_number`` is in `PROHIBITED_PII_SUBSTRINGS` because a customer's bank or card
+# account number is a direct financial identifier of a person. A GL control-account number
+# is not: it is a code in a synthetic chart of accounts belonging to a fictional company,
+# it identifies no one, and "account number" is exactly what a controller calls it --
+# renaming the column to dodge the tripwire would be the wrong instinct.
+#
+# The distinction is drawn by an explicit allowlist rather than by weakening the substring
+# rule, for the same reason `APPROVED_ASSET_AGE_COLUMNS` exists: ``bank_account_number``
+# and ``customer_account_number`` must keep failing, and a new entry here is a visible act
+# in a diff that a reviewer can challenge. Every entry names the ledger it belongs to.
+APPROVED_LEDGER_ACCOUNT_COLUMNS: Final[Mapping[str, str]] = MappingProxyType(
+    {
+        "account_number": (
+            "The synthetic GL control-account number on warehouse.dim_gl_account, in a "
+            "conventional dealership inventory block. INVENTED; identifies an account in "
+            "a fictional company's catalogue, never a person and never a real dealer "
+            "group's account."
+        ),
+        "gl_account_number": (
+            "The same value republished by reporting.vw_inventory_accounting and "
+            "reporting.vw_inventory_gl_reconciliation under its qualified name."
         ),
     }
 )
@@ -861,9 +895,71 @@ DASHBOARD_PROGRAM_VIEWS: Final[tuple[str, ...]] = (
     "vw_fi_adjustment_summary",
 )
 
+#: The inventory accounting and GL control views, added by DASH.8.
+#:
+#: Held separate from :data:`MVP_REPORTING_VIEWS` and from :data:`DASHBOARD_PROGRAM_VIEWS`
+#: for two different reasons. The MVP tuple is the 28-view baseline
+#: ``powerbi/validation/sql_baseline_metadata.json`` describes and the semantic model binds
+#: to; folding these in would silently restate a number measured against a specific
+#: baseline run. The dashboard-program tuple is the set of views the console program
+#: added, and these are not console views at all: DASH.8 exports NO browser dataset, adds
+#: no route, and leaves ``src/arpi/dashboard/contract.py`` untouched. They are a
+#: database-and-reporting increment answering SQ-43.
+#:
+#: They read two new facts of their own -- ``fact_inventory_accounting_snapshot`` and
+#: ``fact_gl_control_balance`` -- plus the existing sale and F&I facts, which they only
+#: ever read.
+ACCOUNTING_REPORTING_VIEWS: Final[tuple[str, ...]] = (
+    "vw_inventory_accounting",
+    "vw_inventory_gl_reconciliation",
+    "vw_accounting_exceptions",
+)
+
+#: Every SQL script the inventory accounting and GL control lane owns (DASH.8).
+#:
+#: Declared here for the same reason ``INVENTORY_LANE_SQL_FILES`` is declared in
+#: ``arpi.inventory.spec`` and ``DASHBOARD_LANE_SQL_FILES`` in ``arpi.dashboard.contract``:
+#: ``scripts/project_capabilities.py`` derives "five MVP facts", "eight conformed
+#: dimensions" and "twenty-eight reporting views" by counting scripts in
+#: ``sql/03_dimensions``, ``sql/04_facts`` and ``sql/05_reporting``, and those numbers were
+#: measured against a specific baseline run. Adding two facts, one dimension and three
+#: views beside them must not move a baseline; subtracting this lane is what keeps the
+#: figures describing what they were measured against, while the lane is counted and
+#: reported separately rather than hidden.
+#:
+#: It is declared in ``arpi.constants`` rather than in ``arpi.dashboard.contract`` on
+#: purpose. DASH.8 adds no browser dataset, no console route and no export contract, so
+#: the dashboard contract module is deliberately untouched by this increment.
+ACCOUNTING_LANE_SQL_FILES: Final[tuple[str, ...]] = (
+    "01_raw/20_raw_inventory_accounting_load.sql",
+    "01_raw/21_raw_gl_account_load.sql",
+    "01_raw/22_raw_gl_control_balance_load.sql",
+    "02_staging/21_stg_inventory_accounting.sql",
+    "02_staging/22_stg_gl_account.sql",
+    "02_staging/23_stg_gl_control_balance.sql",
+    "03_dimensions/24_dim_gl_account.sql",
+    "03_dimensions/25_dim_gl_account_merge.sql",
+    "04_facts/09_fact_inventory_accounting_snapshot.sql",
+    "04_facts/10_fact_gl_control_balance.sql",
+    "04_facts/19_fact_inventory_accounting_snapshot_load.sql",
+    "04_facts/20_fact_gl_control_balance_load.sql",
+    "05_reporting/49_vw_inventory_accounting.sql",
+    "05_reporting/50_vw_inventory_gl_reconciliation.sql",
+    "05_reporting/51_vw_accounting_exceptions.sql",
+    "06_indexes/04_accounting_indexes.sql",
+    "08_validation/15_recon_accounting.sql",
+)
+
 #: Every view the ``reporting`` schema is expected to contain, and nothing else.
 REPORTING_VIEWS: Final[tuple[str, ...]] = tuple(
-    sorted({*MVP_REPORTING_VIEWS, *INVENTORY_LISTING_VIEWS, *DASHBOARD_PROGRAM_VIEWS})
+    sorted(
+        {
+            *MVP_REPORTING_VIEWS,
+            *INVENTORY_LISTING_VIEWS,
+            *DASHBOARD_PROGRAM_VIEWS,
+            *ACCOUNTING_REPORTING_VIEWS,
+        }
+    )
 )
 
 # ---------------------------------------------------------------------------------------
@@ -1400,6 +1496,117 @@ FI_KPI_VIEW_OWNERSHIP: Final[Mapping[str, tuple[str, ...]]] = MappingProxyType(
     }
 )
 
+# ---------------------------------------------------------------------------------------
+# The inventory-accounting control domain (DASH.8)
+# ---------------------------------------------------------------------------------------
+#: The inventory control-account categories an accounting snapshot may resolve to.
+#:
+#: THREE, NOT THE FOUR THE PLAN NAMED, AND THE MISSING ONE IS A DELIBERATE REFUSAL.
+#: ``KPI_EXTENSION_PLAN.md`` listed a fourth category, ``Wholesale Inventory``. Nothing in
+#: the model distinguishes a unit HELD FOR WHOLESALE at a snapshot date: ``condition_type``
+#: is New / Used / Certified, ``acquisition_source`` describes where the unit came FROM,
+#: and the only thing that would separate a wholesale population is how the unit eventually
+#: left -- which is a fact about the future of that snapshot date. Classifying inventory by
+#: its eventual disposal is exactly the leakage the increment forbids, and it would corrupt
+#: every balance it touched: a unit would move between control accounts retroactively as
+#: soon as it sold. The category is therefore not created. See ``docs/reviews/DASH-8-REVIEW.md``.
+#:
+#: CERTIFIED IS ITS OWN CONTROL ACCOUNT, AND THAT IS NOT THE SALES RULE. The sales KPIs
+#: group Certified with Used for condition reporting (``CONDITION_GROUPS``); the accounting
+#: model does not, because a certified unit carries its own capitalized certification cost
+#: and a controller schedules it separately. Accounting classification and KPI grouping are
+#: allowed to differ, and they do.
+INVENTORY_CONTROL_CATEGORIES: Final[tuple[str, ...]] = (
+    "New Vehicle Inventory",
+    "Used Vehicle Inventory",
+    "Certified Vehicle Inventory",
+)
+
+#: The vehicle condition each control category schedules. One condition, one account, and
+#: the mapping is total over ``dim_vehicle.condition_type`` -- a unit cannot land in two
+#: inventory control balances, and cannot land in none.
+CONDITION_TO_CONTROL_CATEGORY: Final[Mapping[str, str]] = MappingProxyType(
+    {
+        "New": "New Vehicle Inventory",
+        "Used": "Used Vehicle Inventory",
+        "Certified": "Certified Vehicle Inventory",
+    }
+)
+
+#: The GL account types the synthetic control catalogue may declare.
+GL_ACCOUNT_TYPES: Final[tuple[str, ...]] = ("Asset", "Liability")
+
+#: The normal balance vocabulary, closed so no third spelling can enter.
+GL_NORMAL_BALANCES: Final[tuple[str, ...]] = ("Debit", "Credit")
+
+#: Every accounting KPI identifier, in KPI_CATALOG.md order.
+#:
+#: HELD SEPARATE FROM :data:`KPI_IDS` FOR THE SAME REASON :data:`FI_KPI_IDS` IS. ``KPI_IDS``
+#: is the 29-strong MVP set the Power BI semantic model implements as DAX measures. These
+#: twelve are governed and computed in SQL and no DAX measure reads them. Folding them into
+#: ``KPI_IDS`` would restate a historical baseline that describes 29 KPIs and still does.
+ACCOUNTING_KPI_IDS: Final[tuple[str, ...]] = (
+    "KPI-ACC-001",  # Inventory subledger balance
+    "KPI-ACC-002",  # GL inventory control balance
+    "KPI-ACC-003",  # Inventory reconciliation variance
+    "KPI-ACC-004",  # Unreconciled stock count
+    "KPI-ACC-005",  # Unbalanced front-gross identity count
+    "KPI-ACC-006",  # Unbalanced back-gross reconciliation count
+    "KPI-ACC-007",  # Unbalanced total-gross identity count
+    "KPI-ACC-008",  # Orphaned F&I product count
+    "KPI-ACC-009",  # Product adjustment without original contract count
+    "KPI-ACC-010",  # Missing inventory book record count
+    "KPI-ACC-011",  # Inventory posting lag
+    "KPI-ACC-012",  # Data-quality exception count
+)
+
+#: The reporting view each accounting KPI is computed from.
+ACCOUNTING_KPI_VIEW_OWNERSHIP: Final[Mapping[str, tuple[str, ...]]] = MappingProxyType(
+    {
+        "KPI-ACC-001": ("vw_inventory_accounting", "vw_inventory_gl_reconciliation"),
+        "KPI-ACC-002": ("vw_inventory_gl_reconciliation",),
+        "KPI-ACC-003": ("vw_inventory_gl_reconciliation",),
+        "KPI-ACC-004": ("vw_accounting_exceptions",),
+        "KPI-ACC-005": ("vw_accounting_exceptions",),
+        "KPI-ACC-006": ("vw_accounting_exceptions",),
+        "KPI-ACC-007": ("vw_accounting_exceptions",),
+        "KPI-ACC-008": ("vw_accounting_exceptions",),
+        "KPI-ACC-009": ("vw_accounting_exceptions",),
+        "KPI-ACC-010": ("vw_accounting_exceptions",),
+        "KPI-ACC-011": ("vw_inventory_accounting",),
+        "KPI-ACC-012": ("vw_accounting_exceptions",),
+    }
+)
+
+#: The governed accounting exception vocabulary, closed.
+#:
+#: One code per control QUESTION, not per symptom. A single physical defect must produce a
+#: single exception row: ``vw_accounting_exceptions`` gives every row a stable identifier
+#: built from its code and its entity so a UNION branch cannot report the same defect twice.
+ACCOUNTING_EXCEPTION_CODES: Final[tuple[str, ...]] = (
+    "ACC-GL-VARIANCE",
+    "ACC-MISSING-GL-BALANCE",
+    "ACC-MISSING-SUBLEDGER-BALANCE",
+    "ACC-MISSING-BOOK-ROW",
+    "ACC-ORPHAN-BOOK-ROW",
+    "ACC-FRONT-GROSS-IDENTITY",
+    "ACC-BACK-GROSS-IDENTITY",
+    "ACC-TOTAL-GROSS-IDENTITY",
+    "ACC-ORPHAN-FI-PRODUCT",
+    "ACC-ORPHAN-FI-ADJUSTMENT",
+    "ACC-DQ-FAILURE",
+)
+
+#: The reconciliation comparison states. ``Reconciled`` and ``Variance`` both mean BOTH
+#: SIDES WERE PRESENT AND COMPARED; the two missing states mean no comparison was possible
+#: and the variance is NULL. Missing is never zero.
+RECONCILIATION_COMPARISON_STATES: Final[tuple[str, ...]] = (
+    "Reconciled",
+    "Variance",
+    "Missing GL balance",
+    "Missing subledger balance",
+)
+
 #: The eligibility rule identifiers, in the order the configuration declares them.
 #:
 #: The configuration in ``config/reference/fi_product_eligibility.yaml`` is the authority
@@ -1485,6 +1692,24 @@ SQL_RECONCILIATION_IDS: Final[tuple[str, ...]] = (
     "RECON-REPORT-FI-SUMMARY-ROWS",
     "RECON-REPORT-FI-PENETRATION-ROWS",
     "RECON-REPORT-FI-ADJUSTMENT-ROWS",
+    # The inventory-accounting control domain (DASH.8). RECON-ACC-BOOK-IDENTITY is the
+    # headline: it proves current book value is EXPLAINED, to the cent, by its declared
+    # components. RECON-ACC-GL-SUBLEDGER is deliberately NOT an equality: it records the
+    # compared amounts and the signed variance, because a controlled variance is a valid
+    # reconciliation OUTCOME and not a structural defect. See sql/08_validation.
+    "RECON-FACT-INVENTORY-ACCOUNTING-WAREHOUSE",
+    "RECON-FACT-GL-CONTROL-BALANCE-WAREHOUSE",
+    "RECON-ACC-BOOK-IDENTITY",
+    "RECON-ACC-BOOK-COMPONENTS",
+    "RECON-ACC-PACK-EXCLUDED",
+    "RECON-ACC-FLOORPLAN-EXCLUDED",
+    "RECON-ACC-POPULATION",
+    "RECON-ACC-CATEGORY-TOTALS",
+    "RECON-ACC-GL-SUBLEDGER",
+    "RECON-ACC-GRAIN",
+    "RECON-GLB-GRAIN",
+    "RECON-REPORT-ACCOUNTING-ROWS",
+    "RECON-REPORT-GL-RECON-ROWS",
 )
 
 #: The reconciliations whose failure invalidates the numbers built on them.
@@ -1494,7 +1719,17 @@ SQL_RECONCILIATION_IDS: Final[tuple[str, ...]] = (
 #: appointments, so that product is an approximation and cannot be made an identity; a
 #: breach is a finding to explain, not a defect. ``reporting.vw_reconciliation_status``
 #: derives the same distinction in SQL.
-NON_CRITICAL_RECONCILIATION_IDS: Final[frozenset[str]] = frozenset({"RECON-FUNNEL-CHAIN"})
+#: ``RECON-ACC-GL-SUBLEDGER`` joins them for a different and stronger reason. It compares
+#: a GL control balance with the inventory subledger it schedules, and the increment
+#: DELIBERATELY plants variances so the reconciliation surface can be seen working. A
+#: nonzero variance there is the intended demonstration, not a defect: both sides are
+#: structurally valid data, they simply do not agree. Marking a run failed because a
+#: controlled accounting variance exists would make the exception surface unusable, and
+#: would teach a reader that a variance means broken data. It does not. The variance is
+#: still calculated, recorded and rendered -- it is the STATUS that is not critical.
+NON_CRITICAL_RECONCILIATION_IDS: Final[frozenset[str]] = frozenset(
+    {"RECON-FUNNEL-CHAIN", "RECON-ACC-GL-SUBLEDGER"}
+)
 
 CRITICAL_SQL_RECONCILIATION_IDS: Final[tuple[str, ...]] = tuple(
     identifier

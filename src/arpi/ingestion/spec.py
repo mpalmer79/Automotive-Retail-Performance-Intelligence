@@ -380,6 +380,28 @@ ENTITY_SPECS: Final[tuple[EntityIngestionSpec, ...]] = (
         fact_table="fact_finance_product_adjustment",
         fact_load_script="18_fact_finance_product_adjustment_load.sql",
     ),
+    # The inventory-accounting control domain (DASH.8), in dependency order. The
+    # catalogue is a DIMENSION and is merged by Python like every other; the schedule and
+    # the balances are facts loaded in SQL. A balance resolves its account through the
+    # catalogue, so the catalogue is registered ahead of it.
+    _source_entity(
+        "inventory_accounting_snapshot",
+        subject="inventory_accounting",
+        natural_key=("inventory_accounting_id",),
+        fact_table="fact_inventory_accounting_snapshot",
+        fact_load_script="19_fact_inventory_accounting_snapshot_load.sql",
+    ),
+    _dimension(
+        "gl_account",
+        natural_key=("gl_account_id",),
+        merge_script="25_dim_gl_account_merge.sql",
+    ),
+    _source_entity(
+        "gl_control_balance",
+        natural_key=("gl_control_balance_id",),
+        fact_table="fact_gl_control_balance",
+        fact_load_script="20_fact_gl_control_balance_load.sql",
+    ),
 )
 
 #: The registry keyed by entity name.

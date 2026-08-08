@@ -163,8 +163,11 @@ A mapping is ready for review when all of the following are true:
 | [STM-019](STM-019-fact-finance-product-sale.md) | Finance product contract — what the back-end gross is made of | `warehouse.fact_finance_product_sale` (via `raw.finance_product_sale_load`, `staging.stg_finance_product_sale`) | 1.0 | **Implemented** |
 | [STM-020](STM-020-fact-finance-product-adjustment.md) | Finance product adjustment — what happened to the contract afterwards | `warehouse.fact_finance_product_adjustment` (via `raw.finance_product_adjustment_load`, `staging.stg_finance_product_adjustment`) | 1.0 | **Implemented** |
 | STM-021 | Finance product provider dimension | `warehouse.dim_finance_product_provider` *(does not exist)* | — | **Deferred** |
+| [STM-022](STM-022-fact-inventory-accounting-snapshot.md) | Inventory control schedule — what each carried unit is worth on the books | `warehouse.fact_inventory_accounting_snapshot` (via `raw.inventory_accounting_load`, `staging.stg_inventory_accounting`) | 1.0 | **Implemented** |
+| [STM-023](STM-023-dim-gl-account.md) | Selected synthetic control-account catalogue — never a chart of accounts | `warehouse.dim_gl_account` (via `raw.gl_account_load`, `staging.stg_gl_account`) | 1.0 | **Implemented** |
+| [STM-024](STM-024-fact-gl-control-balance.md) | GL inventory control balance — the ledger side of the reconciliation | `warehouse.fact_gl_control_balance` (via `raw.gl_control_balance_load`, `staging.stg_gl_control_balance`) | 1.0 | **Implemented** |
 
-**All twenty written mappings are current, and every dimension and fact in the warehouse has one.**
+**All twenty-three written mappings are current, and every dimension and fact in the warehouse has one.**
 `tests/integration/test_gate1_readiness.py` asserts a mapping exists for each of the thirteen warehouse
 entities it covers; it does not verify that a mapping's *content* is current, which stays a review
 responsibility and is why the Definition of Done requires an STM update in the same change as its target
@@ -201,6 +204,24 @@ columns and **zero changed values** — while `RECON-FI-001` proves, per deal an
 plus product gross accounts for all of it with no balancing plug. STM-020 is the counterweight: it records
 why the original contract is **never rewritten**, and why the domain therefore carries three date bases
 (deal-date, as-of, adjustment-period) that no view or KPI may blend without saying so.
+
+**STM-022 through STM-024 are the inventory accounting and GL control domain, and they are read as a
+set.** STM-022 is the subledger — one line per carried unit per month-end, with the book-value identity
+enforced as a CHECK so a violation is unloadable rather than merely quarantined. STM-023 is the boundary
+document: three control accounts, one per governed inventory category, with the scope enforced by a CHECK
+domain and by a data-quality check that scans account *names* for general-ledger vocabulary, because **ARPI
+is building a focused inventory control schedule and is not building a general ledger**. STM-024 is the
+ledger side, and it carries the increment's most important limitation: **the control balances are generated
+from the subledger they are reconciled against**, so an exact reconciliation proves the reconciliation
+*arithmetic* and not that two independent accounting systems agree. That statement appears on the table
+comment, on both reporting views that publish a variance, in the reconciliation's own description and in
+LIMITATIONS.md, and no surface may claim otherwise.
+
+Two further decisions are recorded rather than left to be rediscovered: there is **no Floorplan Liability
+account** (STM-023 §5) because netting a liability into an asset reconciliation invites a "net inventory"
+figure that means nothing, and there is **no Wholesale Inventory category** (STM-023 §6) because nothing
+observable at a month-end distinguishes a unit held for wholesale — only the eventual disposal would, and
+reading it would be future-outcome leakage.
 
 **No mapping covers the reporting layer**, and none should: an STM records how a value reaches the
 warehouse. How it is then projected for reporting is documented on the view itself — every reporting view

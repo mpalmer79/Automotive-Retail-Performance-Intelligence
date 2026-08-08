@@ -3774,3 +3774,237 @@ Reconciliations: `RECON-FI-ADJUSTMENT-CAP`, `RECON-FI-ADJUSTMENT-SEQUENCE`, `REC
 side; `RECON-FI-NET-GROSS` reconciles the as-of side **separately, on its own basis**. Blending them would
 turn an ordinary cancellation into a permanent failing check — precisely the mistake the three-date-basis
 discipline exists to prevent.
+
+---
+
+## 46. `warehouse.dim_gl_account` — implemented contract (`DASH.8`)
+
+The selected synthetic control-account catalogue. **Three rows, and the smallness is the design.**
+
+| Field | Value |
+|---|---|
+| **Entity name** | `dim_gl_account` (source entity) → `warehouse.dim_gl_account` |
+| **Layer** | Warehouse dimension (reference catalogue) |
+| **Declared grain** | **One row per selected synthetic GL control account definition.** |
+| **Grain key** | `gl_account_key` (PK); `uq_dim_gl_account_gl_account_id`; `uq_dim_gl_account_account_number` |
+| **Natural / source key** | `gl_account_id` (`GLA-####`) |
+| **Foreign keys** | None. |
+| **History policy** | **SCD Type 1.** A corrected number, name or category describes what was always true, and no fact points at a historical version of an account definition. |
+| **Generator** | `src/arpi/generation/gl_control.py` |
+| **Source-to-target mapping** | [STM-023](docs/source-to-target/STM-023-dim-gl-account.md) |
+| **Downstream** | `fact_inventory_accounting_snapshot.gl_account_key`, `fact_gl_control_balance.gl_account_key`, `reporting.vw_inventory_accounting`, `reporting.vw_inventory_gl_reconciliation` |
+| **KPI ownership** | **None.** The catalogue supplies the grain that `KPI-ACC-002` and `KPI-ACC-003` are stated at; it owns no measure. |
+| **Implementation status** | **Implemented** end to end. |
+| **Row counts** | **3 on every profile.** Declared, not sampled. |
+| **Lane** | **Accounting control (`DASH.8`).** Not one of the eight conformed dimensions. |
+
+### 46.1 Column contract (exact names, exact order)
+
+| # | Column | Type | Null | Allowed values / domain | Description | **PII class** |
+|---:|---|---|---|---|---|---|
+| 1 | `gl_account_key` | `integer` | no | > 0 | Surrogate primary key, `max(existing) + row_number() OVER (ORDER BY gl_account_id)`. | Non-personal |
+| 2 | `gl_account_id` | `varchar(16)` | no | `GLA-####`, unique | Natural key. | Non-personal |
+| 3 | `account_number` | `varchar(20)` | no | unique | **Invented** number in a conventional dealership inventory block. Never a real dealer group's. | Non-personal |
+| 4 | `account_name` | `varchar(60)` | no | — | **Invented** account name. `DQ-GLA-009` scans it for general-ledger vocabulary. | Non-personal |
+| 5 | `account_category` | `varchar(40)` | no | `New Vehicle Inventory`, `Used Vehicle Inventory`, `Certified Vehicle Inventory` | **The scope boundary, closed by `ck_dim_gl_account_category_domain`.** | Non-personal |
+| 6 | `account_type` | `varchar(20)` | no | `Asset`, `Liability` | Every `DASH.8` account is an `Asset`. `Liability` is permitted so a later increment can add a floorplan control account without a domain migration. | Non-personal |
+| 7 | `normal_balance` | `varchar(10)` | no | `Debit`, `Credit` | The account's natural side. What makes the sign of a balance unambiguous. | Non-personal |
+| 8 | `inventory_control_flag` | `boolean` | no | derived | CHECK-coupled to `account_category` by `ck_dim_gl_account_control_flag_agrees`, so it cannot contradict the thing it summarises. | Non-personal |
+| 9 | `active_start_date` | `date` | no | — | First date the account is active. A business date, never a wall clock. | Non-personal |
+| 10 | `active_end_date` | `date` | **yes** | `>= active_start_date` | **NULL means still open, never "unknown".** | Non-personal |
+| 11 | `source_system` | `varchar(40)` | no | `SYNTHETIC-DMS-GL` | Lineage marker. | Non-personal |
+
+### 46.2 This is a control catalogue, not a chart of accounts
+
+There is no Cash, Sales Revenue, Cost of Sales, Payroll, Parts, Service, Rent, Accounts Payable, Accounts
+Receivable, Equity, Retained Earnings or Tax account, and none may be added. **ARPI is building a focused
+inventory control schedule and its reconciliation; it is not building a general ledger.**
+
+The boundary is physical rather than advisory: the category CHECK refuses an account outside the three
+governed inventory categories, and `DQ-GLA-009` additionally scans account **names** for general-ledger
+vocabulary, so a row that mislabelled itself past the CHECK still fails a run.
+
+There is also no parent account, hierarchy level, roll-up node, statement classification, department or
+cost-centre segment, budget amount, opening balance or closing balance. `DQ-GLA-002` holds the column
+contract to exactly the declared list, so none of them can be added even empty.
+
+### 46.3 Two recorded absences
+
+**Floorplan Liability is deliberately absent.** `KPI-ACC-001` is an inventory **asset** subledger measure,
+and putting a liability into the same reconciliation invites netting the two into a "net inventory" figure
+that means nothing. No registered stakeholder question requires liability reconciliation. If a later
+increment adds one it must reconcile against `SUM(floorplan_principal)`, never against `current_book_value`,
+and must never enter `KPI-ACC-001`. See [STM-023 §5](docs/source-to-target/STM-023-dim-gl-account.md).
+
+**There is no `Wholesale Inventory` category.** Nothing observable at a month-end distinguishes a unit held
+for wholesale from one held for retail; only the eventual disposal would, and reading it would be
+future-outcome leakage. See [STM-023 §6](docs/source-to-target/STM-023-dim-gl-account.md).
+
+### 46.4 Certified is its own account, and that is not the sales rule
+
+The sales domain groups Certified with Used. The accounting domain does not, because a certified unit
+carries a capitalized certification cost the others do not. Two domains, two correct groupings; conflating
+them would put a cost in the wrong control account.
+
+### 46.5 Data-quality checks
+
+`DQ-GLA-001` … `DQ-GLA-010`, all `critical`. `DQ-GLA-004` closes the category domain, `DQ-GLA-007` proves the
+control flag cannot contradict its category, and `DQ-GLA-009` is the chart-of-accounts tripwire.
+
+---
+
+## 47. `warehouse.fact_inventory_accounting_snapshot` — implemented contract (`DASH.8`)
+
+The controller's stock schedule: what each carried unit is worth on the books at one month-end.
+
+| Field | Value |
+|---|---|
+| **Entity name** | `inventory_accounting_snapshot` (source entity) → `warehouse.fact_inventory_accounting_snapshot` |
+| **Layer** | Warehouse fact (periodic snapshot) |
+| **Declared grain** | **One row per vehicle, per dealership, per accounting date**, while the unit is carried. |
+| **Grain key** | `inventory_accounting_key` (PK); `uq_fact_inventory_accounting_snapshot_grain` over `(accounting_date_key, dealership_key, vehicle_key)` — three NOT NULL columns, so PostgreSQL's NULL-distinctness rule cannot let a duplicate logical row through |
+| **Natural / source key** | `inventory_accounting_id` (`IAS-########`), **staging only** |
+| **Foreign keys** | `dim_date`, `dim_dealership`, `dim_vehicle`, `dim_gl_account` |
+| **History policy** | **Snapshot; never rewritten.** A write-down applies from its effective accounting date forward and earlier snapshots keep the value they were stated at. |
+| **Generator** | `src/arpi/generation/inventory_accounting.py` |
+| **Source-to-target mapping** | [STM-022](docs/source-to-target/STM-022-fact-inventory-accounting-snapshot.md) |
+| **Downstream** | `reporting.vw_inventory_accounting`, `reporting.vw_inventory_gl_reconciliation`, `reporting.vw_accounting_exceptions` |
+| **KPI ownership** | `KPI-ACC-001`, `KPI-ACC-003`, `KPI-ACC-004`, `KPI-ACC-010`, `KPI-ACC-011` |
+| **Implementation status** | **Implemented** end to end. |
+| **Row counts** | **1,501 over 6 month-ends** in the development profile. Measured on a fresh warehouse, not estimated. |
+| **Lane** | **Accounting control (`DASH.8`).** Not one of the five MVP facts. |
+
+### 47.1 Column contract (exact names, exact order)
+
+| # | Column | Type | Null | Allowed values / domain | Description | **PII class** |
+|---:|---|---|---|---|---|---|
+| 1 | `inventory_accounting_key` | `bigint` | no | > 0 | Surrogate primary key, deterministic by the declared grain order. | Non-personal |
+| 2 | `accounting_date_key` | `integer` | no | FK `dim_date` | The schedule date. **Always a month-end.** Part of the grain. | Non-personal |
+| 3 | `dealership_key` | `integer` | no | FK `dim_dealership` | Store as it stood on the accounting date (SCD Type 2 resolution). Part of the grain. | Non-personal |
+| 4 | `vehicle_key` | `integer` | no | FK `dim_vehicle` | The unit. Part of the grain. | Non-personal |
+| 5 | `gl_account_key` | `integer` | no | FK `dim_gl_account` | The control account this line totals into, resolved from the category. | Non-personal |
+| 6 | `control_account_category` | `varchar(40)` | no | the three governed categories | Derived from the unit's condition at acquisition, never from what it eventually sold as. | Non-personal |
+| 7 | `acquisition_cost` | `numeric(14,2)` | no | `>= 0` | What the store paid. **Book component.** Additive at one date. | Non-personal |
+| 8 | `capitalized_transportation` | `numeric(14,2)` | no | `>= 0` | Transport capitalized into carrying value. **Book component.** | Non-personal |
+| 9 | `capitalized_reconditioning` | `numeric(14,2)` | no | `>= 0` | Reconditioning capitalized. **Book component.** | Non-personal |
+| 10 | `capitalized_accessories` | `numeric(14,2)` | no | `>= 0` | Dealer-installed accessories. **Book component.** | Non-personal |
+| 11 | `other_capitalized_costs` | `numeric(14,2)` | no | `0.00` or the certification cost | **Book component. Never a plug** — `DQ-IAS-019` constrains it to the values the governed rules produce. | Non-personal |
+| 12 | `write_down_amount` | `numeric(14,2)` | no | `>= 0` | Age-driven carrying-value reduction. **Subtracted** in the identity. A negative value would be a write-**up**, which this model does not represent. | Non-personal |
+| 13 | `current_book_value` | `numeric(14,2)` | no | `>= 0`, identity-enforced | **THE carrying amount.** `ck_fact_inventory_accounting_book_value_identity` re-derives it in the database. Semi-additive. | Non-personal |
+| 14 | `floorplan_principal` | `numeric(14,2)` | no | `>= 0` | **A LIABILITY, carried as context.** Never in the identity, never netted. `0.00` means genuinely unfloored. | Non-personal |
+| 15 | `days_in_stock` | `integer` | no | `>= 0` | `accounting_date − acquisition_date`. **Is** `KPI-ACC-011`'s posting lag. **Never additive** — an age, not a quantity. | Non-personal |
+| 16 | `source_system` | `varchar(40)` | no | `SYNTHETIC-DMS-ACC` | Lineage marker. | Non-personal |
+
+### 47.2 The book-value identity
+
+```
+current_book_value = acquisition_cost + capitalized_transportation + capitalized_reconditioning
+                   + capitalized_accessories + other_capitalized_costs - write_down_amount
+```
+
+Exact equality, no tolerance. It is a **CHECK** rather than a staging rule because a violation must be
+**unloadable** rather than merely quarantined, and `RECON-ACC-BOOK-IDENTITY` re-proves it over the loaded
+rows so a constraint dropped from a deployed database fails a run.
+
+**Pack is not in it.** Pack is a front-gross deduction at the point of sale and is not a capitalized cost.
+There is no pack column here, and `RECON-ACC-PACK-EXCLUDED` re-proves the front-gross identity on every run
+so an accounting increment cannot quietly change `KPI-GRS-001`.
+
+**Floorplan principal is not in it either.** `DQ-IAS-014` asks the question the identity cannot: does any
+component *carry* the advance? A floorplan balance capitalized into a component closes the identity just as
+neatly as a correct one.
+
+### 47.3 Semi-additivity
+
+Additive across vehicles, stores and control categories **at one accounting date**; **never** additive across
+dates. A period-ending balance is the **last** applicable date, not a sum.
+
+### 47.4 There is no acquisition date key
+
+`dim_date` spans the governed 184-day window, and roughly 28% of units entered stock during the warm-up
+period before it opens — inventory has to exist on the first reporting day for the first month-end schedule
+to mean anything. A NOT NULL key with a foreign key into the calendar would reject about a quarter of the
+schedule. None of that is necessary, because `days_in_stock` **is** the interval. The acquisition date is
+carried and validated in raw and staging, where `DQ-IAS-016` proves the derivation.
+
+### 47.5 No future-outcome leakage
+
+The category comes from the unit's condition, the write-down from days in stock at the accounting date, and
+the floorplan principal from the unit's own funding. None consults the sale.
+
+### 47.6 Data-quality checks
+
+`DQ-IAS-001` … `DQ-IAS-019`, all `critical`, including the identity (`-011`), the floorplan exclusion
+(`-014`), exact decimal precision (`-015`), the days-in-stock derivation (`-016`), the prohibited-column
+schema scan (`-018`) and the not-a-plug rule (`-019`).
+
+---
+
+## 48. `warehouse.fact_gl_control_balance` — implemented contract (`DASH.8`)
+
+The GL side of the inventory reconciliation.
+
+| Field | Value |
+|---|---|
+| **Entity name** | `gl_control_balance` (source entity) → `warehouse.fact_gl_control_balance` |
+| **Layer** | Warehouse fact (periodic snapshot, semi-additive) |
+| **Declared grain** | **One row per dealership, per GL control account, per balance date.** |
+| **Grain key** | `gl_control_balance_key` (PK); `uq_fact_gl_control_balance_grain` over `(balance_date_key, dealership_key, gl_account_key)` |
+| **Natural / source key** | `gl_control_balance_id` (`GLB-########`), **staging only** |
+| **Foreign keys** | `dim_date`, `dim_dealership`, `dim_gl_account` |
+| **History policy** | **Snapshot; never rewritten.** |
+| **Generator** | `src/arpi/generation/gl_control.py` |
+| **Source-to-target mapping** | [STM-024](docs/source-to-target/STM-024-fact-gl-control-balance.md) |
+| **Downstream** | `reporting.vw_inventory_gl_reconciliation`, `reporting.vw_accounting_exceptions` |
+| **KPI ownership** | `KPI-ACC-002`, `KPI-ACC-003` |
+| **Implementation status** | **Implemented** end to end. |
+| **Row counts** | **42** in the development profile — 43 comparison rows result, because one balance has no schedule behind it. Measured, not estimated. |
+| **Lane** | **Accounting control (`DASH.8`).** |
+
+### 48.1 Column contract (exact names, exact order)
+
+| # | Column | Type | Null | Allowed values / domain | Description | **PII class** |
+|---:|---|---|---|---|---|---|
+| 1 | `gl_control_balance_key` | `bigint` | no | > 0 | Surrogate primary key, deterministic by the declared grain order. | Non-personal |
+| 2 | `balance_date_key` | `integer` | no | FK `dim_date` | The month-end the balance is stated as at. Part of the grain. **Comparable only with a schedule at the same date.** | Non-personal |
+| 3 | `dealership_key` | `integer` | no | FK `dim_dealership` | Store as it stood on the balance date. Part of the grain. | Non-personal |
+| 4 | `gl_account_key` | `integer` | no | FK `dim_gl_account` | The control account. Part of the grain. | Non-personal |
+| 5 | `net_balance` | `numeric(16,2)` | no | — | The control-account balance. **May legitimately differ from the subledger**; that difference is `KPI-ACC-003`. Semi-additive. | Non-personal |
+| 6 | `source_system` | `varchar(40)` | no | `SYNTHETIC-DMS-GL` | Lineage marker. | Non-personal |
+
+### 48.2 One signed balance, and no agreement constraint
+
+No `debit_balance`, no `credit_balance`, no journal reference, no posting batch. The governed question is
+answered by one signed balance, and manufacturing journal-level detail would be inventing a general ledger a
+column at a time.
+
+There is deliberately **no constraint requiring agreement with the subledger**. A variance is structurally
+valid data and the exception surface exists to show it.
+
+### 48.3 What an exact reconciliation proves, and what it does not
+
+**These balances are generated from the same subledger they are reconciled against**, plus a governed table
+of deliberate variances, so the reconciliation surface can be seen working in both its states. An exact
+reconciliation proves the reconciliation **arithmetic**. It does **not** prove that two independent
+accounting systems agree, because there is only one source. Recorded in
+[LIMITATIONS.md](LIMITATIONS.md) and repeated on every surface that publishes a variance.
+
+### 48.4 The five planted scenarios
+
+`ACC-SCN-001` … `ACC-SCN-005` produce all four comparison states: a positive variance, a negative variance,
+an exact reconciliation on every other position, a withheld GL balance (`Missing GL balance`) and a balance
+with no schedule behind it (`Missing subledger balance`). Each is expressed as a **month-end offset** rather
+than a literal date, so every profile exercises every state — the `test` profile the integration suite runs
+on is two months long and would otherwise reach none of them.
+
+**These are synthetic demonstration conditions. They are not discovered business findings and no document
+may describe them as such.**
+
+### 48.5 Data-quality checks and reconciliations
+
+`DQ-GLB-001` … `DQ-GLB-008`, all `critical`, including the account resolution (`-004`) and the month-end rule
+(`-006`) that makes matched-date comparability structural.
+
+Reconciliations: `RECON-FACT-GL-CONTROL-BALANCE-WAREHOUSE`, `RECON-GLB-GRAIN`, `RECON-REPORT-GL-RECON-ROWS`
+and `RECON-ACC-GL-SUBLEDGER` — the last **deliberately not an equality**, and the second rule in the whole
+register registered non-critical.

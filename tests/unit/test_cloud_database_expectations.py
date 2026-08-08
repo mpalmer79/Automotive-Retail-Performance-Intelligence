@@ -28,6 +28,7 @@ if str(SCRIPTS) not in sys.path:
 import verify_cloud_database as verifier  # noqa: E402  (path set above)
 
 from arpi.constants import (  # noqa: E402
+    ACCOUNTING_REPORTING_VIEWS,
     DASHBOARD_PROGRAM_VIEWS,
     INVENTORY_LISTING_VIEWS,
     MVP_REPORTING_VIEWS,
@@ -47,16 +48,26 @@ def test_the_dashboard_lane_view_count_matches_the_constant() -> None:
     assert len(DASHBOARD_PROGRAM_VIEWS) == verifier.EXPECTED_DASHBOARD_REPORTING_VIEW_COUNT
 
 
-def test_the_total_is_every_reporting_view_and_the_three_lanes_do_not_overlap() -> None:
+def test_the_accounting_lane_view_count_matches_the_constant() -> None:
+    assert len(ACCOUNTING_REPORTING_VIEWS) == verifier.EXPECTED_ACCOUNTING_REPORTING_VIEW_COUNT
+
+
+def test_the_total_is_every_reporting_view_and_the_four_lanes_do_not_overlap() -> None:
     """The sum has to be the whole schema, or the exact check is not exact.
 
-    Asserted against `REPORTING_VIEWS` rather than against the sum of the three lengths,
+    Asserted against `REPORTING_VIEWS` rather than against the sum of the four lengths,
     which would pass even if a view were declared in two registers.
     """
     assert len(REPORTING_VIEWS) == verifier.EXPECTED_REPORTING_VIEW_COUNT
-    assert set(MVP_REPORTING_VIEWS) & set(INVENTORY_LISTING_VIEWS) == set()
-    assert set(MVP_REPORTING_VIEWS) & set(DASHBOARD_PROGRAM_VIEWS) == set()
-    assert set(INVENTORY_LISTING_VIEWS) & set(DASHBOARD_PROGRAM_VIEWS) == set()
+    lanes = (
+        MVP_REPORTING_VIEWS,
+        INVENTORY_LISTING_VIEWS,
+        DASHBOARD_PROGRAM_VIEWS,
+        ACCOUNTING_REPORTING_VIEWS,
+    )
+    for index, lane in enumerate(lanes):
+        for other in lanes[index + 1 :]:
+            assert set(lane) & set(other) == set()
 
 
 def test_the_reporting_view_count_matches_the_sql_that_creates_them() -> None:
@@ -118,10 +129,14 @@ def test_the_reconciliation_count_excludes_the_listing_lane() -> None:
     69, not 58, since ``DASH.5``: ten target reconciliations plus the target ingestion
     chain. 96 since ``DASH.6``: eighteen ``RECON-FI-*`` rules in ``audit.vw_recon_all``
     plus the loader's own chain and warehouse reconciliations for the four new entities.
+    114 since ``DASH.8``: the thirteen ``RECON-ACC-*`` / ``RECON-GLB-*`` rules in
+    ``audit.vw_recon_all`` plus the loader's own chain reconciliations for the three new
+    entities and the catalogue's warehouse and row-count pair.
+
     That is a count of what the pipeline records on a run, and it moved because the
     pipeline records more -- not because the expectation was relaxed to fit a failure.
     """
-    assert verifier.EXPECTED_RECONCILIATION_COUNT_PER_RUN == 96
+    assert verifier.EXPECTED_RECONCILIATION_COUNT_PER_RUN == 114
 
 
 def test_no_listing_view_carries_an_expected_row_count() -> None:

@@ -335,6 +335,16 @@ Rules: pack stays out of book value; floorplan principal is a liability position
 to book value; carrying cost is not capitalized (not modelled without an explicit policy); this is a
 focused stock-level schedule, not a complete accounting system, and says so on-screen.
 
+> **As built (`DASH.8`), where it differs from the plan above.** The grain gained the **store**:
+> one row per vehicle × dealership × accounting date, enforced over three NOT NULL columns. The
+> calendar is **month-end only**, a subset of the daily inventory calendar, which is what makes
+> matched-date comparability structural. There is **no `acquisition_date_key`** — roughly 28% of units
+> enter stock before the governed calendar opens, so keying that date would have rejected 360
+> legitimate schedule lines, and `days_in_stock` already carries the interval `KPI-ACC-011` needs.
+> Everything else holds: the identity is a database CHECK, pack is absent, and floorplan principal is
+> a separate never-netted column. See
+> [STM-022](../source-to-target/STM-022-fact-inventory-accounting-snapshot.md).
+
 ### 9.10 `warehouse.dim_gl_account` + `warehouse.fact_gl_control_balance` — new (DASH.8)
 
 Small conformed account dimension over selected synthetic control accounts (New / Used / Certified /
@@ -344,6 +354,28 @@ debit, credit, and net balance. Console reconciliation:
 `reconciliation_variance = gl_control_balance − inventory_subledger_balance`, where a nonzero
 variance is an exception to investigate, never automatically an error. Controlled test scenarios
 plant explicit variances so the surface is demonstrably alive.
+
+> **As built (`DASH.8`), where it differs from the plan above.** Three decisions were taken and
+> recorded rather than left implicit.
+>
+> **Three categories, not four.** `Wholesale Vehicle Inventory` was rejected: nothing observable at a
+> month-end distinguishes a unit held for wholesale, and only the eventual disposal would — which is
+> the future-outcome leakage §9.9 forbids. [STM-023 §6](../source-to-target/STM-023-dim-gl-account.md).
+>
+> **Floorplan Liability is absent.** `KPI-ACC-001` is an inventory ASSET measure, and putting a
+> liability into the same reconciliation invites a "net inventory" figure that means nothing. No
+> registered question requires liability reconciliation. `account_type` still permits `Liability`, so
+> adding one later needs no domain migration. [STM-023 §5](../source-to-target/STM-023-dim-gl-account.md).
+>
+> **One signed balance, not debit/credit/net.** The governed question is answered by one signed
+> figure, and `dim_gl_account.normal_balance` makes the sign unambiguous. Manufacturing debit and
+> credit columns to look accounting-like would be inventing a general ledger a column at a time — and
+> `DQ-GLB-002` holds the column contract to exactly the declared list so neither can be added even
+> empty. [STM-024 §1.1](../source-to-target/STM-024-fact-gl-control-balance.md).
+>
+> The reconciliation itself is as planned, with one addition the plan did not state: a **missing side
+> is NULL, never zero**, and `comparison_state` names which of the four states a row is in rather than
+> leaving it to be inferred from a NULL.
 
 ### 9.11 `warehouse.fact_trade_in` — optional, later (DASH.O-1)
 
@@ -434,7 +466,7 @@ and never one giant mixed-grain denormalization):
 | `reporting.vw_fi_summary` | **Implemented.** As built: store × sale date × finance manager — **and deliberately no category.** It carries finance reserve and retail units, both properties of a *deal*; adding a category would repeat and multiply them on every category row | DASH.6 |
 | `reporting.vw_fi_product_penetration` | **Implemented.** As built: store × sale date × finance manager × governed category — **and deliberately no reserve and no retail-unit column**, which is the other half of the same rule. Rows are built from the **deals**, not the contracts, so a category with an eligible population and no sales produces a zero-numerator row rather than vanishing | DASH.6 |
 | `reporting.vw_fi_adjustment_summary` | **Implemented.** As built: store × **adjustment date** × finance manager × category × adjustment type — the only F&I view on the adjustment-date basis, which is why it is a separate view rather than more columns on an existing one | DASH.6 |
-| `reporting.vw_inventory_accounting` | vehicle × snapshot date | DASH.8 |
+| `reporting.vw_inventory_accounting` | vehicle × store × accounting date | DASH.8 |
 | `reporting.vw_inventory_gl_reconciliation` | store × account × date | DASH.8 |
 | `reporting.vw_accounting_exceptions` | one row per exception | DASH.8 |
 | `reporting.vw_employee_performance` | employee × role × period | DASH.11 |

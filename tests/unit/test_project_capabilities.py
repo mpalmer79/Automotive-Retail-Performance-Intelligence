@@ -67,6 +67,8 @@ REQUIRED_FACT_LOADS = (
     "16_fact_sales_target_load.sql",
     "17_fact_finance_product_sale_load.sql",
     "18_fact_finance_product_adjustment_load.sql",
+    "19_fact_inventory_accounting_snapshot_load.sql",
+    "20_fact_gl_control_balance_load.sql",
 )
 
 #: The sanitized listing lane's fact-load script, declared by arpi.inventory.spec rather
@@ -414,10 +416,11 @@ def test_the_repository_requires_the_facts_it_declares(evidence: DerivedEvidence
 def test_the_required_fact_set_is_read_from_the_registry(evidence: DerivedEvidence) -> None:
     """Derived from source, so a renamed script cannot pass by editing one side.
 
-    Both ingestion registries contribute: arpi.ingestion.spec declares the five MVP fact
-    loads the pipeline runs on every execution, and arpi.inventory.spec declares the
-    sanitized listing lane's, which a workbook import runs on its own cadence. The
-    contract holds across both, because a script neither registry names is never executed.
+    Both ingestion registries contribute: arpi.ingestion.spec declares the ten fact loads
+    the pipeline runs on every execution -- five MVP, one operating plan, two F&I and two
+    accounting -- and arpi.inventory.spec declares the sanitized listing lane's, which a
+    workbook import runs on its own cadence. The contract holds across both, because a
+    script neither registry names is never executed.
     """
     assert evidence.required_fact_load_scripts == ALL_FACT_LOADS
     assert evidence.present_fact_load_scripts == ALL_FACT_LOADS

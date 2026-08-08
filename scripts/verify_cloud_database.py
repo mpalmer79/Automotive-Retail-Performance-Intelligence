@@ -115,11 +115,13 @@ TABLE_PRIVILEGES: tuple[str, ...] = (
 #: "at least 28" to accommodate a second lane would have thrown away the half that
 #: catches an object nobody declared.
 #:
-#: The three numbers are held apart rather than summed into one literal because they mean
+#: The four numbers are held apart rather than summed into one literal because they mean
 #: different things. Twenty-eight is what the SQL baseline and the Power BI semantic model
 #: were measured against; six is the sanitized public listing lane (ADR-0011), which the
-#: semantic model does not read; three is the dashboard program's own lane, which it does
-#: not read either. A reader who saw only 37 could not tell which had moved.
+#: semantic model does not read; nine is the dashboard program's own lane, which it does
+#: not read either; three is the inventory accounting and GL control lane (`DASH.8`),
+#: which has no browser dataset and no console route at all. A reader who saw only 46
+#: could not tell which had moved.
 #:
 #: They are duplicated from `arpi.constants` because this script imports only the standard
 #: library -- it runs against a database from a bare interpreter. `tests/unit/
@@ -128,10 +130,12 @@ TABLE_PRIVILEGES: tuple[str, ...] = (
 EXPECTED_MVP_REPORTING_VIEW_COUNT: int = 28
 EXPECTED_LISTING_REPORTING_VIEW_COUNT: int = 6
 EXPECTED_DASHBOARD_REPORTING_VIEW_COUNT: int = 9
+EXPECTED_ACCOUNTING_REPORTING_VIEW_COUNT: int = 3
 EXPECTED_REPORTING_VIEW_COUNT: int = (
     EXPECTED_MVP_REPORTING_VIEW_COUNT
     + EXPECTED_LISTING_REPORTING_VIEW_COUNT
     + EXPECTED_DASHBOARD_REPORTING_VIEW_COUNT
+    + EXPECTED_ACCOUNTING_REPORTING_VIEW_COUNT
 )
 
 #: The eight conformed dimensions. Each must exist and hold at least one row.
@@ -192,6 +196,13 @@ EXPECTED_REPORTING_ROW_COUNTS: dict[str, int] = {
     "vw_fi_summary": 354,
     "vw_fi_product_penetration": 3012,
     "vw_fi_adjustment_summary": 57,
+    # DASH.8. Measured on a fresh warehouse: 1,501 schedule lines over six month-ends,
+    # 43 comparison rows (42 control balances, one of which has no schedule behind it, plus
+    # one schedule position whose balance is deliberately withheld), and 4 exceptions --
+    # 2 variances and the 2 missing sides, which is the whole of the planted set.
+    "vw_inventory_accounting": 1501,
+    "vw_inventory_gl_reconciliation": 43,
+    "vw_accounting_exceptions": 4,
     # The six vw_vehicle_listing_* views are DELIBERATELY absent. They are the sanitized
     # public listing lane (ADR-0011), which loads on a workbook cadence rather than on a
     # pipeline run, so a correct cloud database holds those views with no rows until an
@@ -225,16 +236,22 @@ EXPECTED_REPORTING_ROW_COUNTS: dict[str, int] = {
 #: ten `RECON-TGT-*` / `RECON-FACT-SALES-TARGET-*` plus the ingestion chain
 #: `RECON-INGEST-SALES-TARGET-CHAIN` (58 -> 69). Both were verified against a real
 #: load before being written here, not inferred from a failing run.
+#: `DASH.6` moved them again (129 -> 186 checks, 69 -> 96 reconciliations), and `DASH.8`
+#: once more on the same terms: the accounting lane registers 37 checks -- 19 `DQ-IAS-*`,
+#: 10 `DQ-GLA-*`, 8 `DQ-GLB-*` -- plus three ingestion schema checks (186 -> 226), and 18
+#: reconciliations -- the 13 `RECON-ACC-*` / `RECON-GLB-*` rules plus the three ingestion
+#: chains, the catalogue's warehouse chain and its row count (96 -> 114). Both were
+#: measured on a fresh warehouse built by the canonical sequence, not inferred.
 EXPECTED_REPORTING_ROW_COUNTS_PER_RUN: dict[str, int] = {
     "vw_data_quality_trend": 9,
-    "vw_reconciliation_status": 96,
+    "vw_reconciliation_status": 114,
     "vw_pipeline_run_summary": 1,
-    "vw_data_quality_summary": 186,
+    "vw_data_quality_summary": 226,
 }
 
 #: Reconciliations the loader records on every run, and how many may fail.
 #: Per run, for the reason recorded above.
-EXPECTED_RECONCILIATION_COUNT_PER_RUN: int = 96
+EXPECTED_RECONCILIATION_COUNT_PER_RUN: int = 114
 EXPECTED_FAILING_RECONCILIATION_COUNT: int = 0
 
 #: The profile and seed the cloud database must have been loaded from.
@@ -379,7 +396,8 @@ def check_reporting_view_count(cursor: Any) -> CheckOutcome:
                     f"expected exactly {EXPECTED_REPORTING_VIEW_COUNT} views "
                     f"({EXPECTED_MVP_REPORTING_VIEW_COUNT} MVP + "
                     f"{EXPECTED_LISTING_REPORTING_VIEW_COUNT} sanitized listing lane + "
-                    f"{EXPECTED_DASHBOARD_REPORTING_VIEW_COUNT} dashboard program), "
+                    f"{EXPECTED_DASHBOARD_REPORTING_VIEW_COUNT} dashboard program + "
+                    f"{EXPECTED_ACCOUNTING_REPORTING_VIEW_COUNT} accounting control), "
                     f"found {observed}. Fewer means the ordered sequence did not finish; "
                     "more means an object was created outside sql/.",
                 )

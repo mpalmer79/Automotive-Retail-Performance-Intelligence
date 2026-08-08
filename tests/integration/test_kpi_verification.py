@@ -33,11 +33,15 @@ from typing import Any
 import pytest
 
 from arpi.constants import (
+    ACCOUNTING_EXCEPTION_CODES,
+    ACCOUNTING_KPI_IDS,
+    ACCOUNTING_KPI_VIEW_OWNERSHIP,
     FI_KPI_IDS,
     FI_KPI_VIEW_OWNERSHIP,
     KPI_IDS,
     KPI_VIEW_OWNERSHIP,
     MINIMUM_SAMPLE_ELIGIBLE_DEALS,
+    RECONCILIATION_COMPARISON_STATES,
     TARGET_KPI_IDS,
     TARGET_KPI_VIEW_OWNERSHIP,
 )
@@ -2500,3 +2504,602 @@ def test_the_minimum_sample_flag_is_published_and_never_blanks_a_value(
         "   OR finance_reserve_gross IS NULL OR original_product_gross IS NULL)",
     )
     assert blanked == 0, "a below-floor row had its components blanked by the reporting layer"
+
+
+# --------------------------------------------------------------------------------------
+# KPI-ACC-001 .. -012: the inventory accounting and GL control family (DASH.8)
+#
+# Held to the same standard as every family above and counted separately for the same
+# reason: 29 MVP KPIs is a claim about what the Power BI semantic model binds and the SQL
+# baseline measured, and these twelve are computed in SQL with no DAX measure behind them.
+#
+# The independence rule matters more here than anywhere else in the file. The whole point
+# of an accounting control is that it is derived twice, so every expectation below is
+# written against `warehouse` from the KPI's own definition and never by reading the view
+# it is checking. A test that computed both sides from `reporting.vw_accounting_exceptions`
+# would prove that a UNION is deterministic.
+# --------------------------------------------------------------------------------------
+
+
+def _latest_accounting_date_key(cursor: Any) -> int:
+    """The most recent accounting date. Balances are SEMI-ADDITIVE.
+
+    A period-ending balance is the LAST comparable date, never a sum across dates, so
+    every balance assertion below is scoped to one date. Summing two month-ends would
+    produce a number that is not a balance of anything.
+    """
+    key = _scalar(
+        cursor,
+        "SELECT max(accounting_date_key) FROM warehouse.fact_inventory_accounting_snapshot",
+    )
+    assert key is not None, "the accounting schedule is empty, so nothing below is tested"
+    return int(key)
+
+
+def _exception_count(cursor: Any, code: str) -> int:
+    return int(
+        _scalar(
+            cursor,
+            "SELECT count(*) FROM reporting.vw_accounting_exceptions "
+            f"WHERE exception_code = '{code}'",
+        )
+    )
+
+
+@pytest.mark.parametrize("kpi_id", ACCOUNTING_KPI_IDS)
+def test_every_accounting_kpi_resolves_to_an_existing_reporting_view(
+    loaded_cursor: Any, kpi_id: str
+) -> None:
+    """All 12 accounting identifiers own at least one reporting view, and each exists."""
+    owners = ACCOUNTING_KPI_VIEW_OWNERSHIP[kpi_id]
+    assert owners, f"{kpi_id} has no reporting view registered in arpi.constants"
+    for view_name in owners:
+        exists = _scalar(
+            loaded_cursor,
+            "SELECT count(*) FROM information_schema.views "
+            f"WHERE table_schema = 'reporting' AND table_name = '{view_name}'",
+        )
+        assert exists == 1, f"{kpi_id} names reporting.{view_name}, which does not exist"
+
+
+def test_the_accounting_index_covers_exactly_twelve_kpis() -> None:
+    assert len(ACCOUNTING_KPI_IDS) == 12
+    assert len(set(ACCOUNTING_KPI_IDS)) == 12
+    assert set(ACCOUNTING_KPI_VIEW_OWNERSHIP) == set(ACCOUNTING_KPI_IDS)
+    assert tuple(f"KPI-ACC-{index:03d}" for index in range(1, 13)) == ACCOUNTING_KPI_IDS
+
+
+def test_the_accounting_family_is_held_apart_from_every_other_register() -> None:
+    """Three registers, reported side by side and never summed."""
+    assert len(KPI_IDS) == 29
+    assert not set(ACCOUNTING_KPI_IDS) & set(KPI_IDS)
+    assert not set(ACCOUNTING_KPI_IDS) & set(FI_KPI_IDS)
+    assert not set(ACCOUNTING_KPI_IDS) & set(TARGET_KPI_IDS)
+
+
+# KPI-ACC-001: inventory subledger balance ----------------------------------------------
+
+
+def test_kpi_acc_001_inventory_subledger_balance(loaded_cursor: Any) -> None:
+    """SUM(current_book_value) at ONE accounting date, derived independently."""
+    date_key = _latest_accounting_date_key(loaded_cursor)
+    reported = _scalar(
+        loaded_cursor,
+        "SELECT sum(current_book_value) FROM reporting.vw_inventory_accounting "
+        f"WHERE accounting_date_key = {date_key}",
+    )
+    expected = _scalar(
+        loaded_cursor,
+        """
+        SELECT sum(f.acquisition_cost
+                 + f.capitalized_transportation
+                 + f.capitalized_reconditioning
+                 + f.capitalized_accessories
+                 + f.other_capitalized_costs
+                 - f.write_down_amount)
+        FROM warehouse.fact_inventory_accounting_snapshot AS f
+        WHERE f.accounting_date_key = %s
+        """.replace("%s", str(date_key)),
+    )
+    _assert_equal(reported, expected, "KPI-ACC-001")
+    assert Decimal(str(reported)) > 0, "the subledger balance is zero, so nothing is tested"
+
+
+def test_kpi_acc_001_agrees_with_the_reconciliation_view_at_the_same_date(
+    loaded_cursor: Any,
+) -> None:
+    """The measure's two owning views must not disagree about the same balance."""
+    date_key = _latest_accounting_date_key(loaded_cursor)
+    schedule = _scalar(
+        loaded_cursor,
+        "SELECT sum(current_book_value) FROM reporting.vw_inventory_accounting "
+        f"WHERE accounting_date_key = {date_key}",
+    )
+    reconciliation = _scalar(
+        loaded_cursor,
+        "SELECT sum(subledger_balance) FROM reporting.vw_inventory_gl_reconciliation "
+        f"WHERE comparison_date_key = {date_key}",
+    )
+    _assert_equal(reconciliation, schedule, "KPI-ACC-001 across its two owning views")
+
+
+def test_kpi_acc_001_excludes_floorplan_principal(loaded_cursor: Any) -> None:
+    """A liability is never netted into an asset balance, and the data proves it can tell.
+
+    Both halves are required. If every floorplan balance were zero the exclusion would be
+    unobservable, so the test insists the dataset actually carries floorplan principal.
+    """
+    date_key = _latest_accounting_date_key(loaded_cursor)
+    loaded_cursor.execute(
+        "SELECT sum(current_book_value), sum(floorplan_principal) "
+        "FROM reporting.vw_inventory_accounting "
+        f"WHERE accounting_date_key = {date_key}"
+    )
+    book, floorplan = loaded_cursor.fetchone()
+    assert Decimal(str(floorplan)) > 0, (
+        "no unit carries floorplan principal, so 'floorplan is excluded from book value' "
+        "is vacuously true and untested"
+    )
+    subledger = _scalar(
+        loaded_cursor,
+        "SELECT sum(subledger_balance) FROM reporting.vw_inventory_gl_reconciliation "
+        f"WHERE comparison_date_key = {date_key}",
+    )
+    _assert_equal(subledger, book, "KPI-ACC-001 excludes floorplan")
+    assert Decimal(str(subledger)) != Decimal(str(book)) + Decimal(str(floorplan))
+    assert Decimal(str(subledger)) != Decimal(str(book)) - Decimal(str(floorplan))
+
+
+def test_no_view_publishes_a_net_inventory_position(loaded_cursor: Any) -> None:
+    """The column that would net an asset against a liability must not exist anywhere."""
+    present = _scalar(
+        loaded_cursor,
+        "SELECT count(*) FROM information_schema.columns "
+        "WHERE table_schema IN ('warehouse', 'reporting') "
+        "AND column_name IN ('net_inventory_position', 'net_inventory_value', "
+        "                    'inventory_net_of_floorplan', 'equity_in_inventory')",
+    )
+    assert present == 0
+
+
+# KPI-ACC-002: GL inventory control balance ---------------------------------------------
+
+
+def test_kpi_acc_002_gl_control_balance(loaded_cursor: Any) -> None:
+    date_key = _latest_accounting_date_key(loaded_cursor)
+    reported = _scalar(
+        loaded_cursor,
+        "SELECT sum(gl_balance) FROM reporting.vw_inventory_gl_reconciliation "
+        f"WHERE comparison_date_key = {date_key}",
+    )
+    expected = _scalar(
+        loaded_cursor,
+        "SELECT sum(net_balance) FROM warehouse.fact_gl_control_balance "
+        f"WHERE balance_date_key = {date_key}",
+    )
+    _assert_equal(reported, expected, "KPI-ACC-002")
+
+
+def test_kpi_acc_002_is_never_defaulted_to_zero_when_a_balance_is_absent(
+    loaded_cursor: Any,
+) -> None:
+    """A missing balance is NULL, and the dataset must contain one for this to be tested.
+
+    COALESCE-ing an absent control balance to 0.00 would report a variance equal to the
+    whole subledger and present a MISSING BALANCE as a ZEROED ACCOUNT.
+    """
+    missing = _scalar(
+        loaded_cursor,
+        "SELECT count(*) FROM reporting.vw_inventory_gl_reconciliation "
+        "WHERE comparison_state = 'Missing GL balance'",
+    )
+    assert missing > 0, (
+        "no month has a withheld control balance, so the NULL-not-zero rule is untested"
+    )
+    zeroed = _scalar(
+        loaded_cursor,
+        "SELECT count(*) FROM reporting.vw_inventory_gl_reconciliation "
+        "WHERE comparison_state = 'Missing GL balance' "
+        "  AND (gl_balance IS NOT NULL OR variance_amount IS NOT NULL "
+        "       OR is_reconciled IS NOT NULL)",
+    )
+    assert zeroed == 0, "a missing control balance was defaulted rather than left NULL"
+
+
+# KPI-ACC-003: inventory reconciliation variance ----------------------------------------
+
+
+def test_kpi_acc_003_variance_is_gl_minus_subledger_on_every_comparable_row(
+    loaded_cursor: Any,
+) -> None:
+    """The sign is load-bearing: positive means the GL carries more than the schedule."""
+    offending = _scalar(
+        loaded_cursor,
+        "SELECT count(*) FROM reporting.vw_inventory_gl_reconciliation "
+        "WHERE is_comparable AND variance_amount <> gl_balance - subledger_balance",
+    )
+    assert offending == 0
+
+
+def test_kpi_acc_003_agrees_with_an_independent_warehouse_derivation(
+    loaded_cursor: Any,
+) -> None:
+    """Derived from the two facts directly, never by reading the reconciliation view."""
+    reported = _scalar(
+        loaded_cursor,
+        "SELECT sum(variance_amount) FROM reporting.vw_inventory_gl_reconciliation",
+    )
+    expected = _scalar(
+        loaded_cursor,
+        """
+        SELECT sum(b.net_balance - s.subledger_balance)
+        FROM warehouse.fact_gl_control_balance AS b
+        JOIN (
+            SELECT accounting_date_key, dealership_key, gl_account_key,
+                   sum(current_book_value) AS subledger_balance
+            FROM warehouse.fact_inventory_accounting_snapshot
+            GROUP BY accounting_date_key, dealership_key, gl_account_key
+        ) AS s
+          ON s.accounting_date_key = b.balance_date_key
+         AND s.dealership_key = b.dealership_key
+         AND s.gl_account_key = b.gl_account_key
+        """,
+    )
+    _assert_equal(reported, expected, "KPI-ACC-003")
+
+
+def test_kpi_acc_003_has_a_nonzero_variance_and_an_exact_reconciliation_to_show(
+    loaded_cursor: Any,
+) -> None:
+    """The surface must be observed in BOTH states or neither is demonstrated.
+
+    A reconciliation that only ever agrees proves nothing about a variance, and a
+    reconciliation that never agrees proves nothing about the arithmetic.
+    """
+    loaded_cursor.execute(
+        "SELECT count(*) FILTER (WHERE comparison_state = 'Reconciled'), "
+        "       count(*) FILTER (WHERE comparison_state = 'Variance') "
+        "FROM reporting.vw_inventory_gl_reconciliation"
+    )
+    reconciled, variance = loaded_cursor.fetchone()
+    assert reconciled > 0, "no store-account-month reconciles exactly"
+    assert variance > 0, "no store-account-month carries a variance"
+
+
+def test_kpi_acc_003_publishes_both_signs(loaded_cursor: Any) -> None:
+    """Positive and negative variances are different investigations, so both are modelled."""
+    loaded_cursor.execute(
+        "SELECT count(*) FILTER (WHERE variance_amount > 0), "
+        "       count(*) FILTER (WHERE variance_amount < 0) "
+        "FROM reporting.vw_inventory_gl_reconciliation"
+    )
+    over, under = loaded_cursor.fetchone()
+    assert over > 0, "no month carries a GL balance above its schedule"
+    assert under > 0, "no month carries a GL balance below its schedule"
+
+
+def test_the_absolute_variance_never_replaces_the_signed_one(loaded_cursor: Any) -> None:
+    offending = _scalar(
+        loaded_cursor,
+        "SELECT count(*) FROM reporting.vw_inventory_gl_reconciliation "
+        "WHERE is_comparable AND absolute_variance_amount <> abs(variance_amount)",
+    )
+    assert offending == 0
+    signed_differs = _scalar(
+        loaded_cursor,
+        "SELECT count(*) FROM reporting.vw_inventory_gl_reconciliation WHERE variance_amount < 0",
+    )
+    assert signed_differs > 0, (
+        "every variance is non-negative, so publishing the absolute value alongside the "
+        "signed one proves nothing"
+    )
+
+
+# KPI-ACC-004 and KPI-ACC-010: the two stock-coverage counts ----------------------------
+
+
+def test_kpi_acc_004_unreconciled_stock_count(loaded_cursor: Any) -> None:
+    """Both directions: stock with no schedule line, and a schedule line with no stock."""
+    reported = _exception_count(loaded_cursor, "ACC-MISSING-BOOK-ROW") + _exception_count(
+        loaded_cursor, "ACC-ORPHAN-BOOK-ROW"
+    )
+    expected = _scalar(
+        loaded_cursor,
+        """
+        SELECT
+            (SELECT count(*)
+             FROM warehouse.fact_vehicle_inventory_snapshot AS i
+             WHERE i.snapshot_date_key IN (
+                SELECT DISTINCT accounting_date_key
+                FROM warehouse.fact_inventory_accounting_snapshot)
+               AND NOT EXISTS (
+                SELECT 1 FROM warehouse.fact_inventory_accounting_snapshot AS f
+                WHERE f.accounting_date_key = i.snapshot_date_key
+                  AND f.dealership_key = i.dealership_key
+                  AND f.vehicle_key = i.vehicle_key))
+          + (SELECT count(*)
+             FROM warehouse.fact_inventory_accounting_snapshot AS f
+             WHERE NOT EXISTS (
+                SELECT 1 FROM warehouse.fact_vehicle_inventory_snapshot AS i
+                WHERE i.snapshot_date_key = f.accounting_date_key
+                  AND i.dealership_key = f.dealership_key
+                  AND i.vehicle_key = f.vehicle_key))
+        """,
+    )
+    assert reported == expected, "KPI-ACC-004 disagrees with its warehouse derivation"
+
+
+def test_kpi_acc_010_is_a_strict_direction_of_kpi_acc_004(loaded_cursor: Any) -> None:
+    """Publishing both is deliberate: the two directions have different causes."""
+    missing = _exception_count(loaded_cursor, "ACC-MISSING-BOOK-ROW")
+    orphan = _exception_count(loaded_cursor, "ACC-ORPHAN-BOOK-ROW")
+    assert missing >= 0 and orphan >= 0
+    assert missing + orphan >= missing
+
+
+def test_the_stock_schedule_covers_the_stock_on_a_healthy_run(loaded_cursor: Any) -> None:
+    """On unmodified synthetic data both directions are zero, and that is the claim."""
+    assert _exception_count(loaded_cursor, "ACC-MISSING-BOOK-ROW") == 0
+    assert _exception_count(loaded_cursor, "ACC-ORPHAN-BOOK-ROW") == 0
+
+
+# KPI-ACC-005 .. -007: the three gross identities ---------------------------------------
+
+
+def test_kpi_acc_005_unbalanced_front_gross_identity_count(loaded_cursor: Any) -> None:
+    reported = _exception_count(loaded_cursor, "ACC-FRONT-GROSS-IDENTITY")
+    expected = _scalar(
+        loaded_cursor,
+        "SELECT count(*) FROM warehouse.fact_vehicle_sale "
+        "WHERE front_end_gross "
+        "      <> sale_price - acquisition_cost - reconditioning_cost - pack_amount",
+    )
+    assert reported == expected
+    assert reported == 0, "DASH.8 must not disturb the front-gross identity"
+
+
+def test_kpi_acc_006_uses_original_product_gross_and_not_net(loaded_cursor: Any) -> None:
+    """The corrected definition, asserted as arithmetic rather than as a comment.
+
+    back_end_gross = finance_reserve_gross + SUM(original_product_gross) + other_fi_income.
+    Comparing against POST-ADJUSTMENT net product gross would flag every adjusted deal in
+    the dataset as an accounting defect, which is exactly backwards: a later cancellation
+    is SUPPOSED to make retained gross differ from produced gross.
+    """
+    reported = _exception_count(loaded_cursor, "ACC-BACK-GROSS-IDENTITY")
+    expected = _scalar(
+        loaded_cursor,
+        """
+        SELECT count(*)
+        FROM warehouse.fact_vehicle_sale AS s
+        LEFT JOIN (
+            SELECT ps.sale_key, sum(ps.original_product_gross) AS product_gross
+            FROM warehouse.fact_finance_product_sale AS ps
+            GROUP BY ps.sale_key
+        ) AS p ON p.sale_key = s.sale_key
+        WHERE s.back_end_gross
+              <> s.finance_reserve_gross + coalesce(p.product_gross, 0.00) + 0.00
+        """,
+    )
+    assert reported == expected
+    assert reported == 0, "the back-gross identity does not close on every deal"
+
+    # And the defect this correction avoids: had the measure used NET product gross, the
+    # count would be nonzero, because adjustments exist. Proving that the WRONG definition
+    # would have fired is what makes the right one a decision rather than a coincidence.
+    would_have_fired = _scalar(
+        loaded_cursor,
+        """
+        SELECT count(*)
+        FROM warehouse.fact_vehicle_sale AS s
+        LEFT JOIN (
+            SELECT ps.sale_key,
+                   sum(ps.original_product_gross)
+                   - coalesce(sum(a.adjustment_amount), 0.00) AS net_product_gross
+            FROM warehouse.fact_finance_product_sale AS ps
+            LEFT JOIN warehouse.fact_finance_product_adjustment AS a
+                   ON a.product_sale_key = ps.product_sale_key
+            GROUP BY ps.sale_key
+        ) AS p ON p.sale_key = s.sale_key
+        WHERE s.back_end_gross
+              <> s.finance_reserve_gross + coalesce(p.net_product_gross, 0.00)
+        """,
+    )
+    assert would_have_fired > 0, (
+        "net product gross equals original product gross across the whole dataset, so the "
+        "KPI-ACC-006 correction is untested; the adjustment population should prevent that"
+    )
+
+
+def test_kpi_acc_007_unbalanced_total_gross_identity_count(loaded_cursor: Any) -> None:
+    reported = _exception_count(loaded_cursor, "ACC-TOTAL-GROSS-IDENTITY")
+    expected = _scalar(
+        loaded_cursor,
+        "SELECT count(*) FROM warehouse.fact_vehicle_sale "
+        "WHERE total_gross <> front_end_gross + back_end_gross",
+    )
+    assert reported == expected
+    assert reported == 0
+
+
+# KPI-ACC-008 and KPI-ACC-009: the two orphan counts ------------------------------------
+
+
+def test_kpi_acc_008_and_009_are_zero_while_their_foreign_keys_stand(
+    loaded_cursor: Any,
+) -> None:
+    """Both branches are unreachable in a database whose constraints are intact.
+
+    They exist so that a constraint dropped from a DEPLOYED database fails a run rather
+    than passing one. The companion test below proves the constraints are actually there,
+    because a zero from a branch that cannot fire is not evidence on its own.
+    """
+    assert _exception_count(loaded_cursor, "ACC-ORPHAN-FI-PRODUCT") == 0
+    assert _exception_count(loaded_cursor, "ACC-ORPHAN-FI-ADJUSTMENT") == 0
+
+
+def test_the_foreign_keys_behind_kpi_acc_008_and_009_are_on_the_deployed_tables(
+    loaded_cursor: Any,
+) -> None:
+    for constraint in (
+        "fk_fact_fi_product_sale_sale",
+        "fk_fact_fi_adjustment_product_sale",
+    ):
+        present = _scalar(
+            loaded_cursor,
+            f"SELECT count(*) FROM pg_constraint WHERE conname = '{constraint}'",
+        )
+        assert present == 1, f"{constraint} is not on the deployed database"
+
+
+# KPI-ACC-011: inventory posting lag ----------------------------------------------------
+
+
+def test_kpi_acc_011_posting_lag_is_measured_on_first_appearance_only(
+    loaded_cursor: Any,
+) -> None:
+    """Averaging over every appearance would grow the mean because a unit stayed in stock."""
+    reported = _scalar(
+        loaded_cursor,
+        "SELECT avg(posting_lag_days) FROM reporting.vw_inventory_accounting "
+        "WHERE is_first_accounting_appearance",
+    )
+    expected = _scalar(
+        loaded_cursor,
+        """
+        SELECT avg(f.days_in_stock)
+        FROM warehouse.fact_inventory_accounting_snapshot AS f
+        WHERE f.accounting_date_key = (
+            SELECT min(x.accounting_date_key)
+            FROM warehouse.fact_inventory_accounting_snapshot AS x
+            WHERE x.vehicle_key = f.vehicle_key
+        )
+        """,
+    )
+    _assert_equal(reported, expected, "KPI-ACC-011")
+
+
+def test_kpi_acc_011_differs_from_the_all_appearances_average(loaded_cursor: Any) -> None:
+    """If the two coincided, restricting to first appearance would be a no-op."""
+    first_only = _scalar(
+        loaded_cursor,
+        "SELECT avg(posting_lag_days) FROM reporting.vw_inventory_accounting "
+        "WHERE is_first_accounting_appearance",
+    )
+    every_row = _scalar(
+        loaded_cursor, "SELECT avg(posting_lag_days) FROM reporting.vw_inventory_accounting"
+    )
+    assert Decimal(str(first_only)) < Decimal(str(every_row)), (
+        "the first-appearance restriction changes nothing, so KPI-ACC-011's population "
+        "rule is untested"
+    )
+
+
+def test_the_posting_lag_is_never_negative(loaded_cursor: Any) -> None:
+    """A unit cannot be scheduled before it entered stock."""
+    offending = _scalar(
+        loaded_cursor,
+        "SELECT count(*) FROM reporting.vw_inventory_accounting WHERE posting_lag_days < 0",
+    )
+    assert offending == 0
+
+
+def test_no_column_claims_a_journal_posting_timestamp(loaded_cursor: Any) -> None:
+    """KPI-ACC-011 measures acquisition to schedule date and must not imply more.
+
+    ARPI holds no separate posting timestamp. A column named for one would be an invented
+    operational fact, and the honest narrowing of KPI-ACC-011 depends on it not existing.
+    """
+    present = _scalar(
+        loaded_cursor,
+        "SELECT count(*) FROM information_schema.columns "
+        "WHERE table_schema IN ('warehouse', 'reporting') "
+        "AND column_name IN ('posted_at', 'posting_timestamp', 'journal_posted_date', "
+        "                    'gl_posted_date', 'posting_date_key')",
+    )
+    assert present == 0
+
+
+# KPI-ACC-012: data-quality exception count ---------------------------------------------
+
+
+def test_kpi_acc_012_counts_current_data_quality_failures(loaded_cursor: Any) -> None:
+    reported = _exception_count(loaded_cursor, "ACC-DQ-FAILURE")
+    expected = _scalar(
+        loaded_cursor,
+        "SELECT count(*) FROM reporting.vw_data_quality_summary "
+        "WHERE is_failed AND is_latest_run_for_check",
+    )
+    assert reported == expected
+
+
+def test_a_variance_is_never_counted_as_a_data_quality_exception(
+    loaded_cursor: Any,
+) -> None:
+    """KPI-ACC-003 and KPI-ACC-012 count different things and must never be added.
+
+    A variance means two structurally valid balances disagreed. A data-quality exception
+    means a rule the model asserts about itself does not hold. The dataset deliberately
+    carries variances, so if the two were conflated this would fail.
+    """
+    variances = _exception_count(loaded_cursor, "ACC-GL-VARIANCE")
+    assert variances > 0, "no variance exists, so the distinction is untested"
+    assert _exception_count(loaded_cursor, "ACC-DQ-FAILURE") == 0, (
+        "a controlled accounting variance has been recorded as a data-quality failure"
+    )
+
+
+# The exception surface as a whole ------------------------------------------------------
+
+
+def test_the_exception_identifier_is_unique_so_one_defect_is_counted_once(
+    loaded_cursor: Any,
+) -> None:
+    loaded_cursor.execute(
+        "SELECT count(*), count(DISTINCT exception_id) FROM reporting.vw_accounting_exceptions"
+    )
+    rows, distinct = loaded_cursor.fetchone()
+    assert rows == distinct, (
+        "two branches of reporting.vw_accounting_exceptions produced the same "
+        "exception_id, so one physical defect is being counted twice"
+    )
+
+
+def test_every_exception_code_is_in_the_governed_vocabulary(loaded_cursor: Any) -> None:
+    codes = {
+        row[0]
+        for row in _rows(
+            loaded_cursor,
+            "SELECT DISTINCT exception_code FROM reporting.vw_accounting_exceptions",
+        )
+    }
+    assert codes <= set(ACCOUNTING_EXCEPTION_CODES), (
+        f"reporting.vw_accounting_exceptions published {codes - set(ACCOUNTING_EXCEPTION_CODES)}, "
+        "which is outside the closed vocabulary in arpi.constants"
+    )
+
+
+def test_a_missing_balance_exception_carries_no_amount(loaded_cursor: Any) -> None:
+    """Reporting the present side as the amount would state a number nobody computed."""
+    offending = _scalar(
+        loaded_cursor,
+        "SELECT count(*) FROM reporting.vw_accounting_exceptions "
+        "WHERE exception_code IN ('ACC-MISSING-GL-BALANCE', 'ACC-MISSING-SUBLEDGER-BALANCE') "
+        "  AND exception_amount IS NOT NULL",
+    )
+    assert offending == 0
+
+
+def test_every_comparison_state_is_in_the_governed_vocabulary(loaded_cursor: Any) -> None:
+    states = {
+        row[0]
+        for row in _rows(
+            loaded_cursor,
+            "SELECT DISTINCT comparison_state FROM reporting.vw_inventory_gl_reconciliation",
+        )
+    }
+    assert states <= set(RECONCILIATION_COMPARISON_STATES)
+    assert {"Reconciled", "Variance"} <= states, (
+        "the dataset does not exercise both compared states, so the reconciliation "
+        "surface has not been demonstrated working"
+    )

@@ -43,6 +43,11 @@ RAW_ENTITIES = (
     "lender_load",
     "finance_product_sale_load",
     "finance_product_adjustment_load",
+    # The DASH.8 inventory accounting and GL control lane (ADR-0013): the stock schedule,
+    # the selected control-account catalogue and the control balances.
+    "inventory_accounting_load",
+    "gl_account_load",
+    "gl_control_balance_load",
 )
 
 #: Entities whose staging layer follows the Phase 1 three-view pattern:
@@ -69,6 +74,10 @@ STAGING_ENTITIES = (
     "lender",
     "finance_product_sale",
     "finance_product_adjustment",
+    # The DASH.8 accounting control lane, landed the same way and for the same reasons.
+    "inventory_accounting",
+    "gl_account",
+    "gl_control_balance",
 )
 
 #: The conformed dimensions.
@@ -91,6 +100,11 @@ FI_DIMENSION_TABLES = (
     "dim_finance_product",
     "dim_lender",
 )
+
+#: The DASH.8 control-account catalogue. Held apart for the same reason again, and with
+#: one more of its own: it is a SELECTED control catalogue rather than a conformed
+#: dimension -- three inventory accounts, never a chart of accounts.
+ACCOUNTING_DIMENSION_TABLES = ("dim_gl_account",)
 
 #: The fact tables. Five MVP facts, the listing lane's, and the target lane's; this module builds a
 #: structure-only database and never runs the pipeline, which is what
@@ -116,6 +130,12 @@ FACT_TABLES = (
     # Both ARE in arpi.ingestion.spec.ENTITY_SPECS and load on every pipeline run.
     "fact_finance_product_sale",
     "fact_finance_product_adjustment",
+    # The DASH.8 accounting facts (ADR-0013). Structurally the tenth and eleventh, and
+    # deliberately not MVP facts: they belong to the accounting control lane, which the
+    # semantic model does not read and for which no browser dataset is exported. Both ARE
+    # in arpi.ingestion.spec.ENTITY_SPECS and load on every pipeline run.
+    "fact_inventory_accounting_snapshot",
+    "fact_gl_control_balance",
 )
 
 EXPECTED_TABLES = {
@@ -128,6 +148,7 @@ EXPECTED_TABLES = {
     *(("raw", name) for name in RAW_ENTITIES),
     *(("warehouse", name) for name in DIMENSION_TABLES),
     *(("warehouse", name) for name in FI_DIMENSION_TABLES),
+    *(("warehouse", name) for name in ACCOUNTING_DIMENSION_TABLES),
     ("warehouse", "dim_observed_vehicle"),
     *(("warehouse", name) for name in FACT_TABLES),
 }
@@ -157,6 +178,10 @@ AUDIT_VIEWS = (
     # listing lane's: the operating plan loads on every pipeline run, so its chain,
     # grain, department partition and reporting totals are per-run evidence.
     "vw_recon_target",
+    # The accounting domain's reconciliations (DASH.8). Unioned INTO vw_recon_all: the
+    # schedule and the control balances load on every pipeline run, so the book-value
+    # identity, both grains and the GL comparison are per-run evidence.
+    "vw_recon_accounting",
 )
 
 EXPECTED_VIEWS = {
@@ -440,6 +465,9 @@ def test_merge_scripts_contain_no_psql_meta_commands(sql_root: Path) -> None:
         # two F&I dimension DDL files (19 and 20) that create the tables they write.
         "21_dim_finance_product_merge.sql",
         "22_dim_lender_merge.sql",
+        # DASH.8. Numbered 25 so it sorts after the DDL file (24) that creates the table
+        # it writes, and after every merge above it.
+        "25_dim_gl_account_merge.sql",
     ], "the loader runs these in sorted order; the list must stay explicit"
 
     forbidden = ("\\i ", "\\set ", "\\c ", "\\gexec", "\\copy", "\\echo")
