@@ -196,6 +196,19 @@ class DerivedEvidence:
     #: "29 MVP KPIs plus 10 target KPIs" is derived rather than asserted, and so that
     #: promoting a KPI family can never silently restate the MVP number.
     dashboard_program_kpis: int = 0
+    #: SQL objects owned by the inventory accounting and GL control lane (``DASH.8``),
+    #: counted the same way and for the same reason as the two lanes above. This lane is
+    #: the first to add a DIMENSION as well as facts and views, so its merge scripts are
+    #: counted too -- otherwise "eight conformed dimensions" would silently become nine.
+    accounting_control_sql_files: int = 0
+    accounting_control_reporting_views: int = 0
+    accounting_control_fact_ddl_scripts: int = 0
+    accounting_control_dimension_merge_scripts: int = 0
+    #: The accounting lane's own KPI register. Counted apart from ``governed_kpis`` (the 29
+    #: the semantic model was measured against) AND from ``dashboard_program_kpis`` (the
+    #: console program's register), because no DAX measure reads these and no console route
+    #: renders them. Three numbers reported side by side, never summed.
+    accounting_control_kpis: int = 0
     #: Whether the sanitized-listing Excel exporter exists in source. Guards
     #: ``deliverables.inventory_operating_report`` only, never ``excel_operating_report``.
     inventory_report_exporter: bool = False
@@ -377,6 +390,28 @@ def _dashboard_lane_sql_files() -> frozenset[str]:
     return _declared_lane_sql_files(DASHBOARD_CONTRACT_SOURCE, "DASHBOARD_LANE_SQL_FILES")
 
 
+def _accounting_lane_sql_files() -> frozenset[str]:
+    """The SQL files the inventory accounting and GL control lane owns (``DASH.8``).
+
+    Declared in ``arpi.constants`` rather than in the dashboard contract because that
+    increment adds no browser dataset, no console route and no export contract, so the
+    contract module is deliberately untouched by it.
+    """
+    return _declared_lane_sql_files(CONSTANTS_SOURCE, "ACCOUNTING_LANE_SQL_FILES")
+
+
+def _accounting_kpi_ids() -> frozenset[str]:
+    """The accounting lane's own KPI identifiers, read from ``arpi.constants``.
+
+    Deliberately NOT added to ``governed_kpis`` or to ``dashboard_program_kpis``. The first
+    answers "how many KPIs did the semantic model bind and the SQL baseline measure", and
+    the answer is still 29; the second is the console program's register. These twelve are
+    computed in SQL, no DAX measure reads them and no console route renders them, so all
+    three numbers are reported side by side and never summed.
+    """
+    return _declared_lane_sql_files(CONSTANTS_SOURCE, "ACCOUNTING_KPI_IDS")
+
+
 def _dashboard_program_kpi_ids() -> frozenset[str]:
     """The dashboard program's own KPI identifiers, read from ``arpi.constants``.
 
@@ -516,10 +551,11 @@ def derive_evidence() -> DerivedEvidence:
     # separately below so the lane is reported rather than hidden.
     lane_files = _inventory_lane_sql_files()
     dashboard_lane_files = _dashboard_lane_sql_files()
+    accounting_lane_files = _accounting_lane_sql_files()
 
     def _in_lane(path: Path) -> bool:
         key = f"{path.parent.name}/{path.name}"
-        return key in lane_files or key in dashboard_lane_files
+        return key in lane_files or key in dashboard_lane_files or key in accounting_lane_files
 
     all_fact_scripts = sorted(facts.glob("*.sql")) if facts.is_dir() else []
     all_dimension_scripts = sorted(dimensions.glob("*.sql")) if dimensions.is_dir() else []
@@ -542,6 +578,19 @@ def derive_evidence() -> DerivedEvidence:
         p
         for p in all_fact_scripts
         if f"{p.parent.name}/{p.name}" in dashboard_lane_files and "_load" not in p.name
+    ]
+    accounting_lane_reporting_scripts = [
+        p for p in all_reporting_scripts if f"{p.parent.name}/{p.name}" in accounting_lane_files
+    ]
+    accounting_lane_fact_scripts = [
+        p
+        for p in all_fact_scripts
+        if f"{p.parent.name}/{p.name}" in accounting_lane_files and "_load" not in p.name
+    ]
+    accounting_lane_dimension_scripts = [
+        p
+        for p in all_dimension_scripts
+        if f"{p.parent.name}/{p.name}" in accounting_lane_files and p.name.endswith("_merge.sql")
     ]
 
     return DerivedEvidence(
@@ -574,6 +623,11 @@ def derive_evidence() -> DerivedEvidence:
         dashboard_program_reporting_views=len(dashboard_lane_reporting_scripts),
         dashboard_program_fact_ddl_scripts=len(dashboard_lane_fact_scripts),
         dashboard_program_kpis=len(_dashboard_program_kpi_ids()),
+        accounting_control_sql_files=len(accounting_lane_files),
+        accounting_control_reporting_views=len(accounting_lane_reporting_scripts),
+        accounting_control_fact_ddl_scripts=len(accounting_lane_fact_scripts),
+        accounting_control_dimension_merge_scripts=len(accounting_lane_dimension_scripts),
+        accounting_control_kpis=len(_accounting_kpi_ids()),
         inventory_report_exporter=INVENTORY_REPORT_SOURCE.is_file(),
         audit_layers_recorded=_count_audit_layers_recorded(),
         migrations=sum(1 for p in migrations.glob("*.sql")) if migrations.is_dir() else 0,

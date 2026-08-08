@@ -861,9 +861,71 @@ DASHBOARD_PROGRAM_VIEWS: Final[tuple[str, ...]] = (
     "vw_fi_adjustment_summary",
 )
 
+#: The inventory accounting and GL control views, added by DASH.8.
+#:
+#: Held separate from :data:`MVP_REPORTING_VIEWS` and from :data:`DASHBOARD_PROGRAM_VIEWS`
+#: for two different reasons. The MVP tuple is the 28-view baseline
+#: ``powerbi/validation/sql_baseline_metadata.json`` describes and the semantic model binds
+#: to; folding these in would silently restate a number measured against a specific
+#: baseline run. The dashboard-program tuple is the set of views the console program
+#: added, and these are not console views at all: DASH.8 exports NO browser dataset, adds
+#: no route, and leaves ``src/arpi/dashboard/contract.py`` untouched. They are a
+#: database-and-reporting increment answering SQ-43.
+#:
+#: They read two new facts of their own -- ``fact_inventory_accounting_snapshot`` and
+#: ``fact_gl_control_balance`` -- plus the existing sale and F&I facts, which they only
+#: ever read.
+ACCOUNTING_REPORTING_VIEWS: Final[tuple[str, ...]] = (
+    "vw_inventory_accounting",
+    "vw_inventory_gl_reconciliation",
+    "vw_accounting_exceptions",
+)
+
+#: Every SQL script the inventory accounting and GL control lane owns (DASH.8).
+#:
+#: Declared here for the same reason ``INVENTORY_LANE_SQL_FILES`` is declared in
+#: ``arpi.inventory.spec`` and ``DASHBOARD_LANE_SQL_FILES`` in ``arpi.dashboard.contract``:
+#: ``scripts/project_capabilities.py`` derives "five MVP facts", "eight conformed
+#: dimensions" and "twenty-eight reporting views" by counting scripts in
+#: ``sql/03_dimensions``, ``sql/04_facts`` and ``sql/05_reporting``, and those numbers were
+#: measured against a specific baseline run. Adding two facts, one dimension and three
+#: views beside them must not move a baseline; subtracting this lane is what keeps the
+#: figures describing what they were measured against, while the lane is counted and
+#: reported separately rather than hidden.
+#:
+#: It is declared in ``arpi.constants`` rather than in ``arpi.dashboard.contract`` on
+#: purpose. DASH.8 adds no browser dataset, no console route and no export contract, so
+#: the dashboard contract module is deliberately untouched by this increment.
+ACCOUNTING_LANE_SQL_FILES: Final[tuple[str, ...]] = (
+    "01_raw/20_raw_inventory_accounting_load.sql",
+    "01_raw/21_raw_gl_account_load.sql",
+    "01_raw/22_raw_gl_control_balance_load.sql",
+    "02_staging/21_stg_inventory_accounting.sql",
+    "02_staging/22_stg_gl_account.sql",
+    "02_staging/23_stg_gl_control_balance.sql",
+    "03_dimensions/24_dim_gl_account.sql",
+    "03_dimensions/25_dim_gl_account_merge.sql",
+    "04_facts/09_fact_inventory_accounting_snapshot.sql",
+    "04_facts/10_fact_gl_control_balance.sql",
+    "04_facts/19_fact_inventory_accounting_snapshot_load.sql",
+    "04_facts/20_fact_gl_control_balance_load.sql",
+    "05_reporting/49_vw_inventory_accounting.sql",
+    "05_reporting/50_vw_inventory_gl_reconciliation.sql",
+    "05_reporting/51_vw_accounting_exceptions.sql",
+    "06_indexes/04_accounting_indexes.sql",
+    "08_validation/15_recon_accounting.sql",
+)
+
 #: Every view the ``reporting`` schema is expected to contain, and nothing else.
 REPORTING_VIEWS: Final[tuple[str, ...]] = tuple(
-    sorted({*MVP_REPORTING_VIEWS, *INVENTORY_LISTING_VIEWS, *DASHBOARD_PROGRAM_VIEWS})
+    sorted(
+        {
+            *MVP_REPORTING_VIEWS,
+            *INVENTORY_LISTING_VIEWS,
+            *DASHBOARD_PROGRAM_VIEWS,
+            *ACCOUNTING_REPORTING_VIEWS,
+        }
+    )
 )
 
 # ---------------------------------------------------------------------------------------
