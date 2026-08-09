@@ -73,32 +73,44 @@ const ROUTE = ROUTES.dashboard.href
  * request. There is no database behind that request: the data was packaged at
  * build time and the "query" is an array pass over it.
  *
- * SEVEN ROWS, NOT NINE SECTIONS
- * -----------------------------
- * The console previously ran as nine independently-padded page sections, each opening
- * with a paragraph. That is the rhythm of a documentation route, and this is not one: a
- * reader arrived at roughly a thousand words of prose before the first comparison they
- * could make by eye, and only three pieces of the page carried any data-driven geometry
- * at all. It now runs as seven rows on a twelve-column console grid, and the reading
- * order they produce is the one an operating console is for:
+ * FIVE REGIONS, NOT NINE SECTIONS
+ * -------------------------------
+ * The console once ran as nine independently-padded page sections, each opening with a
+ * paragraph. That is the rhythm of a documentation route, and this is not one: a reader
+ * arrived at roughly a thousand words of prose before the first comparison they could
+ * make by eye. It then ran as seven rows, which was better and still one region per
+ * component rather than one region per question. It now runs as FIVE, and each is a
+ * question a general manager actually asks:
  *
- *   SEE          row 2, seven governed figures each carrying its own shape
- *   COMPARE      row 3, the period's trend beside the three stores
- *   INVESTIGATE  rows 4-6, pace against plan, ageing, composition, funnel, integrity
- *   READ DETAILS row 7, the ten-column scoreboard, the evidence, what is not built
+ *   CONTROL      what am I looking at, and how do I change it
+ *   PERFORMANCE  how did the group do, over what shape, and which store is different
+ *   PLAN & STOCK where is the month against plan, and what is standing on the lot
+ *   DEMAND       what produced the units, and what the gross was made of
+ *   INTEGRITY    whether the ledger agrees, and everything the console can prove
  *
  * Every figure that was on the page is still on the page. What moved is prose, and
- * where it moved to is stated at each call site.
+ * where it moved to is stated at each call site. Three bodies of detail -- the ten-column
+ * scoreboard, the trust evidence, and the list of what is not built -- are now behind
+ * disclosures. `<details>` keeps them in the document, in the accessibility tree and in
+ * a browser text search, so nothing was removed from the page; it stopped being the
+ * first thing on it.
  *
- * WHY THE INVESTIGATE ROWS STAY SUMMARIES
- * ---------------------------------------
+ * A REGION IS TINTED BY BUSINESS AREA, NEVER BY STATE
+ * --------------------------------------------------
+ * Each data region carries a restrained `zone-*` wash so the eye can find an area on a
+ * long page. A wash encodes nothing: the stock region is amber whether the lot is clean
+ * or ageing badly. No `zone-*` token is a `data-*` token, so a tint cannot be read as a
+ * value.
+ *
+ * WHY THE DETAIL REGIONS STAY SUMMARIES
+ * -------------------------------------
  * `DASH.9` built `/dashboard/inventory` and `/dashboard/accounting`, which own the
- * unit-level and account-level detail. Rows 4 and 6 link to them rather than reproduce
- * them, and that is a payload decision as much as an editorial one: the two detail
- * routes read 356 kB and 360 kB of per-unit chunks that this route is forbidden to
- * open, and `dashboard-boundaries.test.ts` fails the build if it ever does. A summary
- * with a link costs one anchor; a summary that copies its destination costs the
- * destination's data.
+ * unit-level and account-level detail. The stock and integrity regions link to them
+ * rather than reproduce them, and that is a payload decision as much as an editorial
+ * one: the two detail routes read 356 kB and 360 kB of per-unit chunks that this route
+ * is forbidden to open, and `dashboard-boundaries.test.ts` fails the build if it ever
+ * does. A summary with a link costs one anchor; a summary that copies its destination
+ * costs the destination's data.
  */
 export default async function DashboardPage({
   searchParams,
@@ -126,7 +138,9 @@ export default async function DashboardPage({
         eyebrow="Dealer Operations Command Center"
         title="How the group is performing, and which store needs attention"
         crumbLabel="Dealer Operations Command Center"
-        lede={`Retail volume, gross and gross per retail unit, target pace, inventory risk, the lead funnel and accounting integrity for ${overview.scope.label.toLowerCase()}, over ${overview.periodContext.period.label}. Every figure is read from a governed SQL export and reconciles to it exactly.`}
+        /* One line. The list of subjects was the region headings read twice, and the
+           provenance sentence is the trust line this header already renders. */
+        lede={`${overview.scope.label}, over ${overview.periodContext.period.label}.`}
         dashboardNav
         trustScope="dashboard"
         meta={
@@ -194,59 +208,66 @@ export default async function DashboardPage({
       ) : (
         <>
           {/* -------------------------------------------------------------- */}
-          {/* ROW 2 — Headline instrumentation                                */}
+          {/* REGION 2 — Performance                                          */}
           {/* -------------------------------------------------------------- */}
+          {/*
+            The KPI row, the trailing trend and the three stores were three regions,
+            each with its own heading, eyebrow and paragraph. They are one question --
+            how did the group do -- read at three grains: the figure, its shape, and
+            whose it is. Merging them removes two headings and two paragraphs and puts
+            the store comparison inside the same eyeline as the figure it decomposes.
+
+            The one surviving sentence is the COLOUR LEGEND, and it earns its place
+            precisely because this pass added colour. A reader who sees green on the
+            pace bar is owed the rule that produced it, once, before the figures.
+          */}
           <ConsoleRow
             id="group-performance"
+            zone="performance"
             eyebrow="Group performance"
-            title="The seven figures the group is run on"
-            lede="Each card carries its governed KPI, the difference against the comparison period, and its own shape over the trailing months. Direction is stated in neutral words: this console has no governed favourable direction for these measures."
+            title="How the group did, over what shape, and which store is different"
+            lede="No measure here has a governed favourable direction, so direction is stated in neutral words and colour marks only three things: which side of zero a value falls, whether an explicit target was met, and how old a unit is."
           >
-            <KpiStrip
-              cards={overview.cards}
-              comparisonLabel={comparisonLabel}
-              comparisonUnavailable={overview.periodContext.comparisonUnavailable}
-            />
-          </ConsoleRow>
-
-          {/* -------------------------------------------------------------- */}
-          {/* ROW 3 — Operating trend and store comparison                    */}
-          {/* -------------------------------------------------------------- */}
-          <ConsoleRow
-            id="operating"
-            tone="evidence"
-            eyebrow="Operating shape"
-            title="What has been happening, and to whom"
-            lede="The trailing months ending with the selected period, beside the same period's stores. Both are drawn from the governed selectors the scoreboard uses."
-          >
-            <div className="grid gap-x-10 gap-y-12 xl:grid-cols-12">
-              <div className="xl:col-span-7">
-                <Pane title="Trend">
-                  <OperatingTrend trend={overview.trend} />
-                </Pane>
-              </div>
-              <div className="xl:col-span-5">
-                <Pane title="Stores">
-                  <StoreComparisonSection overview={overview} />
-                </Pane>
+            <div className="flex flex-col gap-12">
+              <KpiStrip
+                cards={overview.cards}
+                comparisonLabel={comparisonLabel}
+                comparisonUnavailable={overview.periodContext.comparisonUnavailable}
+              />
+              <div className="grid gap-x-10 gap-y-12 xl:grid-cols-12">
+                <div className="xl:col-span-7">
+                  <Pane title="Trend">
+                    <OperatingTrend trend={overview.trend} />
+                  </Pane>
+                </div>
+                <div className="xl:col-span-5">
+                  <Pane title="Stores">
+                    <StoreComparisonSection overview={overview} />
+                  </Pane>
+                </div>
               </div>
             </div>
           </ConsoleRow>
 
           {/* -------------------------------------------------------------- */}
-          {/* ROW 4 — Target pace and inventory ageing                        */}
+          {/* REGION 3 — Plan and stock                                       */}
           {/* -------------------------------------------------------------- */}
           {/*
-            Pace is secondary to the KPI row above it, and deliberately so: the actual is
+            Pace is secondary to the figures above it, and deliberately so: the actual is
             the business result and the plan is the management context beside it. Nothing
             here is a forecast — the projected figure is arithmetic over the governed
             selling-day calendar and carries that name wherever it appears.
+
+            The lede kept only the two claims a reader would MISREAD the figures without.
+            The aged threshold sentence left it because the age stack now prints the
+            threshold on itself, where the colour ramp turns on it.
           */}
           <ConsoleRow
             id="targets"
+            zone="plan"
             eyebrow="Plan and stock"
             title="Where the month is against plan, and what is standing on the lot"
-            lede="Actual against target with the selling-day clock, beside the age profile at the latest snapshot in the period. The projection is linear arithmetic over the governed selling-day calendar, never a forecast, and the targets are synthetic operating goals rather than benchmarks."
+            lede="The projection is linear arithmetic over the governed selling-day calendar rather than a forecast, and the targets are synthetic operating goals rather than benchmarks."
           >
             <div className="grid gap-x-10 gap-y-12 xl:grid-cols-12">
               <div className="xl:col-span-5">
@@ -254,7 +275,10 @@ export default async function DashboardPage({
                   <TargetPaceSection context={overview.targets} />
                 </Pane>
               </div>
-              <div className="xl:col-span-7">
+              {/* The stock area carries its own tint inside the plan region: two
+                  business areas share this row, and the boundary between them is
+                  otherwise carried only by a column gap that closes below `xl`. */}
+              <div className="rounded-2xl bg-zone-inventory p-5 xl:col-span-7">
                 <Pane title="Inventory">
                   <InventoryRisk
                     inventory={overview.inventory}
@@ -266,14 +290,18 @@ export default async function DashboardPage({
           </ConsoleRow>
 
           {/* -------------------------------------------------------------- */}
-          {/* ROW 5 — Gross composition and the lead funnel                   */}
+          {/* REGION 4 — Demand and gross                                     */}
           {/* -------------------------------------------------------------- */}
+          {/*
+            No lede. The old one described what the two panes contain, which their own
+            headings already do, and then pointed at `/dashboard/leads-marketing` --
+            which is a link, and is now rendered as one.
+          */}
           <ConsoleRow
             id="composition"
-            tone="evidence"
+            zone="funnel"
             eyebrow="Where it came from"
-            title="The composition of the gross, and the funnel that produced the units"
-            lede="Front against back and new against used, beside the five governed funnel stages. Source quality, campaign cost and lost-stage analysis are the leads and marketing page, delivered by DASH.10."
+            title="What produced the units, and what the gross was made of"
           >
             <div className="grid gap-x-10 gap-y-12 xl:grid-cols-12">
               <div className="xl:col-span-7">
@@ -295,80 +323,93 @@ export default async function DashboardPage({
               </div>
             </div>
           </ConsoleRow>
-
-          {/* -------------------------------------------------------------- */}
-          {/* ROW 6 — Accounting integrity                                    */}
-          {/* -------------------------------------------------------------- */}
-          {/*
-            `DASH.9` landed the reconciliation view model, its tests and the narrow data
-            door, and recorded in `accounting-data.ts` that the 43-row comparison set "IS
-            the Executive summary" for this route. This row is that summary. It reads the
-            comparison set and nothing else: the 360 kB of per-unit book values in
-            `accounting-chunks.ts` belong to `/dashboard/accounting`, and a reader who
-            wants them follows the drill-through this section carries rather than paying
-            for them here.
-
-            The figure comes from `buildAccountingSignal()`, which is the only function in
-            the console that resolves a comparison date, applies the store filter and
-            totals a signed variance. The visual overhaul replaced the four-card
-            presentation `DASH.9` shipped; it did not replace, re-implement or reinterpret
-            any of the accounting semantics underneath it.
-          */}
-          <ConsoleRow
-            id="accounting-integrity"
-            eyebrow="Accounting integrity"
-            title="Whether the stock schedule and the general ledger agree"
-            lede="One position at the last month end inside the selected period. A variance is a finding to investigate, not a broken record, and both sides are valid data."
-          >
-            <ReconciliationSection signal={accountingSignal} />
-          </ConsoleRow>
         </>
       )}
 
       {/* ------------------------------------------------------------------ */}
-      {/* ROW 7 — Detail, evidence and delivery                               */}
+      {/* REGION 5 — Integrity and evidence                                   */}
       {/* ------------------------------------------------------------------ */}
-      {overview.empty ? null : (
-        <ConsoleRow
-          id="store-scoreboard"
-          tone="evidence"
-          eyebrow="Store scoreboard"
-          title="Three operating models, side by side and not ranked"
-          lede="Every governed column for every store in scope. Cells a store cannot have read Not applicable rather than zero, because a zero in a performance column is read as performance."
-        >
-          <StoreScoreboard
-            rows={overview.scoreboard}
-            columns={SCOREBOARD_COLUMNS}
-            caption={`Store scoreboard for ${overview.periodContext.period.label}`}
-          />
-        </ConsoleRow>
-      )}
+      {/*
+        `DASH.9` landed the reconciliation view model, its tests and the narrow data
+        door, and recorded in `accounting-data.ts` that the 43-row comparison set "IS
+        the Executive summary" for this route. This region is that summary. It reads the
+        comparison set and nothing else: the 360 kB of per-unit book values in
+        `accounting-chunks.ts` belong to `/dashboard/accounting`, and a reader who wants
+        them follows the drill-through this section carries rather than paying for them
+        here. The figure comes from `buildAccountingSignal()`, which is the only function
+        in the console that resolves a comparison date, applies the store filter and
+        totals a signed variance. Neither this pass nor the one before it replaced,
+        re-implemented or reinterpreted any accounting semantics underneath it.
 
+        THE SCOREBOARD, THE EVIDENCE AND THE BACKLOG ARE NOW DISCLOSURES, and each one
+        is still in the document. `<details>` collapses a region visually while leaving
+        it in the accessibility tree's reading order and in a browser text search, which
+        is the same technique every chart on this page uses for its data table. The
+        scoreboard was ten columns of table opening a region; the trust panel and the
+        synthetic statement were a full region of provenance; the backlog was a region
+        headed "What this console does not do yet". All three are things a reader goes
+        looking for, and none of them is what an operating console opens with.
+      */}
+      {/*
+        THE REGION RENDERS WHEN THE FILTER MATCHES NOTHING, and the two disclosures that
+        can still answer keep answering. A reader whose filter returned no rows is the
+        reader most likely to be asking what the data is and how far it has been proved.
+        Only the two parts that need matching rows -- the reconciliation and the
+        scoreboard -- stand down.
+      */}
       <ConsoleRow
-        id="trust"
-        eyebrow="Trust and evidence"
-        title="What this console has proved, and what it has not"
-        lede="Two independent lanes. The export lane is checked by the exporter and the generator; the Power BI lane is read from the ADR-0008 evidence files and from nothing else."
+        id="accounting-integrity"
+        tone="evidence"
+        eyebrow="Integrity and evidence"
+        title="Whether the ledger agrees, and what this console can prove"
+        lede={
+          overview.empty
+            ? undefined
+            : 'A variance between the stock schedule and the general ledger is a finding to investigate rather than a broken record: both sides are valid data.'
+        }
       >
         <div className="flex flex-col gap-8">
-          <TrustPanel exportState={exportState} powerBi={powerBi} />
-          {/* The full statement, moved here from above the KPI row. IA §8 puts the long
-              form on the one page whose figures a reader is most likely to quote; it did
-              not require that it come before them. */}
-          <Text size="sm" tone="muted" className="max-w-prose border-t border-line pt-6">
-            {SYNTHETIC_DATA_STATEMENT}
-          </Text>
-        </div>
-      </ConsoleRow>
+          {overview.empty ? null : <ReconciliationSection signal={accountingSignal} />}
 
-      <ConsoleRow
-        id="not-built"
-        tone="evidence"
-        eyebrow="Delivery"
-        title="What this console does not do yet"
-        lede="Named rather than mocked. Every section below is absent because the warehouse entity, reporting view or rule engine behind it does not exist yet."
-      >
-        <PlannedSections sections={PLANNED_DASHBOARD_SECTIONS} />
+          <div
+            className={
+              overview.empty
+                ? 'flex flex-col gap-3'
+                : 'flex flex-col gap-3 border-t border-line pt-8'
+            }
+          >
+            {overview.empty ? null : (
+              <ConsoleDisclosure
+                id="store-scoreboard"
+                summary="Every governed column, for every store in scope"
+                note="Three operating models side by side and not ranked. A cell a store cannot have reads Not applicable rather than zero, because a zero in a performance column is read as performance."
+              >
+                <StoreScoreboard
+                  rows={overview.scoreboard}
+                  columns={SCOREBOARD_COLUMNS}
+                  caption={`Store scoreboard for ${overview.periodContext.period.label}`}
+                />
+              </ConsoleDisclosure>
+            )}
+
+            <ConsoleDisclosure
+              id="trust"
+              summary="Data and methodology"
+              note="Two independent lanes. The export lane is checked by the exporter and the generator; the Power BI lane is read from the ADR-0008 evidence files and from nothing else."
+            >
+              <div className="flex flex-col gap-6">
+                <TrustPanel exportState={exportState} powerBi={powerBi} />
+                <Text size="sm" tone="muted" className="max-w-prose">
+                  {SYNTHETIC_DATA_STATEMENT}
+                </Text>
+              </div>
+            </ConsoleDisclosure>
+
+            <ConsoleDisclosure id="not-built" summary="What is not built yet">
+              <PlannedSections sections={PLANNED_DASHBOARD_SECTIONS} />
+            </ConsoleDisclosure>
+          </div>
+        </div>
       </ConsoleRow>
     </Canvas>
   )
@@ -448,11 +489,62 @@ function ConsoleRow({
  * literal like `bg-zone-${zone}` produces no CSS at all, which is the kind of bug that
  * looks like a design decision.
  */
-const ZONE_WASH: Readonly<Record<'performance' | 'plan' | 'inventory' | 'funnel', string>> = {
-  performance: 'bg-zone-performance/35',
-  plan: 'bg-zone-plan/35',
-  inventory: 'bg-zone-inventory/30',
-  funnel: 'bg-zone-funnel/35',
+const ZONE_WASH: Readonly<
+  Record<'performance' | 'plan' | 'inventory' | 'funnel', string>
+> = {
+  performance: 'bg-zone-performance',
+  plan: 'bg-zone-plan',
+  inventory: 'bg-zone-inventory',
+  funnel: 'bg-zone-funnel',
+}
+
+/**
+ * A body of detail, collapsed but not removed.
+ *
+ * WHY `<details>` AND NOT A LINK OR A TAB. The scoreboard, the trust evidence and the
+ * backlog stay in the document: in the accessibility tree's reading order, in a browser
+ * text search, in the printed page and in the no-JavaScript rendering. Collapsing them
+ * costs a reader one click and costs the page nothing, which is the trade a tab panel
+ * and a second route both fail. It is the same technique every chart on this console
+ * already uses for its data table.
+ *
+ * THE `id` STAYS ON THE ELEMENT. Three of these were regions with anchors that the
+ * in-page navigation and external links point at, and an anchor that stops resolving is
+ * a broken link even when the content is still on the page.
+ *
+ * `note` is the one sentence a reader needs BEFORE deciding to open it -- the
+ * scoreboard's not-applicable rule, the two independent trust lanes. Where opening is
+ * self-explanatory there is no note.
+ */
+function ConsoleDisclosure({
+  id,
+  summary,
+  note,
+  children,
+}: {
+  readonly id: string
+  readonly summary: string
+  readonly note?: string
+  readonly children: ReactNode
+}) {
+  return (
+    <details
+      id={id}
+      className="rounded-xl border border-line-subtle bg-surface-sunken/40"
+    >
+      <summary className="flex min-h-touch cursor-pointer items-center px-4 text-sm font-medium text-ink-secondary transition-colors duration-(--arpi-motion-fast) hover:text-accent">
+        {summary}
+      </summary>
+      <div className="flex flex-col gap-4 px-4 pb-5">
+        {note === undefined ? null : (
+          <Text size="xs" tone="faint" className="max-w-prose">
+            {note}
+          </Text>
+        )}
+        {children}
+      </div>
+    </details>
+  )
 }
 
 /**

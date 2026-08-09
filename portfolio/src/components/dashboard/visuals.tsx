@@ -916,6 +916,11 @@ export interface StoreComparisonBarsProps {
  * each carries its own store's hue, for the reason `store-scoreboard.tsx` records: three
  * different operating models, and a league table over them would be a finding this
  * console may not publish. See `storeMarkClass` for why the hue cannot drift.
+ *
+ * THE SUMMARY IS `sr-only`. Every row below prints its store's name and its value as
+ * text, so a visible copy of the summary sentence is the same figures read twice. It
+ * stays in the accessibility tree, where it is the one sentence that carries the whole
+ * comparison without asking a reader to interpret a length.
  */
 export function StoreComparisonBars({
   title,
@@ -946,6 +951,7 @@ export function StoreComparisonBars({
       title={title}
       caption={caption}
       summary={summary}
+      summaryMode="sr-only"
       headingLevel={headingLevel}
       className={className}
     >
@@ -1109,6 +1115,9 @@ function ageRampClass(index: number): string {
  * THE SEGMENTS ARE `aria-hidden` AND EVERY COUNT IS TEXT. The legend below the bar
  * carries each bucket and its unit count, and the table carries all of it again.
  *
+ * THE SUMMARY IS `sr-only`. The legend prints every band's range and count, and the
+ * table below prints all of it again, so the visible page already carries the sentence.
+ *
  * COLOUR ORDERS THE BANDS AND CARRIES NOTHING ALONE. The ramp runs fresh green to
  * severely-aged rose across the exported bucket order. Adjacent steps are not 3:1 from
  * each other -- see the recorded limitation in `tokens.css` -- so the bands are also
@@ -1143,6 +1152,7 @@ export function InventoryAgeStack({
         title={title}
         caption={caption}
         summary={summary}
+        summaryMode="sr-only"
         headingLevel={headingLevel}
         className={className}
       >
@@ -1156,6 +1166,7 @@ export function InventoryAgeStack({
       title={title}
       caption={caption}
       summary={summary}
+      summaryMode="sr-only"
       headingLevel={headingLevel}
       className={className}
     >
@@ -1278,6 +1289,9 @@ export interface GrossCompositionProps {
  * stack drawn over a negative component would be a picture of something that did not
  * happen, which is worse than no picture.
  *
+ * THE SUMMARY IS `sr-only`: the definition list below prints each component's label and
+ * amount, which is the whole of that sentence.
+ *
  * NEITHER COMPONENT IS RANKED AGAINST THE OTHER, for the reason
  * `sales-gross-sections.tsx` records: a store can hold total gross steady while front
  * collapses and the finance office compensates, and which of those is preferable depends
@@ -1318,6 +1332,7 @@ export function GrossComposition({
       title={title}
       caption={caption}
       summary={summary}
+      summaryMode="sr-only"
       headingLevel={headingLevel}
       className={className}
     >

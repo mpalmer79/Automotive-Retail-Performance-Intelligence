@@ -119,6 +119,28 @@
   --arpi-violet-600: #5b45b8;
   --arpi-violet-100: #ece8fa;
 
+  /* The `-50` tier: REGION GROUNDS, not badge washes.
+     ------------------------------------------------
+     A `-100` wash tints a chip a reader looks at for a second. These tint a whole
+     page region that a reader works inside, so they are lighter -- each is its
+     `-100` at three quarters strength over white, resolved to a literal here
+     rather than written as an opacity at the call site.
+
+     RESOLVED, BECAUSE AN OPACITY CANNOT BE MEASURED. `bg-zone-plan/75` makes the
+     real ground a composite of the token and whatever sits behind it, so a
+     contrast test measuring the token alone would be measuring a colour the
+     browser never paints. These are opaque, so the declared value IS the ground,
+     and `tokens.test.ts` checks every text and mark token against all four.
+
+     Headroom at the tightest pair: emerald-600 as text on violet-50 is 4.72:1
+     against the 4.5:1 floor, and teal-450 as a mark on it is 3.65:1 against 3:1.
+     The `-100` tier itself is too dark for this job -- emerald-600 on violet-100
+     measures 4.49:1, which is why this tier exists at all. */
+  --arpi-teal-50: #eaf5fa;
+  --arpi-emerald-50: #e9f7ef;
+  --arpi-amber-50: #fcf4e3;
+  --arpi-violet-50: #f1eefb;
+
   /* Data-visualisation steps. Added for the executive dashboard's semantic
      palette, and measured on the same four white grounds as everything above.
 
@@ -285,11 +307,15 @@
   --arpi-colour-data-age-critical: var(--arpi-rose-700);
 
   /* Domain washes. Restrained tints that help the eye find a business area;
-     they carry no state and never encode a value. */
-  --arpi-colour-zone-performance: var(--arpi-teal-100);
-  --arpi-colour-zone-plan: var(--arpi-emerald-100);
-  --arpi-colour-zone-inventory: var(--arpi-amber-100);
-  --arpi-colour-zone-funnel: var(--arpi-violet-100);
+     they carry no state and never encode a value -- the stock region is amber
+     whether the lot is clean or ageing badly. They are drawn from the `-50`
+     region-ground tier and rendered at full opacity, for the reason recorded
+     there. No `zone-*` token is a `data-*` token, so a tint cannot be read as a
+     value. */
+  --arpi-colour-zone-performance: var(--arpi-teal-50);
+  --arpi-colour-zone-plan: var(--arpi-emerald-50);
+  --arpi-colour-zone-inventory: var(--arpi-amber-50);
+  --arpi-colour-zone-funnel: var(--arpi-violet-50);
 
   /* ---------------------------------------------------------------------
      3. Typography

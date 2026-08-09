@@ -301,6 +301,17 @@ describe('every text colour clears the WCAG AA floor on every ground', () => {
     return value ?? ''
   }
 
+  /** Follow a `var(--arpi-*)` alias to the literal it resolves to. */
+  function resolved(name: string): string {
+    let current = token(name)
+    let hops = 0
+    while (current.startsWith('var(') && hops < 8) {
+      current = token(current.replace(/var\(|\)/g, '').trim())
+      hops += 1
+    }
+    return current
+  }
+
   /** Every white surface that can carry text. */
   const whiteGrounds = [
     '--arpi-canvas-pure',
@@ -309,12 +320,36 @@ describe('every text colour clears the WCAG AA floor on every ground', () => {
     '--arpi-canvas-wash',
   ]
 
+  /**
+   * The four domain washes, which became real grounds when the console started
+   * tinting a region by business area.
+   *
+   * THEY ARE RENDERED AT FULL STRENGTH, WHICH IS WHY THEY CAN BE MEASURED AT ALL.
+   * `page.tsx` writes `bg-zone-plan`, not `bg-zone-plan/70`: a fractional opacity
+   * makes the real ground a composite of the token and whatever is behind it, and
+   * a test measuring the token alone would then be measuring a colour the browser
+   * never paints. At full strength the declared token IS the ground.
+   *
+   * Every text and mark assertion below runs against these as well as against the
+   * whites, for the reason the accent failure above records -- a colour is not
+   * accessible on its own, only on a ground, and this pass added four grounds.
+   */
+  const zoneGrounds = [
+    '--arpi-colour-zone-performance',
+    '--arpi-colour-zone-plan',
+    '--arpi-colour-zone-inventory',
+    '--arpi-colour-zone-funnel',
+  ]
+
+  /** Every opaque surface on the console that can carry text or a mark. */
+  const allGrounds = [...whiteGrounds, ...zoneGrounds]
+
   it.each(['--arpi-ink-900', '--arpi-ink-800', '--arpi-ink-600', '--arpi-ink-400'])(
     '%s reaches 4.5:1 on every white surface',
     (name) => {
-      for (const ground of whiteGrounds) {
+      for (const ground of allGrounds) {
         expect(
-          ratio(token(name), token(ground)),
+          ratio(token(name), resolved(ground)),
           `${name} on ${ground}`
         ).toBeGreaterThanOrEqual(4.5)
       }
@@ -331,9 +366,9 @@ describe('every text colour clears the WCAG AA floor on every ground', () => {
     '--arpi-rose-600',
     '--arpi-violet-600',
   ])('%s reaches 4.5:1 as status, accent and link text', (name) => {
-    for (const ground of whiteGrounds) {
+    for (const ground of allGrounds) {
       expect(
-        ratio(token(name), token(ground)),
+        ratio(token(name), resolved(ground)),
         `${name} on ${ground}`
       ).toBeGreaterThanOrEqual(4.5)
     }
@@ -358,10 +393,11 @@ describe('every text colour clears the WCAG AA floor on every ground', () => {
     '--arpi-orange-600',
     '--arpi-rose-700',
   ])('%s reaches 3:1 as a chart mark on every white surface', (name) => {
-    for (const ground of whiteGrounds) {
-      expect(ratio(token(name), token(ground)), `${name} on ${ground}`).toBeGreaterThanOrEqual(
-        3
-      )
+    for (const ground of allGrounds) {
+      expect(
+        ratio(token(name), resolved(ground)),
+        `${name} on ${ground}`
+      ).toBeGreaterThanOrEqual(3)
     }
   })
 
@@ -386,10 +422,12 @@ describe('every text colour clears the WCAG AA floor on every ground', () => {
       '--arpi-colour-data-age-critical',
     ]
     for (const name of ramp) {
-      const resolved = token(name).replace(/var\(|\)/g, '').trim()
-      const value = token(resolved)
-      for (const ground of whiteGrounds) {
-        expect(ratio(value, token(ground)), `${name} on ${ground}`).toBeGreaterThanOrEqual(3)
+      const value = resolved(name)
+      for (const ground of allGrounds) {
+        expect(
+          ratio(value, resolved(ground)),
+          `${name} on ${ground}`
+        ).toBeGreaterThanOrEqual(3)
       }
     }
   })
