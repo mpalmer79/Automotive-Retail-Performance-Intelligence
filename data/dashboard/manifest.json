@@ -1,13 +1,13 @@
 {
   "schema": "arpi.dashboard_export/1",
   "contract_version": 1,
-  "contract_sha256": "a8634281360e56cafb75c2613b0715764a332c19637c8802e1bd74de5460e436",
-  "dataset_version": 10,
-  "generated_at": "2026-08-09T00:27:25+00:00",
+  "contract_sha256": "8f99a0ef64e8a52313f63611c5e800879e37b98c8c2ebfb8abb5d1c7b2691753",
+  "dataset_version": 11,
+  "generated_at": "2026-08-09T01:36:53+00:00",
   "as_of_date": "2025-12-31",
   "profile": "development",
   "random_seed": 20250701,
-  "source_commit": "81ddc05bf7081f47cd8e4192a71ce203c3efc83f",
+  "source_commit": "4efd99fac51cf68a8809fa697259e2d082dbecf2",
   "exporter_version": "0.1.0",
   "query_normalisation": "arpi.sql_whitespace_canonical/1",
   "reporter_role": "arpi_reporter",
@@ -6487,16 +6487,6 @@
           "source_column": "reporting.vw_accounting_exceptions.entity_name"
         },
         {
-          "name": "entity_id",
-          "type": "string",
-          "nullable": false,
-          "class": "non-personal",
-          "unit": null,
-          "display_precision": null,
-          "enumeration": null,
-          "source_column": "reporting.vw_accounting_exceptions.entity_key"
-        },
-        {
           "name": "dealership_id",
           "type": "string",
           "nullable": false,
@@ -6537,12 +6527,12 @@
           "source_column": "reporting.vw_accounting_exceptions.exception_detail"
         }
       ],
-      "notes": "THE CLASSES ARE NOT INTERCHANGEABLE AND MUST NOT BE ADDED TOGETHER. This dataset carries valid-but-unreconciled positions, missing-side control states, and structural integrity findings. A count that sums all three and calls itself 'total accounting errors' is analytically wrong: a controlled GL variance and an orphaned F&I product are not the same kind of thing and do not have the same remedy.\n\nentity_name and entity_id are the drill-through pair. entity_id is the view's entity_key renamed at the boundary: it is always a BUSINESS identifier -- a vehicle_id or a sale_id -- and never a warehouse surrogate, so the console can put it in a URL. It is exported under a name that says so, because a `_key` suffix in ARPI means a surrogate and this column has never been one. Where entity_name names no surface the console can reach, the row shows no link rather than a fabricated one.\n\nexception_detail is a GENERATED description built from the governed rule that fired. It is not a free-text note, no human writes it, and there is no notes field anywhere in this lane.",
-      "query_sha256": "1b6cfcbf200c39c1250874754e31b7208b9ed30a1ad1aa73d44f759e2838bbe8",
+      "notes": "THE CLASSES ARE NOT INTERCHANGEABLE AND MUST NOT BE ADDED TOGETHER. This dataset carries valid-but-unreconciled positions, missing-side control states, and structural integrity findings. A count that sums all three and calls itself 'total accounting errors' is analytically wrong: a controlled GL variance and an orphaned F&I product are not the same kind of thing and do not have the same remedy.\n\nentity_name says what KIND of thing the exception is about, and every row this view currently emits says `gl_reconciliation`: the exception is a property of a store-account-date position, not of a vehicle or a deal. The view's entity_key is NOT exported, because its values are composites of warehouse surrogates; the position's business identity is (dealership_id, exception_date, control account) and the first two are exported columns. The console builds its drill-through from those. Where entity_name names a kind the console has no surface for, the row shows no link rather than a fabricated one.\n\nexception_detail is a GENERATED description built from the governed rule that fired. It is not a free-text note, no human writes it, and there is no notes field anywhere in this lane.",
+      "query_sha256": "f0a2804dc42002fac845f667b293c31c5a72243696b57491244647b502fd6e84",
       "row_count": 4,
       "file": "accounting-exceptions.json",
-      "file_sha256": "498565863273a988dc9c15275bdaf32814c552d995bdac56ff048d670398897f",
-      "file_bytes": 2466
+      "file_sha256": "bf8dbe81271d751d3a90e9afa769674a59db010bdfa529185e2987810b8cc554",
+      "file_bytes": 2358
     },
     {
       "name": "reconciliation-status",
@@ -7309,7 +7299,7 @@
   "privacy_scan": {
     "status": "passed",
     "prohibited_hits": 0,
-    "columns_scanned": 566,
+    "columns_scanned": 565,
     "primary_control": "contract allowlist",
     "secondary_control": "arpi.validation.privacy prohibited-name tripwire"
   },
@@ -7321,7 +7311,7 @@
     "reconciliations_failed": 0
   },
   "sizes": {
-    "dataset_bytes_total": 15405994,
+    "dataset_bytes_total": 15405886,
     "largest_dataset": {
       "name": "lead-response",
       "bytes": 2269345,

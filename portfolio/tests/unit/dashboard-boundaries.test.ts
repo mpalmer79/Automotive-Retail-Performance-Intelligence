@@ -430,22 +430,30 @@ describe('the generated dashboard data stays out of the existing route bundles',
      *   lib/dashboard/accounting-chunks.ts  the 18 accounting-schedule partitions
      *                                       (`DASH.9`) -- 360 kB of per-unit book values
      *                                       and their capitalised components
+     *   lib/dashboard/accounting-data.ts    the two UNCHUNKED accounting sets (`DASH.9`):
+     *                                       the 18 kB GL-versus-subledger comparison and
+     *                                       the 2 kB exception set. The comparison set is
+     *                                       the ONLY accounting door `/dashboard` opens --
+     *                                       43 rows is the whole comparison surface, so the
+     *                                       narrow set IS the Executive summary and no
+     *                                       second aggregate had to be invented for it
      *
      * The last two are kept apart from each other deliberately. They share a grain but
      * not an audience: a route that wants operational stock should not acquire every
      * capitalised cost component as a side effect, and `/dashboard` renders one
      * reconciliation figure and must acquire neither.
      *
-     * Folding any of the last eight into `data.ts` would have put deal-level records
-     * and a 95 kB trend into `/dashboard`'s graph, which has no use for either. Ten
+     * Folding any of the last nine into `data.ts` would have put deal-level records
+     * and a 95 kB trend into `/dashboard`'s graph, which has no use for either. Eleven
      * narrow doors is a stronger boundary than two wide ones, and the list is
-     * exhaustive: an eleventh importer fails here.
+     * exhaustive: a twelfth importer fails here.
      */
     expect(
       importers.map((file) => file.relative).sort(),
-      'the generated dashboard data has exactly ten declared doors'
+      'the generated dashboard data has exactly eleven declared doors'
     ).toEqual([
       'lib/dashboard/accounting-chunks.ts',
+      'lib/dashboard/accounting-data.ts',
       'lib/dashboard/chunks.ts',
       'lib/dashboard/data.ts',
       'lib/dashboard/deal-chunks.ts',
@@ -610,6 +618,30 @@ describe('ADR-0013 condition 2: no frontend redefines a KPI', () => {
      * totals, so a module that had invented a formula would fail there with a wrong
      * number rather than pass here on a filename.
      *
+     * `accounting.ts` and `inventory.ts` (`DASH.9`) are the seventh and eighth, and both
+     * are narrower than `fi.ts`. Neither divides anything.
+     *
+     * `accounting.ts` sums exported balance columns and sums ALREADY-SIGNED variances. It
+     * does not compute a variance: `variance_amount = gl_balance - subledger_balance` is
+     * evaluated in SQL and published per row, and this module only adds the published
+     * values up. The one thing it must get right is WHICH rows it adds -- comparable
+     * positions on ONE date -- and that is selection, not arithmetic.
+     *
+     * `inventory.ts` sums `inventory_investment` and counts units. It does not compute
+     * `price_to_market_ratio`, `days_in_stock`, `age_bucket` or the aged flag; all four
+     * arrive resolved, and the aged THRESHOLD arrives as a column so the module reads it
+     * instead of declaring 60. Its median is an order statistic over the population rather
+     * than an aggregate of aggregates, which is why it cannot be pushed into SQL for a
+     * filtered selection.
+     *
+     * As with the other six, that claim is not left to this test:
+     * `dashboard-accounting.test.ts` and `dashboard-inventory.test.ts` reconcile what they
+     * produce against the export manifest's own published rows, and seed corrupted fixtures
+     * for the specific mistakes each model could make -- absolute variance in place of
+     * signed, a missing side read as zero, balances summed across dates, a 120-day aged
+     * threshold, subgroup medians averaged. A module that had invented a formula fails
+     * there with a wrong number rather than passing here on a filename.
+     *
      * `visuals.tsx` and `pace-bar.tsx` are NOT on this list and must not be: a chart or
      * bar primitive receives resolved values and turns them into geometry.
      */
@@ -617,10 +649,12 @@ describe('ADR-0013 condition 2: no frontend redefines a KPI', () => {
       offenders,
       'exact arithmetic outside decimal.ts, the selector registry and the declared view models'
     ).toEqual([
+      'lib/dashboard/accounting.ts',
       'lib/dashboard/deal-jacket.ts',
       'lib/dashboard/deals.ts',
       'lib/dashboard/executive.ts',
       'lib/dashboard/fi.ts',
+      'lib/dashboard/inventory.ts',
       'lib/dashboard/sales-gross.ts',
       'lib/dashboard/targets.ts',
     ])

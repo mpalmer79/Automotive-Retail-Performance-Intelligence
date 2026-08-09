@@ -1524,20 +1524,23 @@ _ACCOUNTING_EXCEPTIONS = DatasetContract(
             enumeration=ACCOUNTING_EXCEPTION_CODES,
         ),
         _attribute("entity_name", "string", view="vw_accounting_exceptions"),
-        # RENAMED AT THE BOUNDARY, and the rename is the point. The view calls this column
-        # entity_key, but in ARPI a `_key` suffix means a warehouse surrogate, and this
-        # column has never held one -- it carries a vehicle_id or a sale_id. Exporting it
-        # under its view name would make the console's own surrogate-key guard fire on a
-        # column that is not a surrogate, and would tell a reader the opposite of the truth
-        # about what is safe to put in a URL. The view keeps its name; the browser gets an
-        # honest one.
-        ColumnContract(
-            name="entity_id",
-            type="string",
-            nullable=False,
-            expression="base.entity_key",
-            source_column="vw_accounting_exceptions.entity_key",
-        ),
+        # `entity_key` IS DELIBERATELY NOT EXPORTED, and an earlier revision of this contract
+        # was wrong about why it could be.
+        #
+        # That revision exported it as `entity_id` on the stated grounds that it "carries a
+        # vehicle_id or a sale_id, never a surrogate". Reading the generated rows disproved
+        # it: every value is a composite of warehouse surrogates -- `20250930-1-2` is a date
+        # key and two dimension keys -- because every exception this view currently emits is
+        # at reconciliation grain, where that composite is the natural identity. The
+        # surrogate-key guard did not catch it because the guard inspects column NAMES, and
+        # the column had been given an honest-looking one.
+        #
+        # Nothing downstream needs it. The business identity of a reconciliation-grain
+        # exception is (store, date, control account), and `dealership_id` and
+        # `exception_date` are exported directly below; the console's drill-through is built
+        # from those. Exporting a surrogate composite as well would put warehouse load order
+        # in a public file to no purpose, and would break silently the first time the
+        # warehouse is rebuilt.
         # Resolved from the surrogates the view publishes. The view was built for DASH.8's
         # SQL-only audience, where a dealership_key was the right thing to expose; the
         # browser needs the business code and a real date, and the exporter's dimension
@@ -1560,13 +1563,14 @@ _ACCOUNTING_EXCEPTIONS = DatasetContract(
         "accounting errors' is analytically wrong: a controlled GL variance and an orphaned "
         "F&I product are not the same kind of thing and do not have the same remedy.\n"
         "\n"
-        "entity_name and entity_id are the drill-through pair. entity_id is the view's "
-        "entity_key renamed at the boundary: it is always a BUSINESS identifier -- a "
-        "vehicle_id or a sale_id -- and never a warehouse surrogate, so the console can put "
-        "it in a URL. It is exported under a name that says so, because a `_key` suffix in "
-        "ARPI means a surrogate and this column has never been one. Where entity_name names "
-        "no surface the console can reach, the row shows no link rather than a fabricated "
-        "one.\n"
+        "entity_name says what KIND of thing the exception is about, and every row this view "
+        "currently emits says `gl_reconciliation`: the exception is a property of a "
+        "store-account-date position, not of a vehicle or a deal. The view's entity_key is "
+        "NOT exported, because its values are composites of warehouse surrogates; the "
+        "position's business identity is (dealership_id, exception_date, control account) "
+        "and the first two are exported columns. The console builds its drill-through from "
+        "those. Where entity_name names a kind the console has no surface for, the row shows "
+        "no link rather than a fabricated one.\n"
         "\n"
         "exception_detail is a GENERATED description built from the governed rule that "
         "fired. It is not a free-text note, no human writes it, and there is no notes field "
