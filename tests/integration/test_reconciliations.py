@@ -1052,6 +1052,61 @@ VIEW_CORRUPTIONS: dict[str, tuple[str, str, str]] = {
         "FROM reportable i",
         "FROM reportable i\n  CROSS JOIN (VALUES (1), (2)) AS dup(n)",
     ),
+    # DASH.10. All five guard a presentation-grain view against the authority it re-grains,
+    # and all five are corrupted through the VIEW for the same reason the DASH.9 pair are:
+    # each side reads the same underlying fact, so no data change can separate them. What
+    # is seeded is the edit to the view that would actually cause the divergence.
+    "RECON-APPT-SOURCE-ROLLUP": (
+        # A fan-out on the appointment-to-lead join, which is the one thing this view could
+        # get wrong that would not look wrong. Every appointment measure doubles at once, so
+        # every RATE divides back to exactly the right number and only the components move.
+        "vw_appointment_source_funnel",
+        "JOIN reporting.vw_leads l ON l.lead_key = a.lead_key",
+        "JOIN reporting.vw_leads l ON l.lead_key = a.lead_key\n"
+        "             CROSS JOIN (VALUES (1), (2)) AS dup(n)",
+    ),
+    "RECON-LEAD-STAGE-PARTITION": (
+        # The subtraction this view exists to avoid. `fact_lead` does not enforce that a
+        # sale implies a show, so counting "showed and did not sell" as shown-minus-sold
+        # removes leads that were never in the population -- and on some rows takes the
+        # count below zero while the five terms stop summing to leads received.
+        "vw_lead_stage_loss",
+        "count(*) FILTER (WHERE NOT is_duplicate AND is_appointment_shown AND NOT is_sold)"
+        " AS shown_not_sold",
+        "(sum(appointment_shown_lead_count) - sum(sold_lead_count)) AS shown_not_sold",
+    ),
+    "RECON-LEAD-STAGE-GRAIN": (
+        # A dropped grain combination. The console places a stage count beside a funnel
+        # count, so a view that silently omits a store-source-campaign-date misaligns the
+        # two without either figure looking wrong on its own.
+        "vw_lead_stage_loss",
+        "FROM reporting.vw_leads l\n  GROUP BY",
+        "FROM reporting.vw_leads l\n  WHERE campaign_key IS NOT NULL\n  GROUP BY",
+    ),
+    "RECON-LEAD-RESPONSE-DIST-ROLLUP": (
+        # Every valid lead counted as responded, which folds the unanswered population into
+        # the denominator both response-time KPIs divide by. The roll-up catches it because
+        # vw_lead_response counts responded leads structurally, from a different column.
+        #
+        # TWO EARLIER ATTEMPTS WERE BENIGN AND WERE REPLACED RATHER THAN THE RULE WIDENED.
+        # Dropping `WHERE NOT is_duplicate` adds rows that contribute nothing, because
+        # vw_leads zeroes every count column on a duplicate row. Swapping `valid_lead_count`
+        # for `lead_count` is a no-op for the same reason compounded by the filter: inside a
+        # population with no duplicates the two columns are equal on every row. A corruption
+        # a rule correctly tolerates proves nothing about the rule.
+        "vw_lead_response_distribution",
+        "sum(responded_lead_count) AS responded_lead_count",
+        "sum(valid_lead_count) AS responded_lead_count",
+    ),
+    "RECON-LEAD-RESPONSE-DIST-MEDIAN": (
+        # THE defect the whole dataset exists to prevent: the never-responded bin treated
+        # as a zero-second response. It sorts every ignored lead to the fastest end of the
+        # distribution and improves the median, which is the most flattering single mistake
+        # available anywhere on the leads and marketing surface.
+        "vw_lead_response_distribution",
+        "    first_response_seconds,",
+        "    COALESCE(first_response_seconds, 0) AS first_response_seconds,",
+    ),
 }
 
 

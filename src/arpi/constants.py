@@ -1740,6 +1740,23 @@ SQL_RECONCILIATION_IDS: Final[tuple[str, ...]] = (
     # fan-out would double every count the inventory route publishes.
     "RECON-INV-UNIT-RATIO",
     "RECON-INV-UNIT-GRAIN",
+    # The three presentation-grain views DASH.10 added for the leads and marketing route.
+    # None adds a fact or a KPI, so each is a claim that an existing authority's numbers
+    # survive a different cut -- and a re-grain that fans out, drops rows or double-counts
+    # produces output that is entirely plausible and wrong. RECON-APPT-SOURCE-ROLLUP
+    # compares all nine additive appointment columns rather than the rates, because
+    # compensating inflation of a numerator and a denominator divides back to a correct
+    # looking rate. RECON-LEAD-STAGE-PARTITION and -GRAIN hold the stage partition to
+    # summing exactly to leads received, staying non-negative, and carrying exactly the
+    # funnel's grain. RECON-LEAD-RESPONSE-DIST-ROLLUP and -MEDIAN hold the response
+    # distribution to vw_lead_response's population and, crucially, prove KPI-FUN-008
+    # recomputed from the bins equals the median over the governed lead rows -- the
+    # property that makes a true median at an arbitrary filter scope possible at all.
+    "RECON-APPT-SOURCE-ROLLUP",
+    "RECON-LEAD-STAGE-PARTITION",
+    "RECON-LEAD-STAGE-GRAIN",
+    "RECON-LEAD-RESPONSE-DIST-ROLLUP",
+    "RECON-LEAD-RESPONSE-DIST-MEDIAN",
 )
 
 #: The reconciliations whose failure invalidates the numbers built on them.

@@ -216,7 +216,7 @@ list the acceptance criteria bind to.
 | **Required dimensions** | `dim_date`, `dim_dealership`, `dim_employee` |
 | **Required facts** | `fact_appointment`, `fact_vehicle_sale` |
 | **KPI IDs** | `KPI-FUN-005` |
-| **Reporting view** | `reporting.vw_appointment_funnel`, `reporting.vw_appointments` |
+| **Reporting view** | `reporting.vw_appointment_funnel`, `reporting.vw_appointments`, `reporting.vw_appointment_source_funnel` (`DASH.10`, the same measures cut by the source and campaign of the originating lead, so the question can be asked of one source without silently answering it for the whole group) |
 | **Intended future report page** | 4. Lead Funnel / 5. Employee Performance |
 | **Decision enabled** | Whether the showroom or the BDC is the constraint. |
 | **Interpretation caution** | Attributed to the **visit** date, not the sale date, so a customer who visits on the last day of a month and buys three days later still counts in the visit's period -- late-period conversion therefore appears to improve as data matures, and period-to-date figures must be labelled incomplete. Walk-in traffic without an appointment is not in this measure at all. |
@@ -360,7 +360,7 @@ list the acceptance criteria bind to.
 | **Required dimensions** | `dim_date`, `dim_dealership`, `dim_lead_source` |
 | **Required facts** | `fact_lead` |
 | **KPI IDs** | `KPI-FUN-007`, `KPI-FUN-008` |
-| **Reporting view** | `reporting.vw_lead_response`, `reporting.vw_leads` |
+| **Reporting view** | `reporting.vw_lead_response`, `reporting.vw_leads`, `reporting.vw_lead_response_distribution` (`DASH.10`, the first-response population as counted bins — the only shape `KPI-FUN-008` can be recomputed from at a filter scope the published medians do not cover, because a median does not decompose) |
 | **Intended future report page** | 4. Lead Funnel |
 | **Decision enabled** | Whether to change staffing hours or auto-response configuration. |
 | **Interpretation caution** | **Both measures are blind to ignored leads**, because leads never responded to are excluded from the denominator -- a store that ignores half its leads can report an excellent response time. The count of leads without follow-up must be shown alongside. The median is the headline; the banded distribution is more actionable than either statistic. ARPI states **no target response time**. |
@@ -376,7 +376,7 @@ list the acceptance criteria bind to.
 | **Required dimensions** | `dim_date`, `dim_dealership`, `dim_lead_source` |
 | **Required facts** | `fact_lead`, `fact_vehicle_sale` |
 | **KPI IDs** | `KPI-FUN-006` |
-| **Reporting view** | `reporting.vw_lead_funnel`, `reporting.vw_lead_source` |
+| **Reporting view** | `reporting.vw_lead_funnel`, `reporting.vw_lead_source`, `reporting.vw_lead_stage_loss` (`DASH.10`, the cohort partitioned by furthest stage reached, so "converts to delivered cars rather than only activity" can be read as where each source's leads stopped rather than only as a conversion rate) |
 | **Intended future report page** | 4. Lead Funnel / 6. Marketing Performance |
 | **Decision enabled** | Which source contracts to renew and which to end. |
 | **Interpretation caution** | **Cohort maturity dominates.** Leads are attributed to their creation month, so the most recent months always look worst -- those leads have not finished converting. Comparing an immature month to a mature one is the single most common misreading of this metric. Attribution is single-source and first-touch. |
