@@ -69,6 +69,7 @@ trimmed AS (
         nullif(btrim(r.acquisition_cost), '')                                  AS src_acquisition_cost,
         nullif(btrim(r.reconditioning_cost), '')                               AS src_reconditioning_cost,
         nullif(btrim(r.inventory_investment), '')                              AS src_inventory_investment,
+        nullif(btrim(r.market_price_estimate), '')                             AS src_market_price_estimate,
         nullif(btrim(r.days_in_stock), '')                                     AS src_days_in_stock,
         nullif(btrim(r.age_bucket), '')                                        AS src_age_bucket,
         nullif(btrim(r.markdown_count_to_date), '')                            AS src_markdown_count_to_date,
@@ -95,6 +96,7 @@ cast_attempt AS (
         staging.fn_try_money(t.src_acquisition_cost) AS acquisition_cost,
         staging.fn_try_money(t.src_reconditioning_cost) AS reconditioning_cost,
         staging.fn_try_money(t.src_inventory_investment) AS inventory_investment,
+        staging.fn_try_money(t.src_market_price_estimate) AS market_price_estimate,
         staging.fn_try_integer(t.src_days_in_stock) AS days_in_stock,
         CASE WHEN length(t.src_age_bucket) <= 16 THEN t.src_age_bucket::varchar(16) END AS age_bucket,
         staging.fn_try_smallint(t.src_markdown_count_to_date) AS markdown_count_to_date,
@@ -110,6 +112,7 @@ cast_attempt AS (
         t.src_acquisition_cost,
         t.src_reconditioning_cost,
         t.src_inventory_investment,
+        t.src_market_price_estimate,
         t.src_days_in_stock,
         t.src_age_bucket,
         t.src_markdown_count_to_date,
@@ -138,6 +141,7 @@ flagged AS (
             CASE WHEN c.src_acquisition_cost IS NOT NULL AND c.acquisition_cost IS NULL THEN 'acquisition_cost' END,
             CASE WHEN c.src_reconditioning_cost IS NOT NULL AND c.reconditioning_cost IS NULL THEN 'reconditioning_cost' END,
             CASE WHEN c.src_inventory_investment IS NOT NULL AND c.inventory_investment IS NULL THEN 'inventory_investment' END,
+            CASE WHEN c.src_market_price_estimate IS NOT NULL AND c.market_price_estimate IS NULL THEN 'market_price_estimate' END,
             CASE WHEN c.src_days_in_stock IS NOT NULL AND c.days_in_stock IS NULL THEN 'days_in_stock' END,
             CASE WHEN c.src_age_bucket IS NOT NULL AND c.age_bucket IS NULL THEN 'age_bucket' END,
             CASE WHEN c.src_markdown_count_to_date IS NOT NULL AND c.markdown_count_to_date IS NULL THEN 'markdown_count_to_date' END,
@@ -175,6 +179,12 @@ flagged AS (
             CASE WHEN c.original_asking_price IS NOT NULL AND c.original_asking_price < 0 THEN 'original_asking_price' END,
             CASE WHEN c.acquisition_cost IS NOT NULL AND c.acquisition_cost < 0 THEN 'acquisition_cost' END,
             CASE WHEN c.reconditioning_cost IS NOT NULL AND c.reconditioning_cost < 0 THEN 'reconditioning_cost' END,
+            -- Strictly positive, not merely non-negative. This column exists to be the
+            -- denominator of price_to_market_ratio, and a zero estimate is not a cheap
+            -- unit -- it is a division the reporting layer cannot perform. Quarantining it
+            -- here is what lets the ratio be NULL-because-absent rather than NULL-because-
+            -- something-downstream-caught-a-division.
+            CASE WHEN c.market_price_estimate IS NOT NULL AND c.market_price_estimate <= 0 THEN 'market_price_estimate' END,
             CASE WHEN c.inventory_investment IS NOT NULL
                   AND c.acquisition_cost IS NOT NULL
                   AND c.reconditioning_cost IS NOT NULL
@@ -219,6 +229,7 @@ SELECT
     c.acquisition_cost,
     c.reconditioning_cost,
     c.inventory_investment,
+    c.market_price_estimate,
     c.days_in_stock,
     c.age_bucket,
     c.markdown_count_to_date,
@@ -264,6 +275,7 @@ SELECT DISTINCT ON (v.snapshot_date, v.dealership_id, v.vehicle_id)
     v.acquisition_cost,
     v.reconditioning_cost,
     v.inventory_investment,
+    v.market_price_estimate,
     v.days_in_stock,
     v.age_bucket,
     v.markdown_count_to_date,
@@ -295,6 +307,7 @@ COMMENT ON COLUMN staging.stg_inventory_snapshot.msrp IS 'Manufacturer suggested
 COMMENT ON COLUMN staging.stg_inventory_snapshot.acquisition_cost IS 'What the store paid for the unit.';
 COMMENT ON COLUMN staging.stg_inventory_snapshot.reconditioning_cost IS 'Reconditioning spend booked against the unit.';
 COMMENT ON COLUMN staging.stg_inventory_snapshot.inventory_investment IS 'acquisition_cost + reconditioning_cost, checked exactly here and enforced again by the warehouse CHECK constraint.';
+COMMENT ON COLUMN staging.stg_inventory_snapshot.market_price_estimate IS 'SYNTHETIC market price reference for the unit, constant across its snapshots. NULL where the estimator declined to price the unit. Strictly positive when present, because it is the denominator of price_to_market_ratio. NOT a market valuation, not sourced from any guidebook, auction or licensed benchmark, and never to be presented as one.';
 COMMENT ON COLUMN staging.stg_inventory_snapshot.days_in_stock IS 'Days since acquisition, measured from the acquisition date and not from the first snapshot date.';
 COMMENT ON COLUMN staging.stg_inventory_snapshot.age_bucket IS 'Banded days_in_stock: 0-30 | 31-60 | 61-90 | 91-120 | Over 120.';
 COMMENT ON COLUMN staging.stg_inventory_snapshot.markdown_count_to_date IS 'Price reductions taken to date; never decreases for a unit.';

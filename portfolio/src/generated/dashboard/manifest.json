@@ -1,19 +1,20 @@
 {
   "schema": "arpi.dashboard_client/1",
-  "datasetVersion": 8,
+  "datasetVersion": 10,
   "contractVersion": 1,
-  "contractSha256": "996896902dddae3187c07341c5dc65c7ad732eff9634aab2938befe8703e881d",
-  "generatedAt": "2026-08-08T14:45:58+00:00",
+  "contractSha256": "a8634281360e56cafb75c2613b0715764a332c19637c8802e1bd74de5460e436",
+  "generatedAt": "2026-08-09T00:27:25+00:00",
   "asOfDate": "2025-12-31",
   "profile": "development",
   "randomSeed": 20250701,
-  "sourceCommit": "55c11b806a0b4b913e3197bf8fcef0f85d03c485",
+  "sourceCommit": "81ddc05bf7081f47cd8e4192a71ce203c3efc83f",
   "exporterVersion": "0.1.0",
   "syntheticData": true,
   "fictionalDealerGroup": true,
-  "pipelineRunUuid": "72a266b6-31d0-470b-80e4-48c3e3bfdd24",
+  "pipelineRunUuid": "fc5b97a2-f416-4abb-bd81-5f5cd3de6b2b",
   "pipelineRunStatus": "succeeded",
   "sourceViews": [
+    "reporting.vw_accounting_exceptions",
     "reporting.vw_appointment_funnel",
     "reporting.vw_calendar",
     "reporting.vw_days_supply",
@@ -27,9 +28,12 @@
     "reporting.vw_fi_summary",
     "reporting.vw_gross_change_bridge",
     "reporting.vw_gross_summary",
+    "reporting.vw_inventory_accounting",
     "reporting.vw_inventory_aging",
+    "reporting.vw_inventory_gl_reconciliation",
     "reporting.vw_inventory_health",
     "reporting.vw_inventory_turn",
+    "reporting.vw_inventory_units",
     "reporting.vw_lead_funnel",
     "reporting.vw_lead_response",
     "reporting.vw_lead_source",
@@ -486,7 +490,7 @@
   "privacyScanStatus": "passed",
   "validationCriticalFailures": 0,
   "validationWarnings": 0,
-  "reconciliationsEvaluated": 96,
+  "reconciliationsEvaluated": 114,
   "reconciliationsFailed": 0,
   "stale": false,
   "limitations": [
@@ -6018,6 +6022,926 @@
       ]
     },
     {
+      "name": "inventory-units",
+      "grain": "One row per vehicle per store per daily snapshot date, while the unit is active.",
+      "businessKey": [
+        "dealership_id",
+        "snapshot_date",
+        "vehicle_id"
+      ],
+      "dateBasis": "snapshot date",
+      "kpiIds": [
+        "KPI-INV-001",
+        "KPI-INV-002",
+        "KPI-INV-003",
+        "KPI-INV-004",
+        "KPI-INV-005"
+      ],
+      "rowCount": 1501,
+      "columns": [
+        {
+          "name": "dealership_id",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "snapshot_date",
+          "type": "date",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "vehicle_id",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "condition_type",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": [
+            "New",
+            "Used",
+            "Certified"
+          ]
+        },
+        {
+          "name": "condition_group",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": [
+            "New",
+            "Used"
+          ]
+        },
+        {
+          "name": "model_year",
+          "type": "integer",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "make",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "model_name",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "trim_level",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "body_style",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "odometer_reading",
+          "type": "integer",
+          "nullable": false,
+          "unit": "miles",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "days_in_stock",
+          "type": "integer",
+          "nullable": false,
+          "unit": "days",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "age_bucket",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": [
+            "0-30",
+            "31-60",
+            "61-90",
+            "91-120",
+            "Over 120"
+          ]
+        },
+        {
+          "name": "aged_threshold_days",
+          "type": "integer",
+          "nullable": false,
+          "unit": "days",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "is_aged_over_default_threshold",
+          "type": "boolean",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "current_asking_price",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "original_asking_price",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "inventory_investment",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "market_price_estimate",
+          "type": "currency",
+          "nullable": true,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "price_to_market_ratio",
+          "type": "exact",
+          "nullable": true,
+          "unit": "ratio",
+          "displayPrecision": 4,
+          "enumeration": null
+        },
+        {
+          "name": "markdown_count_to_date",
+          "type": "integer",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "prior_asking_price",
+          "type": "currency",
+          "nullable": true,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "asking_price_change",
+          "type": "currency",
+          "nullable": true,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "is_price_reduced_since_prior",
+          "type": "boolean",
+          "nullable": true,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "inventory_unit_count",
+          "type": "integer",
+          "nullable": false,
+          "unit": "units",
+          "displayPrecision": null,
+          "enumeration": null
+        }
+      ],
+      "chunks": [
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-07",
+          "file": "datasets/inventory-units/GSA-001/2025-07.json",
+          "rowCount": 100,
+          "bytes": 20210
+        },
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-08",
+          "file": "datasets/inventory-units/GSA-001/2025-08.json",
+          "rowCount": 93,
+          "bytes": 19416
+        },
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-09",
+          "file": "datasets/inventory-units/GSA-001/2025-09.json",
+          "rowCount": 88,
+          "bytes": 18422
+        },
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-10",
+          "file": "datasets/inventory-units/GSA-001/2025-10.json",
+          "rowCount": 92,
+          "bytes": 19256
+        },
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-11",
+          "file": "datasets/inventory-units/GSA-001/2025-11.json",
+          "rowCount": 91,
+          "bytes": 19041
+        },
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-12",
+          "file": "datasets/inventory-units/GSA-001/2025-12.json",
+          "rowCount": 96,
+          "bytes": 20111
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-07",
+          "file": "datasets/inventory-units/GSA-002/2025-07.json",
+          "rowCount": 92,
+          "bytes": 18635
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-08",
+          "file": "datasets/inventory-units/GSA-002/2025-08.json",
+          "rowCount": 90,
+          "bytes": 18815
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-09",
+          "file": "datasets/inventory-units/GSA-002/2025-09.json",
+          "rowCount": 100,
+          "bytes": 20851
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-10",
+          "file": "datasets/inventory-units/GSA-002/2025-10.json",
+          "rowCount": 94,
+          "bytes": 19759
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-11",
+          "file": "datasets/inventory-units/GSA-002/2025-11.json",
+          "rowCount": 92,
+          "bytes": 19359
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-12",
+          "file": "datasets/inventory-units/GSA-002/2025-12.json",
+          "rowCount": 83,
+          "bytes": 17623
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-07",
+          "file": "datasets/inventory-units/GSA-003/2025-07.json",
+          "rowCount": 65,
+          "bytes": 13302
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-08",
+          "file": "datasets/inventory-units/GSA-003/2025-08.json",
+          "rowCount": 62,
+          "bytes": 13012
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-09",
+          "file": "datasets/inventory-units/GSA-003/2025-09.json",
+          "rowCount": 66,
+          "bytes": 13875
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-10",
+          "file": "datasets/inventory-units/GSA-003/2025-10.json",
+          "rowCount": 65,
+          "bytes": 13735
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-11",
+          "file": "datasets/inventory-units/GSA-003/2025-11.json",
+          "rowCount": 61,
+          "bytes": 12958
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-12",
+          "file": "datasets/inventory-units/GSA-003/2025-12.json",
+          "rowCount": 71,
+          "bytes": 14875
+        }
+      ]
+    },
+    {
+      "name": "inventory-accounting",
+      "grain": "One row per vehicle per store per accounting (month-end) date.",
+      "businessKey": [
+        "dealership_id",
+        "accounting_date",
+        "vehicle_id"
+      ],
+      "dateBasis": "accounting date",
+      "kpiIds": [
+        "KPI-ACC-001",
+        "KPI-ACC-005",
+        "KPI-ACC-011",
+        "KPI-ACC-012"
+      ],
+      "rowCount": 1501,
+      "columns": [
+        {
+          "name": "dealership_id",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "accounting_date",
+          "type": "date",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "vehicle_id",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "control_account_category",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": [
+            "New Vehicle Inventory",
+            "Used Vehicle Inventory",
+            "Certified Vehicle Inventory"
+          ]
+        },
+        {
+          "name": "gl_account_number",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "gl_account_name",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "condition_type",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": [
+            "New",
+            "Used",
+            "Certified"
+          ]
+        },
+        {
+          "name": "acquisition_cost",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "capitalized_transportation",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "capitalized_reconditioning",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "capitalized_accessories",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "other_capitalized_costs",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "write_down_amount",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "current_book_value",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "is_written_down",
+          "type": "boolean",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "floorplan_principal",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "is_floorplanned",
+          "type": "boolean",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "days_in_stock",
+          "type": "integer",
+          "nullable": false,
+          "unit": "days",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "posting_lag_days",
+          "type": "integer",
+          "nullable": true,
+          "unit": "days",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "is_first_accounting_appearance",
+          "type": "boolean",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "stock_unit_count",
+          "type": "integer",
+          "nullable": false,
+          "unit": "units",
+          "displayPrecision": null,
+          "enumeration": null
+        }
+      ],
+      "chunks": [
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-07",
+          "file": "datasets/inventory-accounting/GSA-001/2025-07.json",
+          "rowCount": 100,
+          "bytes": 21002
+        },
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-08",
+          "file": "datasets/inventory-accounting/GSA-001/2025-08.json",
+          "rowCount": 93,
+          "bytes": 19602
+        },
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-09",
+          "file": "datasets/inventory-accounting/GSA-001/2025-09.json",
+          "rowCount": 88,
+          "bytes": 18605
+        },
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-10",
+          "file": "datasets/inventory-accounting/GSA-001/2025-10.json",
+          "rowCount": 92,
+          "bytes": 19489
+        },
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-11",
+          "file": "datasets/inventory-accounting/GSA-001/2025-11.json",
+          "rowCount": 91,
+          "bytes": 19210
+        },
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-12",
+          "file": "datasets/inventory-accounting/GSA-001/2025-12.json",
+          "rowCount": 96,
+          "bytes": 20340
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-07",
+          "file": "datasets/inventory-accounting/GSA-002/2025-07.json",
+          "rowCount": 92,
+          "bytes": 19363
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-08",
+          "file": "datasets/inventory-accounting/GSA-002/2025-08.json",
+          "rowCount": 90,
+          "bytes": 19058
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-09",
+          "file": "datasets/inventory-accounting/GSA-002/2025-09.json",
+          "rowCount": 100,
+          "bytes": 21059
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-10",
+          "file": "datasets/inventory-accounting/GSA-002/2025-10.json",
+          "rowCount": 94,
+          "bytes": 19863
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-11",
+          "file": "datasets/inventory-accounting/GSA-002/2025-11.json",
+          "rowCount": 92,
+          "bytes": 19402
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-12",
+          "file": "datasets/inventory-accounting/GSA-002/2025-12.json",
+          "rowCount": 83,
+          "bytes": 17635
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-07",
+          "file": "datasets/inventory-accounting/GSA-003/2025-07.json",
+          "rowCount": 65,
+          "bytes": 13623
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-08",
+          "file": "datasets/inventory-accounting/GSA-003/2025-08.json",
+          "rowCount": 62,
+          "bytes": 13065
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-09",
+          "file": "datasets/inventory-accounting/GSA-003/2025-09.json",
+          "rowCount": 66,
+          "bytes": 13890
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-10",
+          "file": "datasets/inventory-accounting/GSA-003/2025-10.json",
+          "rowCount": 65,
+          "bytes": 13713
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-11",
+          "file": "datasets/inventory-accounting/GSA-003/2025-11.json",
+          "rowCount": 61,
+          "bytes": 12916
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-12",
+          "file": "datasets/inventory-accounting/GSA-003/2025-12.json",
+          "rowCount": 71,
+          "bytes": 14908
+        }
+      ]
+    },
+    {
+      "name": "inventory-gl-reconciliation",
+      "grain": "One row per store per GL control account per comparison (balance) date.",
+      "businessKey": [
+        "dealership_id",
+        "comparison_date",
+        "gl_account_number"
+      ],
+      "dateBasis": "comparison date",
+      "kpiIds": [
+        "KPI-ACC-001",
+        "KPI-ACC-002",
+        "KPI-ACC-003",
+        "KPI-ACC-004"
+      ],
+      "rowCount": 43,
+      "columns": [
+        {
+          "name": "dealership_id",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "comparison_date",
+          "type": "date",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "gl_account_number",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "gl_account_name",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "control_account_category",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": [
+            "New Vehicle Inventory",
+            "Used Vehicle Inventory",
+            "Certified Vehicle Inventory"
+          ]
+        },
+        {
+          "name": "subledger_balance",
+          "type": "currency",
+          "nullable": true,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "gl_balance",
+          "type": "currency",
+          "nullable": true,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "variance_amount",
+          "type": "currency",
+          "nullable": true,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "absolute_variance_amount",
+          "type": "currency",
+          "nullable": true,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "comparison_state",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": [
+            "Reconciled",
+            "Variance",
+            "Missing GL balance",
+            "Missing subledger balance"
+          ]
+        },
+        {
+          "name": "is_reconciled",
+          "type": "boolean",
+          "nullable": true,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "is_comparable",
+          "type": "boolean",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "stock_unit_count",
+          "type": "integer",
+          "nullable": true,
+          "unit": "units",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "floorplan_principal",
+          "type": "currency",
+          "nullable": true,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        }
+      ],
+      "chunks": null
+    },
+    {
+      "name": "accounting-exceptions",
+      "grain": "One row per accounting exception.",
+      "businessKey": [
+        "exception_id"
+      ],
+      "dateBasis": "exception date",
+      "kpiIds": [
+        "KPI-ACC-004",
+        "KPI-ACC-007",
+        "KPI-ACC-008",
+        "KPI-ACC-009",
+        "KPI-ACC-010"
+      ],
+      "rowCount": 4,
+      "columns": [
+        {
+          "name": "exception_id",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "exception_code",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": [
+            "ACC-GL-VARIANCE",
+            "ACC-MISSING-GL-BALANCE",
+            "ACC-MISSING-SUBLEDGER-BALANCE",
+            "ACC-MISSING-BOOK-ROW",
+            "ACC-ORPHAN-BOOK-ROW",
+            "ACC-FRONT-GROSS-IDENTITY",
+            "ACC-BACK-GROSS-IDENTITY",
+            "ACC-TOTAL-GROSS-IDENTITY",
+            "ACC-ORPHAN-FI-PRODUCT",
+            "ACC-ORPHAN-FI-ADJUSTMENT",
+            "ACC-DQ-FAILURE"
+          ]
+        },
+        {
+          "name": "entity_name",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "entity_id",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "dealership_id",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "exception_date",
+          "type": "date",
+          "nullable": false,
+          "unit": "exception date",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "exception_amount",
+          "type": "currency",
+          "nullable": true,
+          "unit": "USD",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "exception_detail",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        }
+      ],
+      "chunks": null
+    },
+    {
       "name": "reconciliation-status",
       "grain": "One row per reconciliation identifier, for the pipeline run this export describes.",
       "businessKey": [
@@ -6025,7 +6949,7 @@
       ],
       "dateBasis": null,
       "kpiIds": [],
-      "rowCount": 96,
+      "rowCount": 114,
       "columns": [
         {
           "name": "reconciliation_id",
@@ -6290,12 +7214,12 @@
     }
   ],
   "sizes": {
-    "totalBytes": 4436490,
-    "fileCount": 179,
+    "totalBytes": 5077693,
+    "fileCount": 217,
     "largestFile": {
       "file": "datasets/sales-gross-trend.json",
       "bytes": 95189
     },
-    "rootExportBytes": 13386684
+    "rootExportBytes": 15405994
   }
 }

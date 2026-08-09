@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS raw.inventory_snapshot_load (
     acquisition_cost        text         NULL,
     reconditioning_cost     text         NULL,
     inventory_investment    text         NULL,
+    market_price_estimate   text         NULL,
     days_in_stock           text         NULL,
     age_bucket              text         NULL,
     markdown_count_to_date  text         NULL,
@@ -82,6 +83,7 @@ COMMENT ON COLUMN raw.inventory_snapshot_load.msrp IS 'Untyped source value. Man
 COMMENT ON COLUMN raw.inventory_snapshot_load.acquisition_cost IS 'Untyped source value. What the store paid for the unit.';
 COMMENT ON COLUMN raw.inventory_snapshot_load.reconditioning_cost IS 'Untyped source value. Reconditioning spend booked against the unit.';
 COMMENT ON COLUMN raw.inventory_snapshot_load.inventory_investment IS 'Untyped source value. acquisition_cost + reconditioning_cost; the warehouse enforces the identity.';
+COMMENT ON COLUMN raw.inventory_snapshot_load.market_price_estimate IS 'Untyped source value. SYNTHETIC market price reference for the unit, constant across its snapshots; absent where the estimator declined to price it. Not a market valuation and never to be presented as one.';
 COMMENT ON COLUMN raw.inventory_snapshot_load.days_in_stock IS 'Untyped source value. Days since acquisition, measured from the acquisition date and not from the first snapshot date.';
 COMMENT ON COLUMN raw.inventory_snapshot_load.age_bucket IS 'Untyped source value. Banded days_in_stock: 0-30 | 31-60 | 61-90 | 91-120 | Over 120.';
 COMMENT ON COLUMN raw.inventory_snapshot_load.markdown_count_to_date IS 'Untyped source value. Price reductions taken to date; never decreases for a unit.';

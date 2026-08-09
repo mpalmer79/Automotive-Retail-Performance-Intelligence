@@ -5,6 +5,7 @@
     "0001_add_logical_run_key": "0f7bfc8e3c0c1794be166c0a3fc4610bedc77bd4c47d9d9e05c5fd44c1228d9e",
     "0002_add_inventory_listing_objects": "8bf99e107bc9c53659ca33f73ef7a201f926337723ad04042abb62d177fe7169",
     "0003_add_fi_domain_objects": "bd0271ec20686ce513f11c46f89e600e66ea5d21c4d2d1701a1d66934229382c",
-    "0004_add_accounting_control_objects": "d761dc237280c40bdb64c55445547e2fa97e96a3c15c9800e5c27b8371fabc3b"
+    "0004_add_accounting_control_objects": "d761dc237280c40bdb64c55445547e2fa97e96a3c15c9800e5c27b8371fabc3b",
+    "0005_add_inventory_market_price_estimate": "f1bda00e5efdde92226ef239417064b150b39510af118035d6b653ac53eeeea6"
   }
 }

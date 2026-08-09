@@ -1,0 +1,11 @@
+{
+  "dataset": "accounting-exceptions",
+  "rowCount": 4,
+  "columns": ["exception_id","exception_code","entity_name","entity_id","dealership_id","exception_date","exception_amount","exception_detail"],
+  "rows": [
+    ["ACC-GL-VARIANCE:gl_reconciliation:20250930-1-2","ACC-GL-VARIANCE","gl_reconciliation","20250930-1-2","GSA-001","2025-09-30","1250.00","Used Vehicle Inventory at Granite Chevrolet of Nashua on date key 20250930: GL balance 758234.03 against subledger balance 756984.03, signed variance 1250.00. BOTH SIDES ARE VALID DATA. Positive means the control account carries more than the stock schedule supports; negative means the schedule carries more than the account. This is a reconciliation finding to investigate, not a broken record."],
+    ["ACC-GL-VARIANCE:gl_reconciliation:20251031-2-1","ACC-GL-VARIANCE","gl_reconciliation","20251031-2-1","GSA-002","2025-10-31","-865.40","New Vehicle Inventory at Granite Subaru of Manchester on date key 20251031: GL balance 1154119.83 against subledger balance 1154985.23, signed variance -865.40. BOTH SIDES ARE VALID DATA. Positive means the control account carries more than the stock schedule supports; negative means the schedule carries more than the account. This is a reconciliation finding to investigate, not a broken record."],
+    ["ACC-MISSING-GL-BALANCE:gl_reconciliation:20250831-2-3","ACC-MISSING-GL-BALANCE","gl_reconciliation","20250831-2-3","GSA-002","2025-08-31",null,"Certified Vehicle Inventory at Granite Subaru of Manchester on date key 20250831: the stock schedule carries 309189.63 over 20 unit(s) and NO control account balance exists to compare it against. The variance is NULL, not the full subledger balance: a missing balance is not a zeroed account."],
+    ["ACC-MISSING-SUBLEDGER-BALANCE:gl_reconciliation:20251231-3-1","ACC-MISSING-SUBLEDGER-BALANCE","gl_reconciliation","20251231-3-1","GSA-003","2025-12-31",null,"New Vehicle Inventory at Granite Pre-Owned Center of Merrimack on date key 20251231: the control account carries 18400.00 and NO stock schedule exists to support it. The variance is NULL, not the full control balance: an absent schedule is not an empty one."]
+  ]
+}

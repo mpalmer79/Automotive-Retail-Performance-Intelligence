@@ -67,6 +67,22 @@ SELECT
     i.acquisition_cost                                         AS acquisition_cost,
     i.reconditioning_cost                                      AS reconditioning_cost,
     i.inventory_investment                                     AS inventory_investment,
+    i.market_price_estimate                                    AS market_price_estimate,
+
+    -- THE ONE PLACE price_to_market_ratio IS COMPUTED.
+    --
+    -- It is derived here rather than stored on the fact so that there is exactly one
+    -- definition of it in the project: a stored copy would be a second answer able to
+    -- disagree with its own components the day somebody restamped one of them.
+    --
+    -- NULL propagates deliberately. A unit with no estimate has no ratio -- not a ratio of
+    -- zero, and not an imputed one. The NULLIF guards the denominator a second time even
+    -- though the fact's CHECK already forbids a non-positive estimate, because a view that
+    -- divides by a column is one dropped constraint away from a division error.
+    CASE
+        WHEN i.market_price_estimate IS NULL THEN NULL
+        ELSE round(i.current_asking_price / NULLIF(i.market_price_estimate, 0), 4)
+    END                                                        AS price_to_market_ratio,
 
     -- Age. Row level for the median; also the additive numerator of the mean.
     i.days_in_stock                                            AS days_in_stock,
@@ -103,6 +119,8 @@ COMMENT ON COLUMN reporting.vw_inventory_snapshots.vehicle_model_key IS 'Model-l
 COMMENT ON COLUMN reporting.vw_inventory_snapshots.condition_group IS 'Governed new/used split taken from the vehicle. New and used inventory turn at different rates and are reported separately by default.';
 COMMENT ON COLUMN reporting.vw_inventory_snapshots.vehicle_condition_type IS 'New, Used or Certified as recorded on the vehicle.';
 COMMENT ON COLUMN reporting.vw_inventory_snapshots.age_bucket IS 'Pre-computed age bucket: 0-30, 31-60, 61-90, 91-120 or Over 120 days.';
+COMMENT ON COLUMN reporting.vw_inventory_snapshots.market_price_estimate IS 'SYNTHETIC market price reference for the unit, constant across its snapshots. NULL where the estimator declined to price the unit. NOT a market valuation and never to be presented as one; no guidebook, auction or licensed benchmark exists anywhere in this project.';
+COMMENT ON COLUMN reporting.vw_inventory_snapshots.price_to_market_ratio IS 'current_asking_price / market_price_estimate, rounded to 4 decimals. THE single definition of this ratio in the project. NULL where there is no estimate -- never zero and never imputed. Above 1.0 means the unit is advertised above its synthetic estimate; below 1.0 means beneath it. It is a descriptive comparison against a generated reference, not evidence that a price is right or wrong.';
 COMMENT ON COLUMN reporting.vw_inventory_snapshots.current_asking_price IS 'Advertised price on the snapshot date.';
 COMMENT ON COLUMN reporting.vw_inventory_snapshots.original_asking_price IS 'First advertised price.';
 COMMENT ON COLUMN reporting.vw_inventory_snapshots.msrp IS 'Manufacturer suggested retail price where one applies, otherwise NULL.';

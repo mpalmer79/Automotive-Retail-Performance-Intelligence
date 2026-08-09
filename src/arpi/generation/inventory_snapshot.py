@@ -54,6 +54,7 @@ reason ``portfolio`` is never generated in CI.
 
 from __future__ import annotations
 
+import random
 from dataclasses import dataclass, replace
 from datetime import date, timedelta
 from decimal import Decimal
@@ -71,6 +72,7 @@ from arpi.constants import (
 from arpi.generation.acquisition import (
     AcquisitionRecord,
     build_acquisition_records,
+    money,
 )
 from arpi.generation.base import BaseGenerator, GeneratedDataset
 from arpi.generation.sale import (
@@ -80,6 +82,7 @@ from arpi.generation.sale import (
     markdown_to_asking_price,
 )
 from arpi.logging_config import get_logger
+from arpi.utilities.seeding import rng_for
 from arpi.validation.checks import check_column_schema
 from arpi.validation.privacy import check_no_prohibited_pii_columns
 from arpi.validation.registry import CheckDefinition, CheckLayer, register_checks
@@ -104,6 +107,23 @@ ENTITY_INVENTORY_SNAPSHOT_EVENT: Final = "inventory_snapshot_event"
 #: is derived, not drawn.
 INVENTORY_SNAPSHOT_NAMESPACE: Final = "inventory_snapshot_event"
 
+#: Seeding namespace for the synthetic market price estimate, suffixed per vehicle. It is
+#: deliberately its OWN namespace rather than a draw added to the acquisition stream:
+#: ``rng_for`` hashes a namespace instead of consuming a shared stream, so introducing this
+#: column shifted no existing draw and every previously generated value is unchanged.
+MARKET_ESTIMATE_NAMESPACE: Final = "inventory_market_price_estimate"
+
+#: Share of units the synthetic estimator declines to price, leaving
+#: ``market_price_estimate`` NULL. A real reference source has coverage gaps, and a metric
+#: whose NULL branch is never exercised is a metric whose NULL branch is never tested.
+MARKET_ESTIMATE_ABSENT_RATE: Final = 0.08
+
+#: Dispersion of the estimate around the first advertised price. The band is deliberately
+#: narrow and centred on parity: this is a reference point, not an opinion about pricing.
+MARKET_ESTIMATE_FACTOR_LOW: Final = 0.88
+MARKET_ESTIMATE_FACTOR_HIGH: Final = 1.12
+MARKET_ESTIMATE_FACTOR_MODE: Final = 1.0
+
 # ---------------------------------------------------------------------------------------
 # Column contract (exact names, exact order)
 # ---------------------------------------------------------------------------------------
@@ -120,6 +140,7 @@ INVENTORY_SNAPSHOT_EVENT_COLUMNS: Final[tuple[str, ...]] = (
     "acquisition_cost",
     "reconditioning_cost",
     "inventory_investment",
+    "market_price_estimate",
     "days_in_stock",
     "age_bucket",
     "markdown_count_to_date",
@@ -134,9 +155,18 @@ INVENTORY_SNAPSHOT_GRAIN_COLUMNS: Final[tuple[str, ...]] = (
     "vehicle_id",
 )
 
-#: ``msrp`` is the only nullable column: a used unit has no manufacturer sticker.
+#: The nullable columns. ``msrp`` is absent for a used unit with no manufacturer sticker;
+#: ``market_price_estimate`` is absent for the deliberate minority of units the synthetic
+#: estimator declines to price, which is what keeps the NULL path on the ratio real rather
+#: than theoretical.
+INVENTORY_SNAPSHOT_NULLABLE_COLUMNS: Final[frozenset[str]] = frozenset(
+    {"msrp", "market_price_estimate"}
+)
+
 INVENTORY_SNAPSHOT_REQUIRED_COLUMNS: Final[tuple[str, ...]] = tuple(
-    column for column in INVENTORY_SNAPSHOT_EVENT_COLUMNS if column != "msrp"
+    column
+    for column in INVENTORY_SNAPSHOT_EVENT_COLUMNS
+    if column not in INVENTORY_SNAPSHOT_NULLABLE_COLUMNS
 )
 
 #: Monetary columns, all carried as :class:`decimal.Decimal` in an ``object`` column.
@@ -147,6 +177,7 @@ INVENTORY_SNAPSHOT_MONEY_COLUMNS: Final[tuple[str, ...]] = (
     "acquisition_cost",
     "reconditioning_cost",
     "inventory_investment",
+    "market_price_estimate",
 )
 
 INVENTORY_SNAPSHOT_EVENT_DTYPES: Final[dict[str, str]] = {
@@ -160,6 +191,7 @@ INVENTORY_SNAPSHOT_EVENT_DTYPES: Final[dict[str, str]] = {
     "acquisition_cost": "object",
     "reconditioning_cost": "object",
     "inventory_investment": "object",
+    "market_price_estimate": "object",
     "days_in_stock": "int32",
     "age_bucket": "string",
     "markdown_count_to_date": "int16",
@@ -340,6 +372,9 @@ class InventorySnapshotRecord:
         vehicle_model_id: Natural key of the unit's model, denormalised so a
             model-level aging report needs no second join.
         current_asking_price: Advertised price on this date, after age-driven markdowns.
+        market_price_estimate: Synthetic market price reference for the unit, constant
+            across its snapshots, or ``None`` where the estimator declined to price it.
+            **Not a market valuation** -- see :func:`market_price_estimate_for`.
         original_asking_price: The first advertised price.
         msrp: Manufacturer's suggested retail price, or ``None`` for a used unit.
         acquisition_cost: What the store paid.
@@ -357,6 +392,7 @@ class InventorySnapshotRecord:
     vehicle_id: str
     vehicle_model_id: str
     current_asking_price: Decimal
+    market_price_estimate: Decimal | None
     original_asking_price: Decimal
     msrp: Decimal | None
     acquisition_cost: Decimal
@@ -384,6 +420,69 @@ def age_bucket_for(days_in_stock: int) -> str:
         if days_in_stock <= upper_bound:
             return bucket
     return AGE_BUCKET_OVER_120
+
+
+def _decimal_triangular(rng: random.Random, low: float, high: float, mode: float) -> Decimal:
+    """Draw a triangular variate and return it as an exact ``Decimal`` multiplier.
+
+    The float is rendered through :func:`str` before it becomes a ``Decimal``, so the
+    multiplier is the six-figure number that was drawn rather than a binary approximation
+    of it. No float ever reaches a monetary value.
+    """
+    return Decimal(str(round(rng.triangular(low, high, mode), 6)))
+
+
+def market_price_estimate_for(
+    vehicle_id: str, original_asking_price: Decimal, *, random_seed: int
+) -> Decimal | None:
+    """Return one unit's synthetic market price reference, or ``None`` for no estimate.
+
+    WHAT THIS IS NOT
+    ----------------
+    It is not a market valuation. No auction result, guidebook, licensed benchmark or
+    observed transaction is consulted, and none exists in this project. It is a generated
+    reference value whose only purpose is to give the console a second number to compare an
+    asking price against, so that ``price_to_market_ratio`` has a denominator at all. Every
+    surface that shows it must say ``synthetic estimate``.
+
+    WHY IT IS ANCHORED TO THE **ORIGINAL** ASKING PRICE
+    ---------------------------------------------------
+    A market reference is a property of the unit, not of how long the store has been trying
+    to sell it. Anchoring to ``current_asking_price`` would make the estimate chase every
+    markdown, the ratio would sit near a constant, and the metric would carry no information
+    at all. Anchored to the first advertised price and then held fixed, the ratio *falls* as
+    a unit marks down -- which is the whole signal a used-vehicle manager is looking for.
+
+    WHY A PER-VEHICLE NAMESPACE
+    ---------------------------
+    :func:`~arpi.utilities.seeding.rng_for` hashes its namespace rather than consuming a
+    shared stream, so seeding per vehicle makes the draw **order-independent**: the same unit
+    receives the same estimate whichever order the population is generated in, and adding
+    this column perturbs no existing draw anywhere else in the project. That is the reason
+    the committed datasets keep every other value they had.
+
+    Args:
+        vehicle_id: The unit's natural identifier; the per-vehicle seeding namespace.
+        original_asking_price: The first advertised price, used as the anchor.
+        random_seed: The configured master seed.
+
+    Returns:
+        A money-quantised estimate, or ``None`` for the deliberate minority of units the
+        estimator declines to price.
+    """
+    rng = rng_for(random_seed, f"{MARKET_ESTIMATE_NAMESPACE}:{vehicle_id}")
+    if rng.random() < MARKET_ESTIMATE_ABSENT_RATE:
+        return None
+    factor = _decimal_triangular(
+        rng,
+        MARKET_ESTIMATE_FACTOR_LOW,
+        MARKET_ESTIMATE_FACTOR_HIGH,
+        MARKET_ESTIMATE_FACTOR_MODE,
+    )
+    estimate = money(original_asking_price * factor)
+    # A zero estimate would be a denominator the ratio cannot use. Treat it as no estimate
+    # rather than publishing a value the reporting layer then has to special-case.
+    return estimate if estimate > 0 else None
 
 
 def markdown_count_for(days_in_stock: int) -> int:
@@ -464,6 +563,7 @@ def build_inventory_snapshot_records(
             dispositions,
             window_start=config.reporting.start_date,
             window_end=config.reporting.end_date,
+            random_seed=config.random_seed,
         ),
         key=lambda record: (record.snapshot_date, record.dealership_id, record.vehicle_id),
     )
@@ -477,6 +577,7 @@ def _records_for_population(
     *,
     window_start: date,
     window_end: date,
+    random_seed: int,
 ) -> Iterator[InventorySnapshotRecord]:
     """Yield every snapshot of every unit, unordered."""
     for acquisition in acquisitions:
@@ -489,14 +590,27 @@ def _records_for_population(
         if span is None:
             continue
         first, last = span
+        # Drawn once per unit, not once per snapshot: the estimate is a property of the
+        # vehicle, and recomputing it per day would be both wasteful and an invitation for
+        # it to drift across a unit's own rows.
+        estimate = market_price_estimate_for(
+            acquisition.vehicle_id,
+            acquisition.original_asking_price,
+            random_seed=random_seed,
+        )
         for offset in range((last - first).days + 1):
-            yield _record_for_day(acquisition, first + timedelta(days=offset))
+            yield _record_for_day(acquisition, first + timedelta(days=offset), estimate)
 
 
-def _record_for_day(acquisition: AcquisitionRecord, snapshot_date: date) -> InventorySnapshotRecord:
+def _record_for_day(
+    acquisition: AcquisitionRecord,
+    snapshot_date: date,
+    market_price_estimate: Decimal | None,
+) -> InventorySnapshotRecord:
     """Build one unit's snapshot for one day."""
     days_in_stock = (snapshot_date - acquisition.acquisition_date).days
     return InventorySnapshotRecord(
+        market_price_estimate=market_price_estimate,
         snapshot_date=snapshot_date,
         dealership_id=acquisition.dealership_id,
         vehicle_id=acquisition.vehicle_id,
@@ -538,6 +652,7 @@ def snapshot_row(record: InventorySnapshotRecord) -> dict[str, Any]:
         "acquisition_cost": record.acquisition_cost,
         "reconditioning_cost": record.reconditioning_cost,
         "inventory_investment": record.inventory_investment,
+        "market_price_estimate": record.market_price_estimate,
         "days_in_stock": record.days_in_stock,
         "age_bucket": record.age_bucket,
         "markdown_count_to_date": record.markdown_count_to_date,

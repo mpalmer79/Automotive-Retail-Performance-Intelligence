@@ -79,6 +79,10 @@ one commit is a check failure.
 | `reporting.vw_fi_product_penetration` | `fi-product-penetration` | Store × sale month × finance manager × product category (`DASH.7`) |
 | `reporting.vw_fi_adjustment_summary` | `fi-adjustment-summary` | Store × adjustment month × product category × adjustment type (`DASH.7`) |
 | `reporting.vw_deal_product_detail` | `deal-product-detail` | One product contract on one transaction (`DASH.7`) |
+| `reporting.vw_inventory_units` | `inventory-units` | One unit on one reportable snapshot date — every month end, plus the latest snapshot (`DASH.9`) |
+| `reporting.vw_inventory_accounting` | `inventory-accounting` | One unit's accounting position on one month-end date (`DASH.9`) |
+| `reporting.vw_inventory_gl_reconciliation` | `inventory-gl-reconciliation` | Store × GL control account × comparison date (`DASH.9`) |
+| `reporting.vw_accounting_exceptions` | `accounting-exceptions` | One accounting exception (`DASH.9`) |
 | `reporting.vw_reconciliation_status` | `reconciliation-status` | Reconciliation, for the export's own run |
 | `reporting.vw_pipeline_run_summary` | `pipeline-run` | The export's own run |
 

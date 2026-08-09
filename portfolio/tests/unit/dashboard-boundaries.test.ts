@@ -424,21 +424,34 @@ describe('the generated dashboard data stays out of the existing route bundles',
      *                                  PRODUCT partitions (`DASH.7`); the product
      *                                  partitions are also the Deal Jacket's product
      *                                  itemisation, so this door is shared by two routes
+     *   lib/dashboard/inventory-chunks.ts   the 18 unit-grain stock partitions (`DASH.9`)
+     *                                       -- 356 kB of per-vehicle rows -- which only
+     *                                       /dashboard/inventory reads
+     *   lib/dashboard/accounting-chunks.ts  the 18 accounting-schedule partitions
+     *                                       (`DASH.9`) -- 360 kB of per-unit book values
+     *                                       and their capitalised components
      *
-     * Folding any of the last six into `data.ts` would have put deal-level records
-     * and a 95 kB trend into `/dashboard`'s graph, which has no use for either. Eight
+     * The last two are kept apart from each other deliberately. They share a grain but
+     * not an audience: a route that wants operational stock should not acquire every
+     * capitalised cost component as a side effect, and `/dashboard` renders one
+     * reconciliation figure and must acquire neither.
+     *
+     * Folding any of the last eight into `data.ts` would have put deal-level records
+     * and a 95 kB trend into `/dashboard`'s graph, which has no use for either. Ten
      * narrow doors is a stronger boundary than two wide ones, and the list is
-     * exhaustive: a ninth importer fails here.
+     * exhaustive: an eleventh importer fails here.
      */
     expect(
       importers.map((file) => file.relative).sort(),
-      'the generated dashboard data has exactly eight declared doors'
+      'the generated dashboard data has exactly ten declared doors'
     ).toEqual([
+      'lib/dashboard/accounting-chunks.ts',
       'lib/dashboard/chunks.ts',
       'lib/dashboard/data.ts',
       'lib/dashboard/deal-chunks.ts',
       'lib/dashboard/fi-chunks.ts',
       'lib/dashboard/fi-data.ts',
+      'lib/dashboard/inventory-chunks.ts',
       'lib/dashboard/jacket-chunks.ts',
       'lib/dashboard/sales-gross-data.ts',
       'lib/dashboard/targets-data.ts',

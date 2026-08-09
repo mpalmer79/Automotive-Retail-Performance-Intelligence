@@ -66,6 +66,7 @@ CREATE TABLE IF NOT EXISTS warehouse.fact_vehicle_inventory_snapshot (
     acquisition_cost        numeric(12,2)  NOT NULL,
     reconditioning_cost     numeric(12,2)  NOT NULL,
     inventory_investment    numeric(12,2)  NOT NULL,
+    market_price_estimate   numeric(12,2)  NULL,
     days_in_stock           integer        NOT NULL,
     age_bucket              varchar(16)    NOT NULL,
     markdown_count_to_date  smallint       NOT NULL,
@@ -88,6 +89,11 @@ CREATE TABLE IF NOT EXISTS warehouse.fact_vehicle_inventory_snapshot (
         CHECK (age_bucket IN ('0-30', '31-60', '61-90', '91-120', 'Over 120')),
     CONSTRAINT ck_fact_vehicle_inventory_snapshot_markdown_count_nonnegative
         CHECK (markdown_count_to_date >= 0),
+    -- Strictly positive when present. This column is the denominator of
+    -- price_to_market_ratio, so a zero here is not a cheap unit -- it is a division the
+    -- reporting layer cannot perform. NULL is the governed way to say 'no estimate'.
+    CONSTRAINT ck_fact_vehicle_inventory_snapshot_market_estimate_positive
+        CHECK (market_price_estimate IS NULL OR market_price_estimate > 0),
     CONSTRAINT ck_fact_vehicle_inventory_snapshot_unit_count_is_one
         CHECK (inventory_unit_count = 1),
     CONSTRAINT ck_fact_vehicle_inventory_snapshot_source_system_not_blank
@@ -144,6 +150,7 @@ COMMENT ON COLUMN warehouse.fact_vehicle_inventory_snapshot.msrp IS 'Manufacture
 COMMENT ON COLUMN warehouse.fact_vehicle_inventory_snapshot.acquisition_cost IS 'What the store paid for the vehicle. SEMI-ADDITIVE: never sum across dates.';
 COMMENT ON COLUMN warehouse.fact_vehicle_inventory_snapshot.reconditioning_cost IS 'Reconditioning spend to date. SEMI-ADDITIVE: never sum across dates.';
 COMMENT ON COLUMN warehouse.fact_vehicle_inventory_snapshot.inventory_investment IS 'acquisition_cost + reconditioning_cost, enforced by ck_fact_vehicle_inventory_snapshot_investment_identity. SEMI-ADDITIVE: summing it across a date range reports the money many times over.';
+COMMENT ON COLUMN warehouse.fact_vehicle_inventory_snapshot.market_price_estimate IS 'SYNTHETIC market price reference for the unit, constant across its snapshots and anchored to the first advertised price so that a marking-down unit moves BELOW its estimate rather than dragging the estimate down with it. NULL where the estimator declined to price the unit; strictly positive otherwise, because it is the denominator of price_to_market_ratio. NOT a market valuation: no auction result, guidebook, licensed benchmark or observed transaction is consulted anywhere in this project. Never present it as a real market value.';
 COMMENT ON COLUMN warehouse.fact_vehicle_inventory_snapshot.days_in_stock IS 'Days since acquisition as at the snapshot date. NON-ADDITIVE: average it, never sum it.';
 COMMENT ON COLUMN warehouse.fact_vehicle_inventory_snapshot.age_bucket IS '0-30 | 31-60 | 61-90 | 91-120 | Over 120. Banded days_in_stock, stored so every aging report bands identically.';
 COMMENT ON COLUMN warehouse.fact_vehicle_inventory_snapshot.markdown_count_to_date IS 'Number of price reductions taken to date. NON-ADDITIVE across time: take the latest, do not sum.';

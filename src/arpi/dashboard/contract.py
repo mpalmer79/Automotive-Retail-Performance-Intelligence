@@ -44,14 +44,17 @@ from types import MappingProxyType
 from typing import Final, Literal
 
 from arpi.constants import (
+    ACCOUNTING_EXCEPTION_CODES,
     ADJUSTMENT_TYPES,
     ALLOWED_STORE_TYPES,
     ARPI_VERSION,
     ELIGIBILITY_RULE_IDS,
     FINANCE_PRODUCT_CATEGORIES,
+    INVENTORY_CONTROL_CATEGORIES,
     LENDER_CATEGORIES,
     LENDER_PROGRAM_TIERS,
     PIPELINE_STATUSES,
+    RECONCILIATION_COMPARISON_STATES,
 )
 
 __all__ = [
@@ -351,6 +354,9 @@ DASHBOARD_LANE_SQL_FILES: Final[tuple[str, ...]] = (
     "05_reporting/46_vw_fi_summary.sql",
     "05_reporting/47_vw_fi_product_penetration.sql",
     "05_reporting/48_vw_fi_adjustment_summary.sql",
+    # DASH.9. The operating console's unit-grain inventory surface. It is a dashboard-lane
+    # view, not an MVP one: the 28-view MVP baseline predates it and is unchanged.
+    "05_reporting/52_vw_inventory_units.sql",
     "06_indexes/03_fi_indexes.sql",
     "08_validation/11_recon_target.sql",
     "08_validation/13_recon_fi.sql",
@@ -1291,6 +1297,389 @@ _MARKETING_PERFORMANCE = DatasetContract(
         "that spent nothing (RECON-MKT-COST-RULE). The three exception flags are null on the "
         "same rows for the same reason -- 'spend with no attributed leads' is not a question "
         "that has an answer where there is no spend."
+    ),
+)
+
+# ---------------------------------------------------------------------------------------
+# DASH.9: the accounting control lane crosses the browser boundary
+# ---------------------------------------------------------------------------------------
+# DASH.8 built these three views and deliberately exported none of them: it was a database
+# and reporting increment, and a dataset nobody rendered would have been an unused public
+# surface carrying accounting columns. DASH.9 owns the promotion, and it is a REVIEWED
+# SUBSET in each case rather than the whole view.
+#
+# WHAT IS LEFT BEHIND, AND WHY
+# Every `*_key` column stays in the warehouse. The views publish them because the semantic
+# model may one day want them; the browser must never see one. A surrogate key in a URL is
+# meaningless to a reader and is a promise about internal identity this project does not
+# intend to keep, so the drill-through keys are the business identifiers and nothing else.
+#
+# WHAT IS NOT BUILT
+# No journal entry, journal line, debit/credit pair, posting batch, trial balance, period
+# close or financial statement is exported, because none exists. The console renders an
+# inventory control reconciliation, not a general ledger, and the column lists below are
+# where that boundary is actually enforced.
+
+_INVENTORY_ACCOUNTING = DatasetContract(
+    name="inventory-accounting",
+    source_view="vw_inventory_accounting",
+    grain="One row per vehicle per store per accounting (month-end) date.",
+    business_key=("dealership_id", "accounting_date", "vehicle_id"),
+    date_basis="accounting date",
+    sort_keys=("dealership_id", "accounting_date", "vehicle_id"),
+    chunked=True,
+    kpi_ids=("KPI-ACC-001", "KPI-ACC-005", "KPI-ACC-011", "KPI-ACC-012"),
+    columns=(
+        # Passed through, not resolved: this view already publishes the business code and a
+        # real date alongside its surrogates. Only the surrogates are left behind.
+        _attribute("dealership_id", "string", view="vw_inventory_accounting"),
+        _attribute("accounting_date", "date", view="vw_inventory_accounting"),
+        _attribute("vehicle_id", "string", view="vw_inventory_accounting"),
+        _attribute(
+            "control_account_category",
+            "string",
+            view="vw_inventory_accounting",
+            enumeration=INVENTORY_CONTROL_CATEGORIES,
+        ),
+        _attribute("gl_account_number", "string", view="vw_inventory_accounting"),
+        _attribute("gl_account_name", "string", view="vw_inventory_accounting"),
+        _attribute(
+            "condition_type",
+            "string",
+            view="vw_inventory_accounting",
+            enumeration=_VEHICLE_CONDITION_TYPES,
+        ),
+        # The book-value identity, published component by component. The console verifies
+        # the identity from these six and the write-down; it does not own the formula.
+        _measure("acquisition_cost", "currency", unit="USD", view="vw_inventory_accounting"),
+        _measure(
+            "capitalized_transportation", "currency", unit="USD", view="vw_inventory_accounting"
+        ),
+        _measure(
+            "capitalized_reconditioning", "currency", unit="USD", view="vw_inventory_accounting"
+        ),
+        _measure("capitalized_accessories", "currency", unit="USD", view="vw_inventory_accounting"),
+        _measure("other_capitalized_costs", "currency", unit="USD", view="vw_inventory_accounting"),
+        _measure("write_down_amount", "currency", unit="USD", view="vw_inventory_accounting"),
+        _measure("current_book_value", "currency", unit="USD", view="vw_inventory_accounting"),
+        _measure("is_written_down", "boolean", view="vw_inventory_accounting"),
+        # Liability context, exported as its own column and never netted anywhere.
+        _measure("floorplan_principal", "currency", unit="USD", view="vw_inventory_accounting"),
+        _measure("is_floorplanned", "boolean", view="vw_inventory_accounting"),
+        _measure("days_in_stock", "integer", unit="days", view="vw_inventory_accounting"),
+        _measure(
+            "posting_lag_days",
+            "integer",
+            nullable=True,
+            unit="days",
+            view="vw_inventory_accounting",
+        ),
+        _measure("is_first_accounting_appearance", "boolean", view="vw_inventory_accounting"),
+        _measure("stock_unit_count", "integer", unit="units", view="vw_inventory_accounting"),
+    ),
+    notes=(
+        "SEMI-ADDITIVE. current_book_value and floorplan_principal are additive across "
+        "vehicles and stores on ONE accounting date and are NOT additive across dates: a "
+        "unit still in stock at two month-ends appears twice, and summing the range counts "
+        "its carrying amount twice. Select one accounting date.\n"
+        "\n"
+        "The six components plus write_down_amount reproduce current_book_value exactly, "
+        "with no tolerance -- the warehouse enforces it as a CHECK. The console may verify "
+        "the identity with the exact-decimal helper; it may not restate it as a new formula, "
+        "and it must never add floorplan_principal into it. There is no net inventory "
+        "position anywhere in ARPI and none may be computed from these columns.\n"
+        "\n"
+        "posting_lag_days is the NARROWED KPI-ACC-011 basis: acquisition date to first "
+        "month-end schedule appearance. ARPI holds no posting timestamp, so it is not a "
+        "journal-posting delay and must never be labelled one. It is null where the unit's "
+        "first appearance is not observable in the window.\n"
+        "\n"
+        "gl_account_number and gl_account_name are INVENTED synthetic control accounts. No "
+        "real dealer group's chart of accounts was consulted, and both columns are governed "
+        "by APPROVED_LEDGER_ACCOUNT_COLUMNS rather than by an exception to the financial-"
+        "identifier tripwire, which still refuses bank_account_number and "
+        "customer_account_number."
+    ),
+)
+
+_INVENTORY_GL_RECONCILIATION = DatasetContract(
+    name="inventory-gl-reconciliation",
+    source_view="vw_inventory_gl_reconciliation",
+    grain="One row per store per GL control account per comparison (balance) date.",
+    business_key=("dealership_id", "comparison_date", "gl_account_number"),
+    date_basis="comparison date",
+    sort_keys=("dealership_id", "comparison_date", "gl_account_number"),
+    kpi_ids=("KPI-ACC-001", "KPI-ACC-002", "KPI-ACC-003", "KPI-ACC-004"),
+    columns=(
+        # Passed through for the same reason as inventory-accounting.
+        _attribute("dealership_id", "string", view="vw_inventory_gl_reconciliation"),
+        _attribute("comparison_date", "date", view="vw_inventory_gl_reconciliation"),
+        _attribute("gl_account_number", "string", view="vw_inventory_gl_reconciliation"),
+        _attribute("gl_account_name", "string", view="vw_inventory_gl_reconciliation"),
+        _attribute(
+            "control_account_category",
+            "string",
+            view="vw_inventory_gl_reconciliation",
+            enumeration=INVENTORY_CONTROL_CATEGORIES,
+        ),
+        # Both sides nullable, and that is the whole point of this dataset.
+        _measure(
+            "subledger_balance",
+            "currency",
+            nullable=True,
+            unit="USD",
+            view="vw_inventory_gl_reconciliation",
+        ),
+        _measure(
+            "gl_balance",
+            "currency",
+            nullable=True,
+            unit="USD",
+            view="vw_inventory_gl_reconciliation",
+        ),
+        _measure(
+            "variance_amount",
+            "currency",
+            nullable=True,
+            unit="USD",
+            view="vw_inventory_gl_reconciliation",
+        ),
+        _measure(
+            "absolute_variance_amount",
+            "currency",
+            nullable=True,
+            unit="USD",
+            view="vw_inventory_gl_reconciliation",
+        ),
+        _attribute(
+            "comparison_state",
+            "string",
+            view="vw_inventory_gl_reconciliation",
+            enumeration=RECONCILIATION_COMPARISON_STATES,
+        ),
+        # Nullable, and necessarily so. "Did this position reconcile?" has no answer where
+        # one side is absent -- it is neither true nor false, and forcing it to false would
+        # report a missing balance as a failed comparison. is_comparable is the column that
+        # is always answerable, and it is false on exactly those rows.
+        _measure("is_reconciled", "boolean", nullable=True, view="vw_inventory_gl_reconciliation"),
+        _measure("is_comparable", "boolean", view="vw_inventory_gl_reconciliation"),
+        _measure(
+            "stock_unit_count",
+            "integer",
+            nullable=True,
+            unit="units",
+            view="vw_inventory_gl_reconciliation",
+        ),
+        _measure(
+            "floorplan_principal",
+            "currency",
+            nullable=True,
+            unit="USD",
+            view="vw_inventory_gl_reconciliation",
+        ),
+    ),
+    notes=(
+        "THE SIGN IS LOAD-BEARING. variance_amount = gl_balance - subledger_balance. "
+        "POSITIVE means the general ledger carries more than the schedule supports; "
+        "NEGATIVE means the schedule supports more than the ledger carries. A group total "
+        "is the SUM OF THE SIGNED variances, never the sum of the absolute ones: two "
+        "positions of +400.00 and -15.40 net to 384.60, and reporting 415.40 would describe "
+        "a dealership that does not exist. absolute_variance_amount is published alongside "
+        "for ranking, never instead.\n"
+        "\n"
+        "A MISSING SIDE IS NULL, NEVER ZERO. Where one side has no balance the other side "
+        "is published as it stands, variance_amount is null, and comparison_state says which "
+        "side is absent. COALESCE-ing either balance to 0.00 in the console would report a "
+        "missing balance as a zeroed account, which is a different and far more alarming "
+        "claim. is_comparable is false on exactly those rows.\n"
+        "\n"
+        "SEMI-ADDITIVE. Both balances are stock figures at a date. They are additive across "
+        "stores and accounts on ONE comparison date and NOT across dates; a period figure is "
+        "the last comparable balance date in the period, never a sum or an average of them.\n"
+        "\n"
+        "A NONZERO VARIANCE IS AN EXCEPTION TO INVESTIGATE, NOT AN ACCOUNTING ERROR. The "
+        "development dataset contains deliberately planted controlled scenarios that exist "
+        "to prove all four comparison states render; they are not discovered findings about "
+        "a real dealer group. Both sides are generated from one governed model, so this is "
+        "not agreement between two independent systems and no surface may describe it as "
+        "an audit, a certification or an external validation."
+    ),
+)
+
+_ACCOUNTING_EXCEPTIONS = DatasetContract(
+    name="accounting-exceptions",
+    source_view="vw_accounting_exceptions",
+    grain="One row per accounting exception.",
+    business_key=("exception_id",),
+    date_basis="exception date",
+    sort_keys=("exception_id",),
+    join_views=("vw_dealership", "vw_calendar"),
+    kpi_ids=("KPI-ACC-004", "KPI-ACC-007", "KPI-ACC-008", "KPI-ACC-009", "KPI-ACC-010"),
+    columns=(
+        _attribute("exception_id", "string", view="vw_accounting_exceptions"),
+        _attribute(
+            "exception_code",
+            "string",
+            view="vw_accounting_exceptions",
+            enumeration=ACCOUNTING_EXCEPTION_CODES,
+        ),
+        _attribute("entity_name", "string", view="vw_accounting_exceptions"),
+        # RENAMED AT THE BOUNDARY, and the rename is the point. The view calls this column
+        # entity_key, but in ARPI a `_key` suffix means a warehouse surrogate, and this
+        # column has never held one -- it carries a vehicle_id or a sale_id. Exporting it
+        # under its view name would make the console's own surrogate-key guard fire on a
+        # column that is not a surrogate, and would tell a reader the opposite of the truth
+        # about what is safe to put in a URL. The view keeps its name; the browser gets an
+        # honest one.
+        ColumnContract(
+            name="entity_id",
+            type="string",
+            nullable=False,
+            expression="base.entity_key",
+            source_column="vw_accounting_exceptions.entity_key",
+        ),
+        # Resolved from the surrogates the view publishes. The view was built for DASH.8's
+        # SQL-only audience, where a dealership_key was the right thing to expose; the
+        # browser needs the business code and a real date, and the exporter's dimension
+        # joins are how they are obtained without editing a DASH.8 view.
+        _store_id(),
+        _resolved_date("exception_date", "exception_date", basis="exception date"),
+        _measure(
+            "exception_amount",
+            "currency",
+            nullable=True,
+            unit="USD",
+            view="vw_accounting_exceptions",
+        ),
+        _attribute("exception_detail", "string", view="vw_accounting_exceptions"),
+    ),
+    notes=(
+        "THE CLASSES ARE NOT INTERCHANGEABLE AND MUST NOT BE ADDED TOGETHER. This dataset "
+        "carries valid-but-unreconciled positions, missing-side control states, and "
+        "structural integrity findings. A count that sums all three and calls itself 'total "
+        "accounting errors' is analytically wrong: a controlled GL variance and an orphaned "
+        "F&I product are not the same kind of thing and do not have the same remedy.\n"
+        "\n"
+        "entity_name and entity_id are the drill-through pair. entity_id is the view's "
+        "entity_key renamed at the boundary: it is always a BUSINESS identifier -- a "
+        "vehicle_id or a sale_id -- and never a warehouse surrogate, so the console can put "
+        "it in a URL. It is exported under a name that says so, because a `_key` suffix in "
+        "ARPI means a surrogate and this column has never been one. Where entity_name names "
+        "no surface the console can reach, the row shows no link rather than a fabricated "
+        "one.\n"
+        "\n"
+        "exception_detail is a GENERATED description built from the governed rule that "
+        "fired. It is not a free-text note, no human writes it, and there is no notes field "
+        "anywhere in this lane."
+    ),
+)
+
+_INVENTORY_UNITS = DatasetContract(
+    name="inventory-units",
+    source_view="vw_inventory_units",
+    grain="One row per vehicle per store per daily snapshot date, while the unit is active.",
+    business_key=("dealership_id", "snapshot_date", "vehicle_id"),
+    date_basis="snapshot date",
+    sort_keys=("dealership_id", "snapshot_date", "vehicle_id"),
+    chunked=True,
+    kpi_ids=("KPI-INV-001", "KPI-INV-002", "KPI-INV-003", "KPI-INV-004", "KPI-INV-005"),
+    columns=(
+        # Passed through, never resolved: this view publishes NO surrogate key at all, which
+        # is the whole reason it exists alongside vw_inventory_snapshots.
+        _attribute("dealership_id", "string", view="vw_inventory_units"),
+        _attribute("snapshot_date", "date", view="vw_inventory_units"),
+        _attribute("vehicle_id", "string", view="vw_inventory_units"),
+        _attribute(
+            "condition_type",
+            "string",
+            view="vw_inventory_units",
+            enumeration=_VEHICLE_CONDITION_TYPES,
+        ),
+        _condition_group("vw_inventory_units"),
+        _measure("model_year", "integer", view="vw_inventory_units"),
+        _attribute("make", "string", view="vw_inventory_units"),
+        _attribute("model_name", "string", view="vw_inventory_units"),
+        _attribute("trim_level", "string", view="vw_inventory_units"),
+        _attribute("body_style", "string", view="vw_inventory_units"),
+        _measure("odometer_reading", "integer", unit="miles", view="vw_inventory_units"),
+        _measure("days_in_stock", "integer", unit="days", view="vw_inventory_units"),
+        _attribute("age_bucket", "string", view="vw_inventory_units", enumeration=_AGE_BUCKETS),
+        _measure("aged_threshold_days", "integer", unit="days", view="vw_inventory_units"),
+        _measure("is_aged_over_default_threshold", "boolean", view="vw_inventory_units"),
+        _measure("current_asking_price", "currency", unit="USD", view="vw_inventory_units"),
+        _measure("original_asking_price", "currency", unit="USD", view="vw_inventory_units"),
+        _measure("inventory_investment", "currency", unit="USD", view="vw_inventory_units"),
+        _measure(
+            "market_price_estimate",
+            "currency",
+            nullable=True,
+            unit="USD",
+            view="vw_inventory_units",
+        ),
+        _measure(
+            "price_to_market_ratio",
+            "exact",
+            nullable=True,
+            unit="ratio",
+            precision=4,
+            view="vw_inventory_units",
+        ),
+        _measure("markdown_count_to_date", "integer", view="vw_inventory_units"),
+        _measure(
+            "prior_asking_price",
+            "currency",
+            nullable=True,
+            unit="USD",
+            view="vw_inventory_units",
+        ),
+        _measure(
+            "asking_price_change",
+            "currency",
+            nullable=True,
+            unit="USD",
+            view="vw_inventory_units",
+        ),
+        _measure(
+            "is_price_reduced_since_prior",
+            "boolean",
+            nullable=True,
+            view="vw_inventory_units",
+        ),
+        _measure("inventory_unit_count", "integer", unit="units", view="vw_inventory_units"),
+    ),
+    notes=(
+        "SEMI-ADDITIVE. inventory_investment and inventory_unit_count are additive across "
+        "vehicles and stores on ONE snapshot date and NOT across dates: this is daily grain, "
+        "so summing a month yields unit-days rather than units, wrong by roughly thirty "
+        "while looking entirely plausible. Select one snapshot date.\n"
+        "\n"
+        "market_price_estimate IS A SYNTHETIC ESTIMATE. No auction result, guidebook, "
+        "licensed benchmark or observed transaction exists anywhere in this project. Every "
+        "surface that displays it or the ratio derived from it must say so, and neither may "
+        "be called a market value, a benchmark, an expected selling price or a book value. "
+        "price_to_market_ratio is null where there is no estimate -- never zero, never "
+        "imputed -- and above 1.0 means advertised above the synthetic estimate.\n"
+        "\n"
+        "NEITHER IS A REPRICING SIGNAL. A ratio above 1.0 is not evidence a unit is "
+        "overpriced and no surface may recommend a price change from it. DASH.9 is "
+        "descriptive.\n"
+        "\n"
+        "MARKDOWN ACTIVITY IS SNAPSHOT-DERIVED. prior_asking_price is the same unit's price "
+        "at its previous snapshot AT THIS STORE, and all three movement columns are null on "
+        "a unit's first snapshot because no prior observation exists -- not zero, which "
+        "would assert the price did not change. asking_price_change is NEGATIVE for a "
+        "reduction and belongs to THIS date, never restated backward. It is an observed "
+        "movement: ARPI models no manager decision, pricing strategy or repricing action.\n"
+        "\n"
+        "aged_threshold_days is the ARPI 60-day PROJECT DEFAULT, published on every row so "
+        "the console states the threshold it applied. It is not an industry benchmark and "
+        "is a DIFFERENT NUMBER from the 120-day top age bucket; conflating the two overstates "
+        "aged stock.\n"
+        "\n"
+        "inventory_investment is the OPERATIONAL figure (acquisition + reconditioning) and "
+        "is NOT the accounting book value, which lives in inventory-accounting at month-end "
+        "grain and carries capitalised components this column does not. The two will differ "
+        "for the same unit on the same day, legitimately."
     ),
 )
 
@@ -2509,6 +2898,12 @@ DATASETS: Final[tuple[DatasetContract, ...]] = (
     _FI_PRODUCT_PENETRATION,
     _FI_ADJUSTMENT_SUMMARY,
     _DEAL_PRODUCT_DETAIL,
+    # DASH.9. The accounting control lane crosses the browser boundary, and the console's
+    # unit-grain inventory surface arrives with it.
+    _INVENTORY_UNITS,
+    _INVENTORY_ACCOUNTING,
+    _INVENTORY_GL_RECONCILIATION,
+    _ACCOUNTING_EXCEPTIONS,
     _RECONCILIATION_STATUS,
     _PIPELINE_RUN,
 )
@@ -3003,6 +3398,14 @@ _JOINS: Final[Mapping[str, str]] = MappingProxyType(
             "ON sale_month.date_key = base.sale_month_date_key"
         ),
         "month": "JOIN reporting.vw_calendar AS month ON month.date_key = base.month_date_key",
+        # DASH.9. vw_accounting_exceptions publishes exception_date_key and no resolved
+        # date: it was built for DASH.8's SQL-only audience, where a date key was the right
+        # thing to expose. The browser needs a real date, and resolving it here is how that
+        # happens without editing a DASH.8 view.
+        "exception_date": (
+            "JOIN reporting.vw_calendar AS exception_date "
+            "ON exception_date.date_key = base.exception_date_key"
+        ),
         "lead_date": (
             "JOIN reporting.vw_calendar AS lead_date "
             "ON lead_date.date_key = base.lead_created_date_key"

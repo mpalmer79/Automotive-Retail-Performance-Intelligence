@@ -232,7 +232,7 @@ list the acceptance criteria bind to.
 | **Required dimensions** | `dim_date`, `dim_dealership`, `dim_vehicle` |
 | **Required facts** | `fact_vehicle_inventory_snapshot` |
 | **KPI IDs** | `KPI-INV-003`, `KPI-INV-004` |
-| **Reporting view** | `reporting.vw_inventory_health`, `reporting.vw_inventory_aging`, `reporting.vw_inventory_snapshots` |
+| **Reporting view** | `reporting.vw_inventory_health`, `reporting.vw_inventory_aging`, `reporting.vw_inventory_snapshots`, `reporting.vw_inventory_units` |
 | **Intended future report page** | 3. Inventory Health |
 | **Decision enabled** | Which specific units need a pricing or disposal decision this week. |
 | **Interpretation caution** | The **median is the headline** and the mean is the companion: inventory age is right-skewed, so a handful of 200-day units drags the mean above what any typical unit resembles. The gap between them is itself the diagnostic. The median is deliberately blind to the tail, which is why the age distribution must be on the same page. |
