@@ -465,12 +465,12 @@ The chart-library decision above was re-tested against the harder case and did n
 more primitives arrive in `components/dashboard/visuals.tsx`, and their measured client-JavaScript
 delta is again **zero bytes** — they are server components.
 
-| Primitive | What it encodes | Alternate composition |
-|---|---|---|
-| `ExecutiveMicroTrend` | a KPI card's own shape over the trailing months | height only; never removed |
-| `StoreComparisonBars` | one governed measure across the stores in scope | none needed |
-| `InventoryAgeStack` | the age distribution as one part-to-whole bar | vertical below `sm` |
-| `GrossComposition` | two components of a governed total | none needed |
+| Primitive             | What it encodes                                        | Alternate composition       |
+| --------------------- | ------------------------------------------------------ | --------------------------- |
+| `ExecutiveMicroTrend` | a KPI card's own shape over the trailing months        | height only; never removed  |
+| `StoreComparisonBars` | one governed measure across the stores in scope        | none needed                 |
+| `InventoryAgeStack`   | the age distribution as one part-to-whole bar          | vertical below `sm`         |
+| `GrossComposition`    | two components of a governed total                     | none needed                 |
 | `ReconciliationScale` | signed GL-versus-subledger variance around a zero rule | per-account rows below `md` |
 
 Four rules bind these beyond the shape §6.0a describes, each one a defect the overhaul had to avoid

@@ -407,13 +407,13 @@ What a reader who cannot see the geometry gets instead, per visual:
 
 | Visual                | Accessible equivalent                                                            |
 | --------------------- | -------------------------------------------------------------------------------- |
-| `ExecutiveMicroTrend` | a visually-hidden summary sentence and a list of every month and its value        |
-| `TrendChart`          | summary sentence + `<table>` in a `<details>`, present whether or not it is open  |
-| `StoreComparisonBars` | value printed beside every bar, plus a store × value `<table>`                    |
-| `InventoryAgeStack`   | a labelled legend with every count, plus the existing three-column bucket table    |
-| `GrossComposition`    | a `<dl>` of every component and amount; the qualification behind a disclosure      |
-| `ReconciliationScale` | every account named with its signed variance, plus a four-column `<table>`        |
-| `PaceBar`             | one `sr-only` sentence carrying every figure the bar encodes                       |
+| `ExecutiveMicroTrend` | a visually-hidden summary sentence and a list of every month and its value       |
+| `TrendChart`          | summary sentence + `<table>` in a `<details>`, present whether or not it is open |
+| `StoreComparisonBars` | value printed beside every bar, plus a store × value `<table>`                   |
+| `InventoryAgeStack`   | a labelled legend with every count, plus the existing three-column bucket table  |
+| `GrossComposition`    | a `<dl>` of every component and amount; the qualification behind a disclosure    |
+| `ReconciliationScale` | every account named with its signed variance, plus a four-column `<table>`       |
+| `PaceBar`             | one `sr-only` sentence carrying every figure the bar encodes                     |
 
 The geometry is `aria-hidden` in every case, because everything it encodes is text in the same
 region and a screen-reader user who was also read the bars would hear each figure twice.

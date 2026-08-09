@@ -709,6 +709,66 @@ integrity checks and four lender fields. The jacket partition itself grew from 4
 568,225 bytes generated — 13 more columns on 650 rows — and the largest partition from
 34,439 to 44,190 bytes, still well inside the 256 KB ceiling.
 
+## 9.7 The Executive Overview's visual overhaul, measured
+
+Measured by `npm run bundle` against two production builds served locally, cold, compressed,
+on 9 August 2026. The **baseline is `origin/main` at `20a4e03`** — `DASH.9` complete — built in
+a separate worktree and measured the same way in the same session, so the delta below is this
+change and nothing else. That matters here more than usual: `DASH.5`, `DASH.7` and `DASH.9`
+all landed between §9.3's figure for this route and this one, and attributing their cost to a
+visual change would have been the easiest wrong number in this document.
+
+| `/dashboard`                |       Before |        After |        Delta |
+| --------------------------- | -----------: | -----------: | -----------: |
+| HTML                        |     121.0 kB | **133.1 kB** | **+12.1 kB** |
+| Route JavaScript            |     164.2 kB | **164.2 kB** |   **0.0 kB** |
+| CSS                         |      14.5 kB |      14.7 kB |      +0.2 kB |
+| Fonts                       |     114.3 kB |     114.3 kB |       0.0 kB |
+| **Total, route cost alone** | **415.3 kB** | **427.5 kB** | **+12.2 kB** |
+| Filtered view, HTML         |     111.0 kB |     120.8 kB |      +9.8 kB |
+
+**Nine visualisations for zero bytes of JavaScript.** 164.2 kB before and 164.2 kB after,
+which is the same figure `/dashboard/sales-gross`, `/dashboard/deals` and `/dashboard/fi`
+report — the console's shared shell plus the one client island, the filter bar. Five new
+primitives, seven microtrends, two trend charts, two comparison groups, an age stack, two
+composition bars and a reconciliation scale are all server components and ship no script at
+all. This is the `DASH.3-02` decision re-tested against a harder case and holding: the
+smallest charting library considered is two orders of magnitude larger than this route's
+entire client payload, and it would have bought nothing that is not already in the HTML.
+
+**The HTML grew by 12.1 kB compressed, and that is the honest cost.** Roughly half is the
+seven microtrends — each carries six months of markup plus a visually-hidden list of every
+month and value — and the rest is the accounting row, the two trend charts and their tables,
+and the comparison bars. Every byte of it is a figure or its accessible equivalent; none of it
+is a script, a fetch or a placeholder.
+
+**What did NOT happen, stated plainly.** The design for this change projected a NET DECREASE,
+on the basis that deduplicating the route's 24 KPI-methodology disclosures into one shared
+registry would remove more than the visuals added. That deduplication was **not done**, and
+the projection therefore did not hold. The reason is scope rather than difficulty: the
+disclosure is rendered by `KpiMethodology`, which four routes share, and the assertions that
+every card carries its own "How is this calculated?" run in three suites. Changing it is a
+console-wide refactor with a blast radius well outside a visual overhaul, and doing it badly
+inside one would have been the wrong trade. §9.2's observation stands unchanged and now has a
+second increment's worth of evidence behind it: two thirds of this route's HTML is methodology,
+and the fix is to deduplicate definitions shared by more than one card rather than to move any
+of them behind a request.
+
+**Payload still does not grow with the data.** The filtered view is 12.3 kB smaller than the
+unfiltered one, the same property §9.2 recorded, and for the same reason: a single-store scope
+renders one scoreboard row and one comparison bar rather than three.
+
+**Server graph unchanged in shape, one door wider.** Eight of the nine visualisations read
+datasets `/dashboard` already carried. The ninth reads `inventory-gl-reconciliation.json`
+through `accounting-data.ts` — 18 kB, 43 rows, the eleventh declared door, opened by `DASH.9`
+and asserted in `dashboard-boundaries.test.ts`. `accounting-chunks.ts` and its 360 kB of
+per-unit book values stay out of this route's graph, which the same suite asserts.
+
+**Not measured, and not claimed.** No Lighthouse run, no LCP, no CLS, no INP and no throttled
+profile for this route. Section 10 is unchanged by this increment.
+
+---
+
 ## 10. What has not been measured
 
 Stated rather than implied.
