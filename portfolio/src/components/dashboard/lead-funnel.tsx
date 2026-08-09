@@ -70,10 +70,14 @@ export function LeadFunnel({
 
   return (
     <div className="flex flex-col gap-6">
+      {/*
+        THE COHORT CAVEAT STAYS VISIBLE. It is compressed to one line, not moved behind a
+        disclosure: a conversion figure read without it is actively misleading, and the
+        rest of the explanation — which a reader needs only once — is one tap away.
+      */}
       <Text size="sm" tone="muted" className="max-w-prose">
-        Counted by lead-creation date, so a lead created in the selected period counts
-        here even if it sells later. Recent periods therefore show the lowest conversion
-        and improve for months afterwards; that is cohort maturity, not performance.
+        Counted by lead-creation date. Recent periods show the lowest conversion and
+        improve for months afterwards. That is cohort maturity, not performance.
       </Text>
 
       <section aria-labelledby="funnel-stages" className="flex flex-col gap-3">
@@ -102,11 +106,14 @@ export function LeadFunnel({
           </thead>
           <tbody>
             {funnel.stages.map((stage) => {
-              const count =
-                stage.result.kind === 'value'
-                  ? exactToApproxNumber(stage.result.value)
-                  : 0
-              const share = base === 0 ? 0 : count / base
+              const resolved = stage.result.kind === 'value'
+              const count = resolved ? exactToApproxNumber(stage.result.value) : 0
+              /*
+               * A zero base has no shares, and drawing five stages at zero width would
+               * present "nobody enquired" as "everybody dropped out at the first step".
+               * `null` means the proportion is undefined and the cell says so.
+               */
+              const share = base === 0 || !resolved ? null : count / base
               return (
                 <tr key={stage.id} className="border-t border-line-subtle">
                   <th scope="row" className="py-2.5 text-left font-medium text-ink">
@@ -118,16 +125,22 @@ export function LeadFunnel({
                       : 'No matching records'}
                   </td>
                   <td className="py-2.5">
-                    <span className="flex items-center gap-2">
-                      <span
-                        aria-hidden="true"
-                        className="h-2 min-w-px rounded-pill bg-accent/70"
-                        style={{ width: `${(share * 100).toFixed(1)}%` }}
-                      />
-                      <span className="numeric text-2xs text-ink-faint">
-                        {(share * 100).toFixed(1)}%
+                    {share === null ? (
+                      <span className="text-2xs text-ink-faint">
+                        No proportion is defined without leads received
                       </span>
-                    </span>
+                    ) : (
+                      <span className="flex items-center gap-2">
+                        <span
+                          aria-hidden="true"
+                          className="h-3 min-w-px rounded-pill bg-accent-mark"
+                          style={{ width: `${(share * 100).toFixed(1)}%` }}
+                        />
+                        <span className="numeric shrink-0 text-2xs text-ink-faint">
+                          {(share * 100).toFixed(1)}%
+                        </span>
+                      </span>
+                    )}
                   </td>
                   <td className="numeric py-2.5 text-right">
                     {stage.rate === null ? (
@@ -151,10 +164,15 @@ export function LeadFunnel({
             })}
           </tbody>
         </table>
+        {/*
+          ALSO LOAD-BEARING, AND MORE SO NOW THAT THE BAR IS THE PRIMARY READING. A reader
+          who takes the proportion off the length has to know it is not one of the
+          governed rates in the column beside it.
+        */}
         <Text size="xs" tone="faint" className="max-w-prose">
-          The share column is the stage count over leads received. It is arithmetic on two
-          exported columns for the bar beside it, not a governed KPI; the governed rates
-          are named in the last column with their catalogue identifiers.
+          The share is the stage count over leads received: arithmetic on two exported
+          columns for the bar, not a governed KPI. The governed rates are the last column,
+          with their catalogue identifiers.
         </Text>
       </section>
 

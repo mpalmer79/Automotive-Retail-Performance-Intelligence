@@ -12,7 +12,7 @@
  * console-specific keyboard, reflow and no-JavaScript assertions are here, because
  * they are properties of this page rather than of the site.
  */
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 
 import { bodyText, gotoRendered, mainText, mainTextContent } from './helpers'
 import {
@@ -223,23 +223,210 @@ test.describe('the figures on the screen are the exported figures', () => {
     }
   })
 
-  test('carries no F&I or accounting figure, which no fact supports yet', async ({
+  test('carries no F&I figure, which no fact on this route supports yet', async ({
     page,
   }) => {
     /*
      * `DASH.5` moved target attainment and selling-day pace OFF this list: the plan fact
-     * exists, the KPIs are governed, and the section below asserts them positively. The
-     * two that remain are still blocked by Deferred facts (`DASH.6` and `DASH.8`), so
-     * their absence is still the correct state.
+     * exists, the KPIs are governed, and the section below asserts them positively.
+     *
+     * `DASH.9` has now done the same for the GL comparison. The reconciliation fact
+     * exists, its view model is tested against the export in `dashboard-accounting.test.ts`,
+     * and `accounting-data.ts` records that the 43-row comparison set "IS the Executive
+     * summary" for this route — so the accounting position is asserted POSITIVELY below
+     * rather than asserted absent here. What remains on this list is F&I, whose
+     * penetration and chargeback surfaces are the `/dashboard/fi` route's and are not
+     * summarised here.
      */
     await gotoRendered(page, ROUTE)
     const text = await mainText(page)
-    for (const absent of [
-      /\bgl variance\b/i,
-      /\bproduct penetration\b/i,
-      /\bchargeback\b/i,
-    ]) {
+    for (const absent of [/\bproduct penetration\b/i, /\bchargeback\b/i]) {
       expect(text, String(absent)).not.toMatch(absent)
+    }
+  })
+})
+
+/* -------------------------------------------------------------------------- */
+/* Accounting integrity (DASH.9 data, surfaced by the visual overhaul)         */
+/* -------------------------------------------------------------------------- */
+
+test.describe('the accounting integrity signal', () => {
+  test('states the comparison date and the direction in words', async ({ page }) => {
+    await gotoRendered(page, ROUTE)
+    const text = await mainText(page)
+    expect(text).toContain('Whether the stock schedule and the general ledger agree')
+    expect(text).toContain('31 December 2025')
+    expect(text).toMatch(
+      /the general ledger carries more than the subledger|the subledger carries more than the general ledger|the two sides agree exactly/
+    )
+  })
+
+  test('names a variance as a finding rather than as a failure', async ({ page }) => {
+    await gotoRendered(page, ROUTE)
+    const text = (await mainText(page)).toLowerCase()
+    expect(text).toContain('a finding to investigate, not a broken record')
+    for (const verdict of ['reconciliation failed', 'data error', 'broken data']) {
+      expect(text, verdict).not.toContain(verdict)
+    }
+  })
+
+  test('carries the controlled-scenario disclosure in full', async ({ page }) => {
+    await gotoRendered(page, ROUTE)
+    expect(await mainText(page)).toContain(
+      'deliberately planted controlled scenarios used to prove the control surface'
+    )
+  })
+
+  /*
+   * THIS TEST USED TO ASSERT THE OPPOSITE.
+   *
+   * Through `DASH.8` it read "links to no accounting route, because none is built" and
+   * swept every anchor in `main` for `/dashboard/accounting` or `/dashboard/inventory`,
+   * because pointing at either would have been a 404. `DASH.9` built both, so the
+   * negative became a false claim about the console and is replaced by the positive it
+   * always implied: the summary drills through, and the destination is real.
+   *
+   * The route-integrity sweep that made the old assertion worth having is unchanged and
+   * still runs: `UNBUILT_DASHBOARD_ROUTES` is asserted unreachable from every dashboard
+   * route and asserted to 404 when fetched directly, in this file and in
+   * `navigation.spec.ts`. What narrowed is the list of routes that do not exist, not the
+   * strength of the check.
+   */
+  test('drills through to the accounting route, and the destination is real', async ({
+    page,
+  }) => {
+    await gotoRendered(page, ROUTE)
+    const link = page
+      .locator('#accounting-integrity a[href="/dashboard/accounting"]')
+      .first()
+    await expect(link).toBeVisible()
+
+    await link.click()
+    await page.waitForURL('**/dashboard/accounting')
+    await expect(page.locator('h1')).toContainText('control accounts')
+  })
+
+  test('drills through to the inventory route, and the destination is real', async ({
+    page,
+  }) => {
+    await gotoRendered(page, ROUTE)
+    const link = page.locator('main a[href="/dashboard/inventory"]').first()
+    await expect(link).toBeVisible()
+
+    await link.click()
+    await page.waitForURL('**/dashboard/inventory')
+    await expect(page.locator('h1')).toContainText('lot')
+  })
+})
+
+/* -------------------------------------------------------------------------- */
+/* The geometry is driven by the data                                          */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * WHY THESE READ COMPUTED WIDTHS AND NOT MARKUP.
+ *
+ * Every other assertion in this file checks that a figure reached the screen. These
+ * check the thing that a figure reaching the screen does not prove: that the PICTURE
+ * beside it moved when the data did. A component drawing every bar at a fixed width
+ * would satisfy the rest of this suite completely.
+ *
+ * So each test loads two filter states and compares the drawn geometry between them.
+ * Where the two are expected to differ, an equal result is the failure.
+ */
+async function drawnWidths(page: Page, selector: string) {
+  return page.$$eval(selector, (nodes) =>
+    nodes.map((node) => (node as HTMLElement).style.width)
+  )
+}
+
+test.describe('changing the filter changes the geometry', () => {
+  test('two different store scopes produce different comparison bars', async ({
+    page,
+  }) => {
+    /*
+     * Two-store scopes rather than two single stores, and the reason is a property of
+     * the primitive rather than a convenience: a lone store is the maximum of its own
+     * scale and is therefore always drawn full width. That is correct — a bar's length
+     * is a comparison, and there is nothing to compare one store against — and it is
+     * asserted separately below. What this test needs is two scopes whose RELATIVE
+     * values differ.
+     */
+    await gotoRendered(page, `${ROUTE}?store=GSA-001,GSA-002`)
+    const first = await drawnWidths(page, '#operating [style*="width"]')
+    await gotoRendered(page, `${ROUTE}?store=GSA-002,GSA-003`)
+    const second = await drawnWidths(page, '#operating [style*="width"]')
+    expect(first.length).toBeGreaterThan(0)
+    expect(first).not.toEqual(second)
+  })
+
+  test('three stores produce three different bar lengths', async ({ page }) => {
+    await gotoRendered(page, ROUTE)
+    const widths = await drawnWidths(page, '#operating [style*="width"]')
+    expect(widths.length).toBeGreaterThanOrEqual(3)
+    // Not all the same: the group view is the case a fixed-width bar would pass.
+    expect(new Set(widths).size).toBeGreaterThan(1)
+  })
+
+  test('a single store draws a full-width bar and says why that is not a comparison', async ({
+    page,
+  }) => {
+    await gotoRendered(page, `${ROUTE}?store=GSA-001`)
+    const widths = await drawnWidths(page, '#operating [style*="width"]')
+    expect(widths.every((width) => width === '100%')).toBe(true)
+    expect(await mainText(page)).toContain('there is nothing to compare it against')
+  })
+
+  test('two periods produce a different trend shape', async ({ page }) => {
+    await gotoRendered(page, `${ROUTE}?period=2025-12`)
+    const december = await page.$$eval('#operating [style*="height"]', (nodes) =>
+      nodes.map((node) => (node as HTMLElement).style.height)
+    )
+    await gotoRendered(page, `${ROUTE}?period=2025-09`)
+    const september = await page.$$eval('#operating [style*="height"]', (nodes) =>
+      nodes.map((node) => (node as HTMLElement).style.height)
+    )
+    expect(december.length).toBeGreaterThan(0)
+    expect(december).not.toEqual(september)
+  })
+
+  test('a condition filter changes the inventory age segments', async ({ page }) => {
+    await gotoRendered(page, `${ROUTE}?condition=New`)
+    const asNew = await drawnWidths(page, '#targets [style*="width"]')
+    await gotoRendered(page, `${ROUTE}?condition=Used`)
+    const used = await drawnWidths(page, '#targets [style*="width"]')
+    expect(asNew.length).toBeGreaterThan(0)
+    expect(asNew).not.toEqual(used)
+  })
+
+  test('a store scope change moves the funnel stage widths', async ({ page }) => {
+    await gotoRendered(page, `${ROUTE}?store=GSA-001`)
+    const first = await drawnWidths(page, '#composition [style*="width"]')
+    await gotoRendered(page, `${ROUTE}?store=GSA-003`)
+    const second = await drawnWidths(page, '#composition [style*="width"]')
+    expect(first.length).toBeGreaterThan(0)
+    expect(first).not.toEqual(second)
+  })
+
+  test('the printed value and the bar beside it come from the same scope', async ({
+    page,
+  }) => {
+    /*
+     * The store comparison prints each store's retail units beside its bar and the
+     * scoreboard prints the same measure in its own table. If a chart had acquired a
+     * second read path, these two would disagree for at least one store.
+     */
+    await gotoRendered(page, `${ROUTE}?period=2025-11`)
+    const compared = await page.$$eval('#operating table tbody tr', (rows) =>
+      rows.map((row) =>
+        [...row.querySelectorAll('th,td')].map((cell) => (cell.textContent ?? '').trim())
+      )
+    )
+    const text = await mainText(page)
+    for (const row of compared) {
+      const [store, , value] = row
+      if (store === undefined || value === undefined) continue
+      expect(text, `${store} ${value}`).toContain(value)
     }
   })
 })
@@ -678,6 +865,36 @@ test.describe('without JavaScript', () => {
     expect(text).toContain('of target')
     expect(text).toContain('synthetic internal operating goals')
     expect(text).toContain('Pace against plan')
+
+    /*
+     * The nine visualisations, without scripting. Each one is a server component, so
+     * what is asserted here is not that a chart "works" but that its ACCESSIBLE
+     * EQUIVALENT is in the document — the microtrend's month list, the trend's data
+     * table, the comparison's store table, the age bands, the composition amounts and
+     * the reconciliation accounts. A picture that only exists after hydration would
+     * take every one of these with it.
+     */
+    expect(text).toContain('Trailing 6 months to December 2025')
+    expect(text).toContain('Total gross per retail unit')
+    expect(text).toContain('Front-end gross')
+    expect(text).toContain('Back-end gross')
+    expect(text).toContain('New and used mix')
+    expect(text).toContain('Stock schedule against the general ledger')
+    expect(text).toContain('Comparable positions')
+    expect(text).toMatch(/read .* as a table/i)
+  })
+
+  test('every visualisation carries its geometry in the served HTML', async ({
+    page,
+  }) => {
+    await page.goto(ROUTE)
+    // Inline widths and heights are in the document, not applied by a script after
+    // load. With scripting disabled there is nothing that could have applied them.
+    const drawn = await page.$$eval(
+      'main [style*="width"], main [style*="height"]',
+      (n) => n.length
+    )
+    expect(drawn).toBeGreaterThan(10)
   })
 
   test('the incomparable-filter state is present without scripting too', async ({

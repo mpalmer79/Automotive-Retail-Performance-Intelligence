@@ -158,8 +158,16 @@ export function stateLabel(result: MetricResult): string | null {
 export interface MetricValueProps {
   selector: Selector
   result: MetricResult
-  /** `lead` for a KPI card, `cell` inside a table, `inline` in running text. */
-  size?: 'lead' | 'cell' | 'inline'
+  /**
+   * `lead` for a primary KPI card, `sub` for a supporting one, `cell` inside a table,
+   * `inline` in running text.
+   *
+   * `sub` exists because `cell` was doing two jobs. A supporting KPI card set at `cell`
+   * rendered its value at the same size and weight as the comparison line beneath it,
+   * which erased the rank the strip is arranged to express; a table cell genuinely wants
+   * that weight, so the two needed different names rather than a compromise.
+   */
+  size?: 'lead' | 'sub' | 'cell' | 'inline'
   className?: string
 }
 
@@ -180,16 +188,22 @@ export function MetricValue({
   const sizeClass =
     size === 'lead'
       ? 'font-display text-3xl font-semibold tracking-tight'
-      : size === 'cell'
-        ? 'text-sm font-medium'
-        : 'text-sm'
+      : size === 'sub'
+        ? 'font-display text-xl font-semibold tracking-tight'
+        : size === 'cell'
+          ? 'text-sm font-medium'
+          : 'text-sm'
 
   if (formatted === null) {
     const label = stateLabel(result)
     return (
       <span
         className={cx(
-          size === 'lead' ? 'text-xl font-semibold' : 'text-sm font-medium',
+          size === 'lead'
+            ? 'text-xl font-semibold'
+            : size === 'sub'
+              ? 'text-base font-semibold'
+              : 'text-sm font-medium',
           'text-ink-muted',
           className
         )}

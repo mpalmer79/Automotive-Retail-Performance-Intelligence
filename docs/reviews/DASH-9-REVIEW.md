@@ -264,6 +264,16 @@ importers exhaustively rather than sampling.
 direction sentence are all decided in `lib/dashboard/executive.ts`. The boundary suite fails
 the build if a component reaches for the exact-decimal helpers.
 
+> **Later note, added when the Executive visual overhaul merged.** This review is a record of
+> the increment as reviewed and its findings are not restated. One name in it has since
+> changed: the `ReconciliationSignal` card was replaced on `/dashboard` by
+> `ReconciliationSection` and the `ReconciliationScale` primitive, and its view type moved to
+> `lib/dashboard/executive.ts` beside the builder. The property F2 asserts is unchanged and
+> still enforced by the same suite — one `Exact` now crosses the boundary, the per-account
+> `variance`, and it crosses for bar geometry only, never for a displayed figure.
+> `buildAccountingSignal()` remains the single builder; the overhaul deleted the second one it
+> had briefly written rather than shipping both.
+
 ---
 
 ## G. Performance, measured

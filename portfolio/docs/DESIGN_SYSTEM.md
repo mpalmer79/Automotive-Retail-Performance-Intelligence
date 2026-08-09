@@ -452,9 +452,64 @@ and a real `<table>` inside a `<details>` — present in the document, and there
 order and in a text search, whether or not it is opened. Direction is a glyph and a sign, never
 colour alone. A null renders as a gap with a stated reason, never as a zero-height bar.
 
-Two primitives the backlog reserved were **not** built. A pace/bullet bar encodes a target, and
-`DASH.5` owns targets; a funnel already exists on the Executive Overview as its own component.
-An abstraction built for a page that does not exist is a guess about that page.
+Two primitives the backlog reserved were **not** built at `DASH.3`. A pace/bullet bar encodes a
+target, and `DASH.5` owns targets; a funnel already exists on the Executive Overview as its own
+component. An abstraction built for a page that does not exist is a guess about that page.
+
+`DASH.5` subsequently built the pace bar (`components/dashboard/pace-bar.tsx`), with the target
+data it encodes. The funnel primitive is still not built, and for the same reason: one call site.
+
+### 6.0b The five primitives the Executive Overview's visual overhaul added
+
+The chart-library decision above was re-tested against the harder case and did not change. Five
+more primitives arrive in `components/dashboard/visuals.tsx`, and their measured client-JavaScript
+delta is again **zero bytes** — they are server components.
+
+| Primitive             | What it encodes                                        | Alternate composition       |
+| --------------------- | ------------------------------------------------------ | --------------------------- |
+| `ExecutiveMicroTrend` | a KPI card's own shape over the trailing months        | height only; never removed  |
+| `StoreComparisonBars` | one governed measure across the stores in scope        | none needed                 |
+| `InventoryAgeStack`   | the age distribution as one part-to-whole bar          | vertical below `sm`         |
+| `GrossComposition`    | two components of a governed total                     | none needed                 |
+| `ReconciliationScale` | signed GL-versus-subledger variance around a zero rule | per-account rows below `md` |
+
+Four rules bind these beyond the shape §6.0a describes, each one a defect the overhaul had to avoid
+rather than a preference:
+
+**A primitive takes an `Exact` or a `MetricResult`, never a `number`.** A component given a number
+cannot tell a measured zero from "Not applicable", and would draw a zero-length bar for a store that
+is not in the business being measured — which re-creates geometrically the exact defect the
+structural-absence rule removes from the scoreboard. `StoreComparisonBars` therefore takes the whole
+result and renders four of its five states as words with no track at all.
+
+**A part-to-whole bar receives its denominator; it never sums the parts.** A component may not
+perform exact arithmetic (`dashboard-boundaries.test.ts`), and a denominator assembled from the
+segments could disagree with the total the KPI row prints. `GrossComposition` takes the governed
+total and withholds the whole bar when it is absent, zero, or when any segment is negative — a
+signed amount is not a slice of a hundred percent, and a stack drawn over one is a picture of
+something that did not happen.
+
+**A distribution divides by the population, not by its own largest band.** The age bars this
+replaced divided each bucket by the biggest bucket, which made the mode full-width at every scope
+and produced an identical picture whether the lot was evenly spread or entirely aged.
+
+**Where a variance is not a failure, nothing is coloured.** `ReconciliationScale` uses no colour at
+all: the sign is carried by the side of the zero rule, by the printed amount, and by a sentence from
+the governed helper. The export's own exception text says both sides are valid data, so a red marker
+would publish a judgement the console is not authorized to make.
+
+The geometry itself is one shared helper — `columnGeometry` — used by `TrendChart` and
+`ExecutiveMicroTrend`, because two copies of a baseline calculation eventually disagree about where
+zero sits, and that is the one thing about a column chart a reader cannot check by looking.
+
+**And the view models these consume have one builder each.** `ReconciliationScale` was written in
+parallel with `DASH.9`'s final increment, and for a short time two functions resolved the same
+comparison date, applied the same store filter and totalled the same signed variance — one feeding
+`DASH.9`'s four-card summary, one feeding this scale. The merge deleted the second rather than
+shipping both: `buildAccountingSignal()` is the only one, and the scale reads its output. A
+primitive that needs a richer input than an existing view model provides is a reason to widen that
+view model, never a reason to write a second one beside it. Two builders agree on the day they are
+written and nothing keeps them agreeing.
 
 ### 6.1 Why there is no headless component library
 

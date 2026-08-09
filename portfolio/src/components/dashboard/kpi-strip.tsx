@@ -10,13 +10,21 @@
  * four-across grid would say all seven matter equally, which is not what an
  * operating meeting is like.
  *
- * WHAT IS DELIBERATELY ABSENT
- * ---------------------------
- * No target, no pace, no forecast (`DASH.5` owns targets and there is no
- * `fact_sales_target` in the warehouse yet). No accounting reconciliation variance
- * (`DASH.9`). No sparkline: a trend line needs a shape a reader can check, and the
- * trend page that owns it is `DASH.3`. Their absence is correct; a placeholder card
- * for any of them would be the console claiming a capability it does not have.
+ * EVERY CARD NOW CARRIES ITS OWN SHAPE
+ * ------------------------------------
+ * The first version of this file recorded why it did not: "a trend line needs a shape a
+ * reader can check, and the trend page that owns it is `DASH.3`". That page shipped, so
+ * the condition is met and the microtrend arrives — six trailing months of the card's
+ * OWN selector at the card's OWN scope, drawn as columns rather than a line for the
+ * reason `TrendChart` gives, and never as a second formula.
+ *
+ * WHAT IS STILL DELIBERATELY ABSENT
+ * ---------------------------------
+ * No target, no pace, no forecast and no reconciliation variance ON A CARD. The plan and
+ * the accounting position are both real facts now and both are on this page — as their
+ * own sections, below the figures they qualify. A card is the business result; putting a
+ * plan variance beside it in the same visual rank would invert what an operating report
+ * is for, and `dashboard-executive.test.tsx` asserts the strip stays clean of all five.
  *
  * Server component.
  */
@@ -30,9 +38,12 @@ import {
   MetricDifference,
   MetricReason,
   MetricValue,
+  formatMetric,
+  stateLabel,
   unitLabel,
   valueCarriesUnit,
 } from './metric'
+import { ExecutiveMicroTrend, type MicroTrendPoint } from './visuals'
 
 export function KpiStrip({
   cards,
@@ -113,10 +124,15 @@ function KpiCard({
       </div>
 
       <div className={cx('flex flex-col gap-1.5', rank === 'lead' ? 'py-1' : '')}>
+        {/*
+         * `supporting` is `sub` rather than `cell`: the first version set the four
+         * qualifying cards at the same size and weight as their own comparison line,
+         * which flattened the two ranks this component exists to establish.
+         */}
         <MetricValue
           selector={selector}
           result={current}
-          size={rank === 'lead' ? 'lead' : 'cell'}
+          size={rank === 'lead' ? 'lead' : 'sub'}
         />
         {resolved ? (
           <MetricDifference metric={card.metric} comparisonLabel={comparisonLabel} />
@@ -124,6 +140,12 @@ function KpiCard({
           <MetricReason result={current} />
         )}
       </div>
+
+      <ExecutiveMicroTrend
+        measure={card.label}
+        points={microTrendPoints(card)}
+        size={rank}
+      />
 
       {card.scopeNote === null ? null : (
         <Text size="xs" tone="faint">
@@ -134,4 +156,25 @@ function KpiCard({
       <KpiMethodology selector={selector} definition={card.definition} />
     </Card>
   )
+}
+
+/**
+ * A card's trailing samples, formatted for the strip.
+ *
+ * The value handed to the primitive stays exact and the display string is produced by
+ * the card's own governed formatter, so a column and the figure above it can never be
+ * formatted by two different rules. A month the selector declined carries `null` — which
+ * the primitive renders as a gap — and its state label as the text a reader gets.
+ */
+function microTrendPoints(card: KpiCardModel): readonly MicroTrendPoint[] {
+  return card.microTrend.map((point) => ({
+    key: point.key,
+    label: point.label,
+    value: point.result.kind === 'value' ? point.result.value : null,
+    display:
+      formatMetric(card.metric.selector, point.result) ??
+      stateLabel(point.result) ??
+      'No value',
+    isCurrent: point.isCurrent,
+  }))
 }

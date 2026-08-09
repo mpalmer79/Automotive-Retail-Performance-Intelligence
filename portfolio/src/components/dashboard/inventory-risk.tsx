@@ -27,14 +27,27 @@
  * finding depending on the threshold must state it in the same sentence." It is not
  * an industry standard and the page does not call it one.
  *
+ * WHERE THIS SECTION STOPS
+ * ------------------------
+ * At the summary. `DASH.9` delivered `/dashboard/inventory`, which holds the 1,501
+ * unit-level rows, their age against the threshold, asking price against the synthetic
+ * market estimate and the per-unit accounting position. None of that belongs here: the
+ * Executive Overview reads eight governed figures and one distribution over a snapshot,
+ * and the drill-through below is how a reader gets from the shape to the units behind
+ * it. Reproducing the detail page's content on this page would cost 356 kB of chunks
+ * this route never opens, which `dashboard-boundaries.test.ts` forbids outright.
+ *
  * Server component.
  */
+import Link from 'next/link'
+
 import { Card } from '@/components/ui/card-static'
 import { Heading, Text } from '@/components/ui/typography'
 import { kpiDefinition, type InventorySummary } from '@/lib/dashboard/executive'
 import { exactToString } from '@/lib/dashboard/decimal'
 import { formatIsoDate } from '@/lib/dashboard/format'
 import type { ComparedMetric } from '@/lib/dashboard/selectors'
+import { ROUTES } from '@/lib/site'
 import { cx } from '@/lib/utils'
 
 import {
@@ -45,6 +58,7 @@ import {
   unitLabel,
   valueCarriesUnit,
 } from './metric'
+import { InventoryAgeStack } from './visuals'
 
 export function InventoryRisk({
   inventory,
@@ -118,6 +132,15 @@ export function InventoryRisk({
         <AgeDistribution inventory={inventory} />
         <MedianTable inventory={inventory} />
       </div>
+
+      <Text size="xs" tone="faint" className="max-w-prose">
+        <Link className="underline" href={ROUTES.dashboardInventory.href}>
+          Open inventory operations
+        </Link>{' '}
+        for the units behind these figures: each one&apos;s age against the same
+        threshold, its asking price against a synthetic market estimate, and its
+        accounting position at the same snapshot.
+      </Text>
     </div>
   )
 }
@@ -127,92 +150,87 @@ export function InventoryRisk({
 /* -------------------------------------------------------------------------- */
 
 /**
- * The aging profile, as labelled bars with a table underneath.
+ * The aging profile, as one part-to-whole bar with its table underneath.
  *
- * Built from `<div>`s at percentage widths rather than from a charting library. The
- * dashboard program's rule is that a library is adopted on measurement, not by
- * default, and five horizontal bars whose lengths are a ratio of two integers do not
- * need one: this renders on the server, costs no JavaScript, survives having its
- * colours removed, and reflows at 320px because it is text with a rule beside it.
+ * WHAT CHANGED, AND WHY THE OLD BARS WERE WRONG. The first version drew one bar per
+ * bucket at a width of that bucket over the LARGEST bucket. That is a comparison of
+ * modes, not a distribution: it made the biggest band full-width at every scope, so the
+ * picture looked identical whether the lot was evenly spread or entirely aged. The
+ * `share` the view model publishes is the bucket over the POPULATION, which is the
+ * denominator a distribution actually has, and `InventoryAgeStack` draws that.
  *
- * Every bar carries its own count in words, so the geometry is decoration and the
- * data is the label. The bar element is `aria-hidden` and the numbers are in a real
- * table below, which is the data-table alternative the accessibility rules ask for.
+ * The table is retained verbatim below the stack. The geometry is decoration; the counts
+ * and the shares are the data, and both are text in two places.
  */
 function AgeDistribution({ inventory }: { inventory: InventorySummary }) {
-  if (inventory.buckets.length === 0) {
-    return (
-      <section aria-labelledby="age-distribution" className="flex flex-col gap-3">
-        <Heading level={3} size="h6" id="age-distribution">
-          Age distribution
-        </Heading>
+  const snapshotNote =
+    inventory.snapshotDate === null
+      ? 'No inventory snapshot falls inside the selected period.'
+      : `Read at the ${formatIsoDate(inventory.snapshotDate)} snapshot, at one date and never summed across dates.`
+
+  return (
+    <section aria-labelledby="age-distribution" className="flex flex-col gap-4">
+      <InventoryAgeStack
+        title="Age distribution"
+        caption="Units on the lot by days in stock. Bucket boundaries come from the exported aging view."
+        segments={inventory.buckets.map((bucket) => ({
+          key: bucket.label,
+          label: bucket.label,
+          display: `${exactToString(bucket.units)} units`,
+          share: bucket.share,
+        }))}
+        snapshotNote={snapshotNote}
+        headingLevel={3}
+      />
+
+      {inventory.buckets.length === 0 ? (
         <Text size="sm" tone="muted">
           No inventory rows fall inside the selected period and scope.
         </Text>
-      </section>
-    )
-  }
-
-  return (
-    <section aria-labelledby="age-distribution" className="flex flex-col gap-3">
-      <Heading level={3} size="h6" id="age-distribution">
-        Age distribution
-      </Heading>
-      <Text size="xs" tone="muted">
-        Units on the lot by days in stock, at the snapshot date. Bucket boundaries come
-        from the exported aging view.
-      </Text>
-      <table className="w-full border-collapse text-left text-sm">
-        <caption className="sr-only">
-          Active inventory units by age bucket at the snapshot date
-        </caption>
-        <thead>
-          <tr>
-            <th
-              scope="col"
-              className="py-1.5 font-mono text-2xs tracking-wide text-ink-muted uppercase"
-            >
-              Days in stock
-            </th>
-            <th
-              scope="col"
-              className="py-1.5 text-right font-mono text-2xs tracking-wide text-ink-muted uppercase"
-            >
-              Units
-            </th>
-            <th
-              scope="col"
-              className="w-1/2 py-1.5 font-mono text-2xs tracking-wide text-ink-muted uppercase"
-            >
-              Share
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {inventory.buckets.map((bucket) => (
-            <tr key={bucket.label} className="border-t border-line-subtle">
-              <th scope="row" className="py-2 text-left font-medium text-ink-secondary">
-                {bucket.label}
+      ) : (
+        <table className="w-full border-collapse text-left text-sm">
+          <caption className="sr-only">
+            Active inventory units by age bucket at the snapshot date
+          </caption>
+          <thead>
+            <tr>
+              <th
+                scope="col"
+                className="py-1.5 font-mono text-2xs tracking-wide text-ink-muted uppercase"
+              >
+                Days in stock
               </th>
-              <td className="numeric py-2 pr-3 text-right text-ink">
-                {exactToString(bucket.units)}
-              </td>
-              <td className="py-2">
-                <span className="flex items-center gap-2">
-                  <span
-                    aria-hidden="true"
-                    className="h-2 min-w-px rounded-pill bg-accent/70"
-                    style={{ width: `${(bucket.share * 100).toFixed(1)}%` }}
-                  />
-                  <span className="numeric text-2xs text-ink-faint">
-                    {(bucket.share * 100).toFixed(1)}%
-                  </span>
-                </span>
-              </td>
+              <th
+                scope="col"
+                className="py-1.5 text-right font-mono text-2xs tracking-wide text-ink-muted uppercase"
+              >
+                Units
+              </th>
+              <th
+                scope="col"
+                className="py-1.5 text-right font-mono text-2xs tracking-wide text-ink-muted uppercase"
+              >
+                Share
+              </th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {inventory.buckets.map((bucket) => (
+              <tr key={bucket.label} className="border-t border-line-subtle">
+                <th scope="row" className="py-2 text-left font-medium text-ink-secondary">
+                  {bucket.label}
+                </th>
+                <td className="numeric py-2 pr-3 text-right text-ink">
+                  {exactToString(bucket.units)}
+                </td>
+                <td className="numeric py-2 text-right text-ink-muted">
+                  {(bucket.share * 100).toFixed(1)}%
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </section>
   )
 }

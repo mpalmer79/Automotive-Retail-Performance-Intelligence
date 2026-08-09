@@ -24,20 +24,22 @@
  * it was never in. `isFranchise` comes from the exported store dimension, so the
  * rule is read from the data rather than assumed from a name.
  */
-import { glReconciliationRows } from '@/lib/dashboard/accounting-data'
-import {
-  resolveComparisonDate,
-  selectComparisons,
-  summarize,
-  toComparisonRows,
-  varianceDirection,
-} from '@/lib/dashboard/accounting'
-import { formatCurrencyDifference, formatIsoDate } from '@/lib/dashboard/format'
-import type { ReconciliationSignalView } from '@/components/dashboard/reconciliation-signal'
 import { kpis } from '@/lib/content'
 import type { KpiEntry } from '@/types/content'
 
+import { accountingExceptionRows, glReconciliationRows } from './accounting-data'
 import {
+  CONTROLLED_SCENARIO_NOTE,
+  resolveComparisonDate,
+  selectComparisons,
+  selectExceptions,
+  summarize,
+  toComparisonRows,
+  toExceptionRows,
+  varianceDirection,
+} from './accounting'
+import {
+  calendarMonths,
   chunkedDataset,
   dashboardCalendar,
   dashboardManifest,
@@ -57,7 +59,13 @@ import {
   type DashboardFilters,
   type FilterReset,
 } from './filters'
-import { calendarWindow, resolvePeriod, type PeriodContext } from './periods'
+import { formatCurrencyDifference, formatIsoDate, formatIsoMonth } from './format'
+import {
+  calendarWindow,
+  resolvePeriod,
+  type PeriodContext,
+  type ResolvedPeriod,
+} from './periods'
 import {
   buildStoreTargetContexts,
   buildTargetContext,
@@ -125,8 +133,72 @@ function resolveStoreScope(filters: DashboardFilters): StoreScope {
 }
 
 /* -------------------------------------------------------------------------- */
+/* The trailing window                                                         */
+/* -------------------------------------------------------------------------- */
+
+/** How many months of shape a card and the operating trend carry. */
+export const TRAILING_MONTHS = 6
+
+/** One month of the trailing window, resolved against the governed calendar. */
+export interface TrailingMonth {
+  readonly key: string
+  readonly label: string
+  readonly period: ResolvedPeriod
+  /** True for the month the selected period resolves to, where it resolves to one. */
+  readonly isCurrent: boolean
+}
+
+/**
+ * The trailing months a shape is drawn over, anchored on the selected period.
+ *
+ * ANCHORED, NOT FIXED. A window that was always the six exported months would draw the
+ * same picture for every period selection, and a picture that does not move when the
+ * filter moves is a decoration. This ends at the last month the selected period touches
+ * and runs back from there, so selecting September genuinely shortens it — which is
+ * both the honest behaviour and the one the visual-binding tests can prove.
+ *
+ * EVERY MONTH IS RESOLVED BY `resolvePeriod` AGAINST THE EXPORT'S OWN CALENDAR, so a
+ * column's selling-day count, month boundaries and label come from the same place the
+ * selected period's did. Nothing here constructs a date, and nothing here does
+ * arithmetic: this module may not, and does not need to.
+ */
+export function trailingMonths(
+  periodContext: PeriodContext,
+  count: number = TRAILING_MONTHS
+): readonly TrailingMonth[] {
+  const touched = periodContext.period.months
+  const anchor = touched[touched.length - 1] ?? calendarMonths[calendarMonths.length - 1]
+  if (anchor === undefined) return []
+
+  const upToAnchor = calendarMonths.filter((month) => month <= anchor)
+  const window = upToAnchor.slice(Math.max(upToAnchor.length - count, 0))
+
+  /*
+   * "Current" means the selected period resolves to exactly this one month. A range
+   * spanning three months marks none of them, and the accessible sentence says so
+   * rather than picking the last and implying the reader chose it.
+   */
+  const selected = touched.length === 1 ? touched[0] : null
+
+  return window.map((month) => ({
+    key: month,
+    label: formatIsoMonth(month),
+    period: resolvePeriod({ kind: 'month', month }, 'none', reportingCalendar).period,
+    isCurrent: month === selected,
+  }))
+}
+
+/* -------------------------------------------------------------------------- */
 /* Cards                                                                       */
 /* -------------------------------------------------------------------------- */
+
+/** One month of a card's own shape. */
+export interface MicroTrendSample {
+  readonly key: string
+  readonly label: string
+  readonly result: MetricResult
+  readonly isCurrent: boolean
+}
 
 export interface KpiCard {
   readonly id: string
@@ -138,6 +210,14 @@ export interface KpiCard {
   readonly definition: KpiEntry | undefined
   /** Extra scope the reader needs: the snapshot date, the condition filter. */
   readonly scopeNote: string | null
+  /**
+   * The card's shape over the trailing months, at the same scope as its value.
+   *
+   * Every sample is the card's OWN selector evaluated over one month — never a second
+   * formula, never a smoothed series, and never a value carried over from a neighbouring
+   * month. A month the selector declines renders as a gap.
+   */
+  readonly microTrend: readonly MicroTrendSample[]
 }
 
 /* -------------------------------------------------------------------------- */
@@ -293,6 +373,17 @@ export interface SalesGrossSummary {
   readonly frontGross: ComparedMetric
   readonly backGross: ComparedMetric
   readonly frontPvr: ComparedMetric
+  /**
+   * The governed totals, carried as the composition DENOMINATORS and shown nowhere.
+   *
+   * A component may not add two segments together to find the whole it is a share of
+   * (`dashboard-boundaries.test.ts`), and a denominator assembled from the parts could
+   * disagree with the total the KPI row already prints. So both totals come from their
+   * own governed selector, and neither is rendered a second time: a console that shows
+   * the same figure twice on one screen invites a reader to check whether the two agree.
+   */
+  readonly totalGross: ComparedMetric
+  readonly retailUnits: ComparedMetric
 }
 
 /* -------------------------------------------------------------------------- */
@@ -355,6 +446,129 @@ export interface FunnelSummary {
 }
 
 /* -------------------------------------------------------------------------- */
+/* The operating trend                                                         */
+/* -------------------------------------------------------------------------- */
+
+/** One month of the operating trend. */
+export interface TrendBucket {
+  readonly key: string
+  readonly label: string
+  readonly isCurrent: boolean
+  readonly retailUnits: MetricResult
+  readonly totalGross: MetricResult
+}
+
+/* -------------------------------------------------------------------------- */
+/* Store comparison                                                            */
+/* -------------------------------------------------------------------------- */
+
+export interface StoreComparisonRow {
+  readonly store: DashboardStore
+  readonly result: MetricResult
+}
+
+/**
+ * One governed measure across the stores in scope.
+ *
+ * The measure is CHOSEN HERE rather than by a URL parameter, and deliberately. The
+ * console has one filter grammar shared by every route (`INFORMATION_ARCHITECTURE.md`
+ * §6), and a fourteenth parameter that existed only to swap which measure a chart drew
+ * would be a route-local presentation toggle wearing the clothes of a console-wide
+ * filter. Two comparisons are rendered — volume and gross per retail unit — because
+ * those are the two a general manager compares three stores on; the other eight governed
+ * columns are in the scoreboard below, which is what a table is for.
+ */
+export interface StoreComparison {
+  readonly id: string
+  readonly label: string
+  readonly selector: Selector
+  readonly rows: readonly StoreComparisonRow[]
+}
+
+/* -------------------------------------------------------------------------- */
+/* Accounting integrity                                                        */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The Executive Overview's accounting signal.
+ *
+ * WHY THE NARROW DATASET IS THE WHOLE ANSWER. `accounting-data.ts` records the finding
+ * this depends on: the GL-versus-subledger comparison is 43 rows, so "the narrow set IS
+ * the Executive summary and no second aggregate had to be invented for it". This route
+ * therefore opens that door and no other — it does NOT import `accounting-chunks.ts`,
+ * whose 360 kB of per-unit book values belong to `/dashboard/accounting`.
+ *
+ * IT IS A POSITION AT ONE DATE. `accounting.ts` rule 3: the balances are semi-additive,
+ * so a period resolves to the LAST comparable comparison date inside it and never to a
+ * sum over it. The section states the date for the same reason the inventory section
+ * states its snapshot.
+ */
+export interface ScaleAccountView {
+  readonly key: string
+  /** The store the position belongs to, so a scoped selection can be asserted. */
+  readonly dealershipId: string
+  /** "New Vehicle Inventory · 1210". */
+  readonly label: string
+  /** GL minus subledger. `null` where one side is absent, and never zero-substituted. */
+  readonly variance: Exact | null
+  /** The amount as a reader sees it, or the words for a position with no variance. */
+  readonly display: string
+  /** One of the four governed comparison states. */
+  readonly state: string
+  readonly isComparable: boolean
+}
+
+/**
+ * The Executive accounting signal, as the page renders it.
+ *
+ * WHY THE TYPE LIVES HERE. `DASH.9` declared it next to the card that first consumed it
+ * and imported it back into this module, which pointed the dependency from the view model
+ * at a component. The visual overhaul replaced that card, so the type moved to the module
+ * that BUILDS it — the direction every other view model on this route already runs in.
+ * The fields, their names and their rules are `DASH.9`'s and are unchanged.
+ *
+ * EVERY MONEY FIGURE LEAVES AS A STRING. No component in this console may touch an exact
+ * decimal, so the sign, the grouping and the direction sentence are all decided here by
+ * the governed formatters. `variance` is the one `Exact` that crosses the boundary, and it
+ * crosses for geometry alone: `ReconciliationScale` turns it into a marker offset and
+ * prints `display` beside it.
+ */
+export interface ReconciliationSignalView {
+  /**
+   * The comparison date the period resolved to, unformatted.
+   *
+   * The semi-additive rule is only checkable against the raw date, so it leaves the
+   * builder as well as its formatted twin. Nothing renders it - `asOfLabel` is what
+   * the page prints - and it is a date string, not a decimal, so no boundary is
+   * crossed by carrying it.
+   */
+  readonly comparisonDate: string | null
+  /** `31 December 2025`, already formatted. `null` when the period contains no comparison. */
+  readonly asOfLabel: string | null
+  /** `+$384.60`, sign included, or `null` when nothing is comparable. */
+  readonly signedVarianceLabel: string | null
+  /** "the general ledger carries more than the subledger". */
+  readonly directionSentence: string
+  readonly comparablePositions: number
+  readonly reconciledPositions: number
+  readonly variancePositions: number
+  /** Missing GL plus missing subledger. Deliberately not part of any money figure. */
+  readonly notComparablePositions: number
+  /** The per-account rows the visual scale plots and tabulates. */
+  readonly accounts: readonly ScaleAccountView[]
+  /**
+   * Governed exceptions over the stores in scope.
+   *
+   * NOT filtered by the comparison date. `exception_date` is the exception's own business
+   * date and the accounting domain does not tie it to the comparison schedule, so this is
+   * `selectExceptions` unchanged - the same count `/dashboard/accounting` lists.
+   */
+  readonly exceptionCount: number
+  /** The disclosure every accounting surface carries, from the shared constant. */
+  readonly scenarioNote: string
+}
+
+/* -------------------------------------------------------------------------- */
 /* The overview                                                                */
 /* -------------------------------------------------------------------------- */
 
@@ -381,6 +595,17 @@ export interface ExecutiveOverview {
   readonly salesGross: SalesGrossSummary
   readonly inventory: InventorySummary
   readonly funnel: FunnelSummary
+  /** The months every shape on the page is drawn over, anchored on the selection. */
+  readonly trailing: readonly TrailingMonth[]
+  readonly trend: readonly TrendBucket[]
+  readonly comparisons: readonly StoreComparison[]
+  /*
+   * The accounting signal is deliberately NOT a field here.
+   *
+   * `buildAccountingSignal()` is its one authority and the route calls it directly, the
+   * way `DASH.9` built it. Restating it on this object would give the same figure a
+   * second construction path, which is the thing the consolidation removed.
+   */
   /** True when no dataset in scope produced a single row. */
   readonly empty: boolean
   /**
@@ -441,37 +666,71 @@ export function buildExecutiveOverview(
       ? null
       : `Condition scope: ${filters.condition} inventory only.`
 
+  /*
+   * The trailing window, resolved once and shared by every shape on the page.
+   *
+   * One resolution rather than one per card: seven cards and a trend that each built
+   * their own window could disagree about which months they were drawn over, and a
+   * disagreement of that kind is invisible until somebody counts the columns.
+   */
+  const trailing = trailingMonths(periodContext)
+  const sample = (selector: Selector): readonly MicroTrendSample[] =>
+    trailing.map((month) => ({
+      key: month.key,
+      label: month.label,
+      result: evaluate(selector, { ...context, period: month.period }),
+      isCurrent: month.isCurrent,
+    }))
+
   const cards: readonly KpiCard[] = [
-    buildCard('retailUnits', 'Retail units', SELECTORS.retailUnits, compare, null),
-    buildCard('totalGross', 'Total gross', SELECTORS.totalGross, compare, null),
+    buildCard(
+      'retailUnits',
+      'Retail units',
+      SELECTORS.retailUnits,
+      compare,
+      null,
+      sample
+    ),
+    buildCard('totalGross', 'Total gross', SELECTORS.totalGross, compare, null, sample),
     buildCard(
       'totalPvr',
       'Total gross per retail unit',
       SELECTORS.totalPvr,
       compare,
-      null
+      null,
+      sample
     ),
-    buildCard('backPvr', 'Back gross per retail unit', SELECTORS.backPvr, compare, null),
+    buildCard(
+      'backPvr',
+      'Back gross per retail unit',
+      SELECTORS.backPvr,
+      compare,
+      null,
+      sample
+    ),
     buildCard(
       'leadToSale',
       'Lead-to-sale conversion',
       SELECTORS.leadToSale,
       compare,
-      'Lead-creation cohort: a lead created in the period counts here even if it sells later.'
+      'Lead-creation cohort: a lead created in the period counts here even if it sells later.',
+      sample
     ),
     buildCard(
       'medianInventoryAge',
       'Median inventory age',
       SELECTORS.medianInventoryAge,
       compare,
-      joinNotes(snapshotNote, conditionNote)
+      joinNotes(snapshotNote, conditionNote),
+      sample
     ),
     buildCard(
       'agedInventoryPercentage',
       'Aged inventory percentage',
       SELECTORS.agedInventoryPercentage,
       compare,
-      joinNotes(snapshotNote, conditionNote)
+      joinNotes(snapshotNote, conditionNote),
+      sample
     ),
   ]
 
@@ -505,6 +764,8 @@ export function buildExecutiveOverview(
     frontGross: compare(SELECTORS.frontGross),
     backGross: compare(SELECTORS.backGross),
     frontPvr: compare(SELECTORS.frontPvr),
+    totalGross: compare(SELECTORS.totalGross),
+    retailUnits: compare(SELECTORS.retailUnits),
   }
   const inventory = buildInventory(
     context,
@@ -514,6 +775,34 @@ export function buildExecutiveOverview(
     snapshotDate
   )
   const funnel = buildFunnel(compare, context)
+
+  /* ---- the operating trend ---------------------------------------------- */
+  const trend: readonly TrendBucket[] = trailing.map((month) => {
+    const monthContext: MetricContext = { ...context, period: month.period }
+    return {
+      key: month.key,
+      label: month.label,
+      isCurrent: month.isCurrent,
+      retailUnits: evaluate(SELECTORS.retailUnits, monthContext),
+      totalGross: evaluate(SELECTORS.totalGross, monthContext),
+    }
+  })
+
+  /* ---- the store comparison --------------------------------------------- */
+  const comparisons: readonly StoreComparison[] = COMPARISON_MEASURES.map((measure) => ({
+    id: measure.id,
+    label: measure.label,
+    selector: measure.selector,
+    rows: scope.stores.map((store) => ({
+      store,
+      result: applyStructuralAbsence(
+        store,
+        measure.selector,
+        conditionGroups,
+        evaluate(measure.selector, { ...context, stores: [store.id] })
+      ),
+    })),
+  }))
 
   /*
    * Empty means every dataset in scope produced nothing, which is a filter result
@@ -540,6 +829,9 @@ export function buildExecutiveOverview(
     salesGross,
     inventory,
     funnel,
+    trailing,
+    trend,
+    comparisons,
     empty,
     asOfDate: dashboardManifest.asOfDate,
   }
@@ -555,7 +847,8 @@ function buildCard(
   label: string,
   selector: Selector,
   compare: (selector: Selector) => ComparedMetric,
-  scopeNote: string | null
+  scopeNote: string | null,
+  sample: (selector: Selector) => readonly MicroTrendSample[]
 ): KpiCard {
   return {
     id,
@@ -565,8 +858,34 @@ function buildCard(
     definitionHref: selector.kpiId === null ? null : kpiDefinitionHref(selector.kpiId),
     definition: selector.kpiId === null ? undefined : kpiDefinition(selector.kpiId),
     scopeNote,
+    microTrend: sample(selector),
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/* The compared measures                                                       */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The two measures three stores are compared on, side by side.
+ *
+ * Volume and gross per retail unit: one says how big a store is and the other says how
+ * well it converts that size into money, and between them they separate "smaller" from
+ * "worse" — which is the distinction a scoreboard row cannot make at a glance. Both are
+ * governed KPIs with reconciliation keys. Everything else is the table below.
+ */
+const COMPARISON_MEASURES: readonly {
+  readonly id: string
+  readonly label: string
+  readonly selector: Selector
+}[] = [
+  { id: 'retailUnits', label: 'Retail units', selector: SELECTORS.retailUnits },
+  { id: 'totalPvr', label: 'Total gross per retail unit', selector: SELECTORS.totalPvr },
+]
+
+/* -------------------------------------------------------------------------- */
+/* Accounting assembly                                                         */
+/* -------------------------------------------------------------------------- */
 
 /* -------------------------------------------------------------------------- */
 /* Inventory assembly                                                          */
@@ -765,6 +1084,27 @@ function buildFunnel(
  * THE MISSING SIDES ARE COUNTED, NOT ADDED. A position with one side absent has no variance,
  * so it contributes to no money figure and is reported as its own count. Folding it in would
  * turn "could not be compared" into "off by this much", which is a different claim.
+ *
+ * WHY THIS IS THE ONLY BUILDER, AFTER THE VISUAL OVERHAUL
+ * ------------------------------------------------------
+ * The visual overhaul was written in parallel with `DASH.9`'s final increment and briefly
+ * carried its own `buildReconciliation()`, which called the same five `accounting.ts`
+ * primitives in the same order to feed a richer presentation. Two functions resolving the
+ * same comparison date, applying the same store filter and summing the same signed
+ * variances is one function too many: they agreed on the day they were written and nothing
+ * would have kept them agreeing. So the visual scale's inputs were folded into THIS
+ * function, and the other was deleted.
+ *
+ * The consequence is worth stating plainly, because it is the whole point of the
+ * consolidation. Comparison-date resolution, store filtering, signed-variance totalling,
+ * missing-side semantics, semi-additive date behaviour and direction wording each have
+ * exactly ONE authority, and it is `accounting.ts` reached through here. The presentation
+ * changed; the accounting semantics did not.
+ *
+ * `accounts` and `exceptionCount` are the only things the richer visual added, and neither
+ * introduces a rule. The account rows ARE the rows `selectComparisons` returned, and the
+ * exception count comes from `selectExceptions`, the same governed selector
+ * `/dashboard/accounting` calls, so the summary and its drill-through cannot disagree.
  */
 export function buildAccountingSignal(
   filters: DashboardFilters
@@ -774,7 +1114,31 @@ export function buildAccountingSignal(
   const selected = selectComparisons(rows, comparisonDate, filters)
   const summary = summarize(selected, comparisonDate)
 
+  /*
+   * Exceptions come through `selectExceptions`, which filters by STORE AND NOTHING ELSE.
+   *
+   * The first version of this counted only exceptions whose `exception_date` equalled the
+   * resolved comparison date, on the reasoning that a card describing one date should count
+   * findings at that date. That reasoning was wrong, and wrong in the direction this whole
+   * consolidation exists to prevent: `exception_date` is the exception's OWN business date,
+   * a third date semantic that the accounting domain deliberately does not tie to the
+   * comparison schedule — `PERFORMANCE.md` §9.7 records it as the reason the exception set
+   * is not partitioned by month, and `/dashboard/accounting` states it on the section
+   * itself. Filtering by the comparison date invented a rule the domain rejects, and it
+   * would have printed a smaller count here than the drill-through lists, from the same
+   * four rows.
+   *
+   * So this reads the same governed selector the accounting route reads, over the same
+   * population, with the same filter. The two surfaces now report the same number, and the
+   * section beside this one says what the number is scoped by.
+   */
+  const exceptionCount = selectExceptions(
+    toExceptionRows(accountingExceptionRows()),
+    filters
+  ).length
+
   return {
+    comparisonDate,
     asOfLabel: comparisonDate === null ? null : formatIsoDate(comparisonDate),
     signedVarianceLabel:
       summary.comparablePositions === 0
@@ -789,5 +1153,19 @@ export function buildAccountingSignal(
     variancePositions: summary.variancePositions,
     notComparablePositions:
       summary.missingGlPositions + summary.missingSubledgerPositions,
+    accounts: selected.map((row): ScaleAccountView => ({
+      key: `${row.dealershipId}-${row.glAccountNumber}`,
+      dealershipId: row.dealershipId,
+      label: `${row.glAccountName} · ${row.glAccountNumber}`,
+      variance: row.varianceAmount,
+      display:
+        row.varianceAmount === null
+          ? 'No variance: one side absent'
+          : formatCurrencyDifference(row.varianceAmount, 2),
+      state: row.comparisonState,
+      isComparable: row.isComparable,
+    })),
+    exceptionCount,
+    scenarioNote: CONTROLLED_SCENARIO_NOTE,
   }
 }

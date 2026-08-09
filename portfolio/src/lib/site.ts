@@ -649,13 +649,15 @@ export interface PlannedDashboardSection {
  * reader can check the claim against `docs/requirements/DASHBOARD_BACKLOG.md`
  * rather than take "coming soon" on trust — and so that this list cannot quietly
  * outlive the work it describes.
+ *
+ * WHAT LEAVING THIS LIST LOOKS LIKE. `Deal Jacket` (`DASH.4`) was still listed here after
+ * `/dashboard/deals/[saleId]` shipped, and `DASH.9`'s two routes were never added, so the
+ * Executive page was telling a reader that a built route did not exist. An entry leaves
+ * this list in the same commit its route becomes reachable; it is checked against
+ * `ROUTES` and against the backlog by `site.test.ts`, which fails if a planned label
+ * names a route the console can already navigate to.
  */
 export const PLANNED_DASHBOARD_SECTIONS: readonly PlannedDashboardSection[] = [
-  {
-    label: 'Deal Jacket',
-    increment: 'DASH.4',
-    purpose: 'One sanitized deal end to end, with its lineage',
-  },
   {
     label: 'Leads and marketing',
     increment: 'DASH.10',

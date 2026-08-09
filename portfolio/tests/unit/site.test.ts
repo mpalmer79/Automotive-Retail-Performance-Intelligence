@@ -13,6 +13,10 @@
  *
  * Documented in portfolio/docs/CONTENT_MODEL.md sections 9 and 10.
  */
+import { readFileSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
 import { describe, expect, it } from 'vitest'
 
 import { pageMetadata, rootMetadata, structuredData } from '../../src/lib/metadata.ts'
@@ -22,6 +26,7 @@ import {
   GROUP_NAV,
   MAX_PRIMARY_NAV_ITEMS,
   NAVIGABLE_ROUTES,
+  PLANNED_DASHBOARD_SECTIONS,
   PLATFORM_NAV,
   PRIMARY_NAV,
   REPOSITORY_URL,
@@ -540,5 +545,81 @@ describe('structured data claims only what the project can support', () => {
     expect(() => JSON.parse(structuredData())).not.toThrow()
     expect(structuredData()).not.toContain('undefined')
     expect(structuredData()).not.toContain('[object')
+  })
+})
+
+/* -------------------------------------------------------------------------- */
+/* The planned-section list                                                    */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * `/dashboard` renders `PLANNED_DASHBOARD_SECTIONS` under the sentence "Every
+ * section below is absent because the warehouse entity, reporting view or rule
+ * engine behind it does not exist yet." That is a claim about what is NOT built,
+ * made by a hand-maintained array, on the page a reader is most likely to quote.
+ *
+ * It had already gone stale twice. `Deal Jacket` stayed on the list after
+ * `DASH.4` shipped `/dashboard/deals/[saleId]`, so the console was telling
+ * readers a reachable route did not exist. `DASH.9`'s two routes were never on
+ * the list at all, which was the harmless direction of the same drift.
+ *
+ * The backlog is the authority for what is delivered, so these assertions read
+ * it rather than restate it. A list entry naming an increment the backlog calls
+ * `Implemented` is the exact failure, and it fails here.
+ */
+describe('the planned-section list cannot outlive the work it describes', () => {
+  const backlog = readFileSync(
+    resolve(
+      dirname(fileURLToPath(import.meta.url)),
+      '../../../docs/requirements/DASHBOARD_BACKLOG.md'
+    ),
+    'utf8'
+  )
+
+  /** The status column of the increment table, keyed by increment id. */
+  const statusOf = (increment: string): string | null => {
+    const row = new RegExp(
+      `^\\|\\s*\`${increment.replace('.', '\\.')}\`\\s*\\|[^|]*\\|[^|]*\\|\\s*([^|]+?)\\s*\\|`,
+      'm'
+    )
+    return backlog.match(row)?.[1] ?? null
+  }
+
+  it('reads a status out of the backlog for every increment it names', () => {
+    // If this fails the parse is wrong, not the claim - and every assertion
+    // below would otherwise pass vacuously.
+    for (const section of PLANNED_DASHBOARD_SECTIONS) {
+      expect(statusOf(section.increment), section.increment).not.toBeNull()
+    }
+    expect(statusOf('DASH.9')).toContain('Implemented')
+  })
+
+  it('names no increment the backlog calls implemented', () => {
+    for (const section of PLANNED_DASHBOARD_SECTIONS) {
+      expect(
+        statusOf(section.increment),
+        `${section.label} (${section.increment})`
+      ).not.toContain('Implemented')
+    }
+  })
+
+  it('names no section the console can already navigate to', () => {
+    const reachable = new Set(
+      NAVIGABLE_ROUTES.map((route) => route.navLabel.toLowerCase())
+    )
+    for (const section of PLANNED_DASHBOARD_SECTIONS) {
+      expect(reachable.has(section.label.toLowerCase()), section.label).toBe(false)
+    }
+  })
+
+  it('does not describe the two DASH.9 routes as absent', () => {
+    const labels = PLANNED_DASHBOARD_SECTIONS.map((section) =>
+      section.label.toLowerCase()
+    )
+    expect(labels).not.toContain('inventory')
+    expect(labels).not.toContain('accounting')
+    expect(
+      PLANNED_DASHBOARD_SECTIONS.some((section) => section.increment === 'DASH.9')
+    ).toBe(false)
   })
 })
