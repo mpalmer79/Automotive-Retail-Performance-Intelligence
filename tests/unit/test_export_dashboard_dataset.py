@@ -1398,7 +1398,6 @@ class TestPrivacyControls:
         prohibited = {
             "vin",
             "vehicle_identification_number",
-            "vehicle_id",
             "vehicle_key",
             "stock_number",
             "stock_reference",
@@ -1407,6 +1406,31 @@ class TestPrivacyControls:
         for entry in spec.DATASETS:
             offending = sorted(prohibited & set(entry.column_names))
             assert offending == [], f"{entry.name} declares {offending}"
+
+        #: ``DASH.9`` NARROWED IT AGAIN, FOR ``vehicle_id``, AND EXACTLY AS ``DASH.3`` DID
+        #: FOR ``sale_id``. At ``DASH.1`` this list also prohibited ``vehicle_id``, because
+        #: no unit-grain dataset existed and the cheapest protection was to leave no field
+        #: for one to arrive in. ``DASH.9`` ships two, and ``vehicle_id`` is the route
+        #: parameter ``/dashboard/inventory?unit=`` carries and the identity the accounting
+        #: position is joined on. A unit drill-through without a unit identifier is not a
+        #: drill-through.
+        #:
+        #: ``vehicle_id`` is a synthetic ``VEH-#######`` identifier for a fictional vehicle.
+        #: It is not VIN-shaped, it identifies no real unit, and it is not personal data.
+        #: ``vin`` and ``vehicle_key`` stay prohibited everywhere: the first reads as a real
+        #: vehicle identifier whatever it holds, and the second would put warehouse load
+        #: order in a URL and break when the fact is rebuilt.
+        unit_grain = {"inventory-units", "inventory-accounting"}
+        for entry in spec.DATASETS:
+            if "vehicle_id" not in entry.column_names:
+                continue
+            assert entry.name in unit_grain, (
+                f"{entry.name} declares vehicle_id but is not a unit-grain dataset"
+            )
+            assert "vehicle_id" in entry.business_key, (
+                f"{entry.name} declares vehicle_id as something other than part of its "
+                "business key; it is published to identify the unit, not to describe it"
+            )
 
         #: The only dataset that may publish the synthetic vehicle identifier.
         for entry in spec.DATASETS:

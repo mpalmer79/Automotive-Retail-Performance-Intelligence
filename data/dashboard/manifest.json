@@ -1,24 +1,25 @@
 {
   "schema": "arpi.dashboard_export/1",
   "contract_version": 1,
-  "contract_sha256": "996896902dddae3187c07341c5dc65c7ad732eff9634aab2938befe8703e881d",
-  "dataset_version": 8,
-  "generated_at": "2026-08-08T14:45:58+00:00",
+  "contract_sha256": "a8634281360e56cafb75c2613b0715764a332c19637c8802e1bd74de5460e436",
+  "dataset_version": 10,
+  "generated_at": "2026-08-09T00:27:25+00:00",
   "as_of_date": "2025-12-31",
   "profile": "development",
   "random_seed": 20250701,
-  "source_commit": "55c11b806a0b4b913e3197bf8fcef0f85d03c485",
+  "source_commit": "81ddc05bf7081f47cd8e4192a71ce203c3efc83f",
   "exporter_version": "0.1.0",
   "query_normalisation": "arpi.sql_whitespace_canonical/1",
   "reporter_role": "arpi_reporter",
   "synthetic_data": true,
   "fictional_dealer_group": true,
   "pipeline_run": {
-    "run_uuid": "72a266b6-31d0-470b-80e4-48c3e3bfdd24",
+    "run_uuid": "fc5b97a2-f416-4abb-bd81-5f5cd3de6b2b",
     "logical_run_key": null,
     "status": "succeeded"
   },
   "source_views": [
+    "reporting.vw_accounting_exceptions",
     "reporting.vw_appointment_funnel",
     "reporting.vw_calendar",
     "reporting.vw_days_supply",
@@ -32,9 +33,12 @@
     "reporting.vw_fi_summary",
     "reporting.vw_gross_change_bridge",
     "reporting.vw_gross_summary",
+    "reporting.vw_inventory_accounting",
     "reporting.vw_inventory_aging",
+    "reporting.vw_inventory_gl_reconciliation",
     "reporting.vw_inventory_health",
     "reporting.vw_inventory_turn",
+    "reporting.vw_inventory_units",
     "reporting.vw_lead_funnel",
     "reporting.vw_lead_response",
     "reporting.vw_lead_source",
@@ -5690,6 +5694,857 @@
       "file_bytes": 885282
     },
     {
+      "name": "inventory-units",
+      "source_view": "reporting.vw_inventory_units",
+      "join_views": [],
+      "grain": "One row per vehicle per store per daily snapshot date, while the unit is active.",
+      "business_key": [
+        "dealership_id",
+        "snapshot_date",
+        "vehicle_id"
+      ],
+      "date_basis": "snapshot date",
+      "sort_keys": [
+        "dealership_id",
+        "snapshot_date",
+        "vehicle_id"
+      ],
+      "chunked": true,
+      "kpi_ids": [
+        "KPI-INV-001",
+        "KPI-INV-002",
+        "KPI-INV-003",
+        "KPI-INV-004",
+        "KPI-INV-005"
+      ],
+      "columns": [
+        {
+          "name": "dealership_id",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_units.dealership_id"
+        },
+        {
+          "name": "snapshot_date",
+          "type": "date",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_units.snapshot_date"
+        },
+        {
+          "name": "vehicle_id",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_units.vehicle_id"
+        },
+        {
+          "name": "condition_type",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "New",
+            "Used",
+            "Certified"
+          ],
+          "source_column": "reporting.vw_inventory_units.condition_type"
+        },
+        {
+          "name": "condition_group",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "New",
+            "Used"
+          ],
+          "source_column": "reporting.vw_inventory_units.condition_group"
+        },
+        {
+          "name": "model_year",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_units.model_year"
+        },
+        {
+          "name": "make",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_units.make"
+        },
+        {
+          "name": "model_name",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_units.model_name"
+        },
+        {
+          "name": "trim_level",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_units.trim_level"
+        },
+        {
+          "name": "body_style",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_units.body_style"
+        },
+        {
+          "name": "odometer_reading",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "miles",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_units.odometer_reading"
+        },
+        {
+          "name": "days_in_stock",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "days",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_units.days_in_stock"
+        },
+        {
+          "name": "age_bucket",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "0-30",
+            "31-60",
+            "61-90",
+            "91-120",
+            "Over 120"
+          ],
+          "source_column": "reporting.vw_inventory_units.age_bucket"
+        },
+        {
+          "name": "aged_threshold_days",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "days",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_units.aged_threshold_days"
+        },
+        {
+          "name": "is_aged_over_default_threshold",
+          "type": "boolean",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_units.is_aged_over_default_threshold"
+        },
+        {
+          "name": "current_asking_price",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_units.current_asking_price"
+        },
+        {
+          "name": "original_asking_price",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_units.original_asking_price"
+        },
+        {
+          "name": "inventory_investment",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_units.inventory_investment"
+        },
+        {
+          "name": "market_price_estimate",
+          "type": "currency",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_units.market_price_estimate"
+        },
+        {
+          "name": "price_to_market_ratio",
+          "type": "exact",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": "ratio",
+          "display_precision": 4,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_units.price_to_market_ratio"
+        },
+        {
+          "name": "markdown_count_to_date",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_units.markdown_count_to_date"
+        },
+        {
+          "name": "prior_asking_price",
+          "type": "currency",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_units.prior_asking_price"
+        },
+        {
+          "name": "asking_price_change",
+          "type": "currency",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_units.asking_price_change"
+        },
+        {
+          "name": "is_price_reduced_since_prior",
+          "type": "boolean",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_units.is_price_reduced_since_prior"
+        },
+        {
+          "name": "inventory_unit_count",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "units",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_units.inventory_unit_count"
+        }
+      ],
+      "notes": "SEMI-ADDITIVE. inventory_investment and inventory_unit_count are additive across vehicles and stores on ONE snapshot date and NOT across dates: this is daily grain, so summing a month yields unit-days rather than units, wrong by roughly thirty while looking entirely plausible. Select one snapshot date.\n\nmarket_price_estimate IS A SYNTHETIC ESTIMATE. No auction result, guidebook, licensed benchmark or observed transaction exists anywhere in this project. Every surface that displays it or the ratio derived from it must say so, and neither may be called a market value, a benchmark, an expected selling price or a book value. price_to_market_ratio is null where there is no estimate -- never zero, never imputed -- and above 1.0 means advertised above the synthetic estimate.\n\nNEITHER IS A REPRICING SIGNAL. A ratio above 1.0 is not evidence a unit is overpriced and no surface may recommend a price change from it. DASH.9 is descriptive.\n\nMARKDOWN ACTIVITY IS SNAPSHOT-DERIVED. prior_asking_price is the same unit's price at its previous snapshot AT THIS STORE, and all three movement columns are null on a unit's first snapshot because no prior observation exists -- not zero, which would assert the price did not change. asking_price_change is NEGATIVE for a reduction and belongs to THIS date, never restated backward. It is an observed movement: ARPI models no manager decision, pricing strategy or repricing action.\n\naged_threshold_days is the ARPI 60-day PROJECT DEFAULT, published on every row so the console states the threshold it applied. It is not an industry benchmark and is a DIFFERENT NUMBER from the 120-day top age bucket; conflating the two overstates aged stock.\n\ninventory_investment is the OPERATIONAL figure (acquisition + reconditioning) and is NOT the accounting book value, which lives in inventory-accounting at month-end grain and carries capitalised components this column does not. The two will differ for the same unit on the same day, legitimately.",
+      "query_sha256": "3117b8afc935ee3b10417d6ffcb806f1780794533f6beabfc2a36cd4a260f0b9",
+      "row_count": 1501,
+      "file": "inventory-units.json",
+      "file_sha256": "2c63f31fe6dbef43b0f6922b2ae696b4cce81c0c1f097fac67f304fef5056d99",
+      "file_bytes": 1023530
+    },
+    {
+      "name": "inventory-accounting",
+      "source_view": "reporting.vw_inventory_accounting",
+      "join_views": [],
+      "grain": "One row per vehicle per store per accounting (month-end) date.",
+      "business_key": [
+        "dealership_id",
+        "accounting_date",
+        "vehicle_id"
+      ],
+      "date_basis": "accounting date",
+      "sort_keys": [
+        "dealership_id",
+        "accounting_date",
+        "vehicle_id"
+      ],
+      "chunked": true,
+      "kpi_ids": [
+        "KPI-ACC-001",
+        "KPI-ACC-005",
+        "KPI-ACC-011",
+        "KPI-ACC-012"
+      ],
+      "columns": [
+        {
+          "name": "dealership_id",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_accounting.dealership_id"
+        },
+        {
+          "name": "accounting_date",
+          "type": "date",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_accounting.accounting_date"
+        },
+        {
+          "name": "vehicle_id",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_accounting.vehicle_id"
+        },
+        {
+          "name": "control_account_category",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "New Vehicle Inventory",
+            "Used Vehicle Inventory",
+            "Certified Vehicle Inventory"
+          ],
+          "source_column": "reporting.vw_inventory_accounting.control_account_category"
+        },
+        {
+          "name": "gl_account_number",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_accounting.gl_account_number"
+        },
+        {
+          "name": "gl_account_name",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_accounting.gl_account_name"
+        },
+        {
+          "name": "condition_type",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "New",
+            "Used",
+            "Certified"
+          ],
+          "source_column": "reporting.vw_inventory_accounting.condition_type"
+        },
+        {
+          "name": "acquisition_cost",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_accounting.acquisition_cost"
+        },
+        {
+          "name": "capitalized_transportation",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_accounting.capitalized_transportation"
+        },
+        {
+          "name": "capitalized_reconditioning",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_accounting.capitalized_reconditioning"
+        },
+        {
+          "name": "capitalized_accessories",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_accounting.capitalized_accessories"
+        },
+        {
+          "name": "other_capitalized_costs",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_accounting.other_capitalized_costs"
+        },
+        {
+          "name": "write_down_amount",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_accounting.write_down_amount"
+        },
+        {
+          "name": "current_book_value",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_accounting.current_book_value"
+        },
+        {
+          "name": "is_written_down",
+          "type": "boolean",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_accounting.is_written_down"
+        },
+        {
+          "name": "floorplan_principal",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_accounting.floorplan_principal"
+        },
+        {
+          "name": "is_floorplanned",
+          "type": "boolean",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_accounting.is_floorplanned"
+        },
+        {
+          "name": "days_in_stock",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "days",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_accounting.days_in_stock"
+        },
+        {
+          "name": "posting_lag_days",
+          "type": "integer",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": "days",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_accounting.posting_lag_days"
+        },
+        {
+          "name": "is_first_accounting_appearance",
+          "type": "boolean",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_accounting.is_first_accounting_appearance"
+        },
+        {
+          "name": "stock_unit_count",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "units",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_accounting.stock_unit_count"
+        }
+      ],
+      "notes": "SEMI-ADDITIVE. current_book_value and floorplan_principal are additive across vehicles and stores on ONE accounting date and are NOT additive across dates: a unit still in stock at two month-ends appears twice, and summing the range counts its carrying amount twice. Select one accounting date.\n\nThe six components plus write_down_amount reproduce current_book_value exactly, with no tolerance -- the warehouse enforces it as a CHECK. The console may verify the identity with the exact-decimal helper; it may not restate it as a new formula, and it must never add floorplan_principal into it. There is no net inventory position anywhere in ARPI and none may be computed from these columns.\n\nposting_lag_days is the NARROWED KPI-ACC-011 basis: acquisition date to first month-end schedule appearance. ARPI holds no posting timestamp, so it is not a journal-posting delay and must never be labelled one. It is null where the unit's first appearance is not observable in the window.\n\ngl_account_number and gl_account_name are INVENTED synthetic control accounts. No real dealer group's chart of accounts was consulted, and both columns are governed by APPROVED_LEDGER_ACCOUNT_COLUMNS rather than by an exception to the financial-identifier tripwire, which still refuses bank_account_number and customer_account_number.",
+      "query_sha256": "ce8bdcd591ef20b9014590f8d6b4e28bd08e6ad04a6ddf2048c2a773bbeb9ff0",
+      "row_count": 1501,
+      "file": "inventory-accounting.json",
+      "file_sha256": "392ef76b2781fea40dd3cce22308d561115c7d2773297878ca86be026fbd4806",
+      "file_bytes": 970574
+    },
+    {
+      "name": "inventory-gl-reconciliation",
+      "source_view": "reporting.vw_inventory_gl_reconciliation",
+      "join_views": [],
+      "grain": "One row per store per GL control account per comparison (balance) date.",
+      "business_key": [
+        "dealership_id",
+        "comparison_date",
+        "gl_account_number"
+      ],
+      "date_basis": "comparison date",
+      "sort_keys": [
+        "dealership_id",
+        "comparison_date",
+        "gl_account_number"
+      ],
+      "chunked": false,
+      "kpi_ids": [
+        "KPI-ACC-001",
+        "KPI-ACC-002",
+        "KPI-ACC-003",
+        "KPI-ACC-004"
+      ],
+      "columns": [
+        {
+          "name": "dealership_id",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_gl_reconciliation.dealership_id"
+        },
+        {
+          "name": "comparison_date",
+          "type": "date",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_gl_reconciliation.comparison_date"
+        },
+        {
+          "name": "gl_account_number",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_gl_reconciliation.gl_account_number"
+        },
+        {
+          "name": "gl_account_name",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_gl_reconciliation.gl_account_name"
+        },
+        {
+          "name": "control_account_category",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "New Vehicle Inventory",
+            "Used Vehicle Inventory",
+            "Certified Vehicle Inventory"
+          ],
+          "source_column": "reporting.vw_inventory_gl_reconciliation.control_account_category"
+        },
+        {
+          "name": "subledger_balance",
+          "type": "currency",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_gl_reconciliation.subledger_balance"
+        },
+        {
+          "name": "gl_balance",
+          "type": "currency",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_gl_reconciliation.gl_balance"
+        },
+        {
+          "name": "variance_amount",
+          "type": "currency",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_gl_reconciliation.variance_amount"
+        },
+        {
+          "name": "absolute_variance_amount",
+          "type": "currency",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_gl_reconciliation.absolute_variance_amount"
+        },
+        {
+          "name": "comparison_state",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "Reconciled",
+            "Variance",
+            "Missing GL balance",
+            "Missing subledger balance"
+          ],
+          "source_column": "reporting.vw_inventory_gl_reconciliation.comparison_state"
+        },
+        {
+          "name": "is_reconciled",
+          "type": "boolean",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_gl_reconciliation.is_reconciled"
+        },
+        {
+          "name": "is_comparable",
+          "type": "boolean",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_gl_reconciliation.is_comparable"
+        },
+        {
+          "name": "stock_unit_count",
+          "type": "integer",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": "units",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_gl_reconciliation.stock_unit_count"
+        },
+        {
+          "name": "floorplan_principal",
+          "type": "currency",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_inventory_gl_reconciliation.floorplan_principal"
+        }
+      ],
+      "notes": "THE SIGN IS LOAD-BEARING. variance_amount = gl_balance - subledger_balance. POSITIVE means the general ledger carries more than the schedule supports; NEGATIVE means the schedule supports more than the ledger carries. A group total is the SUM OF THE SIGNED variances, never the sum of the absolute ones: two positions of +400.00 and -15.40 net to 384.60, and reporting 415.40 would describe a dealership that does not exist. absolute_variance_amount is published alongside for ranking, never instead.\n\nA MISSING SIDE IS NULL, NEVER ZERO. Where one side has no balance the other side is published as it stands, variance_amount is null, and comparison_state says which side is absent. COALESCE-ing either balance to 0.00 in the console would report a missing balance as a zeroed account, which is a different and far more alarming claim. is_comparable is false on exactly those rows.\n\nSEMI-ADDITIVE. Both balances are stock figures at a date. They are additive across stores and accounts on ONE comparison date and NOT across dates; a period figure is the last comparable balance date in the period, never a sum or an average of them.\n\nA NONZERO VARIANCE IS AN EXCEPTION TO INVESTIGATE, NOT AN ACCOUNTING ERROR. The development dataset contains deliberately planted controlled scenarios that exist to prove all four comparison states render; they are not discovered findings about a real dealer group. Both sides are generated from one governed model, so this is not agreement between two independent systems and no surface may describe it as an audit, a certification or an external validation.",
+      "query_sha256": "3fccb9fef7dbf6bcd466bb495de80afc8ca656b013051bf0d3f6212c87291f92",
+      "row_count": 43,
+      "file": "inventory-gl-reconciliation.json",
+      "file_sha256": "0e140a2554fc0fa5dfa81fa9a7c631b53819542c2d96c792924f4ed31b8dd107",
+      "file_bytes": 18637
+    },
+    {
+      "name": "accounting-exceptions",
+      "source_view": "reporting.vw_accounting_exceptions",
+      "join_views": [
+        "reporting.vw_dealership",
+        "reporting.vw_calendar"
+      ],
+      "grain": "One row per accounting exception.",
+      "business_key": [
+        "exception_id"
+      ],
+      "date_basis": "exception date",
+      "sort_keys": [
+        "exception_id"
+      ],
+      "chunked": false,
+      "kpi_ids": [
+        "KPI-ACC-004",
+        "KPI-ACC-007",
+        "KPI-ACC-008",
+        "KPI-ACC-009",
+        "KPI-ACC-010"
+      ],
+      "columns": [
+        {
+          "name": "exception_id",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_accounting_exceptions.exception_id"
+        },
+        {
+          "name": "exception_code",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "ACC-GL-VARIANCE",
+            "ACC-MISSING-GL-BALANCE",
+            "ACC-MISSING-SUBLEDGER-BALANCE",
+            "ACC-MISSING-BOOK-ROW",
+            "ACC-ORPHAN-BOOK-ROW",
+            "ACC-FRONT-GROSS-IDENTITY",
+            "ACC-BACK-GROSS-IDENTITY",
+            "ACC-TOTAL-GROSS-IDENTITY",
+            "ACC-ORPHAN-FI-PRODUCT",
+            "ACC-ORPHAN-FI-ADJUSTMENT",
+            "ACC-DQ-FAILURE"
+          ],
+          "source_column": "reporting.vw_accounting_exceptions.exception_code"
+        },
+        {
+          "name": "entity_name",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_accounting_exceptions.entity_name"
+        },
+        {
+          "name": "entity_id",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_accounting_exceptions.entity_key"
+        },
+        {
+          "name": "dealership_id",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_dealership.dealership_code"
+        },
+        {
+          "name": "exception_date",
+          "type": "date",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "exception date",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_calendar.calendar_date"
+        },
+        {
+          "name": "exception_amount",
+          "type": "currency",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_accounting_exceptions.exception_amount"
+        },
+        {
+          "name": "exception_detail",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_accounting_exceptions.exception_detail"
+        }
+      ],
+      "notes": "THE CLASSES ARE NOT INTERCHANGEABLE AND MUST NOT BE ADDED TOGETHER. This dataset carries valid-but-unreconciled positions, missing-side control states, and structural integrity findings. A count that sums all three and calls itself 'total accounting errors' is analytically wrong: a controlled GL variance and an orphaned F&I product are not the same kind of thing and do not have the same remedy.\n\nentity_name and entity_id are the drill-through pair. entity_id is the view's entity_key renamed at the boundary: it is always a BUSINESS identifier -- a vehicle_id or a sale_id -- and never a warehouse surrogate, so the console can put it in a URL. It is exported under a name that says so, because a `_key` suffix in ARPI means a surrogate and this column has never been one. Where entity_name names no surface the console can reach, the row shows no link rather than a fabricated one.\n\nexception_detail is a GENERATED description built from the governed rule that fired. It is not a free-text note, no human writes it, and there is no notes field anywhere in this lane.",
+      "query_sha256": "1b6cfcbf200c39c1250874754e31b7208b9ed30a1ad1aa73d44f759e2838bbe8",
+      "row_count": 4,
+      "file": "accounting-exceptions.json",
+      "file_sha256": "498565863273a988dc9c15275bdaf32814c552d995bdac56ff048d670398897f",
+      "file_bytes": 2466
+    },
+    {
       "name": "reconciliation-status",
       "source_view": "reporting.vw_reconciliation_status",
       "join_views": [],
@@ -5811,10 +6666,10 @@
       ],
       "notes": "The source view's grain is reconciliation x run; this dataset selects the export's own run, so the console shows the evidence belonging to the data it is rendering. Three of the view's columns are deliberately NOT exported -- the two source columns and the prose description -- because all three embed schema-qualified names of internal warehouse and audit objects, which ADR-0013 condition 8 keeps out of the public lane. The governed reconciliation_id is the public handle: KPI_CATALOG.md section 36 documents what each identifier compares, so the console links to the definition instead of restating an internal object path. The values, the tolerance and the outcome are what make a reconciliation public evidence.",
       "query_sha256": "aa70b6a47c645d0784272a562223ec2fb1eabb499dac4e403e8a1cc0e0d6f50e",
-      "row_count": 96,
+      "row_count": 114,
       "file": "reconciliation-status.json",
-      "file_sha256": "dedf4db7cb96d5fe3509cbf0e899eb690f201ee8597a08c35b9b8e82ec26a097",
-      "file_bytes": 21885
+      "file_sha256": "ad80d96d3931f95bbb4af495609ddfa6dc560a64b574a0f1f5b676cea96dc349",
+      "file_bytes": 25991
     },
     {
       "name": "pipeline-run",
@@ -6035,8 +6890,8 @@
       "query_sha256": "adca98ad620f10e4795dec1cda7735ca8ccc2a03111636becea487320e109e43",
       "row_count": 1,
       "file": "pipeline-run.json",
-      "file_sha256": "f440026e7c567befa292116ab6aede6c8b3e5f0e636ac591bd1bc04cb5ce8954",
-      "file_bytes": 541
+      "file_sha256": "c98d0d55653937ec2416349553b785b23bbfa617335fcb1de35f561920fa4888",
+      "file_bytes": 538
     }
   ],
   "reconciliation": {
@@ -6454,19 +7309,19 @@
   "privacy_scan": {
     "status": "passed",
     "prohibited_hits": 0,
-    "columns_scanned": 498,
+    "columns_scanned": 566,
     "primary_control": "contract allowlist",
     "secondary_control": "arpi.validation.privacy prohibited-name tripwire"
   },
   "validation": {
     "critical_failures": 0,
     "warnings": 0,
-    "checks_evaluated": 186,
-    "reconciliations_evaluated": 96,
+    "checks_evaluated": 226,
+    "reconciliations_evaluated": 114,
     "reconciliations_failed": 0
   },
   "sizes": {
-    "dataset_bytes_total": 13386684,
+    "dataset_bytes_total": 15405994,
     "largest_dataset": {
       "name": "lead-response",
       "bytes": 2269345,

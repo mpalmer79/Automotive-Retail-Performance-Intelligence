@@ -5,7 +5,7 @@
 -- Execution order: Reporting layer, after warehouse.fact_vehicle_inventory_snapshot, warehouse.dim_vehicle, warehouse.dim_vehicle_model, warehouse.dim_dealership and warehouse.dim_date exist.
 -- Idempotency:     Fully idempotent. CREATE OR REPLACE VIEW.
 -- Ownership:       Created by the bootstrap superuser, reassigned to arpi_admin by sql/07_security/01_grants.sql. Readable by arpi_reporter.
--- Grain:           One row per vehicle per dealership per daily snapshot date, while the unit is active in inventory. Identical to the fact; no aggregation, no filtering.
+-- Grain:           One row per vehicle per dealership per REPORTABLE snapshot date -- every month end, plus the most recent snapshot date in the warehouse. Identical to the fact; no aggregation, no filtering.
 -- =============================================================================
 --
 -- WHY THIS VIEW EXISTS WHEN vw_inventory_snapshots ALREADY DOES
@@ -29,14 +29,45 @@
 -- Widening vw_inventory_snapshots would push console-shaped columns into the semantic
 -- model, and the two consumers would then constrain each other forever.
 --
+-- WHY MONTH ENDS AND THE LATEST DATE, RATHER THAN ALL 184 DAYS
+-- -------------------------------------------------------------
+-- The fact is daily, and this view is not. Three reasons, in order of weight:
+--
+--   1. IT HAS TO FIT. The console's datasets are committed files with a declared ceiling
+--      (DATA_CONTRACT.md section 10: 3 MB per file). Measured, the daily grain exports at
+--      31.3 MB for a single file and takes the whole export to 46 MB against a 20 MB
+--      ceiling. That is not a budget to be raised; 184 near-identical rows per unit is
+--      simply the wrong thing to publish.
+--   2. IT MAKES THE ACCOUNTING JOIN REAL. warehouse.fact_inventory_accounting_snapshot is
+--      month-end grain. At daily grain, an operational unit row lines up with an accounting
+--      row on roughly one day in thirty and the console would show "no accounting position"
+--      for a unit that plainly has one. At month-end grain the two agree by construction,
+--      which is what DASH.9-01's "accounting position where DASH.8 data exists" needs.
+--   3. IT MAKES THE MARKDOWN QUESTION THE ONE ANYBODY ASKS. See below.
+--
+-- The latest snapshot date is unioned in because "what is on my lot right now" must be
+-- complete and current, and the most recent date is usually not a month end.
+--
+-- WHAT THIS COSTS, STATED PLAINLY: a unit acquired and sold entirely between two month ends
+-- appears here only if it is still in stock on the latest snapshot date. That unit is
+-- absent rather than misreported, and it is absent from the accounting schedule for exactly
+-- the same reason.
+--
 -- MARKDOWN ACTIVITY IS DERIVED, NOT STORED
 -- -----------------------------------------
 -- There is no fact_inventory_price_history in ARPI, and DASH.9 deliberately does not add
 -- one (it remains deferred under DASH.O-2). Markdown activity here is derived from
--- consecutive snapshots of the SAME unit, which is the only honest source available:
+-- consecutive REPORTABLE snapshots of the SAME unit, which is the only honest source
+-- available:
 --
---   prior_asking_price   the same unit's advertised price on its previous snapshot
+--   prior_asking_price   the unit's advertised price on its previous REPORTABLE snapshot
 --   asking_price_change  current minus prior; NEGATIVE is a markdown
+--
+-- The window runs over the month-end set, NOT over the underlying daily rows, and that is
+-- deliberate. Computed daily and then filtered to month ends, prior_asking_price would be
+-- YESTERDAY'S price on every published row: nearly every change would be zero, the column
+-- would look broken, and the real month-over-month reductions would be invisible.
+-- prior_snapshot_date is published so a reader sees the interval rather than assuming one.
 --
 -- The change belongs to the LATER snapshot date. It is not restated backward onto the date
 -- the price was still higher, because on that date the reduction had not happened.
@@ -67,6 +98,27 @@
 -- days while looking entirely plausible. Select one snapshot date.
 
 CREATE OR REPLACE VIEW reporting.vw_inventory_units AS
+WITH reportable_dates AS (
+    -- Every month end the warehouse holds a snapshot on, plus the most recent snapshot
+    -- date. Derived from the fact rather than from dim_date alone, so a month end with no
+    -- inventory rows never becomes a date the console offers and then finds empty.
+    SELECT d.date_key
+    FROM warehouse.dim_date AS d
+    WHERE d.is_month_end
+      AND EXISTS (
+          SELECT 1
+          FROM warehouse.fact_vehicle_inventory_snapshot AS f
+          WHERE f.snapshot_date_key = d.date_key
+      )
+    UNION
+    SELECT max(f.snapshot_date_key)
+    FROM warehouse.fact_vehicle_inventory_snapshot AS f
+),
+reportable AS (
+    SELECT i.*
+    FROM warehouse.fact_vehicle_inventory_snapshot AS i
+    JOIN reportable_dates AS r ON r.date_key = i.snapshot_date_key
+)
 SELECT
     -- Business identity. No surrogate key crosses this boundary.
     d.full_date                                                AS snapshot_date,
@@ -126,7 +178,7 @@ SELECT
 
     i.inventory_unit_count                                     AS inventory_unit_count,
     i.source_system                                            AS source_system
-FROM warehouse.fact_vehicle_inventory_snapshot AS i
+FROM reportable AS i
 JOIN warehouse.dim_date        AS d  ON d.date_key         = i.snapshot_date_key
 JOIN warehouse.dim_dealership  AS dl ON dl.dealership_key  = i.dealership_key
 JOIN warehouse.dim_vehicle     AS v  ON v.vehicle_key      = i.vehicle_key
