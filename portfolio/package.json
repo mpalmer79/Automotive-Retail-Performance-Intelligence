@@ -32,8 +32,7 @@
     "assets": "tsx scripts/render-raster-assets.ts",
     "media": "tsx scripts/capture-product-media.ts",
     "review:screenshots": "tsx scripts/capture-review-screenshots.ts",
-    "bundle": "tsx scripts/report-bundle.ts",
-    "density": "tsx scripts/report-console-density.ts"
+    "bundle": "tsx scripts/report-bundle.ts"
   },
   "dependencies": {
     "lucide-react": "1.27.0",
