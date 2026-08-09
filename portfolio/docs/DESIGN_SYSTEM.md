@@ -140,9 +140,9 @@ Ramps, never referenced directly by a component.
 | Inverse | text on the deep blues only         | `100 #ffffff`, `200 #e7f3f8`, `300 #c3dbe7`                               |
 | Amber   | attention, pending, blocked         | `700 #8a5a06`, `100 #fbf0da`                                              |
 | Violet  | semantic model and relationships    | `600 #5b45b8`, `100 #ece8fa`                                              |
-| Emerald | verified pass states                | `600 #0f7a46`, `500 #17864d`, `100 #e2f4ea`, `50 #e9f7ef`                |
-| Rose    | genuine failure                     | `700 #8c1b30`, `600 #b3253c`, `100 #fbe6ea`                              |
-| Orange  | a data-visualisation mark only      | `600 #a8480b`, `100 #fbeade`                                             |
+| Emerald | verified pass states                | `600 #0f7a46`, `500 #17864d`, `100 #e2f4ea`, `50 #e9f7ef`                 |
+| Rose    | genuine failure                     | `700 #8c1b30`, `600 #b3253c`, `100 #fbe6ea`                               |
+| Orange  | a data-visualisation mark only      | `600 #a8480b`, `100 #fbeade`                                              |
 
 Four ramps carry a `-50` step, and it exists for a different job from `-100`. A `-100`
 wash tints a chip a reader looks at for a second; a `-50` tints a whole page region a
@@ -228,16 +228,16 @@ favourable direction for most of its measures.
 
 What that looks like in practice:
 
-| Surface                   | Encoding                                                     | Why                                                                        |
-| ------------------------- | ------------------------------------------------------------ | -------------------------------------------------------------------------- |
-| Waterfall steps           | positive / negative; anchors take `data-reference`            | a step **is** a signed contribution; a level is not a direction              |
-| Trend and micro-trend     | `data-primary`, with `data-negative` only below zero          | a month above zero is not thereby a good month                              |
-| Front vs F&I gross        | the categorical pair                                          | neither half of a deal is the good half                                     |
-| Store comparison          | one hue per store, from the **business code**                 | identity, not rank; a filtered-out store must not shift the others          |
-| Inventory age             | the five-step ramp, turning at the exported aged threshold    | ordered risk, on a project default the legend names                         |
-| Target attainment         | `data-positive` at 100% and nowhere else                      | a target is a reference the **business** published, not one the console invented |
-| GL vs subledger variance  | `data-neutral` on **both** sides of zero                      | a variance is a finding to investigate, not a failure                       |
-| Region grounds            | `zone-*`, which encode nothing                                | the stock area is amber whether the lot is clean or ageing badly            |
+| Surface                  | Encoding                                                   | Why                                                                              |
+| ------------------------ | ---------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Waterfall steps          | positive / negative; anchors take `data-reference`         | a step **is** a signed contribution; a level is not a direction                  |
+| Trend and micro-trend    | `data-primary`, with `data-negative` only below zero       | a month above zero is not thereby a good month                                   |
+| Front vs F&I gross       | the categorical pair                                       | neither half of a deal is the good half                                          |
+| Store comparison         | one hue per store, from the **business code**              | identity, not rank; a filtered-out store must not shift the others               |
+| Inventory age            | the five-step ramp, turning at the exported aged threshold | ordered risk, on a project default the legend names                              |
+| Target attainment        | `data-positive` at 100% and nowhere else                   | a target is a reference the **business** published, not one the console invented |
+| GL vs subledger variance | `data-neutral` on **both** sides of zero                   | a variance is a finding to investigate, not a failure                            |
+| Region grounds           | `zone-*`, which encode nothing                             | the stock area is amber whether the lot is clean or ageing badly                 |
 
 **Two restraints are as deliberate as the additions.** There is no red for a below-target
 pace bar — a store at 40% attainment on the twelfth selling day is not behind, which is

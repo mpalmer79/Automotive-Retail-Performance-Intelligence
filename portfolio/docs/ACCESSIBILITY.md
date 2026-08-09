@@ -336,15 +336,15 @@ that keeps every foreground clear of its floor.
 **Nothing is encoded in hue alone, anywhere on the console.** Each pairing is asserted in
 `tests/unit/dashboard-visual-refinement.test.tsx`:
 
-| Mark | Non-colour carrier |
-| --- | --- |
-| Waterfall rise and fall | an arrow glyph, and the signed amount as text |
-| Trend column below zero | position under a drawn zero rule, and the value in the table |
-| Store bar | the store's name and its value printed on the row |
-| Age band | the band's range and unit count in the legend, again in the table, and a gap of page background between bands |
-| Target attainment | the attainment percentage in text, the overflow rule at the end of the track, and the accessible summary |
-| Reconciliation marker | the side of the zero rule, the printed signed amount, and the direction in words |
-| Region tint | the region's own `h2` and eyebrow |
+| Mark                    | Non-colour carrier                                                                                            |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Waterfall rise and fall | an arrow glyph, and the signed amount as text                                                                 |
+| Trend column below zero | position under a drawn zero rule, and the value in the table                                                  |
+| Store bar               | the store's name and its value printed on the row                                                             |
+| Age band                | the band's range and unit count in the legend, again in the table, and a gap of page background between bands |
+| Target attainment       | the attainment percentage in text, the overflow rule at the end of the track, and the accessible summary      |
+| Reconciliation marker   | the side of the zero rule, the printed signed amount, and the direction in words                              |
+| Region tint             | the region's own `h2` and eyebrow                                                                             |
 
 **The age ramp's adjacent steps are not 3:1 from each other, and that is recorded rather
 than hidden.** Five ordered hues cannot be held apart in luminance as well as hue without

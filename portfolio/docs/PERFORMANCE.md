@@ -923,7 +923,7 @@ session, so the delta below is this change and nothing else.
 | `/dashboard`                |       Before |        After |       Delta |
 | --------------------------- | -----------: | -----------: | ----------: |
 | HTML                        |     135.5 kB | **134.5 kB** | **−1.0 kB** |
-| Route JavaScript            |     164.8 kB | **164.8 kB** | **0.0 kB**  |
+| Route JavaScript            |     164.8 kB | **164.8 kB** |  **0.0 kB** |
 | CSS                         |      14.7 kB |      15.3 kB |     +0.6 kB |
 | Fonts                       |     114.3 kB |     114.3 kB |      0.0 kB |
 | **Total, route cost alone** | **430.6 kB** | **430.1 kB** | **−0.5 kB** |
