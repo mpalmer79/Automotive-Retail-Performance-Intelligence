@@ -1716,6 +1716,17 @@ SQL_RECONCILIATION_IDS: Final[tuple[str, ...]] = (
     "RECON-GLB-GRAIN",
     "RECON-REPORT-ACCOUNTING-ROWS",
     "RECON-REPORT-GL-RECON-ROWS",
+    # The console's unit-grain inventory surface (DASH.9). RECON-INV-UNIT-RATIO exists
+    # because reporting.vw_inventory_units reads the fact directly -- it needs window
+    # functions over a narrowed date set that vw_inventory_snapshots does not publish --
+    # and therefore REPEATS the price_to_market_ratio expression rather than selecting it.
+    # Two copies of one rule is how two surfaces come to disagree about a measure that
+    # carries one name, so the equality is re-proved on every run instead of trusted, and
+    # NULL is compared as a value: an absent estimate must produce an absent ratio on both
+    # sides and a zero on neither. RECON-INV-UNIT-GRAIN guards the narrowing itself, whose
+    # fan-out would double every count the inventory route publishes.
+    "RECON-INV-UNIT-RATIO",
+    "RECON-INV-UNIT-GRAIN",
 )
 
 #: The reconciliations whose failure invalidates the numbers built on them.

@@ -242,16 +242,20 @@ EXPECTED_REPORTING_ROW_COUNTS: dict[str, int] = {
 #: reconciliations -- the 13 `RECON-ACC-*` / `RECON-GLB-*` rules plus the three ingestion
 #: chains, the catalogue's warehouse chain and its row count (96 -> 114). Both were
 #: measured on a fresh warehouse built by the canonical sequence, not inferred.
+#: `DASH.9` adds two and no checks (114 -> 116): `RECON-INV-UNIT-RATIO` and
+#: `RECON-INV-UNIT-GRAIN`, both over `reporting.vw_inventory_units`. It registers no
+#: `DQ-*` check, because the view introduces no new stored data to validate -- it narrows
+#: and windows a fact whose 19 `DQ-IAS-*` checks already run.
 EXPECTED_REPORTING_ROW_COUNTS_PER_RUN: dict[str, int] = {
     "vw_data_quality_trend": 9,
-    "vw_reconciliation_status": 114,
+    "vw_reconciliation_status": 116,
     "vw_pipeline_run_summary": 1,
     "vw_data_quality_summary": 226,
 }
 
 #: Reconciliations the loader records on every run, and how many may fail.
 #: Per run, for the reason recorded above.
-EXPECTED_RECONCILIATION_COUNT_PER_RUN: int = 114
+EXPECTED_RECONCILIATION_COUNT_PER_RUN: int = 116
 EXPECTED_FAILING_RECONCILIATION_COUNT: int = 0
 
 #: The profile and seed the cloud database must have been loaded from.
