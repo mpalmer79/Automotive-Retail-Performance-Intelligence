@@ -6,8 +6,11 @@
  * It owns SELECTION and PRESENTATION SHAPE: which comparison date a period resolves to,
  * which rows a store filter keeps, how the four comparison states are counted, and how the
  * exception classes are kept apart. It owns no arithmetic definition. Every balance and every
- * variance is read from the governed export exactly as `reporting.vw_inventory_gl_reconciliation`
- * produced it, and the only sums performed here are sums of already-signed variances.
+ * variance is read from the `inventory-gl-reconciliation` dataset exactly as the governed
+ * export produced it, and the only sums performed here are sums of already-signed variances.
+ * The reporting view behind that dataset is named in the export contract and in
+ * DATA_CONTRACT.md; naming it here would suggest this module knows how to query it, and it
+ * does not — it reads a committed file.
  *
  * THE FOUR RULES THIS FILE EXISTS TO PROTECT
  * ------------------------------------------

@@ -5,8 +5,10 @@
  * ---------------------
  * Selection and presentation shape. It owns no metric definition: `days_in_stock`,
  * `age_bucket`, `aged_threshold_days`, `price_to_market_ratio` and every money column are
- * read from the governed export exactly as `reporting.vw_inventory_units` produced them. The
- * only arithmetic here is counting rows and summing already-exact investment figures.
+ * read from the `inventory-units` dataset exactly as the governed export produced them. The
+ * only arithmetic here is counting rows and summing already-exact investment figures. The
+ * reporting view behind that dataset is named in the export contract, not here: this module
+ * reads a committed file and has no way to query anything.
  *
  * THE THRESHOLD IS 60 DAYS AND IT COMES FROM THE DATA
  * ---------------------------------------------------
