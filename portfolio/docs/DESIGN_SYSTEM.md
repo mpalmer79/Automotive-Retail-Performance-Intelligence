@@ -140,8 +140,25 @@ Ramps, never referenced directly by a component.
 | Inverse | text on the deep blues only         | `100 #ffffff`, `200 #e7f3f8`, `300 #c3dbe7`                               |
 | Amber   | attention, pending, blocked         | `700 #8a5a06`, `100 #fbf0da`                                              |
 | Violet  | semantic model and relationships    | `600 #5b45b8`, `100 #ece8fa`                                              |
-| Emerald | verified pass states                | `600 #0f7a46`, `100 #e2f4ea`                                              |
-| Rose    | genuine failure                     | `600 #b3253c`, `100 #fbe6ea`                                              |
+| Emerald | verified pass states                | `600 #0f7a46`, `500 #17864d`, `100 #e2f4ea`, `50 #e9f7ef`                |
+| Rose    | genuine failure                     | `700 #8c1b30`, `600 #b3253c`, `100 #fbe6ea`                              |
+| Orange  | a data-visualisation mark only      | `600 #a8480b`, `100 #fbeade`                                             |
+
+Four ramps carry a `-50` step, and it exists for a different job from `-100`. A `-100`
+wash tints a chip a reader looks at for a second; a `-50` tints a whole page region a
+reader works **inside**. Each `-50` is its `-100` at three quarters strength over white,
+**resolved to a literal** rather than written as an opacity at the call site — because
+`bg-zone-plan/75` makes the real ground a composite of the token and whatever sits behind
+it, and a contrast test measuring the token alone would then be measuring a colour the
+browser never paints. The tier is not cosmetic: at `-100`, emerald-600 as text on the
+violet region measures 4.49:1, just under the floor.
+
+| `-50` step | Value     | Region                |
+| ---------- | --------- | --------------------- |
+| Teal       | `#eaf5fa` | group performance     |
+| Emerald    | `#e9f7ef` | plan                  |
+| Amber      | `#fcf4e3` | stock                 |
+| Violet     | `#f1eefb` | demand and the funnel |
 
 The text is not pure black. `#16202a` is very slightly blue so it reads as ink rather
 than as a hard edge, which pure black produces against white at body sizes.
@@ -152,8 +169,10 @@ than as a hard edge, which pure black produces against white at body sizes.
 **pure** white and 4.37:1 on the soft canvas, so it passed on one surface and failed on
 the next one down; and the field's top stop at `#4FA9D3` left the white canvas edge at
 2.64:1 against it. Each is corrected, and `tests/unit/tokens.test.ts` asserts every text
-token against **all four** white grounds rather than against the lightest one — because a
-colour is not accessible on its own, only on a ground.
+token against **all eight** grounds — the four whites and the four region tints — rather
+than against the lightest one, because a colour is not accessible on its own, only on a
+ground. The region tints joined that list the moment the console started painting them,
+which is the whole reason they are opaque.
 
 **The slate ramp sits below 3:1 on white by design.** It draws hairlines, dividers and
 the background motif, none of which is text and none of which identifies a control or its
@@ -182,6 +201,57 @@ Mapped into Tailwind as `bg-canvas`, `text-ink-muted`, `border-line-subtle`,
 `text-verified` and so on. The rename from `text-*` to `ink-*` and from `border-*` to
 `line-*` is deliberate: `text-text-muted` and `border-border` are unreadable at a call
 site.
+
+### 3.2a The data-visualisation vocabulary
+
+ARPI has one brand accent and it is still teal. This is a **different concept**: a
+vocabulary for chart marks, where colour has to carry meaning the brand accent cannot. A
+dashboard drawn entirely in one hue makes every figure look equally important, which is
+the opposite of what an operating surface is for.
+
+```
+data-positive  data-negative  data-warning              (each with a -wash pair)
+data-primary   data-secondary data-tertiary             categorical identity
+data-neutral   data-muted     data-reference            non-evaluative marks
+data-age-fresh data-age-early data-age-threshold
+data-age-aged  data-age-critical                        the ordered age ramp
+zone-performance  zone-plan  zone-inventory  zone-funnel  domain grounds
+```
+
+**The rule these tokens exist to enforce: a mark is coloured because its meaning is
+defensible, never because a number went up.** `data-positive` and `data-negative` are for
+values whose **sign** has meaning — a signed gross movement, a waterfall contribution, a
+variance that crosses zero — and for comparison against a **governed reference** such as
+an explicit target. They are not for "bigger is better": a higher aged-inventory
+percentage and a higher gross are not the same direction, and this console publishes no
+favourable direction for most of its measures.
+
+What that looks like in practice:
+
+| Surface                   | Encoding                                                     | Why                                                                        |
+| ------------------------- | ------------------------------------------------------------ | -------------------------------------------------------------------------- |
+| Waterfall steps           | positive / negative; anchors take `data-reference`            | a step **is** a signed contribution; a level is not a direction              |
+| Trend and micro-trend     | `data-primary`, with `data-negative` only below zero          | a month above zero is not thereby a good month                              |
+| Front vs F&I gross        | the categorical pair                                          | neither half of a deal is the good half                                     |
+| Store comparison          | one hue per store, from the **business code**                 | identity, not rank; a filtered-out store must not shift the others          |
+| Inventory age             | the five-step ramp, turning at the exported aged threshold    | ordered risk, on a project default the legend names                         |
+| Target attainment         | `data-positive` at 100% and nowhere else                      | a target is a reference the **business** published, not one the console invented |
+| GL vs subledger variance  | `data-neutral` on **both** sides of zero                      | a variance is a finding to investigate, not a failure                       |
+| Region grounds            | `zone-*`, which encode nothing                                | the stock area is amber whether the lot is clean or ageing badly            |
+
+**Two restraints are as deliberate as the additions.** There is no red for a below-target
+pace bar — a store at 40% attainment on the twelfth selling day is not behind, which is
+what the selling-day marker on the track exists to show — and no ramp approaching 100%,
+because a ramp encodes thresholds nobody governed. And the accounting scale keeps the
+neutral token on both signs permanently; `tests/unit/dashboard-visual-refinement.test.tsx`
+asserts that rather than trusting the comment that says so.
+
+**The age ramp's one recorded limitation.** Its five steps each clear 3:1 against every
+ground, but adjacent steps are **not** 3:1 from each other. Holding five ordered hues
+apart in luminance as well as hue would force the fresh end so light that it fails against
+the white it sits on. The stack therefore separates its bands structurally instead: a gap
+of page background between them, and an age range and a unit count printed beside every
+band. Colour orders the bands; it never carries a value alone.
 
 ### 3.3 Colour is never the only carrier
 

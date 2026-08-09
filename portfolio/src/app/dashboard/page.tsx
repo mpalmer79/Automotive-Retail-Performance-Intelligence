@@ -137,7 +137,11 @@ export default async function DashboardPage({
       <PageHeader
         eyebrow="Dealer Operations Command Center"
         title="How the group is performing, and which store needs attention"
-        crumbLabel="Dealer Operations Command Center"
+        /* "Command center", not the full name: the eyebrow directly below the crumb
+           already says "Dealer Operations Command Center", and two lines of the same
+           string five pixels apart is the header repeating itself. This is the label
+           the console's own navigation uses for this route. */
+        crumbLabel="Command center"
         /* One line. The list of subjects was the region headings read twice, and the
            provenance sentence is the trust line this header already renders. */
         lede={`${overview.scope.label}, over ${overview.periodContext.period.label}.`}
@@ -365,7 +369,7 @@ export default async function DashboardPage({
         lede={
           overview.empty
             ? undefined
-            : 'A variance between the stock schedule and the general ledger is a finding to investigate rather than a broken record: both sides are valid data.'
+            : 'A variance between the stock schedule and the general ledger is a finding to investigate, not a broken record, and both sides are valid data.'
         }
       >
         <div className="flex flex-col gap-8">

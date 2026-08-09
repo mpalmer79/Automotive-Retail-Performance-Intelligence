@@ -319,6 +319,51 @@ attribute, so tests assert the semantic state rather than the pixel colour. Both
 explorers use shape and position, not only hue, to distinguish built from pending
 from planned paths, and both carry a text legend.
 
+### 5.1 The executive console's chart marks
+
+A chart mark is a graphical object, so the floor is **SC 1.4.11 at 3:1** against what is
+adjacent to it rather than the 4.5:1 text floor. Every `data-*` token clears 3:1 against
+all eight grounds the console paints — the four whites and the four region tints —
+measured in `tests/unit/tokens.test.ts` rather than judged.
+
+**The region tints are opaque, and that is an accessibility decision.** A wash written as
+`bg-zone-plan/75` makes the real ground a composite of the token and whatever sits behind
+it, so a contrast test measuring the token would be measuring a colour the browser never
+paints — the same class of defect as the removed text opacity above, and invisible for
+the same reason. The `-50` palette tier exists so the tints can be opaque at a strength
+that keeps every foreground clear of its floor.
+
+**Nothing is encoded in hue alone, anywhere on the console.** Each pairing is asserted in
+`tests/unit/dashboard-visual-refinement.test.tsx`:
+
+| Mark | Non-colour carrier |
+| --- | --- |
+| Waterfall rise and fall | an arrow glyph, and the signed amount as text |
+| Trend column below zero | position under a drawn zero rule, and the value in the table |
+| Store bar | the store's name and its value printed on the row |
+| Age band | the band's range and unit count in the legend, again in the table, and a gap of page background between bands |
+| Target attainment | the attainment percentage in text, the overflow rule at the end of the track, and the accessible summary |
+| Reconciliation marker | the side of the zero rule, the printed signed amount, and the direction in words |
+| Region tint | the region's own `h2` and eyebrow |
+
+**The age ramp's adjacent steps are not 3:1 from each other, and that is recorded rather
+than hidden.** Five ordered hues cannot be held apart in luminance as well as hue without
+forcing the fresh end so light it fails against the white it sits on. The ramp orders the
+bands; the printed range and count carry the values.
+
+**Three chart summaries are `sr-only`.** They are not removed: the store comparison, the
+age stack and the gross composition each print every figure their summary sentence
+contains in the visible content directly below it, so a visible copy is the same figures
+read twice. The sentence stays in the accessibility tree in full, where it is the one
+reading that carries the whole visual without asking anyone to interpret a length.
+
+**Three regions are `<details>`.** The store scoreboard, the trust evidence and the
+delivery backlog are in the served document while shut — in the accessibility tree's
+reading order, in a browser text search, in print and with scripting off. Each summary is
+a native `<summary>`, so it is focusable, operable from the keyboard and reports its
+expanded state without any ARIA; `dashboard.spec.ts` presses Enter on all three and
+asserts the `open` attribute.
+
 ---
 
 ## 6. Focus and target size
