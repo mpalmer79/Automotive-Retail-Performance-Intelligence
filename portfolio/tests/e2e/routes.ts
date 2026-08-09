@@ -195,15 +195,13 @@ export const UNBUILT_DASHBOARD_ROUTES: readonly string[] = [
    * `/dashboard/deals/[saleId]` was on this list through `DASH.3`, which rendered each
    * deal id as TEXT because an anchor would have pointed at a 404. `DASH.4` delivers
    * the route, so it moves to `DASHBOARD_ROUTES` in the same diff that makes the
-   * destination real, and `DASH.7` does the same for `/dashboard/fi`. What remains
-   * here is the five sections that genuinely do not exist, and
-   * `dashboard-deal-jacket.spec.ts` covers the negative that replaced the first one:
-   * a deal id that names no transaction still 404s.
+   * destination real; `DASH.7` does the same for `/dashboard/fi`, and `DASH.9` for
+   * `/dashboard/inventory` and `/dashboard/accounting`. What remains here is the three
+   * sections that genuinely do not exist, and `dashboard-deal-jacket.spec.ts` covers the
+   * negative that replaced the first one: a deal id that names no transaction still 404s.
    */
-  '/dashboard/inventory',
   '/dashboard/leads-marketing',
   '/dashboard/employees',
-  '/dashboard/accounting',
   '/dashboard/actions',
 ]
 

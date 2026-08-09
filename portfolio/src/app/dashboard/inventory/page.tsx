@@ -22,7 +22,6 @@ import {
   parseUnitSort,
   resolveSnapshotDate,
   selectUnits,
-  snapshotDates,
   sortUnits,
   summarizeInventory,
   toUnitRows,
@@ -39,6 +38,7 @@ import {
   formatCurrencyDifference,
   formatCurrencyExact,
   formatIsoDate,
+  formatIsoMonth,
   formatRateExact,
 } from '@/lib/dashboard/format'
 import { exportTrust, powerBiTrust, reconciliationFailed } from '@/lib/dashboard/trust'
@@ -106,14 +106,29 @@ export default async function InventoryPage({
       ? dashboardStores.map((store) => store.id)
       : parsed.filters.store
 
+  // ONE MONTH IS DECODED, NOT ALL SIX.
+  //
+  // The months this dataset carries come from the manifest's chunk index, which is metadata
+  // the page already holds -- no partition is opened to discover them. The period then picks
+  // ONE month, and only that month's partitions are decoded, for only the stores in scope.
+  //
+  // This is a correctness-neutral change and a large cost one: reading all six months for
+  // three stores decoded eighteen partitions on every request, roughly 1,500 unit rows, to
+  // render a page that shows one date. It also made this the heaviest render in the console,
+  // which is how it became the first page to flake under a parallel browser suite. A default
+  // request now opens three partitions; a store-filtered one opens one.
   const months = manifestMonths('inventory-units')
+  const targetMonth = resolveMonth(months, parsed.filters)
   const units = toUnitRows(
-    wantedStores.flatMap((store) =>
-      months.flatMap((month) => partitionRows('inventory-units', store, month))
-    )
+    targetMonth === null
+      ? []
+      : wantedStores.flatMap((store) =>
+          partitionRows('inventory-units', store, targetMonth)
+        )
   )
 
-  const dates = snapshotDates(units)
+  // The period options come from the chunk index too, so a month with no partition is never
+  // offered and no partition is opened to build the list.
   const snapshotDate = resolveSnapshotDate(units, parsed.filters)
   const selected = selectUnits(units, snapshotDate, parsed.filters, search)
   const ordered = sortUnits(selected, sort)
@@ -132,9 +147,9 @@ export default async function InventoryPage({
     value: store.id,
     label: store.shortName,
   }))
-  const periodOptions: readonly FilterOption[] = dates.map((date) => ({
-    value: date.slice(0, 7),
-    label: formatIsoDate(date),
+  const periodOptions: readonly FilterOption[] = months.map((month) => ({
+    value: month,
+    label: formatIsoMonth(month),
   }))
 
   return (
@@ -663,6 +678,37 @@ function manifestMonths(dataset: string): readonly string[] {
   const entry = dashboardManifest.datasets.find((item) => item.name === dataset)
   if (entry?.chunks == null) return []
   return [...new Set(entry.chunks.map((chunk) => chunk.month))].sort()
+}
+
+/**
+ * The single month a request needs, or null when the period covers none.
+ *
+ * Newest-first, so the first match inside a period is the LAST month within it -- the same
+ * semi-additive rule the selectors follow, applied here so the decode is scoped before any
+ * row is read rather than after.
+ */
+function resolveMonth(
+  months: readonly string[],
+  filters: {
+    readonly period: {
+      readonly kind: string
+      readonly month?: string
+      readonly start?: string
+      readonly end?: string
+    }
+  }
+): string | null {
+  const newestFirst = [...months].sort().reverse()
+  const period = filters.period
+  if (period.kind === 'month' && period.month !== undefined) {
+    return newestFirst.find((month) => month === period.month) ?? null
+  }
+  if (period.kind === 'range' && period.start !== undefined && period.end !== undefined) {
+    const start = period.start.slice(0, 7)
+    const end = period.end.slice(0, 7)
+    return newestFirst.find((month) => month >= start && month <= end) ?? null
+  }
+  return newestFirst[0] ?? null
 }
 
 function partitionRows(
