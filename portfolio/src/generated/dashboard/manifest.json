@@ -1,13 +1,13 @@
 {
   "schema": "arpi.dashboard_client/1",
-  "datasetVersion": 10,
+  "datasetVersion": 11,
   "contractVersion": 1,
-  "contractSha256": "a8634281360e56cafb75c2613b0715764a332c19637c8802e1bd74de5460e436",
-  "generatedAt": "2026-08-09T00:27:25+00:00",
+  "contractSha256": "8f99a0ef64e8a52313f63611c5e800879e37b98c8c2ebfb8abb5d1c7b2691753",
+  "generatedAt": "2026-08-09T01:36:53+00:00",
   "asOfDate": "2025-12-31",
   "profile": "development",
   "randomSeed": 20250701,
-  "sourceCommit": "81ddc05bf7081f47cd8e4192a71ce203c3efc83f",
+  "sourceCommit": "4efd99fac51cf68a8809fa697259e2d082dbecf2",
   "exporterVersion": "0.1.0",
   "syntheticData": true,
   "fictionalDealerGroup": true,
@@ -6899,14 +6899,6 @@
           "enumeration": null
         },
         {
-          "name": "entity_id",
-          "type": "string",
-          "nullable": false,
-          "unit": null,
-          "displayPrecision": null,
-          "enumeration": null
-        },
-        {
           "name": "dealership_id",
           "type": "string",
           "nullable": false,
@@ -7214,12 +7206,12 @@
     }
   ],
   "sizes": {
-    "totalBytes": 5077693,
+    "totalBytes": 5077621,
     "fileCount": 217,
     "largestFile": {
       "file": "datasets/sales-gross-trend.json",
       "bytes": 95189
     },
-    "rootExportBytes": 15405994
+    "rootExportBytes": 15405886
   }
 }
