@@ -373,6 +373,52 @@ a human had to.
 It was found by the end-to-end test that renders the table and counts what is in it. That is the
 argument for the browser layer, made a second time and more expensively than the first.
 
+## 10.6 As-built: what `DASH.10` added
+
+Three test properties this program had not previously had to state, each forced by something the
+leads and marketing surface does that no earlier route did.
+
+**1. A contract's choice of denominator is now bound to the governed formula.**
+KPI-FUN-003 shipped from `DASH.1` to `DASH.10` dividing by `leads_received` in
+`src/arpi/dashboard/contract.py` and in `selectors.ts`, while `KPI_CATALOG.md` §26, the reporting
+view and an integration test all said contacted leads. Every guard looked elsewhere: the KPI tests
+check the VIEW, which was right; the export tests check that a total's sums match the exported
+column, which they did — of the wrong column.
+`test_export_reconciliation_totals_use_the_governed_denominator` closes that gap for every ratio
+total at once by re-deriving each from the columns the contract declares and requiring it to equal
+the rate its reporting view publishes. It is paired with a companion asserting the data
+distinguishes the two candidate denominators, because a guard that cannot fail is not a guard.
+
+**2. A seeded defect must be seeded where the defect would actually live.**
+The first version of `test_a_seeded_fan_out_fails_the_rollup_rule` inserted an extra appointment
+and PASSED — because both sides of that reconciliation read the same fact, so an extra row
+increments both and the roll-up still agrees. A real fan-out is on the JOIN, so the test now
+replaces the lead projection with one carrying a lead twice. The comment records the first version
+and why it proved nothing; it is the clearest example in this repository of a corruption test that
+looked convincing and tested nothing.
+
+**3. An unexercised distinction is asserted with its cause, not skipped.**
+The scheduled-date and show-date bases never separate in the committed data: `0` of `1,025` shown
+appointments have a show date different from their scheduled date. Asserting they differ would fail
+against correct code; asserting nothing would let a future collapse of the two columns pass. The
+suite asserts the EQUALITY and states the generator fact that causes it, so a generator producing
+late arrivals fails there — and a second test constructs the cross-month fixture the data cannot
+provide and proves each basis lands in its own period.
+
+The same rule covers the zero-second response: the development profile contains none, so
+`test_a_zero_second_response_would_be_counted_as_responded` asserts the RULE and says in its
+docstring that the case is absent rather than covered.
+
+**Seeded defects added by `DASH.10`**, each observed failing before the guard was accepted:
+averaging subgroup medians (2.4× the true median); a never-responded lead coalesced to zero
+seconds; a source filter applied to a numerator only; a campaign filter applied to a marketing
+numerator only; show rate over all scheduled rather than eligible appointments; the naive
+`shown - sold` subtraction; averaging per-campaign cost ratios ($32.59 against $17.29); a repeated
+business key on each of the three new datasets, including one whose key component is NULL; a
+response band outside the governed vocabulary; a fractional lead count; two partitions decoded
+under one cache key; a lead resolved twice through the appointment join; and a lead marked shown
+without an appointment.
+
 ## 11. Power BI alignment
 
 

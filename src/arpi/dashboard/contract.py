@@ -301,6 +301,24 @@ class ReconciliationTotal:
 #: The two condition groups every inventory and days-to-sale view reports on.
 _CONDITION_GROUPS: Final[tuple[str, ...]] = ("New", "Used")
 
+#: The governed first-response bands, exactly as ``reporting.vw_leads`` defines them.
+#:
+#: Declared once and carried into the export's metadata so the console renders the bands the
+#: warehouse banded rather than boundaries of its own. They are DESCRIPTIVE BINS: ARPI states
+#: no target response time and publishes no benchmark, because it holds no benchmark data, so
+#: nothing downstream may colour one of these good or bad.
+#:
+#: ``null`` is deliberately absent from this enumeration. A never-responded lead is not in a
+#: band -- it has no response to band -- and adding a fifth value for it would make the
+#: ignored population look like the slowest bucket instead of a population both response-time
+#: KPIs are blind to.
+_RESPONSE_TIME_BANDS: Final[tuple[str, ...]] = (
+    "Under 5 minutes",
+    "5-15 minutes",
+    "15-60 minutes",
+    "Over 60 minutes",
+)
+
 #: The governed age buckets, exactly as ``vw_inventory_aging`` defines them.
 _AGE_BUCKETS: Final[tuple[str, ...]] = ("0-30", "31-60", "61-90", "91-120", "Over 120")
 
@@ -357,6 +375,14 @@ DASHBOARD_LANE_SQL_FILES: Final[tuple[str, ...]] = (
     # DASH.9. The operating console's unit-grain inventory surface. It is a dashboard-lane
     # view, not an MVP one: the 28-view MVP baseline predates it and is unchanged.
     "05_reporting/52_vw_inventory_units.sql",
+    # DASH.10. Three presentation-grain views over existing facts, for the leads and
+    # marketing route. Each exists because a console question cannot be answered honestly
+    # at the grain an MVP view publishes: appointment rates need source and campaign to be
+    # filtered with the funnel above them, the lost-stage partition needs one owner rather
+    # than a subtraction repeated per consumer, and a median needs its population.
+    "05_reporting/53_vw_appointment_source_funnel.sql",
+    "05_reporting/54_vw_lead_stage_loss.sql",
+    "05_reporting/55_vw_lead_response_distribution.sql",
     "06_indexes/03_fi_indexes.sql",
     "08_validation/11_recon_target.sql",
     "08_validation/13_recon_fi.sql",
@@ -364,6 +390,12 @@ DASHBOARD_LANE_SQL_FILES: Final[tuple[str, ...]] = (
     # duplicates an expression from. Numbered 14 because DASH.8 vacated that slot when it
     # renumbered recon_all to 16, so no existing file moves.
     "08_validation/14_recon_inventory_units.sql",
+    # DASH.10. The five rules that prove the three new views agree with the authorities
+    # they re-grain. The ordered sequence is a sorted glob, so a file unioned by recon_all
+    # must sort before it; 15 was the last free slot below it, so DASH.10 moves recon_all
+    # from 16 to 17 -- the same move DASH.5, DASH.6 and DASH.8 each made -- and takes 16.
+    # Only recon_all moves, and it is the one file whose position is meant to be last.
+    "08_validation/16_recon_leads_marketing.sql",
 )
 
 #: The vehicle condition vocabulary, exactly as ``warehouse.dim_vehicle`` constrains it.
@@ -1303,6 +1335,292 @@ _MARKETING_PERFORMANCE = DatasetContract(
         "that has an answer where there is no spend."
     ),
 )
+
+# ---------------------------------------------------------------------------------------
+# DASH.10: the three shapes the leads and marketing route could not get from the eight
+# datasets that already existed
+# ---------------------------------------------------------------------------------------
+# The audit came first and most of it said REUSE. `lead-funnel` already carries the cohort
+# funnel at store x source x campaign x lead-creation date; `marketing-performance` already
+# carries spend, attributed outcomes and all three MKT measures at month grain with the
+# organic rule applied; `lead-sources`, `campaigns`, `stores` and `calendar` are dimensions
+# the console already reads. Vendor-count discrepancy needed nothing new: vendor leads are
+# on `marketing-performance` and the duplicate population is on `lead-funnel`.
+#
+# Three requirements survived that audit, and each failed for a different structural
+# reason rather than for want of a column.
+#
+# 1. APPOINTMENT OUTCOMES UNDER A SOURCE FILTER. `appointment-funnel` has no source and no
+#    campaign, so a page filtered to one source could only have shown the lead funnel
+#    filtered and the appointment rates group-wide. Drawn as one funnel that is not a
+#    filtered funnel, it is two populations in one shape, and no caption fixes it.
+#
+# 2. A TRUE MEDIAN. KPI-FUN-008 is an order statistic and order statistics do not
+#    decompose: the median of a month is not the average of its daily medians, and
+#    `lead-response` publishes medians at store x source x day. The existing selector is
+#    right to refuse -- it returns "not derivable" outside that exact grain -- but a BDC
+#    surface whose headline measure is unavailable at every scope a reader would choose is
+#    not a BDC surface.
+#
+# 3. LOST-STAGE COUNTS. Derivable by subtraction from `lead-funnel` in TypeScript, which is
+#    exactly what ADR-0013 condition 2 forbids -- and the obvious subtraction is wrong
+#    anyway, because `fact_lead` does not enforce that a sale implies a show.
+#
+# WHAT THIS COSTS, STATED PLAINLY
+# Three datasets, and the two lead-grained ones are partitioned by store and month like the
+# five that already are. They are read by ONE route through `leads-marketing-data.ts`, so
+# `/dashboard` and every other console page carry none of them.
+
+_APPOINTMENT_SOURCE_FUNNEL = DatasetContract(
+    name="appointment-source-funnel",
+    source_view="vw_appointment_source_funnel",
+    grain=(
+        "One row per store per lead source per campaign (nullable) per calendar date on "
+        "which that combination had at least one appointment scheduled or shown."
+    ),
+    business_key=("dealership_id", "lead_source_code", "campaign_code", "appointment_date"),
+    date_basis="appointment date",
+    sort_keys=("dealership_id", "appointment_date", "lead_source_code", "campaign_code"),
+    join_views=("vw_dealership", "vw_calendar", "vw_lead_source", "vw_marketing_campaign"),
+    chunked=True,
+    kpi_ids=("KPI-FUN-004", "KPI-FUN-005"),
+    columns=(
+        _store_id(),
+        _resolved_date("appointment_date", "appointment_date", basis="appointment date"),
+        _lead_source_code(),
+        _campaign_code(),
+        _measure(
+            "scheduled_appointments",
+            "integer",
+            unit="appointments",
+            view="vw_appointment_source_funnel",
+        ),
+        _measure(
+            "eligible_appointments",
+            "integer",
+            unit="appointments",
+            view="vw_appointment_source_funnel",
+        ),
+        _measure(
+            "cancelled_in_advance_appointments",
+            "integer",
+            unit="appointments",
+            view="vw_appointment_source_funnel",
+        ),
+        _measure(
+            "confirmed_appointments",
+            "integer",
+            unit="appointments",
+            view="vw_appointment_source_funnel",
+        ),
+        _measure(
+            "shown_appointments",
+            "integer",
+            unit="appointments",
+            view="vw_appointment_source_funnel",
+        ),
+        _measure(
+            "show_rate",
+            "exact",
+            nullable=True,
+            unit="ratio",
+            precision=3,
+            view="vw_appointment_source_funnel",
+        ),
+        _measure(
+            "cancellation_rate",
+            "exact",
+            nullable=True,
+            unit="ratio",
+            precision=3,
+            view="vw_appointment_source_funnel",
+        ),
+        _measure(
+            "shown_appointments_on_show_date",
+            "integer",
+            unit="appointments",
+            view="vw_appointment_source_funnel",
+        ),
+        _measure(
+            "shown_and_sold_appointments",
+            "integer",
+            unit="appointments",
+            view="vw_appointment_source_funnel",
+        ),
+        _measure(
+            "test_drive_appointments",
+            "integer",
+            unit="appointments",
+            view="vw_appointment_source_funnel",
+        ),
+        _measure(
+            "write_up_appointments",
+            "integer",
+            unit="appointments",
+            view="vw_appointment_source_funnel",
+        ),
+        _measure(
+            "show_to_sale_conversion",
+            "exact",
+            nullable=True,
+            unit="ratio",
+            precision=3,
+            view="vw_appointment_source_funnel",
+        ),
+    ),
+    notes=(
+        "The same measures appointment-funnel carries, cut by the source and campaign of "
+        "the one lead behind each appointment, so a source-filtered page can scope "
+        "KPI-FUN-004 and KPI-FUN-005 with the filter it scopes the funnel above them. "
+        "Rolled up across lead_source_code and campaign_code it reproduces "
+        "appointment-funnel component for component on every store and date; "
+        "RECON-APPT-SOURCE-ROLLUP asserts that on every database run, comparing all nine "
+        "additive columns rather than the rates, because compensating inflation of a "
+        "numerator and a denominator divides back to a plausible rate. This is APPOINTMENT "
+        "grain: one lead can produce several appointments, so these denominators are not "
+        "the lead-funnel denominators and the two must never share a funnel width. "
+        "Duplicate leads are NOT excluded, unlike every lead-grain measure -- the "
+        "population is appointments, and dropping the ones behind duplicate leads would "
+        "shrink the KPI-FUN-004 denominator and break the roll-up. Two date bases on one "
+        "column: the show-rate columns are on the scheduled date, the conversion columns "
+        "on the show date."
+    ),
+)
+
+_LEAD_STAGE_LOSS = DatasetContract(
+    name="lead-stage-loss",
+    source_view="vw_lead_stage_loss",
+    grain="One row per store per lead source per campaign (nullable) per lead-creation date.",
+    business_key=("dealership_id", "lead_source_code", "campaign_code", "lead_created_date"),
+    date_basis="lead creation date",
+    sort_keys=("dealership_id", "lead_created_date", "lead_source_code", "campaign_code"),
+    join_views=("vw_dealership", "vw_calendar", "vw_lead_source", "vw_marketing_campaign"),
+    chunked=True,
+    columns=(
+        _store_id(),
+        _resolved_date("lead_created_date", "lead_date", basis="lead creation date"),
+        _lead_source_code(),
+        _campaign_code(),
+        _measure("leads_received", "integer", unit="leads", view="vw_lead_stage_loss"),
+        _measure("not_contacted", "integer", unit="leads", view="vw_lead_stage_loss"),
+        _measure(
+            "contacted_not_appointment_set", "integer", unit="leads", view="vw_lead_stage_loss"
+        ),
+        _measure("appointment_set_not_shown", "integer", unit="leads", view="vw_lead_stage_loss"),
+        _measure("shown_not_sold", "integer", unit="leads", view="vw_lead_stage_loss"),
+        _measure("shown_and_sold", "integer", unit="leads", view="vw_lead_stage_loss"),
+        _measure(
+            "sold_without_modelled_showroom_visit",
+            "integer",
+            unit="leads",
+            view="vw_lead_stage_loss",
+        ),
+    ),
+    notes=(
+        "NO COLUMN HERE IS A KPI, and this dataset declares no kpi_ids for that reason: "
+        "these are diagnostics, and labelling one with a KPI identifier would create a "
+        "governed measure by presentation. The five stage columns partition the valid lead "
+        "cohort by the FURTHEST stage each lead reached and sum exactly to leads_received "
+        "on every row (RECON-LEAD-STAGE-PARTITION). They are published rather than left to "
+        "the console to subtract because the obvious subtraction is wrong: fact_lead "
+        "enforces that an appointment implies contact and a show implies an appointment, "
+        "but NOT that a sale implies a show, so appointment_shown_leads minus sold_leads is "
+        "not the count of leads that showed without buying and goes negative where more "
+        "leads sold than showed. Those leads are counted by "
+        "sold_without_modelled_showroom_visit, which is an OVERLAY on the first three "
+        "columns and must never be added to the five -- doing so double-counts them. Every "
+        "column is on the lead-creation cohort basis and excludes duplicates. The counts "
+        "say a lead did not REACH a stage and say nothing about why: ARPI models no "
+        "communication content, activity detail or disposition, so no consumer may attach "
+        "a cause to one."
+    ),
+)
+
+_LEAD_RESPONSE_DISTRIBUTION = DatasetContract(
+    name="lead-response-distribution",
+    source_view="vw_lead_response_distribution",
+    grain=(
+        "One row per store per lead source per campaign (nullable) per lead-creation date "
+        "per distinct first-response value, plus one row per such combination for the "
+        "never-responded population."
+    ),
+    business_key=(
+        "dealership_id",
+        "lead_source_code",
+        "campaign_code",
+        "lead_created_date",
+        "first_response_seconds",
+    ),
+    date_basis="lead creation date",
+    sort_keys=(
+        "dealership_id",
+        "lead_created_date",
+        "lead_source_code",
+        "campaign_code",
+        "first_response_seconds",
+    ),
+    join_views=("vw_dealership", "vw_calendar", "vw_lead_source", "vw_marketing_campaign"),
+    chunked=True,
+    kpi_ids=("KPI-FUN-007", "KPI-FUN-008"),
+    columns=(
+        _store_id(),
+        _resolved_date("lead_created_date", "lead_date", basis="lead creation date"),
+        _lead_source_code(),
+        _campaign_code(),
+        _measure(
+            "first_response_seconds",
+            "integer",
+            nullable=True,
+            unit="seconds",
+            view="vw_lead_response_distribution",
+        ),
+        _attribute(
+            "response_time_band",
+            "string",
+            nullable=True,
+            view="vw_lead_response_distribution",
+            enumeration=_RESPONSE_TIME_BANDS,
+        ),
+        _measure("lead_count", "integer", unit="leads", view="vw_lead_response_distribution"),
+        _measure(
+            "responded_lead_count", "integer", unit="leads", view="vw_lead_response_distribution"
+        ),
+        _measure(
+            "unresponded_lead_count",
+            "integer",
+            unit="leads",
+            view="vw_lead_response_distribution",
+        ),
+        _measure(
+            "response_seconds_total",
+            "integer",
+            unit="seconds",
+            view="vw_lead_response_distribution",
+        ),
+    ),
+    notes=(
+        "A COUNTED DISTRIBUTION, NOT LEAD ROWS. It exists because KPI-FUN-008 is a median, "
+        "medians are not decomposable, and an order statistic can only be recomputed from "
+        "its population -- never from the store-source-day medians lead-response publishes, "
+        "and never by averaging them. Grouping by the response value and counting preserves "
+        "the multiset exactly, so a median over these rows weighted by lead_count equals "
+        "the median over the leads themselves (RECON-LEAD-RESPONSE-DIST-MEDIAN), while the "
+        "artefact carries no lead key, lead code, customer, employee, sale or vehicle at "
+        "all. That is a stronger privacy guarantee than an allowlist over a lead-grain "
+        "projection, and it is the smallest representation preserving the statistic. The "
+        "rows are histogram bins and must never be rendered as leads: a bin with "
+        "lead_count 1 is still a bin, and this dataset is not a drill-through. "
+        "first_response_seconds null means NEVER RESPONDED and carries response_time_band "
+        "null and responded_lead_count 0; zero seconds is a real instant response and an "
+        "ordinary observation. A consumer computing the median must restrict to non-null "
+        "first_response_seconds -- coalescing the null bin to zero would sort ignored leads "
+        "to the fastest end and improve the median, which is the failure this shape makes "
+        "impossible to hide. The bands are the governed vocabulary from vw_leads, carried "
+        "through so nothing re-derives a boundary; they are descriptive bins and ARPI "
+        "publishes no target or benchmark response time."
+    ),
+)
+
 
 # ---------------------------------------------------------------------------------------
 # DASH.9: the accounting control lane crosses the browser boundary
@@ -2897,6 +3215,12 @@ DATASETS: Final[tuple[DatasetContract, ...]] = (
     _APPOINTMENT_FUNNEL,
     _LEAD_RESPONSE,
     _MARKETING_PERFORMANCE,
+    # DASH.10. The three shapes the leads and marketing route could not get from the eight
+    # datasets above: appointment outcomes that a source filter can reach, the response
+    # population a median can actually be recomputed from, and the lost-stage partition.
+    _APPOINTMENT_SOURCE_FUNNEL,
+    _LEAD_STAGE_LOSS,
+    _LEAD_RESPONSE_DISTRIBUTION,
     _SALES_GROSS_TREND,
     _GROSS_CHANGE_BRIDGE,
     _TARGET_ATTAINMENT,
@@ -3081,11 +3405,26 @@ RECONCILIATION_TOTALS: Final[tuple[ReconciliationTotal, ...]] = (
         display_precision=3,
         kpi_id="KPI-FUN-002",
     ),
+    # THE DENOMINATOR IS CONTACTED LEADS, NOT LEADS RECEIVED.
+    #
+    # It was `leads_received` here from DASH.1 until DASH.10, which is a defect and not a
+    # variant: KPI_CATALOG.md section 26 states "The denominator is contacted leads, not all
+    # leads", reporting.vw_lead_funnel divides by contacted_lead_count, and
+    # tests/integration/test_kpi_verification.py asserts the view does so and that it is
+    # "emphatically not leads_received". Only this total and the console selector reading it
+    # disagreed, so the published figure was 1473/5538 = 0.266 where the governed definition
+    # gives 1473/3982 = 0.370 -- a governed KPI understated by eleven points on the Executive
+    # Overview, in the direction that flatters a store with a poor contact rate, which is the
+    # exact misreading the catalogue's denominator exists to prevent.
+    #
+    # The integration test could not catch it because it checks the VIEW. What now catches it
+    # is test_reconciliation_totals_match_governed_denominators, which binds every ratio total
+    # declared here to the denominator its reporting view actually divides by.
     ReconciliationTotal(
         "appointment_set_rate",
         "lead-funnel",
         "appointment_set_leads",
-        "leads_received",
+        "contacted_leads",
         type="exact",
         unit="ratio",
         display_precision=3,

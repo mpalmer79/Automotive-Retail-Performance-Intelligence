@@ -1,21 +1,22 @@
 {
   "schema": "arpi.dashboard_client/1",
-  "datasetVersion": 11,
+  "datasetVersion": 12,
   "contractVersion": 1,
-  "contractSha256": "8f99a0ef64e8a52313f63611c5e800879e37b98c8c2ebfb8abb5d1c7b2691753",
-  "generatedAt": "2026-08-09T03:58:01+00:00",
+  "contractSha256": "7aa3bac9903bcdc591e8ea9a8e39e0ab9023a225780d0b40cea0813abbb466d5",
+  "generatedAt": "2026-08-09T15:55:53+00:00",
   "asOfDate": "2025-12-31",
   "profile": "development",
   "randomSeed": 20250701,
-  "sourceCommit": "3a3793a11e19937e76f2e6cf509290915037f7e9",
+  "sourceCommit": "fd6eb0ba93aa04b12020526da4c19c706285300f",
   "exporterVersion": "0.1.0",
   "syntheticData": true,
   "fictionalDealerGroup": true,
-  "pipelineRunUuid": "fc5b97a2-f416-4abb-bd81-5f5cd3de6b2b",
+  "pipelineRunUuid": "4a6ed216-01cc-43de-b3a2-9c7562e910d2",
   "pipelineRunStatus": "succeeded",
   "sourceViews": [
     "reporting.vw_accounting_exceptions",
     "reporting.vw_appointment_funnel",
+    "reporting.vw_appointment_source_funnel",
     "reporting.vw_calendar",
     "reporting.vw_days_supply",
     "reporting.vw_days_to_sale",
@@ -36,7 +37,9 @@
     "reporting.vw_inventory_units",
     "reporting.vw_lead_funnel",
     "reporting.vw_lead_response",
+    "reporting.vw_lead_response_distribution",
     "reporting.vw_lead_source",
+    "reporting.vw_lead_stage_loss",
     "reporting.vw_marketing_campaign",
     "reporting.vw_marketing_performance",
     "reporting.vw_pipeline_run_summary",
@@ -64,9 +67,9 @@
       "display_precision": 3,
       "subset": null,
       "numerator_column": "appointment_set_leads",
-      "denominator_column": "leads_received",
+      "denominator_column": "contacted_leads",
       "numerator": "1473",
-      "denominator": "5538"
+      "denominator": "3982"
     },
     "attributed_total_gross": {
       "dataset": "marketing-performance",
@@ -490,7 +493,7 @@
   "privacyScanStatus": "passed",
   "validationCriticalFailures": 0,
   "validationWarnings": 0,
-  "reconciliationsEvaluated": 114,
+  "reconciliationsEvaluated": 121,
   "reconciliationsFailed": 0,
   "stale": false,
   "limitations": [
@@ -2996,6 +2999,743 @@
         }
       ],
       "chunks": null
+    },
+    {
+      "name": "appointment-source-funnel",
+      "grain": "One row per store per lead source per campaign (nullable) per calendar date on which that combination had at least one appointment scheduled or shown.",
+      "businessKey": [
+        "dealership_id",
+        "lead_source_code",
+        "campaign_code",
+        "appointment_date"
+      ],
+      "dateBasis": "appointment date",
+      "kpiIds": [
+        "KPI-FUN-004",
+        "KPI-FUN-005"
+      ],
+      "rowCount": 1819,
+      "columns": [
+        {
+          "name": "dealership_id",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "appointment_date",
+          "type": "date",
+          "nullable": false,
+          "unit": "appointment date",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "lead_source_code",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "campaign_code",
+          "type": "string",
+          "nullable": true,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "scheduled_appointments",
+          "type": "integer",
+          "nullable": false,
+          "unit": "appointments",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "eligible_appointments",
+          "type": "integer",
+          "nullable": false,
+          "unit": "appointments",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "cancelled_in_advance_appointments",
+          "type": "integer",
+          "nullable": false,
+          "unit": "appointments",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "confirmed_appointments",
+          "type": "integer",
+          "nullable": false,
+          "unit": "appointments",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "shown_appointments",
+          "type": "integer",
+          "nullable": false,
+          "unit": "appointments",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "show_rate",
+          "type": "exact",
+          "nullable": true,
+          "unit": "ratio",
+          "displayPrecision": 3,
+          "enumeration": null
+        },
+        {
+          "name": "cancellation_rate",
+          "type": "exact",
+          "nullable": true,
+          "unit": "ratio",
+          "displayPrecision": 3,
+          "enumeration": null
+        },
+        {
+          "name": "shown_appointments_on_show_date",
+          "type": "integer",
+          "nullable": false,
+          "unit": "appointments",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "shown_and_sold_appointments",
+          "type": "integer",
+          "nullable": false,
+          "unit": "appointments",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "test_drive_appointments",
+          "type": "integer",
+          "nullable": false,
+          "unit": "appointments",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "write_up_appointments",
+          "type": "integer",
+          "nullable": false,
+          "unit": "appointments",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "show_to_sale_conversion",
+          "type": "exact",
+          "nullable": true,
+          "unit": "ratio",
+          "displayPrecision": 3,
+          "enumeration": null
+        }
+      ],
+      "chunks": [
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-07",
+          "file": "datasets/appointment-source-funnel/GSA-001/2025-07.json",
+          "rowCount": 95,
+          "bytes": 12548
+        },
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-08",
+          "file": "datasets/appointment-source-funnel/GSA-001/2025-08.json",
+          "rowCount": 115,
+          "bytes": 14811
+        },
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-09",
+          "file": "datasets/appointment-source-funnel/GSA-001/2025-09.json",
+          "rowCount": 121,
+          "bytes": 15734
+        },
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-10",
+          "file": "datasets/appointment-source-funnel/GSA-001/2025-10.json",
+          "rowCount": 101,
+          "bytes": 13227
+        },
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-11",
+          "file": "datasets/appointment-source-funnel/GSA-001/2025-11.json",
+          "rowCount": 99,
+          "bytes": 12695
+        },
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-12",
+          "file": "datasets/appointment-source-funnel/GSA-001/2025-12.json",
+          "rowCount": 120,
+          "bytes": 15657
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-07",
+          "file": "datasets/appointment-source-funnel/GSA-002/2025-07.json",
+          "rowCount": 109,
+          "bytes": 14501
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-08",
+          "file": "datasets/appointment-source-funnel/GSA-002/2025-08.json",
+          "rowCount": 147,
+          "bytes": 18735
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-09",
+          "file": "datasets/appointment-source-funnel/GSA-002/2025-09.json",
+          "rowCount": 105,
+          "bytes": 13924
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-10",
+          "file": "datasets/appointment-source-funnel/GSA-002/2025-10.json",
+          "rowCount": 104,
+          "bytes": 13572
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-11",
+          "file": "datasets/appointment-source-funnel/GSA-002/2025-11.json",
+          "rowCount": 115,
+          "bytes": 14720
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-12",
+          "file": "datasets/appointment-source-funnel/GSA-002/2025-12.json",
+          "rowCount": 127,
+          "bytes": 16318
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-07",
+          "file": "datasets/appointment-source-funnel/GSA-003/2025-07.json",
+          "rowCount": 67,
+          "bytes": 8854
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-08",
+          "file": "datasets/appointment-source-funnel/GSA-003/2025-08.json",
+          "rowCount": 92,
+          "bytes": 12189
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-09",
+          "file": "datasets/appointment-source-funnel/GSA-003/2025-09.json",
+          "rowCount": 84,
+          "bytes": 10905
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-10",
+          "file": "datasets/appointment-source-funnel/GSA-003/2025-10.json",
+          "rowCount": 71,
+          "bytes": 9569
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-11",
+          "file": "datasets/appointment-source-funnel/GSA-003/2025-11.json",
+          "rowCount": 72,
+          "bytes": 9416
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-12",
+          "file": "datasets/appointment-source-funnel/GSA-003/2025-12.json",
+          "rowCount": 75,
+          "bytes": 9991
+        }
+      ]
+    },
+    {
+      "name": "lead-stage-loss",
+      "grain": "One row per store per lead source per campaign (nullable) per lead-creation date.",
+      "businessKey": [
+        "dealership_id",
+        "lead_source_code",
+        "campaign_code",
+        "lead_created_date"
+      ],
+      "dateBasis": "lead creation date",
+      "kpiIds": [],
+      "rowCount": 4419,
+      "columns": [
+        {
+          "name": "dealership_id",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "lead_created_date",
+          "type": "date",
+          "nullable": false,
+          "unit": "lead creation date",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "lead_source_code",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "campaign_code",
+          "type": "string",
+          "nullable": true,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "leads_received",
+          "type": "integer",
+          "nullable": false,
+          "unit": "leads",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "not_contacted",
+          "type": "integer",
+          "nullable": false,
+          "unit": "leads",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "contacted_not_appointment_set",
+          "type": "integer",
+          "nullable": false,
+          "unit": "leads",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "appointment_set_not_shown",
+          "type": "integer",
+          "nullable": false,
+          "unit": "leads",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "shown_not_sold",
+          "type": "integer",
+          "nullable": false,
+          "unit": "leads",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "shown_and_sold",
+          "type": "integer",
+          "nullable": false,
+          "unit": "leads",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "sold_without_modelled_showroom_visit",
+          "type": "integer",
+          "nullable": false,
+          "unit": "leads",
+          "displayPrecision": null,
+          "enumeration": null
+        }
+      ],
+      "chunks": [
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-07",
+          "file": "datasets/lead-stage-loss/GSA-001/2025-07.json",
+          "rowCount": 304,
+          "bytes": 18938
+        },
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-08",
+          "file": "datasets/lead-stage-loss/GSA-001/2025-08.json",
+          "rowCount": 304,
+          "bytes": 19218
+        },
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-09",
+          "file": "datasets/lead-stage-loss/GSA-001/2025-09.json",
+          "rowCount": 286,
+          "bytes": 18156
+        },
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-10",
+          "file": "datasets/lead-stage-loss/GSA-001/2025-10.json",
+          "rowCount": 257,
+          "bytes": 16361
+        },
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-11",
+          "file": "datasets/lead-stage-loss/GSA-001/2025-11.json",
+          "rowCount": 253,
+          "bytes": 16083
+        },
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-12",
+          "file": "datasets/lead-stage-loss/GSA-001/2025-12.json",
+          "rowCount": 292,
+          "bytes": 18370
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-07",
+          "file": "datasets/lead-stage-loss/GSA-002/2025-07.json",
+          "rowCount": 270,
+          "bytes": 16869
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-08",
+          "file": "datasets/lead-stage-loss/GSA-002/2025-08.json",
+          "rowCount": 275,
+          "bytes": 17283
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-09",
+          "file": "datasets/lead-stage-loss/GSA-002/2025-09.json",
+          "rowCount": 245,
+          "bytes": 15513
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-10",
+          "file": "datasets/lead-stage-loss/GSA-002/2025-10.json",
+          "rowCount": 247,
+          "bytes": 15687
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-11",
+          "file": "datasets/lead-stage-loss/GSA-002/2025-11.json",
+          "rowCount": 245,
+          "bytes": 15541
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-12",
+          "file": "datasets/lead-stage-loss/GSA-002/2025-12.json",
+          "rowCount": 270,
+          "bytes": 17065
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-07",
+          "file": "datasets/lead-stage-loss/GSA-003/2025-07.json",
+          "rowCount": 203,
+          "bytes": 12622
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-08",
+          "file": "datasets/lead-stage-loss/GSA-003/2025-08.json",
+          "rowCount": 214,
+          "bytes": 13376
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-09",
+          "file": "datasets/lead-stage-loss/GSA-003/2025-09.json",
+          "rowCount": 202,
+          "bytes": 12626
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-10",
+          "file": "datasets/lead-stage-loss/GSA-003/2025-10.json",
+          "rowCount": 188,
+          "bytes": 11842
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-11",
+          "file": "datasets/lead-stage-loss/GSA-003/2025-11.json",
+          "rowCount": 177,
+          "bytes": 11123
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-12",
+          "file": "datasets/lead-stage-loss/GSA-003/2025-12.json",
+          "rowCount": 187,
+          "bytes": 11762
+        }
+      ]
+    },
+    {
+      "name": "lead-response-distribution",
+      "grain": "One row per store per lead source per campaign (nullable) per lead-creation date per distinct first-response value, plus one row per such combination for the never-responded population.",
+      "businessKey": [
+        "dealership_id",
+        "lead_source_code",
+        "campaign_code",
+        "lead_created_date",
+        "first_response_seconds"
+      ],
+      "dateBasis": "lead creation date",
+      "kpiIds": [
+        "KPI-FUN-007",
+        "KPI-FUN-008"
+      ],
+      "rowCount": 5513,
+      "columns": [
+        {
+          "name": "dealership_id",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "lead_created_date",
+          "type": "date",
+          "nullable": false,
+          "unit": "lead creation date",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "lead_source_code",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "campaign_code",
+          "type": "string",
+          "nullable": true,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "first_response_seconds",
+          "type": "integer",
+          "nullable": true,
+          "unit": "seconds",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "response_time_band",
+          "type": "string",
+          "nullable": true,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": [
+            "Under 5 minutes",
+            "5-15 minutes",
+            "15-60 minutes",
+            "Over 60 minutes"
+          ]
+        },
+        {
+          "name": "lead_count",
+          "type": "integer",
+          "nullable": false,
+          "unit": "leads",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "responded_lead_count",
+          "type": "integer",
+          "nullable": false,
+          "unit": "leads",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "unresponded_lead_count",
+          "type": "integer",
+          "nullable": false,
+          "unit": "leads",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "response_seconds_total",
+          "type": "integer",
+          "nullable": false,
+          "unit": "seconds",
+          "displayPrecision": null,
+          "enumeration": null
+        }
+      ],
+      "chunks": [
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-07",
+          "file": "datasets/lead-response-distribution/GSA-001/2025-07.json",
+          "rowCount": 397,
+          "bytes": 30929
+        },
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-08",
+          "file": "datasets/lead-response-distribution/GSA-001/2025-08.json",
+          "rowCount": 404,
+          "bytes": 31896
+        },
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-09",
+          "file": "datasets/lead-response-distribution/GSA-001/2025-09.json",
+          "rowCount": 372,
+          "bytes": 29586
+        },
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-10",
+          "file": "datasets/lead-response-distribution/GSA-001/2025-10.json",
+          "rowCount": 326,
+          "bytes": 25929
+        },
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-11",
+          "file": "datasets/lead-response-distribution/GSA-001/2025-11.json",
+          "rowCount": 315,
+          "bytes": 24999
+        },
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-12",
+          "file": "datasets/lead-response-distribution/GSA-001/2025-12.json",
+          "rowCount": 376,
+          "bytes": 29493
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-07",
+          "file": "datasets/lead-response-distribution/GSA-002/2025-07.json",
+          "rowCount": 346,
+          "bytes": 27291
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-08",
+          "file": "datasets/lead-response-distribution/GSA-002/2025-08.json",
+          "rowCount": 350,
+          "bytes": 27720
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-09",
+          "file": "datasets/lead-response-distribution/GSA-002/2025-09.json",
+          "rowCount": 327,
+          "bytes": 26029
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-10",
+          "file": "datasets/lead-response-distribution/GSA-002/2025-10.json",
+          "rowCount": 304,
+          "bytes": 24242
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-11",
+          "file": "datasets/lead-response-distribution/GSA-002/2025-11.json",
+          "rowCount": 299,
+          "bytes": 23867
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-12",
+          "file": "datasets/lead-response-distribution/GSA-002/2025-12.json",
+          "rowCount": 334,
+          "bytes": 26604
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-07",
+          "file": "datasets/lead-response-distribution/GSA-003/2025-07.json",
+          "rowCount": 228,
+          "bytes": 17770
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-08",
+          "file": "datasets/lead-response-distribution/GSA-003/2025-08.json",
+          "rowCount": 257,
+          "bytes": 20262
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-09",
+          "file": "datasets/lead-response-distribution/GSA-003/2025-09.json",
+          "rowCount": 234,
+          "bytes": 18405
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-10",
+          "file": "datasets/lead-response-distribution/GSA-003/2025-10.json",
+          "rowCount": 215,
+          "bytes": 16980
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-11",
+          "file": "datasets/lead-response-distribution/GSA-003/2025-11.json",
+          "rowCount": 200,
+          "bytes": 15766
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-12",
+          "file": "datasets/lead-response-distribution/GSA-003/2025-12.json",
+          "rowCount": 229,
+          "bytes": 18040
+        }
+      ]
     },
     {
       "name": "sales-gross-trend",
@@ -6947,7 +7687,7 @@
       ],
       "dateBasis": null,
       "kpiIds": [],
-      "rowCount": 114,
+      "rowCount": 121,
       "columns": [
         {
           "name": "reconciliation_id",
@@ -7212,12 +7952,12 @@
     }
   ],
   "sizes": {
-    "totalBytes": 5077621,
-    "fileCount": 217,
+    "totalBytes": 6029805,
+    "fileCount": 271,
     "largestFile": {
       "file": "datasets/sales-gross-trend.json",
       "bytes": 95189
     },
-    "rootExportBytes": 15405886
+    "rootExportBytes": 19160866
   }
 }

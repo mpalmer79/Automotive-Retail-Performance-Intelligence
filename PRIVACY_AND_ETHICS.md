@@ -671,7 +671,38 @@ is not in the allowlist and a test asserts no exported column name contains "cus
 
 Employees do not appear at all in this increment: no `DASH.1` dataset needs them, so none is
 exported. `vw_employee` becomes exportable at `DASH.11`, limited to synthetic id, role, store and
-active window, subject to the §5 minimum-sample rule.
+active window, subject to the §5 minimum-sample rule. `DASH.10` did not change that: the leads and
+marketing route declares its `employee` filter `not-applicable` rather than ignoring it, and none of
+its three datasets carries an employee column — a BDC surface is the most natural place for an
+employee leaderboard to appear by accident, and it does not.
+
+### 17.3a Lead grain, and the shape that avoided it (`DASH.10`)
+
+`DASH.10` needed the first-response POPULATION, not an aggregate of it: KPI-FUN-008 is a median,
+medians do not decompose, and the console cannot form one at an arbitrary filter scope from the
+store × source × day medians `vw_lead_response` publishes. The obvious answer was a lead-grain
+export with a strict allowlist over it. **That is not what was built.**
+
+`reporting.vw_lead_response_distribution` publishes the population as a COUNTED DISTRIBUTION: one
+row per distinct first-response value per store, source, campaign and lead-creation date, carrying
+how many leads share it. Grouping by the value and counting preserves the multiset exactly — a
+median over the bins expanded by their counts is identical to a median over the leads, which
+`RECON-LEAD-RESPONSE-DIST-MEDIAN` re-proves on every database run — while the artefact carries **no
+lead key, no lead code, no customer, no employee, no sale and no vehicle at all**.
+
+That is a stronger guarantee than an allowlist, and stronger for a structural reason: an allowlist
+protects a lead-grain projection by naming what may not cross, and it holds exactly as long as
+nobody edits the list. Here there is nothing to name. The rows are histogram bins, a bin holding one
+lead is still a bin, and no future edit to a permission list can make one into a lead record.
+
+Two tests hold it from both sides: `test_it_carries_no_identity_column_at_all` asserts the exact
+column set against the PostgreSQL catalogue, and
+`test_response_distribution_carries_no_identity_column` asserts it against the export contract. A
+third asserts none of the three `DASH.10` datasets publishes a surrogate key of any spelling.
+
+The rendered surface stays aggregate. `/dashboard/leads-marketing` shows band totals, medians and
+counts; it renders no bin, offers no lead drill-through, and is not a CRM screen — there is nothing
+in what it reads to drill into a person with.
 
 ### 17.4 The gap, stated: names not values
 

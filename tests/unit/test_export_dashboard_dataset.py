@@ -289,6 +289,31 @@ def _fixture_rows(entry: spec.DatasetContract) -> list[tuple[Any, ...]]:
         values[index["front_end_gross"]] = Decimal("-1452.97")
         values[index["back_end_gross"]] = Decimal("2007.75")
         values[index["total_gross"]] = Decimal("554.78")
+
+    if entry.name == "lead-response-distribution":
+        # TWO rows, because one of them is the shape the rest of the contract turns on.
+        #
+        # A never-responded bin carries `first_response_seconds` NULL, and that null is a
+        # BUSINESS KEY COMPONENT rather than an absent value: it is what distinguishes the
+        # ignored population from a response time. A single-row fixture would leave the
+        # export's null-in-key handling unexercised, and the seeded defect that repeats an
+        # unanswered bin would have nothing to repeat.
+        values[index["first_response_seconds"]] = 512
+        values[index["response_time_band"]] = "5-15 minutes"
+        values[index["lead_count"]] = 1
+        values[index["responded_lead_count"]] = 1
+        values[index["unresponded_lead_count"]] = 0
+        values[index["response_seconds_total"]] = 512
+
+        unanswered = list(values)
+        unanswered[index["first_response_seconds"]] = None
+        unanswered[index["response_time_band"]] = None
+        unanswered[index["lead_count"]] = 1
+        unanswered[index["responded_lead_count"]] = 0
+        unanswered[index["unresponded_lead_count"]] = 1
+        unanswered[index["response_seconds_total"]] = 0
+        return [tuple(values), tuple(unanswered)]
+
     return [tuple(values)]
 
 
@@ -765,7 +790,10 @@ class TestManifest:
             assert entry["file"] == declared.file_name
             assert len(entry["query_sha256"]) == 64
             assert len(entry["file_sha256"]) == 64
-            assert entry["row_count"] == 1
+            # One row per dataset, except `lead-response-distribution`, whose fixture
+            # carries a second: the never-responded bin, whose NULL response value is a
+            # business-key component rather than an absent one.
+            assert entry["row_count"] == (2 if entry["name"] == "lead-response-distribution" else 1)
             assert entry["file_bytes"] > 0
             assert [column["name"] for column in entry["columns"]] == list(declared.column_names)
             for column in entry["columns"]:
@@ -2242,3 +2270,220 @@ class TestDocumentationAgreesWithTheContract:
                 f"DATA_CONTRACT.md section 10 does not record the {name} ceiling of "
                 f"{megabytes} MB that the exporter enforces."
             )
+
+
+class TestSeededLeadsMarketingExportDefects:
+    """The three ``DASH.10`` datasets, each with a corruption that must be refused.
+
+    Same contract as :class:`TestSeededFiExportDefects`: every case runs the PRODUCTION
+    validation path -- :func:`check_export`, which is what
+    ``scripts/export_dashboard_dataset.py --check`` calls and what CI runs -- against a
+    fresh export in ``tmp_path``. No committed artifact is mutated and no test-only
+    validator exists anywhere below.
+
+    WHAT PROTECTS WHAT
+    ------------------
+    ``appointment-source-funnel``
+        A repeated business key, which is the shape a fan-out on the appointment-to-lead
+        join would take once it reached the file; and a rate that is no longer an exact
+        decimal.
+
+    ``lead-stage-loss``
+        A repeated business key, and a stage count turned into a float. The float case
+        matters more here than it looks: these are counts of leads, and a fractional lead is
+        the signature of an average having been taken somewhere upstream.
+
+    ``lead-response-distribution``
+        A repeated business key INCLUDING its nullable ``first_response_seconds``
+        component -- the never-responded bin is identified by that null, so a contract that
+        did not treat null as a key component would let the ignored population be merged
+        into a response value; and a response band outside the governed vocabulary.
+
+    THE HASH IS RESTAMPED before every deeper assertion, for the reason the F&I class
+    records: without it the SHA-256 guard fires first and the test proves only that hashing
+    works.
+    """
+
+    @pytest.fixture()
+    def exported(self, connection: FakeConnection, tmp_path: Path) -> Path:
+        result = _export(connection, tmp_path)
+        assert result.ok, result.problems
+        # The control. A case that failed for an unrelated reason would otherwise look
+        # exactly like the seeded defect being caught.
+        assert check_export(output_dir=tmp_path).ok
+        return tmp_path
+
+    @staticmethod
+    def _mutate(exported: Path, dataset: str, mutate: Any) -> Any:
+        path = exported / f"{dataset}.json"
+        records = json.loads(path.read_text(encoding="utf-8"))
+        mutate(records)
+        payload = render_dataset_bytes(records)
+        path.write_bytes(payload)
+        _restamp(exported, dataset, payload)
+        return check_export(output_dir=exported)
+
+    # -- appointment-source-funnel -------------------------------------------------
+
+    def test_appointment_source_a_repeated_grain_key_is_caught(self, exported: Path) -> None:
+        """The file-level shape of a fan-out on the appointment-to-lead join."""
+
+        def mutate(records: list[dict[str, Any]]) -> None:
+            records.append(dict(records[0]))
+
+        result = self._mutate(exported, "appointment-source-funnel", mutate)
+        assert not result.ok
+        assert any("repeats the business key" in problem for problem in result.problems), (
+            result.problems
+        )
+
+    def test_appointment_source_restamping_the_hash_does_not_bypass_the_grain(
+        self, exported: Path
+    ) -> None:
+        def mutate(records: list[dict[str, Any]]) -> None:
+            records.append(dict(records[0]))
+
+        result = self._mutate(exported, "appointment-source-funnel", mutate)
+        assert not result.ok
+        # The hash guard did NOT fire. That is the assertion worth making.
+        assert not any("hashes to" in problem for problem in result.problems), result.problems
+
+    def test_appointment_source_a_rate_that_is_not_an_exact_decimal_is_caught(
+        self, exported: Path
+    ) -> None:
+        def mutate(records: list[dict[str, Any]]) -> None:
+            for record in records:
+                if record.get("show_rate") is not None:
+                    record["show_rate"] = 0.667
+                    return
+            raise AssertionError("no row carries a show rate, so this case is untested")
+
+        result = self._mutate(exported, "appointment-source-funnel", mutate)
+        assert not result.ok
+
+    # -- lead-stage-loss -----------------------------------------------------------
+
+    def test_stage_loss_a_repeated_grain_key_is_caught(self, exported: Path) -> None:
+        def mutate(records: list[dict[str, Any]]) -> None:
+            records.append(dict(records[0]))
+
+        result = self._mutate(exported, "lead-stage-loss", mutate)
+        assert not result.ok
+        assert any("repeats the business key" in problem for problem in result.problems), (
+            result.problems
+        )
+
+    def test_stage_loss_a_fractional_lead_count_is_caught(self, exported: Path) -> None:
+        """A lead is a whole thing. A fraction means an average was taken upstream."""
+
+        def mutate(records: list[dict[str, Any]]) -> None:
+            records[0]["not_contacted"] = 1.5
+
+        result = self._mutate(exported, "lead-stage-loss", mutate)
+        assert not result.ok
+
+    # -- lead-response-distribution ------------------------------------------------
+
+    def test_response_distribution_a_repeated_bin_is_caught(self, exported: Path) -> None:
+        def mutate(records: list[dict[str, Any]]) -> None:
+            records.append(dict(records[0]))
+
+        result = self._mutate(exported, "lead-response-distribution", mutate)
+        assert not result.ok
+        assert any("repeats the business key" in problem for problem in result.problems), (
+            result.problems
+        )
+
+    def test_response_distribution_a_repeated_never_responded_bin_is_caught(
+        self, exported: Path
+    ) -> None:
+        """The null component of the key is a KEY COMPONENT, not an absent value.
+
+        The never-responded bin is identified by ``first_response_seconds`` being null. A
+        contract that treated null as "no key" would allow two of them per group, and the
+        ignored population would be split across rows that look like ordinary bins.
+        """
+        unresponded = None
+
+        def mutate(records: list[dict[str, Any]]) -> None:
+            nonlocal unresponded
+            for record in records:
+                if record.get("first_response_seconds") is None:
+                    unresponded = dict(record)
+                    records.append(dict(record))
+                    return
+
+        result = self._mutate(exported, "lead-response-distribution", mutate)
+        if unresponded is None:
+            pytest.skip("the fixture world produced no never-responded bin")
+        assert not result.ok
+        assert any("repeats the business key" in problem for problem in result.problems), (
+            result.problems
+        )
+
+    def test_response_distribution_a_band_outside_the_vocabulary_is_caught(
+        self, exported: Path
+    ) -> None:
+        """The bands are a closed governed set, carried through from the warehouse.
+
+        An invented band -- "Fast", say, or a fifth bucket -- would be the console being
+        offered a boundary this project never defined.
+        """
+
+        def mutate(records: list[dict[str, Any]]) -> None:
+            for record in records:
+                if record.get("response_time_band") is not None:
+                    record["response_time_band"] = "Immediate"
+                    return
+            raise AssertionError("no row carries a band, so this case is untested")
+
+        result = self._mutate(exported, "lead-response-distribution", mutate)
+        assert not result.ok
+        assert any(
+            "enumeration" in problem.lower() or "permitted" in problem.lower()
+            for problem in result.problems
+        ), result.problems
+
+    def test_response_distribution_carries_no_identity_column(self) -> None:
+        """The privacy boundary, asserted against the contract's own column list.
+
+        The counted-bin shape is what makes this stronger than an allowlist: there is no
+        lead, customer, employee, sale or vehicle column to permit or forbid, so the export
+        cannot leak one even if the allowlist were edited. This fails if a future change
+        adds one.
+        """
+        entry = spec.dataset("lead-response-distribution")
+        assert entry.column_names == (
+            "dealership_id",
+            "lead_created_date",
+            "lead_source_code",
+            "campaign_code",
+            "first_response_seconds",
+            "response_time_band",
+            "lead_count",
+            "responded_lead_count",
+            "unresponded_lead_count",
+            "response_seconds_total",
+        )
+        for name in entry.column_names:
+            for forbidden in ("lead_id", "lead_key", "customer", "employee", "sale", "vehicle"):
+                assert forbidden not in name, (
+                    f"lead-response-distribution publishes {name}, which is identity"
+                )
+
+    def test_the_three_datasets_publish_no_surrogate_key(self) -> None:
+        for name in (
+            "appointment-source-funnel",
+            "lead-stage-loss",
+            "lead-response-distribution",
+        ):
+            for column in spec.dataset(name).column_names:
+                assert not column.endswith("_key"), f"{name} publishes {column}"
+
+    def test_the_stage_loss_dataset_claims_no_kpi(self) -> None:
+        """Diagnostics do not carry KPI identifiers.
+
+        Declaring one here would create a governed measure by presentation, which is the
+        thing this increment was explicitly not permitted to do.
+        """
+        assert spec.dataset("lead-stage-loss").kpi_ids == ()

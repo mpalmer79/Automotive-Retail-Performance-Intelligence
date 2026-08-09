@@ -189,6 +189,13 @@ AUDIT_VIEWS = (
     # evidence -- the ratio agreeing between the two views, and the reportable-date
     # narrowing neither duplicating nor dropping a snapshot.
     "vw_recon_inventory_units",
+    # The leads and marketing reconciliations (DASH.10). Unioned INTO vw_recon_all: the
+    # three presentation-grain views load on every pipeline run, and each is a claim that
+    # an existing authority's numbers survive a different cut. All five rules are per-run
+    # evidence -- the appointment roll-up across source and campaign, the stage partition
+    # and its grain, the response distribution's population, and KPI-FUN-008 recomputed
+    # from the bins against the median over the governed lead rows.
+    "vw_recon_leads_marketing",
 )
 
 EXPECTED_VIEWS = {

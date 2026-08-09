@@ -3103,3 +3103,112 @@ def test_every_comparison_state_is_in_the_governed_vocabulary(loaded_cursor: Any
         "the dataset does not exercise both compared states, so the reconciliation "
         "surface has not been demonstrated working"
     )
+
+
+# --------------------------------------------------------------------------------------
+# The export's reconciliation totals against the denominators their views actually use
+# --------------------------------------------------------------------------------------
+
+
+def test_export_reconciliation_totals_use_the_governed_denominator(
+    loaded_cursor: Any,
+) -> None:
+    """Every exported ratio total must be the ratio its reporting view publishes.
+
+    THIS IS THE TEST THAT WAS MISSING, AND THE DEFECT IT WOULD HAVE CAUGHT IS REAL.
+
+    ``ReconciliationTotal("appointment_set_rate", ..., "appointment_set_leads",
+    "leads_received")`` shipped from ``DASH.1`` until ``DASH.10``. Every other authority
+    disagreed with it: ``KPI_CATALOG.md`` §26 states the denominator is contacted leads,
+    ``reporting.vw_lead_funnel`` divides by ``contacted_lead_count``, and
+    ``test_kpi_fun_003_denominator_is_contacted_leads_not_all_leads`` above asserts the
+    view does so and that it is emphatically not ``leads_received``. The manifest
+    published ``1473 / 5538 = 0.266`` where the governed definition gives
+    ``1473 / 3982 = 0.370``, and the console rendered the wrong one on the Executive
+    Overview funnel for nine increments.
+
+    Every existing guard looked in the wrong place. The KPI tests check the VIEW, which
+    was right. The export tests check that the total's own numerator and denominator sums
+    match the exported column sums, which they did -- of the wrong column. Nothing
+    compared the CONTRACT's choice of denominator against the governed formula, so the two
+    could drift apart while every test stayed green.
+
+    This closes that gap for every ratio total at once, and it does so empirically rather
+    than against a second hand-maintained list: each total whose name matches a rate column
+    on its source view is re-derived per row from the numerator and denominator columns the
+    contract declares, and must equal the rate that view publishes. A wrong denominator
+    fails on the first row where the two candidate denominators differ.
+    """
+    from arpi.dashboard.contract import RECONCILIATION_TOTALS, dataset
+
+    checked: list[str] = []
+    for total in RECONCILIATION_TOTALS:
+        if total.denominator is None:
+            continue
+        view = dataset(total.dataset).source_view
+
+        # The total's key is the rate column's name where the view publishes one. Totals
+        # whose key names no such column -- a ratio the view exposes only as components --
+        # are skipped here and covered by the per-dataset export tests.
+        published = _rows(
+            loaded_cursor,
+            """
+            SELECT count(*) FROM information_schema.columns
+            WHERE table_schema = 'reporting' AND table_name = %s AND column_name = %s
+            """,
+            (view, total.name),
+        )[0][0]
+        if published == 0:
+            continue
+
+        # Both sides rounded identically: the view divides numeric by numeric and so does
+        # this, so any surviving difference is a different denominator, not float slack.
+        disagreements = _scalar(
+            loaded_cursor,
+            f"""
+            SELECT count(*) FROM reporting.{view}
+            WHERE round(({total.numerator}::numeric
+                         / nullif({total.denominator}, 0)), 9)
+                  IS DISTINCT FROM round({total.name}::numeric, 9)
+            """,
+        )
+        assert disagreements == 0, (
+            f"the export declares {total.name} as {total.numerator} / {total.denominator}, "
+            f"which disagrees with reporting.{view}.{total.name} on {disagreements} row(s). "
+            "The reporting view owns the governed formula; the contract must select it, "
+            "not restate it differently."
+        )
+        checked.append(total.name)
+
+    assert "appointment_set_rate" in checked, (
+        "KPI-FUN-003 is the total this test exists for and it was not exercised"
+    )
+    assert len(checked) >= 8, (
+        f"only {len(checked)} ratio totals were bound to a published rate column; the "
+        "guard has stopped covering the surface it was written for"
+    )
+
+
+def test_the_governed_denominator_guard_distinguishes_the_two_candidates(
+    loaded_cursor: Any,
+) -> None:
+    """The guard above is only evidence if the wrong denominator would actually fail it.
+
+    On a store-day where every lead was contacted, both candidate denominators are equal
+    and the assertion passes on a defect. This asserts the data contains rows that tell
+    them apart, and -- by running the defective formula directly -- that those rows do
+    disagree, so the guard has something to catch.
+    """
+    disagreeing = _scalar(
+        loaded_cursor,
+        """
+        SELECT count(*) FROM reporting.vw_lead_funnel
+        WHERE round((appointment_set_leads::numeric / nullif(leads_received, 0)), 9)
+              IS DISTINCT FROM round(appointment_set_rate::numeric, 9)
+        """,
+    )
+    assert disagreeing > 0, (
+        "no row distinguishes leads_received from contacted_leads as the KPI-FUN-003 "
+        "denominator, so test_export_reconciliation_totals_use_the_governed_denominator "
+        "would pass on the defect it was written to catch"
+    )

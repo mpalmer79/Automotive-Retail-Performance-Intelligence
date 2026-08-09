@@ -709,6 +709,61 @@ integrity checks and four lender fields. The jacket partition itself grew from 4
 568,225 bytes generated — 13 more columns on 650 rows — and the largest partition from
 34,439 to 44,190 bytes, still well inside the 256 KB ceiling.
 
+## 9.8 The `DASH.10` route, measured
+
+Measured by `npm run bundle` against a production build served locally, cold, compressed, by
+the same method as §9.3 through §9.7. **A baseline, not a budget.** `DASH.13-02` sets budgets
+from measurements.
+
+| Route                                                     |     HTML | Route JS |    Total |
+| --------------------------------------------------------- | -------: | -------: | -------: |
+| `/dashboard/leads-marketing`                              |  65.1 kB | 164.8 kB | 360.2 kB |
+| `/dashboard/leads-marketing?store=GSA-001&period=2025-11` |  64.6 kB | 164.8 kB | 359.6 kB |
+| `/dashboard/leads-marketing?source=LDS-007`               |  53.7 kB | 164.8 kB | 348.7 kB |
+| `/dashboard` (the heaviest console route, for scale)      | 135.2 kB | 164.8 kB | 430.3 kB |
+
+**Zero new client JavaScript, and the figure is byte-identical.** 164.8 kB, the same number
+every console route reports. Seven sections, five tables, eleven methodology disclosures and
+every bar are server components; the console still has exactly one client island, the filter
+bar, and `DASH.10` added none. It extended that island by one optional `<select>` for campaign
+— rendered only where a route passes campaigns, which is this route alone — and the compressed
+figure did not move. `dashboard-boundaries.test.ts` fails the build if a second island appears.
+
+**The source filter is the measurement worth having here.** `?source=LDS-007` costs 53.7 kB
+against 65.1 kB unfiltered — **11.4 kB less** — because the marketing table narrows to one
+source's campaign rows and the source comparison to one row. A page that filtered in the
+browser would have shipped every source and hidden the rest, and the payload would not have
+moved.
+
+**The store filter barely moves it, and that is expected rather than a defect.** 64.6 kB
+against 65.1 kB, despite opening three partitions instead of nine. The partitions are the
+cheap part: at 19–32 kB each they are read on the server and never crossed the wire. What
+sizes this page is the marketing table, which is grained on source and campaign rather than on
+store, so a store filter narrows the rows behind every figure without removing many table rows.
+The nine-partition read is ~240 kB of server-side JSON that no visitor pays for, which is the
+whole point of the route-scoped door.
+
+**What the three new datasets cost the repository, not the visitor.**
+
+| Dataset                      | Root export | Generated | Partitions | Largest partition |
+| ---------------------------- | ----------: | --------: | ---------: | ----------------: |
+| `appointment-source-funnel`  |    903.8 kB |  237.4 kB |         18 |           18.7 kB |
+| `lead-stage-loss`            |  1,311.1 kB |  278.4 kB |         18 |           19.2 kB |
+| `lead-response-distribution` |  1,538.5 kB |  435.8 kB |         18 |           31.9 kB |
+
+Root export: 16.1 MB → 19.4 MB across 34 files. Generated lane: 5.71 MB → 6.25 MB across 272
+files. Every partition is well inside the 256 kB ceiling; the largest is 31.9 kB.
+
+`lead-response-distribution` is the largest of the three and is the one that had to be
+justified, because at 5,513 rows it is close to one row per valid lead. It is not lead grain:
+the rows are histogram bins and carry no identity. It is the smallest representation that
+preserves a median at an arbitrary filter scope, and the alternative — publishing medians at a
+finer grain — cannot work at any size, because medians do not decompose.
+
+**`/dashboard` is unchanged.** The Executive drill-through is one anchor and one sentence; it
+adds no import, and `dashboard-boundaries.test.ts` asserts the Executive page opens none of the
+three new doors.
+
 ## 9.7 The two `DASH.9` routes, measured
 
 Measured by `npm run bundle` against a production build served locally, cold, compressed,

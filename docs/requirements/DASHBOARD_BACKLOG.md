@@ -49,7 +49,7 @@
 | `DASH.7` | F&I dashboard and expanded Deal Jacket | Large | **Implemented** |
 | `DASH.8` | Inventory accounting and GL controls | Large | **Implemented** |
 | `DASH.9` | Accounting dashboard and inventory integration | Large | **Implemented** |
-| `DASH.10` | Leads and Marketing dashboard | Large | Planned |
+| `DASH.10` | Leads and Marketing dashboard | Large | **Implemented** |
 | `DASH.11` | Employee performance | Medium | Planned |
 | `DASH.12` | Management Action Center and change drivers | Large | Planned |
 | `DASH.13` | Hardening and release | Large | Planned |
@@ -856,14 +856,62 @@ three partitions. `decodeDataset` now refuses two different files under one key.
 | **Estimated complexity** | Large |
 | **Blocking gate** | None (existing facts only) |
 | **Architecture references** | Program §7; KPI_CATALOG FUN/MKT families |
-| **Status** | Planned |
+| **Status** | **Implemented** |
 
-Items: `DASH.10-01` export slices + `/dashboard/leads-marketing` (Large) — funnel counts and
-conversions at each stage, response distribution with tail count, lost-stage analysis with
-non-causal language, marketing table (spend, leads, sales, CPL, CPS, attributed gross, gross ROAS)
-respecting the organic-source cost rule (`RECON-MKT-COST-RULE`); `DASH.10-02` tests per strategy
-(Medium). Non-goals: clicks/impressions as primary value measures; attribution models beyond the
-implemented lead-source linkage. Evidence: route green, totals reconcile.
+Items: `DASH.10-01` export slices + `/dashboard/leads-marketing` (Large) — **Implemented**;
+`DASH.10-02` tests per strategy (Medium) — **Implemented**. Non-goals held: clicks and
+impressions are carried but never presented as value measures, and no attribution model beyond
+the implemented first-touch lead-source linkage exists.
+
+### `DASH.10` as-built notes
+
+**Three reporting views were required, and the audit is why.** Most of the surface reuses what
+existed: `lead-funnel` already carried the cohort at store × source × campaign × lead-creation
+date, `marketing-performance` already carried spend, attributed outcomes and all three MKT
+measures with the organic rule applied, and the vendor comparison needed nothing new. Three
+requirements failed for structural reasons rather than for want of a column.
+
+- `reporting.vw_appointment_source_funnel` — `appointment-funnel` carries no source or campaign,
+  so a source-filtered page could only have narrowed the lead funnel while KPI-FUN-004 and
+  KPI-FUN-005 stayed group-wide. Drawn as one funnel that is two populations in one shape, and
+  no caption fixes it. `fact_appointment.lead_key` is `NOT NULL` and references `fact_lead`'s
+  primary key, so the join is many-to-one and the roll-up is exact.
+- `reporting.vw_lead_response_distribution` — KPI-FUN-008 is a median, medians do not decompose,
+  and `lead-response` publishes medians at store × source × day. Averaging them gives **65.11
+  minutes** against a true **27.5**. The population is published as counted bins, which
+  preserves the multiset exactly while carrying no lead identity at all.
+- `reporting.vw_lead_stage_loss` — owns the lost-stage partition so the arithmetic has one
+  implementation, and because the obvious subtraction is wrong (see below).
+
+**The proposed lost-stage identity does not hold in this warehouse.** `fact_lead` enforces that
+an appointment implies contact and a show implies an appointment, but NOT that a sale implies a
+show: **175 of 400 sold leads never showed**. `appointment_shown_leads - sold_leads` is therefore
+not the count of leads that showed without buying and goes negative where more leads sold than
+showed. The view partitions by FURTHEST STAGE REACHED instead — five mutually exclusive terms
+summing exactly to `leads_received` — and publishes the walk-in-later-matched path as an overlay
+that is never added to them.
+
+**A governed KPI was published wrong and this increment fixed it.** KPI-FUN-003 divided by
+`leads_received` in the export contract and the console selector, against `KPI_CATALOG.md` §26,
+`vw_lead_funnel` and an integration test that all say contacted leads. The manifest published
+`0.266` where the definition gives `0.370`, and `/dashboard` rendered it. The gap existed because
+every guard checked the view or the total's own sums, and none compared the contract's choice of
+denominator against the governed formula; one now does. Full account in
+[`docs/reviews/DASH-10-REVIEW.md`](../reviews/DASH-10-REVIEW.md) §A2.
+
+**One requirement is met structurally but unexercised by the data.** The scheduled-date and
+show-date bases never separate in the committed export: `0` of `1,025` shown appointments have a
+show date different from their scheduled date. The tests assert the equality *and its cause*, and
+construct the cross-month fixture the generator cannot provide.
+
+**`compare` is declared `not-applicable` on this route**, which is the one filter a reader might
+expect and not find. Cohort maturity dominates every conversion and cost measure here, so a
+period-over-period delta would put an immature cohort beside a matured one and report the
+difference as a change in performance.
+
+Evidence: 121 reconciliations per database run with 0 failing (116 before); 28 integration tests
+over the three views including two seeded defects observed failing their guards; 55 route unit
+tests; 34 route end-to-end tests; zero route-owned client JavaScript.
 
 ---
 

@@ -93,6 +93,16 @@ const ROUTES = [
   // only console route where a filter narrows BOTH sides of a reconciliation at once.
   '/dashboard/accounting',
   '/dashboard/accounting?store=GSA-001&period=2025-11',
+  // The leads and marketing route (`DASH.10`). Seven sections over five datasets, three
+  // of them partitioned, all server components. Measured three ways because its cost is
+  // decided by two independent things and one of them is new to the console: how many
+  // store partitions the request opens, and whether a SOURCE filter is applied — which on
+  // this route narrows the appointment measures as well as the lead ones, because
+  // `vw_appointment_source_funnel` exists. The unfiltered entry opens nine partitions
+  // across three datasets; the store-filtered one opens three.
+  '/dashboard/leads-marketing',
+  '/dashboard/leads-marketing?store=GSA-001&period=2025-11',
+  '/dashboard/leads-marketing?source=LDS-007',
   '/architecture',
   '/data-model',
   '/kpis',

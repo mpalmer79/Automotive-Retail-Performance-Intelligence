@@ -1007,3 +1007,85 @@ export const INVENTORY_SUPPORT: RouteFilterSupport = {
     note: 'The inventory datasets carry no product attribute.',
   },
 }
+
+/**
+ * The Leads and marketing declaration (`DASH.10`).
+ *
+ * THE INTERESTING ENTRIES ARE `source` AND `campaign`, and they are `applied` rather than
+ * `partial` for a reason this increment had to build for. Before `DASH.10` the appointment
+ * measures carried no source or campaign at all, so a source filter could only have scoped the
+ * lead funnel while KPI-FUN-004 and KPI-FUN-005 stayed group-wide — and a page showing a
+ * filtered funnel above unfiltered appointment rates, drawn as one shape, is not a filtered
+ * funnel. The DASH.10 source-aware appointment view resolves both through the one lead behind
+ * each appointment, so every measure on this route now moves with the filter, including both
+ * sides of every ratio.
+ *
+ * `compare` is deliberately `not-applicable`. Nothing on this page renders a
+ * period-over-period delta: cohort maturity dominates every conversion and cost measure here,
+ * so a comparison against a prior period would put an immature cohort beside a mature one and
+ * report the difference as a change in performance. That is the single most common misreading
+ * of these measures, and offering the control would invite it.
+ */
+export const LEADS_MARKETING_SUPPORT: RouteFilterSupport = {
+  period: {
+    support: 'applied',
+    label: 'Period',
+    note: 'Lead, response and stage measures are on the lead-creation basis; appointment measures on the scheduled and show dates; marketing on whole calendar months only.',
+  },
+  compare: {
+    support: 'not-applicable',
+    label: 'Comparison',
+    note: 'No period-over-period delta is published here. Cohort maturity dominates conversion and cost on this page, so comparing a period-to-date cohort against a matured one would report immaturity as a change in performance.',
+  },
+  store: { support: 'applied', label: 'Store' },
+  source: {
+    support: 'applied',
+    label: 'Lead source',
+    note: 'Scopes the funnel, the stage partition, the response distribution, the appointment outcomes and the marketing table — both sides of every ratio, never a numerator alone.',
+  },
+  campaign: {
+    support: 'applied',
+    label: 'Campaign',
+    note: 'Scopes the same five blocks. A lead with no campaign is excluded by a campaign filter rather than counted against it: null means no campaign, not unknown campaign.',
+  },
+  scope: {
+    support: 'not-applicable',
+    label: 'Sale-type scope',
+    note: 'No lead or appointment dataset carries a sale type. The sale-type mix belongs to Sales and gross.',
+  },
+  dept: {
+    support: 'not-applicable',
+    label: 'Department',
+    note: 'No department-grain reporting view exists yet. A campaign declares a target department, which states intent rather than where its leads landed.',
+  },
+  employee: {
+    support: 'not-applicable',
+    label: 'Employee',
+    note: 'Employee performance arrives with DASH.11. This page is deliberately not a BDC leaderboard: no employee-grain dataset is exported and none is read here.',
+  },
+  condition: {
+    support: 'not-applicable',
+    label: 'Condition',
+    note: 'Leads and appointments carry no condition group; a campaign declares a target vehicle category, which is intent and not the condition of what the lead bought.',
+  },
+  make: {
+    support: 'not-applicable',
+    label: 'Make',
+    note: 'Vehicle-attribute filters apply to the Deal Explorer, not to lead or appointment grain.',
+  },
+  model: {
+    support: 'not-applicable',
+    label: 'Model',
+    note: 'Vehicle-attribute filters apply to the Deal Explorer, not to lead or appointment grain.',
+  },
+  structure: {
+    support: 'not-applicable',
+    label: 'Finance structure',
+    note: 'Deal structure belongs to the F&I surface; no lead-grain dataset carries it.',
+  },
+  product: {
+    support: 'not-applicable',
+    label: 'F&I product category',
+    note: 'F&I products belong to the F&I surface; no lead-grain dataset carries them.',
+  },
+}

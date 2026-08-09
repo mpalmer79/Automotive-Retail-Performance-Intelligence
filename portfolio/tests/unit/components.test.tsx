@@ -51,8 +51,8 @@ import { clamp, cx, formatCount, formatDate, groupBy, slugify } from '@/lib/util
 /* -------------------------------------------------------------------------- */
 
 describe('the route map', () => {
-  it('holds the nineteen documented routes plus the internal UI lab', () => {
-    expect(ALL_ROUTES).toHaveLength(20)
+  it('holds the twenty documented routes plus the internal UI lab', () => {
+    expect(ALL_ROUTES).toHaveLength(21)
     const hrefs = ALL_ROUTES.map((r) => r.href)
     expect(hrefs).toEqual([
       '/',
@@ -73,6 +73,7 @@ describe('the route map', () => {
       '/dashboard/deals',
       '/dashboard/fi',
       '/dashboard/inventory',
+      '/dashboard/leads-marketing',
       '/dashboard/accounting',
       '/ui-lab',
     ])

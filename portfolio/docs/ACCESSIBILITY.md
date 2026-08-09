@@ -505,3 +505,38 @@ Stated rather than omitted.
 - **AAA is not claimed.** Body copy exceeds 7:1 in practice, but the faintest text
   token is at 5.6:1, and several status washes would need rework to claim AAA
   honestly.
+
+## The leads and marketing route (`DASH.10`)
+
+Seven data visuals, and none of them is an image, a canvas or an SVG a screen reader has to
+interpret. Each is a `<figure>` carrying:
+
+- a `<figcaption>` with the section heading, the caption that qualifies it, and a **summary
+  sentence containing the exact values** — "Median first response 27.5 minutes across 4,924
+  responded leads, with 614 leads carrying no recorded response";
+- the values again as text beside every bar, so the number is never only a length;
+- a real `<table>` in a `<details>` for the multi-category visuals, with a `<caption>` naming
+  its columns.
+
+The bar tracks are `aria-hidden="true"`. That is deliberate rather than lazy: the track is a
+`<div>` whose width is a CSS percentage, it carries no text, and the figure it represents is
+already in the accessible tree twice — beside the bar and in the disclosure table. Exposing the
+track would add a node that reads as nothing.
+
+**No colour carries meaning anywhere on this route.** There is no benchmark in this project for
+response time, contact rate, show rate, cost per lead, cost per sale or gross return, so nothing
+is green or red and no state is distinguished by hue alone. Every absence is a WORD — "Not
+applicable", "No data", "Not published at this grain", "Spend with no attributed leads" — and
+the four are distinguishable in text, which is the same requirement stated for a sighted reader.
+
+**The wide marketing table scrolls inside its own container.** Ten columns cannot reflow into
+320 px, so the table sits in an `overflow-x: auto` region rather than pushing the page sideways.
+`dashboard-leads-marketing.spec.ts` asserts the container scrolls and that the document does
+not, at all eight widths from 320 px to 1920 px.
+
+**With scripting disabled the page is identical, not degraded.** The route adds no client
+JavaScript; the bars are drawn server-side and the filter form is a native GET submission.
+Fifteen fragments spanning every block are asserted present with `javaScriptEnabled: false`.
+
+The route is in `ALL_TESTED_ROUTES`, so the existing axe sweep covers it at every viewport with
+the same zero-critical, zero-serious bar as every other route.

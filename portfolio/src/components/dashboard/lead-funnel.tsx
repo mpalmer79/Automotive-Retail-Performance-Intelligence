@@ -38,12 +38,16 @@
  *
  * Server component.
  */
+import Link from 'next/link'
+
 import { Card } from '@/components/ui/card-static'
 import { Heading, Text } from '@/components/ui/typography'
 import { exactToApproxNumber } from '@/lib/dashboard/decimal'
 import { kpiDefinition, type FunnelSummary } from '@/lib/dashboard/executive'
 import { formatCountExact } from '@/lib/dashboard/format'
+import { filtersHref, type DashboardFilters } from '@/lib/dashboard/filters'
 import type { ComparedMetric } from '@/lib/dashboard/selectors'
+import { ROUTES } from '@/lib/site'
 
 import {
   KpiMethodology,
@@ -58,9 +62,19 @@ import {
 export function LeadFunnel({
   funnel,
   comparisonLabel,
+  filters,
 }: {
   funnel: FunnelSummary
   comparisonLabel: string | null
+  /**
+   * The reader's current filter state, so the drill-through arrives scoped.
+   *
+   * Carrying it matters more here than on the other console drill-throughs: a manager who
+   * has narrowed to one store and one source and then follows this link expects the BDC
+   * page to open on the same population, and a link that silently widened to the whole
+   * group would answer a different question than the one they were looking at.
+   */
+  filters: DashboardFilters
 }) {
   const first = funnel.stages[0]
   const base =
@@ -239,6 +253,28 @@ export function LeadFunnel({
           lead nobody answered.
         </Text>
       </section>
+
+      {/*
+        `DASH.10`. The investigation path out of this summary.
+
+        This section answers "what did the funnel do"; it cannot answer "which source did
+        it, how fast did we answer, and what did the spend buy", because the Executive page
+        reads `lead-funnel` and `lead-response` and deliberately carries none of the BDC
+        detail. The link is the whole extent of this increment's change to the Executive
+        Overview -- route activation, not a redesign.
+      */}
+      <Text size="xs" tone="faint" className="max-w-prose">
+        <Link
+          className="underline"
+          href={filtersHref(ROUTES.dashboardLeadsMarketing.href, filters)}
+        >
+          Open leads and marketing
+        </Link>{' '}
+        for this cohort by source and campaign: where it stopped progressing, the full
+        first-response distribution with the leads nobody answered, appointment outcomes
+        on their own two date bases, and what the spend behind these leads bought. Your
+        current filters travel with the link.
+      </Text>
     </div>
   )
 }

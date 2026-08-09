@@ -316,11 +316,12 @@ describe('the console ships exactly the routes its increments have delivered', (
       .filter((entry) => entry.isDirectory())
       .map((entry) => entry.name)
       .sort()
-    expect(nested, 'DASH.10 onward own the other console routes').toEqual([
+    expect(nested, 'DASH.11 onward own the other console routes').toEqual([
       'accounting',
       'deals',
       'fi',
       'inventory',
+      'leads-marketing',
       'sales-gross',
     ])
     for (const section of nested) {
@@ -445,14 +446,28 @@ describe('the generated dashboard data stays out of the existing route bundles',
      * capitalised cost component as a side effect, and `/dashboard` renders one
      * reconciliation figure and must acquire neither.
      *
-     * Folding any of the last nine into `data.ts` would have put deal-level records
-     * and a 95 kB trend into `/dashboard`'s graph, which has no use for either. Eleven
+     *   lib/dashboard/leads-marketing-chunks.ts  the 54 BDC partitions (`DASH.10`): the
+     *                                       source-aware appointment funnel, the lead
+     *                                       stage-loss partition and the response
+     *                                       distribution, 951 kB in total
+     *   lib/dashboard/leads-marketing-data.ts    the two UNCHUNKED marketing sets
+     *                                       (`DASH.10`) -- the 79 kB spend-and-attribution
+     *                                       set and the 4 kB campaign dimension -- plus the
+     *                                       accessors over the partitions above. Only
+     *                                       /dashboard/leads-marketing opens either, which
+     *                                       is what keeps a megabyte of BDC detail out of
+     *                                       `/dashboard`, whose lead funnel reads
+     *                                       `lead-funnel` through `chunks.ts` and nothing
+     *                                       more
+     *
+     * Folding any of the last eleven into `data.ts` would have put deal-level records
+     * and a 95 kB trend into `/dashboard`'s graph, which has no use for either. Thirteen
      * narrow doors is a stronger boundary than two wide ones, and the list is
-     * exhaustive: a twelfth importer fails here.
+     * exhaustive: a fourteenth importer fails here.
      */
     expect(
       importers.map((file) => file.relative).sort(),
-      'the generated dashboard data has exactly eleven declared doors'
+      'the generated dashboard data has exactly thirteen declared doors'
     ).toEqual([
       'lib/dashboard/accounting-chunks.ts',
       'lib/dashboard/accounting-data.ts',
@@ -463,6 +478,8 @@ describe('the generated dashboard data stays out of the existing route bundles',
       'lib/dashboard/fi-data.ts',
       'lib/dashboard/inventory-chunks.ts',
       'lib/dashboard/jacket-chunks.ts',
+      'lib/dashboard/leads-marketing-chunks.ts',
+      'lib/dashboard/leads-marketing-data.ts',
       'lib/dashboard/sales-gross-data.ts',
       'lib/dashboard/targets-data.ts',
     ])
@@ -690,6 +707,23 @@ describe('ADR-0013 condition 2: no frontend redefines a KPI', () => {
      * threshold, subgroup medians averaged. A module that had invented a formula fails
      * there with a wrong number rather than passing here on a filename.
      *
+     * `leads-marketing.ts` (`DASH.10`) is the ninth, and it is the widest of the recent
+     * additions because the BDC surface carries more ratios than any other route. It still
+     * defines nothing: every funnel rate names the catalogue formula it implements and
+     * divides two exported additive columns summed over ONE row selection, so a filter
+     * cannot reach a numerator without reaching its denominator; the stage-loss counts are
+     * a partition SQL publishes rather than a subtraction performed here; and the three
+     * marketing measures are ratios of sums over the cost-attributable rows, which is the
+     * catalogue's own aggregation rule rather than an averaging choice this file made.
+     *
+     * Its one genuinely new computation is `percentileFromBins`, and it is an order
+     * statistic over the exported population rather than an aggregate of aggregates -- the
+     * same shape `inventory.ts` uses its median for, and for the same reason: a median
+     * cannot be pushed into SQL for an arbitrary filtered selection, so the export publishes
+     * the population and the console selects from it. `leads-marketing.test.ts` reconciles
+     * it against PostgreSQL's own `percentile_cont` and seeds the average-of-medians defect
+     * to prove the difference is caught.
+     *
      * `visuals.tsx` and `pace-bar.tsx` are NOT on this list and must not be: a chart or
      * bar primitive receives resolved values and turns them into geometry.
      */
@@ -703,6 +737,7 @@ describe('ADR-0013 condition 2: no frontend redefines a KPI', () => {
       'lib/dashboard/executive.ts',
       'lib/dashboard/fi.ts',
       'lib/dashboard/inventory.ts',
+      'lib/dashboard/leads-marketing.ts',
       'lib/dashboard/sales-gross.ts',
       'lib/dashboard/targets.ts',
     ])
@@ -814,9 +849,12 @@ describe('ADR-0013 condition 2: no frontend redefines a KPI', () => {
     /*
      * The list is exhaustive and every entry but the first draws something. `decimal.ts`
      * declares the function; `visuals.tsx` holds eight primitives; `lead-funnel.tsx`
-     * sizes its own stage bars against leads received. `pace-bar.tsx` is deliberately
-     * absent: it reaches the same conversion through `paceBarGeometry` in `targets.ts`,
-     * which divides exactly first and hands the component a ratio.
+     * sizes its own stage bars against leads received; `leads-marketing-sections.tsx`
+     * (`DASH.10`) reaches it in exactly one function, `widthOf`, which returns a CSS
+     * percentage for a funnel, band, stage-loss or source bar and is the only float on that
+     * page. `pace-bar.tsx` is deliberately absent: it reaches the same conversion through
+     * `paceBarGeometry` in `targets.ts`, which divides exactly first and hands the component
+     * a ratio.
      */
     const geometryImporters = files
       .filter((file) => /\bexactToApproxNumber\b/.test(stripComments(file.text)))
@@ -827,6 +865,7 @@ describe('ADR-0013 condition 2: no frontend redefines a KPI', () => {
       'a module converted an exact value to a float for something other than geometry'
     ).toEqual([
       'components/dashboard/lead-funnel.tsx',
+      'components/dashboard/leads-marketing-sections.tsx',
       'components/dashboard/visuals.tsx',
       'lib/dashboard/decimal.ts',
     ])
