@@ -316,9 +316,11 @@ describe('the console ships exactly the routes its increments have delivered', (
       .filter((entry) => entry.isDirectory())
       .map((entry) => entry.name)
       .sort()
-    expect(nested, 'DASH.8 onward own the other console routes').toEqual([
+    expect(nested, 'DASH.10 onward own the other console routes').toEqual([
+      'accounting',
       'deals',
       'fi',
+      'inventory',
       'sales-gross',
     ])
     for (const section of nested) {

@@ -852,3 +852,158 @@ export const FI_SUPPORT: RouteFilterSupport = {
     note: 'The F&I datasets are at store, day, manager and category grain and carry no vehicle attribute.',
   },
 }
+
+/**
+ * `/dashboard/accounting` (`DASH.9`).
+ *
+ * `period` is `partial` and the wording matters. It does not select a range of balances to
+ * add up: a control balance is a POSITION at a date, so the period selects the LAST
+ * comparison date inside it and the page reports that one date. Calling this `applied`
+ * would imply a period total that the semi-additive rule forbids anyone to compute.
+ *
+ * `store` is the only fully applied filter, and it can only be fully applied: each exported
+ * row already carries both sides of one store's comparison, so there is no shape in which a
+ * store filter could narrow the general ledger and not the subledger. The dataset forbids
+ * the bug rather than a rule forbidding it.
+ *
+ * Everything else is `not-applicable`, and for one reason repeated: this lane is at store,
+ * control-account and date grain. It carries no employee, no lead source, no campaign, no
+ * vehicle attribute and no deal structure, so those parameters would select nothing rather
+ * than select narrowly.
+ */
+export const ACCOUNTING_SUPPORT: RouteFilterSupport = {
+  period: {
+    support: 'partial',
+    label: 'Period',
+    note: 'Selects the last comparison date inside the period and reports that date. Control balances are positions at a date and are never summed or averaged across dates, so a period is a way of choosing one date rather than a range to total.',
+  },
+  compare: {
+    support: 'not-applicable',
+    label: 'Comparison',
+    note: 'A prior-period comparison of two balances is a movement in the position, not a reconciliation result, and reading a balance delta as a variance is the specific misreading this page exists to prevent.',
+  },
+  store: { support: 'applied', label: 'Store' },
+  scope: {
+    support: 'not-applicable',
+    label: 'Sale-type scope',
+    note: 'The reconciliation is over stock held, not over deliveries. A sale-type scope selects nothing on a balance.',
+  },
+  condition: {
+    support: 'not-applicable',
+    label: 'Condition',
+    note: 'Vehicle condition already decides which control account a unit belongs to, and that grouping IS the account. Note that the accounting domain separates Certified into its own control account where the sales domain groups it with Used.',
+  },
+  dept: {
+    support: 'not-applicable',
+    label: 'Department',
+    note: 'No department-grain reporting view exists yet.',
+  },
+  employee: {
+    support: 'not-applicable',
+    label: 'Employee',
+    note: 'A control balance is not attributable to a person, and ARPI records no preparer, approver or poster for one.',
+  },
+  source: {
+    support: 'not-applicable',
+    label: 'Lead source',
+    note: 'The accounting datasets carry no lead-source attribute.',
+  },
+  campaign: {
+    support: 'not-applicable',
+    label: 'Campaign',
+    note: 'The accounting datasets carry no campaign attribute.',
+  },
+  make: {
+    support: 'not-applicable',
+    label: 'Make',
+    note: 'The comparison is at store, control-account and date grain and carries no vehicle attribute.',
+  },
+  model: {
+    support: 'not-applicable',
+    label: 'Model',
+    note: 'The comparison is at store, control-account and date grain and carries no vehicle attribute.',
+  },
+  structure: {
+    support: 'not-applicable',
+    label: 'Finance structure',
+    note: 'Deal structure is a property of a transaction, not of a stock position.',
+  },
+  product: {
+    support: 'not-applicable',
+    label: 'F&I product category',
+    note: 'The accounting datasets carry no product attribute.',
+  },
+}
+
+/**
+ * `/dashboard/inventory` (`DASH.9`).
+ *
+ * `period` is `partial` for the same reason it is on the accounting route, and the reason is
+ * worth repeating rather than cross-referencing: a unit count and an investment figure are
+ * POSITIONS at a snapshot date. The period selects the last snapshot inside it and the page
+ * reports that one date. Summing a month of daily positions would report unit-days.
+ *
+ * `condition` narrows on the condition TYPE, so `Certified` selects certified units alone
+ * rather than the Used group that contains them. The row carries both groupings and they are
+ * not interchangeable: the accounting domain separates Certified into its own control
+ * account while the sales domain merges it into Used.
+ *
+ * This route also reads three parameters that are NOT in the global grammar — `unit`, `q`
+ * and `sort` — because each means something only here. They are deliberately absent from
+ * this matrix, which describes the shared vocabulary.
+ */
+export const INVENTORY_SUPPORT: RouteFilterSupport = {
+  period: {
+    support: 'partial',
+    label: 'Period',
+    note: 'Selects the last snapshot date inside the period and reports that date. Unit counts and investment are positions at a date and are never summed across dates, so a period chooses one date rather than a range to total.',
+  },
+  compare: {
+    support: 'not-applicable',
+    label: 'Comparison',
+    note: 'Price movement is already published per unit against its prior snapshot. A second period-over-period comparison of stock positions would describe turnover rather than the lot as it stands.',
+  },
+  store: { support: 'applied', label: 'Store' },
+  condition: {
+    support: 'applied',
+    label: 'Condition',
+    note: 'Narrows on the vehicle condition type, so Certified selects certified units alone rather than the whole Used group.',
+  },
+  make: { support: 'applied', label: 'Make' },
+  model: { support: 'applied', label: 'Model' },
+  scope: {
+    support: 'not-applicable',
+    label: 'Sale-type scope',
+    note: 'This page is stock held, not deliveries. A sale-type scope selects nothing on a unit that has not been sold.',
+  },
+  dept: {
+    support: 'not-applicable',
+    label: 'Department',
+    note: 'No department-grain reporting view exists yet.',
+  },
+  employee: {
+    support: 'not-applicable',
+    label: 'Employee',
+    note: 'A unit in stock is not attributable to a salesperson; ARPI records no assignment of stock to a person.',
+  },
+  source: {
+    support: 'not-applicable',
+    label: 'Lead source',
+    note: 'The inventory datasets carry no lead-source attribute.',
+  },
+  campaign: {
+    support: 'not-applicable',
+    label: 'Campaign',
+    note: 'The inventory datasets carry no campaign attribute.',
+  },
+  structure: {
+    support: 'not-applicable',
+    label: 'Finance structure',
+    note: 'Deal structure is a property of a transaction, not of a unit in stock.',
+  },
+  product: {
+    support: 'not-applicable',
+    label: 'F&I product category',
+    note: 'The inventory datasets carry no product attribute.',
+  },
+}

@@ -149,6 +149,8 @@ export const DASHBOARD_NAV_ROUTES: readonly { label: string; path: string }[] = 
   { label: 'Sales and gross', path: '/dashboard/sales-gross' },
   { label: 'Deal Explorer', path: '/dashboard/deals' },
   { label: 'F&I', path: '/dashboard/fi' },
+  { label: 'Inventory', path: '/dashboard/inventory' },
+  { label: 'Accounting', path: '/dashboard/accounting' },
 ]
 
 /**
@@ -177,6 +179,8 @@ export const DASHBOARD_ROUTES: readonly string[] = [
   '/dashboard/sales-gross',
   '/dashboard/deals',
   '/dashboard/fi',
+  '/dashboard/inventory',
+  '/dashboard/accounting',
   DEAL_JACKET_ROUTE,
 ]
 
@@ -264,6 +268,8 @@ export const ALL_TESTED_ROUTES: readonly string[] = [
   '/dashboard/sales-gross',
   '/dashboard/deals',
   '/dashboard/fi',
+  '/dashboard/inventory',
+  '/dashboard/accounting',
   '/ui-lab',
 ]
 
