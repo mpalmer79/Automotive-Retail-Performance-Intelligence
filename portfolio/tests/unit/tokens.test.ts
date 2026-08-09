@@ -340,6 +340,75 @@ describe('every text colour clears the WCAG AA floor on every ground', () => {
   })
 
   /**
+   * The data-visualisation marks, measured as MARKS rather than as text.
+   *
+   * WCAG 1.4.11 asks 3:1 of a graphical object against what is adjacent to it. A
+   * chart mark on this page sits on a white surface, so that is the ground each
+   * one is measured against — all four of them, for the reason the accent failure
+   * above records: a colour is not accessible on its own, only on a ground.
+   *
+   * Several of these are also used as small text (a legend label, a signed
+   * figure), and those clear the 4.5:1 text floor in the block above because they
+   * resolve to the same ramps. What is new here is the mark-only steps, which are
+   * deliberately lighter than any text colour and would fail a text check.
+   */
+  it.each([
+    '--arpi-emerald-500',
+    '--arpi-teal-450',
+    '--arpi-orange-600',
+    '--arpi-rose-700',
+  ])('%s reaches 3:1 as a chart mark on every white surface', (name) => {
+    for (const ground of whiteGrounds) {
+      expect(ratio(token(name), token(ground)), `${name} on ${ground}`).toBeGreaterThanOrEqual(
+        3
+      )
+    }
+  })
+
+  /**
+   * The age ramp is ORDERED, and the order is the point.
+   *
+   * Its five steps run fresh to critical, and a reader has to be able to tell
+   * which end they are looking at. Hue carries that order; luminance cannot,
+   * because holding five hues apart in lightness would force the fresh end so
+   * light it fails against the white it sits on — which this asserts by proving
+   * every step clears the ground floor while NOT requiring the steps to separate
+   * from each other. The stack separates them structurally instead, with a
+   * hairline of page background and a printed age range and count on every
+   * segment. That is recorded in tokens.css §2b and asserted in the visuals suite.
+   */
+  it('keeps every age-ramp step legible against the surface it is drawn on', () => {
+    const ramp = [
+      '--arpi-colour-data-age-fresh',
+      '--arpi-colour-data-age-early',
+      '--arpi-colour-data-age-threshold',
+      '--arpi-colour-data-age-aged',
+      '--arpi-colour-data-age-critical',
+    ]
+    for (const name of ramp) {
+      const resolved = token(name).replace(/var\(|\)/g, '').trim()
+      const value = token(resolved)
+      for (const ground of whiteGrounds) {
+        expect(ratio(value, token(ground)), `${name} on ${ground}`).toBeGreaterThanOrEqual(3)
+      }
+    }
+  })
+
+  /**
+   * The one rule that keeps the two colour concepts apart.
+   *
+   * The brand accent is teal and stays teal. `data-positive` and `data-negative`
+   * are a different vocabulary, and if either ever resolved to the accent the
+   * page would be claiming a semantic it had not actually encoded.
+   */
+  it('keeps the sign semantics distinct from the brand accent', () => {
+    const accent = token('--arpi-colour-accent')
+    for (const name of ['--arpi-colour-data-positive', '--arpi-colour-data-negative']) {
+      expect(token(name), `${name} must not be the brand accent`).not.toBe(accent)
+    }
+  })
+
+  /**
    * The blue field is a gradient, and white text is legible on only part of it.
    * `field-deep` is the one blue surface the design permits text on, so it is
    * the one that has to be measured.
