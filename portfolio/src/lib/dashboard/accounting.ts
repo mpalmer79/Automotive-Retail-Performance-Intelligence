@@ -115,7 +115,9 @@ function asOptionalInteger(value: unknown): number | null {
 }
 
 /** Decode the exported rows into the shape the page renders. */
-export function toComparisonRows(rows: readonly DashboardRow[]): readonly ComparisonRow[] {
+export function toComparisonRows(
+  rows: readonly DashboardRow[]
+): readonly ComparisonRow[] {
   return rows.map((row) => ({
     dealershipId: asString(row.dealership_id, 'dealership_id'),
     comparisonDate: asString(row.comparison_date, 'comparison_date'),
