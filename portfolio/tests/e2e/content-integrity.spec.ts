@@ -615,14 +615,22 @@ test.describe('the copy makes claims with referents', () => {
      * The rule is about the author's credentials, and "certified" has a second sense
      * in this domain: a certified pre-owned vehicle. The console's filter grammar
      * carries `condition=Certified` as part of the console-wide vocabulary
-     * (`INFORMATION_ARCHITECTURE.md` §6), and the warehouse models New and Used only,
-     * so the control offers neither - which is why no dashboard route trips this
-     * today. If a future increment does surface the word in its vehicle sense, the
-     * fix is to narrow this pattern to the credential sense, not to delete it.
+     * (`INFORMATION_ARCHITECTURE.md` §6), and the previous version of this test noted
+     * that no dashboard route tripped it yet and prescribed the fix when one did:
+     * "narrow this pattern to the credential sense, not delete it".
+     *
+     * One does now. The Executive Overview's accounting row names its GL control
+     * accounts, and one of them is `Certified Vehicle Inventory` -- a governed account
+     * name from the export, not a claim about a person. So the pattern is narrowed to
+     * the credential sense: `certified` immediately preceding or following a
+     * credential noun, or `certification` in any form. The vehicle sense is exempted by
+     * requiring the word to be about a person or a qualification rather than about a
+     * vehicle, an account or an inventory condition.
      */
+    const VEHICLE_SENSE = /\bcertified\s+(vehicle|pre-owned|unit|inventory)\b/gi
     for (const route of PRIMARY_ROUTES) {
       await gotoRendered(page, route.path)
-      const text = await bodyText(page)
+      const text = (await bodyText(page)).replace(VEHICLE_SENSE, 'PRE-OWNED')
       expect(text, route.path).not.toMatch(/\bcertified\b|\bcertification\b/i)
       expect(text, route.path).not.toMatch(
         /\b(B\.?S\.?|B\.?A\.?|M\.?S\.?|M\.?B\.?A\.?|Ph\.?D\.?)\s+in\b/

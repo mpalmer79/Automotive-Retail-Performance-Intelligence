@@ -395,6 +395,44 @@ Full detail in [MOTION_SYSTEM.md](MOTION_SYSTEM.md) section 9. The summary:
 
 ## 9. The site works without JavaScript
 
+### The console's visualisations, specifically
+
+The Executive Overview draws nine things. All nine are server components, so with scripting
+disabled every one of them is in the served document — including the inline widths and
+heights, which are attributes of the HTML rather than something a script applies after load.
+`dashboard.spec.ts` asserts that directly, with scripting off, by counting the drawn elements
+in `main`.
+
+What a reader who cannot see the geometry gets instead, per visual:
+
+| Visual                | Accessible equivalent                                                            |
+| --------------------- | -------------------------------------------------------------------------------- |
+| `ExecutiveMicroTrend` | a visually-hidden summary sentence and a list of every month and its value        |
+| `TrendChart`          | summary sentence + `<table>` in a `<details>`, present whether or not it is open  |
+| `StoreComparisonBars` | value printed beside every bar, plus a store × value `<table>`                    |
+| `InventoryAgeStack`   | a labelled legend with every count, plus the existing three-column bucket table    |
+| `GrossComposition`    | a `<dl>` of every component and amount; the qualification behind a disclosure      |
+| `ReconciliationScale` | every account named with its signed variance, plus a four-column `<table>`        |
+| `PaceBar`             | one `sr-only` sentence carrying every figure the bar encodes                       |
+
+The geometry is `aria-hidden` in every case, because everything it encodes is text in the same
+region and a screen-reader user who was also read the bars would hear each figure twice.
+
+Three rules the visualisations are held to beyond the table above. **No tooltip anywhere**: a
+figure a reader has to hover to obtain is a figure a keyboard user and a phone user do not
+have. **No colour-only meaning**: the reconciliation scale carries none at all, and direction
+elsewhere is a glyph, a sign and a word. **No animation**: there is nothing for the
+reduced-motion rule to suppress, which `reduced-motion.spec.ts` asserts by requiring the two
+renderings to contain the same text.
+
+Two visuals have a second composition rather than a reflowed one — the age stack rotates to
+vertical below `sm` and the reconciliation scale becomes per-account rows below `md` — because
+five segments across the 280px a 320px phone actually offers puts the smallest under eight
+pixels, and a signed axis needs room either side of zero. Each pair is `display: none` at the
+other's width, so exactly one is in the accessibility tree and no band is announced twice. That
+is the same technique the store scoreboard uses for its table and card presentations, and the
+reasoning is recorded in section 4.
+
 ### The console, specifically
 
 `/dashboard` is the site's first route whose subject is figures, so "works without

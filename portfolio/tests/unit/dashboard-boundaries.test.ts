@@ -711,6 +711,79 @@ describe('ADR-0013 condition 2: no frontend redefines a KPI', () => {
     expect(offenders, 'a component doing exact arithmetic').toEqual([])
   })
 
+  it('never lets an approximate number become a displayed figure', () => {
+    /*
+     * THE RULE THE VISUAL OVERHAUL ADDED, AND WHY IT NEEDED ONE.
+     *
+     * `exactToApproxNumber` exists so a bar can have a width. Its doc comment says every
+     * call site is a layout calculation and no displayed figure goes through it, and
+     * until the console drew three things that was easy to hold in a reviewer's head.
+     * It now draws nine, and the mistake that would matter -- a `Number` reaching a
+     * currency string -- is one keystroke away from a legitimate call.
+     *
+     * Three checks, each aimed at the shape that mistake actually takes:
+     *
+     *   1. The result is never stringified. `String(exactToApproxNumber(x))` and
+     *      `${exactToApproxNumber(x)}` are how a float becomes text, and neither has any
+     *      legitimate use: a CSS length goes through a helper that takes the ratio, not
+     *      the value.
+     *   2. No component formats MONEY by hand. Grouping an integer row count with
+     *      `toLocaleString` is fine and `fi-sections.tsx` does it; a currency option is
+     *      not, because that is the one API that turns a raw `Number` into something
+     *      indistinguishable from a governed figure. The console's currency formatters
+     *      all take an `Exact` -- which TypeScript enforces, and which is precisely why a
+     *      hand-rolled alternative is the hole worth closing.
+     *   3. Only drawing code imports it at all. A view model or a section component that
+     *      reached for it would be converting a governed value for some reason other
+     *      than geometry, and there is no such reason.
+     *
+     * What this cannot check is whether a given width calculation is arithmetically
+     * sensible. That is what `dashboard-visuals.test.tsx` drives with two fixtures and a
+     * ratio assertion, and what `dashboard-executive.test.tsx` proves against the export.
+     */
+    const stringified = files
+      .filter((file) =>
+        /(?:String\(\s*exactToApproxNumber|\$\{\s*exactToApproxNumber)/.test(
+          stripComments(file.text)
+        )
+      )
+      .map((file) => file.relative)
+    expect(stringified, 'an approximate number was turned into text').toEqual([])
+
+    const handRolledCurrency = files
+      .filter((file) => file.relative.startsWith('components/'))
+      .filter((file) =>
+        /(?:toLocaleString|Intl\.NumberFormat)\s*\([^)]*currency/i.test(
+          stripComments(file.text)
+        )
+      )
+      .map((file) => file.relative)
+    expect(
+      handRolledCurrency,
+      'a component formatted a raw number instead of an exact value'
+    ).toEqual([])
+
+    /*
+     * The list is exhaustive and every entry but the first draws something. `decimal.ts`
+     * declares the function; `visuals.tsx` holds eight primitives; `lead-funnel.tsx`
+     * sizes its own stage bars against leads received. `pace-bar.tsx` is deliberately
+     * absent: it reaches the same conversion through `paceBarGeometry` in `targets.ts`,
+     * which divides exactly first and hands the component a ratio.
+     */
+    const geometryImporters = files
+      .filter((file) => /\bexactToApproxNumber\b/.test(stripComments(file.text)))
+      .map((file) => file.relative)
+      .sort()
+    expect(
+      geometryImporters,
+      'a module converted an exact value to a float for something other than geometry'
+    ).toEqual([
+      'components/dashboard/lead-funnel.tsx',
+      'components/dashboard/visuals.tsx',
+      'lib/dashboard/decimal.ts',
+    ])
+  })
+
   it('keeps the exact-decimal contract documented where a future component will look', () => {
     const types = readFileSync(join(SRC, 'types/dashboard.ts'), 'utf8')
     const collapsed = types.replace(/\s+/g, ' ')

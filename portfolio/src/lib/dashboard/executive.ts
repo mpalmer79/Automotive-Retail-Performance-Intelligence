@@ -27,7 +27,20 @@
 import { kpis } from '@/lib/content'
 import type { KpiEntry } from '@/types/content'
 
+import { accountingExceptionRows, glReconciliationRows } from './accounting-data'
 import {
+  CONTROLLED_SCENARIO_NOTE,
+  resolveComparisonDate,
+  selectComparisons,
+  summarize,
+  toComparisonRows,
+  toExceptionRows,
+  varianceDirection,
+  type ComparisonRow,
+  type ReconciliationSummary,
+} from './accounting'
+import {
+  calendarMonths,
   chunkedDataset,
   dashboardCalendar,
   dashboardManifest,
@@ -47,7 +60,13 @@ import {
   type DashboardFilters,
   type FilterReset,
 } from './filters'
-import { calendarWindow, resolvePeriod, type PeriodContext } from './periods'
+import { formatIsoMonth } from './format'
+import {
+  calendarWindow,
+  resolvePeriod,
+  type PeriodContext,
+  type ResolvedPeriod,
+} from './periods'
 import {
   buildStoreTargetContexts,
   buildTargetContext,
@@ -115,8 +134,72 @@ function resolveStoreScope(filters: DashboardFilters): StoreScope {
 }
 
 /* -------------------------------------------------------------------------- */
+/* The trailing window                                                         */
+/* -------------------------------------------------------------------------- */
+
+/** How many months of shape a card and the operating trend carry. */
+export const TRAILING_MONTHS = 6
+
+/** One month of the trailing window, resolved against the governed calendar. */
+export interface TrailingMonth {
+  readonly key: string
+  readonly label: string
+  readonly period: ResolvedPeriod
+  /** True for the month the selected period resolves to, where it resolves to one. */
+  readonly isCurrent: boolean
+}
+
+/**
+ * The trailing months a shape is drawn over, anchored on the selected period.
+ *
+ * ANCHORED, NOT FIXED. A window that was always the six exported months would draw the
+ * same picture for every period selection, and a picture that does not move when the
+ * filter moves is a decoration. This ends at the last month the selected period touches
+ * and runs back from there, so selecting September genuinely shortens it — which is
+ * both the honest behaviour and the one the visual-binding tests can prove.
+ *
+ * EVERY MONTH IS RESOLVED BY `resolvePeriod` AGAINST THE EXPORT'S OWN CALENDAR, so a
+ * column's selling-day count, month boundaries and label come from the same place the
+ * selected period's did. Nothing here constructs a date, and nothing here does
+ * arithmetic: this module may not, and does not need to.
+ */
+export function trailingMonths(
+  periodContext: PeriodContext,
+  count: number = TRAILING_MONTHS
+): readonly TrailingMonth[] {
+  const touched = periodContext.period.months
+  const anchor = touched[touched.length - 1] ?? calendarMonths[calendarMonths.length - 1]
+  if (anchor === undefined) return []
+
+  const upToAnchor = calendarMonths.filter((month) => month <= anchor)
+  const window = upToAnchor.slice(Math.max(upToAnchor.length - count, 0))
+
+  /*
+   * "Current" means the selected period resolves to exactly this one month. A range
+   * spanning three months marks none of them, and the accessible sentence says so
+   * rather than picking the last and implying the reader chose it.
+   */
+  const selected = touched.length === 1 ? touched[0] : null
+
+  return window.map((month) => ({
+    key: month,
+    label: formatIsoMonth(month),
+    period: resolvePeriod({ kind: 'month', month }, 'none', reportingCalendar).period,
+    isCurrent: month === selected,
+  }))
+}
+
+/* -------------------------------------------------------------------------- */
 /* Cards                                                                       */
 /* -------------------------------------------------------------------------- */
+
+/** One month of a card's own shape. */
+export interface MicroTrendSample {
+  readonly key: string
+  readonly label: string
+  readonly result: MetricResult
+  readonly isCurrent: boolean
+}
 
 export interface KpiCard {
   readonly id: string
@@ -128,6 +211,14 @@ export interface KpiCard {
   readonly definition: KpiEntry | undefined
   /** Extra scope the reader needs: the snapshot date, the condition filter. */
   readonly scopeNote: string | null
+  /**
+   * The card's shape over the trailing months, at the same scope as its value.
+   *
+   * Every sample is the card's OWN selector evaluated over one month — never a second
+   * formula, never a smoothed series, and never a value carried over from a neighbouring
+   * month. A month the selector declines renders as a gap.
+   */
+  readonly microTrend: readonly MicroTrendSample[]
 }
 
 /* -------------------------------------------------------------------------- */
@@ -283,6 +374,17 @@ export interface SalesGrossSummary {
   readonly frontGross: ComparedMetric
   readonly backGross: ComparedMetric
   readonly frontPvr: ComparedMetric
+  /**
+   * The governed totals, carried as the composition DENOMINATORS and shown nowhere.
+   *
+   * A component may not add two segments together to find the whole it is a share of
+   * (`dashboard-boundaries.test.ts`), and a denominator assembled from the parts could
+   * disagree with the total the KPI row already prints. So both totals come from their
+   * own governed selector, and neither is rendered a second time: a console that shows
+   * the same figure twice on one screen invites a reader to check whether the two agree.
+   */
+  readonly totalGross: ComparedMetric
+  readonly retailUnits: ComparedMetric
 }
 
 /* -------------------------------------------------------------------------- */
@@ -345,6 +447,75 @@ export interface FunnelSummary {
 }
 
 /* -------------------------------------------------------------------------- */
+/* The operating trend                                                         */
+/* -------------------------------------------------------------------------- */
+
+/** One month of the operating trend. */
+export interface TrendBucket {
+  readonly key: string
+  readonly label: string
+  readonly isCurrent: boolean
+  readonly retailUnits: MetricResult
+  readonly totalGross: MetricResult
+}
+
+/* -------------------------------------------------------------------------- */
+/* Store comparison                                                            */
+/* -------------------------------------------------------------------------- */
+
+export interface StoreComparisonRow {
+  readonly store: DashboardStore
+  readonly result: MetricResult
+}
+
+/**
+ * One governed measure across the stores in scope.
+ *
+ * The measure is CHOSEN HERE rather than by a URL parameter, and deliberately. The
+ * console has one filter grammar shared by every route (`INFORMATION_ARCHITECTURE.md`
+ * §6), and a fourteenth parameter that existed only to swap which measure a chart drew
+ * would be a route-local presentation toggle wearing the clothes of a console-wide
+ * filter. Two comparisons are rendered — volume and gross per retail unit — because
+ * those are the two a general manager compares three stores on; the other eight governed
+ * columns are in the scoreboard below, which is what a table is for.
+ */
+export interface StoreComparison {
+  readonly id: string
+  readonly label: string
+  readonly selector: Selector
+  readonly rows: readonly StoreComparisonRow[]
+}
+
+/* -------------------------------------------------------------------------- */
+/* Accounting integrity                                                        */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The Executive Overview's accounting signal.
+ *
+ * WHY THE NARROW DATASET IS THE WHOLE ANSWER. `accounting-data.ts` records the finding
+ * this depends on: the GL-versus-subledger comparison is 43 rows, so "the narrow set IS
+ * the Executive summary and no second aggregate had to be invented for it". This route
+ * therefore opens that door and no other — it does NOT import `accounting-chunks.ts`,
+ * whose 360 kB of per-unit book values belong to `/dashboard/accounting`.
+ *
+ * IT IS A POSITION AT ONE DATE. `accounting.ts` rule 3: the balances are semi-additive,
+ * so a period resolves to the LAST comparable comparison date inside it and never to a
+ * sum over it. The section states the date for the same reason the inventory section
+ * states its snapshot.
+ */
+export interface ReconciliationSignal {
+  readonly summary: ReconciliationSummary
+  readonly accounts: readonly ComparisonRow[]
+  /** The direction of the signed total, in words, from the governed helper. */
+  readonly directionText: string
+  /** Exceptions raised inside the selected period and store scope. */
+  readonly exceptionCount: number
+  /** The disclosure both accounting surfaces must carry. */
+  readonly scenarioNote: string
+}
+
+/* -------------------------------------------------------------------------- */
 /* The overview                                                                */
 /* -------------------------------------------------------------------------- */
 
@@ -371,6 +542,11 @@ export interface ExecutiveOverview {
   readonly salesGross: SalesGrossSummary
   readonly inventory: InventorySummary
   readonly funnel: FunnelSummary
+  /** The months every shape on the page is drawn over, anchored on the selection. */
+  readonly trailing: readonly TrailingMonth[]
+  readonly trend: readonly TrendBucket[]
+  readonly comparisons: readonly StoreComparison[]
+  readonly reconciliation: ReconciliationSignal
   /** True when no dataset in scope produced a single row. */
   readonly empty: boolean
   /**
@@ -431,37 +607,71 @@ export function buildExecutiveOverview(
       ? null
       : `Condition scope: ${filters.condition} inventory only.`
 
+  /*
+   * The trailing window, resolved once and shared by every shape on the page.
+   *
+   * One resolution rather than one per card: seven cards and a trend that each built
+   * their own window could disagree about which months they were drawn over, and a
+   * disagreement of that kind is invisible until somebody counts the columns.
+   */
+  const trailing = trailingMonths(periodContext)
+  const sample = (selector: Selector): readonly MicroTrendSample[] =>
+    trailing.map((month) => ({
+      key: month.key,
+      label: month.label,
+      result: evaluate(selector, { ...context, period: month.period }),
+      isCurrent: month.isCurrent,
+    }))
+
   const cards: readonly KpiCard[] = [
-    buildCard('retailUnits', 'Retail units', SELECTORS.retailUnits, compare, null),
-    buildCard('totalGross', 'Total gross', SELECTORS.totalGross, compare, null),
+    buildCard(
+      'retailUnits',
+      'Retail units',
+      SELECTORS.retailUnits,
+      compare,
+      null,
+      sample
+    ),
+    buildCard('totalGross', 'Total gross', SELECTORS.totalGross, compare, null, sample),
     buildCard(
       'totalPvr',
       'Total gross per retail unit',
       SELECTORS.totalPvr,
       compare,
-      null
+      null,
+      sample
     ),
-    buildCard('backPvr', 'Back gross per retail unit', SELECTORS.backPvr, compare, null),
+    buildCard(
+      'backPvr',
+      'Back gross per retail unit',
+      SELECTORS.backPvr,
+      compare,
+      null,
+      sample
+    ),
     buildCard(
       'leadToSale',
       'Lead-to-sale conversion',
       SELECTORS.leadToSale,
       compare,
-      'Lead-creation cohort: a lead created in the period counts here even if it sells later.'
+      'Lead-creation cohort: a lead created in the period counts here even if it sells later.',
+      sample
     ),
     buildCard(
       'medianInventoryAge',
       'Median inventory age',
       SELECTORS.medianInventoryAge,
       compare,
-      joinNotes(snapshotNote, conditionNote)
+      joinNotes(snapshotNote, conditionNote),
+      sample
     ),
     buildCard(
       'agedInventoryPercentage',
       'Aged inventory percentage',
       SELECTORS.agedInventoryPercentage,
       compare,
-      joinNotes(snapshotNote, conditionNote)
+      joinNotes(snapshotNote, conditionNote),
+      sample
     ),
   ]
 
@@ -495,6 +705,8 @@ export function buildExecutiveOverview(
     frontGross: compare(SELECTORS.frontGross),
     backGross: compare(SELECTORS.backGross),
     frontPvr: compare(SELECTORS.frontPvr),
+    totalGross: compare(SELECTORS.totalGross),
+    retailUnits: compare(SELECTORS.retailUnits),
   }
   const inventory = buildInventory(
     context,
@@ -504,6 +716,36 @@ export function buildExecutiveOverview(
     snapshotDate
   )
   const funnel = buildFunnel(compare, context)
+
+  /* ---- the operating trend ---------------------------------------------- */
+  const trend: readonly TrendBucket[] = trailing.map((month) => {
+    const monthContext: MetricContext = { ...context, period: month.period }
+    return {
+      key: month.key,
+      label: month.label,
+      isCurrent: month.isCurrent,
+      retailUnits: evaluate(SELECTORS.retailUnits, monthContext),
+      totalGross: evaluate(SELECTORS.totalGross, monthContext),
+    }
+  })
+
+  /* ---- the store comparison --------------------------------------------- */
+  const comparisons: readonly StoreComparison[] = COMPARISON_MEASURES.map((measure) => ({
+    id: measure.id,
+    label: measure.label,
+    selector: measure.selector,
+    rows: scope.stores.map((store) => ({
+      store,
+      result: applyStructuralAbsence(
+        store,
+        measure.selector,
+        conditionGroups,
+        evaluate(measure.selector, { ...context, stores: [store.id] })
+      ),
+    })),
+  }))
+
+  const reconciliation = buildReconciliation(filters, periodContext)
 
   /*
    * Empty means every dataset in scope produced nothing, which is a filter result
@@ -530,6 +772,10 @@ export function buildExecutiveOverview(
     salesGross,
     inventory,
     funnel,
+    trailing,
+    trend,
+    comparisons,
+    reconciliation,
     empty,
     asOfDate: dashboardManifest.asOfDate,
   }
@@ -545,7 +791,8 @@ function buildCard(
   label: string,
   selector: Selector,
   compare: (selector: Selector) => ComparedMetric,
-  scopeNote: string | null
+  scopeNote: string | null,
+  sample: (selector: Selector) => readonly MicroTrendSample[]
 ): KpiCard {
   return {
     id,
@@ -555,6 +802,66 @@ function buildCard(
     definitionHref: selector.kpiId === null ? null : kpiDefinitionHref(selector.kpiId),
     definition: selector.kpiId === null ? undefined : kpiDefinition(selector.kpiId),
     scopeNote,
+    microTrend: sample(selector),
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* The compared measures                                                       */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The two measures three stores are compared on, side by side.
+ *
+ * Volume and gross per retail unit: one says how big a store is and the other says how
+ * well it converts that size into money, and between them they separate "smaller" from
+ * "worse" — which is the distinction a scoreboard row cannot make at a glance. Both are
+ * governed KPIs with reconciliation keys. Everything else is the table below.
+ */
+const COMPARISON_MEASURES: readonly {
+  readonly id: string
+  readonly label: string
+  readonly selector: Selector
+}[] = [
+  { id: 'retailUnits', label: 'Retail units', selector: SELECTORS.retailUnits },
+  { id: 'totalPvr', label: 'Total gross per retail unit', selector: SELECTORS.totalPvr },
+]
+
+/* -------------------------------------------------------------------------- */
+/* Accounting assembly                                                         */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The reconciliation position for the selected period and store scope.
+ *
+ * Every decision here belongs to `accounting.ts` and is called rather than reimplemented:
+ * which comparison date a period resolves to, which rows a store filter keeps, and how
+ * the four states are counted. This function chooses nothing except which exceptions
+ * fall inside the period, which is a date comparison on the export's own column.
+ */
+function buildReconciliation(
+  filters: DashboardFilters,
+  periodContext: PeriodContext
+): ReconciliationSignal {
+  const rows = toComparisonRows(glReconciliationRows())
+  const comparisonDate = resolveComparisonDate(rows, filters)
+  const accounts = selectComparisons(rows, comparisonDate, filters)
+  const summary = summarize(accounts, comparisonDate)
+
+  const stores = new Set(filters.store)
+  const exceptions = toExceptionRows(accountingExceptionRows()).filter(
+    (row) =>
+      (stores.size === 0 || stores.has(row.dealershipId)) &&
+      row.exceptionDate >= periodContext.period.start &&
+      row.exceptionDate <= periodContext.period.end
+  )
+
+  return {
+    summary,
+    accounts,
+    directionText: varianceDirection(summary.signedVariance),
+    exceptionCount: exceptions.length,
+    scenarioNote: CONTROLLED_SCENARIO_NOTE,
   }
 }
 

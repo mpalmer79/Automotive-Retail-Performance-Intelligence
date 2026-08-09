@@ -96,6 +96,46 @@ target context never displaces or outranks the figure it qualifies. The section 
 units and total gross: actual month-to-date, target, attainment, the selling-day clock ("Day 14 of 26
 selling days"), the rate per selling day, and the **selling-day pace projection** — always beside the
 actual and the target, never alone.
+
+**As-built (visual overhaul).** `/dashboard` no longer runs as nine independently-padded page
+sections. It runs as **seven rows on a twelve-column console grid**, at `Container width="full"`
+(96rem) with `Section rhythm="tight"`:
+
+| Row | `id` | Contents | Grid at ≥1280px |
+|---|---|---|---|
+| 1 | `#context` | banners, context rail, filter bar | 12 |
+| 2 | `#group-performance` | seven KPI cards, each with its own microtrend | 12 |
+| 3 | `#operating` | operating trend · three-store comparison | 7 / 5 |
+| 4 | `#targets` | targets and pace · inventory risk and age stack | 5 / 7 |
+| 5 | `#composition` | gross composition and unit mix · lead funnel | 7 / 5 |
+| 6 | `#accounting-integrity` | GL-versus-subledger reconciliation scale | 12 |
+| 7 | `#store-scoreboard`, `#trust`, `#not-built` | the ten-column table, the evidence, what is absent | 12 |
+
+Three things about this arrangement are load-bearing rather than aesthetic.
+
+- **The reading order is `SEE → COMPARE → INVESTIGATE → READ DETAILS`.** The previous order asked a
+  reader to read roughly a thousand words of always-visible prose before the first comparison they
+  could make by eye, and only three parts of the page carried data-driven geometry at all. Nine
+  visualisations now do, every one of them drawn from a governed selector.
+- **The store scoreboard moved DOWN, to row 7.** Row 3 carries the *comparison* — two governed
+  measures across the stores as bars. The ten-column table is the *investigation*, and putting a
+  report third inverts the hierarchy the rest of the page establishes. Both are on the page; neither
+  replaces the other.
+- **Row 6 is the `DASH.9-03` executive signal.** `DASH.9` delivered the reconciliation view model,
+  its tests and the narrow data door, and `accounting-data.ts` records that the 43-row GL comparison
+  set "IS the Executive summary" for this route. This row reads that set and nothing else — the
+  360 kB of per-unit book values in `accounting-chunks.ts` stay with `/dashboard/accounting`.
+  Nothing in row 6 links to `/dashboard/accounting` or `/dashboard/inventory`, because neither route
+  exists yet and `dashboard.spec.ts` asserts no anchor on the console points at an unbuilt one.
+
+Prose that moved rather than prose that was deleted: the nine section ledes are compressed to one
+line each and set beside their headings rather than under them; the full `SYNTHETIC_DATA_STATEMENT`
+moved from above the KPI row into row 7 with the rest of the evidence; the contribution and mix
+qualifications moved into per-figure disclosures. Four caveats stayed visible because a figure read
+without them is misleading rather than merely unqualified: the lead-creation cohort caveat, the
+semi-additive snapshot statement, the aged-threshold project default, and the statement that the
+funnel share column is not a governed KPI.
+
 2. One `h1` per route; no skipped heading level (existing sweep rule).
 3. Section order is fixed per page and documented in that page's increment item — summary first,
    analysis second, detail tables last.

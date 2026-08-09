@@ -977,3 +977,256 @@ describe('a filter selects rows and never changes a definition', () => {
     expect(a).toEqual(b)
   })
 })
+
+/* -------------------------------------------------------------------------- */
+/* 12. The geometry is a function of the data                                  */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * WHAT A VISUAL-BINDING TEST IS FOR, AND WHY THE OTHER ELEVEN BLOCKS CANNOT DO IT.
+ *
+ * Everything above proves the FIGURES are the export's figures. That is necessary and it
+ * is not sufficient once the page draws them: a component could render a correct number
+ * beside a bar whose width it invented, and every assertion in this file would still
+ * pass. So this block drives the view model with two different filter states and
+ * requires the things a chart is drawn from to DIFFER — the trailing window, the trend
+ * samples, the per-store results, the age shares, the reconciliation position.
+ *
+ * It tests the view model rather than the rendered markup on purpose. The markup
+ * assertions live in `dashboard-visuals.test.tsx`, where a primitive can be driven with
+ * a fixture; what cannot be tested there is that the REAL data reaching those primitives
+ * moves when the filter moves, and that is the claim a reader actually relies on.
+ */
+describe('the trailing window is anchored on the selection', () => {
+  it('ends at the last month the selected period touches', () => {
+    const december = overviewFor('period=2025-12')
+    const september = overviewFor('period=2025-09')
+    expect(december.trailing[december.trailing.length - 1]?.key).toBe('2025-12')
+    expect(september.trailing[september.trailing.length - 1]?.key).toBe('2025-09')
+  })
+
+  it('is shorter near the start of the export, because the months do not exist', () => {
+    const september = overviewFor('period=2025-09')
+    const december = overviewFor('period=2025-12')
+    expect(september.trailing.length).toBeLessThan(december.trailing.length)
+    expect(september.trailing.map((month) => month.key)).toEqual([
+      '2025-07',
+      '2025-08',
+      '2025-09',
+    ])
+  })
+
+  it('marks the selected month current, and marks none when a range spans several', () => {
+    const single = overviewFor('period=2025-11')
+    expect(single.trailing.filter((month) => month.isCurrent).map((m) => m.key)).toEqual([
+      '2025-11',
+    ])
+    const spanning = overviewFor('period=2025-10-01..2025-12-31')
+    expect(spanning.trailing.some((month) => month.isCurrent)).toBe(false)
+  })
+
+  it('resolves every month against the governed calendar, never by construction', () => {
+    for (const month of overviewFor('').trailing) {
+      expect(month.period.months).toEqual([month.key])
+      expect(month.period.sellingDays).toBeGreaterThan(0)
+      expect(month.period.start.startsWith(month.key)).toBe(true)
+    }
+  })
+})
+
+describe('the operating trend reacts to the filter', () => {
+  const unitsOf = (overview: ReturnType<typeof overviewFor>) =>
+    overview.trend.map((bucket) =>
+      bucket.retailUnits.kind === 'value' ? exactToString(bucket.retailUnits.value) : null
+    )
+
+  it('produces a different series for a different period', () => {
+    expect(unitsOf(overviewFor('period=2025-12'))).not.toEqual(
+      unitsOf(overviewFor('period=2025-09'))
+    )
+  })
+
+  it('produces a different series for a different store', () => {
+    expect(unitsOf(overviewFor('store=GSA-001'))).not.toEqual(
+      unitsOf(overviewFor('store=GSA-002'))
+    )
+  })
+
+  it('reads each month through the same selector the KPI card reads', () => {
+    const overview = overviewFor('period=2025-11')
+    const card = overview.cards.find((entry) => entry.id === 'retailUnits')
+    const currentSample = card?.microTrend.find((sample) => sample.isCurrent)
+    const currentBucket = overview.trend.find((bucket) => bucket.isCurrent)
+    expect(currentSample?.result.kind).toBe('value')
+    /*
+     * The card's headline, its own microtrend column for the selected month, and the
+     * trend chart's column for that month are three renderings of ONE evaluation. If a
+     * component ever recomputed any of them, this is where the three would part company.
+     */
+    const headline = card?.metric.current
+    expect(headline?.kind).toBe('value')
+    if (
+      headline?.kind !== 'value' ||
+      currentSample?.result.kind !== 'value' ||
+      currentBucket?.retailUnits.kind !== 'value'
+    ) {
+      throw new Error('the selected month resolved to no value')
+    }
+    expect(exactToString(currentSample.result.value)).toBe(exactToString(headline.value))
+    expect(exactToString(currentBucket.retailUnits.value)).toBe(
+      exactToString(headline.value)
+    )
+  })
+})
+
+describe('every KPI card carries its own shape', () => {
+  it('samples every card over the same trailing window', () => {
+    const overview = overviewFor('')
+    for (const card of overview.cards) {
+      expect(card.microTrend.map((sample) => sample.key)).toEqual(
+        overview.trailing.map((month) => month.key)
+      )
+    }
+  })
+
+  it('produces different shapes for different stores', () => {
+    const shapeOf = (search: string) =>
+      overviewFor(search)
+        .cards.find((card) => card.id === 'totalGross')
+        ?.microTrend.map((sample) =>
+          sample.result.kind === 'value' ? exactToString(sample.result.value) : null
+        )
+    expect(shapeOf('store=GSA-001')).not.toEqual(shapeOf('store=GSA-002'))
+  })
+
+  it('leaves a month the selector declined as an unresolved sample, never as a zero', () => {
+    /*
+     * The median card is the one that can decline: an order statistic above its
+     * published grain is `not-derivable`, and a microtrend that rendered it as zero
+     * would draw a lot whose cars are all brand new.
+     */
+    const card = overviewFor('').cards.find((entry) => entry.id === 'medianInventoryAge')
+    expect(card).toBeDefined()
+    for (const sample of card?.microTrend ?? []) {
+      if (sample.result.kind === 'value') continue
+      expect(sample.result.kind).not.toBe('no-rows')
+      expect(['not-derivable', 'null-ratio', 'not-applicable']).toContain(
+        sample.result.kind
+      )
+    }
+  })
+})
+
+describe('the store comparison', () => {
+  it('compares two governed measures and names both KPI identifiers', () => {
+    const overview = overviewFor('')
+    expect(overview.comparisons.map((entry) => entry.id)).toEqual([
+      'retailUnits',
+      'totalPvr',
+    ])
+    for (const comparison of overview.comparisons) {
+      expect(comparison.selector.kpiId).not.toBeNull()
+      expect(kpis.some((entry) => entry.id === comparison.selector.kpiId)).toBe(true)
+    }
+  })
+
+  it('gives two stores different values, which is what the bars encode', () => {
+    const units = overviewFor('').comparisons.find((entry) => entry.id === 'retailUnits')
+    const values = (units?.rows ?? []).map((row) =>
+      row.result.kind === 'value' ? exactToString(row.result.value) : null
+    )
+    expect(values).toHaveLength(3)
+    expect(new Set(values).size).toBeGreaterThan(1)
+  })
+
+  it('narrows to the stores in scope', () => {
+    const one = overviewFor('store=GSA-001').comparisons[0]
+    expect(one?.rows.map((row) => row.store.id)).toEqual(['GSA-001'])
+  })
+
+  it('reproduces the scoreboard cell for the same store and measure', () => {
+    const overview = overviewFor('period=2025-11')
+    const comparison = overview.comparisons.find((entry) => entry.id === 'retailUnits')
+    for (const row of comparison?.rows ?? []) {
+      const scoreboardRow = overview.scoreboard.find(
+        (entry) => entry.store.id === row.store.id
+      )
+      const cell = scoreboardRow?.cells.find((entry) => entry.column.id === 'retailUnits')
+      expect(cell?.result.kind).toBe(row.result.kind)
+      if (cell?.result.kind === 'value' && row.result.kind === 'value') {
+        expect(exactToString(row.result.value)).toBe(exactToString(cell.result.value))
+      }
+    }
+  })
+})
+
+describe('the age distribution is drawn against the population', () => {
+  it('gives every bucket a share that sums to one', () => {
+    const buckets = overviewFor('').inventory.buckets
+    expect(buckets.length).toBeGreaterThan(0)
+    const total = buckets.reduce((sum, bucket) => sum + bucket.share, 0)
+    expect(total).toBeCloseTo(1, 6)
+  })
+
+  it('changes the shares when the store scope changes', () => {
+    const shapeOf = (search: string) =>
+      overviewFor(search).inventory.buckets.map((bucket) => bucket.share.toFixed(4))
+    expect(shapeOf('store=GSA-001')).not.toEqual(shapeOf('store=GSA-003'))
+  })
+})
+
+describe('the accounting integrity signal', () => {
+  it('reads the last comparison date inside the period, never a sum over it', () => {
+    const december = overviewFor('period=2025-12').reconciliation
+    expect(december.summary.comparisonDate).toBe('2025-12-31')
+    const quarter = overviewFor('period=2025-10-01..2025-12-31').reconciliation
+    expect(quarter.summary.comparisonDate).toBe('2025-12-31')
+    /*
+     * The semi-additive rule, asserted where a redesign could break it: a quarter that
+     * contains three month ends has ONE position, not three added together, so its
+     * comparable-position count matches the single month's.
+     */
+    expect(quarter.summary.comparablePositions).toBe(december.summary.comparablePositions)
+  })
+
+  it('narrows to the stores in scope', () => {
+    const group = overviewFor('').reconciliation
+    const one = overviewFor('store=GSA-001').reconciliation
+    expect(one.accounts.every((row) => row.dealershipId === 'GSA-001')).toBe(true)
+    expect(one.accounts.length).toBeLessThan(group.accounts.length)
+  })
+
+  it('totals the SIGNED variances, so opposing positions net rather than accumulate', () => {
+    const september = overviewFor('period=2025-09').reconciliation
+    const signed = Number(exactToString(september.summary.signedVariance))
+    const absolute = september.accounts.reduce(
+      (sum, row) =>
+        row.varianceAmount === null
+          ? sum
+          : sum + Math.abs(Number(exactToString(row.varianceAmount))),
+      0
+    )
+    expect(Math.abs(signed)).toBeLessThanOrEqual(absolute)
+  })
+
+  it('publishes the direction in words rather than leaving it to a sign', () => {
+    const direction = overviewFor('period=2025-09').reconciliation.directionText
+    expect([
+      'the general ledger carries more than the subledger',
+      'the subledger carries more than the general ledger',
+      'the two sides agree exactly',
+    ]).toContain(direction)
+  })
+
+  it('carries the controlled-scenario disclosure from the shared constant', () => {
+    expect(overviewFor('').reconciliation.scenarioNote).toContain(
+      'deliberately planted controlled scenarios'
+    )
+  })
+
+  it('counts exceptions inside the period rather than over the whole export', () => {
+    const whole = overviewFor('period=2025-07-01..2025-12-31').reconciliation
+    const oneMonth = overviewFor('period=2025-12').reconciliation
+    expect(oneMonth.exceptionCount).toBeLessThanOrEqual(whole.exceptionCount)
+  })
+})
