@@ -20,7 +20,7 @@ portfolio [`CONTENT_MODEL.md`](../../portfolio/docs/CONTENT_MODEL.md) / `lib/sit
 | `/dashboard/deals/[saleId]` | Deal Jacket (dynamic; title carries the synthetic deal id) | **Implemented (DASH.4)** | dynamic — excluded from `inPrimaryNav`, sitemap lists the index route only, and each jacket asks not to be indexed. Marks Deal Explorer current via `NavItem.matchPrefixes`: nobody navigates to "a deal", so it is a drill-through rather than a navigation destination |
 | `/dashboard/inventory` | Inventory operations | **Built (`DASH.9`)** | `ROUTES.dashboardInventory`, mirrored in `tests/e2e/routes.ts`. Carries the `unit=` drill-through, which is a URL rather than client state: copyable, correct on reload and under Back/Forward |
 | `/dashboard/fi` | F&I performance | **Built (`DASH.7`)** | `ROUTES.dashboardFi`, mirrored in `tests/e2e/routes.ts` |
-| `/dashboard/leads-marketing` | Leads and marketing | Planned (DASH.10) | ” |
+| `/dashboard/leads-marketing` | Leads and marketing | **Built (`DASH.10`)** | `ROUTES.dashboardLeadsMarketing`, mirrored in `tests/e2e/routes.ts`. `source=` and `campaign=` reach every measure on the route including the appointment outcomes, which is what `reporting.vw_appointment_source_funnel` was added for. `compare=` is declared `not-applicable` here: cohort maturity dominates every conversion and cost measure, so a period-over-period delta would report immaturity as a change in performance |
 | `/dashboard/employees` | Employee performance | Planned (DASH.11) | ” |
 | `/dashboard/accounting` | Accounting integrity | **Built (`DASH.9`)** | `ROUTES.dashboardAccounting`, mirrored in `tests/e2e/routes.ts`. The exception drill-through targets this route with `store` and `period`, never a warehouse surrogate |
 | `/dashboard/actions` | Management actions | Planned (DASH.12) | ” |
@@ -135,9 +135,11 @@ Three things about this arrangement are load-bearing rather than aesthetic.
   `dashboard.spec.ts` asserts both drill-throughs positively, by clicking them and checking the
   destination's `h1`. The negative it replaced — "links to no accounting route, because none is
   built" — was correct through `DASH.8` and false after `DASH.9`. The route-integrity sweep it was
-  protecting is unchanged: `UNBUILT_DASHBOARD_ROUTES` (`/dashboard/leads-marketing`,
-  `/dashboard/employees`, `/dashboard/actions`) is still asserted unreachable from every console
-  route and still asserted to 404 when fetched directly.
+  protecting is unchanged in shape but shorter by one: `DASH.10` moves
+  `/dashboard/leads-marketing` out of `UNBUILT_DASHBOARD_ROUTES` in the same diff that makes the
+  destination real, and the Executive lead-funnel pane gains a drill-through to it carrying the
+  reader's current filters. `/dashboard/employees` and `/dashboard/actions` are still asserted
+  unreachable from every console route and still asserted to 404 when fetched directly.
 
 Prose that moved rather than prose that was deleted: the nine section ledes are compressed to one
 line each and set beside their headings rather than under them; the full `SYNTHETIC_DATA_STATEMENT`
@@ -162,7 +164,8 @@ funnel share column is not a governed KPI.
 | Sales/gross deal table row · deal index row | `/dashboard/deals/[saleId]` | none (deal id is the key) |
 | Inventory unit row | Unit detail panel on `/dashboard/inventory` (`unit=` param) | Stock reference |
 | F&I manager row | `/dashboard/fi?employee=EMP-#####` | Manager filter. **As-built the parameter is `employee=`, not `manager=`**: the console has ONE filter grammar and one parameter for a person, and a route-specific spelling of the same concept would have been a second vocabulary for `filters.ts` to reconcile. Scopes both the numerator and the eligible denominator of every penetration figure. |
-| Funnel stage / lost-stage cell | `/dashboard/leads-marketing` filtered view | Stage + period |
+| Executive lead funnel (row 5) | `/dashboard/leads-marketing` | The reader's whole current filter state, via `filtersHref` |
+| Funnel stage / lost-stage cell | **Not built, deliberately.** `DASH.10` reserved a `stage=` parameter and did not add it: the page already renders the whole stage partition, so a stage filter would scope nothing a reader cannot already see, and a query parameter that changes no result is a promise the URL does not keep | — |
 | Accounting exception row | Deal Jacket accounting section, or inventory unit detail | Entity id |
 | Action row | The rule's declared drill-through route | Entity id + period |
 | Deal Jacket lineage drawer | `/kpis` catalogue entries | KPI id anchor |

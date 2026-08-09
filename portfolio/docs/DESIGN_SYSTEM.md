@@ -663,3 +663,30 @@ the site implied real dealership data.
 | Contrast, target size, heading order, landmarks            | axe-core, all ten routes, two viewports                           |
 | No horizontal overflow at 320px or 200% zoom               | `tests/e2e/accessibility.spec.ts` (real scrollability)            |
 | Every primitive forwards ARIA props                        | `tests/unit/components.test.tsx`                                  |
+
+## `DASH.10`: what it added to the shared surface, and what it deliberately did not
+
+**No new reusable primitive.** The leads and marketing route draws four kinds of bar — funnel
+stage, response band, lost stage, source volume — and every one of them is a governed ratio
+rendered as a width. That is the same geometry `visuals.tsx` already holds primitives for, and
+the temptation was to extract a fifth. It was not taken, because the four differ in the thing
+that matters: **what each width divides by**. The funnel divides by the cohort, the bands divide
+by responded leads, the stage partition divides by the cohort again, and the source bars divide
+by the largest source in scope. A shared `<Bar>` would have made those four denominators a
+prop, and a denominator passed as a prop is a denominator nobody checks.
+
+So the route composes the two primitives whose semantics genuinely are shared — `ChartFrame`
+(figure, figcaption, summary sentence) and `TableDisclosure` (the tabular equivalent) — and
+keeps a local `Track` that takes an already-computed width string. Shared geometry is good;
+shared false semantics are not.
+
+**One shared component changed: `FilterBar` gained an optional `campaigns` prop.** It is
+optional, unlike the four lists above it, and the asymmetry is the point. Only
+`/dashboard/leads-marketing` carries datasets grained on campaign; every other console route
+declares `campaign` as `not-applicable`, and rendering a control that cannot change a figure is
+how a filter bar starts lying about what it reaches. A route that passes nothing gets no
+control rather than an inert one. The compressed island size did not move.
+
+**One shared component gained a link: `LeadFunnel` now takes `filters`** so the Executive
+drill-through arrives scoped to what the reader was looking at. That is the whole of `DASH.10`'s
+change to the Executive Overview, which `PR #52` had just redesigned.

@@ -705,3 +705,59 @@ Recorded rather than quietly absorbed:
 | `DASH.7` exports the four F&I views unchanged | It does, and the Deal Jacket view was CHANGED | `vw_deal_jacket` gained thirteen columns and one corrected one. The F&I itemisation and the back-gross reconciliation panel `DASH.7-02` requires cannot be assembled from a jacket that carries only a back-gross total, and reconstructing the split in TypeScript is the second calculation engine ADR-0013 condition 2 forbids. The correction is separate and is recorded below. |
 | `vw_deal_jacket.finance_structure` derived inline in the view | Derived by `warehouse.fn_finance_structure` | The view's inline `CASE` labelled every wholesale and dealer-trade disposal `Cash`, because neither finances anything — 92 rows in the committed data. `DASH.6` had already governed the derivation in one function for exactly this reason; the view now calls it, publishes `finance_structure_basis` naming the branch taken, and publishes `is_retail_structure` so a consumer never has to re-enumerate the set. A defect fixed, not a shape changed, and `deal-jacket`'s bytes move because of it. |
 | Four F&I datasets, chunking to be decided | Two chunked, two whole files | Decided on the measurement, not by symmetry. See §9. |
+
+---
+
+## `DASH.10` as-built: three datasets, and the audit that kept it to three
+
+The increment's brief said "export slices", and the audit's answer was mostly REUSE. `lead-funnel`
+already carried the cohort at store × source × campaign × lead-creation date. `marketing-performance`
+already carried spend, attributed outcomes and all three MKT measures with the organic rule applied
+and the zero-denominator states published as flags. `lead-sources`, `campaigns`, `stores` and
+`calendar` are dimensions the console already reads. The vendor-count comparison needed nothing new:
+vendor leads are on `marketing-performance` and the duplicate population is on `lead-funnel`.
+
+Three requirements survived, and each failed for a structural reason rather than for want of a
+column.
+
+| Requirement | Existing dataset | Grain sufficient? | Filter sufficient? | Statistic recomputable? | New required |
+|---|---|---|---|---|---|
+| Lead funnel | `lead-funnel` | Yes | Yes | Yes | No |
+| Appointment outcomes | `appointment-funnel` | Yes | **No — no source, no campaign** | Yes | **Yes** |
+| True response median | `lead-response` | No — medians published at store × source × day | No campaign | **No — a median does not decompose** | **Yes** |
+| Response bands | `lead-response` | Yes at its grain | No campaign | Yes | reused from the new dataset |
+| Lost stage | `lead-funnel` | Yes | Yes | Arithmetic only, and the obvious one is wrong | **Yes** |
+| Source comparison | `lead-funnel` | Yes | Yes | Yes | No |
+| Campaign marketing | `marketing-performance` | Yes | Yes | Yes | No |
+| Vendor discrepancy | `marketing-performance` + `lead-funnel` | Yes | Yes | Yes | No |
+
+**`appointment-source-funnel`** — a source-filtered page could otherwise only narrow the lead funnel
+while KPI-FUN-004 and KPI-FUN-005 stayed group-wide, which drawn as one funnel is two populations in
+one shape. `fact_appointment.lead_key` is `NOT NULL` and references `fact_lead`'s primary key, so the
+join is strictly many-to-one; `RECON-APPT-SOURCE-ROLLUP` proves the roll-up across source and
+campaign reproduces `appointment-funnel` component by component on every store and date.
+
+**`lead-response-distribution`** — KPI-FUN-008 is an order statistic, and order statistics do not
+decompose: averaging the medians `lead-response` publishes gives **65.11 minutes** against a true
+**27.5**. The population is published as COUNTED BINS rather than lead rows, which preserves the
+multiset exactly while carrying no lead key, lead code, customer, employee, sale or vehicle at all.
+`first_response_seconds` is nullable **and is a business-key component**: the never-responded bin is
+identified by that null, and a contract treating it as an absent value would let the ignored
+population merge into a response time.
+
+**`lead-stage-loss`** — owns the lost-stage partition so the arithmetic has one implementation
+rather than one per consumer, and because the obvious subtraction is wrong. `fact_lead` does not
+enforce that a sale implies a show, so `appointment_shown_leads - sold_leads` is not the count of
+leads that showed without buying and goes negative on real rows. It declares **no `kpi_ids`**: these
+are diagnostics, and an identifier here would create a governed measure by presentation.
+
+All three are chunked by store and month on the measurement, for the same reason `lead-funnel` and
+`lead-response` are: the grain includes a date, the whole-file payload is measured in megabytes, and
+a page only ever wants one period. The largest partition is 31.9 kB against a 256 kB ceiling.
+
+**One correction rather than an addition.** `ReconciliationTotal("appointment_set_rate", …)` divided
+by `leads_received` from `DASH.1` until `DASH.10`, against `KPI_CATALOG.md` §26 and the governed
+view. The contract now divides by `contacted_leads`, and
+`test_export_reconciliation_totals_use_the_governed_denominator` binds every ratio total to the rate
+its reporting view publishes so the two cannot drift again.
+
