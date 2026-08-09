@@ -162,14 +162,32 @@ export function ChartFrame({
   title,
   caption,
   summary,
+  summaryMode = 'visible',
   headingLevel = 3,
   className,
   children,
 }: {
   readonly title: string
   readonly caption?: ReactNode
-  /** One sentence stating what the visual shows. Read by everyone, not just AT. */
+  /** One sentence stating what the visual shows, with its exact values. */
   readonly summary: string
+  /**
+   * Whether the summary is drawn, or carried for assistive technology only.
+   *
+   * IT IS ALWAYS IN THE DOCUMENT. `sr-only` moves a sentence out of the eye path; it
+   * never removes it, and the accessible name of the figure is identical either way.
+   *
+   * The distinction is whether a sighted reader learns anything from reading it. A
+   * summary that says "retail units by month, December highest" beside a chart whose
+   * bars are labelled with months and values is telling them what they can already see,
+   * and three of those on one page is what makes a dashboard read like a report. A
+   * summary that names a basis, a denominator or a threshold the geometry cannot show is
+   * load-bearing and stays visible.
+   *
+   * The rule this encodes: hide the summary when the title, the direct labels and the
+   * values already carry it. Never hide a caveat.
+   */
+  readonly summaryMode?: 'visible' | 'sr-only'
   readonly headingLevel?: 2 | 3 | 4
   readonly className?: string
   readonly children: ReactNode
@@ -182,7 +200,15 @@ export function ChartFrame({
         {caption ? (
           <p className="text-sm leading-normal text-ink-muted">{caption}</p>
         ) : null}
-        <p className="text-sm leading-normal text-ink-secondary">{summary}</p>
+        <p
+          className={
+            summaryMode === 'sr-only'
+              ? 'sr-only'
+              : 'text-sm leading-normal text-ink-secondary'
+          }
+        >
+          {summary}
+        </p>
       </figcaption>
       {children}
     </figure>
@@ -294,7 +320,11 @@ export function TrendChart({
                 <span
                   className={cx(
                     'w-full rounded-t-xs',
-                    negative ? 'bg-ink-faint' : 'bg-accent/70'
+                    // The series colour is the categorical primary, NOT green: a
+                    // period above zero is not thereby a good period, and most of
+                    // what this chart plots has no favourable direction. Only the
+                    // crossing of zero is coloured, and the zero rule is drawn.
+                    negative ? 'bg-data-negative' : 'bg-data-primary'
                   )}
                   style={{
                     height: `${String(Math.max(height, 0.5))}%`,
@@ -382,6 +412,11 @@ export interface BridgeChartProps {
  * DIRECTION IS NOT COLOUR ALONE. An increase and a decrease differ in their arrow
  * glyph and in their signed amount, both of which are text. The fill differs too, but
  * nothing is encoded only in it.
+ *
+ * WHY THE STEPS ARE THE ONLY THING THIS PAGE COLOURS BY SIGN. A waterfall step IS a
+ * signed contribution to a total -- it added to the total or it subtracted from it,
+ * and that is a fact about the arithmetic rather than a judgement about the business.
+ * The anchors take the neutral reference fill because a level is not a direction.
  */
 export function BridgeChart({
   title,
@@ -439,10 +474,10 @@ export function BridgeChart({
                 className={cx(
                   'w-full rounded-xs',
                   bar.kind === 'anchor'
-                    ? 'bg-ink/70'
+                    ? 'bg-data-reference'
                     : falling
-                      ? 'bg-ink-faint'
-                      : 'bg-accent/70'
+                      ? 'bg-data-negative'
+                      : 'bg-data-positive'
                 )}
                 style={{
                   height: `${String(Math.max(height, 0.5))}%`,
@@ -599,7 +634,10 @@ export function DistributionStrip({
               <div
                 className={cx(
                   'h-full',
-                  bucket.isNegative ? 'bg-ink-faint' : 'bg-accent/70'
+                  // A band BELOW ZERO, not a band that is worse. The bands above
+                  // zero are one categorical colour, because a distribution has no
+                  // favourable end and shading them would invent one.
+                  bucket.isNegative ? 'bg-data-negative' : 'bg-data-primary'
                 )}
                 style={{ width: `${String((bucket.count / largest) * 100)}%` }}
               />
@@ -766,7 +804,17 @@ export function ExecutiveMicroTrend({
               <span
                 className={cx(
                   'w-full rounded-t-xs',
-                  point.isCurrent ? 'bg-accent' : 'bg-accent/35'
+                  // Two encodings, and neither is a verdict. Opacity says WHICH
+                  // month you are reading -- the card's headline figure is the
+                  // solid one -- and hue says only whether the month fell below
+                  // zero, which the dashed zero rule above also shows.
+                  negative
+                    ? point.isCurrent
+                      ? 'bg-data-negative'
+                      : 'bg-data-negative/40'
+                    : point.isCurrent
+                      ? 'bg-data-primary'
+                      : 'bg-data-primary/35'
                 )}
                 style={{
                   height: percent(Math.max(height, 0.02)),
@@ -802,6 +850,41 @@ export interface ComparisonBarRow {
   readonly display: string
 }
 
+/**
+ * The categorical store marks, one class per step, written out in full so Tailwind's
+ * source scan can see them.
+ */
+const STORE_MARKS = ['bg-data-primary', 'bg-data-secondary', 'bg-data-tertiary'] as const
+
+const STORE_MARK_FALLBACK = 'bg-data-primary'
+
+/**
+ * A store's mark colour. IDENTITY, NEVER RANK.
+ *
+ * DERIVED FROM THE BUSINESS CODE, NOT FROM THE ROW'S POSITION. A store filtered out of
+ * scope would otherwise shift the colour of every store after it, and a reader who
+ * learned that the independent pre-owned centre is the violet one would be reading a
+ * different store's figure one filter change later. `GSA-002` is the second mark whether
+ * or not `GSA-001` is on screen.
+ *
+ * ORDER CARRIES NO MEANING. The sequence is the business code, which is an identifier;
+ * it is not a ranking, and the palette steps are not ordered from good to bad. The three
+ * stores run different operating models and this console publishes no league table over
+ * them -- the caption beside the bars says so in words.
+ *
+ * A code outside the `GSA-###` shape falls back to a character sum, so an unexpected
+ * identifier still gets ONE stable colour rather than a colour that moves.
+ */
+export function storeMarkClass(storeId: string): string {
+  const suffix = /(\d+)$/.exec(storeId)
+  const ordinal =
+    suffix?.[1] === undefined
+      ? [...storeId].reduce((sum, character) => sum + character.charCodeAt(0), 0)
+      : Number(suffix[1]) - 1
+  const index = ((ordinal % STORE_MARKS.length) + STORE_MARKS.length) % STORE_MARKS.length
+  return STORE_MARKS[index] ?? STORE_MARK_FALLBACK
+}
+
 export interface StoreComparisonBarsProps {
   readonly title: string
   readonly caption?: ReactNode
@@ -830,8 +913,14 @@ export interface StoreComparisonBarsProps {
  * the scale the other stores are drawn against.
  *
  * NOTHING IS RANKED AND NOTHING IS COLOURED "BEST". Rows are in business-code order and
- * carry one hue, for the reason `store-scoreboard.tsx` records: three different operating
- * models, and a league table over them would be a finding this console may not publish.
+ * each carries its own store's hue, for the reason `store-scoreboard.tsx` records: three
+ * different operating models, and a league table over them would be a finding this
+ * console may not publish. See `storeMarkClass` for why the hue cannot drift.
+ *
+ * THE SUMMARY IS `sr-only`. Every row below prints its store's name and its value as
+ * text, so a visible copy of the summary sentence is the same figures read twice. It
+ * stays in the accessibility tree, where it is the one sentence that carries the whole
+ * comparison without asking a reader to interpret a length.
  */
 export function StoreComparisonBars({
   title,
@@ -862,6 +951,7 @@ export function StoreComparisonBars({
       title={title}
       caption={caption}
       summary={summary}
+      summaryMode="sr-only"
       headingLevel={headingLevel}
       className={className}
     >
@@ -899,7 +989,7 @@ export function StoreComparisonBars({
                   {/* Zero stays zero. A minimum-width bar for a store that sold nothing
                       would draw a quantity the data does not have. */}
                   <div
-                    className="h-full rounded-pill bg-accent-mark"
+                    className={`h-full rounded-pill ${storeMarkClass(row.key)}`}
                     style={{ width: percent(width) }}
                   />
                 </div>
@@ -972,8 +1062,44 @@ export interface InventoryAgeStackProps {
   readonly segments: readonly AgeStackSegment[]
   /** Named so a reader knows the position is read at one date. */
   readonly snapshotNote: string
+  /**
+   * The aged threshold in days, when the scope in view carries exactly one.
+   *
+   * Rendered in the legend because the ramp turns amber at it. It is an ARPI
+   * PROJECT DEFAULT and the legend says so: the ramp would otherwise read as an
+   * industry standard nobody published.
+   */
+  readonly thresholdDays?: number | null
   readonly headingLevel?: 2 | 3 | 4
   readonly className?: string
+}
+
+/**
+ * The ordered age ramp, one class per step, written out in full.
+ *
+ * WRITTEN OUT BECAUSE TAILWIND SCANS SOURCE TEXT. A template literal built from a
+ * token name produces a class that is never emitted, and the segment renders with no
+ * background at all.
+ *
+ * THE RAMP IS KEYED ON EXPORTED BUCKET ORDER, NOT ON A DAY COUNT. The aging export
+ * enumerates five buckets and publishes `age_bucket_sort_order`; the view model sorts
+ * on it and this reads the result. Nothing here parses a label for a number, so a
+ * bucket boundary can move in the warehouse without this file agreeing or disagreeing
+ * with it. A sixth bucket would hold at the last step rather than invent a colour, and
+ * its printed range and count would still be correct.
+ */
+const AGE_RAMP = [
+  'bg-data-age-fresh',
+  'bg-data-age-early',
+  'bg-data-age-threshold',
+  'bg-data-age-aged',
+  'bg-data-age-critical',
+] as const
+
+const AGE_RAMP_LAST = 'bg-data-age-critical'
+
+function ageRampClass(index: number): string {
+  return AGE_RAMP[index] ?? AGE_RAMP_LAST
 }
 
 /**
@@ -988,16 +1114,31 @@ export interface InventoryAgeStackProps {
  *
  * THE SEGMENTS ARE `aria-hidden` AND EVERY COUNT IS TEXT. The legend below the bar
  * carries each bucket and its unit count, and the table carries all of it again.
+ *
+ * THE SUMMARY IS `sr-only`. The legend prints every band's range and count, and the
+ * table below prints all of it again, so the visible page already carries the sentence.
+ *
+ * COLOUR ORDERS THE BANDS AND CARRIES NOTHING ALONE. The ramp runs fresh green to
+ * severely-aged rose across the exported bucket order. Adjacent steps are not 3:1 from
+ * each other -- see the recorded limitation in `tokens.css` -- so the bands are also
+ * separated by a gap of the page background, and every band's range and count are
+ * printed beside it. A reader who cannot separate two hues still reads the numbers.
  */
 export function InventoryAgeStack({
   title,
   caption,
   segments,
   snapshotNote,
+  thresholdDays = null,
   headingLevel = 3,
   className,
 }: InventoryAgeStackProps) {
-  const drawable = segments.filter((segment) => segment.share > 0)
+  // Keyed on the position in `segments`, not in the filtered list: an empty bucket
+  // must not shift the colour of the bucket after it, or the bar and the legend
+  // disagree about which band is which.
+  const drawable = segments
+    .map((segment, index) => ({ segment, index }))
+    .filter((entry) => entry.segment.share > 0)
   const summary =
     segments.length === 0
       ? 'No inventory rows fall inside the selected period and scope.'
@@ -1011,6 +1152,7 @@ export function InventoryAgeStack({
         title={title}
         caption={caption}
         summary={summary}
+        summaryMode="sr-only"
         headingLevel={headingLevel}
         className={className}
       >
@@ -1024,6 +1166,7 @@ export function InventoryAgeStack({
       title={title}
       caption={caption}
       summary={summary}
+      summaryMode="sr-only"
       headingLevel={headingLevel}
       className={className}
     >
@@ -1032,16 +1175,16 @@ export function InventoryAgeStack({
         aria-hidden="true"
         className="hidden h-4 w-full overflow-hidden rounded-pill bg-surface-sunken sm:flex"
       >
-        {drawable.map((segment, index) => (
+        {drawable.map((entry, position) => (
           <div
-            key={segment.key}
-            className="h-full bg-accent-mark"
+            key={entry.segment.key}
+            className={`h-full ${ageRampClass(entry.index)}`}
             style={{
-              width: percent(segment.share),
+              width: percent(entry.segment.share),
               // A 2px surface gap rather than a stroke: a stroked boundary reads as
-              // data-weight ink that is not data. Only between segments.
-              marginRight: index < drawable.length - 1 ? '2px' : undefined,
-              opacity: 1 - index * 0.14,
+              // data-weight ink that is not data. Only between segments. It is also
+              // what holds two adjacent ramp steps apart when their contrast does not.
+              marginRight: position < drawable.length - 1 ? '2px' : undefined,
             }}
           />
         ))}
@@ -1059,8 +1202,8 @@ export function InventoryAgeStack({
             </div>
             <div className="h-2 w-full overflow-hidden rounded-pill bg-surface-sunken">
               <div
-                className="h-full rounded-pill bg-accent-mark"
-                style={{ width: percent(segment.share), opacity: 1 - index * 0.14 }}
+                className={`h-full rounded-pill ${ageRampClass(index)}`}
+                style={{ width: percent(segment.share) }}
               />
             </div>
           </li>
@@ -1076,14 +1219,25 @@ export function InventoryAgeStack({
           >
             <span
               aria-hidden="true"
-              className="inline-block size-2.5 shrink-0 translate-y-px rounded-xs bg-accent-mark"
-              style={{ opacity: 1 - index * 0.14 }}
+              className={`inline-block size-2.5 shrink-0 translate-y-px rounded-xs ${ageRampClass(index)}`}
             />
             <span>{segment.label}</span>
             <span className="numeric font-semibold text-ink">{segment.display}</span>
           </li>
         ))}
       </ul>
+
+      {/* The threshold the ramp turns on, named as the project default it is. */}
+      {thresholdDays === null ? null : (
+        <p className="text-2xs text-ink-faint">
+          Ramp turns at the{' '}
+          <span className="numeric font-semibold text-ink-muted">
+            {thresholdDays}-day
+          </span>{' '}
+          aged threshold, an ARPI project default rather than an industry benchmark. A
+          unit past it may sit in any bucket above it.
+        </p>
+      )}
     </ChartFrame>
   )
 }
@@ -1135,11 +1289,26 @@ export interface GrossCompositionProps {
  * stack drawn over a negative component would be a picture of something that did not
  * happen, which is worse than no picture.
  *
+ * THE SUMMARY IS `sr-only`: the definition list below prints each component's label and
+ * amount, which is the whole of that sentence.
+ *
  * NEITHER COMPONENT IS RANKED AGAINST THE OTHER, for the reason
  * `sales-gross-sections.tsx` records: a store can hold total gross steady while front
  * collapses and the finance office compensates, and which of those is preferable depends
- * on the store rather than on the figure.
+ * on the store rather than on the figure. The two fills are therefore the CATEGORICAL
+ * pair -- two identities -- and never the positive/negative pair, which would say the
+ * finance office is the good half of the deal.
  */
+
+/** The two component fills. Identity, in segment order, and not a ranking. */
+const COMPOSITION_MARKS = ['bg-data-primary', 'bg-data-secondary'] as const
+
+const COMPOSITION_MARK_FALLBACK = 'bg-data-tertiary'
+
+function compositionMarkClass(index: number): string {
+  return COMPOSITION_MARKS[index] ?? COMPOSITION_MARK_FALLBACK
+}
+
 export function GrossComposition({
   title,
   caption,
@@ -1163,6 +1332,7 @@ export function GrossComposition({
       title={title}
       caption={caption}
       summary={summary}
+      summaryMode="sr-only"
       headingLevel={headingLevel}
       className={className}
     >
@@ -1174,11 +1344,9 @@ export function GrossComposition({
           {segments.map((segment, index) => (
             <div
               key={segment.key}
-              className="h-full"
+              className={`h-full ${compositionMarkClass(index)}`}
               style={{
                 width: percent(exactToApproxNumber(segment.value) / totalNumber),
-                backgroundColor:
-                  index === 0 ? 'var(--color-accent-mark)' : 'var(--color-model)',
                 marginRight: index < segments.length - 1 ? '2px' : undefined,
               }}
             />
@@ -1198,11 +1366,7 @@ export function GrossComposition({
             <dt className="flex items-baseline gap-1.5 font-mono text-2xs tracking-wide text-ink-muted uppercase">
               <span
                 aria-hidden="true"
-                className="inline-block size-2.5 shrink-0 translate-y-px rounded-xs"
-                style={{
-                  backgroundColor:
-                    index === 0 ? 'var(--color-accent-mark)' : 'var(--color-model)',
-                }}
+                className={`inline-block size-2.5 shrink-0 translate-y-px rounded-xs ${compositionMarkClass(index)}`}
               />
               {segment.label}
             </dt>
@@ -1257,12 +1421,18 @@ export interface ReconciliationScaleProps {
 /**
  * Signed GL-versus-subledger variance, positioned around a zero rule.
  *
- * NO COLOUR AT ALL, AND THE ABSENCE IS THE DESIGN. A variance is not a failure. The
+ * NO SIGN COLOUR AT ALL, AND THE ABSENCE IS THE DESIGN. A variance is not a failure. The
  * export's own exception detail says it outright -- "BOTH SIDES ARE VALID DATA...  This
  * is a reconciliation finding to investigate, not a broken record" -- so a red marker
  * for one sign and a green one for the other would publish a judgement the console is
  * not authorized to make. The sign is carried three times instead: by the side of the
  * rule the marker sits on, by the printed amount, and by `directionText`.
+ *
+ * THIS SURVIVED THE SEMANTIC-COLOUR PASS DELIBERATELY. Every marker takes
+ * `data-neutral`, the one token in the vocabulary that means "this mark is not a
+ * verdict", and it takes the same token on both sides of zero. A future edit that
+ * reaches for `data-positive` or `data-negative` here is reversing a decision, not
+ * completing one; the test suite asserts the neutrality rather than trusting this note.
  *
  * A MISSING SIDE IS NOT A ZERO AND IS NOT PLOTTED. `accounting.ts` rule 2: a missing GL
  * balance and a GL balance of $0.00 are different facts, and the second is far more
@@ -1322,7 +1492,7 @@ export function ReconciliationScale({
           {plotted.map((account, index) => (
             <span
               key={account.key}
-              className="absolute size-2.5 -translate-x-1/2 rounded-full border border-canvas bg-ink"
+              className="absolute size-2.5 -translate-x-1/2 rounded-full border border-canvas bg-data-neutral"
               style={{
                 left: percent(offsetOf(account.variance as Exact)),
                 top: `${String(14 + index * 12)}%`,
@@ -1367,7 +1537,7 @@ export function ReconciliationScale({
               >
                 <span className="absolute inset-y-0 left-1/2 w-px bg-line-strong" />
                 <span
-                  className="absolute top-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-ink"
+                  className="absolute top-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-data-neutral"
                   style={{ left: percent(offsetOf(account.variance)) }}
                 />
               </div>

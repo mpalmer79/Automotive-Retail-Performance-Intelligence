@@ -119,6 +119,55 @@
   --arpi-violet-600: #5b45b8;
   --arpi-violet-100: #ece8fa;
 
+  /* The `-50` tier: REGION GROUNDS, not badge washes.
+     ------------------------------------------------
+     A `-100` wash tints a chip a reader looks at for a second. These tint a whole
+     page region that a reader works inside, so they are lighter -- each is its
+     `-100` at three quarters strength over white, resolved to a literal here
+     rather than written as an opacity at the call site.
+
+     RESOLVED, BECAUSE AN OPACITY CANNOT BE MEASURED. `bg-zone-plan/75` makes the
+     real ground a composite of the token and whatever sits behind it, so a
+     contrast test measuring the token alone would be measuring a colour the
+     browser never paints. These are opaque, so the declared value IS the ground,
+     and `tokens.test.ts` checks every text and mark token against all four.
+
+     Headroom at the tightest pair: emerald-600 as text on violet-50 is 4.72:1
+     against the 4.5:1 floor, and teal-450 as a mark on it is 3.65:1 against 3:1.
+     The `-100` tier itself is too dark for this job -- emerald-600 on violet-100
+     measures 4.49:1, which is why this tier exists at all. */
+  --arpi-teal-50: #eaf5fa;
+  --arpi-emerald-50: #e9f7ef;
+  --arpi-amber-50: #fcf4e3;
+  --arpi-violet-50: #f1eefb;
+
+  /* Data-visualisation steps. Added for the executive dashboard's semantic
+     palette, and measured on the same four white grounds as everything above.
+
+     These are MARK colours, not text colours. WCAG 1.4.11 asks 3:1 of a
+     graphical object against what is adjacent to it, and every step below
+     clears that against all four white surfaces:
+
+       emerald-500  #17864d   4.02:1     fresh stock
+       teal-450     #0e86ad   3.64:1     within the project-default threshold
+       amber-700    #8a5a06   5.17:1     at the threshold  (existing step)
+       orange-600   #a8480b   5.09:1     past it
+       rose-700     #8c1b30   7.92:1     far past it
+
+     ADJACENT STEPS ARE NOT 3:1 FROM EACH OTHER, and that is a deliberate,
+     recorded limitation rather than an oversight. Holding five ordered hues
+     apart in LUMINANCE as well as hue would force the fresh end so light that
+     it fails against white, which is the ground it actually sits on. The stack
+     therefore separates its segments structurally instead: a gap of the page
+     background between them, and an age range and a unit count printed beside
+     every band -- in the legend at desktop widths, and on the band's own row
+     below `sm`. Colour orders the bands; it never carries a value alone. */
+  --arpi-emerald-500: #17864d;
+  --arpi-teal-450: #0e86ad;
+  --arpi-orange-600: #a8480b;
+  --arpi-orange-100: #fbeade;
+  --arpi-rose-700: #8c1b30;
+
   /* Inverse text - white and near-white, for the deep-blue panels only. Which
      steps of the field these are legible on is not a matter of judgement:
 
@@ -204,6 +253,69 @@
   --arpi-colour-deferred-wash: var(--arpi-canvas-cool);
 
   --arpi-colour-focus: var(--arpi-teal-500);
+
+  /* ---------------------------------------------------------------------
+     2b. Data visualisation
+
+     ARPI HAS ONE BRAND ACCENT AND IT IS STILL TEAL. This block is a different
+     concept: a vocabulary for CHART MARKS, where colour has to carry meaning
+     the brand accent cannot. A dashboard drawn entirely in one hue makes every
+     figure look equally important, which is the opposite of what an operating
+     surface is for.
+
+     The rule these tokens exist to enforce: a mark is coloured because its
+     MEANING is defensible, never because a number went up. `data-positive` and
+     `data-negative` are for values whose SIGN has meaning -- signed gross
+     movement, a bridge contribution, a variance that crosses zero -- and for
+     comparison against a governed reference such as an explicit target. They
+     are not for "bigger is better": higher aged-inventory percentage and higher
+     gross are not the same direction, and this console publishes no favourable
+     direction for most of its measures.
+
+     Colour is never the only carrier. Every use below is paired with a sign, an
+     arrow, a label, a position or a text state.
+     --------------------------------------------------------------------- */
+
+  /* Sign and threshold semantics. */
+  --arpi-colour-data-positive: var(--arpi-emerald-600);
+  --arpi-colour-data-positive-wash: var(--arpi-emerald-100);
+  --arpi-colour-data-negative: var(--arpi-rose-600);
+  --arpi-colour-data-negative-wash: var(--arpi-rose-100);
+  --arpi-colour-data-warning: var(--arpi-amber-700);
+  --arpi-colour-data-warning-wash: var(--arpi-amber-100);
+
+  /* Categorical series. Identity, never rank. A store keeps its colour across
+     every visual on the page, and the order is the business code. */
+  --arpi-colour-data-primary: var(--arpi-teal-600);
+  --arpi-colour-data-primary-wash: var(--arpi-teal-100);
+  --arpi-colour-data-secondary: var(--arpi-violet-600);
+  --arpi-colour-data-secondary-wash: var(--arpi-violet-100);
+  --arpi-colour-data-tertiary: var(--arpi-link-600);
+
+  /* Non-evaluative marks: a reference rule, an anchor total, a prior period. */
+  --arpi-colour-data-neutral: var(--arpi-ink-600);
+  --arpi-colour-data-muted: var(--arpi-slate-400);
+  --arpi-colour-data-reference: var(--arpi-ink-800);
+
+  /* Inventory age. An ORDERED risk ramp, not a good/bad scale: the 60-day
+     threshold it turns on is a PROJECT DEFAULT, stated in the legend, and not an
+     industry benchmark. */
+  --arpi-colour-data-age-fresh: var(--arpi-emerald-500);
+  --arpi-colour-data-age-early: var(--arpi-teal-450);
+  --arpi-colour-data-age-threshold: var(--arpi-amber-700);
+  --arpi-colour-data-age-aged: var(--arpi-orange-600);
+  --arpi-colour-data-age-critical: var(--arpi-rose-700);
+
+  /* Domain washes. Restrained tints that help the eye find a business area;
+     they carry no state and never encode a value -- the stock region is amber
+     whether the lot is clean or ageing badly. They are drawn from the `-50`
+     region-ground tier and rendered at full opacity, for the reason recorded
+     there. No `zone-*` token is a `data-*` token, so a tint cannot be read as a
+     value. */
+  --arpi-colour-zone-performance: var(--arpi-teal-50);
+  --arpi-colour-zone-plan: var(--arpi-emerald-50);
+  --arpi-colour-zone-inventory: var(--arpi-amber-50);
+  --arpi-colour-zone-funnel: var(--arpi-violet-50);
 
   /* ---------------------------------------------------------------------
      3. Typography

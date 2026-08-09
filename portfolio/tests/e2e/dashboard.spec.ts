@@ -14,7 +14,14 @@
  */
 import { expect, test, type Page } from '@playwright/test'
 
-import { bodyText, gotoRendered, mainText, mainTextContent } from './helpers'
+import {
+  bodyText,
+  gotoRendered,
+  mainText,
+  mainTextContent,
+  openDetailRegions,
+  settle,
+} from './helpers'
 import {
   DASHBOARD_NAV_ROUTES,
   DASHBOARD_ROUTES,
@@ -92,7 +99,13 @@ test.describe('the console route exists and is reachable', () => {
     await expect(crumbs).toBeVisible()
     await expect(crumbs.getByRole('link', { name: 'Overview' })).toBeVisible()
     const current = crumbs.locator('[aria-current="page"]')
-    await expect(current).toHaveText(/Dealer Operations Command Center/)
+    // "Command center", which is what the console's own navigation calls this route.
+    // The full name is on the eyebrow immediately below, and carrying it twice five
+    // pixels apart was the header repeating itself.
+    await expect(current).toHaveText(/Command center/)
+    await expect(page.locator('main .eyebrow').first()).toHaveText(
+      /Dealer Operations Command Center/i
+    )
     expect(await current.evaluate((node) => node.tagName)).not.toBe('A')
   })
 
@@ -110,9 +123,28 @@ test.describe('the console route exists and is reachable', () => {
 /* Disclosure                                                                  */
 /* -------------------------------------------------------------------------- */
 
+/*
+ * WHAT MOVED, AND WHAT THESE TESTS NOW PROVE.
+ *
+ * The trust evidence and the synthetic statement are behind the "Data and methodology"
+ * disclosure rather than occupying a page region. That is a presentation change and the
+ * suite has to be able to tell it apart from a deletion, so each claim is now asserted
+ * TWICE: once against the served HTML with the disclosure shut, which proves the words
+ * are still in the document for a text search, a printer and a reader with no
+ * JavaScript; and once against the rendered text with it open, which proves they are
+ * reachable rather than merely present.
+ *
+ * The first half is the one that would catch a real regression. A disclosure that never
+ * opened would still pass a `textContent` sweep, which is why the second half exists.
+ */
+const EVIDENCE_REGIONS = ['trust'] as const
+
 test.describe('the console states what it is, in its own body', () => {
   test('carries the synthetic statement in full', async ({ page }) => {
     await gotoRendered(page, ROUTE)
+    const served = await mainTextContent(page)
+    expect(served).toContain('Every warehouse record in this project is synthetic')
+    await openDetailRegions(page, EVIDENCE_REGIONS)
     const text = await mainText(page)
     expect(text).toContain('Every warehouse record in this project is synthetic')
     expect(text).toContain('Granite Auto Group and its three stores are fictional')
@@ -132,6 +164,7 @@ test.describe('the console states what it is, in its own body', () => {
     page,
   }) => {
     await gotoRendered(page, ROUTE)
+    await openDetailRegions(page, EVIDENCE_REGIONS)
     const text = await mainText(page)
     expect(text).toContain('Real-engine validation pending')
     expect(text).toContain(
@@ -147,6 +180,10 @@ test.describe('the console states what it is, in its own body', () => {
     page,
   }) => {
     await gotoRendered(page, ROUTE)
+    // Asserted against the served HTML first: a collapsed disclosure must not be able
+    // to make a pending gate look like a gate nobody mentioned.
+    expect(await mainTextContent(page)).toContain('Gate 2 remains CLOSED')
+    await openDetailRegions(page, EVIDENCE_REGIONS)
     const text = await mainText(page)
     expect(text).toContain('Gate 2 remains CLOSED')
     expect(text).toContain('may not be cited as Gate 2 evidence')
@@ -156,6 +193,7 @@ test.describe('the console states what it is, in its own body', () => {
     page,
   }) => {
     await gotoRendered(page, ROUTE)
+    await openDetailRegions(page, EVIDENCE_REGIONS)
     const text = await mainText(page)
     for (const label of [
       'Export reconciliation',
@@ -254,7 +292,8 @@ test.describe('the accounting integrity signal', () => {
   test('states the comparison date and the direction in words', async ({ page }) => {
     await gotoRendered(page, ROUTE)
     const text = await mainText(page)
-    expect(text).toContain('Whether the stock schedule and the general ledger agree')
+    expect(text).toContain('Whether the ledger agrees, and what this console can prove')
+    expect(text).toContain('Stock schedule against the general ledger')
     expect(text).toContain('31 December 2025')
     expect(text).toMatch(
       /the general ledger carries more than the subledger|the subledger carries more than the general ledger|the two sides agree exactly/
@@ -353,16 +392,16 @@ test.describe('changing the filter changes the geometry', () => {
      * values differ.
      */
     await gotoRendered(page, `${ROUTE}?store=GSA-001,GSA-002`)
-    const first = await drawnWidths(page, '#operating [style*="width"]')
+    const first = await drawnWidths(page, '#group-performance [style*="width"]')
     await gotoRendered(page, `${ROUTE}?store=GSA-002,GSA-003`)
-    const second = await drawnWidths(page, '#operating [style*="width"]')
+    const second = await drawnWidths(page, '#group-performance [style*="width"]')
     expect(first.length).toBeGreaterThan(0)
     expect(first).not.toEqual(second)
   })
 
   test('three stores produce three different bar lengths', async ({ page }) => {
     await gotoRendered(page, ROUTE)
-    const widths = await drawnWidths(page, '#operating [style*="width"]')
+    const widths = await drawnWidths(page, '#group-performance [style*="width"]')
     expect(widths.length).toBeGreaterThanOrEqual(3)
     // Not all the same: the group view is the case a fixed-width bar would pass.
     expect(new Set(widths).size).toBeGreaterThan(1)
@@ -372,18 +411,18 @@ test.describe('changing the filter changes the geometry', () => {
     page,
   }) => {
     await gotoRendered(page, `${ROUTE}?store=GSA-001`)
-    const widths = await drawnWidths(page, '#operating [style*="width"]')
+    const widths = await drawnWidths(page, '#group-performance [style*="width"]')
     expect(widths.every((width) => width === '100%')).toBe(true)
     expect(await mainText(page)).toContain('there is nothing to compare it against')
   })
 
   test('two periods produce a different trend shape', async ({ page }) => {
     await gotoRendered(page, `${ROUTE}?period=2025-12`)
-    const december = await page.$$eval('#operating [style*="height"]', (nodes) =>
+    const december = await page.$$eval('#group-performance [style*="height"]', (nodes) =>
       nodes.map((node) => (node as HTMLElement).style.height)
     )
     await gotoRendered(page, `${ROUTE}?period=2025-09`)
-    const september = await page.$$eval('#operating [style*="height"]', (nodes) =>
+    const september = await page.$$eval('#group-performance [style*="height"]', (nodes) =>
       nodes.map((node) => (node as HTMLElement).style.height)
     )
     expect(december.length).toBeGreaterThan(0)
@@ -417,7 +456,7 @@ test.describe('changing the filter changes the geometry', () => {
      * second read path, these two would disagree for at least one store.
      */
     await gotoRendered(page, `${ROUTE}?period=2025-11`)
-    const compared = await page.$$eval('#operating table tbody tr', (rows) =>
+    const compared = await page.$$eval('#group-performance table tbody tr', (rows) =>
       rows.map((row) =>
         [...row.querySelectorAll('th,td')].map((cell) => (cell.textContent ?? '').trim())
       )
@@ -544,6 +583,7 @@ test.describe('targets and selling-day pace', () => {
 
   test('renders the scoreboard pace column for every store', async ({ page }) => {
     await gotoRendered(page, ROUTE)
+    await openDetailRegions(page, ['store-scoreboard'])
     const text = await mainText(page)
     expect(text).toContain('Pace against plan')
     expect(text).toMatch(/projected \//)
@@ -571,6 +611,8 @@ test.describe('targets and selling-day pace', () => {
 test.describe('the store scoreboard', () => {
   test('names all three stores and their operating models', async ({ page }) => {
     await gotoRendered(page, ROUTE)
+    expect(await mainTextContent(page)).toContain('Franchise New and Used')
+    await openDetailRegions(page, ['store-scoreboard'])
     const text = await mainText(page)
     for (const store of ['Granite Chevrolet', 'Granite Subaru', 'Granite Pre-Owned']) {
       expect(text, store).toContain(store)
@@ -583,6 +625,7 @@ test.describe('the store scoreboard', () => {
     page,
   }) => {
     await gotoRendered(page, ROUTE)
+    await openDetailRegions(page, ['store-scoreboard'])
     const table = page.getByRole('table', { name: /store scoreboard/i })
     const row = table.getByRole('row', { name: /Granite Pre-Owned/ })
     await expect(row).toContainText('Not applicable')
@@ -596,10 +639,12 @@ test.describe('the store scoreboard', () => {
     // readings of the same row.
     await page.setViewportSize({ width: 1440, height: 900 })
     await gotoRendered(page, ROUTE)
+    await openDetailRegions(page, ['store-scoreboard'])
     expect(await page.getByRole('table', { name: /store scoreboard/i }).count()).toBe(1)
 
     await page.setViewportSize({ width: 390, height: 844 })
     await gotoRendered(page, ROUTE)
+    await openDetailRegions(page, ['store-scoreboard'])
     expect(
       await page.getByRole('table', { name: /store scoreboard/i }).count(),
       'the wide table is still in the accessibility tree at 390px'
@@ -619,8 +664,11 @@ test.describe('the inventory summary', () => {
     await gotoRendered(page, ROUTE)
     const text = await mainText(page)
     expect(text).toContain('31 December 2025')
-    expect(text).toContain('60 days in stock')
-    expect(text).toContain('a project default')
+    // Stated ON the age stack now, beside the ramp that turns at it, rather than in a
+    // paragraph above the KPI cards. The number and the words "project default" are the
+    // claim; where they sit is presentation.
+    expect(text).toContain('60-day')
+    expect(text).toContain('project default')
     expect(text).not.toContain('industry standard threshold')
   })
 
@@ -769,8 +817,10 @@ test.describe('KPI methodology', () => {
     page,
   }) => {
     await gotoRendered(page, ROUTE)
+    expect(await mainTextContent(page)).toContain('Management actions')
+    await openDetailRegions(page, ['not-built'])
     const text = await mainText(page)
-    expect(text).toContain('What this console does not do yet')
+    expect(text).toContain('What is not built yet')
     expect(text).toContain('DASH.12')
     expect(text).toContain('Management actions')
     // Named, not mocked: no invented action, alert or recommendation.
@@ -822,6 +872,7 @@ test.describe('responsive behaviour', () => {
   test('renders every value with reduced motion requested', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await gotoRendered(page, ROUTE)
+    await openDetailRegions(page, EVIDENCE_REGIONS)
     const text = await mainText(page)
     expect(text).toContain('KPI-SLS-001')
     expect(text).toContain('Granite Pre-Owned')
@@ -971,6 +1022,184 @@ test.describe('the console keeps operational copy dense', () => {
       for (const forbidden of ['save', 'assign', 'notify', 'export to', 'refresh']) {
         expect(label, `a control offers "${forbidden}"`).not.toContain(forbidden)
       }
+    }
+  })
+})
+
+/* -------------------------------------------------------------------------- */
+/* Density, and what collapsing a region must not cost                        */
+/* -------------------------------------------------------------------------- */
+
+test.describe('the console reads as an instrument rather than as a report', () => {
+  /**
+   * WHY A CEILING RATHER THAN AN EXACT COUNT. The measured figure at the time this was
+   * written is 1,003 visible prose words, down from 1,744 -- a 42.5% reduction. Pinning
+   * the exact number would fail on any honest copy edit, which is not a defect. The
+   * ceiling is set at 1,300: comfortably above the current page, and far enough below
+   * the 1,744 it replaced that the console cannot drift back into being a document
+   * without this failing first.
+   *
+   * A "prose word" is a word inside a rendered paragraph of eight words or more.
+   * Shorter paragraphs are labels, units and values -- the figures the page exists for
+   * -- and counting those would penalise the console for carrying data.
+   */
+  const PROSE_CEILING = 1_300
+
+  async function visibleProse(
+    page: Page
+  ): Promise<{ words: number; paragraphs: number }> {
+    await settle(page)
+    return page.evaluate(() => {
+      const main = document.querySelector('main')
+      if (main === null) return { words: 0, paragraphs: 0 }
+      let words = 0
+      let paragraphs = 0
+      for (const element of main.querySelectorAll('p')) {
+        const style = getComputedStyle(element)
+        if (style.display === 'none' || style.visibility === 'hidden') continue
+        if (element.closest('.sr-only') !== null) continue
+        const details = element.closest('details')
+        if (details !== null && !details.open) continue
+        const count = (element.innerText || '').trim().split(/\s+/).filter(Boolean).length
+        if (count < 8) continue
+        words += count
+        paragraphs += 1
+      }
+      return { words, paragraphs }
+    })
+  }
+
+  test('carries less prose than a documentation route would', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await gotoRendered(page, ROUTE)
+    const { words } = await visibleProse(page)
+    expect(words, `visible prose words: ${String(words)}`).toBeLessThan(PROSE_CEILING)
+  })
+
+  test('groups the console into five regions rather than nine', async ({ page }) => {
+    await gotoRendered(page, ROUTE)
+    // One `h2` per region. The count is the structure a reader navigating by heading
+    // gets, which is the thing the consolidation was for.
+    const regions = await page.locator('main h2').count()
+    expect(regions).toBeLessThanOrEqual(5)
+    expect(regions).toBeGreaterThanOrEqual(4)
+  })
+
+  test('opens on figures, with no region that only explains the page', async ({
+    page,
+  }) => {
+    await gotoRendered(page, ROUTE)
+    const headings = await page.locator('main h2').allInnerTexts()
+    for (const heading of headings) {
+      expect(heading.toLowerCase()).not.toContain('does not do yet')
+    }
+  })
+
+  test('collapsing a region costs a click and nothing else', async ({ page }) => {
+    /*
+     * The claim the disclosures rest on. Every word of the scoreboard, the trust
+     * evidence and the delivery backlog is in the served document while all three are
+     * shut -- so a browser text search, a printer, an assistive technology reading the
+     * document and a reader with no JavaScript all still have them.
+     */
+    await gotoRendered(page, ROUTE)
+    const served = await mainTextContent(page)
+    for (const claim of [
+      'Franchise New and Used',
+      'Every warehouse record in this project is synthetic',
+      'Gate 2 remains CLOSED',
+      'Management actions',
+      'DASH.11',
+    ]) {
+      expect(served, claim).toContain(claim)
+    }
+  })
+
+  test('every collapsed region opens from the keyboard and reports its state', async ({
+    page,
+  }) => {
+    await gotoRendered(page, ROUTE)
+    for (const id of ['store-scoreboard', 'trust', 'not-built']) {
+      const summary = page.locator(`details#${id} > summary`)
+      await expect(summary, id).toHaveCount(1)
+      await summary.focus()
+      await page.keyboard.press('Enter')
+      await expect(page.locator(`details#${id}`), id).toHaveAttribute('open', '')
+    }
+  })
+
+  test('keeps the anchors the collapsed regions used to carry', async ({ page }) => {
+    // Three of these were page regions. An anchor that stops resolving is a broken link
+    // even when the content is still on the page.
+    await gotoRendered(page, ROUTE)
+    for (const id of [
+      'group-performance',
+      'targets',
+      'composition',
+      'store-scoreboard',
+    ]) {
+      await expect(page.locator(`#${id}`), id).toHaveCount(1)
+    }
+  })
+})
+
+test.describe('colour is a second reading and never the only one', () => {
+  test('draws the age ramp as five distinct tokens, each with its count in text', async ({
+    page,
+  }) => {
+    await gotoRendered(page, ROUTE)
+    const stack = page.locator('figure', { hasText: 'Age distribution' }).first()
+    const fills = await stack.evaluate((node) =>
+      [...node.querySelectorAll('[class*="bg-data-age-"]')].map((mark) =>
+        [...mark.classList].find((name) => name.startsWith('bg-data-age-'))
+      )
+    )
+    expect(new Set(fills).size).toBeGreaterThanOrEqual(4)
+
+    // And the same bands, as text, in the legend and again in the table.
+    const text = await stack.innerText()
+    for (const band of ['0-30', '31-60', '61-90', '91-120', 'Over 120']) {
+      expect(text, band).toContain(band)
+    }
+  })
+
+  test('paints the same neutral mark on both sides of the reconciliation zero', async ({
+    page,
+  }) => {
+    await gotoRendered(page, ROUTE)
+    const marks = await page.$$eval(
+      '#accounting-integrity [class*="rounded-full"]',
+      (nodes) =>
+        nodes
+          .map((node) => [...node.classList].filter((name) => name.startsWith('bg-')))
+          .flat()
+    )
+    expect(marks.length).toBeGreaterThan(0)
+    for (const mark of marks) {
+      expect(mark, 'a variance is coloured by its sign').not.toMatch(
+        /^bg-data-(positive|negative|warning)$/
+      )
+    }
+  })
+
+  test('renders the region tints as backgrounds that carry no state', async ({
+    page,
+  }) => {
+    await gotoRendered(page, ROUTE)
+    const grounds = await page.evaluate(() =>
+      ['group-performance', 'targets', 'composition'].map((id) => {
+        const region = document.getElementById(id)
+        return region === null ? null : getComputedStyle(region).backgroundColor
+      })
+    )
+    // Three distinct, opaque tints. Opaque matters: a translucent wash makes the real
+    // ground a composite, and the contrast floor is measured against the token.
+    expect(new Set(grounds).size).toBe(3)
+    for (const ground of grounds) {
+      expect(ground).not.toBeNull()
+      expect(ground, 'a region tint is translucent').not.toMatch(
+        /rgba\([^)]*,\s*0?\.\d+\)/
+      )
     }
   })
 })

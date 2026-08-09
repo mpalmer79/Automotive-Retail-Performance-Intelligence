@@ -145,9 +145,17 @@ export function LeadFunnel({
                       </span>
                     ) : (
                       <span className="flex items-center gap-2">
+                        {/*
+                         * ONE HUE, AND NO RAMP DOWN THE STAGES. A funnel is a NESTING
+                         * -- each stage is a subset of the one above it -- so the
+                         * narrowing width already carries the whole progression. A
+                         * colour ramp over the stages would have to say which end is
+                         * the good end, and this console publishes no governed
+                         * favourable direction for conversion.
+                         */}
                         <span
                           aria-hidden="true"
-                          className="h-3 min-w-px rounded-pill bg-accent-mark"
+                          className="h-3 min-w-px rounded-pill bg-data-primary"
                           style={{ width: `${(share * 100).toFixed(1)}%` }}
                         />
                         <span className="numeric shrink-0 text-2xs text-ink-faint">

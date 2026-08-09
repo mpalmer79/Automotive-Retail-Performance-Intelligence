@@ -52,6 +52,33 @@
   --color-link: var(--arpi-colour-link);
 
   --color-model: var(--arpi-colour-model);
+
+  /* Data-visualisation marks. See tokens.css §2b: one brand accent, a separate
+     chart vocabulary. Bound here so a component writes `bg-data-positive` rather
+     than reaching for a hex. */
+  --color-data-positive: var(--arpi-colour-data-positive);
+  --color-data-positive-wash: var(--arpi-colour-data-positive-wash);
+  --color-data-negative: var(--arpi-colour-data-negative);
+  --color-data-negative-wash: var(--arpi-colour-data-negative-wash);
+  --color-data-warning: var(--arpi-colour-data-warning);
+  --color-data-warning-wash: var(--arpi-colour-data-warning-wash);
+  --color-data-primary: var(--arpi-colour-data-primary);
+  --color-data-primary-wash: var(--arpi-colour-data-primary-wash);
+  --color-data-secondary: var(--arpi-colour-data-secondary);
+  --color-data-secondary-wash: var(--arpi-colour-data-secondary-wash);
+  --color-data-tertiary: var(--arpi-colour-data-tertiary);
+  --color-data-neutral: var(--arpi-colour-data-neutral);
+  --color-data-muted: var(--arpi-colour-data-muted);
+  --color-data-reference: var(--arpi-colour-data-reference);
+  --color-data-age-fresh: var(--arpi-colour-data-age-fresh);
+  --color-data-age-early: var(--arpi-colour-data-age-early);
+  --color-data-age-threshold: var(--arpi-colour-data-age-threshold);
+  --color-data-age-aged: var(--arpi-colour-data-age-aged);
+  --color-data-age-critical: var(--arpi-colour-data-age-critical);
+  --color-zone-performance: var(--arpi-colour-zone-performance);
+  --color-zone-plan: var(--arpi-colour-zone-plan);
+  --color-zone-inventory: var(--arpi-colour-zone-inventory);
+  --color-zone-funnel: var(--arpi-colour-zone-funnel);
   --color-model-wash: var(--arpi-colour-model-wash);
 
   --color-verified: var(--arpi-colour-verified);

@@ -102,3 +102,33 @@ export function affirmativeSentences(text: string, pattern: RegExp): string[] {
         !/\b(no|not|never|none|nothing|nobody|cannot|neither)\b/i.test(sentence)
     )
 }
+
+/**
+ * Open the console's collapsed detail regions, so a visible-text assertion can read
+ * what a reader would read after one click.
+ *
+ * THE EXECUTIVE CONSOLE MOVED THREE BODIES OF DETAIL BEHIND `<details>` -- the ten-column
+ * store scoreboard, the trust evidence and the delivery backlog. Nothing was removed:
+ * `mainTextContent` still finds every word of all three in the served HTML with scripting
+ * off, and the suite asserts that separately. What this helper is for is the OTHER half
+ * of the claim, which a `textContent` sweep cannot make: that the content becomes
+ * genuinely visible, laid out and in the accessibility tree, when the disclosure opens.
+ *
+ * Setting `open` rather than clicking, because the assertion under test is about the
+ * content and not about the summary's hit area -- the keyboard and pointer behaviour of a
+ * native `<summary>` is the platform's, and `dashboard.spec.ts` exercises it once on the
+ * KPI methodology disclosure rather than on every region.
+ *
+ * Requires scripting. A no-JavaScript test wants `mainTextContent` instead, which is the
+ * stronger assertion in that context anyway.
+ */
+export async function openDetailRegions(
+  page: Page,
+  ids: readonly string[]
+): Promise<void> {
+  for (const id of ids) {
+    await page.locator(`details#${id}`).evaluate((node) => {
+      ;(node as HTMLDetailsElement).open = true
+    })
+  }
+}

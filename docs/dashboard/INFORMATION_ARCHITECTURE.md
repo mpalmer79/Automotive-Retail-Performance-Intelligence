@@ -98,39 +98,62 @@ selling days"), the rate per selling day, and the **selling-day pace projection*
 actual and the target, never alone.
 
 **As-built (visual overhaul).** `/dashboard` no longer runs as nine independently-padded page
-sections. It runs as **seven rows on a twelve-column console grid**, at `Container width="full"`
-(96rem) with `Section rhythm="tight"`:
+sections. It ran as seven rows on a twelve-column console grid, and now runs as **five regions** on
+the same grid, at `Container width="full"` (96rem) with `Section rhythm="tight"`.
 
-| Row | `id` | Contents | Grid at ≥1280px |
+**As-built (semantic-colour and density pass).** Seven rows was one region per *component*. Five is
+one region per *question a general manager asks*, which is the arrangement below:
+
+| Region | `id` | Question | Contents | Grid at ≥1280px | Ground |
+|---|---|---|---|---|---|
+| 1 | `#context` | what am I looking at, and how do I change it | banners, context rail, filter bar | 12 | evidence |
+| 2 | `#group-performance` | how did the group do, over what shape, and which store is different | seven KPI cards with their own microtrends · operating trend · three-store comparison | 12, then 7 / 5 | `zone-performance` |
+| 3 | `#targets` | where is the month against plan, and what is standing on the lot | targets and pace · inventory risk, the age stack and the `/dashboard/inventory` drill-through | 5 / 7 | `zone-plan`, with the stock pane on `zone-inventory` |
+| 4 | `#composition` | what produced the units, and what the gross was made of | gross composition and unit mix · lead funnel and the `/dashboard/leads-marketing` drill-through | 7 / 5 | `zone-funnel` |
+| 5 | `#accounting-integrity` | does the ledger agree, and what can this console prove | the GL-versus-subledger scale and its `/dashboard/accounting` drill-through, then three disclosures: `#store-scoreboard`, `#trust`, `#not-built` | 12 | evidence |
+
+Measured against the seven-row arrangement, at 1440×900 and 390×844:
+
+| | Before | After | Change |
 |---|---|---|---|
-| 1 | `#context` | banners, context rail, filter bar | 12 |
-| 2 | `#group-performance` | seven KPI cards, each with its own microtrend | 12 |
-| 3 | `#operating` | operating trend · three-store comparison | 7 / 5 |
-| 4 | `#targets` | targets and pace · inventory risk, age stack and the `/dashboard/inventory` drill-through | 5 / 7 |
-| 5 | `#composition` | gross composition and unit mix · lead funnel | 7 / 5 |
-| 6 | `#accounting-integrity` | GL-versus-subledger reconciliation scale, and the `/dashboard/accounting` drill-through | 12 |
-| 7 | `#store-scoreboard`, `#trust`, `#not-built` | the ten-column table, the evidence, what is absent | 12 |
+| Visible prose words | 1,744 | 1,003 | −42.5% |
+| Prose paragraphs | 61 | 39 | −36.1% |
+| All visible words | 3,541 | 2,407 | −32.0% |
+| Region headings (`h2`) | 8 | 4 | −50% |
+| Page height, desktop | 11,595 px | 8,731 px | −24.7% |
+| Page height, mobile | 23,762 px | 17,095 px | −28.1% |
 
-Three things about this arrangement are load-bearing rather than aesthetic.
+Five things about this arrangement are load-bearing rather than aesthetic.
 
-- **The reading order is `SEE → COMPARE → INVESTIGATE → READ DETAILS`.** The previous order asked a
-  reader to read roughly a thousand words of always-visible prose before the first comparison they
-  could make by eye, and only three parts of the page carried data-driven geometry at all. Nine
+- **The reading order is `SEE → COMPARE → INVESTIGATE → PROVE`.** The original order asked a reader
+  to read roughly a thousand words of always-visible prose before the first comparison they could
+  make by eye, and only three parts of the page carried data-driven geometry at all. Nine
   visualisations now do, every one of them drawn from a governed selector.
-- **The store scoreboard moved DOWN, to row 7.** Row 3 carries the *comparison* — two governed
-  measures across the stores as bars. The ten-column table is the *investigation*, and putting a
-  report third inverts the hierarchy the rest of the page establishes. Both are on the page; neither
-  replaces the other.
-- **Row 6 is the `DASH.9-03` executive signal, and it drills through.** `DASH.9` delivered the
+- **The KPI row, the trend and the store comparison are one region.** They are one question read at
+  three grains — the figure, its shape, and whose it is — and separating them cost two headings, two
+  eyebrows and two paragraphs while putting the store bars outside the eyeline of the figure they
+  decompose.
+- **The store scoreboard is a disclosure, not a region.** Region 2 carries the *comparison* — two
+  governed measures across the stores, as bars. The ten-column table is the *investigation*, and a
+  report is not what an operating console opens with. Both are on the page; neither replaces the
+  other.
+- **`<details>` collapses, it does not remove.** The scoreboard, the trust evidence and the delivery
+  backlog are all in the served document while shut: in the accessibility tree's reading order, in a
+  browser text search, in print, and with scripting off. `dashboard.spec.ts` asserts each claim
+  twice — once against the served HTML with the disclosure closed, and once against the rendered
+  text with it open — because a `textContent` sweep alone would pass for a disclosure that never
+  opened. The three `id`s moved onto the `<details>` elements so the anchors still resolve. The two
+  disclosures that can answer without matching rows render even when the filter matches nothing: a
+  reader whose filter returned nothing is the reader most likely to be asking what the data is.
+- **Region 5 is the `DASH.9-03` executive signal, and it drills through.** `DASH.9` delivered the
   reconciliation view model, its tests and the narrow data door, and `accounting-data.ts` records
-  that the 43-row GL comparison set "IS the Executive summary" for this route. This row reads that
+  that the 43-row GL comparison set "IS the Executive summary" for this route. This region reads that
   set and nothing else — the 360 kB of per-unit book values in `accounting-chunks.ts` stay with
   `/dashboard/accounting`, and `dashboard-boundaries.test.ts` fails the build if this route opens
-  them. What changed with the final `DASH.9` increment is the destination: both operating routes are
-  now built, so row 6 links to `/dashboard/accounting` and row 4's inventory pane links to
-  `/dashboard/inventory`. The link is the reason the Executive row can stay a summary — a reader who
-  needs the four comparison states account by account, or the units behind the age stack, follows it
-  rather than having the detail reproduced here.
+  them. Both operating routes are built, so region 5 links to `/dashboard/accounting` and region 3's
+  inventory pane links to `/dashboard/inventory`. The link is the reason the Executive region can
+  stay a summary — a reader who needs the four comparison states account by account, or the units
+  behind the age stack, follows it rather than having the detail reproduced here.
 
   `dashboard.spec.ts` asserts both drill-throughs positively, by clicking them and checking the
   destination's `h1`. The negative it replaced — "links to no accounting route, because none is
@@ -141,13 +164,22 @@ Three things about this arrangement are load-bearing rather than aesthetic.
   reader's current filters. `/dashboard/employees` and `/dashboard/actions` are still asserted
   unreachable from every console route and still asserted to 404 when fetched directly.
 
-Prose that moved rather than prose that was deleted: the nine section ledes are compressed to one
-line each and set beside their headings rather than under them; the full `SYNTHETIC_DATA_STATEMENT`
-moved from above the KPI row into row 7 with the rest of the evidence; the contribution and mix
-qualifications moved into per-figure disclosures. Four caveats stayed visible because a figure read
-without them is misleading rather than merely unqualified: the lead-creation cohort caveat, the
-semi-additive snapshot statement, the aged-threshold project default, and the statement that the
-funnel share column is not a governed KPI.
+**A region's ground marks a business area and encodes no state.** The stock area is amber whether the
+lot is clean or ageing badly. Every ground is a `zone-*` token and none of them is a `data-*` token,
+so a tint can never be mistaken for a value — `dashboard-visual-refinement.test.tsx` asserts the two
+vocabularies share no value. The grounds are opaque rather than a fractional opacity, because a
+translucent wash makes the real ground a composite and the contrast floor is measured against the
+token; all four therefore join the four whites in `tokens.test.ts`.
+
+Prose that moved rather than prose that was deleted: the region ledes are one sentence or absent
+entirely; the full `SYNTHETIC_DATA_STATEMENT` sits in the "Data and methodology" disclosure; the
+contribution and mix qualifications are in per-figure disclosures; three chart summaries are
+`sr-only` because the component below each already prints every figure the sentence carries. The
+caveats that stayed visible are the ones a figure would be **misread** without: the lead-creation
+cohort caveat, the semi-additive snapshot statement, the aged-threshold project default — now printed
+on the age stack itself, where the colour ramp turns on it — the statement that the funnel share
+column is not a governed KPI, and one sentence naming what the console's colour does and does not
+mean.
 
 2. One `h1` per route; no skipped heading level (existing sweep rule).
 3. Section order is fixed per page and documented in that page's increment item — summary first,

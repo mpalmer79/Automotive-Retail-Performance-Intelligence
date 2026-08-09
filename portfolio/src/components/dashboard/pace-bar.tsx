@@ -17,14 +17,29 @@
  * length difference. There is no tooltip anywhere in this file: a figure a reader has
  * to hover to obtain is a figure a keyboard user and a phone user do not have.
  *
- * NO COLOUR CARRIES MEANING
- * -------------------------
- * The fill is one neutral accent, at any attainment. There is no green for ahead and no
- * red for behind, because ARPI has no governed favourable direction for these measures
- * and inventing one would publish a judgement the console is not authorized to make
- * (ADR-0013). Over 100% is marked with a visible overflow rule and the words, not with
- * a colour change. The one comparison sentence the component writes is factual —
- * "6 units above target" — and never evaluative.
+ * COLOUR CHANGES AT ONE BOUNDARY AND NOWHERE ELSE
+ * -----------------------------------------------
+ * The fill is one neutral accent at every attainment below 100%, and the positive data
+ * token at 100% and above. That single step is the whole of the colour semantics here,
+ * and the restraint is the point:
+ *
+ *   - THERE IS NO RED FOR BEHIND, and there must not be. A store at 40% attainment on
+ *     the twelfth selling day of the month is not behind; that is what the selling-day
+ *     marker on the track exists to show. Colouring a below-100% bar would publish a
+ *     verdict the elapsed clock contradicts.
+ *   - THERE IS NO RAMP. Nothing shades from amber at 80% to green at 100%. Any such
+ *     ramp encodes thresholds ARPI has not governed and did not publish.
+ *   - THE BOUNDARY IS DEFENSIBLE BECAUSE THE BUSINESS SET IT. This is the narrow case
+ *     ADR-0013 leaves open: the console may not invent a favourable direction, but a
+ *     target IS an explicit governed reference the business itself published, and
+ *     "the plan was met" is a fact about that reference rather than a judgement about
+ *     the store. Attainment is the only measure on this console that has one.
+ *
+ * Colour is never the only carrier. Over 100% still shows the visible overflow rule at
+ * the end of the track, the attainment percentage sits beside the bar in text, and the
+ * accessible summary states the actual, the target and the attainment in words. The one
+ * comparison sentence the component writes stays factual — "6 units above target" — and
+ * never evaluative.
  *
  * NO GAUGE, NO SPEEDOMETER, NO CHART LIBRARY
  * ------------------------------------------
@@ -129,7 +144,12 @@ export function PaceBar({
       >
         {targetText === null ? null : (
           <div
-            className="absolute inset-y-0 left-0 rounded-full bg-accent-muted"
+            className={cx(
+              'absolute inset-y-0 left-0 rounded-full',
+              // `overflow` is `ratio >= 1` exactly, so the step lands on the boundary
+              // and not near it. Below it, the neutral accent -- never a warning.
+              overflow ? 'bg-data-positive' : 'bg-accent-muted'
+            )}
             style={{ width: `${String(Math.round(fill * 1000) / 10)}%` }}
           />
         )}

@@ -913,6 +913,55 @@ profile for this route. Section 10 is unchanged by this increment.
 
 ---
 
+## 9.9 The semantic-colour and density pass, measured
+
+Measured by `npm run bundle` against two production builds served locally, cold, compressed, on
+9 August 2026. The **baseline is `origin/main` at `d138c2b`** — the `DASH.10` merge, the leads and
+marketing route built — checked out into a separate worktree and measured the same way in the same
+session, so the delta below is this change and nothing else.
+
+| `/dashboard`                |       Before |        After |       Delta |
+| --------------------------- | -----------: | -----------: | ----------: |
+| HTML                        |     135.5 kB | **134.5 kB** | **−1.0 kB** |
+| Route JavaScript            |     164.8 kB | **164.8 kB** |  **0.0 kB** |
+| CSS                         |      14.7 kB |      15.3 kB |     +0.6 kB |
+| Fonts                       |     114.3 kB |     114.3 kB |      0.0 kB |
+| **Total, route cost alone** | **430.6 kB** | **430.1 kB** | **−0.5 kB** |
+| Filtered view, HTML         |     123.2 kB |     121.9 kB |     −1.3 kB |
+
+**Still zero bytes of client JavaScript, and the number did not move at all.** 164.8 kB before and
+after — the console's shared shell plus the one client island, the filter bar. Nothing in this pass
+needed a script: five semantic colour tokens applied as class names, a palette tier, three native
+`<details>` elements and a region merge are all server-rendered CSS and HTML. The `DASH.3-02`
+decision holds for a third increment.
+
+**42.5% less prose bought 1.0 kB of HTML, and the arithmetic is the point.** 741 words left the
+visible page and the document shrank by less than one percent. Two reasons, and both are the design
+working rather than the measurement disappointing:
+
+- **A disclosure collapses, it does not delete.** The scoreboard, the trust evidence and the
+  delivery backlog are still in the served HTML, byte for byte, because that is what makes them
+  available to a text search, a printer, an assistive technology and a reader with no JavaScript.
+  Moving them behind `<details>` was an information-architecture change and was never a payload
+  change.
+- **Prose was never the weight.** §9.2 and §9.8 both recorded where this route's HTML actually goes,
+  and it is the same answer twice: methodology disclosures and per-figure markup. A thousand words
+  of English compress to roughly a kilobyte; twenty-four repeated KPI definitions do not.
+
+**CSS grew by 0.6 kB, and that is the whole cost of the colour vocabulary.** Nineteen semantic
+`data-*` tokens, four `zone-*` grounds, four new `-50` palette primitives and five new mark colours,
+plus the utilities Tailwind emits for the class names that reference them. It buys every visual on
+the page a colour that means something.
+
+**What did not change.** No dataset door opened or closed; the server graph is identical to §9.8's.
+No SQL, no KPI definition, no selector arithmetic and no exported value was touched, so every figure
+on the page is the same figure the previous build served.
+
+**Not measured, and not claimed.** No Lighthouse run, no LCP, no CLS, no INP and no throttled
+profile. Section 10 is unchanged by this increment.
+
+---
+
 ## 10. What has not been measured
 
 Stated rather than implied.

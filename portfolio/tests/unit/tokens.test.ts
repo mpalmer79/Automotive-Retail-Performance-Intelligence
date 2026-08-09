@@ -301,6 +301,17 @@ describe('every text colour clears the WCAG AA floor on every ground', () => {
     return value ?? ''
   }
 
+  /** Follow a `var(--arpi-*)` alias to the literal it resolves to. */
+  function resolved(name: string): string {
+    let current = token(name)
+    let hops = 0
+    while (current.startsWith('var(') && hops < 8) {
+      current = token(current.replace(/var\(|\)/g, '').trim())
+      hops += 1
+    }
+    return current
+  }
+
   /** Every white surface that can carry text. */
   const whiteGrounds = [
     '--arpi-canvas-pure',
@@ -309,12 +320,36 @@ describe('every text colour clears the WCAG AA floor on every ground', () => {
     '--arpi-canvas-wash',
   ]
 
+  /**
+   * The four domain washes, which became real grounds when the console started
+   * tinting a region by business area.
+   *
+   * THEY ARE RENDERED AT FULL STRENGTH, WHICH IS WHY THEY CAN BE MEASURED AT ALL.
+   * `page.tsx` writes `bg-zone-plan`, not `bg-zone-plan/70`: a fractional opacity
+   * makes the real ground a composite of the token and whatever is behind it, and
+   * a test measuring the token alone would then be measuring a colour the browser
+   * never paints. At full strength the declared token IS the ground.
+   *
+   * Every text and mark assertion below runs against these as well as against the
+   * whites, for the reason the accent failure above records -- a colour is not
+   * accessible on its own, only on a ground, and this pass added four grounds.
+   */
+  const zoneGrounds = [
+    '--arpi-colour-zone-performance',
+    '--arpi-colour-zone-plan',
+    '--arpi-colour-zone-inventory',
+    '--arpi-colour-zone-funnel',
+  ]
+
+  /** Every opaque surface on the console that can carry text or a mark. */
+  const allGrounds = [...whiteGrounds, ...zoneGrounds]
+
   it.each(['--arpi-ink-900', '--arpi-ink-800', '--arpi-ink-600', '--arpi-ink-400'])(
     '%s reaches 4.5:1 on every white surface',
     (name) => {
-      for (const ground of whiteGrounds) {
+      for (const ground of allGrounds) {
         expect(
-          ratio(token(name), token(ground)),
+          ratio(token(name), resolved(ground)),
           `${name} on ${ground}`
         ).toBeGreaterThanOrEqual(4.5)
       }
@@ -331,11 +366,83 @@ describe('every text colour clears the WCAG AA floor on every ground', () => {
     '--arpi-rose-600',
     '--arpi-violet-600',
   ])('%s reaches 4.5:1 as status, accent and link text', (name) => {
-    for (const ground of whiteGrounds) {
+    for (const ground of allGrounds) {
       expect(
-        ratio(token(name), token(ground)),
+        ratio(token(name), resolved(ground)),
         `${name} on ${ground}`
       ).toBeGreaterThanOrEqual(4.5)
+    }
+  })
+
+  /**
+   * The data-visualisation marks, measured as MARKS rather than as text.
+   *
+   * WCAG 1.4.11 asks 3:1 of a graphical object against what is adjacent to it. A
+   * chart mark on this page sits on a white surface, so that is the ground each
+   * one is measured against — all four of them, for the reason the accent failure
+   * above records: a colour is not accessible on its own, only on a ground.
+   *
+   * Several of these are also used as small text (a legend label, a signed
+   * figure), and those clear the 4.5:1 text floor in the block above because they
+   * resolve to the same ramps. What is new here is the mark-only steps, which are
+   * deliberately lighter than any text colour and would fail a text check.
+   */
+  it.each([
+    '--arpi-emerald-500',
+    '--arpi-teal-450',
+    '--arpi-orange-600',
+    '--arpi-rose-700',
+  ])('%s reaches 3:1 as a chart mark on every white surface', (name) => {
+    for (const ground of allGrounds) {
+      expect(
+        ratio(token(name), resolved(ground)),
+        `${name} on ${ground}`
+      ).toBeGreaterThanOrEqual(3)
+    }
+  })
+
+  /**
+   * The age ramp is ORDERED, and the order is the point.
+   *
+   * Its five steps run fresh to critical, and a reader has to be able to tell
+   * which end they are looking at. Hue carries that order; luminance cannot,
+   * because holding five hues apart in lightness would force the fresh end so
+   * light it fails against the white it sits on — which this asserts by proving
+   * every step clears the ground floor while NOT requiring the steps to separate
+   * from each other. The stack separates them structurally instead, with a
+   * hairline of page background and a printed age range and count on every
+   * segment. That is recorded in tokens.css §2b and asserted in the visuals suite.
+   */
+  it('keeps every age-ramp step legible against the surface it is drawn on', () => {
+    const ramp = [
+      '--arpi-colour-data-age-fresh',
+      '--arpi-colour-data-age-early',
+      '--arpi-colour-data-age-threshold',
+      '--arpi-colour-data-age-aged',
+      '--arpi-colour-data-age-critical',
+    ]
+    for (const name of ramp) {
+      const value = resolved(name)
+      for (const ground of allGrounds) {
+        expect(
+          ratio(value, resolved(ground)),
+          `${name} on ${ground}`
+        ).toBeGreaterThanOrEqual(3)
+      }
+    }
+  })
+
+  /**
+   * The one rule that keeps the two colour concepts apart.
+   *
+   * The brand accent is teal and stays teal. `data-positive` and `data-negative`
+   * are a different vocabulary, and if either ever resolved to the accent the
+   * page would be claiming a semantic it had not actually encoded.
+   */
+  it('keeps the sign semantics distinct from the brand accent', () => {
+    const accent = token('--arpi-colour-accent')
+    for (const name of ['--arpi-colour-data-positive', '--arpi-colour-data-negative']) {
+      expect(token(name), `${name} must not be the brand accent`).not.toBe(accent)
     }
   })
 
