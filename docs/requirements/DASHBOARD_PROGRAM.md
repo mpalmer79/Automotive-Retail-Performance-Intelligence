@@ -512,6 +512,11 @@ every increment leaves the repository green.
   already-validated data before any new domain lands.
 - `DASH.5` (targets), `DASH.6`/`DASH.7` (F&I), `DASH.8`/`DASH.9` (accounting) each promote their own
   entities through Gate 4 and carry their own generator, SQL, validation, and reconciliation work.
+- `DASH.10` (leads and marketing) promotes NO entity and needs no Gate 4 work: it reads the lead,
+  appointment, marketing-spend and sale facts that already exist. It does add three reporting views,
+  which is a different thing and is the reason the distinction is worth stating -- each RE-GRAINS an
+  existing fact so a console question can be asked at the grain it is actually asked at, and none adds
+  a fact, a dimension or a KPI identifier. The MVP baselines are unchanged.
 - `DASH.12` depends on every surface it links into; `DASH.13` closes the program.
 - External: none. No new paid service, no live AI, no third-party data. A charting library is not
   assumed; visualization needs are met by extending the existing hand-built SVG/DOM primitives unless
