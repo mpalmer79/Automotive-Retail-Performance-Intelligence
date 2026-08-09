@@ -39,6 +39,7 @@ import {
 } from '../../src/lib/dashboard/fi-chunks.ts'
 import { jacketChunkKeys } from '../../src/lib/dashboard/jacket-chunks.ts'
 import { inventoryUnitChunkKeys } from '../../src/lib/dashboard/inventory-chunks.ts'
+import { leadsMarketingChunkKeys } from '@/lib/dashboard/leads-marketing-chunks'
 import { accountingChunkKeys } from '../../src/lib/dashboard/accounting-chunks.ts'
 import { CHUNK_TABLES, chunkKey } from '../../src/lib/dashboard/chunks.ts'
 import {
@@ -254,7 +255,7 @@ describe('the selector registry is governed', () => {
 
 describe('the static chunk tables match the manifest chunk index', () => {
   /*
-   * FOUR route-scoped tables since `DASH.7`, plus the shared one. `CHUNK_TABLES` holds
+   * NINE route-scoped tables since `DASH.10`, plus the shared one. `CHUNK_TABLES` holds
    * the five date-grained partitions the Executive Overview reads; the 18 deal INDEX
    * partitions, the 18 deal RECORD partitions, the 18 F&I penetration partitions and
    * the 18 deal PRODUCT partitions each live outside it so that importing any one does
@@ -276,6 +277,14 @@ describe('the static chunk tables match the manifest chunk index', () => {
     // reconciliation figure and must not acquire per-unit stock detail to do it.
     'inventory-units': inventoryUnitChunkKeys,
     'inventory-accounting': accountingChunkKeys,
+    // DASH.10. The three BDC partition sets. `/dashboard` renders a lead funnel from
+    // `lead-funnel`, which is in the SHARED table; it must not acquire the source-aware
+    // appointment funnel, the stage partition or the response distribution to do it.
+    'appointment-source-funnel': () =>
+      leadsMarketingChunkKeys()['appointment-source-funnel'] ?? [],
+    'lead-stage-loss': () => leadsMarketingChunkKeys()['lead-stage-loss'] ?? [],
+    'lead-response-distribution': () =>
+      leadsMarketingChunkKeys()['lead-response-distribution'] ?? [],
   }
 
   it('carries exactly the partitions the export declares, in both directions', () => {

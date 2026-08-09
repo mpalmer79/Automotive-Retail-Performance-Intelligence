@@ -74,6 +74,16 @@ export interface FilterBarProps {
   readonly conditions: readonly FilterOption[]
   readonly leadSources: readonly FilterOption[]
   /**
+   * The campaigns, or omitted on a route where campaign means nothing.
+   *
+   * OPTIONAL, unlike the four above, and that asymmetry is the point. Only
+   * `/dashboard/leads-marketing` carries datasets grained on campaign; every other console
+   * route declares `campaign` as `not-applicable`, and rendering a control that cannot
+   * change a figure is how a filter bar starts lying about what it reaches. A route that
+   * passes nothing gets no control rather than an inert one.
+   */
+  readonly campaigns?: readonly FilterOption[]
+  /**
    * What the condition and lead-source parameters do ON THIS ROUTE.
    *
    * Supplied by the page rather than fixed here, because the honest answer differs:
@@ -84,6 +94,7 @@ export interface FilterBarProps {
    */
   readonly conditionHint?: string
   readonly leadSourceHint?: string
+  readonly campaignHint?: string
 }
 
 const COMPARE_OPTIONS: readonly FilterOption[] = [
@@ -123,8 +134,10 @@ export function FilterBar({
   stores,
   conditions,
   leadSources,
+  campaigns,
   conditionHint = 'Selects inventory measures only.',
   leadSourceHint = 'Selects funnel measures only.',
+  campaignHint = 'Selects funnel and marketing measures.',
 }: FilterBarProps) {
   const router = useRouter()
   const [draft, setDraft] = useState<DashboardFilters>(filters)
@@ -289,6 +302,35 @@ export function FilterBar({
             ))}
           </SelectControl>
         </Field>
+
+        {campaigns === undefined ? null : (
+          <Field
+            id="filter-campaign"
+            label="Campaign"
+            active={draft.campaign !== null}
+            hint={campaignHint}
+          >
+            <SelectControl
+              id="filter-campaign"
+              name="campaign"
+              value={draft.campaign ?? ''}
+              active={draft.campaign !== null}
+              onChange={(event) =>
+                apply({
+                  ...draft,
+                  campaign: event.target.value === '' ? null : event.target.value,
+                })
+              }
+            >
+              <option value="">All campaigns</option>
+              {campaigns.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </SelectControl>
+          </Field>
+        )}
       </div>
 
       {/*

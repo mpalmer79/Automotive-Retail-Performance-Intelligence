@@ -261,8 +261,11 @@ describe('every displayed count traces to repository evidence', () => {
     // DASH.6: dim_finance_product and dim_lender, and nothing before them.
     expect(dimensionDdl).toHaveLength(2)
     // DASH.2-DASH.5 contributed five views; DASH.6 contributed four; DASH.9 contributed
-    // vw_inventory_units, the console's unit-grain inventory surface.
-    expect([...lane].filter((f) => f.startsWith('05_reporting/'))).toHaveLength(10)
+    // vw_inventory_units, the console's unit-grain inventory surface; DASH.10 contributed
+    // three presentation-grain views for the leads and marketing route -- the source-aware
+    // appointment funnel, the lead stage-loss partition and the response distribution.
+    // None of the three adds a fact, a dimension or a KPI identifier.
+    expect([...lane].filter((f) => f.startsWith('05_reporting/'))).toHaveLength(13)
   })
 
   it('keeps the sanitized listing lane out of the MVP counts and declares it once', () => {

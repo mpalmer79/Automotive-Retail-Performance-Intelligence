@@ -289,6 +289,7 @@ export default async function DashboardPage({
                   <LeadFunnel
                     funnel={overview.funnel}
                     comparisonLabel={comparisonLabel}
+                    filters={parsed.filters}
                   />
                 </Pane>
               </div>

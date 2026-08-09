@@ -585,7 +585,7 @@ export const SELECTORS = {
    *
    * It read `leads_received` here until DASH.10, matching the export's reconciliation
    * total and contradicting everything else: `KPI_CATALOG.md` §26 ("The denominator is
-   * contacted leads, not all leads"), `reporting.vw_lead_funnel`, and an integration test
+   * contacted leads, not all leads"), the governed lead-funnel view, and an integration test
    * asserting the view divides by contacted leads and "emphatically not leads_received".
    *
    * An appointment cannot be set with someone who was never reached, so dividing by all

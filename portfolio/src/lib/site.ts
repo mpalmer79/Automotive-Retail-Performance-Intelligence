@@ -341,6 +341,16 @@ export const ROUTES = {
     indexable: true,
     priority: 0.8,
   },
+  dashboardLeadsMarketing: {
+    href: '/dashboard/leads-marketing',
+    navLabel: 'Leads and marketing',
+    title: 'Leads and marketing',
+    description:
+      'The BDC and marketing surface: the lead-created cohort funnel, appointment outcomes on their own two date bases, first-response times with the leads nobody answered beside them, where the cohort stopped, and spend against attributed outcomes. Synthetic data for a fictional dealer group.',
+    inPrimaryNav: false,
+    indexable: true,
+    priority: 0.8,
+  },
   dashboardAccounting: {
     href: '/dashboard/accounting',
     navLabel: 'Accounting',
@@ -627,6 +637,18 @@ export const DASHBOARD_NAV: readonly NavItem[] = [
       'Unit-level age, price against a synthetic estimate, and stock drill-through',
   },
   {
+    /*
+     * `DASH.10`. The BDC surface. It sits after Inventory and before Accounting, which is
+     * the order `INFORMATION_ARCHITECTURE.md` gives once the sections that do not exist yet
+     * are removed: Employees (`DASH.11`) and Actions (`DASH.12`) are still text on the
+     * Executive page rather than links here.
+     */
+    href: ROUTES.dashboardLeadsMarketing.href,
+    label: 'Leads and marketing',
+    matches: [ROUTES.dashboardLeadsMarketing.href],
+    purpose: 'Funnel, response time, lost stages and what marketing bought',
+  },
+  {
     href: ROUTES.dashboardAccounting.href,
     label: 'Accounting',
     matches: [ROUTES.dashboardAccounting.href],
@@ -658,11 +680,6 @@ export interface PlannedDashboardSection {
  * names a route the console can already navigate to.
  */
 export const PLANNED_DASHBOARD_SECTIONS: readonly PlannedDashboardSection[] = [
-  {
-    label: 'Leads and marketing',
-    increment: 'DASH.10',
-    purpose: 'Source quality, campaign cost and lost-stage analysis',
-  },
   {
     label: 'Employee performance',
     increment: 'DASH.11',
