@@ -81,13 +81,17 @@ export function InventoryRisk({
 
   return (
     <div className="flex flex-col gap-6">
+      {/* One sentence. The aged threshold moved onto the age stack, where the colour
+          ramp turns on it and a reader needs it; repeating it here was the same
+          caveat twice on one screen. The multi-threshold state has no home on the
+          stack, so it stays. */}
       <Text size="sm" tone="muted" className="max-w-prose">
         {inventory.snapshotDate === null
           ? 'No inventory snapshot falls inside the selected period.'
-          : `Levels are read at the ${formatIsoDate(inventory.snapshotDate)} snapshot, the latest inside the selected period. These are semi-additive measures: they add across stores and condition groups at one date and never across dates.`}
+          : `Semi-additive: read at the ${formatIsoDate(inventory.snapshotDate)} snapshot, added across stores and condition groups at one date and never across dates.`}
         {inventory.agedThresholdDays === null
           ? ' The scope in view carries more than one aged threshold, so no single threshold is stated.'
-          : ` "Aged" means more than ${inventory.agedThresholdDays} days in stock. That threshold is a project default carried in the export, not an industry standard.`}
+          : ''}
       </Text>
 
       <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -172,7 +176,7 @@ function AgeDistribution({ inventory }: { inventory: InventorySummary }) {
     <section aria-labelledby="age-distribution" className="flex flex-col gap-4">
       <InventoryAgeStack
         title="Age distribution"
-        caption="Units on the lot by days in stock. Bucket boundaries come from the exported aging view."
+        caption="Units on the lot by days in stock, on boundaries the exported aging view sets."
         segments={inventory.buckets.map((bucket) => ({
           key: bucket.label,
           label: bucket.label,
@@ -180,6 +184,7 @@ function AgeDistribution({ inventory }: { inventory: InventorySummary }) {
           share: bucket.share,
         }))}
         snapshotNote={snapshotNote}
+        thresholdDays={inventory.agedThresholdDays}
         headingLevel={3}
       />
 

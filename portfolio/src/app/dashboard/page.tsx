@@ -390,6 +390,15 @@ export default async function DashboardPage({
  *
  * `layout="wide"` on the header puts the one-line lede beside the heading instead of
  * under it, which is the other half of the same saving.
+ *
+ * THE LEDE IS OPTIONAL, AND ON THIS PAGE IT IS USUALLY ABSENT.
+ * It was required, and requiring it is what made the console read like a report: every
+ * region opened with a paragraph explaining what the reader was about to look at, and a
+ * reader who has to be told what a chart shows before seeing it is looking at the wrong
+ * chart. A lede now survives in exactly one place -- where a figure would be MISREAD
+ * without it, such as the project-default aged threshold or the cohort basis of the
+ * funnel. Everything else moved into the disclosure at the foot of the page or onto the
+ * drill-through that owns the subject.
  */
 function ConsoleRow({
   id,
@@ -397,23 +406,53 @@ function ConsoleRow({
   title,
   lede,
   tone = 'canvas',
+  zone,
   children,
 }: {
   readonly id: string
   readonly eyebrow: string
   readonly title: string
-  readonly lede: string
+  /** Omit unless the figures below would be misread without it. */
+  readonly lede?: string
   readonly tone?: 'canvas' | 'evidence'
+  /**
+   * A restrained domain tint behind the row.
+   *
+   * It helps the eye find a business area on a long page and encodes NO state: the
+   * inventory zone is amber whether the lot is clean or ageing badly. Every wash is a
+   * `zone-*` token, and none of them is a `data-*` token, so a tint can never be
+   * mistaken for a value.
+   */
+  readonly zone?: 'performance' | 'plan' | 'inventory' | 'funnel'
   readonly children: ReactNode
 }) {
   return (
-    <Section rhythm="tight" tone={tone} id={id}>
+    <Section
+      rhythm="tight"
+      tone={tone}
+      id={id}
+      className={zone === undefined ? undefined : ZONE_WASH[zone]}
+    >
       <Container width="full">
         <SectionHeader eyebrow={eyebrow} title={title} lede={lede} layout="wide" />
-        <div className="pt-8">{children}</div>
+        <div className={lede === undefined ? 'pt-6' : 'pt-8'}>{children}</div>
       </Container>
     </Section>
   )
+}
+
+/**
+ * The domain tints, as class names rather than inline style.
+ *
+ * Written out in full because Tailwind scans source text for class names: a template
+ * literal like `bg-zone-${zone}` produces no CSS at all, which is the kind of bug that
+ * looks like a design decision.
+ */
+const ZONE_WASH: Readonly<Record<'performance' | 'plan' | 'inventory' | 'funnel', string>> = {
+  performance: 'bg-zone-performance/35',
+  plan: 'bg-zone-plan/35',
+  inventory: 'bg-zone-inventory/30',
+  funnel: 'bg-zone-funnel/35',
 }
 
 /**

@@ -136,9 +136,10 @@
      recorded limitation rather than an oversight. Holding five ordered hues
      apart in LUMINANCE as well as hue would force the fresh end so light that
      it fails against white, which is the ground it actually sits on. The stack
-     therefore separates its segments structurally instead: a hairline of the
-     page background between them, and an age range and a count printed on every
-     segment. Colour orders the bands; it never carries a value alone. */
+     therefore separates its segments structurally instead: a gap of the page
+     background between them, and an age range and a unit count printed beside
+     every band -- in the legend at desktop widths, and on the band's own row
+     below `sm`. Colour orders the bands; it never carries a value alone. */
   --arpi-emerald-500: #17864d;
   --arpi-teal-450: #0e86ad;
   --arpi-orange-600: #a8480b;
