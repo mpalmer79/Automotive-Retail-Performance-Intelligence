@@ -24,6 +24,16 @@
  * it was never in. `isFranchise` comes from the exported store dimension, so the
  * rule is read from the data rather than assumed from a name.
  */
+import { glReconciliationRows } from '@/lib/dashboard/accounting-data'
+import {
+  resolveComparisonDate,
+  selectComparisons,
+  summarize,
+  toComparisonRows,
+  varianceDirection,
+} from '@/lib/dashboard/accounting'
+import { formatCurrencyDifference, formatIsoDate } from '@/lib/dashboard/format'
+import type { ReconciliationSignalView } from '@/components/dashboard/reconciliation-signal'
 import { kpis } from '@/lib/content'
 import type { KpiEntry } from '@/types/content'
 
@@ -730,5 +740,54 @@ function buildFunnel(
       { label: '15 to 60 minutes', result: evaluate(SELECTORS.responses15to60, context) },
       { label: 'Over 60 minutes', result: evaluate(SELECTORS.responsesOver60, context) },
     ],
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* The accounting signal (DASH.9)                                              */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Build the Executive reconciliation signal.
+ *
+ * WHY IT READS THE NARROW DOOR AND NOTHING ELSE
+ * ---------------------------------------------
+ * `accounting-data.ts` carries 43 comparison rows and 18 kB. That IS the whole comparison
+ * surface, so the Executive card needs no second aggregate invented for it — which would
+ * have meant a second definition of the same figure, computed somewhere else, free to
+ * disagree. `/dashboard` must never open `inventory-chunks.ts` or `accounting-chunks.ts`,
+ * which carry 356 kB and 360 kB of per-unit detail it has no use for, and
+ * `dashboard-boundaries.test.ts` asserts exactly that.
+ *
+ * EVERYTHING LEAVES HERE AS A STRING. The card is a component and no component may touch an
+ * exact decimal, so the sign, the grouping and the direction sentence are decided here.
+ *
+ * THE MISSING SIDES ARE COUNTED, NOT ADDED. A position with one side absent has no variance,
+ * so it contributes to no money figure and is reported as its own count. Folding it in would
+ * turn "could not be compared" into "off by this much", which is a different claim.
+ */
+export function buildAccountingSignal(
+  filters: DashboardFilters
+): ReconciliationSignalView {
+  const rows = toComparisonRows(glReconciliationRows())
+  const comparisonDate = resolveComparisonDate(rows, filters)
+  const selected = selectComparisons(rows, comparisonDate, filters)
+  const summary = summarize(selected, comparisonDate)
+
+  return {
+    asOfLabel: comparisonDate === null ? null : formatIsoDate(comparisonDate),
+    signedVarianceLabel:
+      summary.comparablePositions === 0
+        ? null
+        : formatCurrencyDifference(summary.signedVariance, 2),
+    directionSentence:
+      summary.comparablePositions === 0
+        ? 'No position at this date has both sides, so no variance exists'
+        : varianceDirection(summary.signedVariance),
+    comparablePositions: summary.comparablePositions,
+    reconciledPositions: summary.reconciledPositions,
+    variancePositions: summary.variancePositions,
+    notComparablePositions:
+      summary.missingGlPositions + summary.missingSubledgerPositions,
   }
 }
