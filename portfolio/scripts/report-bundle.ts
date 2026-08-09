@@ -79,6 +79,20 @@ const ROUTES = [
   // filter reaches the server rather than hiding rows in the browser.
   '/dashboard/fi',
   '/dashboard/fi?store=GSA-001&period=2025-11&product=gap',
+  // The two `DASH.9` routes. Inventory appears three times because its cost is decided
+  // by two independent things: how many store partitions the request opens, and whether
+  // the drill-through panel is rendered. The unfiltered entry opens three partitions and
+  // the store-filtered one opens a single partition, which is what makes "the partition
+  // scoping reaches the server" checkable rather than asserted; the `?unit=` entry adds
+  // one accounting partition and one panel on top of the whole table.
+  '/dashboard/inventory',
+  '/dashboard/inventory?store=GSA-001&period=2025-11',
+  '/dashboard/inventory?unit=VEH-0000005',
+  // Accounting reads two unchunked datasets and renders the comparison whole, so one
+  // measurement describes the route. The filtered entry is still worth having: it is the
+  // only console route where a filter narrows BOTH sides of a reconciliation at once.
+  '/dashboard/accounting',
+  '/dashboard/accounting?store=GSA-001&period=2025-11',
   '/architecture',
   '/data-model',
   '/kpis',

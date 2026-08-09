@@ -316,9 +316,11 @@ describe('the console ships exactly the routes its increments have delivered', (
       .filter((entry) => entry.isDirectory())
       .map((entry) => entry.name)
       .sort()
-    expect(nested, 'DASH.8 onward own the other console routes').toEqual([
+    expect(nested, 'DASH.10 onward own the other console routes').toEqual([
+      'accounting',
       'deals',
       'fi',
+      'inventory',
       'sales-gross',
     ])
     for (const section of nested) {
@@ -485,6 +487,52 @@ describe('the generated dashboard data stays out of the existing route bundles',
     for (const viewModel of ['lib/dashboard/executive.ts', 'lib/dashboard/deals.ts']) {
       expect(readFileSync(join(SRC, viewModel), 'utf8')).not.toMatch(/jacket-chunks/)
     }
+  })
+
+  it('keeps the DASH.9 unit-detail partitions out of the Executive Overview', () => {
+    /*
+     * `/dashboard` renders ONE reconciliation figure. The two unit-grain doors carry
+     * 356 kB of per-vehicle stock and 360 kB of per-unit book values, and the Executive
+     * page has no use for a single row of either.
+     *
+     * It reads `accounting-data.ts` instead, whose comparison set is 43 rows and 18 kB.
+     * That set IS the whole comparison surface, which is why no second aggregate had to be
+     * invented for the card -- a second aggregate would have been a second definition of
+     * the same figure, computed somewhere else and free to disagree with the accounting
+     * page.
+     *
+     * Asserted on the route AND on its view model, because an import in either one puts
+     * the partitions in the same server graph.
+     */
+    const inventoryImporters = files
+      .filter((file) => /from '[^']*inventory-chunks'/.test(file.text))
+      .map((file) => file.relative)
+      .sort()
+    expect(inventoryImporters).toEqual(['app/dashboard/inventory/page.tsx'])
+
+    const accountingImporters = files
+      .filter((file) => /from '[^']*accounting-chunks'/.test(file.text))
+      .map((file) => file.relative)
+      .sort()
+    expect(accountingImporters).toEqual(['app/dashboard/inventory/page.tsx'])
+
+    // Matched as an IMPORT rather than as a mention: `executive.ts` explains in prose why
+    // it must not open these doors, and a guard that fired on its own explanation would be
+    // a guard somebody deletes.
+    for (const executive of ['app/dashboard/page.tsx', 'lib/dashboard/executive.ts']) {
+      const text = readFileSync(join(SRC, executive), 'utf8')
+      expect(text, `${executive} opens the stock partitions`).not.toMatch(
+        /from '[^']*inventory-chunks'/
+      )
+      expect(text, `${executive} opens the accounting partitions`).not.toMatch(
+        /from '[^']*accounting-chunks'/
+      )
+    }
+
+    // The narrow door IS opened, and by the view model rather than the component.
+    expect(readFileSync(join(SRC, 'lib/dashboard/executive.ts'), 'utf8')).toMatch(
+      /from '[^']*accounting-data'/
+    )
   })
 
   it('keeps the deal partitions out of the Executive Overview route graph', () => {

@@ -27,11 +27,19 @@ import { exactToString } from '../../src/lib/dashboard/decimal.ts'
 import { DEFAULT_FILTERS } from '../../src/lib/dashboard/filters.ts'
 import { decodeDataset } from '../../src/lib/dashboard/data.ts'
 
+/**
+ * One partition, decoded under a key that names it.
+ *
+ * `decodeDataset` memoizes, so the key must identify the PARTITION. An earlier version of
+ * this helper passed the bare dataset name, which meant every store this file asked for
+ * returned GSA-001's rows — and because it only ever asked for GSA-001, it passed. The
+ * route made the same mistake and rendered one store's units three times.
+ */
 function chunkRows(store: string, month: string): readonly UnitRow[] {
   const file = inventoryUnitChunkFile(store, month)
   if (file === undefined)
     throw new Error(`no inventory-units partition ${store}/${month}`)
-  return toUnitRows(decodeDataset('inventory-units', file))
+  return toUnitRows(decodeDataset(`inventory-units/${store}/${month}`, file))
 }
 
 const units = chunkRows('GSA-001', '2025-12')
@@ -242,5 +250,66 @@ describe('unit selection and drill-through', () => {
     for (const unit of certified) expect(unit.conditionType).toBe('Certified')
     const used = selectUnits(units, date, { ...DEFAULT_FILTERS, condition: 'Used' }, null)
     for (const unit of used) expect(unit.conditionType).toBe('Used')
+  })
+})
+
+/**
+ * The multi-store read the route actually performs.
+ *
+ * Everything above reads ONE partition, which is why none of it caught the defect that
+ * shipped: `/dashboard/inventory` opens one partition per store and concatenates them, and
+ * a memoization key that named only the dataset gave it the first store's rows three times.
+ * The page reported 288 units — 96 × 3 — with every row labelled GSA-001, and no assertion
+ * in this file could see it because no assertion in this file asked for a second store.
+ *
+ * These are the two facts that would have failed then and must hold now: the population is
+ * the SUM of the partitions, and it contains EVERY store, not one store repeated.
+ */
+describe('the population the route builds spans stores', () => {
+  const stores = ['GSA-001', 'GSA-002', 'GSA-003'] as const
+  const perStore = stores.map((store) => chunkRows(store, '2025-12'))
+  const combined = perStore.flat()
+
+  it('carries each store exactly once', () => {
+    expect([...new Set(combined.map((unit) => unit.dealershipId))].sort()).toEqual([
+      ...stores,
+    ])
+  })
+
+  it('totals the partitions rather than repeating one of them', () => {
+    expect(combined.length).toBe(perStore.reduce((total, rows) => total + rows.length, 0))
+    // Three genuinely different partitions, so no two counts collapsing into one.
+    expect(new Set(perStore.map((rows) => rows.length)).size).toBe(stores.length)
+  })
+
+  it('gives every unit a distinct identity within the snapshot', () => {
+    const identities = combined.map((unit) => `${unit.dealershipId}/${unit.vehicleId}`)
+    expect(new Set(identities).size).toBe(identities.length)
+  })
+})
+
+/**
+ * The guard that makes the defect above impossible to ship again.
+ *
+ * A silent wrong answer became a loud failure: two different files under one cache key is
+ * an error, because every partition of a dataset has identical columns and the wrong one
+ * looks exactly as correct as the right one.
+ */
+describe('the decode cache refuses to answer for the wrong file', () => {
+  it('throws when one key is presented with two different partitions', () => {
+    const first = inventoryUnitChunkFile('GSA-001', '2025-12')
+    const second = inventoryUnitChunkFile('GSA-002', '2025-12')
+    if (first === undefined || second === undefined) throw new Error('missing partition')
+
+    const key = 'collision-probe/inventory-units'
+    expect(decodeDataset(key, first).length).toBeGreaterThan(0)
+    expect(() => decodeDataset(key, second)).toThrow(/one key per partition/i)
+  })
+
+  it('still memoizes the same file under the same key', () => {
+    const file = inventoryUnitChunkFile('GSA-003', '2025-12')
+    if (file === undefined) throw new Error('missing partition')
+    const key = 'repeat-probe/inventory-units'
+    expect(decodeDataset(key, file)).toBe(decodeDataset(key, file))
   })
 })

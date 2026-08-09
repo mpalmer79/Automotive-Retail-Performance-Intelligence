@@ -4,6 +4,7 @@ import { Canvas } from '@/components/shell/field'
 import { ContextRail } from '@/components/dashboard/context-rail'
 import { FilterBar, type FilterOption } from '@/components/dashboard/filter-bar'
 import { InventoryRisk } from '@/components/dashboard/inventory-risk'
+import { ReconciliationSignal } from '@/components/dashboard/reconciliation-signal'
 import { KpiStrip } from '@/components/dashboard/kpi-strip'
 import { LeadFunnel } from '@/components/dashboard/lead-funnel'
 import { SalesAndGross } from '@/components/dashboard/sales-gross'
@@ -31,6 +32,7 @@ import {
 } from '@/lib/dashboard/data'
 import {
   SCOREBOARD_COLUMNS,
+  buildAccountingSignal,
   buildExecutiveOverview,
   type ExecutiveOverview,
 } from '@/lib/dashboard/executive'
@@ -85,6 +87,7 @@ export default async function DashboardPage({
   })
   const overview = buildExecutiveOverview(parsed.filters, parsed.reset)
 
+  const accountingSignal = buildAccountingSignal(parsed.filters)
   const exportState = exportTrust(dashboardManifest)
   const powerBi = powerBiTrust(engines)
   const failedReconciliation = reconciliationFailed(dashboardManifest)
@@ -258,12 +261,31 @@ export default async function DashboardPage({
               <SectionHeader
                 eyebrow="Inventory"
                 title="What is on the lot, and how long it has been there"
-                lede="An executive summary at one snapshot date. Unit-level aging, price-to-market and stock drill-through are the inventory operations page, delivered by DASH.9."
+                lede="An executive summary at one snapshot date. Unit-level aging, price to market and stock drill-through are on the inventory operations page."
               />
               <div className="pt-6">
                 <InventoryRisk
                   inventory={overview.inventory}
                   comparisonLabel={comparisonLabel}
+                />
+              </div>
+            </Container>
+          </Section>
+
+          {/* -------------------------------------------------------------- */}
+          {/* Accounting integrity (DASH.9)                                   */}
+          {/* -------------------------------------------------------------- */}
+          <Section rhythm="default" id="accounting-integrity">
+            <Container width="full">
+              <SectionHeader
+                eyebrow="Accounting integrity"
+                title="Whether the stock schedule agrees with the control accounts"
+                lede="One figure at one comparison date. The full reconciliation, its four comparison states and the governed exceptions are on the accounting page."
+              />
+              <div className="pt-6">
+                <ReconciliationSignal
+                  signal={accountingSignal}
+                  href={ROUTES.dashboardAccounting.href}
                 />
               </div>
             </Container>

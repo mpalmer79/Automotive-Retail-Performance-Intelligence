@@ -131,12 +131,18 @@ def test_the_reconciliation_count_excludes_the_listing_lane() -> None:
     plus the loader's own chain and warehouse reconciliations for the four new entities.
     114 since ``DASH.8``: the thirteen ``RECON-ACC-*`` / ``RECON-GLB-*`` rules in
     ``audit.vw_recon_all`` plus the loader's own chain reconciliations for the three new
-    entities and the catalogue's warehouse and row-count pair.
+    entities and the catalogue's warehouse and row-count pair. 116 since ``DASH.9``: exactly
+    two more rules, ``RECON-INV-UNIT-RATIO`` and ``RECON-INV-UNIT-GRAIN``, each of which
+    emits one row unconditionally because both are scalar aggregates over single-row CTEs.
+    No new entity and therefore no new loader chain: the increment adds a reporting view,
+    not a warehouse table.
 
     That is a count of what the pipeline records on a run, and it moved because the
-    pipeline records more -- not because the expectation was relaxed to fit a failure.
+    pipeline records more -- not because the expectation was relaxed to fit a failure. The
+    116 was READ OFF a loaded fixture before it was written here, not inferred from the
+    delta.
     """
-    assert verifier.EXPECTED_RECONCILIATION_COUNT_PER_RUN == 114
+    assert verifier.EXPECTED_RECONCILIATION_COUNT_PER_RUN == 116
 
 
 def test_no_listing_view_carries_an_expected_row_count() -> None:

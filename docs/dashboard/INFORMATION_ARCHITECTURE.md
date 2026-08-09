@@ -18,11 +18,11 @@ portfolio [`CONTENT_MODEL.md`](../../portfolio/docs/CONTENT_MODEL.md) / `lib/sit
 | `/dashboard/sales-gross` | Sales and gross | **Built (`DASH.3`)** | `ROUTES.dashboardSalesGross`, mirrored in `tests/e2e/routes.ts` |
 | `/dashboard/deals` | Deal Explorer | **Built (`DASH.3`)** | `ROUTES.dashboardDeals`, mirrored in `tests/e2e/routes.ts` |
 | `/dashboard/deals/[saleId]` | Deal Jacket (dynamic; title carries the synthetic deal id) | **Implemented (DASH.4)** | dynamic — excluded from `inPrimaryNav`, sitemap lists the index route only, and each jacket asks not to be indexed. Marks Deal Explorer current via `NavItem.matchPrefixes`: nobody navigates to "a deal", so it is a drill-through rather than a navigation destination |
-| `/dashboard/inventory` | Inventory operations | Planned (DASH.9) | ” |
+| `/dashboard/inventory` | Inventory operations | **Built (`DASH.9`)** | `ROUTES.dashboardInventory`, mirrored in `tests/e2e/routes.ts`. Carries the `unit=` drill-through, which is a URL rather than client state: copyable, correct on reload and under Back/Forward |
 | `/dashboard/fi` | F&I performance | **Built (`DASH.7`)** | `ROUTES.dashboardFi`, mirrored in `tests/e2e/routes.ts` |
 | `/dashboard/leads-marketing` | Leads and marketing | Planned (DASH.10) | ” |
 | `/dashboard/employees` | Employee performance | Planned (DASH.11) | ” |
-| `/dashboard/accounting` | Accounting integrity | Planned (DASH.9) | ” |
+| `/dashboard/accounting` | Accounting integrity | **Built (`DASH.9`)** | `ROUTES.dashboardAccounting`, mirrored in `tests/e2e/routes.ts`. The exception drill-through targets this route with `store` and `period`, never a warehouse surrogate |
 | `/dashboard/actions` | Management actions | Planned (DASH.12) | ” |
 
 The public header gains exactly one destination: **Dashboard → `/dashboard`** — the seventh

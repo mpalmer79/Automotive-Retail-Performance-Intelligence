@@ -360,6 +360,10 @@ DASHBOARD_LANE_SQL_FILES: Final[tuple[str, ...]] = (
     "06_indexes/03_fi_indexes.sql",
     "08_validation/11_recon_target.sql",
     "08_validation/13_recon_fi.sql",
+    # DASH.9. The two rules that keep the unit-grain view honest against the layer it
+    # duplicates an expression from. Numbered 14 because DASH.8 vacated that slot when it
+    # renumbered recon_all to 16, so no existing file moves.
+    "08_validation/14_recon_inventory_units.sql",
 )
 
 #: The vehicle condition vocabulary, exactly as ``warehouse.dim_vehicle`` constrains it.

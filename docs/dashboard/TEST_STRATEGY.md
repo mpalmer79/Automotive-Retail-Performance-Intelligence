@@ -343,6 +343,36 @@ unit test passed: the penetration figures were correct, the reconciliation held,
 difference was wrong. It was visible in exactly one place — the rendered text — which is the argument
 for the browser layer existing at all.
 
+## 10.5 As-built: what `DASH.9` added
+
+| Suite | File | What it proves |
+|---|---|---|
+| Export contract | `tests/unit/test_export_dashboard_dataset.py` | The four new datasets read only allowlisted reporting views; **no warehouse surrogate composite is exported** — an `entity_id` column carrying `20250930-1-2` was built, caught against the contract's own note and removed, and the drill-through rebuilt from business columns; `vehicle_id` is permitted on the unit-grain datasets only, under the `sale_id` precedent, while `vin`, `vehicle_key` and stock numbers stay prohibited; `known_limitations()` states nine substantive limitations asserted by substance rather than by pinned sentence, so the wording can improve without the guarantee weakening |
+| Reconciliation | `sql/08_validation/14_recon_inventory_units.sql`, `tests/integration/test_reconciliations.py` | `RECON-INV-UNIT-RATIO` proves the two reporting views state the same `price_to_market_ratio` on every shared row, **comparing NULL as a value** — written with `<>` the null rows would compare to NULL, the filter would discard them, and the rule would silently stop checking the ~8% of units with no estimate, which is the branch most likely to be wrong. `RECON-INV-UNIT-GRAIN` proves the reportable-date narrowing neither duplicates nor drops a snapshot. Both critical, both falsifiable: the seeded corruptions are a ratio rounded to 2 places instead of 4 — the kind of edit that looks like tidying — and a `CROSS JOIN` fan-out |
+| Documentation contract | `tests/unit/test_data_dictionary_columns.py` (6) | `DATA_DICTIONARY.md` section 15 is asserted against the fact's DDL **in both directions**, after it was found documenting three columns that had never existed and omitting three that did. Plus a guard test, because a parser that stops matching would otherwise compare two empty sets and pass — the failure mode §21.3 names, and the one the first version of this file's own regex walked into |
+| TypeScript unit | `portfolio/tests/unit/dashboard-inventory.test.ts` (24), `dashboard-accounting.test.ts` (15) | Every seeded defect asserted to produce a **different** answer from the correct implementation: the 60-day threshold against the 120-day top bucket (5 aged units against a wrong 2); the population median against averaged subgroup medians; a null ratio sorted last in **both** directions rather than at an extreme; a total and stable comparator, so input order cannot leak into output; the missing side coalesced to zero; a period summed rather than resolved to its last comparison date |
+| **Multi-store population** | `dashboard-inventory.test.ts` | The assertion that did not exist and would have caught the defect below: the population is the SUM of the store partitions, every store appears exactly once, and every unit has a distinct identity. Everything else in that file read ONE partition, which is why a bug about reading three was invisible to it |
+| **Decode-cache guard** | `dashboard-inventory.test.ts`, `portfolio/src/lib/dashboard/data.ts` | `decodeDataset` now **throws** when one cache key is presented with two different files. Each generated file is a module-level object, so two partitions can never be the same reference; a silent wrong answer for the life of the process becomes a loud failure on the first render. Two tests: the collision throws, and the same file under the same key still memoises |
+| End to end | `portfolio/tests/e2e/dashboard-inventory.spec.ts` (20), `dashboard-accounting.spec.ts` (18) | Complete HTML with scripting disabled, including the unit table and the drill-through panel; `?unit=` as a real URL — copyable, correct on reload and under Back and Forward, and recovering visibly from an identifier that names nothing; **no repricing vocabulary and no floorplan carrying-cost vocabulary in the rendered text**, and no general-ledger artefact on the accounting route; a missing side rendered as MISSING rather than as a zero balance; the variance direction in words; every exception drill-through resolving to a page that exists with **no surrogate composite in the href**; no horizontal page scroll at 320px or 1920px |
+| **Shared negation-aware sweep** | `portfolio/tests/e2e/helpers.ts` | `affirmativeSentences` moves out of `dashboard-fi.spec.ts`, where `DASH.7` first needed it, into the shared helper — the accounting and inventory routes needed it independently and for the same reason, and a third copy was the alternative. Both new routes carry a **paired positive assertion** that the denial is present, so the sweep cannot be satisfied by silence |
+
+**One defect reached `main`, and it is the same class `DASH.7` found.**
+
+`DASH.7` caught a `decodeDataset` cache-key collision in the F&I lane before any UI existed, pinned it
+with three assertions, and left a comment in `fi.ts` warning about it. `DASH.9` made the identical
+mistake in `/dashboard/inventory` and shipped it: one memoisation key for three store partitions, so
+the route rendered one store's 96 units three times and reported **288 active units** against a true
+250, with every row labelled GSA-001 and a store filter for either other store returning nothing.
+
+The lesson is not "read the comment". A comment cannot prevent a defect in a file that does not
+contain it, and three assertions scoped to one dataset cannot prevent it in another. What changes the
+outcome is the guard in `decodeDataset` itself, which makes the mistake impossible to make quietly —
+and it fired on the unit suite's own helper the moment it was added, which is the guard working before
+a human had to.
+
+It was found by the end-to-end test that renders the table and counts what is in it. That is the
+argument for the browser layer, made a second time and more expensively than the first.
+
 ## 11. Power BI alignment
 
 

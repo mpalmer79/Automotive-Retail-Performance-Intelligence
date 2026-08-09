@@ -48,7 +48,7 @@
 | `DASH.6` | F&I model | Large | **Implemented** |
 | `DASH.7` | F&I dashboard and expanded Deal Jacket | Large | **Implemented** |
 | `DASH.8` | Inventory accounting and GL controls | Large | **Implemented** |
-| `DASH.9` | Accounting dashboard and inventory integration | Large | Planned |
+| `DASH.9` | Accounting dashboard and inventory integration | Large | **Implemented** |
 | `DASH.10` | Leads and Marketing dashboard | Large | Planned |
 | `DASH.11` | Employee performance | Medium | Planned |
 | `DASH.12` | Management Action Center and change drivers | Large | Planned |
@@ -797,16 +797,53 @@ identity close by construction rather than by being true.
 | **Estimated complexity** | Large |
 | **Blocking gate** | None |
 | **Architecture references** | Program §7; IA §4 |
-| **Status** | Planned |
+| **Status** | **Implemented** |
+| **Evidence** | Two console routes, one new reporting view (`vw_inventory_units`), one warehouse column and its migration (`market_price_estimate`, `0005`), four exported datasets, and the Executive reconciliation signal. 39 selector unit tests over the two models, every seeded defect asserted to produce a *different* answer; 38 end-to-end tests across the two routes; 1,075 portfolio unit tests and 710 end-to-end tests passing; 0 critical or serious axe violations on either route; 116 reconciliations recorded per database run, 0 failing, including the two new `RECON-INV-UNIT-*` rules with falsifiability cases. Staff-level review: [DASH-9-REVIEW.md](../reviews/DASH-9-REVIEW.md). |
+| **Deliberately not done** | No repricing recommendation of any kind and no floorplan carrying-cost model — both asserted as negatives against the rendered text, not merely omitted. No full general ledger, no journal entry, no trial balance, no period close. No accounting warehouse redesign, no write-back, no action center. **No `DASH.10` work of any kind.** **No TMDL, DAX or semantic-model change; Gate 2 remains CLOSED.** |
+| **Baselines preserved** | 29 MVP KPIs, 28 MVP reporting views, 5 MVP facts, 8 MVP dimensions — all unchanged. `vw_inventory_units` is declared in `DASHBOARD_LANE_SQL_FILES` and subtracted by `scripts/project_capabilities.py`, so the dashboard lane now holds 35 SQL files while every MVP figure still describes what it was measured against. |
 
-Items: `DASH.9-01` `/dashboard/inventory` (Large) — summary block (existing `KPI-INV-*`), governed
-age buckets (0–30/31–60/61–90/91–120/120+; aged threshold labelled project default), unit analysis
-with snapshot-derived markdown activity and `price_to_market_ratio` (synthetic estimate, labelled),
-unit drill-through with accounting position where `DASH.8` data exists; `DASH.9-02`
-`/dashboard/accounting` (Large) — inventory reconciliation, stock exceptions, deal reconciliation,
-timing analysis with period-ownership statements; `DASH.9-03` executive reconciliation-variance card
-+ trust-panel wiring (Small). Non-goals: floorplan cost analysis (not modelled), repricing actions.
-Evidence: exception drill-throughs resolve; axe clean.
+Items: `DASH.9-01` `/dashboard/inventory` (Large) — **Implemented**; `DASH.9-02`
+`/dashboard/accounting` (Large) — **Implemented**; `DASH.9-03` executive
+reconciliation-variance signal + trust-panel wiring (Small) — **Implemented**.
+
+### `DASH.9` — where the as-built differs from this plan, and why
+
+**(a) A new reporting view was needed, at a narrower grain than planned.** The plan implied the
+console would read the existing snapshot views. `reporting.vw_inventory_units` exists because the
+route needs prior-snapshot price movement, which is a window function over a *narrowed* set of dates,
+and because a daily grain produced a **31.3 MB** export against the contract's 3 MB ceiling. Month
+ends plus the latest snapshot gives 1,501 rows at 1.02 MB — and, more valuably, aligns 1:1 with the
+month-end accounting schedule, so the unit drill-through's accounting position is a real join rather
+than a nearest-date approximation.
+
+**(b) The market estimate had to be generated before it could be shown.** `price_to_market_ratio` was
+specified as if it existed; the warehouse fact had no `market_price_estimate` column. It is added by
+migration `0005` with a guarded CHECK (`NULL OR > 0` — the column is a denominator, so zero is refused)
+and generated in its own `inventory_market_price_estimate` namespace, absent by design for ~8% of
+units so the NULL branch downstream is genuinely exercised rather than theoretical.
+
+**(c) The view repeats one expression, and that cost was paid rather than hidden.** Reading the fact
+directly means `vw_inventory_units` restates `price_to_market_ratio` instead of selecting it. Two
+copies of one rule is how two surfaces come to disagree about a measure carrying one name, so
+`RECON-INV-UNIT-RATIO` re-proves the equality on every run — comparing NULL as a value, because the
+absent-estimate branch is the one most likely to be wrong. `RECON-INV-UNIT-GRAIN` guards the narrowing
+itself. The reconciliation was named in a SQL comment before it existed; implementing it is part of
+this increment.
+
+**(d) No deal reconciliation was built.** The plan listed one beside the inventory reconciliation.
+`DASH.8` models inventory control accounts and nothing else, so a deal reconciliation here could only
+have compared a figure against itself. It is not deferred work with a design; it needs a second
+control family that does not exist.
+
+**(e) An exported `entity_id` column was removed after export.** It carried warehouse surrogate
+composites (`20250930-1-2`) into the browser, contradicting the contract note three lines above it.
+Drill-through is rebuilt from business columns, and no console URL contains a surrogate — asserted
+directly against every exception link.
+
+**(f) A defect shipped and was fixed.** `/dashboard/inventory` reported 288 units where the truth is
+250, rendering one store's inventory three times, because the route passed one memoization key for
+three partitions. `decodeDataset` now refuses two different files under one key. Full account in
+[DASH-9-REVIEW.md](../reviews/DASH-9-REVIEW.md) §J.
 
 ---
 

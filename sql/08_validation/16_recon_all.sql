@@ -2,7 +2,7 @@
 -- File:            sql/08_validation/16_recon_all.sql
 -- Project:         Automotive Retail Performance Intelligence (ARPI)
 -- Purpose:         Union every SQL reconciliation into one object and provide the recorder that persists them against a pipeline run.
--- Execution order: Validation layer, last of the reconciliation scripts. Renumbered from 11 to 13 by DASH.5, from 13 to 14 by DASH.6 and from 14 to 16 by DASH.8, so audit.vw_recon_target (11), audit.vw_recon_fi (13) and audit.vw_recon_accounting (15) all exist before this file unions them.
+-- Execution order: Validation layer, last of the reconciliation scripts. Renumbered from 11 to 13 by DASH.5, from 13 to 14 by DASH.6 and from 14 to 16 by DASH.8, so audit.vw_recon_target (11), audit.vw_recon_fi (13), audit.vw_recon_inventory_units (14, added by DASH.9 into the number DASH.8 vacated) and audit.vw_recon_accounting (15) all exist before this file unions them.
 -- Idempotency:     Fully idempotent. CREATE OR REPLACE VIEW and CREATE OR REPLACE FUNCTION. Evaluating the view writes nothing; the recorder replaces its own rows for the given run rather than appending.
 -- Ownership:       Created by the bootstrap superuser, reassigned to arpi_admin by the final pass of sql/07_security/01_grants.sql. EXECUTE granted to arpi_loader.
 -- Grain:           audit.vw_recon_all: one row per SQL reconciliation rule.
@@ -51,6 +51,8 @@ UNION ALL
 SELECT * FROM audit.vw_recon_target
 UNION ALL
 SELECT * FROM audit.vw_recon_fi
+UNION ALL
+SELECT * FROM audit.vw_recon_inventory_units
 UNION ALL
 SELECT * FROM audit.vw_recon_accounting;
 

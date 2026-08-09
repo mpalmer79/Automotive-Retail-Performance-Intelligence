@@ -68,3 +68,37 @@ export async function bodyText(page: Page): Promise<string> {
   await settle(page)
   return (await page.locator('body').innerText()).replace(/\s+/g, ' ')
 }
+
+/**
+ * The sentences in `text` that contain `pattern` AND do not negate it.
+ *
+ * WHY A FLAT SUBSTRING SWEEP IS THE WRONG INSTRUMENT
+ * --------------------------------------------------
+ * The console's honesty rules are enforced by looking for vocabulary a page must not
+ * assert: repricing advice on `/dashboard/inventory`, general-ledger artefacts on
+ * `/dashboard/accounting`, benchmarks on `/dashboard/fi`. But the same pages carry
+ * DISCLOSURES built from that same vocabulary — "ARPI models no floorplan interest,
+ * curtailment or carrying cost", "no journal entry or trial balance exists in this
+ * project" — because saying what is not modelled is the whole point of the disclosure.
+ *
+ * A `not.toMatch(/floorplan interest/)` therefore flags the very sentence written to
+ * prevent the thing it is checking for, and the only way to make it pass is to delete
+ * the disclosure. That is a test making the project less honest.
+ *
+ * What is forbidden is an AFFIRMATIVE use. This splits on sentence boundaries — plus the
+ * "X is no …" construction, which carries a negation without terminal punctuation — keeps
+ * the sentences matching `pattern`, and drops the ones that negate it. A non-empty result
+ * is the assertion failing.
+ *
+ * Shared by `dashboard-fi.spec.ts`, `dashboard-inventory.spec.ts` and
+ * `dashboard-accounting.spec.ts`, which needed it independently and for the same reason.
+ */
+export function affirmativeSentences(text: string, pattern: RegExp): string[] {
+  return text
+    .split(/(?<=[.!?])\s+|(?=[A-Z][a-z]+ (?:is|are) no\b)/)
+    .filter((sentence) => pattern.test(sentence))
+    .filter(
+      (sentence) =>
+        !/\b(no|not|never|none|nothing|nobody|cannot|neither)\b/i.test(sentence)
+    )
+}

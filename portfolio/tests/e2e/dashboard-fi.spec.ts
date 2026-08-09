@@ -23,34 +23,10 @@
  */
 import { expect, test } from '@playwright/test'
 
-import { gotoRendered, mainText, mainTextContent } from './helpers'
+import { affirmativeSentences, gotoRendered, mainText, mainTextContent } from './helpers'
 import { DASHBOARD_VIEWPORTS } from './routes'
 
 const ROUTE = '/dashboard/fi'
-
-/**
- * The sentences in `text` that contain `phrase` AND do not negate it.
- *
- * A flat substring sweep is the wrong instrument on this page, and finding that out was
- * useful. The methodology's whole job is to say what the page will NOT tell you --
- * "no figure here is an industry benchmark", "ARPI models no APR, payment, buy rate,
- * sell rate, rate spread, credit score or lending decision of any kind" -- so a sweep
- * that flags every mention flags the disclosures written to prevent the very thing it
- * is checking for, and the only way to make it pass would be to delete them.
- *
- * What is actually forbidden is an AFFIRMATIVE use: the page reporting a benchmark, or
- * publishing a rate. So the text is split into sentences and a sentence is an offender
- * only if it carries the phrase without a negation.
- */
-function affirmativeSentences(text: string, pattern: RegExp): string[] {
-  return text
-    .split(/(?<=[.!?])\s+|(?=[A-Z][a-z]+ (?:is|are) no\b)/)
-    .filter((sentence) => pattern.test(sentence))
-    .filter(
-      (sentence) =>
-        !/\b(no|not|never|none|nothing|nobody|cannot|neither)\b/i.test(sentence)
-    )
-}
 
 test.describe('the route exists and is the F&I destination', () => {
   test('answers 200 and names what the page is', async ({ page }) => {

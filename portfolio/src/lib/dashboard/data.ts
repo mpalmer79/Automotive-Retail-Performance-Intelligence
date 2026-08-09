@@ -79,7 +79,10 @@ export function datasetManifest(name: string): DashboardClientDataset {
  * objects, so this is where the key names go back on — once per dataset, memoized,
  * rather than once per read.
  */
-const rowCache = new Map<string, readonly DashboardRow[]>()
+const rowCache = new Map<
+  string,
+  { readonly file: DashboardDatasetFile; readonly rows: readonly DashboardRow[] }
+>()
 
 /**
  * Rehydrate a columnar dataset file, memoized by key.
@@ -99,7 +102,28 @@ export function decodeDataset(
 
 function toRows(cacheKey: string, file: DashboardDatasetFile): readonly DashboardRow[] {
   const cached = rowCache.get(cacheKey)
-  if (cached !== undefined) return cached
+  if (cached !== undefined) {
+    // A KEY COLLISION IS AN ERROR, NOT A CACHE HIT.
+    //
+    // Every partitioned file has the same columns and the same shape, so a caller that
+    // passes the dataset name for all of its partitions gets the FIRST partition's rows
+    // back for every one of them, and nothing about the result looks wrong: right columns,
+    // plausible rows, wrong store. That defect shipped on `/dashboard/inventory`, which
+    // rendered one store's 96 units three times and reported 288.
+    //
+    // Identity is the fact that settles it. Each generated file is a module-level object,
+    // so two different partitions can never be the same reference. Presenting one key with
+    // two files now fails loudly at the first render rather than answering confidently and
+    // incorrectly for the life of the process.
+    if (cached.file !== file) {
+      throw new Error(
+        `Two different dataset files were decoded under the cache key "${cacheKey}". ` +
+          'A partitioned dataset needs one key per partition (dataset/store/month), ' +
+          'not one key per dataset.'
+      )
+    }
+    return cached.rows
+  }
   const columns = file.columns
   const rows = file.rows.map((values) => {
     const row: Record<string, DashboardCell> = {}
@@ -110,7 +134,7 @@ function toRows(cacheKey: string, file: DashboardDatasetFile): readonly Dashboar
     }
     return row as DashboardRow
   })
-  rowCache.set(cacheKey, rows)
+  rowCache.set(cacheKey, { file, rows })
   return rows
 }
 

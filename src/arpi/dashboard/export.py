@@ -184,9 +184,34 @@ def known_limitations() -> tuple[str, ...]:
         SYNTHETIC_DATA_NOTICE,
         f"{FICTIONAL_DEALER_GROUP} is a fictional dealer group. Every store, employee role and "
         "transaction in this export is machine generated.",
-        "The export carries only the 29 governed KPIs implemented at DASH.1. Targets, itemized "
-        "F&I products, finance reserve, inventory accounting and GL controls are not modelled "
+        "The export carries the governed KPIs implemented to date. Lead-source quality, "
+        "campaign cost, employee performance and a management action queue are not modelled "
         "yet and no dataset here stands in for them.",
+        "The GL control accounts are SYNTHETIC and there are three of them. They are a "
+        "selected inventory control catalogue, not a chart of accounts, and no real dealer "
+        "group's account numbering was consulted. ARPI models no journal entry, journal "
+        "line, posting batch, trial balance, period close or financial statement, so nothing "
+        "in this export is or supports a financial-statement assertion.",
+        "Both sides of the inventory reconciliation are generated from one governed model. "
+        "It is not agreement between two independent systems, and the development dataset "
+        "contains deliberately planted controlled variance scenarios so that all four "
+        "comparison states are exercised. A nonzero variance is a position to investigate "
+        "and is not evidence of an accounting error.",
+        "Inventory control balances are semi-additive. They add across stores and control "
+        "accounts on ONE comparison date and never across dates; a period figure is the last "
+        "comparable date within it. A missing side is published as null, never as zero, "
+        "because a balance that does not exist is not a balance of zero.",
+        "market_price_estimate is a SYNTHETIC estimate generated for this fictional dataset. "
+        "No auction result, guidebook, licensed benchmark or observed transaction is "
+        "consulted anywhere in this project. price_to_market_ratio describes the asking "
+        "price against it and is null where no estimate exists; neither is evidence that a "
+        "price is right or wrong, and neither supports a repricing recommendation.",
+        "Price movement is derived from consecutive month-end snapshots of the same unit. "
+        "ARPI holds no price-history fact and models no manager decision, pricing strategy "
+        "or repricing action, so an observed decrease is an observation and nothing more.",
+        "Floorplan principal is liability context carried alongside a unit. It is not part "
+        "of book value, is never netted against it, and ARPI publishes no net inventory "
+        "position and models no floorplan interest, curtailment or carrying cost.",
         "Manufacturer incentives, holdback and floorplan credits are excluded from front gross, "
         "so new-vehicle front gross is understated by construction. That is a modelling "
         "boundary, not a finding.",

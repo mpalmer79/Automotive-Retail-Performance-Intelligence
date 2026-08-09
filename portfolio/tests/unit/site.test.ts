@@ -106,6 +106,8 @@ describe('the thirteen primary routes exist and the lab is not one of them', () 
     '/dashboard/deals',
     // `DASH.7`. Real, indexed, and reached from the console bar rather than the header.
     '/dashboard/fi',
+    '/dashboard/inventory',
+    '/dashboard/accounting',
   ]
 
   /** Routes that exist and are indexed but are not navigation destinations. */
@@ -120,9 +122,11 @@ describe('the thirteen primary routes exist and the lab is not one of them', () 
     '/dashboard/sales-gross',
     '/dashboard/deals',
     '/dashboard/fi',
+    '/dashboard/inventory',
+    '/dashboard/accounting',
   ]
 
-  it('declares exactly the seventeen primary routes plus the lab', () => {
+  it('declares exactly the nineteen primary routes plus the lab', () => {
     expect(ALL_ROUTES.map((route) => route.href).sort()).toEqual(
       [...PRIMARY, '/ui-lab'].sort()
     )

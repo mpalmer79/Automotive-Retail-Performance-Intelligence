@@ -69,11 +69,18 @@ SELECT
     i.inventory_investment                                     AS inventory_investment,
     i.market_price_estimate                                    AS market_price_estimate,
 
-    -- THE ONE PLACE price_to_market_ratio IS COMPUTED.
+    -- WHERE price_to_market_ratio IS DEFINED.
     --
-    -- It is derived here rather than stored on the fact so that there is exactly one
-    -- definition of it in the project: a stored copy would be a second answer able to
-    -- disagree with its own components the day somebody restamped one of them.
+    -- It is derived here rather than stored on the fact, because a stored copy would be an
+    -- answer able to disagree with its own components the day somebody restamped one of them.
+    --
+    -- ONE OTHER FILE COMPUTES THIS EXPRESSION: reporting.vw_inventory_units, which reads the
+    -- fact directly -- it needs window functions over a narrowed set of dates that this view
+    -- does not publish -- and therefore cannot select a column its source does not carry. That
+    -- duplication is deliberate and is not left to care: RECON-INV-UNIT-RATIO re-proves the
+    -- two are equal on every database run, comparing NULL as a value so that an absent
+    -- estimate must give an absent ratio on both sides and a zero on neither. A THIRD copy of
+    -- this division is a defect; see sql/08_validation/14_recon_inventory_units.sql.
     --
     -- NULL propagates deliberately. A unit with no estimate has no ratio -- not a ratio of
     -- zero, and not an imputed one. The NULLIF guards the denominator a second time even
@@ -120,7 +127,7 @@ COMMENT ON COLUMN reporting.vw_inventory_snapshots.condition_group IS 'Governed 
 COMMENT ON COLUMN reporting.vw_inventory_snapshots.vehicle_condition_type IS 'New, Used or Certified as recorded on the vehicle.';
 COMMENT ON COLUMN reporting.vw_inventory_snapshots.age_bucket IS 'Pre-computed age bucket: 0-30, 31-60, 61-90, 91-120 or Over 120 days.';
 COMMENT ON COLUMN reporting.vw_inventory_snapshots.market_price_estimate IS 'SYNTHETIC market price reference for the unit, constant across its snapshots. NULL where the estimator declined to price the unit. NOT a market valuation and never to be presented as one; no guidebook, auction or licensed benchmark exists anywhere in this project.';
-COMMENT ON COLUMN reporting.vw_inventory_snapshots.price_to_market_ratio IS 'current_asking_price / market_price_estimate, rounded to 4 decimals. THE single definition of this ratio in the project. NULL where there is no estimate -- never zero and never imputed. Above 1.0 means the unit is advertised above its synthetic estimate; below 1.0 means beneath it. It is a descriptive comparison against a generated reference, not evidence that a price is right or wrong.';
+COMMENT ON COLUMN reporting.vw_inventory_snapshots.price_to_market_ratio IS 'current_asking_price / market_price_estimate, rounded to 4 decimals. Where this ratio is defined; reporting.vw_inventory_units repeats the identical expression because it reads the fact directly, and RECON-INV-UNIT-RATIO re-proves the two agree on every run. NULL where there is no estimate -- never zero and never imputed. Above 1.0 means the unit is advertised above its synthetic estimate; below 1.0 means beneath it. It is a descriptive comparison against a generated reference, not evidence that a price is right or wrong.';
 COMMENT ON COLUMN reporting.vw_inventory_snapshots.current_asking_price IS 'Advertised price on the snapshot date.';
 COMMENT ON COLUMN reporting.vw_inventory_snapshots.original_asking_price IS 'First advertised price.';
 COMMENT ON COLUMN reporting.vw_inventory_snapshots.msrp IS 'Manufacturer suggested retail price where one applies, otherwise NULL.';
