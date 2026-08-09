@@ -59,9 +59,15 @@ def ddl_columns() -> frozenset[str]:
     body = text[start : text.index("\n);", start)]
 
     columns: set[str] = set()
+    # The type is followed by a lookahead for whitespace rather than by ``\b``. A word
+    # boundary after ``numeric(12,2)`` never matches: the pattern ends on ``)``, the next
+    # character is a space, and two non-word characters have no boundary between them. The
+    # first version of this regex silently matched only the integer columns -- eight of
+    # seventeen -- which is exactly the "an absent check reads like a passing one" failure
+    # the guard test below exists to catch, and did.
     declaration = re.compile(
         r"^\s{4}([a-z][a-z0-9_]*)\s+"
-        r"(bigint|integer|smallint|numeric\(\d+,\d+\)|varchar\(\d+\)|text|date|boolean)\b"
+        r"(bigint|integer|smallint|numeric\(\d+,\d+\)|varchar\(\d+\)|text|date|boolean)(?=\s)"
     )
     for line in body.splitlines():
         match = declaration.match(line)
@@ -132,21 +138,60 @@ def test_the_columns_that_never_existed_still_do_not() -> None:
         )
 
 
-def test_the_ratio_is_defined_in_exactly_one_reporting_view() -> None:
+#: The two reporting views permitted to compute `price_to_market_ratio`, and the reason
+#: there are two rather than one.
+#:
+#: `vw_inventory_snapshots` states the rule. `vw_inventory_units` repeats it, because it
+#: reads `warehouse.fact_vehicle_inventory_snapshot` directly -- it needs window functions
+#: over a narrowed set of dates that the snapshots view does not publish -- and so cannot
+#: select a column the thing it reads does not have.
+#:
+#: A third file computing this division is a defect. So is the two drifting apart, which is
+#: why `RECON-INV-UNIT-RATIO` re-proves their equality on every database run rather than
+#: this test being the only thing standing between them.
+RATIO_DEFINERS = ("12_vw_inventory_snapshots.sql", "52_vw_inventory_units.sql")
+
+
+def test_the_ratio_is_computed_in_exactly_the_two_views_that_may() -> None:
     """`price_to_market_ratio` is derived, and section 15.5 says where.
 
-    The claim is that ``vw_inventory_snapshots`` holds THE single definition of the ratio.
-    A second independent definition is how two surfaces come to disagree about the same
-    named measure, so the arithmetic may appear once; other views may select it.
+    Not "in exactly one place" -- that was the claim the SQL comments made, and it is not
+    what the code does. Stating it that way here would have made this test the third place
+    the project asserted something about the ratio that was not true of it.
     """
     reporting = REPO / "sql" / "05_reporting"
-    division = re.compile(r"current_asking_price\s*/\s*NULLIF\(\s*market_price_estimate")
-    definers = sorted(
-        path.name
-        for path in reporting.glob("*.sql")
-        if division.search(path.read_text(encoding="utf-8"))
+    division = re.compile(r"current_asking_price\s*/\s*NULLIF\(\s*[a-z]*\.?market_price_estimate")
+    definers = tuple(
+        sorted(
+            path.name
+            for path in reporting.glob("*.sql")
+            if division.search(path.read_text(encoding="utf-8"))
+        )
     )
-    assert definers == ["12_vw_inventory_snapshots.sql"], (
-        "price_to_market_ratio must be computed in exactly one place; "
-        f"found the division in {definers}"
+    assert definers == RATIO_DEFINERS, (
+        "price_to_market_ratio may be computed only in the two views that must; "
+        f"found the division in {list(definers)}"
+    )
+
+
+def test_the_two_copies_of_the_ratio_are_the_same_expression() -> None:
+    """The duplication is byte-identical, so it cannot diverge by accident.
+
+    Two copies of a rule is how two surfaces come to disagree about a measure carrying one
+    name. This catches the divergence at the file level and costs nothing;
+    ``RECON-INV-UNIT-RATIO`` catches it against real rows on every database run, which is
+    the one that would notice a difference this comparison could not see.
+    """
+    reporting = REPO / "sql" / "05_reporting"
+    expression = re.compile(
+        r"ELSE round\(i\.current_asking_price / NULLIF\(i\.market_price_estimate, 0\), 4\)"
+    )
+    found = {
+        name: expression.findall((reporting / name).read_text(encoding="utf-8"))
+        for name in RATIO_DEFINERS
+    }
+    for name, matches in found.items():
+        assert len(matches) == 1, f"expected exactly one ratio expression in {name}, got {matches}"
+    assert len({matches[0] for matches in found.values()}) == 1, (
+        f"the two copies of the price_to_market_ratio expression have diverged: {found}"
     )

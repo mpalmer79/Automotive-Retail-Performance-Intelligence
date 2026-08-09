@@ -709,6 +709,80 @@ integrity checks and four lender fields. The jacket partition itself grew from 4
 568,225 bytes generated — 13 more columns on 650 rows — and the largest partition from
 34,439 to 44,190 bytes, still well inside the 256 KB ceiling.
 
+## 9.7 The two `DASH.9` routes, measured
+
+Measured by `npm run bundle` against a production build served locally, cold, compressed,
+by the same method as §9.3 through §9.6. **A baseline, not a budget.** `DASH.13-02` sets
+budgets from measurements.
+
+| Route                                                |     HTML | Route JS |    Total |
+| ---------------------------------------------------- | -------: | -------: | -------: |
+| `/dashboard/inventory`                               |  74.5 kB | 164.5 kB | 369.1 kB |
+| `/dashboard/inventory?unit=VEH-0000005`              |  76.6 kB | 164.5 kB | 371.2 kB |
+| `/dashboard/inventory?store=GSA-001&period=2025-11`  |  47.3 kB | 164.5 kB | 341.9 kB |
+| `/dashboard/accounting`                              |  33.4 kB | 164.5 kB | 328.0 kB |
+| `/dashboard/accounting?store=GSA-001&period=2025-11` |  31.5 kB | 164.5 kB | 326.1 kB |
+| `/dashboard` (the heaviest console route, for scale) | 123.9 kB | 164.5 kB | 418.5 kB |
+
+**Zero new client JavaScript.** 164.5 kB on both routes, the figure every console route
+reports. Every section, every table, the unit drill-through panel and both methodology
+disclosures are server components. The console still has exactly one client island — the
+filter bar — and `DASH.9` added none; `dashboard-boundaries.test.ts` fails the build if a
+second appears without a decision.
+
+**The store filter is the measurement worth having.** `/dashboard/inventory` narrowed to one
+store costs 47.3 kB against 74.5 kB unfiltered — **27.2 kB less** — because it opens one
+partition instead of three. A page that filtered in the browser would have shipped all three
+stores' units and hidden two thirds of them, and the payload would not have moved. That
+difference is the cheapest available evidence that the scoping reaches the server.
+
+**The drill-through is nearly free.** `?unit=` costs 2.1 kB over the index: one accounting
+partition opened for one unit, and one panel rendered. It is not a second page.
+
+**`/dashboard/accounting` is the lightest console route in HTML**, at 33.4 kB against the
+Deal Jacket's 47.0 kB and `/dashboard`'s 123.9 kB, despite rendering the whole reconciliation.
+The reason is grain: 43 comparison positions is a small surface, and the route resists
+enriching it.
+
+**Data lane.**
+
+| Artifact                                               |      Bytes |
+| ------------------------------------------------------ | ---------: |
+| Root export, `inventory-units.json` (1,501 rows)       |  1,023,530 |
+| Root export, `inventory-accounting.json` (1,501 rows)  |    970,574 |
+| Root export, `inventory-gl-reconciliation.json` (43)   |     18,637 |
+| Root export, `accounting-exceptions.json` (4)          |      2,358 |
+| Generated, `datasets/inventory-units/` (18)            |    313,255 |
+| Generated, `datasets/inventory-accounting/` (18)       |    316,743 |
+| Generated, `datasets/inventory-gl-reconciliation.json` |      7,519 |
+| Generated, `datasets/accounting-exceptions.json`       |      2,102 |
+| Largest single generated partition                     |     21,059 |
+| Root export tree, all 31 files                         | 15,663,504 |
+| Generated tree, all 218 files                          |  5,274,190 |
+
+**The grain was chosen by measurement, and the first attempt was wrong.** A daily unit grain
+produced a **31.3 MB** export against the data contract's 3 MB ceiling — ten times over, and
+not fixable by compression. Narrowing `reporting.vw_inventory_units` to month ends plus the
+latest snapshot gives 1,501 rows at 1.02 MB. The size was the reason for the change; the
+better outcome was accidental and larger, because month-end is also the accounting schedule's
+grain, so the two datasets align 1:1 and the unit drill-through's accounting position is a
+real join rather than a nearest-date approximation.
+
+**Chunking follows from those numbers.** Both unit-grain datasets are partitioned by store x
+month; the 18.6 kB reconciliation set and the 2.4 kB exception set are single files.
+Partitioning them because it is the local pattern would have added two boundary rules and two
+manifest chunk indexes to save nothing. The exception set has a second reason unrelated to
+size: its date column is `exception_date`, the exception's own business date, so partitioning
+it would key partitions by a third date semantic.
+
+**One request opens three partitions, and it used to open eighteen.** The route reads the
+months from the manifest's chunk index — metadata it already holds, so no partition is opened
+to discover them — resolves the period to ONE month, and decodes only that month for only the
+stores in scope. The earlier version read all six months for all three stores on every
+request: roughly 1,500 unit rows to render a page showing one date. It made this the heaviest
+render in the console and the first page to flake under a parallel browser suite. The flakes
+went away because the cause did.
+
 ## 10. What has not been measured
 
 Stated rather than implied.

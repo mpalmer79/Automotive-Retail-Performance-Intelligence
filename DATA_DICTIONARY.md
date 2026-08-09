@@ -920,15 +920,24 @@ does not belong on this table.
 ### 15.5 What `price_to_market_ratio` is, and why it is not a column here
 
 The ratio is real and is published — by
-[`reporting.vw_inventory_snapshots`](sql/05_reporting/12_vw_inventory_snapshots.sql), which holds
-**the single definition of it in the project**, and by
-[`reporting.vw_inventory_units`](sql/05_reporting/52_vw_inventory_units.sql), which selects it for the
-console's unit grain. It is `current_asking_price / market_price_estimate` to four decimals, and it is
-**NULL wherever the estimate is NULL — never zero and never imputed**, because "we did not price this
-unit" and "this unit is worthless" are different statements and only one of them is true.
+[`reporting.vw_inventory_snapshots`](sql/05_reporting/12_vw_inventory_snapshots.sql), which states the
+rule, and by [`reporting.vw_inventory_units`](sql/05_reporting/52_vw_inventory_units.sql), which
+**repeats the identical expression** for the console's unit grain. It is
+`current_asking_price / market_price_estimate` to four decimals, and it is **NULL wherever the estimate
+is NULL — never zero and never imputed**, because "we did not price this unit" and "this unit is
+worthless" are different statements and only one of them is true.
+
+Two copies, and the second one is deliberate rather than careless: the unit view reads the fact
+directly, because it needs window functions over a narrowed set of dates that the snapshots view does
+not publish, so it cannot select a column its source does not carry. Two statements of one rule is
+nonetheless how two surfaces come to disagree about a measure with one name, so the equality is
+**re-proved on every database run** by `RECON-INV-UNIT-RATIO`
+([`sql/08_validation/14_recon_inventory_units.sql`](sql/08_validation/14_recon_inventory_units.sql))
+rather than trusted. That rule compares NULL as a value: an absent estimate must produce an absent
+ratio on both sides and a zero on neither.
 
 It is derived in the reporting layer rather than stored because it is a ratio of two columns already on
-the row, and a stored copy is a second place for it to be wrong. It appeared in this section as a
+the row, and a stored copy is a third place for it to be wrong. It appeared in this section as a
 `numeric(8,4)` column for several increments regardless, which is exactly the failure mode
 [CLAUDE.md §3](CLAUDE.md) exists to prevent: a documented column that no DDL ever created reads as
 a fact about the schema, and a reader building against it would have found nothing there.
