@@ -832,9 +832,9 @@ Counted apart from every row above, because folding either lane in would move a 
 |---|---:|---|
 | Sanitized public listing SQL files (ADR-0011) | 15 | Implemented, and outside the MVP warehouse the semantic model reads. |
 | Sanitized public listing reporting views | 6 | Implemented. |
-| Dashboard program SQL files (ADR-0013) | 35 | Implemented. |
+| Dashboard program SQL files (ADR-0013) | 39 | Implemented. |
 | Dashboard program fact DDL scripts | 3 | Implemented. `DASH.5` added the first fact this lane owns; the MVP fact count above is unchanged. |
-| Dashboard program reporting views | 10 | Implemented, and **not** part of the reporting-view baseline the semantic model binds to. |
+| Dashboard program reporting views | 13 | Implemented, and **not** part of the reporting-view baseline the semantic model binds to. |
 | Dashboard program KPIs | 32 | Implemented in SQL and on the web console. The 29 governed KPIs above are unchanged: no DAX measure reads these, so the two numbers are reported side by side and never summed. |
 | Inventory accounting and GL control SQL files (`DASH.8`) | 17 | Implemented. Database and reporting only: no browser dataset is exported and no console route reads them. |
 | Inventory accounting fact DDL scripts | 2 | Implemented. The MVP fact count above is unchanged. |

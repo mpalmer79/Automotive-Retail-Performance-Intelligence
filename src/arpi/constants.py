@@ -888,6 +888,16 @@ INVENTORY_LISTING_VIEWS: Final[tuple[str, ...]] = (
 #: rather than in that baseline: the MVP view publishes surrogate keys for the semantic
 #: model, this one publishes business identifiers for the browser, and only the second is a
 #: dashboard-program deliverable.
+#: ``DASH.10`` adds three, on the same terms. Each RE-GRAINS an existing fact for the leads
+#: and marketing route and adds no fact, no dimension and no KPI identifier:
+#: ``vw_appointment_source_funnel`` carries KPI-FUN-004 and KPI-FUN-005 at lead-source and
+#: campaign grain so a source-filtered page can scope the appointment rates with the same
+#: filter it scopes the lead funnel; ``vw_lead_stage_loss`` owns the lost-stage partition so
+#: that arithmetic has one implementation rather than one per consumer; and
+#: ``vw_lead_response_distribution`` publishes the first-response population as counted bins,
+#: which is the only shape from which KPI-FUN-008 -- a median, and therefore not
+#: decomposable -- can be recomputed at an arbitrary filter scope. The 28-view MVP baseline
+#: is unchanged, and the semantic model binds to none of the three.
 DASHBOARD_PROGRAM_VIEWS: Final[tuple[str, ...]] = (
     "vw_sales_gross_trend",
     "vw_gross_change_bridge",
@@ -899,6 +909,9 @@ DASHBOARD_PROGRAM_VIEWS: Final[tuple[str, ...]] = (
     "vw_fi_product_penetration",
     "vw_fi_adjustment_summary",
     "vw_inventory_units",
+    "vw_appointment_source_funnel",
+    "vw_lead_stage_loss",
+    "vw_lead_response_distribution",
 )
 
 #: The inventory accounting and GL control views, added by DASH.8.

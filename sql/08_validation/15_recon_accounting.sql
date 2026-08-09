@@ -2,7 +2,7 @@
 -- File:            sql/08_validation/15_recon_accounting.sql
 -- Project:         Automotive Retail Performance Intelligence (ARPI)
 -- Purpose:         Implement the RECON-ACC-* / RECON-GLB-* family: prove the book-value identity holds on every schedule line, that pack and floorplan are outside it, that the schedule covers the stock it claims to, and record the GL-to-subledger comparison without asserting it must agree.
--- Execution order: Validation layer, after sql/08_validation/05_reconciliation_helpers.sql and before 16_recon_all.sql, which unions this view.
+-- Execution order: Validation layer, after sql/08_validation/05_reconciliation_helpers.sql and before 17_recon_all.sql, which unions this view.
 -- Idempotency:     Fully idempotent. CREATE OR REPLACE VIEW only; evaluating a view writes nothing.
 -- Ownership:       Created by the bootstrap superuser, reassigned to arpi_admin by the final pass of sql/07_security/01_grants.sql.
 -- Grain:           One row per reconciliation rule.

@@ -118,10 +118,15 @@ TABLE_PRIVILEGES: tuple[str, ...] = (
 #: The four numbers are held apart rather than summed into one literal because they mean
 #: different things. Twenty-eight is what the SQL baseline and the Power BI semantic model
 #: were measured against; six is the sanitized public listing lane (ADR-0011), which the
-#: semantic model does not read; nine is the dashboard program's own lane, which it does
-#: not read either; three is the inventory accounting and GL control lane (`DASH.8`),
-#: which has no browser dataset and no console route at all. A reader who saw only 46
+#: semantic model does not read; thirteen is the dashboard program's own lane, which it
+#: does not read either; three is the inventory accounting and GL control lane (`DASH.8`),
+#: which has no browser dataset and no console route at all. A reader who saw only 50
 #: could not tell which had moved.
+#:
+#: `DASH.10` moved the dashboard lane from ten to thirteen: `vw_appointment_source_funnel`,
+#: `vw_lead_stage_loss` and `vw_lead_response_distribution`, all three of which re-grain
+#: existing facts for the leads and marketing route. The MVP twenty-eight is untouched,
+#: which is the point of keeping the lanes apart.
 #:
 #: They are duplicated from `arpi.constants` because this script imports only the standard
 #: library -- it runs against a database from a bare interpreter. `tests/unit/
@@ -129,7 +134,7 @@ TABLE_PRIVILEGES: tuple[str, ...] = (
 #: so the duplication cannot drift.
 EXPECTED_MVP_REPORTING_VIEW_COUNT: int = 28
 EXPECTED_LISTING_REPORTING_VIEW_COUNT: int = 6
-EXPECTED_DASHBOARD_REPORTING_VIEW_COUNT: int = 10
+EXPECTED_DASHBOARD_REPORTING_VIEW_COUNT: int = 13
 EXPECTED_ACCOUNTING_REPORTING_VIEW_COUNT: int = 3
 EXPECTED_REPORTING_VIEW_COUNT: int = (
     EXPECTED_MVP_REPORTING_VIEW_COUNT
@@ -246,16 +251,22 @@ EXPECTED_REPORTING_ROW_COUNTS: dict[str, int] = {
 #: `RECON-INV-UNIT-GRAIN`, both over `reporting.vw_inventory_units`. It registers no
 #: `DQ-*` check, because the view introduces no new stored data to validate -- it narrows
 #: and windows a fact whose 19 `DQ-IAS-*` checks already run.
+#: `DASH.10` adds five and no checks (116 -> 121), on the same terms: the five
+#: `RECON-APPT-SOURCE-*` / `RECON-LEAD-STAGE-*` / `RECON-LEAD-RESPONSE-DIST-*` rules over
+#: the three presentation-grain views the leads and marketing route reads. It registers no
+#: `DQ-*` check for the same reason DASH.9 did not -- the views store nothing, they re-grain
+#: `fact_lead` and `fact_appointment`, whose existing checks already run. Measured on a
+#: fresh warehouse built by the canonical sequence, not inferred from a failing run.
 EXPECTED_REPORTING_ROW_COUNTS_PER_RUN: dict[str, int] = {
     "vw_data_quality_trend": 9,
-    "vw_reconciliation_status": 116,
+    "vw_reconciliation_status": 121,
     "vw_pipeline_run_summary": 1,
     "vw_data_quality_summary": 226,
 }
 
 #: Reconciliations the loader records on every run, and how many may fail.
 #: Per run, for the reason recorded above.
-EXPECTED_RECONCILIATION_COUNT_PER_RUN: int = 116
+EXPECTED_RECONCILIATION_COUNT_PER_RUN: int = 121
 EXPECTED_FAILING_RECONCILIATION_COUNT: int = 0
 
 #: The profile and seed the cloud database must have been loaded from.

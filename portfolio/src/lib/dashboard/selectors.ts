@@ -580,6 +580,22 @@ export const SELECTORS = {
     derivation:
       'Exported `contacted_leads` divided by exported `leads_received`, both summed first.',
   },
+  /**
+   * KPI-FUN-003. THE DENOMINATOR IS CONTACTED LEADS.
+   *
+   * It read `leads_received` here until DASH.10, matching the export's reconciliation
+   * total and contradicting everything else: `KPI_CATALOG.md` §26 ("The denominator is
+   * contacted leads, not all leads"), `reporting.vw_lead_funnel`, and an integration test
+   * asserting the view divides by contacted leads and "emphatically not leads_received".
+   *
+   * An appointment cannot be set with someone who was never reached, so dividing by all
+   * leads does not make the rate conservative — it makes it a different measure, and one
+   * that moves when contact rate moves. The Executive funnel published 26.6% where the
+   * governed definition gives 37.0%.
+   *
+   * Both sides are summed before dividing, so this is a ratio of sums and not a mean of
+   * per-row rates.
+   */
   appointmentSetRate: {
     id: 'appointmentSetRate',
     label: 'Appointment-set rate',
@@ -589,12 +605,12 @@ export const SELECTORS = {
     basis: 'period',
     kind: 'ratio',
     numeratorColumn: 'appointment_set_leads',
-    denominatorColumn: 'leads_received',
+    denominatorColumn: 'contacted_leads',
     unit: 'ratio',
     scale: 6,
     reconciliationKey: 'appointment_set_rate',
     derivation:
-      'Exported `appointment_set_leads` divided by exported `leads_received`, both summed first.',
+      'Exported `appointment_set_leads` divided by exported `contacted_leads`, both summed first. The denominator is CONTACTED leads, not all leads: an appointment cannot be set with someone who was never reached, which is why this rate must never be read without contact rate beside it.',
   },
   leadToSale: {
     id: 'leadToSale',

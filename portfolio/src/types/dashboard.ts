@@ -203,6 +203,56 @@ export const DASHBOARD_DATASETS = [
     dateBasis: 'spend month',
     chunked: false,
   },
+  /*
+   * `DASH.10`. Three datasets for one route, and all three are chunked.
+   *
+   * They are partitioned for the same reason `lead-funnel` and `lead-response` are: the
+   * grain includes a date, the whole-file payload is measured in megabytes, and a page only
+   * ever wants one period. Committed root sizes are 904 kB, 1.31 MB and 1.54 MB — the
+   * smallest of the three is already three and a half times `appointment-funnel`, which is
+   * the largest thing this lane leaves unchunked.
+   *
+   * `lead-response-distribution` carries `first_response_seconds` in its business key, and
+   * NULL is a key component there exactly as `campaign_code` is on `lead-funnel`: the
+   * never-responded bin is a real row identified by the absence of a response, not a
+   * missing value. Uniqueness is asserted over the five-column tuple with that null
+   * included, which is what stops the ignored population being silently merged into a
+   * response value.
+   */
+  {
+    name: 'appointment-source-funnel',
+    businessKey: [
+      'dealership_id',
+      'lead_source_code',
+      'campaign_code',
+      'appointment_date',
+    ],
+    dateBasis: 'appointment date',
+    chunked: true,
+  },
+  {
+    name: 'lead-stage-loss',
+    businessKey: [
+      'dealership_id',
+      'lead_source_code',
+      'campaign_code',
+      'lead_created_date',
+    ],
+    dateBasis: 'lead creation date',
+    chunked: true,
+  },
+  {
+    name: 'lead-response-distribution',
+    businessKey: [
+      'dealership_id',
+      'lead_source_code',
+      'campaign_code',
+      'lead_created_date',
+      'first_response_seconds',
+    ],
+    dateBasis: 'lead creation date',
+    chunked: true,
+  },
   {
     name: 'sales-gross-trend',
     businessKey: ['dealership_id', 'sale_date'],

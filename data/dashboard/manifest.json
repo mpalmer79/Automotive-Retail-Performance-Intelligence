@@ -1,26 +1,27 @@
 {
   "schema": "arpi.dashboard_export/1",
   "contract_version": 1,
-  "contract_sha256": "8f99a0ef64e8a52313f63611c5e800879e37b98c8c2ebfb8abb5d1c7b2691753",
-  "dataset_version": 11,
-  "generated_at": "2026-08-09T03:58:01+00:00",
+  "contract_sha256": "7aa3bac9903bcdc591e8ea9a8e39e0ab9023a225780d0b40cea0813abbb466d5",
+  "dataset_version": 12,
+  "generated_at": "2026-08-09T15:55:53+00:00",
   "as_of_date": "2025-12-31",
   "profile": "development",
   "random_seed": 20250701,
-  "source_commit": "3a3793a11e19937e76f2e6cf509290915037f7e9",
+  "source_commit": "fd6eb0ba93aa04b12020526da4c19c706285300f",
   "exporter_version": "0.1.0",
   "query_normalisation": "arpi.sql_whitespace_canonical/1",
   "reporter_role": "arpi_reporter",
   "synthetic_data": true,
   "fictional_dealer_group": true,
   "pipeline_run": {
-    "run_uuid": "fc5b97a2-f416-4abb-bd81-5f5cd3de6b2b",
+    "run_uuid": "4a6ed216-01cc-43de-b3a2-9c7562e910d2",
     "logical_run_key": null,
     "status": "succeeded"
   },
   "source_views": [
     "reporting.vw_accounting_exceptions",
     "reporting.vw_appointment_funnel",
+    "reporting.vw_appointment_source_funnel",
     "reporting.vw_calendar",
     "reporting.vw_days_supply",
     "reporting.vw_days_to_sale",
@@ -41,7 +42,9 @@
     "reporting.vw_inventory_units",
     "reporting.vw_lead_funnel",
     "reporting.vw_lead_response",
+    "reporting.vw_lead_response_distribution",
     "reporting.vw_lead_source",
+    "reporting.vw_lead_stage_loss",
     "reporting.vw_marketing_campaign",
     "reporting.vw_marketing_performance",
     "reporting.vw_pipeline_run_summary",
@@ -2505,6 +2508,491 @@
       "file": "marketing-performance.json",
       "file_sha256": "1dd1fc5e7c4b7b098a3daa12cc5e8199b6cdc28a6d69d92a1804513fc6641dc1",
       "file_bytes": 316825
+    },
+    {
+      "name": "appointment-source-funnel",
+      "source_view": "reporting.vw_appointment_source_funnel",
+      "join_views": [
+        "reporting.vw_dealership",
+        "reporting.vw_calendar",
+        "reporting.vw_lead_source",
+        "reporting.vw_marketing_campaign"
+      ],
+      "grain": "One row per store per lead source per campaign (nullable) per calendar date on which that combination had at least one appointment scheduled or shown.",
+      "business_key": [
+        "dealership_id",
+        "lead_source_code",
+        "campaign_code",
+        "appointment_date"
+      ],
+      "date_basis": "appointment date",
+      "sort_keys": [
+        "dealership_id",
+        "appointment_date",
+        "lead_source_code",
+        "campaign_code"
+      ],
+      "chunked": true,
+      "kpi_ids": [
+        "KPI-FUN-004",
+        "KPI-FUN-005"
+      ],
+      "columns": [
+        {
+          "name": "dealership_id",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_dealership.dealership_code"
+        },
+        {
+          "name": "appointment_date",
+          "type": "date",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "appointment date",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_calendar.calendar_date"
+        },
+        {
+          "name": "lead_source_code",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_source.lead_source_code"
+        },
+        {
+          "name": "campaign_code",
+          "type": "string",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_marketing_campaign.campaign_code"
+        },
+        {
+          "name": "scheduled_appointments",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "appointments",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_appointment_source_funnel.scheduled_appointments"
+        },
+        {
+          "name": "eligible_appointments",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "appointments",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_appointment_source_funnel.eligible_appointments"
+        },
+        {
+          "name": "cancelled_in_advance_appointments",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "appointments",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_appointment_source_funnel.cancelled_in_advance_appointments"
+        },
+        {
+          "name": "confirmed_appointments",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "appointments",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_appointment_source_funnel.confirmed_appointments"
+        },
+        {
+          "name": "shown_appointments",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "appointments",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_appointment_source_funnel.shown_appointments"
+        },
+        {
+          "name": "show_rate",
+          "type": "exact",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": "ratio",
+          "display_precision": 3,
+          "enumeration": null,
+          "source_column": "reporting.vw_appointment_source_funnel.show_rate"
+        },
+        {
+          "name": "cancellation_rate",
+          "type": "exact",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": "ratio",
+          "display_precision": 3,
+          "enumeration": null,
+          "source_column": "reporting.vw_appointment_source_funnel.cancellation_rate"
+        },
+        {
+          "name": "shown_appointments_on_show_date",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "appointments",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_appointment_source_funnel.shown_appointments_on_show_date"
+        },
+        {
+          "name": "shown_and_sold_appointments",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "appointments",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_appointment_source_funnel.shown_and_sold_appointments"
+        },
+        {
+          "name": "test_drive_appointments",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "appointments",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_appointment_source_funnel.test_drive_appointments"
+        },
+        {
+          "name": "write_up_appointments",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "appointments",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_appointment_source_funnel.write_up_appointments"
+        },
+        {
+          "name": "show_to_sale_conversion",
+          "type": "exact",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": "ratio",
+          "display_precision": 3,
+          "enumeration": null,
+          "source_column": "reporting.vw_appointment_source_funnel.show_to_sale_conversion"
+        }
+      ],
+      "notes": "The same measures appointment-funnel carries, cut by the source and campaign of the one lead behind each appointment, so a source-filtered page can scope KPI-FUN-004 and KPI-FUN-005 with the filter it scopes the funnel above them. Rolled up across lead_source_code and campaign_code it reproduces appointment-funnel component for component on every store and date; RECON-APPT-SOURCE-ROLLUP asserts that on every database run, comparing all nine additive columns rather than the rates, because compensating inflation of a numerator and a denominator divides back to a plausible rate. This is APPOINTMENT grain: one lead can produce several appointments, so these denominators are not the lead-funnel denominators and the two must never share a funnel width. Duplicate leads are NOT excluded, unlike every lead-grain measure -- the population is appointments, and dropping the ones behind duplicate leads would shrink the KPI-FUN-004 denominator and break the roll-up. Two date bases on one column: the show-rate columns are on the scheduled date, the conversion columns on the show date.",
+      "query_sha256": "6b4e55a3dc8d28ad006aad8ed06ffd2a07d923e5a47f70100b146ea97b9b80d5",
+      "row_count": 1819,
+      "file": "appointment-source-funnel.json",
+      "file_sha256": "17ab47761974bff52601c56cbfe966f17c71bde8997998820bb671919abfee3e",
+      "file_bytes": 903784
+    },
+    {
+      "name": "lead-stage-loss",
+      "source_view": "reporting.vw_lead_stage_loss",
+      "join_views": [
+        "reporting.vw_dealership",
+        "reporting.vw_calendar",
+        "reporting.vw_lead_source",
+        "reporting.vw_marketing_campaign"
+      ],
+      "grain": "One row per store per lead source per campaign (nullable) per lead-creation date.",
+      "business_key": [
+        "dealership_id",
+        "lead_source_code",
+        "campaign_code",
+        "lead_created_date"
+      ],
+      "date_basis": "lead creation date",
+      "sort_keys": [
+        "dealership_id",
+        "lead_created_date",
+        "lead_source_code",
+        "campaign_code"
+      ],
+      "chunked": true,
+      "kpi_ids": [],
+      "columns": [
+        {
+          "name": "dealership_id",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_dealership.dealership_code"
+        },
+        {
+          "name": "lead_created_date",
+          "type": "date",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "lead creation date",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_calendar.calendar_date"
+        },
+        {
+          "name": "lead_source_code",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_source.lead_source_code"
+        },
+        {
+          "name": "campaign_code",
+          "type": "string",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_marketing_campaign.campaign_code"
+        },
+        {
+          "name": "leads_received",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "leads",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_stage_loss.leads_received"
+        },
+        {
+          "name": "not_contacted",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "leads",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_stage_loss.not_contacted"
+        },
+        {
+          "name": "contacted_not_appointment_set",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "leads",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_stage_loss.contacted_not_appointment_set"
+        },
+        {
+          "name": "appointment_set_not_shown",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "leads",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_stage_loss.appointment_set_not_shown"
+        },
+        {
+          "name": "shown_not_sold",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "leads",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_stage_loss.shown_not_sold"
+        },
+        {
+          "name": "shown_and_sold",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "leads",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_stage_loss.shown_and_sold"
+        },
+        {
+          "name": "sold_without_modelled_showroom_visit",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "leads",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_stage_loss.sold_without_modelled_showroom_visit"
+        }
+      ],
+      "notes": "NO COLUMN HERE IS A KPI, and this dataset declares no kpi_ids for that reason: these are diagnostics, and labelling one with a KPI identifier would create a governed measure by presentation. The five stage columns partition the valid lead cohort by the FURTHEST stage each lead reached and sum exactly to leads_received on every row (RECON-LEAD-STAGE-PARTITION). They are published rather than left to the console to subtract because the obvious subtraction is wrong: fact_lead enforces that an appointment implies contact and a show implies an appointment, but NOT that a sale implies a show, so appointment_shown_leads minus sold_leads is not the count of leads that showed without buying and goes negative where more leads sold than showed. Those leads are counted by sold_without_modelled_showroom_visit, which is an OVERLAY on the first three columns and must never be added to the five -- doing so double-counts them. Every column is on the lead-creation cohort basis and excludes duplicates. The counts say a lead did not REACH a stage and say nothing about why: ARPI models no communication content, activity detail or disposition, so no consumer may attach a cause to one.",
+      "query_sha256": "d726c04c487bf26ec3bab9550c05777cd3b78e87fc03d88d6d77e25685f4c396",
+      "row_count": 4419,
+      "file": "lead-stage-loss.json",
+      "file_sha256": "3b6de3a04373784073d90105a1731995a8d6004a60896495971a4d052d0b528c",
+      "file_bytes": 1311089
+    },
+    {
+      "name": "lead-response-distribution",
+      "source_view": "reporting.vw_lead_response_distribution",
+      "join_views": [
+        "reporting.vw_dealership",
+        "reporting.vw_calendar",
+        "reporting.vw_lead_source",
+        "reporting.vw_marketing_campaign"
+      ],
+      "grain": "One row per store per lead source per campaign (nullable) per lead-creation date per distinct first-response value, plus one row per such combination for the never-responded population.",
+      "business_key": [
+        "dealership_id",
+        "lead_source_code",
+        "campaign_code",
+        "lead_created_date",
+        "first_response_seconds"
+      ],
+      "date_basis": "lead creation date",
+      "sort_keys": [
+        "dealership_id",
+        "lead_created_date",
+        "lead_source_code",
+        "campaign_code",
+        "first_response_seconds"
+      ],
+      "chunked": true,
+      "kpi_ids": [
+        "KPI-FUN-007",
+        "KPI-FUN-008"
+      ],
+      "columns": [
+        {
+          "name": "dealership_id",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_dealership.dealership_code"
+        },
+        {
+          "name": "lead_created_date",
+          "type": "date",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "lead creation date",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_calendar.calendar_date"
+        },
+        {
+          "name": "lead_source_code",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_source.lead_source_code"
+        },
+        {
+          "name": "campaign_code",
+          "type": "string",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_marketing_campaign.campaign_code"
+        },
+        {
+          "name": "first_response_seconds",
+          "type": "integer",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": "seconds",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_response_distribution.first_response_seconds"
+        },
+        {
+          "name": "response_time_band",
+          "type": "string",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "Under 5 minutes",
+            "5-15 minutes",
+            "15-60 minutes",
+            "Over 60 minutes"
+          ],
+          "source_column": "reporting.vw_lead_response_distribution.response_time_band"
+        },
+        {
+          "name": "lead_count",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "leads",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_response_distribution.lead_count"
+        },
+        {
+          "name": "responded_lead_count",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "leads",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_response_distribution.responded_lead_count"
+        },
+        {
+          "name": "unresponded_lead_count",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "leads",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_response_distribution.unresponded_lead_count"
+        },
+        {
+          "name": "response_seconds_total",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "seconds",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_lead_response_distribution.response_seconds_total"
+        }
+      ],
+      "notes": "A COUNTED DISTRIBUTION, NOT LEAD ROWS. It exists because KPI-FUN-008 is a median, medians are not decomposable, and an order statistic can only be recomputed from its population -- never from the store-source-day medians lead-response publishes, and never by averaging them. Grouping by the response value and counting preserves the multiset exactly, so a median over these rows weighted by lead_count equals the median over the leads themselves (RECON-LEAD-RESPONSE-DIST-MEDIAN), while the artefact carries no lead key, lead code, customer, employee, sale or vehicle at all. That is a stronger privacy guarantee than an allowlist over a lead-grain projection, and it is the smallest representation preserving the statistic. The rows are histogram bins and must never be rendered as leads: a bin with lead_count 1 is still a bin, and this dataset is not a drill-through. first_response_seconds null means NEVER RESPONDED and carries response_time_band null and responded_lead_count 0; zero seconds is a real instant response and an ordinary observation. A consumer computing the median must restrict to non-null first_response_seconds -- coalescing the null bin to zero would sort ignored leads to the fastest end and improve the median, which is the failure this shape makes impossible to hide. The bands are the governed vocabulary from vw_leads, carried through so nothing re-derives a boundary; they are descriptive bins and ARPI publishes no target or benchmark response time.",
+      "query_sha256": "2d1d9463cba3bf1f19e83a684a41919cf796a311b108e81b114727fc2e141ec1",
+      "row_count": 5513,
+      "file": "lead-response-distribution.json",
+      "file_sha256": "21314a804d6affb5e48bf321fbd2c92855f38dba88bda01c917df554fe831270",
+      "file_bytes": 1538524
     },
     {
       "name": "sales-gross-trend",
@@ -6656,10 +7144,10 @@
       ],
       "notes": "The source view's grain is reconciliation x run; this dataset selects the export's own run, so the console shows the evidence belonging to the data it is rendering. Three of the view's columns are deliberately NOT exported -- the two source columns and the prose description -- because all three embed schema-qualified names of internal warehouse and audit objects, which ADR-0013 condition 8 keeps out of the public lane. The governed reconciliation_id is the public handle: KPI_CATALOG.md section 36 documents what each identifier compares, so the console links to the definition instead of restating an internal object path. The values, the tolerance and the outcome are what make a reconciliation public evidence.",
       "query_sha256": "aa70b6a47c645d0784272a562223ec2fb1eabb499dac4e403e8a1cc0e0d6f50e",
-      "row_count": 114,
+      "row_count": 121,
       "file": "reconciliation-status.json",
-      "file_sha256": "ad80d96d3931f95bbb4af495609ddfa6dc560a64b574a0f1f5b676cea96dc349",
-      "file_bytes": 25991
+      "file_sha256": "e442bc5ca47b9a4af4c7d32490bae230f8f271abc8f8207f99d65fd3cff7ae4c",
+      "file_bytes": 27570
     },
     {
       "name": "pipeline-run",
@@ -6880,8 +7368,8 @@
       "query_sha256": "adca98ad620f10e4795dec1cda7735ca8ccc2a03111636becea487320e109e43",
       "row_count": 1,
       "file": "pipeline-run.json",
-      "file_sha256": "c98d0d55653937ec2416349553b785b23bbfa617335fcb1de35f561920fa4888",
-      "file_bytes": 538
+      "file_sha256": "a2b0a365251c4375b6189a40cabb41c932f5951abbafbe4eb92d7aa35b9c9ce1",
+      "file_bytes": 542
     }
   ],
   "reconciliation": {
@@ -7014,9 +7502,9 @@
         "unit": "ratio",
         "display_precision": 3,
         "numerator_column": "appointment_set_leads",
-        "denominator_column": "leads_received",
+        "denominator_column": "contacted_leads",
         "numerator": "1473",
-        "denominator": "5538"
+        "denominator": "3982"
       },
       "lead_to_sale_conversion": {
         "dataset": "lead-funnel",
@@ -7299,7 +7787,7 @@
   "privacy_scan": {
     "status": "passed",
     "prohibited_hits": 0,
-    "columns_scanned": 565,
+    "columns_scanned": 602,
     "primary_control": "contract allowlist",
     "secondary_control": "arpi.validation.privacy prohibited-name tripwire"
   },
@@ -7307,11 +7795,11 @@
     "critical_failures": 0,
     "warnings": 0,
     "checks_evaluated": 226,
-    "reconciliations_evaluated": 114,
+    "reconciliations_evaluated": 121,
     "reconciliations_failed": 0
   },
   "sizes": {
-    "dataset_bytes_total": 15405886,
+    "dataset_bytes_total": 19160866,
     "largest_dataset": {
       "name": "lead-response",
       "bytes": 2269345,

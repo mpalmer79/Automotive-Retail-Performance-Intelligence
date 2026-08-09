@@ -70,6 +70,9 @@ one commit is a check failure.
 | `reporting.vw_appointment_funnel` | `appointment-funnel` | Store × date |
 | `reporting.vw_lead_response` | `lead-response` | Store × source × date |
 | `reporting.vw_marketing_performance` | `marketing-performance` | Store × month × source × campaign |
+| `reporting.vw_appointment_source_funnel` | `appointment-source-funnel` | Store × source × campaign × date, both appointment date bases (`DASH.10`) |
+| `reporting.vw_lead_stage_loss` | `lead-stage-loss` | Store × source × campaign × lead-creation date (`DASH.10`) |
+| `reporting.vw_lead_response_distribution` | `lead-response-distribution` | Store × source × campaign × lead-creation date × first-response value (`DASH.10`) |
 | `reporting.vw_sales_gross_trend` | `sales-gross-trend` | Store × sale date (`DASH.3`) |
 | `reporting.vw_gross_change_bridge` | `gross-change-bridge` | Store × month pair × bridge component (`DASH.3`) |
 | `reporting.vw_target_attainment` | `target-attainment` | Store × target scope × targeted KPI × month (`DASH.5`) |

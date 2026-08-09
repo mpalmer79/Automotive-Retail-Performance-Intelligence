@@ -139,10 +139,10 @@ def test_the_reconciliation_count_excludes_the_listing_lane() -> None:
 
     That is a count of what the pipeline records on a run, and it moved because the
     pipeline records more -- not because the expectation was relaxed to fit a failure. The
-    116 was READ OFF a loaded fixture before it was written here, not inferred from the
+    121 was READ OFF a loaded fixture before it was written here, not inferred from the
     delta.
     """
-    assert verifier.EXPECTED_RECONCILIATION_COUNT_PER_RUN == 116
+    assert verifier.EXPECTED_RECONCILIATION_COUNT_PER_RUN == 121
 
 
 def test_no_listing_view_carries_an_expected_row_count() -> None:

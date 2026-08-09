@@ -2,7 +2,7 @@
 -- File:            sql/08_validation/13_recon_fi.sql
 -- Project:         Automotive Retail Performance Intelligence (ARPI)
 -- Purpose:         Implement the RECON-FI-* family, including the promoted RECON-FI-001: prove that every cent of deal-date back-end gross is explained by finance reserve plus product gross, and that the whole F&I domain holds together across layers.
--- Execution order: Validation layer, after sql/08_validation/05_reconciliation_helpers.sql and before 16_recon_all.sql, which unions this view.
+-- Execution order: Validation layer, after sql/08_validation/05_reconciliation_helpers.sql and before 17_recon_all.sql, which unions this view.
 -- Idempotency:     Fully idempotent. CREATE OR REPLACE VIEW only; evaluating a view writes nothing.
 -- Ownership:       Created by the bootstrap superuser, reassigned to arpi_admin by the final pass of sql/07_security/01_grants.sql.
 -- Grain:           One row per reconciliation rule.
