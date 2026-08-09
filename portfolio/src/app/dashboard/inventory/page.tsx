@@ -711,13 +711,23 @@ function resolveMonth(
   return newestFirst[0] ?? null
 }
 
+/**
+ * One decoded partition.
+ *
+ * THE CACHE KEY IS THE PARTITION, NOT THE DATASET. `decodeDataset` memoizes by key, so a
+ * bare `'inventory-units'` returns whichever store was decoded FIRST for every store after
+ * it — silently, because the shape is identical and only the contents are wrong. That
+ * defect shipped: the route rendered GSA-001's 96 units three times and reported 288.
+ * `fi.ts` carries the same warning for the same reason; this is the second time the
+ * repository has paid for it, which is why the key now names the store and the month.
+ */
 function partitionRows(
   dataset: 'inventory-units',
   store: string,
   month: string
 ): readonly DashboardRow[] {
   const file = inventoryUnitChunkFile(store, month)
-  return file === undefined ? [] : decodeDataset(dataset, file)
+  return file === undefined ? [] : decodeDataset(`${dataset}/${store}/${month}`, file)
 }
 
 /**
@@ -742,7 +752,11 @@ function accountingFor(unit: UnitRow): {
   const month = unit.snapshotDate.slice(0, 7)
   const file = accountingChunkFile(unit.dealershipId, month)
   if (file === undefined) return null
-  const row = decodeDataset('inventory-accounting', file).find(
+  // Per-partition cache key, for the reason `partitionRows` states.
+  const row = decodeDataset(
+    `inventory-accounting/${unit.dealershipId}/${month}`,
+    file
+  ).find(
     (candidate) =>
       candidate.vehicle_id === unit.vehicleId &&
       candidate.accounting_date === unit.snapshotDate
