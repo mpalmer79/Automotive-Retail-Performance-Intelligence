@@ -316,6 +316,44 @@ export const DASHBOARD_DATASETS = [
     chunked: true,
   },
   {
+    // DASH.9. The console's unit-grain inventory surface. Month-end grain plus the latest
+    // snapshot date, NOT daily: at daily grain this exported at 31.3 MB against a 3 MB
+    // per-file ceiling, and it would have lined up with the month-end accounting schedule
+    // on roughly one day in thirty. Chunked by store and snapshot month, so the inventory
+    // page opens one partition per store-month.
+    name: 'inventory-units',
+    businessKey: ['dealership_id', 'snapshot_date', 'vehicle_id'],
+    dateBasis: 'snapshot date',
+    chunked: true,
+  },
+  {
+    // DASH.9. The accounting position of one unit at one month end. Shares its grain with
+    // `inventory-units` exactly -- 1,501 rows each, 1,501 matched, zero orphans -- which is
+    // what lets a unit detail panel show its accounting position without a fuzzy join.
+    name: 'inventory-accounting',
+    businessKey: ['dealership_id', 'accounting_date', 'vehicle_id'],
+    dateBasis: 'accounting date',
+    chunked: true,
+  },
+  {
+    // DASH.9. The GL-versus-subledger comparison. 43 rows; chunking it would be symmetry
+    // for its own sake, and the accounting page reads the whole set to total a signed
+    // variance across stores anyway.
+    name: 'inventory-gl-reconciliation',
+    businessKey: ['dealership_id', 'comparison_date', 'gl_account_number'],
+    dateBasis: 'comparison date',
+    chunked: false,
+  },
+  {
+    // DASH.9. Four rows. Its date column is `exception_date`, which is the exception's own
+    // business date and not a sale month, so partitioning it would key partitions by a
+    // third date semantic -- the same reason `fi-adjustment-summary` is unchunked.
+    name: 'accounting-exceptions',
+    businessKey: ['exception_id'],
+    dateBasis: 'exception date',
+    chunked: false,
+  },
+  {
     name: 'reconciliation-status',
     businessKey: ['reconciliation_id'],
     dateBasis: null,

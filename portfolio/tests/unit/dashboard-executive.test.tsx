@@ -38,6 +38,8 @@ import {
   productDetailChunkKeys,
 } from '../../src/lib/dashboard/fi-chunks.ts'
 import { jacketChunkKeys } from '../../src/lib/dashboard/jacket-chunks.ts'
+import { inventoryUnitChunkKeys } from '../../src/lib/dashboard/inventory-chunks.ts'
+import { accountingChunkKeys } from '../../src/lib/dashboard/accounting-chunks.ts'
 import { CHUNK_TABLES, chunkKey } from '../../src/lib/dashboard/chunks.ts'
 import {
   calendarBounds,
@@ -251,6 +253,10 @@ describe('the static chunk tables match the manifest chunk index', () => {
     'deal-jacket': jacketChunkKeys,
     'deal-product-detail': productDetailChunkKeys,
     'fi-product-penetration': penetrationChunkKeys,
+    // DASH.9. Route-scoped for the same reason the deal tables are: /dashboard renders one
+    // reconciliation figure and must not acquire per-unit stock detail to do it.
+    'inventory-units': inventoryUnitChunkKeys,
+    'inventory-accounting': accountingChunkKeys,
   }
 
   it('carries exactly the partitions the export declares, in both directions', () => {
