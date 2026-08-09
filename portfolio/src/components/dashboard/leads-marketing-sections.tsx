@@ -296,8 +296,24 @@ export function AppointmentOutcomesSection({
             <dt className="text-xs uppercase tracking-wide text-ink-muted">
               {cell.label}
             </dt>
-            <dd className="font-mono text-xl tabular-nums text-ink">{cell.value}</dd>
-            <p className="text-xs text-ink-muted">{cell.note}</p>
+            {/*
+              THE NOTE IS PART OF THE DESCRIPTION, NOT A SIBLING OF IT. It was a `<p>`
+              beside the `<dt>`/`<dd>` pair, which makes the group invalid: a `<dl>` may
+              contain only `<dt>`/`<dd>` groups and the `<div>`s that wrap them, and axe
+              reported it as a serious `definition-list` violation (WCAG 1.3.1). Inside
+              the `<dd>` it is also the more accurate reading -- "KPI-FUN-004 · 188 of
+              309 eligible appointments" qualifies the value, so assistive technology now
+              receives it with the value rather than as loose text between groups.
+
+              The `<dd>` takes the `flex flex-col gap-1` the wrapper already uses, so the
+              rendered spacing and every class on the visible text are unchanged.
+            */}
+            <dd className="flex flex-col gap-1">
+              <span className="font-mono text-xl tabular-nums text-ink">
+                {cell.value}
+              </span>
+              <p className="text-xs text-ink-muted">{cell.note}</p>
+            </dd>
           </div>
         ))}
       </dl>
@@ -756,8 +772,24 @@ export function MarketingSection({
             <dt className="text-xs uppercase tracking-wide text-ink-muted">
               {cell.label}
             </dt>
-            <dd className="font-mono text-xl tabular-nums text-ink">{cell.value}</dd>
-            <p className="text-xs text-ink-muted">{cell.note}</p>
+            {/*
+              THE NOTE IS PART OF THE DESCRIPTION, NOT A SIBLING OF IT. It was a `<p>`
+              beside the `<dt>`/`<dd>` pair, which makes the group invalid: a `<dl>` may
+              contain only `<dt>`/`<dd>` groups and the `<div>`s that wrap them, and axe
+              reported it as a serious `definition-list` violation (WCAG 1.3.1). Inside
+              the `<dd>` it is also the more accurate reading -- "KPI-FUN-004 · 188 of
+              309 eligible appointments" qualifies the value, so assistive technology now
+              receives it with the value rather than as loose text between groups.
+
+              The `<dd>` takes the `flex flex-col gap-1` the wrapper already uses, so the
+              rendered spacing and every class on the visible text are unchanged.
+            */}
+            <dd className="flex flex-col gap-1">
+              <span className="font-mono text-xl tabular-nums text-ink">
+                {cell.value}
+              </span>
+              <p className="text-xs text-ink-muted">{cell.note}</p>
+            </dd>
           </div>
         ))}
       </dl>
