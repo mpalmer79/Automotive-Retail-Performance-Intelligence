@@ -32,12 +32,11 @@ import {
   CONTROLLED_SCENARIO_NOTE,
   resolveComparisonDate,
   selectComparisons,
+  selectExceptions,
   summarize,
   toComparisonRows,
   toExceptionRows,
   varianceDirection,
-  type ComparisonRow,
-  type ReconciliationSummary,
 } from './accounting'
 import {
   calendarMonths,
@@ -60,7 +59,7 @@ import {
   type DashboardFilters,
   type FilterReset,
 } from './filters'
-import { formatIsoMonth } from './format'
+import { formatCurrencyDifference, formatIsoDate, formatIsoMonth } from './format'
 import {
   calendarWindow,
   resolvePeriod,
@@ -504,14 +503,68 @@ export interface StoreComparison {
  * sum over it. The section states the date for the same reason the inventory section
  * states its snapshot.
  */
-export interface ReconciliationSignal {
-  readonly summary: ReconciliationSummary
-  readonly accounts: readonly ComparisonRow[]
-  /** The direction of the signed total, in words, from the governed helper. */
-  readonly directionText: string
-  /** Exceptions raised inside the selected period and store scope. */
+export interface ScaleAccountView {
+  readonly key: string
+  /** The store the position belongs to, so a scoped selection can be asserted. */
+  readonly dealershipId: string
+  /** "New Vehicle Inventory · 1210". */
+  readonly label: string
+  /** GL minus subledger. `null` where one side is absent, and never zero-substituted. */
+  readonly variance: Exact | null
+  /** The amount as a reader sees it, or the words for a position with no variance. */
+  readonly display: string
+  /** One of the four governed comparison states. */
+  readonly state: string
+  readonly isComparable: boolean
+}
+
+/**
+ * The Executive accounting signal, as the page renders it.
+ *
+ * WHY THE TYPE LIVES HERE. `DASH.9` declared it next to the card that first consumed it
+ * and imported it back into this module, which pointed the dependency from the view model
+ * at a component. The visual overhaul replaced that card, so the type moved to the module
+ * that BUILDS it — the direction every other view model on this route already runs in.
+ * The fields, their names and their rules are `DASH.9`'s and are unchanged.
+ *
+ * EVERY MONEY FIGURE LEAVES AS A STRING. No component in this console may touch an exact
+ * decimal, so the sign, the grouping and the direction sentence are all decided here by
+ * the governed formatters. `variance` is the one `Exact` that crosses the boundary, and it
+ * crosses for geometry alone: `ReconciliationScale` turns it into a marker offset and
+ * prints `display` beside it.
+ */
+export interface ReconciliationSignalView {
+  /**
+   * The comparison date the period resolved to, unformatted.
+   *
+   * The semi-additive rule is only checkable against the raw date, so it leaves the
+   * builder as well as its formatted twin. Nothing renders it - `asOfLabel` is what
+   * the page prints - and it is a date string, not a decimal, so no boundary is
+   * crossed by carrying it.
+   */
+  readonly comparisonDate: string | null
+  /** `31 December 2025`, already formatted. `null` when the period contains no comparison. */
+  readonly asOfLabel: string | null
+  /** `+$384.60`, sign included, or `null` when nothing is comparable. */
+  readonly signedVarianceLabel: string | null
+  /** "the general ledger carries more than the subledger". */
+  readonly directionSentence: string
+  readonly comparablePositions: number
+  readonly reconciledPositions: number
+  readonly variancePositions: number
+  /** Missing GL plus missing subledger. Deliberately not part of any money figure. */
+  readonly notComparablePositions: number
+  /** The per-account rows the visual scale plots and tabulates. */
+  readonly accounts: readonly ScaleAccountView[]
+  /**
+   * Governed exceptions over the stores in scope.
+   *
+   * NOT filtered by the comparison date. `exception_date` is the exception's own business
+   * date and the accounting domain does not tie it to the comparison schedule, so this is
+   * `selectExceptions` unchanged - the same count `/dashboard/accounting` lists.
+   */
   readonly exceptionCount: number
-  /** The disclosure both accounting surfaces must carry. */
+  /** The disclosure every accounting surface carries, from the shared constant. */
   readonly scenarioNote: string
 }
 
@@ -546,7 +599,13 @@ export interface ExecutiveOverview {
   readonly trailing: readonly TrailingMonth[]
   readonly trend: readonly TrendBucket[]
   readonly comparisons: readonly StoreComparison[]
-  readonly reconciliation: ReconciliationSignal
+  /*
+   * The accounting signal is deliberately NOT a field here.
+   *
+   * `buildAccountingSignal()` is its one authority and the route calls it directly, the
+   * way `DASH.9` built it. Restating it on this object would give the same figure a
+   * second construction path, which is the thing the consolidation removed.
+   */
   /** True when no dataset in scope produced a single row. */
   readonly empty: boolean
   /**
@@ -745,8 +804,6 @@ export function buildExecutiveOverview(
     })),
   }))
 
-  const reconciliation = buildReconciliation(filters, periodContext)
-
   /*
    * Empty means every dataset in scope produced nothing, which is a filter result
    * and not a data failure. It is deliberately not "the first card is zero": a
@@ -775,7 +832,6 @@ export function buildExecutiveOverview(
     trailing,
     trend,
     comparisons,
-    reconciliation,
     empty,
     asOfDate: dashboardManifest.asOfDate,
   }
@@ -830,40 +886,6 @@ const COMPARISON_MEASURES: readonly {
 /* -------------------------------------------------------------------------- */
 /* Accounting assembly                                                         */
 /* -------------------------------------------------------------------------- */
-
-/**
- * The reconciliation position for the selected period and store scope.
- *
- * Every decision here belongs to `accounting.ts` and is called rather than reimplemented:
- * which comparison date a period resolves to, which rows a store filter keeps, and how
- * the four states are counted. This function chooses nothing except which exceptions
- * fall inside the period, which is a date comparison on the export's own column.
- */
-function buildReconciliation(
-  filters: DashboardFilters,
-  periodContext: PeriodContext
-): ReconciliationSignal {
-  const rows = toComparisonRows(glReconciliationRows())
-  const comparisonDate = resolveComparisonDate(rows, filters)
-  const accounts = selectComparisons(rows, comparisonDate, filters)
-  const summary = summarize(accounts, comparisonDate)
-
-  const stores = new Set(filters.store)
-  const exceptions = toExceptionRows(accountingExceptionRows()).filter(
-    (row) =>
-      (stores.size === 0 || stores.has(row.dealershipId)) &&
-      row.exceptionDate >= periodContext.period.start &&
-      row.exceptionDate <= periodContext.period.end
-  )
-
-  return {
-    summary,
-    accounts,
-    directionText: varianceDirection(summary.signedVariance),
-    exceptionCount: exceptions.length,
-    scenarioNote: CONTROLLED_SCENARIO_NOTE,
-  }
-}
 
 /* -------------------------------------------------------------------------- */
 /* Inventory assembly                                                          */
@@ -1037,5 +1059,113 @@ function buildFunnel(
       { label: '15 to 60 minutes', result: evaluate(SELECTORS.responses15to60, context) },
       { label: 'Over 60 minutes', result: evaluate(SELECTORS.responsesOver60, context) },
     ],
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* The accounting signal (DASH.9)                                              */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Build the Executive reconciliation signal.
+ *
+ * WHY IT READS THE NARROW DOOR AND NOTHING ELSE
+ * ---------------------------------------------
+ * `accounting-data.ts` carries 43 comparison rows and 18 kB. That IS the whole comparison
+ * surface, so the Executive card needs no second aggregate invented for it — which would
+ * have meant a second definition of the same figure, computed somewhere else, free to
+ * disagree. `/dashboard` must never open `inventory-chunks.ts` or `accounting-chunks.ts`,
+ * which carry 356 kB and 360 kB of per-unit detail it has no use for, and
+ * `dashboard-boundaries.test.ts` asserts exactly that.
+ *
+ * EVERYTHING LEAVES HERE AS A STRING. The card is a component and no component may touch an
+ * exact decimal, so the sign, the grouping and the direction sentence are decided here.
+ *
+ * THE MISSING SIDES ARE COUNTED, NOT ADDED. A position with one side absent has no variance,
+ * so it contributes to no money figure and is reported as its own count. Folding it in would
+ * turn "could not be compared" into "off by this much", which is a different claim.
+ *
+ * WHY THIS IS THE ONLY BUILDER, AFTER THE VISUAL OVERHAUL
+ * ------------------------------------------------------
+ * The visual overhaul was written in parallel with `DASH.9`'s final increment and briefly
+ * carried its own `buildReconciliation()`, which called the same five `accounting.ts`
+ * primitives in the same order to feed a richer presentation. Two functions resolving the
+ * same comparison date, applying the same store filter and summing the same signed
+ * variances is one function too many: they agreed on the day they were written and nothing
+ * would have kept them agreeing. So the visual scale's inputs were folded into THIS
+ * function, and the other was deleted.
+ *
+ * The consequence is worth stating plainly, because it is the whole point of the
+ * consolidation. Comparison-date resolution, store filtering, signed-variance totalling,
+ * missing-side semantics, semi-additive date behaviour and direction wording each have
+ * exactly ONE authority, and it is `accounting.ts` reached through here. The presentation
+ * changed; the accounting semantics did not.
+ *
+ * `accounts` and `exceptionCount` are the only things the richer visual added, and neither
+ * introduces a rule. The account rows ARE the rows `selectComparisons` returned, and the
+ * exception count comes from `selectExceptions`, the same governed selector
+ * `/dashboard/accounting` calls, so the summary and its drill-through cannot disagree.
+ */
+export function buildAccountingSignal(
+  filters: DashboardFilters
+): ReconciliationSignalView {
+  const rows = toComparisonRows(glReconciliationRows())
+  const comparisonDate = resolveComparisonDate(rows, filters)
+  const selected = selectComparisons(rows, comparisonDate, filters)
+  const summary = summarize(selected, comparisonDate)
+
+  /*
+   * Exceptions come through `selectExceptions`, which filters by STORE AND NOTHING ELSE.
+   *
+   * The first version of this counted only exceptions whose `exception_date` equalled the
+   * resolved comparison date, on the reasoning that a card describing one date should count
+   * findings at that date. That reasoning was wrong, and wrong in the direction this whole
+   * consolidation exists to prevent: `exception_date` is the exception's OWN business date,
+   * a third date semantic that the accounting domain deliberately does not tie to the
+   * comparison schedule — `PERFORMANCE.md` §9.7 records it as the reason the exception set
+   * is not partitioned by month, and `/dashboard/accounting` states it on the section
+   * itself. Filtering by the comparison date invented a rule the domain rejects, and it
+   * would have printed a smaller count here than the drill-through lists, from the same
+   * four rows.
+   *
+   * So this reads the same governed selector the accounting route reads, over the same
+   * population, with the same filter. The two surfaces now report the same number, and the
+   * section beside this one says what the number is scoped by.
+   */
+  const exceptionCount = selectExceptions(
+    toExceptionRows(accountingExceptionRows()),
+    filters
+  ).length
+
+  return {
+    comparisonDate,
+    asOfLabel: comparisonDate === null ? null : formatIsoDate(comparisonDate),
+    signedVarianceLabel:
+      summary.comparablePositions === 0
+        ? null
+        : formatCurrencyDifference(summary.signedVariance, 2),
+    directionSentence:
+      summary.comparablePositions === 0
+        ? 'No position at this date has both sides, so no variance exists'
+        : varianceDirection(summary.signedVariance),
+    comparablePositions: summary.comparablePositions,
+    reconciledPositions: summary.reconciledPositions,
+    variancePositions: summary.variancePositions,
+    notComparablePositions:
+      summary.missingGlPositions + summary.missingSubledgerPositions,
+    accounts: selected.map((row): ScaleAccountView => ({
+      key: `${row.dealershipId}-${row.glAccountNumber}`,
+      dealershipId: row.dealershipId,
+      label: `${row.glAccountName} · ${row.glAccountNumber}`,
+      variance: row.varianceAmount,
+      display:
+        row.varianceAmount === null
+          ? 'No variance: one side absent'
+          : formatCurrencyDifference(row.varianceAmount, 2),
+      state: row.comparisonState,
+      isComparable: row.isComparable,
+    })),
+    exceptionCount,
+    scenarioNote: CONTROLLED_SCENARIO_NOTE,
   }
 }

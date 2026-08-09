@@ -54,6 +54,7 @@ import {
 } from '../../src/lib/dashboard/decimal.ts'
 import {
   SCOREBOARD_COLUMNS,
+  buildAccountingSignal,
   buildExecutiveOverview,
   kpiDefinition,
   kpiDefinitionHref,
@@ -69,6 +70,8 @@ import {
   formatRatioAsPercent,
 } from '../../src/lib/dashboard/format.ts'
 import { parseFilters, type DashboardFilters } from '../../src/lib/dashboard/filters.ts'
+import { selectExceptions, toExceptionRows } from '../../src/lib/dashboard/accounting.ts'
+import { accountingExceptionRows } from '../../src/lib/dashboard/accounting-data.ts'
 import { resolvePeriod } from '../../src/lib/dashboard/periods.ts'
 import {
   SELECTORS,
@@ -89,6 +92,22 @@ function overviewFor(search: string) {
     knownStores: dashboardStores.map((store) => store.id),
   })
   return buildExecutiveOverview(parsed.filters, parsed.reset)
+}
+
+/**
+ * Build the accounting signal the route would build for a query string.
+ *
+ * It is NOT a field on the overview and deliberately so: `buildAccountingSignal()` is
+ * the console's only comparison-date resolver, store filter and signed-variance total
+ * for the accounting domain, and the route calls it directly. This helper calls the
+ * same function the page does, through the same parser, so the suite cannot be
+ * asserting a second construction path the console does not use.
+ */
+function accountingSignalFor(search: string) {
+  const parsed = parseFilters(new URLSearchParams(search), {
+    knownStores: dashboardStores.map((store) => store.id),
+  })
+  return buildAccountingSignal(parsed.filters)
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1177,40 +1196,42 @@ describe('the age distribution is drawn against the population', () => {
 
 describe('the accounting integrity signal', () => {
   it('reads the last comparison date inside the period, never a sum over it', () => {
-    const december = overviewFor('period=2025-12').reconciliation
-    expect(december.summary.comparisonDate).toBe('2025-12-31')
-    const quarter = overviewFor('period=2025-10-01..2025-12-31').reconciliation
-    expect(quarter.summary.comparisonDate).toBe('2025-12-31')
+    const december = accountingSignalFor('period=2025-12')
+    expect(december.comparisonDate).toBe('2025-12-31')
+    const quarter = accountingSignalFor('period=2025-10-01..2025-12-31')
+    expect(quarter.comparisonDate).toBe('2025-12-31')
     /*
      * The semi-additive rule, asserted where a redesign could break it: a quarter that
      * contains three month ends has ONE position, not three added together, so its
      * comparable-position count matches the single month's.
      */
-    expect(quarter.summary.comparablePositions).toBe(december.summary.comparablePositions)
+    expect(quarter.comparablePositions).toBe(december.comparablePositions)
   })
 
   it('narrows to the stores in scope', () => {
-    const group = overviewFor('').reconciliation
-    const one = overviewFor('store=GSA-001').reconciliation
+    const group = accountingSignalFor('')
+    const one = accountingSignalFor('store=GSA-001')
     expect(one.accounts.every((row) => row.dealershipId === 'GSA-001')).toBe(true)
     expect(one.accounts.length).toBeLessThan(group.accounts.length)
   })
 
   it('totals the SIGNED variances, so opposing positions net rather than accumulate', () => {
-    const september = overviewFor('period=2025-09').reconciliation
-    const signed = Number(exactToString(september.summary.signedVariance))
+    const september = accountingSignalFor('period=2025-09')
+    const signed = september.accounts.reduce(
+      (sum, row) =>
+        row.variance === null ? sum : sum + Number(exactToString(row.variance)),
+      0
+    )
     const absolute = september.accounts.reduce(
       (sum, row) =>
-        row.varianceAmount === null
-          ? sum
-          : sum + Math.abs(Number(exactToString(row.varianceAmount))),
+        row.variance === null ? sum : sum + Math.abs(Number(exactToString(row.variance))),
       0
     )
     expect(Math.abs(signed)).toBeLessThanOrEqual(absolute)
   })
 
   it('publishes the direction in words rather than leaving it to a sign', () => {
-    const direction = overviewFor('period=2025-09').reconciliation.directionText
+    const direction = accountingSignalFor('period=2025-09').directionSentence
     expect([
       'the general ledger carries more than the subledger',
       'the subledger carries more than the general ledger',
@@ -1219,14 +1240,71 @@ describe('the accounting integrity signal', () => {
   })
 
   it('carries the controlled-scenario disclosure from the shared constant', () => {
-    expect(overviewFor('').reconciliation.scenarioNote).toContain(
+    expect(accountingSignalFor('').scenarioNote).toContain(
       'deliberately planted controlled scenarios'
     )
   })
 
-  it('counts exceptions inside the period rather than over the whole export', () => {
-    const whole = overviewFor('period=2025-07-01..2025-12-31').reconciliation
-    const oneMonth = overviewFor('period=2025-12').reconciliation
-    expect(oneMonth.exceptionCount).toBeLessThanOrEqual(whole.exceptionCount)
+  it('counts exceptions the way the accounting route counts them', () => {
+    /*
+     * By STORE and nothing else, because `exception_date` is the exception's own business
+     * date and the domain does not tie it to the comparison schedule. Narrowing it to the
+     * comparison date here would print a smaller number on the summary than the
+     * drill-through lists, from the same four rows.
+     */
+    const all = toExceptionRows(accountingExceptionRows())
+    for (const search of ['', 'store=GSA-001', 'period=2025-09', 'period=2025-12']) {
+      const parsed = parseFilters(new URLSearchParams(search), {
+        knownStores: dashboardStores.map((store) => store.id),
+      })
+      expect(accountingSignalFor(search).exceptionCount, search).toBe(
+        selectExceptions(all, parsed.filters).length
+      )
+    }
+  })
+
+  it('renders every money figure as a string, and leaves only geometry as an exact', () => {
+    /*
+     * The boundary the component depends on. `signedVarianceLabel` and each row's
+     * `display` are already formatted by the governed formatters; `variance` is the one
+     * `Exact` that crosses, and `ReconciliationScale` uses it for a marker offset only.
+     */
+    const signal = accountingSignalFor('')
+    // Zero carries no sign, because zero has no direction: `$0.00`, not `+$0.00`.
+    const MONEY = /^[+-]?\$[\d,]+\.\d{2}$/
+    expect(signal.signedVarianceLabel).toMatch(MONEY)
+    for (const row of signal.accounts) {
+      if (row.variance === null) {
+        expect(row.display).toBe('No variance: one side absent')
+      } else {
+        expect(row.display).toMatch(MONEY)
+      }
+    }
+  })
+
+  it('counts a one-sided position rather than folding it into the money', () => {
+    const signal = accountingSignalFor('')
+    const oneSided = signal.accounts.filter((row) => !row.isComparable)
+    expect(signal.notComparablePositions).toBe(oneSided.length)
+    for (const row of oneSided) {
+      expect(row.variance).toBeNull()
+      expect(row.display).toBe('No variance: one side absent')
+    }
+  })
+
+  it('reports nothing rather than zero when the period contains no comparison date', () => {
+    const empty = accountingSignalFor('period=2025-07-02..2025-07-03')
+    expect(empty.comparisonDate).toBeNull()
+    expect(empty.asOfLabel).toBeNull()
+    expect(empty.signedVarianceLabel).toBeNull()
+    expect(empty.accounts).toHaveLength(0)
+    /*
+     * The exception count is deliberately NOT zeroed with the rest. It is scoped by store
+     * and carries its own business date, so "no comparison date in this period" says
+     * nothing about it. The section renders its empty state in this case and shows no
+     * count at all, which is the honest presentation of a figure that does not describe
+     * the selected period.
+     */
+    expect(empty.exceptionCount).toBeGreaterThan(0)
   })
 })

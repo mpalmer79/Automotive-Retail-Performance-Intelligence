@@ -1029,6 +1029,29 @@ VIEW_CORRUPTIONS: dict[str, tuple[str, str, str]] = {
         "FROM compared x",
         "FROM compared x\n  CROSS JOIN (VALUES (1), (2)) AS dup(n)",
     ),
+    # DASH.9. Both rules guard `reporting.vw_inventory_units`, and both are corrupted
+    # through the view rather than through data: the view reads the same fact rows as the
+    # thing it is compared against, so no data change can separate the two sides. What
+    # they defend against is an edit to the VIEW'S OWN expression, which is what is seeded.
+    "RECON-INV-UNIT-RATIO": (
+        # The exact regression this rule exists for. `vw_inventory_units` repeats the
+        # price_to_market_ratio expression instead of selecting it -- it reads the fact
+        # directly for its window functions -- so the two copies can silently diverge.
+        # Rounding to 2 places instead of 4 is the smallest plausible version of that edit:
+        # it is the kind of change that looks like tidying, produces a number on every row,
+        # and would put a different ratio on the unit table than on every other surface.
+        "vw_inventory_units",
+        "ELSE round(i.current_asking_price / NULLIF(i.market_price_estimate, 0::numeric), 4)",
+        "ELSE round(i.current_asking_price / NULLIF(i.market_price_estimate, 0::numeric), 2)",
+    ),
+    "RECON-INV-UNIT-GRAIN": (
+        # A fan-out, which is the failure the grain rule exists for: it would double every
+        # unit count and every investment total the inventory route publishes, while each
+        # individual row still looked entirely correct.
+        "vw_inventory_units",
+        "FROM reportable i",
+        "FROM reportable i\n  CROSS JOIN (VALUES (1), (2)) AS dup(n)",
+    ),
 }
 
 

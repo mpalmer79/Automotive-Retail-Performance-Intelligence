@@ -851,28 +851,47 @@ affected period, not by in-place update.
 | **Layer** | Warehouse (periodic snapshot fact) |
 | **Purpose** | Daily photograph of every unit in stock. This is what makes inventory age, aged-inventory percentage, days supply, and inventory investment answerable *as of any date* rather than only as of today. |
 | **Declared grain** | **One row per vehicle per dealership per daily snapshot date while the vehicle is active in inventory.** |
-| **Primary key** | Composite `(snapshot_date_key, dealership_key, vehicle_key)` |
+| **Primary key** | `inventory_snapshot_key` — a warehouse-assigned surrogate, deterministic from `(snapshot_date_key, dealership_key, vehicle_key)`. The grain itself is enforced separately, by `uq_fact_vehicle_inventory_snapshot_grain` over those three columns. |
 | **Natural / source key** | Composite of snapshot date and `vehicle_id` |
 | **Foreign keys** | `snapshot_date_key` → `dim_date`; `dealership_key`; `vehicle_key`; `vehicle_model_key`; `inventory_source_key` → `dim_inventory_source` *(Deferred — denormalized in the MVP)* |
 | **Implementation status** | **Implemented** |
 
-### 15.1 Measures
+### 15.1 Columns
+
+Every column below is in
+[`sql/04_facts/01_fact_vehicle_inventory_snapshot.sql`](sql/04_facts/01_fact_vehicle_inventory_snapshot.sql),
+and every column in that file is below. **Three columns were listed here for several increments
+that the table has never had** — `price_to_market_ratio`, `lead_count_to_date` and
+`appointment_count_to_date` — and three it does have were missing: `inventory_snapshot_key`,
+`age_bucket` and `source_system`. §15.5 records what happened and why the ratio in particular
+does not belong on this table.
+
+**Keys and identity**
+
+| Column | Type | Null | Allowed values / domain | Description | PII class |
+|---|---|---|---|---|---|
+| `inventory_snapshot_key` | bigint | no | > 0 | Primary key. Warehouse-assigned surrogate, deterministic from the grain columns. | Non-personal |
+| `snapshot_date_key` | integer | no | → `dim_date` | The date this photograph was taken. | Non-personal |
+| `dealership_key` | integer | no | → `dim_dealership` | The store holding the unit. | Non-personal |
+| `vehicle_key` | integer | no | → `dim_vehicle` | The unit. | Non-personal |
+| `vehicle_model_key` | integer | no | → `dim_vehicle_model` | Year/make/model/trim of the unit. | Non-personal |
+
+**Measures and attributes**
 
 | Column | Type | Null | Allowed values / domain | Description | Synthetic generation source | PII class |
 |---|---|---|---|---|---|---|
-| `inventory_unit_count` | integer | no | `1` | Additive unit counter for the snapshot date. | Constant 1. | Non-personal |
 | `current_asking_price` | numeric(12,2) | no | ≥ 0 | Advertised price on the snapshot date. | Generated. | Non-personal |
 | `original_asking_price` | numeric(12,2) | no | ≥ 0 | First advertised price. | Generated. | Non-personal |
 | `msrp` | numeric(12,2) | yes | ≥ 0 | MSRP. NULL for used units without one. | Generated. | Non-personal |
 | `acquisition_cost` | numeric(12,2) | no | ≥ 0 | Cost to acquire. | Generated. | Non-personal |
 | `reconditioning_cost` | numeric(12,2) | no | ≥ 0 | Reconditioning spend to date. | Generated. | Non-personal |
-| `inventory_investment` | numeric(12,2) | no | ≥ 0 | `acquisition_cost + reconditioning_cost`. Capital tied up in the unit on the snapshot date. | Derived. | Non-personal |
+| `inventory_investment` | numeric(12,2) | no | ≥ 0 | `acquisition_cost + reconditioning_cost`, enforced by `ck_..._investment_identity`. Capital tied up in the unit on the snapshot date. | Derived. | Non-personal |
+| `market_price_estimate` | numeric(12,2) | yes | NULL, or **strictly > 0** | Synthetic market price reference, constant across a unit's snapshots and anchored to its first advertised price. **Not a real market valuation** — no auction result, guidebook, licensed benchmark or observed transaction is consulted anywhere in this project — and must never be presented as one. Zero is refused by `ck_..._market_estimate_positive` because this column is a denominator; NULL is the governed way to say "no estimate". | Generated (`inventory_market_price_estimate` namespace; absent for roughly 8% of units by design, so the NULL branch downstream is genuinely exercised). | Non-personal |
 | `days_in_stock` | integer | no | ≥ 0 | Calendar days between acquisition date and snapshot date. **Non-negative by rule** ([ARCHITECTURE.md §21.2](ARCHITECTURE.md)). | Derived. | Non-personal |
-| `market_price_estimate` | numeric(12,2) | yes | ≥ 0 | Synthetic market price reference. **Not a real market valuation** and must never be presented as one. | Generated. | Non-personal |
-| `price_to_market_ratio` | numeric(8,4) | yes | > 0 | `current_asking_price / market_price_estimate`. NULL where the estimate is NULL. | Derived. | Non-personal |
-| `markdown_count_to_date` | integer | no | ≥ 0 | Number of price reductions so far. | Derived. | Non-personal |
-| `lead_count_to_date` | integer | no | ≥ 0 | Leads received on this unit so far. | Derived. | Non-personal |
-| `appointment_count_to_date` | integer | no | ≥ 0 | Appointments booked on this unit so far. | Derived. | Non-personal |
+| `age_bucket` | varchar(16) | no | `0-30` \| `31-60` \| `61-90` \| `91-120` \| `Over 120` | Banded `days_in_stock`, **stored rather than derived per query** so that every aging report bands identically. Not the aged-inventory threshold: see §15.2. | Derived. | Non-personal |
+| `markdown_count_to_date` | smallint | no | ≥ 0 | Number of price reductions so far. | Derived. | Non-personal |
+| `inventory_unit_count` | smallint | no | `1` | Additive unit counter for the snapshot date. | Constant 1. | Non-personal |
+| `source_system` | varchar(40) | no | non-blank | The originating system label carried through the pipeline. | Constant per lane. | Non-personal |
 
 ### 15.2 Business rules
 
@@ -883,6 +902,11 @@ affected period, not by in-place update.
 - `days_in_stock` is non-negative and increases by exactly 1 per day for a continuously held unit.
 - Older inventory is more likely to receive markdowns, and generally shows lower expected front-end gross —
   required relationships ([ARCHITECTURE.md §15.3](ARCHITECTURE.md)).
+- **`age_bucket` and the aged-inventory threshold are different rules.** The bucket bands a unit for
+  reporting; the threshold — 60 days, a **project default and not an industry benchmark** — decides
+  whether a unit counts as aged. A unit in `61-90` is aged, and so is one in `91-120`, and the top
+  bucket boundary of 120 is not the threshold. Reading 120 as the threshold on this dataset reports
+  aged stock at roughly a fifth of its true count.
 
 ### 15.3 PII classification
 
@@ -892,6 +916,41 @@ affected period, not by in-place update.
 
 **Periodic snapshot, insert-only and immutable.** This is the largest planned table: at portfolio scale
 [ARCHITECTURE.md §8.5](ARCHITECTURE.md) anticipates 500,000 to 1,500,000 rows.
+
+### 15.5 What `price_to_market_ratio` is, and why it is not a column here
+
+The ratio is real and is published — by
+[`reporting.vw_inventory_snapshots`](sql/05_reporting/12_vw_inventory_snapshots.sql), which states the
+rule, and by [`reporting.vw_inventory_units`](sql/05_reporting/52_vw_inventory_units.sql), which
+**repeats the identical expression** for the console's unit grain. It is
+`current_asking_price / market_price_estimate` to four decimals, and it is **NULL wherever the estimate
+is NULL — never zero and never imputed**, because "we did not price this unit" and "this unit is
+worthless" are different statements and only one of them is true.
+
+Two copies, and the second one is deliberate rather than careless: the unit view reads the fact
+directly, because it needs window functions over a narrowed set of dates that the snapshots view does
+not publish, so it cannot select a column its source does not carry. Two statements of one rule is
+nonetheless how two surfaces come to disagree about a measure with one name, so the equality is
+**re-proved on every database run** by `RECON-INV-UNIT-RATIO`
+([`sql/08_validation/14_recon_inventory_units.sql`](sql/08_validation/14_recon_inventory_units.sql))
+rather than trusted. That rule compares NULL as a value: an absent estimate must produce an absent
+ratio on both sides and a zero on neither.
+
+It is derived in the reporting layer rather than stored because it is a ratio of two columns already on
+the row, and a stored copy is a third place for it to be wrong. It appeared in this section as a
+`numeric(8,4)` column for several increments regardless, which is exactly the failure mode
+[CLAUDE.md §3](CLAUDE.md) exists to prevent: a documented column that no DDL ever created reads as
+a fact about the schema, and a reader building against it would have found nothing there.
+
+`lead_count_to_date` and `appointment_count_to_date` were the same kind of error and have no
+implementation anywhere — no column, no view, no generator. They are **not deferred work**: counting
+leads and appointments *to date* on a daily inventory snapshot would make every unit's row depend on
+activity that arrives after the snapshot, which is the future-outcome leakage this fact's own header
+forbids. Lead and appointment counts live on the lead fact, at the lead's own grain.
+
+**Above 1.0** means a unit is advertised above its synthetic estimate and **below 1.0** beneath it. It
+is a descriptive comparison against a generated reference. It is not evidence that a price is right or
+wrong, and it must never drive a repricing recommendation — ARPI makes none.
 
 ---
 

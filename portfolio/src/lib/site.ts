@@ -321,6 +321,36 @@ export const ROUTES = {
     indexable: true,
     priority: 0.8,
   },
+  /*
+   * `DASH.9` adds the two operating surfaces over the inventory and accounting domains.
+   * `DASH.8` built the accounting domain in SQL and exported none of it; the export
+   * promotion and these two routes are what make it readable.
+   *
+   * They sit after `dashboardFi` because that is the order the console's navigation
+   * follows, and the order a reader works in: sales and gross, then the deals behind them,
+   * then the stock those deals came out of, then the F&I attached to them, then whether
+   * the books agree with any of it.
+   */
+  dashboardInventory: {
+    href: '/dashboard/inventory',
+    navLabel: 'Inventory',
+    title: 'Inventory operations',
+    description:
+      'Unit-level stock at a governed snapshot date: age against a project-default threshold, the five governed age buckets, asking price against a synthetic market estimate, snapshot-derived price movement, and drill-through to one unit with its accounting position. The market estimate is synthetic, not a valuation.',
+    inPrimaryNav: false,
+    indexable: true,
+    priority: 0.8,
+  },
+  dashboardAccounting: {
+    href: '/dashboard/accounting',
+    navLabel: 'Accounting',
+    title: 'Accounting integrity',
+    description:
+      'The inventory subledger against selected synthetic GL control accounts: the signed variance, the four comparison states with missing sides preserved as missing, and the governed accounting exceptions with drill-through. An inventory control reconciliation, not a general ledger. Every account is invented.',
+    inPrimaryNav: false,
+    indexable: true,
+    priority: 0.8,
+  },
   uiLab: {
     href: '/ui-lab',
     navLabel: 'UI lab',
@@ -584,6 +614,24 @@ export const DASHBOARD_NAV: readonly NavItem[] = [
     matches: [ROUTES.dashboardFi.href],
     purpose: 'Reserve against product gross, penetration on eligible denominators',
   },
+  {
+    /*
+     * `DASH.9`. Unit detail is a query parameter on this route rather than a child path,
+     * so `matches` alone is right and no prefix is needed: `?unit=VEH-0000013` is the same
+     * document with one panel open, and a reader who opens it has not navigated away.
+     */
+    href: ROUTES.dashboardInventory.href,
+    label: 'Inventory',
+    matches: [ROUTES.dashboardInventory.href],
+    purpose:
+      'Unit-level age, price against a synthetic estimate, and stock drill-through',
+  },
+  {
+    href: ROUTES.dashboardAccounting.href,
+    label: 'Accounting',
+    matches: [ROUTES.dashboardAccounting.href],
+    purpose: 'The subledger against GL controls, and the variances between them',
+  },
 ]
 
 /** A console section that does not exist yet, and the increment that delivers it. */
@@ -601,23 +649,15 @@ export interface PlannedDashboardSection {
  * reader can check the claim against `docs/requirements/DASHBOARD_BACKLOG.md`
  * rather than take "coming soon" on trust — and so that this list cannot quietly
  * outlive the work it describes.
+ *
+ * WHAT LEAVING THIS LIST LOOKS LIKE. `Deal Jacket` (`DASH.4`) was still listed here after
+ * `/dashboard/deals/[saleId]` shipped, and `DASH.9`'s two routes were never added, so the
+ * Executive page was telling a reader that a built route did not exist. An entry leaves
+ * this list in the same commit its route becomes reachable; it is checked against
+ * `ROUTES` and against the backlog by `site.test.ts`, which fails if a planned label
+ * names a route the console can already navigate to.
  */
 export const PLANNED_DASHBOARD_SECTIONS: readonly PlannedDashboardSection[] = [
-  {
-    label: 'Deal Jacket',
-    increment: 'DASH.4',
-    purpose: 'One sanitized deal end to end, with its lineage',
-  },
-  {
-    label: 'Inventory operations',
-    increment: 'DASH.9',
-    purpose: 'Unit-level aging, price-to-market and stock drill-through',
-  },
-  {
-    label: 'Accounting integrity',
-    increment: 'DASH.9',
-    purpose: 'Subledger against GL controls, and the variances between them',
-  },
   {
     label: 'Leads and marketing',
     increment: 'DASH.10',

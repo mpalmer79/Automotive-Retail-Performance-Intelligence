@@ -806,12 +806,38 @@ class TestManifest:
         assert sizes["limits"] == dict(SIZE_LIMITS)
 
     def test_the_export_states_its_own_limitations(self, manifest: dict[str, Any]) -> None:
+        """The export names its own boundaries, and the named ones are still true.
+
+        THIS TEST USED TO PIN THE PHRASE "29 governed KPIs", AND THAT PHRASE HAD GONE STALE.
+        The sentence it anchored said the export carries only the 29 KPIs implemented at
+        ``DASH.1``; the exported datasets now reference 72 distinct KPI identifiers across
+        eight families, and have since ``DASH.5`` added targets. A pinned phrase keeps a
+        sentence present, not correct, and this one had been keeping a false sentence
+        present for four increments.
+
+        What is asserted instead is that the export still names the things it genuinely does
+        NOT do, which is the property the test was reaching for. Each assertion below is a
+        boundary a reader would be misled without.
+        """
         limitations = manifest["limitations"]
         assert limitations == list(known_limitations())
         joined = " ".join(limitations)
-        assert "29 governed KPIs" in joined
+
+        # The scope boundary: what is not modelled at all.
+        assert "not modelled yet" in joined
+        # The two-lane trust boundary, unchanged since DASH.1.
         assert "Power BI real-engine validation remains pending" in joined
         assert "project defaults" in joined
+        # The DASH.9 accounting boundaries. Each is a claim a reader could otherwise make
+        # about a page that now shows GL balances beside a stock schedule.
+        assert "not a chart of accounts" in joined
+        assert "financial-statement assertion" in joined
+        assert "not agreement between two independent systems" in joined
+        assert "semi-additive" in joined
+        assert "never as zero" in joined
+        assert "SYNTHETIC estimate" in joined
+        assert "repricing recommendation" in joined
+        assert "never netted against it" in joined
 
     def test_the_source_view_allowlist_travels_with_the_export(
         self, manifest: dict[str, Any]

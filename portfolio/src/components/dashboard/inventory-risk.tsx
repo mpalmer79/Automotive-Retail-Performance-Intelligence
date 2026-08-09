@@ -27,14 +27,27 @@
  * finding depending on the threshold must state it in the same sentence." It is not
  * an industry standard and the page does not call it one.
  *
+ * WHERE THIS SECTION STOPS
+ * ------------------------
+ * At the summary. `DASH.9` delivered `/dashboard/inventory`, which holds the 1,501
+ * unit-level rows, their age against the threshold, asking price against the synthetic
+ * market estimate and the per-unit accounting position. None of that belongs here: the
+ * Executive Overview reads eight governed figures and one distribution over a snapshot,
+ * and the drill-through below is how a reader gets from the shape to the units behind
+ * it. Reproducing the detail page's content on this page would cost 356 kB of chunks
+ * this route never opens, which `dashboard-boundaries.test.ts` forbids outright.
+ *
  * Server component.
  */
+import Link from 'next/link'
+
 import { Card } from '@/components/ui/card-static'
 import { Heading, Text } from '@/components/ui/typography'
 import { kpiDefinition, type InventorySummary } from '@/lib/dashboard/executive'
 import { exactToString } from '@/lib/dashboard/decimal'
 import { formatIsoDate } from '@/lib/dashboard/format'
 import type { ComparedMetric } from '@/lib/dashboard/selectors'
+import { ROUTES } from '@/lib/site'
 import { cx } from '@/lib/utils'
 
 import {
@@ -119,6 +132,15 @@ export function InventoryRisk({
         <AgeDistribution inventory={inventory} />
         <MedianTable inventory={inventory} />
       </div>
+
+      <Text size="xs" tone="faint" className="max-w-prose">
+        <Link className="underline" href={ROUTES.dashboardInventory.href}>
+          Open inventory operations
+        </Link>{' '}
+        for the units behind these figures: each one&apos;s age against the same
+        threshold, its asking price against a synthetic market estimate, and its
+        accounting position at the same snapshot.
+      </Text>
     </div>
   )
 }

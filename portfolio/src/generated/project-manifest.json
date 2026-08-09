@@ -1,6 +1,6 @@
 {
   "schema": "arpi.project_manifest/1",
-  "generatedFromCommit": "20a4e03b3194d4e9104d6133f376f8abb4082f23",
+  "generatedFromCommit": "78cfdffc79d41abd8d6520f1de3db9351bbaec69",
   "dataProfile": "development",
   "project": {
     "name": "Automotive Retail Performance Intelligence",
@@ -186,7 +186,7 @@
       ]
     },
     "sqlScripts": {
-      "value": 169,
+      "value": 170,
       "label": "Ordered SQL scripts",
       "detail": "Re-runnable, lexically ordered so that build order is file order.",
       "sources": [

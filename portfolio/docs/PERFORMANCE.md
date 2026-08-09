@@ -709,38 +709,124 @@ integrity checks and four lender fields. The jacket partition itself grew from 4
 568,225 bytes generated — 13 more columns on 650 rows — and the largest partition from
 34,439 to 44,190 bytes, still well inside the 256 KB ceiling.
 
-## 9.7 The Executive Overview's visual overhaul, measured
+## 9.7 The two `DASH.9` routes, measured
+
+Measured by `npm run bundle` against a production build served locally, cold, compressed,
+by the same method as §9.3 through §9.6. **A baseline, not a budget.** `DASH.13-02` sets
+budgets from measurements.
+
+| Route                                                |     HTML | Route JS |    Total |
+| ---------------------------------------------------- | -------: | -------: | -------: |
+| `/dashboard/inventory`                               |  74.5 kB | 164.5 kB | 369.1 kB |
+| `/dashboard/inventory?unit=VEH-0000005`              |  76.6 kB | 164.5 kB | 371.2 kB |
+| `/dashboard/inventory?store=GSA-001&period=2025-11`  |  47.3 kB | 164.5 kB | 341.9 kB |
+| `/dashboard/accounting`                              |  33.4 kB | 164.5 kB | 328.0 kB |
+| `/dashboard/accounting?store=GSA-001&period=2025-11` |  31.5 kB | 164.5 kB | 326.1 kB |
+| `/dashboard` (the heaviest console route, for scale) | 123.9 kB | 164.5 kB | 418.5 kB |
+
+**Zero new client JavaScript.** 164.5 kB on both routes, the figure every console route
+reports. Every section, every table, the unit drill-through panel and both methodology
+disclosures are server components. The console still has exactly one client island — the
+filter bar — and `DASH.9` added none; `dashboard-boundaries.test.ts` fails the build if a
+second appears without a decision.
+
+**The store filter is the measurement worth having.** `/dashboard/inventory` narrowed to one
+store costs 47.3 kB against 74.5 kB unfiltered — **27.2 kB less** — because it opens one
+partition instead of three. A page that filtered in the browser would have shipped all three
+stores' units and hidden two thirds of them, and the payload would not have moved. That
+difference is the cheapest available evidence that the scoping reaches the server.
+
+**The drill-through is nearly free.** `?unit=` costs 2.1 kB over the index: one accounting
+partition opened for one unit, and one panel rendered. It is not a second page.
+
+**`/dashboard/accounting` is the lightest console route in HTML**, at 33.4 kB against the
+Deal Jacket's 47.0 kB and `/dashboard`'s 123.9 kB, despite rendering the whole reconciliation.
+The reason is grain: 43 comparison positions is a small surface, and the route resists
+enriching it.
+
+**Data lane.**
+
+| Artifact                                               |      Bytes |
+| ------------------------------------------------------ | ---------: |
+| Root export, `inventory-units.json` (1,501 rows)       |  1,023,530 |
+| Root export, `inventory-accounting.json` (1,501 rows)  |    970,574 |
+| Root export, `inventory-gl-reconciliation.json` (43)   |     18,637 |
+| Root export, `accounting-exceptions.json` (4)          |      2,358 |
+| Generated, `datasets/inventory-units/` (18)            |    313,255 |
+| Generated, `datasets/inventory-accounting/` (18)       |    316,743 |
+| Generated, `datasets/inventory-gl-reconciliation.json` |      7,519 |
+| Generated, `datasets/accounting-exceptions.json`       |      2,102 |
+| Largest single generated partition                     |     21,059 |
+| Root export tree, all 31 files                         | 15,663,504 |
+| Generated tree, all 218 files                          |  5,274,190 |
+
+**The grain was chosen by measurement, and the first attempt was wrong.** A daily unit grain
+produced a **31.3 MB** export against the data contract's 3 MB ceiling — ten times over, and
+not fixable by compression. Narrowing `reporting.vw_inventory_units` to month ends plus the
+latest snapshot gives 1,501 rows at 1.02 MB. The size was the reason for the change; the
+better outcome was accidental and larger, because month-end is also the accounting schedule's
+grain, so the two datasets align 1:1 and the unit drill-through's accounting position is a
+real join rather than a nearest-date approximation.
+
+**Chunking follows from those numbers.** Both unit-grain datasets are partitioned by store x
+month; the 18.6 kB reconciliation set and the 2.4 kB exception set are single files.
+Partitioning them because it is the local pattern would have added two boundary rules and two
+manifest chunk indexes to save nothing. The exception set has a second reason unrelated to
+size: its date column is `exception_date`, the exception's own business date, so partitioning
+it would key partitions by a third date semantic.
+
+**One request opens three partitions, and it used to open eighteen.** The route reads the
+months from the manifest's chunk index — metadata it already holds, so no partition is opened
+to discover them — resolves the period to ONE month, and decodes only that month for only the
+stores in scope. The earlier version read all six months for all three stores on every
+request: roughly 1,500 unit rows to render a page showing one date. It made this the heaviest
+render in the console and the first page to flake under a parallel browser suite. The flakes
+went away because the cause did.
+
+## 9.8 The Executive Overview's visual overhaul, measured
 
 Measured by `npm run bundle` against two production builds served locally, cold, compressed,
-on 9 August 2026. The **baseline is `origin/main` at `20a4e03`** — `DASH.9` complete — built in
-a separate worktree and measured the same way in the same session, so the delta below is this
-change and nothing else. That matters here more than usual: `DASH.5`, `DASH.7` and `DASH.9`
-all landed between §9.3's figure for this route and this one, and attributing their cost to a
-visual change would have been the easiest wrong number in this document.
+on 9 August 2026. The **baseline is `origin/main` at `eb645b2`** — the final `DASH.9` merge,
+both operating routes built — checked out into a separate worktree and measured the same way
+in the same session, so the delta below is this change and nothing else.
+
+That baseline was re-measured rather than carried over. The first version of this section was
+written against `20a4e03`, which was `DASH.9` only partly landed; `eb645b2` is what this branch
+actually merges into, and the earlier before/after pair is not reported here because it does not
+describe that comparison. The re-measured "before" column agrees with §9.7's independently taken
+figure for `/dashboard` to the tenth of a kilobyte, which is the cheapest available check that
+the two builds were measured the same way.
 
 | `/dashboard`                |       Before |        After |        Delta |
 | --------------------------- | -----------: | -----------: | -----------: |
-| HTML                        |     121.0 kB | **133.1 kB** | **+12.1 kB** |
-| Route JavaScript            |     164.2 kB | **164.2 kB** |   **0.0 kB** |
-| CSS                         |      14.5 kB |      14.7 kB |      +0.2 kB |
+| HTML                        |     123.9 kB | **135.1 kB** | **+11.2 kB** |
+| Route JavaScript            |     164.5 kB | **164.5 kB** |   **0.0 kB** |
+| CSS                         |      14.6 kB |      14.7 kB |      +0.1 kB |
 | Fonts                       |     114.3 kB |     114.3 kB |       0.0 kB |
-| **Total, route cost alone** | **415.3 kB** | **427.5 kB** | **+12.2 kB** |
-| Filtered view, HTML         |     111.0 kB |     120.8 kB |      +9.8 kB |
+| **Total, route cost alone** | **418.5 kB** | **429.8 kB** | **+11.3 kB** |
+| Filtered view, HTML         |     113.9 kB |     122.7 kB |      +8.8 kB |
 
-**Nine visualisations for zero bytes of JavaScript.** 164.2 kB before and 164.2 kB after,
-which is the same figure `/dashboard/sales-gross`, `/dashboard/deals` and `/dashboard/fi`
-report — the console's shared shell plus the one client island, the filter bar. Five new
-primitives, seven microtrends, two trend charts, two comparison groups, an age stack, two
-composition bars and a reconciliation scale are all server components and ship no script at
-all. This is the `DASH.3-02` decision re-tested against a harder case and holding: the
-smallest charting library considered is two orders of magnitude larger than this route's
-entire client payload, and it would have bought nothing that is not already in the HTML.
+**Nine visualisations for zero bytes of JavaScript.** 164.5 kB before and 164.5 kB after,
+which is the same figure `/dashboard/sales-gross`, `/dashboard/deals`, `/dashboard/fi` and both
+`DASH.9` routes report — the console's shared shell plus the one client island, the filter bar.
+Five new primitives, seven microtrends, two trend charts, two comparison groups, an age stack,
+two composition bars and a reconciliation scale are all server components and ship no script at
+all. This is the `DASH.3-02` decision re-tested against a harder case and holding: the smallest
+charting library considered is two orders of magnitude larger than this route's entire client
+payload, and it would have bought nothing that is not already in the HTML.
 
-**The HTML grew by 12.1 kB compressed, and that is the honest cost.** Roughly half is the
+**The HTML grew by 11.2 kB compressed, and that is the honest cost.** Roughly half is the
 seven microtrends — each carries six months of markup plus a visually-hidden list of every
 month and value — and the rest is the accounting row, the two trend charts and their tables,
 and the comparison bars. Every byte of it is a figure or its accessible equivalent; none of it
 is a script, a fetch or a placeholder.
+
+**Two drill-through anchors, and they are the cheapest thing on the page.** The Executive
+accounting row links to `/dashboard/accounting` and the inventory pane links to
+`/dashboard/inventory`. Reproducing either destination's content on this route instead would
+have meant opening `inventory-chunks.ts` (356 kB) or `accounting-chunks.ts` (360 kB), which
+`dashboard-boundaries.test.ts` forbids outright. A link costs an anchor; a copy costs the
+destination.
 
 **What did NOT happen, stated plainly.** The design for this change projected a NET DECREASE,
 on the basis that deduplicating the route's 24 KPI-methodology disclosures into one shared
@@ -754,7 +840,7 @@ second increment's worth of evidence behind it: two thirds of this route's HTML 
 and the fix is to deduplicate definitions shared by more than one card rather than to move any
 of them behind a request.
 
-**Payload still does not grow with the data.** The filtered view is 12.3 kB smaller than the
+**Payload still does not grow with the data.** The filtered view is 12.4 kB smaller than the
 unfiltered one, the same property §9.2 recorded, and for the same reason: a single-store scope
 renders one scoreboard row and one comparison bar rather than three.
 
@@ -762,7 +848,10 @@ renders one scoreboard row and one comparison bar rather than three.
 datasets `/dashboard` already carried. The ninth reads `inventory-gl-reconciliation.json`
 through `accounting-data.ts` — 18 kB, 43 rows, the eleventh declared door, opened by `DASH.9`
 and asserted in `dashboard-boundaries.test.ts`. `accounting-chunks.ts` and its 360 kB of
-per-unit book values stay out of this route's graph, which the same suite asserts.
+per-unit book values stay out of this route's graph, which the same suite asserts. The
+consolidation that merged this branch with the final `DASH.9` removed a second reconciliation
+builder rather than adding one, so the door count is unchanged at eleven and the number of
+functions reading through this one fell from two to one.
 
 **Not measured, and not claimed.** No Lighthouse run, no LCP, no CLS, no INP and no throttled
 profile for this route. Section 10 is unchanged by this increment.

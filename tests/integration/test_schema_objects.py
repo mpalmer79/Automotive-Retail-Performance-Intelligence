@@ -182,6 +182,13 @@ AUDIT_VIEWS = (
     # schedule and the control balances load on every pipeline run, so the book-value
     # identity, both grains and the GL comparison are per-run evidence.
     "vw_recon_accounting",
+    # The unit-grain inventory view's reconciliations (DASH.9). Unioned INTO vw_recon_all:
+    # reporting.vw_inventory_units reads the fact directly and so REPEATS the
+    # price_to_market_ratio expression rather than selecting it, and a duplicated rule that
+    # is only checked when somebody remembers is not checked. Both rules are per-run
+    # evidence -- the ratio agreeing between the two views, and the reportable-date
+    # narrowing neither duplicating nor dropping a snapshot.
+    "vw_recon_inventory_units",
 )
 
 EXPECTED_VIEWS = {

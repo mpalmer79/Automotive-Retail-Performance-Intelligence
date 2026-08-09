@@ -277,14 +277,45 @@ test.describe('the accounting integrity signal', () => {
     )
   })
 
-  test('links to no accounting route, because none is built', async ({ page }) => {
+  /*
+   * THIS TEST USED TO ASSERT THE OPPOSITE.
+   *
+   * Through `DASH.8` it read "links to no accounting route, because none is built" and
+   * swept every anchor in `main` for `/dashboard/accounting` or `/dashboard/inventory`,
+   * because pointing at either would have been a 404. `DASH.9` built both, so the
+   * negative became a false claim about the console and is replaced by the positive it
+   * always implied: the summary drills through, and the destination is real.
+   *
+   * The route-integrity sweep that made the old assertion worth having is unchanged and
+   * still runs: `UNBUILT_DASHBOARD_ROUTES` is asserted unreachable from every dashboard
+   * route and asserted to 404 when fetched directly, in this file and in
+   * `navigation.spec.ts`. What narrowed is the list of routes that do not exist, not the
+   * strength of the check.
+   */
+  test('drills through to the accounting route, and the destination is real', async ({
+    page,
+  }) => {
     await gotoRendered(page, ROUTE)
-    const hrefs = await page.$$eval('main a[href]', (nodes) =>
-      nodes.map((node) => node.getAttribute('href') ?? '')
-    )
-    for (const href of hrefs) {
-      expect(href, href).not.toMatch(/\/dashboard\/(accounting|inventory)\b/)
-    }
+    const link = page
+      .locator('#accounting-integrity a[href="/dashboard/accounting"]')
+      .first()
+    await expect(link).toBeVisible()
+
+    await link.click()
+    await page.waitForURL('**/dashboard/accounting')
+    await expect(page.locator('h1')).toContainText('control accounts')
+  })
+
+  test('drills through to the inventory route, and the destination is real', async ({
+    page,
+  }) => {
+    await gotoRendered(page, ROUTE)
+    const link = page.locator('main a[href="/dashboard/inventory"]').first()
+    await expect(link).toBeVisible()
+
+    await link.click()
+    await page.waitForURL('**/dashboard/inventory')
+    await expect(page.locator('h1')).toContainText('lot')
   })
 })
 

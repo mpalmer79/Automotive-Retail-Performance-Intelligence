@@ -18,11 +18,11 @@ portfolio [`CONTENT_MODEL.md`](../../portfolio/docs/CONTENT_MODEL.md) / `lib/sit
 | `/dashboard/sales-gross` | Sales and gross | **Built (`DASH.3`)** | `ROUTES.dashboardSalesGross`, mirrored in `tests/e2e/routes.ts` |
 | `/dashboard/deals` | Deal Explorer | **Built (`DASH.3`)** | `ROUTES.dashboardDeals`, mirrored in `tests/e2e/routes.ts` |
 | `/dashboard/deals/[saleId]` | Deal Jacket (dynamic; title carries the synthetic deal id) | **Implemented (DASH.4)** | dynamic — excluded from `inPrimaryNav`, sitemap lists the index route only, and each jacket asks not to be indexed. Marks Deal Explorer current via `NavItem.matchPrefixes`: nobody navigates to "a deal", so it is a drill-through rather than a navigation destination |
-| `/dashboard/inventory` | Inventory operations | Planned (DASH.9) | ” |
+| `/dashboard/inventory` | Inventory operations | **Built (`DASH.9`)** | `ROUTES.dashboardInventory`, mirrored in `tests/e2e/routes.ts`. Carries the `unit=` drill-through, which is a URL rather than client state: copyable, correct on reload and under Back/Forward |
 | `/dashboard/fi` | F&I performance | **Built (`DASH.7`)** | `ROUTES.dashboardFi`, mirrored in `tests/e2e/routes.ts` |
 | `/dashboard/leads-marketing` | Leads and marketing | Planned (DASH.10) | ” |
 | `/dashboard/employees` | Employee performance | Planned (DASH.11) | ” |
-| `/dashboard/accounting` | Accounting integrity | Planned (DASH.9) | ” |
+| `/dashboard/accounting` | Accounting integrity | **Built (`DASH.9`)** | `ROUTES.dashboardAccounting`, mirrored in `tests/e2e/routes.ts`. The exception drill-through targets this route with `store` and `period`, never a warehouse surrogate |
 | `/dashboard/actions` | Management actions | Planned (DASH.12) | ” |
 
 The public header gains exactly one destination: **Dashboard → `/dashboard`** — the seventh
@@ -106,9 +106,9 @@ sections. It runs as **seven rows on a twelve-column console grid**, at `Contain
 | 1 | `#context` | banners, context rail, filter bar | 12 |
 | 2 | `#group-performance` | seven KPI cards, each with its own microtrend | 12 |
 | 3 | `#operating` | operating trend · three-store comparison | 7 / 5 |
-| 4 | `#targets` | targets and pace · inventory risk and age stack | 5 / 7 |
+| 4 | `#targets` | targets and pace · inventory risk, age stack and the `/dashboard/inventory` drill-through | 5 / 7 |
 | 5 | `#composition` | gross composition and unit mix · lead funnel | 7 / 5 |
-| 6 | `#accounting-integrity` | GL-versus-subledger reconciliation scale | 12 |
+| 6 | `#accounting-integrity` | GL-versus-subledger reconciliation scale, and the `/dashboard/accounting` drill-through | 12 |
 | 7 | `#store-scoreboard`, `#trust`, `#not-built` | the ten-column table, the evidence, what is absent | 12 |
 
 Three things about this arrangement are load-bearing rather than aesthetic.
@@ -121,12 +121,23 @@ Three things about this arrangement are load-bearing rather than aesthetic.
   measures across the stores as bars. The ten-column table is the *investigation*, and putting a
   report third inverts the hierarchy the rest of the page establishes. Both are on the page; neither
   replaces the other.
-- **Row 6 is the `DASH.9-03` executive signal.** `DASH.9` delivered the reconciliation view model,
-  its tests and the narrow data door, and `accounting-data.ts` records that the 43-row GL comparison
-  set "IS the Executive summary" for this route. This row reads that set and nothing else — the
-  360 kB of per-unit book values in `accounting-chunks.ts` stay with `/dashboard/accounting`.
-  Nothing in row 6 links to `/dashboard/accounting` or `/dashboard/inventory`, because neither route
-  exists yet and `dashboard.spec.ts` asserts no anchor on the console points at an unbuilt one.
+- **Row 6 is the `DASH.9-03` executive signal, and it drills through.** `DASH.9` delivered the
+  reconciliation view model, its tests and the narrow data door, and `accounting-data.ts` records
+  that the 43-row GL comparison set "IS the Executive summary" for this route. This row reads that
+  set and nothing else — the 360 kB of per-unit book values in `accounting-chunks.ts` stay with
+  `/dashboard/accounting`, and `dashboard-boundaries.test.ts` fails the build if this route opens
+  them. What changed with the final `DASH.9` increment is the destination: both operating routes are
+  now built, so row 6 links to `/dashboard/accounting` and row 4's inventory pane links to
+  `/dashboard/inventory`. The link is the reason the Executive row can stay a summary — a reader who
+  needs the four comparison states account by account, or the units behind the age stack, follows it
+  rather than having the detail reproduced here.
+
+  `dashboard.spec.ts` asserts both drill-throughs positively, by clicking them and checking the
+  destination's `h1`. The negative it replaced — "links to no accounting route, because none is
+  built" — was correct through `DASH.8` and false after `DASH.9`. The route-integrity sweep it was
+  protecting is unchanged: `UNBUILT_DASHBOARD_ROUTES` (`/dashboard/leads-marketing`,
+  `/dashboard/employees`, `/dashboard/actions`) is still asserted unreachable from every console
+  route and still asserted to 404 when fetched directly.
 
 Prose that moved rather than prose that was deleted: the nine section ledes are compressed to one
 line each and set beside their headings rather than under them; the full `SYNTHETIC_DATA_STATEMENT`
@@ -145,6 +156,8 @@ funnel share column is not a governed KPI.
 | From | To | Carries |
 |---|---|---|
 | Executive KPI card | Owning page (`/dashboard/sales-gross`, `/dashboard/inventory`, …) | Period, comparison, store filters |
+| Executive inventory pane (row 4) | `/dashboard/inventory` | none — the destination resolves its own snapshot from the same governed calendar |
+| Executive accounting signal (row 6) | `/dashboard/accounting` | none — the destination resolves its own comparison date from the same governed rule |
 | Store scoreboard row | Same page filtered to the store | `store=GSA-00#` |
 | Sales/gross deal table row · deal index row | `/dashboard/deals/[saleId]` | none (deal id is the key) |
 | Inventory unit row | Unit detail panel on `/dashboard/inventory` (`unit=` param) | Stock reference |

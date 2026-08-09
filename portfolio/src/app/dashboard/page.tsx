@@ -34,6 +34,7 @@ import {
 } from '@/lib/dashboard/data'
 import {
   SCOREBOARD_COLUMNS,
+  buildAccountingSignal,
   buildExecutiveOverview,
   type ExecutiveOverview,
 } from '@/lib/dashboard/executive'
@@ -64,7 +65,7 @@ const ROUTE = ROUTES.dashboard.href
  *
  * The nine visualisations added by the visual overhaul contribute **zero bytes of
  * client JavaScript**, which is the measured result recorded in `DESIGN_SYSTEM.md`
- * §6.0a and the reason there is still no chart library here.
+ * §6.0b and `PERFORMANCE.md` §9.8, and the reason there is still no chart library here.
  *
  * WHY IT READS `searchParams`
  * ---------------------------
@@ -88,6 +89,16 @@ const ROUTE = ROUTES.dashboard.href
  *
  * Every figure that was on the page is still on the page. What moved is prose, and
  * where it moved to is stated at each call site.
+ *
+ * WHY THE INVESTIGATE ROWS STAY SUMMARIES
+ * ---------------------------------------
+ * `DASH.9` built `/dashboard/inventory` and `/dashboard/accounting`, which own the
+ * unit-level and account-level detail. Rows 4 and 6 link to them rather than reproduce
+ * them, and that is a payload decision as much as an editorial one: the two detail
+ * routes read 356 kB and 360 kB of per-unit chunks that this route is forbidden to
+ * open, and `dashboard-boundaries.test.ts` fails the build if it ever does. A summary
+ * with a link costs one anchor; a summary that copies its destination costs the
+ * destination's data.
  */
 export default async function DashboardPage({
   searchParams,
@@ -102,6 +113,7 @@ export default async function DashboardPage({
   })
   const overview = buildExecutiveOverview(parsed.filters, parsed.reset)
 
+  const accountingSignal = buildAccountingSignal(parsed.filters)
   const exportState = exportTrust(dashboardManifest)
   const powerBi = powerBiTrust(engines)
   const failedReconciliation = reconciliationFailed(dashboardManifest)
@@ -291,8 +303,15 @@ export default async function DashboardPage({
             door, and recorded in `accounting-data.ts` that the 43-row comparison set "IS
             the Executive summary" for this route. This row is that summary. It reads the
             comparison set and nothing else: the 360 kB of per-unit book values in
-            `accounting-chunks.ts` belong to `/dashboard/accounting`, which does not exist
-            yet and which nothing here links to.
+            `accounting-chunks.ts` belong to `/dashboard/accounting`, and a reader who
+            wants them follows the drill-through this section carries rather than paying
+            for them here.
+
+            The figure comes from `buildAccountingSignal()`, which is the only function in
+            the console that resolves a comparison date, applies the store filter and
+            totals a signed variance. The visual overhaul replaced the four-card
+            presentation `DASH.9` shipped; it did not replace, re-implement or reinterpret
+            any of the accounting semantics underneath it.
           */}
           <ConsoleRow
             id="accounting-integrity"
@@ -300,7 +319,7 @@ export default async function DashboardPage({
             title="Whether the stock schedule and the general ledger agree"
             lede="One position at the last month end inside the selected period. A variance is a finding to investigate, not a broken record, and both sides are valid data."
           >
-            <ReconciliationSection signal={overview.reconciliation} />
+            <ReconciliationSection signal={accountingSignal} />
           </ConsoleRow>
         </>
       )}

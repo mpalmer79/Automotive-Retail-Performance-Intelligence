@@ -153,11 +153,13 @@ SELECT
     i.reconditioning_cost                                      AS reconditioning_cost,
     i.inventory_investment                                     AS inventory_investment,
 
-    -- Synthetic market context. The ratio is derived in exactly one place in this project
-    -- -- reporting.vw_inventory_snapshots -- and is repeated here by the identical
-    -- expression rather than by a second rule, so the two cannot disagree without the
-    -- expression itself being edited twice. RECON-INV-UNIT-RATIO re-proves the equality on
-    -- every run.
+    -- Synthetic market context. The ratio is STATED by reporting.vw_inventory_snapshots and
+    -- repeated here by the identical expression rather than by a second rule, because this
+    -- view reads the fact directly for its window functions and so cannot select a column its
+    -- source does not carry. Two copies is how two surfaces come to disagree about a measure
+    -- carrying one name, so the equality is not trusted: RECON-INV-UNIT-RATIO re-proves it on
+    -- every database run, comparing NULL as a value so an absent estimate must give an absent
+    -- ratio on both sides and a zero on neither.
     i.market_price_estimate                                    AS market_price_estimate,
     CASE
         WHEN i.market_price_estimate IS NULL THEN NULL

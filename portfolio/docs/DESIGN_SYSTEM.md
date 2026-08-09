@@ -502,6 +502,15 @@ The geometry itself is one shared helper — `columnGeometry` — used by `Trend
 `ExecutiveMicroTrend`, because two copies of a baseline calculation eventually disagree about where
 zero sits, and that is the one thing about a column chart a reader cannot check by looking.
 
+**And the view models these consume have one builder each.** `ReconciliationScale` was written in
+parallel with `DASH.9`'s final increment, and for a short time two functions resolved the same
+comparison date, applied the same store filter and totalled the same signed variance — one feeding
+`DASH.9`'s four-card summary, one feeding this scale. The merge deleted the second rather than
+shipping both: `buildAccountingSignal()` is the only one, and the scale reads its output. A
+primitive that needs a richer input than an existing view model provides is a reason to widen that
+view model, never a reason to write a second one beside it. Two builders agree on the day they are
+written and nothing keeps them agreeing.
+
 ### 6.1 Why there is no headless component library
 
 `radix-ui` was a dependency, and `ui/overlays.tsx` wrapped it as `Tooltip`, `Popover`,
