@@ -52,7 +52,7 @@
 | `DASH.10` | Leads and Marketing dashboard | Large | **Implemented** |
 | `DASH.11` | Employee performance | Medium | **Implemented** |
 | `UX.1` | Executive productization and operating experience | Large | **Implemented** |
-| `DASH.12` | Management Action Center and change drivers | Large | Planned |
+| `DASH.12` | Management Action Center and change drivers | Large | **Implemented** |
 | `DASH.13` | Hardening and release | Large | Planned |
 | `DASH.O-*` | Optional enhancements | — | Deferred |
 
@@ -1044,8 +1044,8 @@ Power BI real-engine validation remains externally pending; `UX.1` does not modi
 | **Dependencies** | All surfaces it links into: `DASH.3`, `DASH.5`, `DASH.7`, `DASH.9`, `DASH.10` |
 | **Estimated complexity** | Large |
 | **Blocking gate** | None |
-| **Architecture references** | `ACTION_ENGINE_SPEC.md`; program §13, §21 |
-| **Status** | Planned |
+| **Architecture references** | `ACTION_ENGINE_SPEC.md` (now as-built); program §13, §21 |
+| **Status** | **Implemented** |
 
 Items: `DASH.12-01` `config/dashboard/action_rules.yaml` + export-time rule evaluation + action
 dataset (Large) — rule schema per spec §2, initial rule set across inventory/sales/F&I/leads/
@@ -1059,6 +1059,36 @@ for incomparable periods, and the same driver formulas registered for future Pow
 Tests per spec §10 and TEST_STRATEGY. Non-goals: persistence, assignment, resolution, notification.
 Evidence: every rule has a fixture that fires it and a fixture that suppresses it; bridge totals
 reconcile in tests.
+
+### `DASH.12` as-built notes
+
+`DASH.12-01`, `DASH.12-02` and `DASH.12-03` are all **Implemented**. Four differences between the
+plan above and what shipped, each a decision rather than a shortfall:
+
+**Twelve of thirty rules are enabled, and the eighteen disabled ones are the finding.** The plan
+said "initial rule set across inventory/sales/F&I/leads/accounting families" and did not anticipate
+how many proposed conditions the governed data cannot support honestly. Seven duplicate a hard
+data-quality gate — the condition cannot survive into a valid export, so surfacing it as a
+management item would misrepresent a pipeline failure. Seven need a grain nothing publishes: the
+F&I and lead datasets are daily per manager or per source, where the denominator never reaches the
+governed sample floor of ten. Four need evidence the project does not hold at all. Every identifier
+is retained with its audited reason, and `docs/product/PRODUCT_GAPS.md` records the four data gaps.
+
+**The 90-day aged example in the planning spec is withdrawn.** It predated the implemented 60-day
+project default. No rule restates the aged threshold at any value: `ACT-INV-001` reads the governed
+boolean and discloses the row's own `aged_threshold_days`. 120 days survives as a high-severity
+review threshold, which is a different thing and is labelled as one.
+
+**No mix components were added to the bridge.** The plan allowed "then documented mix components".
+`vw_gross_change_bridge` computes volume, front-PVR and back-PVR and no mix effect, so none is
+named — the rule file's decomposition order is validated against the dataset's own component
+enumeration, which makes inventing one in YAML impossible. `DASH.12-03` reuses the `DASH.3` bridge
+implementation rather than writing a second: it moved into a shared module unchanged, and what
+`DASH.12` adds is a materiality DISPLAY policy and no formula.
+
+**Zero new reporting views.** The plan did not require any and none was needed. Two enabled rules
+produce zero current actions, which the review document records as facts about the as-of period
+rather than about the rules; no threshold was moved to fill the queue.
 
 ---
 

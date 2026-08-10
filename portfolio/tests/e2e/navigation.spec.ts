@@ -8,6 +8,7 @@ import {
   PERMANENT_REDIRECTS,
   PRIMARY_ROUTES,
   TECHNICAL_VIEW_ROUTES,
+  UNBUILT_DASHBOARD_ROUTES,
 } from './routes'
 
 /**
@@ -24,7 +25,7 @@ import {
 /* -------------------------------------------------------------------------- */
 
 test.describe('the operating rail', () => {
-  test('offers the eight built destinations and nothing else', async ({ page }) => {
+  test('offers the nine built destinations and nothing else', async ({ page }) => {
     await gotoRendered(page, '/')
     const nav = page.getByRole('navigation', { name: 'Operating' }).first()
     await expect(nav.getByRole('link')).toHaveCount(OPERATING_NAV_ROUTES.length)
@@ -37,10 +38,24 @@ test.describe('the operating rail', () => {
   })
 
   test('never links to a section that is not built', async ({ page }) => {
+    /*
+     * `UNBUILT_DASHBOARD_ROUTES` is EMPTY as of `DASH.12`, which delivered the one section it
+     * held. The assertion is unchanged in substance: whatever the list contains must not be
+     * linked from anywhere in the application. It passed before because `/dashboard/actions`
+     * was in the list and absent from the rail; it passes now because nothing is claimed to
+     * be missing. A future entry that outlived its increment fails here.
+     */
     for (const route of ['/', '/dashboard/sales-gross', '/dashboard/accounting']) {
       await gotoRendered(page, route)
-      await expect(page.locator('a[href^="/dashboard/actions"]'), route).toHaveCount(0)
+      for (const unbuilt of UNBUILT_DASHBOARD_ROUTES) {
+        await expect(page.locator(`a[href^="${unbuilt}"]`), `${route} -> ${unbuilt}`).toHaveCount(
+          0
+        )
+      }
     }
+    // The counterpart claim, now that the rail is complete: Actions IS reachable.
+    await gotoRendered(page, '/')
+    await expect(page.locator('a[href^="/dashboard/actions"]').first()).toBeVisible()
   })
 
   test('marks exactly one destination current on every operating route', async ({
@@ -109,8 +124,25 @@ test.describe('the rail carries the analytical context', () => {
       const href = await nav
         .getByRole('link', { name: item.label, exact: true })
         .getAttribute('href')
-      expect(href, `${item.label} lost the period`).toContain('period=2025-11')
+      /*
+       * STORE reaches every operating destination. PERIOD does not, and the one exception
+       * is a design decision rather than a gap: `/dashboard/actions` declares `period`
+       * not-applicable, because each action rule sets its own as-of scope and they differ
+       * by domain — the as-of snapshot for inventory, the as-of month for deliveries, the
+       * published exception register for accounting. A period control over rows selected on
+       * three different bases would mean three different things at once, so it is dropped
+       * rather than carried into a page that would show it doing nothing.
+       *
+       * The rule this test guards is unchanged: a parameter travels exactly when the
+       * destination's support matrix says it applies, which is the same rule the next test
+       * checks from the other direction.
+       */
       expect(href, `${item.label} lost the store`).toContain('store=GSA-002')
+      if (item.path === '/dashboard/actions') {
+        expect(href, 'Actions must not carry a period it cannot apply').not.toContain('period=')
+        continue
+      }
+      expect(href, `${item.label} lost the period`).toContain('period=2025-11')
     }
   })
 

@@ -873,3 +873,37 @@ loaded rows from any deployed database. There is no review period and no require
 the requester explain themselves. The procedure is in
 [`data/reference/README.md`](data/reference/README.md) section 8. Nothing in this project
 is worth keeping over an objection.
+
+---
+
+## 18. The management action queue (ADR-0013, `DASH.12`)
+
+The action queue is a new door onto data that already crossed the export boundary. A new door is
+exactly where a control gets forgotten, so the boundary is re-asserted rather than assumed.
+
+**Evidence is allowlisted twice.** A rule may carry as evidence only the exported columns of its own
+source dataset — checked in Python against the export contract when the rule file loads, and again
+in TypeScript against the published column contracts when the queue is transformed for the console.
+
+**Prohibited evidence fails loudly.** A rule naming a prohibited field raises and the export refuses
+to produce anything. It is never silently stripped: stripping would leave an action whose evidence no
+longer explains why it fired, which is a quieter failure and a worse one.
+`tests/unit/test_action_rules.py::TestPrivacy` injects `customer_name` and requires the refusal.
+
+**No customer record reaches the queue.** `ACT-LED-001` is about leads and its entity is a store ×
+source × day aggregate, never an individual lead. No name, email, phone, address, message, credit
+figure, income or protected attribute appears anywhere in the published queue, asserted by scans in
+both languages.
+
+**No employee data reaches the queue.** No rule is about a person: there is no employee action
+family, no employee domain and no employee entity type. `ACT-FNI-006` surfaces a delivery with no
+finance-manager attribution, which is a coverage condition about a DEAL and carries no employee
+identifier, no name and no performance measure.
+
+**The review role is not an assignment.** `owner_role` names the role best placed to look at the
+evidence. It does not say who is responsible, accountable, at fault, or holding a task. The console
+renders "Review role:" and the vocabulary test forbids "Assigned to".
+
+**One control fired during development, and is recorded here because it worked.** The exporter's
+secret guard rejected the first spelling of a disclosed threshold authority for naming a warehouse
+schema the console may not see. The published string now names the authority without the schema path.

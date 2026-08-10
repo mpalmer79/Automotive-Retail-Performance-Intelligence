@@ -677,10 +677,10 @@ function runGeneratorWith(mutate: (exportDir: string) => void): {
    * `action-contract` and the two it imports -- keeps the sandbox a faithful copy of what
    * the generator actually runs, rather than a copy that would pass for want of a checker.
    */
-  for (const module of ['action-contract.ts', 'navigation.ts', 'filters.ts']) {
+  for (const dependency of ['action-contract.ts', 'navigation.ts', 'filters.ts']) {
     cpSync(
-      join(PORTFOLIO, 'src/lib/dashboard', module),
-      join(sandbox, 'portfolio/src/lib/dashboard', module)
+      join(PORTFOLIO, 'src/lib/dashboard', dependency),
+      join(sandbox, 'portfolio/src/lib/dashboard', dependency)
     )
   }
   cpSync(GENERATED_DIR, join(sandbox, 'portfolio/src/generated/dashboard'), {

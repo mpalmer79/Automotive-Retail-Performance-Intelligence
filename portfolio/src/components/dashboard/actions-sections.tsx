@@ -50,7 +50,12 @@ import {
   type FacetOption,
 } from '@/lib/dashboard/actions'
 import type { ChangeDriverState } from '@/lib/dashboard/change-drivers'
-import { formatIsoDate } from '@/lib/dashboard/format'
+import { cellToExact } from '@/lib/dashboard/decimal'
+import {
+  formatCurrencyExact,
+  formatIsoDate,
+  formatRateExact,
+} from '@/lib/dashboard/format'
 import type { ActionSeverity, ManagementAction } from '@/types/dashboard'
 import { cx } from '@/lib/utils'
 
@@ -209,14 +214,34 @@ export function ActionFacetBar({
 /* Region 3 — the queue                                                        */
 /* -------------------------------------------------------------------------- */
 
-/** Format one evidence value for display, without changing what it means. */
+/**
+ * Format one evidence value for display, without changing what it means.
+ *
+ * FORMATTING, NEVER CONVERSION. The exact value crosses the export boundary as a string so
+ * that no float touches it, and it is parsed into the same exact representation the rest of
+ * the console uses before being rendered at a sane number of places. A bridge effect is
+ * published as -14067.506129032258 because that is the exact quotient; showing a manager
+ * twelve decimal places of a dollar figure is not honesty, it is noise, and the underlying
+ * value is unchanged.
+ *
+ * A null stays visibly absent. Rendering it as 0 would destroy the distinction the warehouse
+ * maintains everywhere else between "not observed" and "zero".
+ */
 function evidenceDisplay(entry: ManagementAction['evidence'][number]): string {
-  // A null stays visibly absent. Rendering it as 0 would destroy the distinction the
-  // warehouse maintains everywhere else between "not observed" and "zero".
   if (entry.value === null) return 'not recorded'
   if (typeof entry.value === 'boolean') return entry.value ? 'yes' : 'no'
   const text = String(entry.value)
-  if (entry.unit === 'USD') return `$${text}`
+  // Guarded on the COLUMN TYPE, not on whether the string happens to parse. `cellToExact`
+  // throws on "Used" rather than returning null, and asking it to parse a condition group
+  // is a category error whichever way it answers.
+  const numeric = entry.type === 'currency' || entry.type === 'exact' || entry.type === 'double'
+  if (numeric) {
+    const exact = cellToExact(entry.value)
+    if (exact !== null) {
+      if (entry.unit === 'USD') return formatCurrencyExact(exact, 2)
+      if (entry.unit === 'ratio') return formatRateExact(exact, entry.displayPrecision ?? 4)
+    }
+  }
   if (entry.unit !== null && entry.unit !== 'ratio') return `${text} ${entry.unit}`
   return text
 }

@@ -420,6 +420,10 @@ describe('the operating rail is the definition of the operating application', ()
         label
       )
     }
+    // The rail is the definition of the operating application, so every href it derives
+    // must point at a route that exists. `/dashboard/actions` is one of them as of
+    // `DASH.12`, and was deliberately absent before.
+    expect(OPERATING_ROUTE_HREFS).toContain('/dashboard/actions')
   })
 
   it('treats a Deal Jacket as inside the application and the reference domain as outside', () => {

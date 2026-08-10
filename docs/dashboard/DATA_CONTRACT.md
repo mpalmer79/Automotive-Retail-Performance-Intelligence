@@ -772,3 +772,55 @@ view. The contract now divides by `contacted_leads`, and
 `test_export_reconciliation_totals_use_the_governed_denominator` binds every ratio total to the rate
 its reporting view publishes so the two cannot drift again.
 
+
+---
+
+## 14. `management-actions.json` — the one derived artifact (`DASH.12`)
+
+Every dataset in this contract is read from an allowlisted `reporting` view. **This one is not**, and
+it is held apart from `datasets` in the manifest for exactly that reason: it is produced by
+evaluating `config/dashboard/action_rules.yaml` against the datasets in the same export.
+
+| | |
+|---|---|
+| Schema | `arpi.management_actions/1` |
+| File | `management-actions.json` — a JSON array of action objects |
+| Manifest key | `management_actions` (not a member of `datasets`) |
+| Source | The exported records themselves. No view, no query, no database. |
+| Encoding | Row-per-object, unlike every dataset |
+
+**Why row-per-object.** A dataset is thousands of rows of one flat shape, where repeating column
+names on each row would cost more in keys than in values, so the generated tree encodes them
+columnar. The queue is a few dozen rows of a NESTED shape — evidence and thresholds are lists of
+objects — and a columnar encoding cannot express that without flattening the structure that makes an
+action checkable.
+
+**Row shape.** `action_id` · `rule_id` · `domain` · `as_of_date` · `store` · `entity_type` ·
+`entity_id` · `severity` · `title` · `owner_role` · `recommended_review` · `limitations` ·
+`date_basis` · `observed_date` · `drill_through` · `evidence[]` · `thresholds_used[]`.
+
+**Identity.** `action_id` is `{rule_id}:{entity_id}:{dataset_version}`, and `entity_id` is the rule's
+declared key columns joined by `|`. Both languages check the contract rather than trusting it.
+
+**Null semantics are the datasets' own.** An evidence value is copied verbatim, including `null`. A
+missing control balance stays missing and a missing market estimate stays missing; neither becomes
+zero, because the whole export maintains that distinction and the queue is not the place to lose it.
+
+**Exactness.** Currency and exact-decimal evidence crosses as a string, as everywhere else. The
+console parses it into the same exact representation the rest of the surface uses before rendering
+it at a sane number of places — a bridge effect published as `-14067.506129032258` is the exact
+quotient, and showing twelve decimal places of a dollar figure is noise rather than honesty.
+
+**The manifest block** carries the file hash, byte count and row count; the ruleset's schema,
+version, path, content hash, expiry model, rule count and both identifier lists; the source datasets;
+the facet counts; the change-driver display policy; and the boundary statements rendered with the
+queue.
+
+**Freshness.** The rule file is a governed INPUT. `--check` re-derives the queue offline from the
+current rule file and the committed datasets and fails on any difference in bytes, hash, row count,
+counts, ruleset hash or change-driver policy. The hashes do not chain circularly: the rule file's
+hash and the action file's hash are both recorded IN the manifest, and neither is computed over it.
+
+**Size.** 85,774 bytes, 47 rows, **one file**. Section 9 asks for the measurement before the chunking
+decision, and the measurement says one file. Partitioning by store and month would also be the wrong
+shape: an action's scope is set by its rule rather than by a month.
