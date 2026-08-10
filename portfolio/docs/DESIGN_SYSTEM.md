@@ -760,3 +760,34 @@ control rather than an inert one. The compressed island size did not move.
 **One shared component gained a link: `LeadFunnel` now takes `filters`** so the Executive
 drill-through arrives scoped to what the reader was looking at. That is the whole of `DASH.10`'s
 change to the Executive Overview, which `PR #52` had just redesigned.
+
+## Employee role marks (`DASH.11`)
+
+Four stable categorical marks from the existing `data-*` palette, one per employee role family:
+
+| Role family     | Token               |
+| --------------- | ------------------- |
+| Salesperson     | `bg-data-primary`   |
+| Desk Management | `bg-data-secondary` |
+| Finance         | `bg-data-tertiary`  |
+| BDC             | `bg-data-neutral`   |
+
+**IDENTITY, NEVER EVALUATION**, and the distinction is the whole reason to write them down. The
+mark tells a reader which operating surface they are on. It does not order the families, it does not
+say one is better than another, and it moves with the family rather than with a figure. The families
+are not comparable with each other at all — different opportunities, different governed denominators
+— so a palette that implied a sequence would be making a claim the data cannot support.
+
+**Derived from the family, not from the row's position**, for the same reason `storeMarkClass` is
+derived from the business code: a family filtered out of view would otherwise shift the colour of
+every family after it.
+
+**No `data-positive` or `data-negative` appears on the employee route.** ARPI publishes no employee
+benchmark, so there is no threshold for a colour to encode, and a green or red employee figure would
+be a judgement the model does not support. `dashboard-employees.test.ts` asserts the component
+contains neither token and no bare `green`/`red`/`emerald`/`rose` utility.
+
+**One attention state is permitted**, and only for `insufficient sample`: `text-data-warning`. It is a
+PUBLICATION state — the project declining to print a ratio over a denominator this small — and not a
+verdict about a person. It always appears with the words "Insufficient sample" and the count that
+caused it, so the colour is never the only carrier of the meaning.

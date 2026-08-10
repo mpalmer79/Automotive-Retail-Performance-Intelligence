@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright'
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 
 import { bodyText, gotoRendered, mainText, mainTextContent, settle } from './helpers'
 import { DASHBOARD_VIEWPORTS } from './routes'
@@ -27,7 +27,7 @@ const ROUTE = '/dashboard/employees'
  * so `MINIMUM SAMPLE` is what a case-sensitive assertion would have to match. Comparing in one
  * case keeps these tests about WHAT the page says rather than about how it is styled.
  */
-async function lowerText(page: import('@playwright/test').Page): Promise<string> {
+async function lowerText(page: Page): Promise<string> {
   return (await mainText(page)).toLowerCase()
 }
 

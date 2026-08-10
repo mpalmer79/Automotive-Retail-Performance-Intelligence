@@ -238,6 +238,31 @@ figure ([ARCHITECTURE.md §23](ARCHITECTURE.md)):
 | **Tenure** | A first-year salesperson and a ten-year veteran are not comparable on absolute output. `dim_employee.tenure_band` exists for this. |
 | **New versus used mix** | Gross structure differs sharply between departments. A used-heavy mix produces different per-unit gross for reasons unrelated to skill. |
 | **Inventory availability** | An employee cannot sell what the store does not stock. |
+
+### 5.2a How `DASH.11` discharged §5.2, and where each context actually appears
+
+Every required context is on the employee row or beside the comparison, not behind a disclosure —
+because the context is part of what the figure MEANS, and a page that files it under methodology has
+published the ranking and hidden the caveat.
+
+| Required context | As built | Where |
+|---|---|---|
+| **Lead volume received** | `assigned_lead_count` / `valid_lead_count` from `fact_lead.assigned_employee_key`. The audit confirmed salespeople genuinely receive lead assignments — 2,230 of them — so this is the real measure and not a relabelled BDC figure | Salesperson row, "Assigned leads"; the BDC volume itself |
+| **Lead-source mix** | `vw_employee_lead_source_response`, by governed source category. Ordered by NAME, never by size, so the biggest source cannot read as the best one | BDC row, full mix bar; Salesperson row, commonest category |
+| **Store traffic** | Published as **store valid leads and store appointments**, never called foot traffic. ARPI has no door counter and does not pretend otherwise | Opportunity region |
+| **Tenure** | `tenure_band` from the FACT-LINKED version, never a hire date and never an exact tenure | Every employee row |
+| **New versus used mix** | `sold_new_units` / `sold_used_units`, a partition summing exactly to retail units, with certified published as a SUBSET of used and never as a third category | Salesperson and Desk rows |
+| **Inventory availability** | Average active units at the store over the observed snapshot days, from the governed `inventory-health` export. A STORE figure: it is on no employee row, so nothing can sum it across people and publish it as group inventory | Opportunity region, per store |
+| **Manager involvement** | `sold_retail_units_with_desk_manager`. On the development profile every deal has a desk manager, so the context is structurally constant — which the page states plainly rather than giving prominent space to | Salesperson row |
+| **Finance structure mix** | Cash / retail finance / lease counts, summing exactly to retail units. Not optional: reserve and back PVR divide by ALL retail units and a cash deal cannot generate reserve | Finance row, beside both figures |
+
+**And the minimum sample is a publication discipline, not a threshold anyone is measured against.**
+Each comparative figure is withheld below ITS OWN governed denominator's floor — retail units for
+per-unit gross, valid leads for contact rate, contacted leads for appointment-set rate, eligible
+appointments for show rate, shown appointments for show-to-sale — and the count that caused the
+suppression is printed beside it. Below the floor the page prints "9 retail units, minimum 10" and
+no ratio. That says the project declines to compare a rate computed over a denominator this small.
+It says nothing whatever about the person, and nothing styles it as a failure.
 | **Manager involvement** | Desk-manager and finance-manager participation materially affects deal outcomes; the closer is not the only contributor. |
 
 ### 5.3 Reinforcement from research
@@ -669,12 +694,33 @@ There is no customer dataset, banded or otherwise. Customers appear only as pre-
 inside the funnel views — `leads_received`, `contacted_leads`, `sold_leads`. `reporting.vw_customer`
 is not in the allowlist and a test asserts no exported column name contains "customer".
 
-Employees do not appear at all in this increment: no `DASH.1` dataset needs them, so none is
-exported. `vw_employee` becomes exportable at `DASH.11`, limited to synthetic id, role, store and
-active window, subject to the §5 minimum-sample rule. `DASH.10` did not change that: the leads and
-marketing route declares its `employee` filter `not-applicable` rather than ignoring it, and none of
-its three datasets carries an employee column — a BDC surface is the most natural place for an
-employee leaderboard to appear by accident, and it does not.
+Employees did not appear at all through `DASH.10`: no dataset needed them, so none was exported,
+and the leads and marketing route declares its `employee` filter `not-applicable` rather than
+ignoring it — a BDC surface is the most natural place for an employee leaderboard to appear by
+accident, and it did not.
+
+**`DASH.11` promotes `vw_employee`, and this is the exact price of that.** The blanket prohibition
+becomes an EXACT ALLOWLIST rather than disappearing, asserted by equality and not by containment:
+`employee_code`, `dealership_id`, `department`, `job_role`, `is_manager`, `tenure_band`,
+`is_active`, and nothing else. `vw_employee` may be a source view and may NOT be a join view, so no
+other dataset can pick up an employee attribute sideways. What the dimension knows and does not
+publish is the real content of that list: no name, initial, photo, avatar, email, phone or address;
+no hire date, termination date, exact tenure, age or birth date; no salary, commission, pay plan,
+bonus or any other compensation; and no protected attribute of any kind. None of those exists in the
+warehouse either — this is defence in depth, not the only defence.
+
+Three further controls apply to every dataset carrying an employee code, which is five of the
+thirty-eight. `test_no_employee_dataset_declares_a_personal_or_pay_column` matches personal and pay
+vocabulary as whole words and as substrings; `test_no_employee_dataset_declares_a_score_rank_or_target_column`
+forbids any column named for a rank, score, percentile, quartile, tier, grade, rating, target,
+quota, goal, attainment or pace, so no such figure is derivable however the page chooses to draw it;
+and the exported surrogate keys stop at the boundary as everywhere else — `employee_key` is a
+version surrogate and `employee_grain_key` is `coalesce(employee_key, 0)`, and neither crosses.
+
+A null `employee_code` on a performance row means ACTIVITY CREDITED TO NOBODY — 135 deliveries with
+no finance manager, 296 leads assigned to no one, 521 appointments with no BDC employee — and never
+"employee unknown". It is kept inside every total and outside the employee comparison, and it is
+never given an invented code.
 
 ### 17.3a Lead grain, and the shape that avoided it (`DASH.10`)
 

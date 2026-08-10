@@ -1108,8 +1108,12 @@ test.describe('the console reads as an instrument rather than as a report', () =
       'Franchise New and Used',
       'Every warehouse record in this project is synthetic',
       'Gate 2 remains CLOSED',
+      // The one console section that is still unbuilt, and the increment that owns it.
+      // This read `Employee performance` and `DASH.11` until that route shipped: an entry
+      // leaves the planned list in the same commit its destination becomes reachable, so
+      // this assertion moving is the mechanism working rather than a guard being relaxed.
       'Management actions',
-      'DASH.11',
+      'DASH.12',
     ]) {
       expect(served, claim).toContain(claim)
     }

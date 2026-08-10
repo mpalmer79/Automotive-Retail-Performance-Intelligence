@@ -528,8 +528,8 @@ requireTrue(
     `${listingReportingViewFiles.length}.`
 )
 requireTrue(
-  dashboardReportingViewFiles.length === 13,
-  `Expected thirteen dashboard program reporting views under sql/05_reporting/, found ` +
+  dashboardReportingViewFiles.length === 15,
+  `Expected fifteen dashboard program reporting views under sql/05_reporting/, found ` +
     `${dashboardReportingViewFiles.length}. A DASH.* view added to the tree and not to ` +
     'DASHBOARD_LANE_SQL_FILES would be counted against the Power BI SQL baseline, which ' +
     'never measured it.'

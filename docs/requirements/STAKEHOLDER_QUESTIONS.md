@@ -909,3 +909,25 @@ is the point of this document.
 - Every KPI added to [KPI_CATALOG.md](../../KPI_CATALOG.md) must be cited by a question here, or listed in
   §5 as explicitly unattributed. The traceability test enforces the choice rather than allowing silence.
 - Every view added to the `reporting` schema must support a question here, for the same reason.
+
+---
+
+## `DASH.11` — where the employee-performance route answers its questions
+
+| Question | Where it is answered, and the qualification |
+|---|---|
+| **SQ-08** — which salespeople balance volume against gross retention | The Salesperson surface, and it is the reason the surface leads with a COUNT and a per-unit gross side by side rather than either alone. Every §5.2 context is on the row: tenure band, store, new/used mix with certified inside used, assigned lead volume, commonest lead source category, and management participation; store inventory availability sits beside the comparison as a store figure. **Qualified:** gross per retail unit is withheld below the minimum sample, which on the development profile suppresses most salespeople in a single month — that is the honest answer at that scope, not a gap. |
+| **SQ-09** — of the customers who physically arrived, how many bought | The BDC surface's show-to-sale, on the SHOW-date basis at appointment grain, over `bdc_shown_appointments_show_basis`. It is deliberately a second shown-appointment column rather than a reuse of the scheduled-basis one, because the two count different populations. |
+| **SQ-20** — how much F&I gross per delivered unit | The Finance surface's back gross per retail unit, with the SQ-20 caution discharged on the same row rather than in a disclosure: cash deals are inside the governed denominator and cannot generate reserve, so the cash / retail-finance / lease partition travels with both figures. |
+| **SQ-21** — F&I product and adjustment behaviour | **Partially, and the boundary is deliberate.** The Finance surface publishes deal-date product gross, contract counts and deliveries carrying a product. It publishes NO penetration figure: penetration has a per-category eligible-deal denominator this route does not carry, and `/dashboard/fi` owns it — the finance rows link there with the employee code, which that route honours. The as-of and adjustment-period bases are absent for the same reason. |
+| **SQ-28** — how many of my team's appointments showed, and how many became deals | The BDC surface, as two separate blocks on two date bases with two separate denominators, plus the advance-cancellation count on the same row as show rate because the exclusion that makes show rate correct is the one a store can game. |
+
+No question was added to justify a metric. Where a question is only partly answered, the boundary is
+stated above rather than implied by omission.
+
+**The two views behind those answers, and which question each exists for.**
+
+| View | The question it exists for |
+|---|---|
+| `reporting.vw_employee_performance` | **SQ-08** primarily, and SQ-09, SQ-20 and SQ-28 through their role families. It publishes the components — additive numerators and additive denominators — that every figure on the route divides once, at the grain being reported. It exists because SQ-08 cannot be answered by volume alone: the question is about the BALANCE of volume against gross retention, so the units and the per-unit gross have to arrive on one row with the tenure, mix and opportunity that decide what the balance means. |
+| `reporting.vw_employee_lead_source_response` | **SQ-08's lead-source mix and SQ-28's response median.** Both are grained beneath the employee row, and neither can sit on it: the source would repeat that employee-day's units and gross on every source row, and a median cannot be recomputed from anything but its population. |

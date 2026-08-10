@@ -585,3 +585,38 @@ Fifteen fragments spanning every block are asserted present with `javaScriptEnab
 
 The route is in `ALL_TESTED_ROUTES`, so the existing axe sweep covers it at every viewport with
 the same zero-critical, zero-serious bar as every other route.
+
+## The employee performance route (`DASH.11`)
+
+**Axe runs on seven states, not one.** The four role families, the below-floor state, a selected
+employee and an unknown employee code. Zero serious or critical violations, no suppressed rules.
+A route that is only swept in its default state is only accessible in its default state.
+
+**The role switch is a `nav` landmark of plain links, not an ARIA tab set.** `role="tablist"` promises
+roving arrow-key focus and `aria-selected` following focus, and nothing here implements either;
+claiming the semantics would be worse than not claiming them. The current family is marked with
+`aria-current="page"`. A browser test asserts no `tablist`, `tab` or `tabpanel` role exists on the
+page. Links also survive reload, copy-paste, Back, Forward and JavaScript being off, which is the
+whole requirement the tab semantics would have been serving.
+
+**The definition lists pass the PR #55 structural guard explicitly.** Every `<dl>` on the route
+contains only `<dt>`, `<dd>` or a wrapping `<div>`, and every wrapping `<div>` contains only `<dt>`
+and `<dd>`. Explanatory copy that would otherwise have gone between a `<dt>` and the next `<dd>` is
+inside the `<dd>` or outside the list. A browser test walks the DOM for both conditions rather than
+trusting axe, which does not always catch an invalid list.
+
+**Colour is never the only carrier.** The four role marks are identity, not evaluation. The one
+non-neutral state — insufficient sample — carries the attention token AND the words "Insufficient
+sample" AND the count that caused it, on the same line. Nothing on the route is green because a
+figure is high or red because it is low; the project has no employee benchmark for a colour to
+encode.
+
+**Every mark has a textual equivalent.** The volume and mix bars are `aria-hidden`, which is correct
+rather than a way of hiding information: the value each represents is printed beside it as text. A
+browser test asserts every bar carries the attribute and that the row it sits in contains a number.
+
+**The suppression state is announced in text, not in styling.** "9 retail units, minimum 10" is the
+accessible statement; the amber is decoration on top of it.
+
+**The unknown-employee notice is a `role="status"` region**, so a screen reader learns that a
+well-formed code matched nothing rather than silently receiving an unfiltered page.

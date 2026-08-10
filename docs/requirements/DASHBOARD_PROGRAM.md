@@ -469,7 +469,8 @@ and never one giant mixed-grain denormalization):
 | `reporting.vw_inventory_accounting` | vehicle × store × accounting date | DASH.8 |
 | `reporting.vw_inventory_gl_reconciliation` | store × account × date | DASH.8 |
 | `reporting.vw_accounting_exceptions` | one row per exception | DASH.8 |
-| `reporting.vw_employee_performance` | employee × role × period | DASH.11 |
+| `reporting.vw_employee_performance` | **Implemented.** As built: store × calendar date × role family × employee **VERSION** — daily rather than the planned "period", because the filter grammar accepts arbitrary ranges, month-to-date and last-30-days and a monthly view can answer none of the three; and keyed on the SCD Type 2 version the fact points at, so a transfer or a promotion cannot move history to a new store or relabel it with a new title. Its sale columns are named per credit relationship (`sold_`, `desked_`, `financed_`) because one delivery is credited to three people | DASH.11 |
+| `reporting.vw_employee_lead_source_response` | **Implemented, and not in the plan.** The assigned-lead population beneath the employee grain, by lead source and by distinct first-response value. It exists because lead-source mix (SQ-08) and a true median (SQ-28) are both grained BENEATH the employee row: carrying the source on that row would repeat the employee-day's units and gross on every source row, and a median is not decomposable at all. Carries no unit, gross or appointment measure, so reading the two views together cannot fan one out | DASH.11 |
 | `reporting.vw_management_action` | one row per generated action | DASH.12 |
 | `reporting.vw_target_attainment` | **Implemented.** As built: store × target month × target scope × targeted KPI — one grain wider than planned, because department attainment is half of SQ-31 and a store-grain view could not carry it | DASH.5 |
 

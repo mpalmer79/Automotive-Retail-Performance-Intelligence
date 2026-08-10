@@ -1544,3 +1544,73 @@ actually present, because a zero from a branch that cannot fire is not evidence 
 `KPI-ACC-012` counts failing data-quality checks and is `0` on a healthy run by construction. Unlike
 every other measure in this domain it names no store and no date: a failing check is a property of a
 pipeline run, not of a dealership.
+
+## 17. What the employee-performance model cannot support (ADR-0013, `DASH.11`)
+
+### 17.1 No figure here supports a statement about individual skill
+
+The model observes ASSOCIATIONS between people and outcomes. It does not isolate an individual
+effect, and it cannot: opportunity, store, inventory, lead routing, condition mix, finance structure
+and management participation all vary between people and none of them is controlled for. Every
+figure is credited to or observed for a person; none is caused by them. `/dashboard/employees`
+publishes no rank, score, percentile, tier or composite, and none is derivable from what it exports.
+
+### 17.2 The SCD Type 2 defect is guarded but not exercised by the committed data
+
+`reporting.vw_employee_performance` keys on the employee VERSION each fact points at, so a transfer
+or a promotion cannot move earlier activity to a new store or relabel it with a new title, and
+`RECON-EMP-SCD2-ATTRIBUTION` is an equality over every row rather than a spot check.
+
+**But all four multi-version employees on the development profile changed store or role BEFORE the
+reporting window opened** — 2020-12-19, 2023-12-08, 2024-05-18 and 2024-12-09, against a window
+starting 2025-07-01. Every in-window fact therefore points at what is also the current version, and a
+current-version join would coincidentally produce the same answer. The implementation is correct by
+construction and the rule fails the moment a divergent version appears; what does not exist is a
+committed case that would fail under the wrong implementation.
+
+### 17.3 There is no service-advisor surface, and no proxy for one
+
+`warehouse.fact_service_visit` is Deferred, so no fact credits a service advisor with anything. Two
+service advisors exist in `dim_employee` and appear on no employee surface.
+`warehouse.fn_employee_role_family()` returns NULL for the role deliberately: a Service family would
+have rendered a page of zeroes, which reads as poor performance rather than as absent data. No
+service metric is estimated from unrelated facts.
+
+### 17.4 No employee has a target, a quota or an attainment figure
+
+`warehouse.fact_sales_target` supports an `Employee` scope physically and `DASH.5` generates no
+employee-scope row. `DASH.11` did not populate one. A structural capability is not a business policy,
+and two export tests assert that no column named for a rank, score, tier, target, quota, goal,
+attainment or pace exists on any dataset carrying an employee code.
+
+### 17.5 Prior-period comparison is not offered on this route
+
+`compare` is declared `not-applicable` rather than partially supported. A prior-period employee delta
+needs both periods to independently satisfy the same role assignment, the same measure, the same
+denominator AND the minimum-sample floor. On this data most people clear the floor in neither period,
+so most deltas would be computed from a value the page had just declined to print — and where someone
+changed role or store between the periods, the difference would be an assignment change presented as
+performance movement.
+
+### 17.6 Manager involvement is structurally constant
+
+`fact_vehicle_sale.desk_manager_key` is never null on the development profile, so
+"deals with a desk manager" equals retail units on every salesperson row. The context is published
+because §5.2 requires it and because publishing it makes the claim checkable, but it currently
+distinguishes nobody from anybody. It also asserts nothing about manager quality, help or
+interference — only that a desk manager was credited.
+
+### 17.7 The store opportunity context is a proxy, and is labelled as one
+
+ARPI has no door counter. What the page publishes as store opportunity is **store valid leads and
+store appointments**, named as such and never as foot traffic. Store inventory availability is an
+average of active units over the OBSERVED snapshot days, which is the only additive reading of a
+semi-additive stock measure; it is a store figure on no employee row, so nothing can sum it across
+people and publish it as group inventory.
+
+### 17.8 The two appointment date bases never separate on this data
+
+Carried forward from `DASH.10`: no generated customer arrives on a day other than the one they were
+booked for, so the scheduled-date and show-date populations coincide. The bases are structurally
+distinct, separately columned and independently reconciled; the committed data does not exercise the
+difference.

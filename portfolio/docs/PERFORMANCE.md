@@ -988,3 +988,68 @@ Stated rather than implied.
 
 Once a preview deployment exists, a Lighthouse run against it is the first thing to
 add here.
+
+## 9.9 The `DASH.11` route, measured
+
+Measured by `npm run bundle` against a production build served locally, cold, compressed, by the
+same method as §9.3 through §9.8. **A baseline, not a budget.** `DASH.13-02` sets budgets from
+measurements.
+
+| Route                                                  |     HTML | Route JS |    Total |
+| ------------------------------------------------------ | -------: | -------: | -------: |
+| `/dashboard/employees?period=2025-12`                  |  47.0 kB | 154.9 kB | 333.0 kB |
+| `/dashboard/employees`                                 |  46.7 kB | 154.9 kB | 332.6 kB |
+| `/dashboard/employees?role=finance&employee=EMP-00005` |  39.2 kB | 154.9 kB | 325.2 kB |
+| `/dashboard/employees?role=bdc`                        |  37.4 kB | 154.9 kB | 323.4 kB |
+| `/dashboard` (the heaviest console route, for scale)   | 134.5 kB | 154.9 kB | 420.4 kB |
+
+**Zero new client JavaScript, and the figure is byte-identical.** 154.9 kB, the same number every
+console route reports. Four role surfaces, the comparison matrix, every bar, the store context and
+the methodology disclosure are server components; the console still has exactly one client island,
+the filter bar, and `DASH.11` added none and extended none.
+`dashboard-boundaries.test.ts` fails the build if a second island appears, and
+`dashboard-employees.test.ts` asserts no lane module carries `'use client'`.
+
+**The route is the second-lightest console page.** 46.7 kB of HTML against 65.1 kB for leads and
+marketing and 134.5 kB for the Executive Overview, on a page rendering twelve employees with four
+figures, a mix bar and four context cells each. The BDC surface is lighter still at 37.4 kB despite
+carrying a six-category mix bar per person, because two people are credited rather than twelve.
+
+**Withholding a ratio costs 0.3 kB, not a saving.** `?period=2025-12` suppresses ten of twelve
+per-unit gross figures and is 0.3 kB LARGER than the default, because "Insufficient sample" plus
+"9 retail units, minimum 10" is more text than "$2,146" plus "n = 13 retail units". Sample
+discipline is not a page-weight optimisation and this is the measurement that says so.
+
+### 9.9.1 The data lane
+
+| Artefact                             | Before `DASH.11` |        After |        Delta |
+| ------------------------------------ | ---------------: | -----------: | -----------: |
+| Committed `data/dashboard/`          |     19,438,359 B | 23,064,376 B | +3,626,017 B |
+| Generated `src/generated/dashboard/` |      6,499,928 B |  7,225,164 B |   +725,236 B |
+| Datasets                             |               33 |           38 |           +5 |
+
+| Employee dataset        | Root export | Generated | Chunks | Largest chunk |
+| ----------------------- | ----------: | --------: | -----: | ------------: |
+| `employees`             |     5,133 B |   2,514 B |      — |             — |
+| `employee-sales`        |   613,720 B | 159,201 B |     18 |      11,503 B |
+| `employee-finance`      |   164,903 B |  43,910 B |      — |             — |
+| `employee-appointments` |   218,018 B |  48,101 B |      — |             — |
+| `employee-lead-source`  | 2,583,782 B | 521,777 B |     18 |      49,366 B |
+
+Every generated file is inside the 256 kB ceiling with room; the largest is 49,366 B.
+
+**Two datasets are chunked and three are not, on the measurement rather than on symmetry.**
+`employee-lead-source` is the second-largest dataset in the export and grows with leads rather than
+with employees, so store × month partitions it. `employee-sales` re-encodes to 159,201 B whole —
+inside the ceiling but at 62% of it, and the lane grows with deliveries — so it is partitioned too,
+which takes its largest partition to 11,503 B. `employee-finance` at 43,910 B, `employee-appointments`
+at 48,101 B and the 30-row `employees` roster are one file each: partitions would be a few kilobytes
+apiece and the page reads the set to total a structure mix across stores anyway.
+
+**The whole-view export was 5,282,320 B and was never shipped.** `vw_employee_performance` has 51
+columns and most cells are structurally zero — a salesperson's row carries twenty-five finance and
+appointment columns that can only ever be nought — so exporting it whole would have breached the 3 MB
+single-file ceiling on its own. Splitting by measure group and filtering each split to the rows it
+populates took the same information to 996,641 B across three datasets. That split is also the
+product decision `DASH.11` needed: a salesperson has no row in `employee-finance` at all, which is a
+stronger statement of "not applicable" than a zero could be.
