@@ -898,6 +898,18 @@ INVENTORY_LISTING_VIEWS: Final[tuple[str, ...]] = (
 #: which is the only shape from which KPI-FUN-008 -- a median, and therefore not
 #: decomposable -- can be recomputed at an arbitrary filter scope. The 28-view MVP baseline
 #: is unchanged, and the semantic model binds to none of the three.
+#: ``DASH.11`` adds two, on the same terms, and adds no fact, no dimension and no KPI
+#: identifier either: employee performance is a PRESENTATION GRAIN over the role-playing
+#: employee keys the facts already carry, not a new measure family.
+#: ``vw_employee_performance`` publishes role-aware components at store x date x role family
+#: x employee VERSION -- the SCD Type 2 version the fact points at, so a transfer or a
+#: promotion cannot rewrite history -- with the sale columns named per credit relationship,
+#: because one delivery is credited to three different people. ``vw_employee_lead_source_response``
+#: carries the assigned-lead population beneath that grain, by lead source and by distinct
+#: first-response value; it exists because lead-source mix and a true median are both grained
+#: BENEATH the employee row and carrying either on it would repeat that employee-day's units
+#: and gross on every source row. Neither ranks anybody: both publish additive components and
+#: never a rate. The 28-view MVP baseline is unchanged and the semantic model binds to neither.
 DASHBOARD_PROGRAM_VIEWS: Final[tuple[str, ...]] = (
     "vw_sales_gross_trend",
     "vw_gross_change_bridge",
@@ -912,6 +924,8 @@ DASHBOARD_PROGRAM_VIEWS: Final[tuple[str, ...]] = (
     "vw_appointment_source_funnel",
     "vw_lead_stage_loss",
     "vw_lead_response_distribution",
+    "vw_employee_performance",
+    "vw_employee_lead_source_response",
 )
 
 #: The inventory accounting and GL control views, added by DASH.8.

@@ -120,7 +120,7 @@ TABLE_PRIVILEGES: tuple[str, ...] = (
 #: were measured against; six is the sanitized public listing lane (ADR-0011), which the
 #: semantic model does not read; thirteen is the dashboard program's own lane, which it
 #: does not read either; three is the inventory accounting and GL control lane (`DASH.8`),
-#: which has no browser dataset and no console route at all. A reader who saw only 50
+#: which has no browser dataset and no console route at all. A reader who saw only 52
 #: could not tell which had moved.
 #:
 #: `DASH.10` moved the dashboard lane from ten to thirteen: `vw_appointment_source_funnel`,
@@ -128,13 +128,19 @@ TABLE_PRIVILEGES: tuple[str, ...] = (
 #: existing facts for the leads and marketing route. The MVP twenty-eight is untouched,
 #: which is the point of keeping the lanes apart.
 #:
+#: `DASH.11` moves it from thirteen to fifteen: `vw_employee_performance` and
+#: `vw_employee_lead_source_response`, which cut existing facts by the role-playing employee
+#: keys those facts already carry. Employee performance is a presentation grain, not a new
+#: measure family, so no fact, dimension or KPI identifier arrives with them and the MVP
+#: twenty-eight is untouched again.
+#:
 #: They are duplicated from `arpi.constants` because this script imports only the standard
 #: library -- it runs against a database from a bare interpreter. `tests/unit/
 #: test_cloud_database_expectations.py` fails if these numbers and the constants disagree,
 #: so the duplication cannot drift.
 EXPECTED_MVP_REPORTING_VIEW_COUNT: int = 28
 EXPECTED_LISTING_REPORTING_VIEW_COUNT: int = 6
-EXPECTED_DASHBOARD_REPORTING_VIEW_COUNT: int = 13
+EXPECTED_DASHBOARD_REPORTING_VIEW_COUNT: int = 15
 EXPECTED_ACCOUNTING_REPORTING_VIEW_COUNT: int = 3
 EXPECTED_REPORTING_VIEW_COUNT: int = (
     EXPECTED_MVP_REPORTING_VIEW_COUNT

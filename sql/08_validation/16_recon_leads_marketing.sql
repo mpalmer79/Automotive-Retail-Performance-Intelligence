@@ -2,7 +2,7 @@
 -- File:            sql/08_validation/16_recon_leads_marketing.sql
 -- Project:         Automotive Retail Performance Intelligence (ARPI)
 -- Purpose:         Implement the RECON-APPT-SOURCE-*, RECON-LEAD-STAGE-* and RECON-LEAD-RESPONSE-DIST-* families: prove the three DASH.10 presentation-grain views agree with the governed authorities they re-grain.
--- Execution order: Validation layer, after sql/08_validation/05_reconciliation_helpers.sql and before 17_recon_all.sql, which unions this view.
+-- Execution order: Validation layer, after sql/08_validation/05_reconciliation_helpers.sql and before 18_recon_all.sql, which unions this view.
 -- Idempotency:     Fully idempotent. CREATE OR REPLACE VIEW only; evaluating a view writes nothing.
 -- Ownership:       Created by the bootstrap superuser, reassigned to arpi_admin by the final pass of sql/07_security/01_grants.sql.
 -- Grain:           One row per reconciliation rule.
