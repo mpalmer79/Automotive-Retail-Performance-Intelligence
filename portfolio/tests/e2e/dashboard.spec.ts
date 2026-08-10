@@ -23,13 +23,20 @@ import {
   settle,
 } from './helpers'
 import {
-  DASHBOARD_NAV_ROUTES,
+  OPERATING_NAV_ROUTES,
   DASHBOARD_ROUTES,
   DASHBOARD_VIEWPORTS,
   UNBUILT_DASHBOARD_ROUTES,
 } from './routes'
 
-const ROUTE = '/dashboard'
+/**
+ * The Executive surface, at the root.
+ *
+ * `UX.1` made `/` the canonical entry experience and `/dashboard` a permanent 308
+ * to it, query string preserved. `navigation.spec.ts` owns the redirect itself;
+ * everything in this file is about the surface, so it addresses the surface.
+ */
+const ROUTE = '/'
 
 /* -------------------------------------------------------------------------- */
 /* The route and its shell                                                     */
@@ -39,80 +46,78 @@ test.describe('the console route exists and is reachable', () => {
   test('answers 200 and renders its heading', async ({ page }) => {
     const response = await page.goto(ROUTE)
     expect(response?.status()).toBe(200)
-    await expect(page.locator('h1')).toHaveText(
-      /How the group is performing, and which store needs attention/
-    )
+    // A NAME, not a sentence. It read "How the group is performing, and which
+    // store needs attention" — an article title on a working screen, above the
+    // figures a manager came for. The rail says where the reader is.
+    await expect(page.locator('h1')).toHaveText(/^Executive$/)
   })
 
-  test('takes the seventh and last primary-navigation slot, and marks itself current', async ({
-    page,
-  }) => {
-    /*
-     * "Seventh" is the COUNT, not the position. `MAX_PRIMARY_NAV_ITEMS` is 7 and the
-     * header had six; the console takes the last slot. It is placed second, after
-     * Overview, because it is the product this project builds toward and a header
-     * that buried it behind four documentation destinations would disagree with what
-     * the site is for. `tests/unit/site.test.ts` pins both the count and the order.
-     */
+  test('is the site root, so the product is the front door', async ({ page }) => {
     await gotoRendered(page, ROUTE)
-    const header = page.getByRole('banner')
-    const items = header.getByRole('navigation').first().getByRole('link')
-    expect(await items.count()).toBeLessThanOrEqual(8) // seven destinations plus GitHub
-    const link = header.getByRole('link', { name: 'Dashboard', exact: true }).first()
-    await expect(link).toBeVisible()
-    await expect(link).toHaveAttribute('aria-current', 'page')
+    expect(new URL(page.url()).pathname).toBe('/')
   })
 
-  test('is reachable from the header on another route', async ({ page }) => {
-    await gotoRendered(page, '/kpis')
+  test('is reachable from the reference header on another route', async ({ page }) => {
+    await gotoRendered(page, '/technical?view=kpis')
     await page
       .getByRole('banner')
-      .getByRole('link', { name: 'Dashboard', exact: true })
+      .getByRole('link', { name: 'Executive', exact: true })
       .first()
       .click()
-    await expect(page).toHaveURL(new RegExp(`${ROUTE}$`))
+    await expect(page).toHaveURL(new RegExp('/$'))
     await expect(page.locator('h1')).toBeVisible()
   })
 
-  test('renders the internal console navigation as a nav, not a tablist', async ({
-    page,
-  }) => {
+  test('renders the operating rail as a nav, not a tablist', async ({ page }) => {
     await gotoRendered(page, ROUTE)
-    const nav = page.getByRole('navigation', { name: 'Dashboard' })
+    const nav = page.getByRole('navigation', { name: 'Operating' }).first()
     await expect(nav).toBeVisible()
     expect(await nav.getByRole('tablist').count()).toBe(0)
-    for (const destination of DASHBOARD_NAV_ROUTES) {
-      const link = nav.getByRole('link', { name: new RegExp(destination.label, 'i') })
-      await expect(link).toHaveAttribute('href', destination.path)
+    for (const destination of OPERATING_NAV_ROUTES) {
+      const link = nav.getByRole('link', { name: destination.label, exact: true })
+      const href = await link.getAttribute('href')
+      // The rail carries the reader's filter context, so a link to a destination
+      // is its path plus whatever survives the journey. At the default state there
+      // is nothing to carry and the href is the bare path.
+      expect((href ?? '').split('?')[0], destination.label).toBe(destination.path)
     }
-    await expect(nav.getByRole('link', { name: /command center/i })).toHaveAttribute(
-      'aria-current',
-      'page'
-    )
+    await expect(
+      nav.getByRole('link', { name: 'Executive', exact: true })
+    ).toHaveAttribute('aria-current', 'page')
   })
 
-  test('renders a breadcrumb trail ending in the current page as text', async ({
+  test('renders no breadcrumb, because the rail already says where the reader is', async ({
     page,
   }) => {
+    /*
+     * IT HAD ONE, AND `UX.1` REMOVED IT DELIBERATELY.
+     *
+     * The console opened with a breadcrumb reading "Overview / Command center", an
+     * eyebrow reading "Dealer Operations Command Center", an `h1` reading "How the
+     * group is performing, and which store needs attention", and a lede — four
+     * statements of location inside 200 vertical pixels, above the figures. A
+     * breadcrumb is a trail back up a hierarchy; the operating application is flat,
+     * the rail marks the current destination, and there is nowhere to go up TO.
+     *
+     * The reference domain keeps its breadcrumbs, and `navigation.spec.ts` asserts
+     * them on the store pages, where there genuinely is a parent.
+     */
     await gotoRendered(page, ROUTE)
-    const crumbs = page.getByRole('navigation', { name: 'Breadcrumb' })
-    await expect(crumbs).toBeVisible()
-    await expect(crumbs.getByRole('link', { name: 'Overview' })).toBeVisible()
-    const current = crumbs.locator('[aria-current="page"]')
-    // "Command center", which is what the console's own navigation calls this route.
-    // The full name is on the eyebrow immediately below, and carrying it twice five
-    // pixels apart was the header repeating itself.
-    await expect(current).toHaveText(/Command center/)
-    await expect(page.locator('main .eyebrow').first()).toHaveText(
-      /Dealer Operations Command Center/i
-    )
-    expect(await current.evaluate((node) => node.tagName)).not.toBe('A')
+    await expect(page.getByRole('navigation', { name: 'Breadcrumb' })).toHaveCount(0)
   })
 
-  test('appears in the sitemap', async ({ request }) => {
+  test('appears in the sitemap, and the retired console URL does not', async ({
+    request,
+  }) => {
     const xml = await (await request.get('/sitemap.xml')).text()
-    expect(xml).toContain('/dashboard')
-    // The nine unbuilt console routes must not be advertised.
+    // The root, which is what the console is now.
+    expect(xml).toMatch(/<loc>[^<]*\/<\/loc>/)
+    // `/dashboard` is a permanent redirect. A redirect in a sitemap is a crawl
+    // instruction to fetch a URL that will not answer.
+    expect(xml, '/dashboard is a redirect and must not be in the sitemap').not.toMatch(
+      /<loc>[^<]*\/dashboard<\/loc>/
+    )
+    // The unbuilt console route must not be advertised.
     for (const unbuilt of UNBUILT_DASHBOARD_ROUTES) {
       expect(xml, `${unbuilt} is in the sitemap`).not.toContain(unbuilt)
     }
@@ -150,14 +155,29 @@ test.describe('the console states what it is, in its own body', () => {
     expect(text).toContain('Granite Auto Group and its three stores are fictional')
   })
 
-  test('carries a dashboard-scoped trust line naming the Power BI boundary', async ({
+  test('carries the compact demo statement without opening anything', async ({
     page,
   }) => {
+    /*
+     * THE TRUST LINE LEFT THE OPERATING ROUTES AT `UX.1`, AND WHAT REPLACED IT IS
+     * SHORTER RATHER THAN QUIETER.
+     *
+     * `<TrustLine>` was five clauses on every route on the site, three of which —
+     * "Exported SQL figures, not a Power BI result", "Real-engine validation
+     * pending", "Deterministic synthetic data" — are engineering statements in the
+     * eye path of a manager reading gross. They are all still on this page, in the
+     * methodology disclosure, and the tests below open it and assert them.
+     *
+     * What a reader cannot avoid seeing is this: the group is fictional and the
+     * figures are synthetic. That is the claim that would mislead if it were
+     * missed; the validation status of a semantic model is not.
+     */
     await gotoRendered(page, ROUTE)
     const text = await mainText(page)
-    expect(text).toContain('Deterministic synthetic data')
-    expect(text).toContain('Exported SQL figures, not a Power BI result')
-    expect(text).toContain('Real-engine validation pending')
+    expect(text).toContain('Granite Auto Group is fictional')
+    expect(text).toContain('Operating figures are synthetic')
+    // And the engineering clauses are NOT in the eye path.
+    expect(text).not.toContain('Exported SQL figures, not a Power BI result')
   })
 
   test('states the real Power BI validation state, from the evidence files', async ({
@@ -292,7 +312,7 @@ test.describe('the accounting integrity signal', () => {
   test('states the comparison date and the direction in words', async ({ page }) => {
     await gotoRendered(page, ROUTE)
     const text = await mainText(page)
-    expect(text).toContain('Whether the ledger agrees, and what this console can prove')
+    expect(text).toContain('Whether the books agree')
     expect(text).toContain('Stock schedule against the general ledger')
     expect(text).toContain('31 December 2025')
     expect(text).toMatch(
@@ -341,8 +361,15 @@ test.describe('the accounting integrity signal', () => {
     await expect(link).toBeVisible()
 
     await link.click()
-    await page.waitForURL('**/dashboard/accounting')
-    await expect(page.locator('h1')).toContainText('control accounts')
+    await page.waitForURL('**/dashboard/accounting**')
+    // The destination's `h1` is its NAME now, and the claim it used to make in a
+    // sentence — this is an inventory control reconciliation, not a general ledger
+    // — is the subtitle immediately under it, where a reader still meets it before
+    // any figure.
+    await expect(page.locator('h1')).toHaveText('Accounting')
+    expect(await page.locator('main').innerText()).toContain(
+      'Inventory control reconciliation. Not a general ledger.'
+    )
   })
 
   test('drills through to the inventory route, and the destination is real', async ({
@@ -353,8 +380,11 @@ test.describe('the accounting integrity signal', () => {
     await expect(link).toBeVisible()
 
     await link.click()
-    await page.waitForURL('**/dashboard/inventory')
-    await expect(page.locator('h1')).toContainText('lot')
+    await page.waitForURL('**/dashboard/inventory**')
+    await expect(page.locator('h1')).toHaveText('Inventory')
+    expect(await page.locator('main').innerText()).toContain(
+      'Stock held at one snapshot date'
+    )
   })
 })
 
@@ -982,11 +1012,21 @@ test.describe('without JavaScript', () => {
 
 test.describe('the console keeps operational copy dense', () => {
   test('leads with scope rather than with a promotional headline', async ({ page }) => {
+    /*
+     * THE SCOPE IS ONE LINE NOW, NOT A SIX-CELL INSTRUMENT PANEL.
+     *
+     * The console opened with a definition list — Selected period, Comparison,
+     * Store scope, Data as of, Dataset, Provenance — six labelled facts above the
+     * figures. Three of them are what a reader needs before reading a number and
+     * three are provenance. `UX.1` put the first three on one line in business
+     * words and the other three in the methodology disclosure, which the tests
+     * above open and assert.
+     */
     await gotoRendered(page, ROUTE)
     const text = await mainText(page)
-    expect(text).toMatch(/selected period/i)
-    expect(text).toMatch(/store scope/i)
-    expect(text).toMatch(/data as of/i)
+    expect(text).toMatch(/all three stores|granite/i)
+    expect(text).toMatch(/december 2025/i)
+    expect(text).toMatch(/vs november 2025|prior period/i)
     for (const marketing of [
       'unlock',
       'empower',

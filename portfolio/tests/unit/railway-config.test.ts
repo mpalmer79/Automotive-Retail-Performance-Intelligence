@@ -563,8 +563,14 @@ describe('railway.json deploy configuration', () => {
   })
 
   it('health-checks a route that actually exists', () => {
+    /*
+     * `/status` until `UX.1`, which consolidated it into `/technical?view=status`
+     * and left the old path as a 308. A health check that follows a redirect would
+     * still pass, and would be checking the redirect rather than the application —
+     * so it points at the destination directly.
+     */
     const path = RAILWAY_CONFIG.deploy['healthcheckPath']
-    expect(path).toBe('/status')
+    expect(path).toBe('/technical')
     // Asserted against the route map rather than assumed, so deleting the route
     // fails here rather than at the next deployment.
     const site = read('portfolio/src/lib/site.ts')

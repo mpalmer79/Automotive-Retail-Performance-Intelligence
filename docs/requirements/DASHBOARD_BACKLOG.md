@@ -51,6 +51,7 @@
 | `DASH.9` | Accounting dashboard and inventory integration | Large | **Implemented** |
 | `DASH.10` | Leads and Marketing dashboard | Large | **Implemented** |
 | `DASH.11` | Employee performance | Medium | **Implemented** |
+| `UX.1` | Executive productization and operating experience | Large | **Implemented** |
 | `DASH.12` | Management Action Center and change drivers | Large | Planned |
 | `DASH.13` | Hardening and release | Large | Planned |
 | `DASH.O-*` | Optional enhancements | — | Deferred |
@@ -993,6 +994,45 @@ population on a finer, fact-derived basis, and the two disagree for Management.
 deliberately leaves it unpopulated; a structural capability is not a business policy, and two
 export tests assert that no column named for a rank, score, tier, target or quota exists on any
 dataset carrying an employee code.
+
+---
+
+## `UX.1` — Executive productization and operating experience
+
+| Field | Value |
+|---|---|
+| **Purpose** | Present ARPI as a dealership management intelligence application: the operating console as the canonical entry experience, one technical destination behind it, and business language in front of the figures. |
+| **Dependencies** | `DASH.11` — it productizes the nine operating surfaces, so it starts once the last of them exists |
+| **Estimated complexity** | Large |
+| **Blocking gate** | None |
+| **Architecture references** | [ADR-0015](../architecture-decisions/ADR-0015-product-first-operating-experience.md); [`PRODUCT_VISION.md`](../product/PRODUCT_VISION.md); [`PRODUCT_GAPS.md`](../product/PRODUCT_GAPS.md); program §18.1 |
+| **Status** | **Implemented** |
+
+**It is not a `DASH` increment, and the identifier says so.** It adds no warehouse fact, no dimension,
+no reporting view, no export dataset and no KPI identifier; it changes no file under `powerbi/`. The
+MVP baselines are unchanged: 8 dimensions, 5 facts, 28 reporting views, 29 KPIs.
+
+Items: `UX.1-01` canonical home and route groups (Large) — `/` renders the Executive Command Center,
+`/dashboard` is a permanent redirect with the query string preserved, `(operating)` and `(site)` route
+groups own their own shells; `UX.1-02` operating shell (Large) — a left rail on the desktop and a
+drawer on a phone, one control band across nine routes, one persistent demo statement, no unbuilt
+destination; `UX.1-03` technical consolidation (Large) — six documentation routes into `/technical`
+with eight server-addressable views, six permanent redirects, and the reference listing explorer
+relabelled and rehomed under Data sources; `UX.1-04` cross-route filter continuity (Medium) — an
+`operatingHref` helper that carries what a destination declares applicable and drops what it does not;
+`UX.1-05` content boundary (Medium) — implementation vocabulary out of the operating eye path,
+methodology one click away on every route.
+
+Evidence: [`UX-1-BASELINE.md`](../reviews/UX-1-BASELINE.md) measures the state before the increment,
+[`UX-1-REVIEW.md`](../reviews/UX-1-REVIEW.md) answers all eighty-two review questions.
+
+**Non-goals held.** No `DASH.12` work — no action rule, no action dataset, no `/dashboard/actions`
+route and no navigation item for one. No `DASH.13` work. No new KPI family. No chart library. No
+runtime database access. No recommendation, no coaching output and no repricing instruction. Every
+`DASH.11` fairness contract intact: no comparator argument, no composite score, no performance sorting,
+no rate below its sample floor.
+
+Power BI real-engine validation remains externally pending; `UX.1` does not modify the semantic model.
 
 ---
 

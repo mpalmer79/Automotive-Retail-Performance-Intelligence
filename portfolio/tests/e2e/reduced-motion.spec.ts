@@ -242,13 +242,13 @@ test.describe('the site survives its own JavaScript failing', () => {
     })
   }
 
-  test('the primary navigation still works without scripting', async ({ page }) => {
-    await page.goto('/')
+  test('the reference navigation still works without scripting', async ({ page }) => {
+    await page.goto('/technical')
     await page
-      .getByRole('navigation', { name: 'Primary' })
-      .getByRole('link', { name: 'KPIs' })
+      .getByRole('navigation', { name: 'Technical views' })
+      .getByRole('link', { name: 'KPI catalogue' })
       .click()
-    await expect(page.locator('h1')).toContainText('A ratio without both sides')
+    await expect(page.locator('h1')).toContainText('Every governed metric')
   })
 })
 
@@ -272,9 +272,9 @@ test.describe('the motion preference is respected from the first paint', () => {
     page,
     request,
   }) => {
-    const response = await request.get('/status')
+    const response = await request.get('/technical?view=status')
     const html = await response.text()
-    await gotoRendered(page, '/status')
+    await gotoRendered(page, '/technical?view=status')
     const rendered = await bodyText(page)
 
     // A handful of substantive strings that must be in the server response rather
@@ -312,7 +312,7 @@ test.describe('the architecture explorer communicates flow without depending on 
   ) {
     const context = await browser.newContext({ reducedMotion })
     const page = await context.newPage()
-    await gotoRendered(page, '/architecture')
+    await gotoRendered(page, '/technical?view=architecture')
 
     const option = page.getByRole('option', { name: /warehouse schema/i }).first()
     await option.click()
@@ -361,7 +361,7 @@ test.describe('the architecture explorer communicates flow without depending on 
     test.use({ contextOptions: { reducedMotion: 'reduce' } })
 
     test('draws no edge, so nothing is left part-way along a path', async ({ page }) => {
-      await gotoRendered(page, '/architecture')
+      await gotoRendered(page, '/technical?view=architecture')
       await page
         .getByRole('option', { name: /warehouse schema/i })
         .first()
@@ -390,7 +390,7 @@ test.describe('the architecture explorer communicates flow without depending on 
     })
 
     test('does not scale the selected node', async ({ page }) => {
-      await gotoRendered(page, '/architecture')
+      await gotoRendered(page, '/technical?view=architecture')
       const option = page.getByRole('option', { name: /warehouse schema/i }).first()
       await option.click()
       await page.waitForTimeout(400)
@@ -411,7 +411,7 @@ test.describe('the architecture explorer communicates flow without depending on 
     // The sequence runs once on arrival and must never gate the controls. The
     // click happens as soon as the option exists, which is well inside the
     // sequence's own duration.
-    await gotoRendered(page, '/architecture')
+    await gotoRendered(page, '/technical?view=architecture')
     const option = page.getByRole('option', { name: /warehouse schema/i }).first()
     await option.click()
     await expect(option).toHaveAttribute('aria-selected', 'true')
@@ -421,7 +421,7 @@ test.describe('the architecture explorer communicates flow without depending on 
   test('does not replay the arrival sequence when a selection is cleared', async ({
     page,
   }) => {
-    await gotoRendered(page, '/architecture')
+    await gotoRendered(page, '/technical?view=architecture')
     await page
       .getByRole('option', { name: /warehouse schema/i })
       .first()
@@ -436,5 +436,42 @@ test.describe('the architecture explorer communicates flow without depending on 
         .filter((offset) => Number.isFinite(offset) && Math.abs(offset) > 0.01)
     )
     expect(drawn, 'clearing the selection replayed the arrival sequence').toEqual([])
+  })
+})
+
+test.describe('the operating rail survives its own JavaScript failing', () => {
+  /*
+   * A SEPARATE CONTEXT, AND THE VIEWPORT IS THE REASON.
+   *
+   * Below the `lg` breakpoint the rail is not rendered at all — the navigation
+   * there is a drawer, and a drawer needs the script this suite has switched off.
+   * The desktop rail is the surface under test, so the context declares a desktop
+   * viewport rather than resizing a page that was created at the suite default.
+   *
+   * What this proves: the rail is a client island — it reads the query string to
+   * carry the reader's filter context — and its LINKS are still server-rendered
+   * anchors that navigate on their own.
+   */
+  test.use({ javaScriptEnabled: false, viewport: { width: 1280, height: 900 } })
+
+  test('navigates between operating routes with no script at all', async ({ page }) => {
+    await page.goto('/')
+    await page
+      .getByRole('navigation', { name: 'Operating' })
+      .first()
+      .getByRole('link', { name: 'Accounting', exact: true })
+      .click()
+    await expect(page.locator('h1')).toHaveText('Accounting')
+  })
+
+  test('carries the filter context in its hrefs on the server', async ({ page }) => {
+    await page.goto('/?period=2025-11&store=GSA-002')
+    const href = await page
+      .getByRole('navigation', { name: 'Operating' })
+      .first()
+      .getByRole('link', { name: 'Sales & Gross', exact: true })
+      .getAttribute('href')
+    expect(href).toContain('period=2025-11')
+    expect(href).toContain('store=GSA-002')
   })
 })

@@ -22,32 +22,35 @@ test.describe('the route exists and states its context', () => {
   test('answers 200 and renders its heading', async ({ page }) => {
     const response = await page.goto(ROUTE)
     expect(response?.status()).toBe(200)
-    await expect(page.locator('h1')).toHaveText(
-      /What sold, what it made, and what changed/
-    )
+    await expect(page.locator('h1')).toHaveText('Sales & Gross')
   })
 
-  test('names the period, the comparison, the scope and the as-of date', async ({
-    page,
-  }) => {
+  test('names the period, the comparison and the scope on one line', async ({ page }) => {
+    // Three labelled cells and a fourth for the as-of date became one context line
+    // in business words. The as-of date is provenance and is in the methodology
+    // disclosure, which the trust test below reads from the served document.
     await gotoRendered(page, ROUTE)
     const text = await mainText(page)
     expect(text).toContain('December 2025')
     expect(text).toContain('November 2025')
     expect(text).toMatch(/Granite Auto Group, all three stores/i)
-    expect(text).toMatch(/31 December 2025/)
   })
 
-  test('marks itself current in the console navigation', async ({ page }) => {
+  test('marks itself current in the operating rail', async ({ page }) => {
     await gotoRendered(page, ROUTE)
     const current = page.locator('[aria-current="page"]')
-    await expect(current.filter({ hasText: /Sales and gross/i }).first()).toBeVisible()
+    await expect(current.filter({ hasText: /^Sales & Gross$/ }).first()).toBeVisible()
   })
 
-  test('carries the dashboard trust line', async ({ page }) => {
+  test('carries the compact demo statement and discloses the rest', async ({ page }) => {
+    // The five-clause trust line left the operating routes at `UX.1`. What a reader
+    // cannot miss is the demo statement; the export-versus-Power-BI boundary and
+    // the validation state are in the methodology disclosure, which is in the
+    // served document whether or not it is open.
     await gotoRendered(page, ROUTE)
-    const text = await mainTextContent(page)
-    expect(text).toMatch(/Exported SQL figures, not a Power BI result/i)
+    const served = await mainTextContent(page)
+    expect(served).toMatch(/Granite Auto Group is fictional/i)
+    expect(served).toMatch(/real-engine validation/i)
   })
 })
 

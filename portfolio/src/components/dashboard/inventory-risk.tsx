@@ -43,6 +43,7 @@ import Link from 'next/link'
 
 import { Card } from '@/components/ui/card-static'
 import { Heading, Text } from '@/components/ui/typography'
+import { Methodology, MethodologyNote } from '@/components/dashboard/methodology'
 import { kpiDefinition, type InventorySummary } from '@/lib/dashboard/executive'
 import { exactToString } from '@/lib/dashboard/decimal'
 import { formatIsoDate } from '@/lib/dashboard/format'
@@ -137,13 +138,13 @@ export function InventoryRisk({
         <MedianTable inventory={inventory} />
       </div>
 
-      <Text size="xs" tone="faint" className="max-w-prose">
+      {/* A DRILL-THROUGH IS A LINK, NOT A PARAGRAPH ABOUT ONE. It described the
+          destination in thirty-two words a reader had to pass through to reach it;
+          the destination describes itself. */}
+      <Text size="xs" tone="faint">
         <Link className="underline" href={ROUTES.dashboardInventory.href}>
-          Open inventory operations
-        </Link>{' '}
-        for the units behind these figures: each one&apos;s age against the same
-        threshold, its asking price against a synthetic market estimate, and its
-        accounting position at the same snapshot.
+          Open the units behind these figures
+        </Link>
       </Text>
     </div>
   )
@@ -250,14 +251,28 @@ function MedianTable({ inventory }: { inventory: InventorySummary }) {
       <Heading level={3} size="h6" id="governed-medians">
         Median inventory age, at the grain it is published
       </Heading>
+      {/*
+        THE CAVEAT IS VISIBLE, THE MECHANISM IS DISCLOSED.
+
+        The one sentence a reader would MISREAD the table without — a group median
+        is not the average of store medians — stays on the page. How the median is
+        computed, and by what, is methodology: it named the storage engine and the
+        aggregate function, in the eye path, on the console's flagship surface.
+      */}
       <Text size="xs" tone="muted" className="max-w-prose">
-        KPI-INV-004 is an order statistic. PostgreSQL computes it with PERCENTILE_CONT
-        over the units themselves, per store per condition group per snapshot date, and it
-        cannot be combined upward: a group median is not the average of store medians.
-        Every value the export publishes for this scope is below, and the console shows a
-        single median on a card only when the filter resolves to exactly one of these
-        rows.
+        A median is published per store, per condition group, per snapshot date, and it
+        cannot be combined upward: a group median is not the average of store medians. A
+        single median appears on a card only when the filter resolves to exactly one of
+        the rows below.
       </Text>
+      <Methodology>
+        <MethodologyNote>
+          KPI-INV-004 is an order statistic. It is computed with PERCENTILE_CONT over the
+          units themselves in the reporting layer, at store, condition-group and
+          snapshot-date grain, which is the grain the export publishes and the finest one
+          at which the value is defined.
+        </MethodologyNote>
+      </Methodology>
       {inventory.governedMedians.length === 0 ? (
         <Text size="sm" tone="muted">
           No inventory rows fall inside the selected period and scope.

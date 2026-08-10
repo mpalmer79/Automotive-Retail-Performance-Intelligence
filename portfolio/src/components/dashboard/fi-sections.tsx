@@ -326,8 +326,7 @@ export function BackGrossComposition({
             <strong className="font-medium text-ink">Reconciled to the cent.</strong>{' '}
             Finance reserve plus original product gross equals back-end gross exactly,
             with other F&amp;I income of $0.00 and no balancing figure. Recomputed on this
-            page from the components above, and proved per deal in the warehouse by
-            RECON-FI-001.
+            page from the components above, and proved per deal by RECON-FI-001.
           </>
         ) : (
           <>

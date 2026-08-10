@@ -204,7 +204,7 @@ export function VehicleSection({ jacket }: { readonly jacket: DealJacket }) {
       <Fact term="Acquisition date">
         <Absent>Not modelled</Absent>
         <span className="ml-1.5 text-xs text-ink-faint">
-          the warehouse records none; days in stock is what exists
+          the model records none; days in stock is what exists
         </span>
       </Fact>
       <Fact term="Days in inventory at sale">
@@ -311,7 +311,7 @@ export function TradeSectionBlock({ trade }: { readonly trade: TradeSection }) {
       <Text size="xs" tone="faint">
         Trade variance is allowance less actual cash value. It is shown here and is
         deliberately <strong>not</strong> part of the front-gross formula above. Payoff,
-        equity and the trade vehicle itself need a trade fact the warehouse does not have;
+        equity and the trade vehicle itself need trade detail the model does not carry;
         they are named as not modelled rather than shown as zero.
       </Text>
     </div>
@@ -757,8 +757,8 @@ export function TimelineSectionBlock({
       </ol>
       <Text size="xs" tone="faint">
         Stages come from the lead and appointment facts. No message, note, email, phone
-        number or free-form CRM text appears here, because none exists in the model: the
-        warehouse records that a lead was contacted, not what was said.
+        number or free-form CRM text appears here, because none exists in the model: it
+        records that a lead was contacted, not what was said.
       </Text>
     </div>
   )

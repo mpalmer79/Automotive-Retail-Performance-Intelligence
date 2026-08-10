@@ -16,21 +16,32 @@ import { expect, test } from '@playwright/test'
 import { gotoRendered, mainText } from './helpers'
 import { DASHBOARD_VIEWPORTS } from './routes'
 
-const ROUTE = '/dashboard'
+/**
+ * The Executive surface, at the root.
+ *
+ * `UX.1` made `/` the canonical entry experience and `/dashboard` a permanent 308
+ * to it, query string preserved. `navigation.spec.ts` owns the redirect itself;
+ * everything in this file is about the surface, so it addresses the surface.
+ */
+const ROUTE = '/'
 
 /* -------------------------------------------------------------------------- */
 /* Deep links                                                                  */
 /* -------------------------------------------------------------------------- */
 
 test.describe('a copied URL reproduces the view', () => {
-  test('a store deep link renders that store and says so in the context rail', async ({
+  test('a store deep link renders that store and says so in the control band', async ({
     page,
   }) => {
+    // The scope used to be a labelled cell reading "STORE SCOPE / Granite Subaru".
+    // `UX.1` put it on the band's context line in business words, so the assertion
+    // is on the scope itself rather than on the label above it.
     await gotoRendered(page, `${ROUTE}?store=GSA-002`)
     const text = await mainText(page)
     expect(text).toContain('Granite Subaru')
-    expect(text).toMatch(/store scope/i)
     expect(text).not.toContain('Granite Auto Group, all three stores')
+    // And the chip says which parameter produced it, with the way to remove it.
+    expect(text).toMatch(/Store: GSA-002/)
   })
 
   test('a month deep link renders that month against the prior month', async ({
@@ -76,14 +87,17 @@ test.describe('a copied URL reproduces the view', () => {
   }) => {
     await gotoRendered(page, `${ROUTE}?compare=prior-year`)
     const text = await mainText(page)
-    expect(text).toContain('Prior year: unavailable')
+    // The band's context line carries the unavailability; the reason is in the
+    // period notice beside it, which is a notice rather than methodology and stays
+    // visible.
+    expect(text).toMatch(/Prior year.*unavailable|unavailable/i)
     expect(text).toContain('outside the exported reporting window')
   })
 
   test('switching the comparison off removes every difference', async ({ page }) => {
     await gotoRendered(page, `${ROUTE}?compare=none`)
     const text = await mainText(page)
-    expect(text).toContain('None selected')
+    expect(text).toMatch(/No comparison|None selected/i)
     expect(text).not.toMatch(/higher than|lower than|unchanged from/)
   })
 })

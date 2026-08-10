@@ -228,7 +228,7 @@ can see both the intent and the outcome.
 | Partition module | [`portfolio/src/lib/dashboard/jacket-chunks.ts`](../../portfolio/src/lib/dashboard/jacket-chunks.ts) — 18 static imports, read by one route |
 | View model | [`portfolio/src/lib/dashboard/deal-jacket.ts`](../../portfolio/src/lib/dashboard/deal-jacket.ts) — lookup, both recomputations, the absence vocabulary, the checklist |
 | Sections | [`portfolio/src/components/dashboard/deal-jacket-sections.tsx`](../../portfolio/src/components/dashboard/deal-jacket-sections.tsx) |
-| Route | [`portfolio/src/app/dashboard/deals/[saleId]/page.tsx`](../../portfolio/src/app/dashboard/deals/%5BsaleId%5D/page.tsx) |
+| Route | [`portfolio/src/app/(operating)/dashboard/deals/[saleId]/page.tsx`](../../portfolio/src/app/%28operating%29/dashboard/deals/%5BsaleId%5D/page.tsx) |
 | View tests | [`tests/integration/test_deal_jacket_reporting_view.py`](../../tests/integration/test_deal_jacket_reporting_view.py) — 34 assertions including two seeded defects |
 | Page tests | [`portfolio/tests/unit/dashboard-deal-jacket.test.tsx`](../../portfolio/tests/unit/dashboard-deal-jacket.test.tsx) — 43, including the corrupted-fixture block |
 | Browser tests | [`portfolio/tests/e2e/dashboard-deal-jacket.spec.ts`](../../portfolio/tests/e2e/dashboard-deal-jacket.spec.ts) — 31, including the paper recap |

@@ -406,7 +406,7 @@ describe('the console has one source of visual constants and no chart library', 
     'src/components/dashboard/trust-panel.tsx',
     'src/components/dashboard/target-context.tsx',
     'src/components/dashboard/pace-bar.tsx',
-    'src/app/dashboard/page.tsx',
+    'src/app/(operating)/page.tsx',
   ]
 
   it.each(DASHBOARD_COMPONENTS)('%s introduces no raw hex value', (file) => {
@@ -471,30 +471,42 @@ describe('the console has one source of visual constants and no chart library', 
 })
 
 describe('the page collapses detail without removing it', () => {
-  const page = source('src/app/dashboard/page.tsx')
+  const page = source('src/app/(operating)/page.tsx')
 
-  it('keeps the scoreboard, the evidence and the backlog anchors resolvable', () => {
-    // Three of these were page regions with anchors that navigation and external links
-    // point at. An anchor that stops resolving is a broken link even when the content
-    // is still on the page, so the ids moved onto the `<details>` elements.
-    for (const id of ['store-scoreboard', 'trust', 'not-built']) {
+  it('keeps the scoreboard and the backlog anchors resolvable', () => {
+    // These were page regions with anchors that navigation and external links point
+    // at. An anchor that stops resolving is a broken link even when the content is
+    // still on the page, so the ids moved onto the `<details>` elements.
+    //
+    // `id="trust"` LEFT THIS LIST AT `UX.1`, and the disclosure did not. The trust
+    // panel moved into the control band's `methodology` slot — one screen higher,
+    // beside the filters, still a `<details>`, still carrying the full synthetic
+    // statement. What that removed is the SECOND copy: it was rendered here and in
+    // the page header's trust line, and a disclosure stated twice on one document is
+    // not twice as honest. The assertion that it is still rendered is below.
+    for (const id of ['store-scoreboard', 'not-built']) {
       expect(page, id).toContain(`id="${id}"`)
     }
   })
 
-  it('renders the evidence disclosures even when the filter matches nothing', () => {
-    // A reader whose filter returned no rows is the reader most likely to be asking
-    // what the data is and how far it has been proved.
+  it('renders the provenance and the full statement above the figures', () => {
+    // The control band's methodology disclosure. It is unconditional: a reader whose
+    // filter returned no rows is the reader most likely to be asking what the data is
+    // and how far it has been proved.
+    const methodologyIndex = page.indexOf('methodology={')
+    expect(methodologyIndex).toBeGreaterThan(0)
+    expect(page).toContain('<TrustPanel')
+    expect(page.slice(methodologyIndex - 600, methodologyIndex)).not.toContain(
+      'overview.empty'
+    )
+  })
+
+  it('renders the scoreboard only when there are rows to put in it', () => {
     const emptyBranches = page.match(/overview\.empty \? null :/g) ?? []
     expect(emptyBranches.length).toBeGreaterThan(0)
-    const trustIndex = page.indexOf('summary="Data and methodology"')
     const scoreboardIndex = page.indexOf('id="store-scoreboard"')
-    expect(trustIndex).toBeGreaterThan(0)
     expect(scoreboardIndex).toBeGreaterThan(0)
-    // The scoreboard needs matching rows; the evidence does not, so only the scoreboard
-    // sits inside an emptiness guard.
     expect(page.slice(scoreboardIndex - 400, scoreboardIndex)).toContain('overview.empty')
-    expect(page.slice(trustIndex - 400, trustIndex)).not.toContain('overview.empty')
   })
 
   it('opens with figures rather than with a region explaining what is not built', () => {

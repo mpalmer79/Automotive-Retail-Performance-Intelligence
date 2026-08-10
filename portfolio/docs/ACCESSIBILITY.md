@@ -620,3 +620,48 @@ accessible statement; the amber is decoration on top of it.
 
 **The unknown-employee notice is a `role="status"` region**, so a screen reader learns that a
 well-formed code matched nothing rather than silently receiving an unfiltered page.
+
+## The operating shell (`UX.1`)
+
+The shell `UX.1` introduced is held to the same contract as everything above, and
+three of its properties needed assertions that did not exist before.
+
+**The rail is a `<nav>` of links, not a tab set.** `aria-current="page"` marks the
+destination; the active indicator is a rule down the leading edge _in addition to_
+a weight and colour change, so it survives greyscale. `role="tablist"` is
+explicitly absent and asserted absent, on the rail and on the technical
+destination's view navigation: both navigate between documents rather than
+switching panels inside one.
+
+**The mobile drawer is unmounted when closed.** Not hidden — unmounted — so there
+is no set of links that exists in the DOM and cannot be reached. It traps focus,
+closes on Escape, closes on a route change, closes on a scrim click, locks the body
+scroll and returns focus to the trigger. Every link inside it clears the 44 px
+target-size floor, which is asserted by measuring all of them rather than a sample.
+
+**The rail works with scripting disabled, and that was a defect first.** The rail
+reads the query string to carry the reader's filter context, so its first version
+sat inside a `<Suspense>` boundary — which makes Next stream the resolved content
+and land it with an inline script. With scripting disabled the script never runs,
+the content stays in its `<template>`, and the operating application rendered with
+no navigation at all. `reduced-motion.spec.ts` caught it. The boundary is only
+required where a route is prerendered; every operating route is rendered per
+request, so the group declares itself dynamic and the rail is in the initial HTML.
+Two assertions run with JavaScript switched off: the rail navigates, and its hrefs
+carry the filter context.
+
+### Where the disclosure went, and why that is not a weakening
+
+`UX.1` moved the provenance — dataset version, export as-of date, real-engine
+validation state, contract fingerprint — from the top of every operating route
+into a `<details>` in the control band. `<details>` keeps content in the
+accessibility tree's reading order, in a browser text search, in the printed page
+and in the no-JavaScript rendering, so a screen-reader user reaches all of it in
+document order without activating anything.
+
+What a reader cannot miss, because it is the disclosure's own summary rather than
+its content: _Granite Auto Group is fictional. Operating figures are synthetic._
+`operating-copy.spec.ts` asserts both halves — that the implementation vocabulary
+is absent from the visible copy, and that the provenance is present once the
+disclosures are opened. A guard that only checked the first half could be satisfied
+by deleting the evidence.

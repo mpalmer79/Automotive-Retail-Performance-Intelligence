@@ -61,8 +61,8 @@ import {
   inventorySummary,
 } from '@/lib/inventory'
 import { storeStoryPanels } from '@/lib/product-preview'
-import { ROUTES } from '@/lib/site'
 import { cx, formatCount, formatDate } from '@/lib/utils'
+import { technicalHref } from '@/lib/technical'
 
 const franchiseStores = dealerships.filter((dealership) => dealership.isFranchise)
 const independentStores = dealerships.filter((dealership) => !dealership.isFranchise)
@@ -406,14 +406,14 @@ export function StoreStory() {
 
           <div className="flex flex-wrap gap-3">
             <LinkButton
-              href={ROUTES.governance.href}
+              href={technicalHref('governance')}
               variant="secondary"
               size="sm"
               iconAfter={<ArrowRight strokeWidth={2} />}
             >
               How this is governed
             </LinkButton>
-            <LinkButton href={ROUTES.status.href} variant="ghost" size="sm">
+            <LinkButton href={technicalHref('status')} variant="ghost" size="sm">
               What is finished
             </LinkButton>
           </div>

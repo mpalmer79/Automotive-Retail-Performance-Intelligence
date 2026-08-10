@@ -51,45 +51,36 @@ import { clamp, cx, formatCount, formatDate, groupBy, slugify } from '@/lib/util
 /* -------------------------------------------------------------------------- */
 
 describe('the route map', () => {
-  it('holds the twenty-one documented routes plus the internal UI lab', () => {
-    expect(ALL_ROUTES).toHaveLength(22)
+  it('holds the fifteen documented routes plus the internal UI lab', () => {
+    expect(ALL_ROUTES).toHaveLength(16)
     const hrefs = ALL_ROUTES.map((r) => r.href)
     expect(hrefs).toEqual([
       '/',
-      '/dealerships/granite-chevrolet',
-      '/dealerships/granite-subaru',
-      '/dealerships/granite-pre-owned',
-      '/inventory',
-      '/architecture',
-      '/data-model',
-      '/inventory-operations',
-      '/kpis',
-      '/governance',
-      '/status',
-      '/about',
-      '/case-study',
-      '/dashboard',
       '/dashboard/sales-gross',
       '/dashboard/deals',
-      '/dashboard/fi',
       '/dashboard/inventory',
+      '/dashboard/fi',
       '/dashboard/leads-marketing',
       '/dashboard/employees',
       '/dashboard/accounting',
+      '/technical',
+      '/about',
+      '/inventory',
+      '/dealerships/granite-chevrolet',
+      '/dealerships/granite-subaru',
+      '/dealerships/granite-pre-owned',
+      '/case-study',
       '/ui-lab',
     ])
   })
 
-  it('puts seven content destinations in the header and excludes the case study', () => {
-    // Seven, not fourteen, and seven is the declared ceiling. One of them is a
-    // destination GROUP: "Platform" covers Architecture, Data Model, Inventory
-    // operations and Governance. There is no "Dealerships" item, because the group
-    // overview is the home page and a second header link to it would be a duplicate
-    // destination. The console takes the last slot, and its own nine routes live in
-    // `DASHBOARD_NAV` on the page rather than in the header. The full navigation
-    // contract is covered in tests/unit/site.test.ts; this is the component suite's
-    // own check that the list it renders from has not quietly grown.
-    expect(PRIMARY_NAV).toHaveLength(7)
+  it('puts three content destinations in the reference header and excludes the case study', () => {
+    // Three, and the ceiling is seven. `UX.1` split the site into an operating
+    // application with a rail of eight and a reference domain with a header of
+    // three, the first of which returns to the application. The full navigation
+    // contract is covered in tests/unit/site.test.ts; this is the component
+    // suite's own check that the list it renders from has not quietly grown.
+    expect(PRIMARY_NAV).toHaveLength(3)
     expect(PRIMARY_NAV.map((r) => r.href)).not.toContain('/case-study')
     expect(PRIMARY_NAV.map((r) => r.href)).not.toContain('/ui-lab')
   })
@@ -114,7 +105,7 @@ describe('the route map', () => {
   })
 
   it('resolves a route by pathname, and nothing for an unknown one', () => {
-    expect(routeByHref('/kpis')?.navLabel).toBe('KPIs')
+    expect(routeByHref('/technical')?.navLabel).toBe('Technical')
     expect(routeByHref('/nope')).toBeUndefined()
   })
 })
@@ -142,12 +133,12 @@ describe('page metadata', () => {
   })
 
   it('gives every other route a title the layout template will suffix', () => {
-    expect(pageMetadata('architecture').title).toBe('Architecture')
-    expect(pageMetadata('kpis').title).toBe('KPI catalogue')
+    expect(pageMetadata('technical').title).toBe('How ARPI works')
+    expect(pageMetadata('about').title).toBe('About the author')
   })
 
   it('sets a canonical URL per route', () => {
-    expect(pageMetadata('status').alternates?.canonical).toContain('/status')
+    expect(pageMetadata('technical').alternates?.canonical).toContain('/technical')
   })
 
   it('marks the UI lab noindex', () => {

@@ -36,8 +36,8 @@
 import Link from 'next/link'
 
 import { realEngineValidated } from '@/lib/manifest'
-import { ROUTES } from '@/lib/site'
 import { cx } from '@/lib/utils'
+import { technicalHref } from '@/lib/technical'
 
 /**
  * The validation clause.
@@ -86,7 +86,7 @@ export interface TrustLineProps {
 export function TrustLine({
   variant = 'route',
   scope = 'synthetic',
-  href = ROUTES.governance.href,
+  href = technicalHref('governance'),
   className,
 }: TrustLineProps) {
   const isHero = variant === 'hero'

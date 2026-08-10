@@ -1,6 +1,27 @@
 # Automotive Retail Performance Intelligence (ARPI)
 
-A governed, reproducible analytics platform for a fictional three-store automotive dealer group — synthetic operational data, a PostgreSQL dimensional warehouse, and one consistent set of KPI definitions that a dealership manager could actually act on.
+**A dealership management intelligence platform.** ARPI gives dealership leadership one operating view of the business — connecting sales, gross, inventory, F&I, marketing, employee activity and accounting — so managers can see what is happening, understand the operating context, drill into the transactions behind it, and know where deeper investigation is required.
+
+It runs on a fictional three-store dealer group and entirely synthetic data. Every figure it produces is reproducible from this repository alone.
+
+### What a manager can do with it
+
+| Question | Where it is answered |
+|---|---|
+| How is the group performing, and which store is different? | The Executive Command Center at `/` — retail units, gross, gross per retail unit, pace against plan, stock on the lot, the demand funnel and whether the books agree, on one screen |
+| Why did gross change? | Sales & Gross — a documented decomposition of what moved between two periods, with the new/used mix, the store contribution and the discount distribution beside it |
+| Which transactions sit behind the aggregate? | Deal Explorer, then one Deal Jacket: sale price, front gross, back gross, total gross, trade, F&I itemization and days in stock for one delivery |
+| How much capital is standing on the lot, and how old is it? | Inventory — five governed age buckets, investment by band, price position against a synthetic estimate, and drill-through to one unit |
+| What did the finance office produce, and what did the store keep? | F&I — reserve against product gross, penetration on each category's own eligible denominator, and adjustments on their own posting dates |
+| Where does the funnel lose volume? | Leads & Marketing — the lead-created cohort funnel, response-time distribution with the unanswered leads beside it, and spend against attributed outcomes |
+| What was credited to each person, and is the sample big enough to say? | Employees — role-aware activity with governed denominators, withheld below a minimum sample. No ranking, no score |
+| Does the stock schedule agree with the general ledger? | Accounting — the signed variance, four comparison states, missing-side positions preserved as missing |
+
+**What it is not:** a dealer management system, a CRM, an accounting suite, a general ledger, a recommendation engine, or artificial intelligence of any kind. What it cannot yet answer — most of it the CFO's questions — is stated in full in [`docs/product/PRODUCT_GAPS.md`](docs/product/PRODUCT_GAPS.md); what it would become with authorized access to real dealership systems is [`docs/product/PRODUCT_VISION.md`](docs/product/PRODUCT_VISION.md).
+
+### How it is engineered
+
+Seeded synthetic data generated in Python, validated in memory, loaded into a PostgreSQL dimensional warehouse, published through reporting views that own every KPI definition, reconciled on every run, exported as content-addressed files, and read by a Next.js operating application as static data at build time. A source-controlled Power BI semantic model sits above the reporting schema, stored as TMDL. The detail is below, and the site's own [Technical destination](portfolio/) renders it interactively.
 
 ![Status](https://img.shields.io/badge/status-Phase%205%20semantic%20model-blue)
 ![Python](https://img.shields.io/badge/python-3.11%2B-blue)

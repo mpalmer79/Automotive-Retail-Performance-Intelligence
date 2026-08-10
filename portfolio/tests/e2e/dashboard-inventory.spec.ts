@@ -43,7 +43,10 @@ test.describe('the inventory route renders its governed figures', () => {
 
     const headings = page.locator('main h1')
     await expect(headings).toHaveCount(1)
-    await expect(headings.first()).toContainText(/lot/i)
+    // The name, with the one claim a reader would misread the page without —
+    // these are POSITIONS at a date, never a period total — as the subtitle.
+    await expect(headings.first()).toHaveText('Inventory')
+    await expect(page.locator('main')).toContainText('Stock held at one snapshot date')
   })
 
   test('shows the summary, the age buckets and the threshold it applied', async ({

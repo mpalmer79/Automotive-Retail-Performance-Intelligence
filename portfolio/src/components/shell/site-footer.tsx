@@ -25,12 +25,13 @@ import { TrustLine } from '@/components/ui/trust-line'
 import { Text } from '@/components/ui/typography'
 import { caseStudyUnlocked, manifest } from '@/lib/manifest'
 import {
-  PLATFORM_NAV,
-  PRIMARY_NAV,
+  OPERATING_NAV,
   REPOSITORY_URL,
   ROUTES,
+  UTILITY_NAV,
   repoFileUrl,
 } from '@/lib/site'
+import { TECHNICAL_VIEW_DEFINITIONS, technicalHref } from '@/lib/technical'
 
 /** The governing documents a technical reviewer will want within one click. */
 const DOCUMENTS: readonly { readonly path: string; readonly label: string }[] = [
@@ -59,7 +60,7 @@ export function SiteFooter() {
     <footer data-arpi-print="omit" className="mt-auto border-t border-line bg-canvas">
       <Container width="wide" className="py-14 sm:py-16">
         <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-12 lg:gap-8">
-          <div className="flex flex-col gap-4 lg:col-span-4">
+          <div className="flex flex-col gap-4 lg:col-span-3">
             <Wordmark variant="full" />
             <Text size="sm" tone="muted" className="max-w-xs">
               A governed, reproducible analytics platform for a fictional three-store
@@ -84,23 +85,34 @@ export function SiteFooter() {
             <h2 id="footer-site-heading" className="eyebrow text-2xs">
               This site
             </h2>
+            {/*
+              A FOOTER IS AN INDEX, NOT A NAVIGATION.
+
+              The rail carries eight operating destinations and the masthead
+              carries three reference ones, each list edited down to what a reader
+              should be choosing between at that moment. This is the other job: every
+              destination the site has, under its own name, in one place. So the
+              eight operating routes are listed here even though a reader inside the
+              application already has them, and each technical VIEW is listed even
+              though they are one route — an index that hides eight documents behind
+              the word "Technical" is a worse index.
+            */}
             <ul className="flex flex-col gap-1">
-              {PRIMARY_NAV.map((item) => (
+              {OPERATING_NAV.map((item) => (
                 <li key={item.href}>
                   <FooterLink href={item.href}>{item.label}</FooterLink>
                 </li>
               ))}
-              {/* The two platform pages that "Platform" does not itself point
-                  at, listed under their own names. "Platform" is a navigation
-                  grouping; a footer is an index, and an index that hides two
-                  pages behind a group name is a worse index. */}
-              {PLATFORM_NAV.filter((item) => item.href !== ROUTES.architecture.href).map(
-                (item) => (
-                  <li key={item.href}>
-                    <FooterLink href={item.href}>{item.label}</FooterLink>
-                  </li>
-                )
-              )}
+              {UTILITY_NAV.map((item) => (
+                <li key={item.href}>
+                  <FooterLink href={item.href}>{item.label}</FooterLink>
+                </li>
+              ))}
+              <li>
+                <FooterLink href={ROUTES.inventory.href}>
+                  {ROUTES.inventory.navLabel}
+                </FooterLink>
+              </li>
               <li>
                 <Link
                   href={ROUTES.caseStudy.href}
@@ -125,8 +137,24 @@ export function SiteFooter() {
           </nav>
 
           <nav
+            aria-labelledby="footer-technical-heading"
+            className="flex flex-col gap-3 lg:col-span-2"
+          >
+            <h2 id="footer-technical-heading" className="eyebrow text-2xs">
+              How ARPI works
+            </h2>
+            <ul className="flex flex-col gap-1">
+              {TECHNICAL_VIEW_DEFINITIONS.map((entry) => (
+                <li key={entry.view}>
+                  <FooterLink href={technicalHref(entry.view)}>{entry.label}</FooterLink>
+                </li>
+              ))}
+            </ul>
+          </nav>
+
+          <nav
             aria-labelledby="footer-docs-heading"
-            className="flex flex-col gap-3 lg:col-span-3"
+            className="flex flex-col gap-3 lg:col-span-2"
           >
             <h2 id="footer-docs-heading" className="eyebrow text-2xs">
               Governing documents
@@ -174,13 +202,15 @@ export function SiteFooter() {
               </div>
               <div className="flex flex-col">
                 <dt className="text-xs text-ink-faint">Deployment</dt>
-                <dd className="text-ink-secondary">Railway, health check on /status</dd>
+                <dd className="text-ink-secondary">
+                  Railway, health check on the technical status view
+                </dd>
               </div>
             </dl>
           </div>
         </div>
 
-        <TrustLine href={ROUTES.governance.href} className="mt-12" />
+        <TrustLine href={technicalHref('governance')} className="mt-12" />
 
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <Text size="xs" tone="faint">

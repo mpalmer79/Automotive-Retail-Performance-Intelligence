@@ -68,10 +68,28 @@ export function KpiCatalogue() {
   )
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
+  /*
+   * The parameters this island does NOT own, carried through every write.
+   *
+   * `UX.1` made the catalogue a STATE of `/technical` rather than a route of its
+   * own, and the URL it writes is now shared with the destination: `?view=kpis`
+   * is what selects the catalogue in the first place. The first version of the
+   * consolidation rebuilt the query string from this island's three parameters
+   * alone, so typing one character into the search field replaced
+   * `?view=kpis&q=gross` with `?q=gross` — and the server, seeing no view,
+   * rendered the overview. Filtering the catalogue navigated away from it.
+   *
+   * Read once per render from the live query string rather than captured at
+   * mount, so a reader who arrives at a different view state and then filters
+   * keeps the state they arrived at.
+   */
+  const view = searchParams.get('view')
+
   /** Write the current filter state back to the query string. */
   const syncUrl = useCallback(
     (next: { q?: string; domain?: string | null; status?: StatusFilter }) => {
       const params = new URLSearchParams()
+      if (view !== null) params.set('view', view)
       const q = next.q ?? query
       const d = next.domain === undefined ? domain : next.domain
       const s = next.status ?? status
@@ -81,7 +99,7 @@ export function KpiCatalogue() {
       const search = params.toString()
       router.replace(search ? `${pathname}?${search}` : pathname, { scroll: false })
     },
-    [query, domain, status, pathname, router]
+    [query, domain, status, pathname, router, view]
   )
 
   const matches = useMemo(() => {
@@ -128,8 +146,12 @@ export function KpiCatalogue() {
     setQuery('')
     setDomain(null)
     setStatus('all')
-    router.replace(pathname, { scroll: false })
-  }, [pathname, router])
+    // Reset clears the FILTERS, never the view. Dropping `view` here would send a
+    // reader who cleared a search to a different document.
+    router.replace(view === null ? pathname : `${pathname}?view=${view}`, {
+      scroll: false,
+    })
+  }, [pathname, router, view])
 
   const totalShown = matches.length + deferredMatches.length
 

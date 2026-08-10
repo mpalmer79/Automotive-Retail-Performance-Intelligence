@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import type { Page } from '@playwright/test'
 
 import manifest from '../../src/generated/project-manifest.json'
 import kpis from '../../src/content/kpis.json'
@@ -60,7 +61,7 @@ test.describe('the synthetic-data statement', () => {
     })
   }
 
-  test('the home page states it above the fold', async ({ page }) => {
+  test('the operating home states it above the fold', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 })
     await gotoRendered(page, '/')
     // Everything within the first viewport height.
@@ -81,8 +82,15 @@ test.describe('the synthetic-data statement', () => {
 test.describe('honest status language reaches the screen', () => {
   const realEnginePassed = manifest.semanticModel.realEngineStatus === 'complete'
 
-  test('the home page names the pending real-engine validation', async ({ page }) => {
-    await gotoRendered(page, '/')
+  test('the technical overview names the pending real-engine validation', async ({
+    page,
+  }) => {
+    // `UX.1` moved the trust line off the operating routes: the console carries the
+    // compact demo statement and puts the validation state inside the methodology
+    // disclosure, one click away on every route and asserted there by
+    // `operating-copy.spec.ts`. The reference domain still carries the trust line
+    // on every route, and this is the one that opens it.
+    await gotoRendered(page, '/technical?view=overview')
     const text = await bodyText(page)
     if (!realEnginePassed) {
       // The home page states it in the trust line, which is derived from the
@@ -103,7 +111,7 @@ test.describe('honest status language reaches the screen', () => {
     page,
   }) => {
     if (realEnginePassed) test.skip()
-    await gotoRendered(page, '/kpis')
+    await gotoRendered(page, '/technical?view=kpis')
     const text = await bodyText(page)
     expect(text).toMatch(/never been evaluated by an engine|no engine has evaluated/i)
   })
@@ -114,12 +122,12 @@ test.describe('honest status language reaches the screen', () => {
     if (realEnginePassed) test.skip()
     // Reducing repetition must not reduce what the site actually says. Both of
     // these pages carry the whole argument at full length.
-    await gotoRendered(page, '/status')
+    await gotoRendered(page, '/technical?view=status')
     expect(await bodyText(page)).toMatch(
       /loads the model, refreshes it against PostgreSQL/i
     )
 
-    await gotoRendered(page, '/kpis')
+    await gotoRendered(page, '/technical?view=kpis')
     expect(await bodyText(page)).toMatch(
       /has never been evaluated by a Microsoft engine/i
     )
@@ -129,7 +137,7 @@ test.describe('honest status language reaches the screen', () => {
     page,
   }) => {
     if (realEnginePassed) test.skip()
-    await gotoRendered(page, '/status')
+    await gotoRendered(page, '/technical?view=status')
     // Asserted on the rendered badge, not on the page's prose. The prose
     // legitimately contains the sentence "if this site ever claims that Lifecycle
     // Phase 5 is complete...", and a text search cannot tell an assertion from a
@@ -168,7 +176,7 @@ test.describe('honest status language reaches the screen', () => {
   test('the status page distinguishes static validation from real-engine validation', async ({
     page,
   }) => {
-    await gotoRendered(page, '/status')
+    await gotoRendered(page, '/technical?view=status')
     const text = await bodyText(page)
     expect(text).toMatch(/static source validation/i)
     expect(text).toMatch(/real-engine validation/i)
@@ -179,7 +187,7 @@ test.describe('honest status language reaches the screen', () => {
   })
 
   test('the status page reports each engine result verbatim', async ({ page }) => {
-    await gotoRendered(page, '/status')
+    await gotoRendered(page, '/technical?view=status')
     const text = await bodyText(page)
     for (const engine of manifest.engines) {
       expect(text, `${engine.label} result missing`).toContain(
@@ -193,7 +201,7 @@ test.describe('honest status language reaches the screen', () => {
 
   test('the status page reports zero report pages while none exist', async ({ page }) => {
     if (manifest.semanticModel.dashboardPageCount > 0) test.skip()
-    await gotoRendered(page, '/status')
+    await gotoRendered(page, '/technical?view=status')
     const text = await bodyText(page)
     expect(text).toMatch(/no page, no visual and no bookmark/i)
   })
@@ -216,30 +224,42 @@ test.describe('honest status language reaches the screen', () => {
 /**
  * The routes that legitimately render an advertised price.
  *
- * `/` is on the list because the home page IS the group overview: it carries the
- * store cards, the group inventory snapshot and the store comparison. The three
- * store routes are matched by the `/dealerships` prefix entry. Everything else on
- * the site still renders no currency at all, and the two tests below enforce both
- * halves of that.
+ * `/` LEFT THIS LIST AT `UX.1`, and not because it stopped rendering currency: it
+ * renders far more of it, because it is the operating console now. That puts it in
+ * the OTHER exemption, `KPI_VALUE_EXEMPT` — the operating application publishes
+ * governed KPI values from a versioned export under the fifteen conditions
+ * ADR-0013 states, and the public-copy rules in this file were written for the
+ * reference domain. Leaving it here would have exempted it from the wrong rule for
+ * the wrong reason.
+ *
+ * `/technical` JOINED, for the reason `/` used to be here: its default view is the
+ * group context that came off the retired home page, median advertised price
+ * included. The three store routes are matched by the `/dealerships` prefix entry.
+ * Everything else on the reference half of the site still renders no currency at
+ * all, and the two tests below enforce both halves of that.
  */
-const INVENTORY_BEARING = ['/', '/inventory', '/dealerships'] as const
+const INVENTORY_BEARING = ['/inventory', '/dealerships', '/technical'] as const
 
 /**
  * Whether a route is one of them.
  *
- * `/` is matched EXACTLY. `startsWith('/')` is true of every route on the site,
- * so a prefix test would exempt the whole suite and the rule would pass while
- * checking nothing.
+ * NO ENTRY MAY BE `/`, and the absence is load-bearing rather than incidental:
+ * `startsWith('/')` is true of every route on the site, so a root entry would
+ * exempt the whole suite and the rule would pass while checking nothing. `/` is
+ * exempted by `KPI_VALUE_EXEMPT` instead, which is an exact-match list.
+ *
+ * The `?` branch matches a technical VIEW state against its route.
  */
 function isInventoryBearing(path: string): boolean {
-  return INVENTORY_BEARING.some((entry) =>
-    entry === '/' ? path === '/' : path === entry || path.startsWith(`${entry}/`)
+  return INVENTORY_BEARING.some(
+    (entry) =>
+      path === entry || path.startsWith(`${entry}/`) || path.startsWith(`${entry}?`)
   )
 }
 
 test.describe('no KPI value appears anywhere', () => {
   test('the KPI catalogue publishes definitions and says so', async ({ page }) => {
-    await gotoRendered(page, '/kpis')
+    await gotoRendered(page, '/technical?view=kpis')
     const text = await bodyText(page)
     expect(text).toMatch(/shows definitions, never values/i)
     expect(text).toMatch(/no invented benchmarks/i)
@@ -278,7 +298,12 @@ test.describe('no KPI value appears anywhere', () => {
    * route that started rendering gross would fail this test until somebody added it
    * here on purpose.
    */
-  const KPI_VALUE_EXEMPT: readonly string[] = ['/dashboard']
+  /*
+   * The operating application. It publishes governed KPI values from a versioned
+   * export, which is what it is for; these rules are the reference domain's.
+   * `/` joined the list at `UX.1`, when it became the console.
+   */
+  const KPI_VALUE_EXEMPT: readonly string[] = ['/', '/dashboard']
 
   test('no route renders a gross, revenue or profit figure', async ({ page }) => {
     for (const route of PRIMARY_ROUTES.filter(
@@ -306,9 +331,7 @@ test.describe('no KPI value appears anywhere', () => {
   }) => {
     // The original blanket rule, kept in force everywhere it still belongs. The
     // exemptions are named rather than inferred, so a currency figure appearing
-    // on a fourth kind of route fails. The home page is on the list because its
-    // Granite Auto Group section carries the group inventory snapshot, median
-    // advertised price included.
+    // on a fourth kind of route fails.
     for (const route of PRIMARY_ROUTES) {
       if (isInventoryBearing(route.path)) continue
       if (KPI_VALUE_EXEMPT.includes(route.path)) continue
@@ -410,7 +433,7 @@ test.describe('the case-study gate', () => {
 
 test.describe('deferred domains are never labelled implemented', () => {
   test('the KPI catalogue lists the deferred candidates separately', async ({ page }) => {
-    await gotoRendered(page, '/kpis')
+    await gotoRendered(page, '/technical?view=kpis')
     await expect(page.getByRole('heading', { name: /^Deferred/ })).toBeVisible()
     const text = await bodyText(page)
     // The four deferred subjects, each named as deferred.
@@ -422,7 +445,7 @@ test.describe('deferred domains are never labelled implemented', () => {
   })
 
   test('no deferred KPI appears among the implemented ones', async ({ page }) => {
-    await gotoRendered(page, '/kpis?status=implemented')
+    await gotoRendered(page, '/technical?view=kpis&status=implemented')
     await expect(page.getByRole('heading', { name: /^Implemented/ })).toBeVisible()
     // Scoped by id: `locator('section', { has: heading })` matched an ancestor
     // section that also contained the deferred list.
@@ -452,7 +475,11 @@ test.describe('every displayed count matches the manifest', () => {
     // is unchanged and now covers twelve counts rather than seven: every value a
     // visitor can reach must equal the manifest, which is generated from
     // repository evidence.
-    await gotoRendered(page, '/')
+    // `UX.1` rehomed the engineering proof strip from the marketing home page to
+    // the technical overview, which is where the product tour and the store story
+    // went with it. The obligation is unchanged: every value a visitor can reach
+    // must equal the manifest, which is generated from repository evidence.
+    await gotoRendered(page, '/technical?view=overview')
     const proof = page.locator('#proof')
     await proof.scrollIntoViewIfNeeded()
 
@@ -496,7 +523,7 @@ test.describe('every displayed count matches the manifest', () => {
   })
 
   test('the KPI catalogue lists exactly the governed KPI set', async ({ page }) => {
-    await gotoRendered(page, '/kpis')
+    await gotoRendered(page, '/technical?view=kpis')
     const text = await bodyText(page)
     for (const kpi of kpis.kpis) {
       expect(text, `${kpi.id} is missing from the catalogue`).toContain(kpi.id)
@@ -508,7 +535,7 @@ test.describe('every displayed count matches the manifest', () => {
   })
 
   test('the data-model page lists every entity with its grain', async ({ page }) => {
-    await gotoRendered(page, '/data-model')
+    await gotoRendered(page, '/technical?view=data-model')
     const text = await bodyText(page)
     // Case-insensitive: `innerText` returns rendered text and the label is
     // uppercased by `text-transform`, so the source casing never appears.
@@ -520,7 +547,7 @@ test.describe('governance content', () => {
   test('leads with the synthetic-data statement rather than burying it', async ({
     page,
   }) => {
-    await gotoRendered(page, '/governance')
+    await gotoRendered(page, '/technical?view=governance')
     const heading = page.getByRole('heading', {
       name: /This project contains no real data, and never will/i,
     })
@@ -531,7 +558,7 @@ test.describe('governance content', () => {
   })
 
   test('states each Gate 2 condition with its evidence', async ({ page }) => {
-    await gotoRendered(page, '/governance')
+    await gotoRendered(page, '/technical?view=governance')
     const text = await bodyText(page)
     expect(text).toMatch(/Gate 2/)
     expect(text).toMatch(/CLOSED/)
@@ -539,7 +566,7 @@ test.describe('governance content', () => {
   })
 
   test('names an enforcement mechanism for every control it claims', async ({ page }) => {
-    await gotoRendered(page, '/governance')
+    await gotoRendered(page, '/technical?view=governance')
     // Every layer of the trust framework, with its controls.
     for (const layer of [
       'The data itself',
@@ -558,7 +585,7 @@ test.describe('governance content', () => {
   })
 
   test('names the four permanently prohibited categories', async ({ page }) => {
-    await gotoRendered(page, '/governance')
+    await gotoRendered(page, '/technical?view=governance')
     const text = await bodyText(page)
     expect(text).toMatch(/No real dealership, real store or real dealer group/i)
     expect(text).toMatch(/No real VIN is linked to a synthetic customer/i)
@@ -721,55 +748,31 @@ test.describe('the site is not a second analytics application', () => {
  *
  * Documented in portfolio/docs/CONTENT_MODEL.md.
  */
-test.describe('the home page stays inside its prose budget', () => {
+test.describe('the reference overview stays inside its prose budget', () => {
+  /*
+   * `UX.1` MOVED THE SUBJECT OF THIS RULE, NOT THE RULE.
+   *
+   * The budget was written for the marketing home page, whose whole job was
+   * introduction and whose failure mode was an essay. That page is retired; its
+   * store story, product tour and engineering proof are the technical overview,
+   * and they inherited the budget with the content. The operating home has a
+   * budget of its own below, and it is a different number because it is a
+   * different kind of page.
+   */
   const WORD_BUDGET = 450
-  const SECTION_BUDGET = 4
+  const ROUTE = '/technical?view=overview'
 
   test(`renders at most ${String(WORD_BUDGET)} words of visible prose`, async ({
     page,
   }) => {
-    await gotoRendered(page, '/')
-    // Settle first: the reveal transitions are opacity only, but a paragraph
-    // that has not arrived yet still has its text, and this must count the whole
-    // page rather than the part above the fold.
+    await gotoRendered(page, ROUTE)
     await mainText(page)
+    const measured = await measureProse(page)
 
-    const measured = await page.evaluate(() => {
-      const main = document.querySelector('main')
-      if (!main) return null
-
-      const paragraphs = [...main.querySelectorAll('p')].filter((paragraph) => {
-        // `.sr-only` is an alternative rendering, `<figcaption>` belongs to its
-        // figure, and a `<p>` inside a cell is table data.
-        if (paragraph.classList.contains('sr-only')) return false
-        return !paragraph.closest('.sr-only, figcaption, td, th, caption')
-      })
-
-      const words = (value: string) =>
-        value.split(/\s+/).filter((token) => /[\p{L}\p{N}]/u.test(token)).length
-
-      // `innerText`, not `textContent`: it is the rendered text, so a paragraph
-      // inside a collapsed disclosure contributes nothing.
-      const longest = paragraphs
-        .map((paragraph) => ({
-          words: words(paragraph.innerText),
-          text: paragraph.innerText.trim().slice(0, 60),
-        }))
-        .filter((entry) => entry.words > 0)
-        .sort((a, b) => b.words - a.words)
-        .slice(0, 3)
-
-      return {
-        total: paragraphs.reduce((sum, paragraph) => sum + words(paragraph.innerText), 0),
-        counted: paragraphs.filter((paragraph) => words(paragraph.innerText) > 0).length,
-        longest,
-      }
-    })
-
-    expect(measured, 'the home page has no <main>').not.toBeNull()
+    expect(measured, `${ROUTE} has no <main>`).not.toBeNull()
     expect(
       measured!.total,
-      `the home page renders ${String(measured!.total)} words of visible prose in ` +
+      `${ROUTE} renders ${String(measured!.total)} words of visible prose in ` +
         `${String(measured!.counted)} paragraphs, which is ` +
         `${String(measured!.total - WORD_BUDGET)} over the ${String(WORD_BUDGET)}-word budget. ` +
         `The longest paragraphs are: ${measured!.longest
@@ -779,26 +782,156 @@ test.describe('the home page stays inside its prose budget', () => {
         'rather than shortening a heading, a label or a table to fit.'
     ).toBeLessThanOrEqual(WORD_BUDGET)
   })
+})
 
-  test(`renders at most ${String(SECTION_BUDGET)} top-level sections`, async ({
+/**
+ * The operating application's first-viewport contract (`UX.1` §17, §44).
+ *
+ * A DIFFERENT RULE FROM THE ONE ABOVE, AND DELIBERATELY SO. A console is not
+ * short because it says little; it is dense because it says it in figures,
+ * labels, axes and tables, none of which is prose. So the budget here is on the
+ * FIRST VIEWPORT rather than on the page: what a manager has to read before they
+ * can read a number.
+ *
+ * The pre-`UX.1` measurement that produced this rule is in
+ * `docs/reviews/UX-1-BASELINE.md`: the first data visualization on `/dashboard`
+ * began 2,194 px down a 900 px viewport.
+ */
+test.describe('the operating home opens on data', () => {
+  const DESKTOP_FOLD_PROSE = 320
+  const MOBILE_FOLD_PROSE = 200
+
+  test('reaches its first visualization inside two screens', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await gotoRendered(page, '/')
+    const firstVisualY = await page.evaluate(() => {
+      const main = document.querySelector('main')
+      if (main === null) return -1
+      const figure = main.querySelector('figure')
+      if (figure === null) return -1
+      return Math.round(figure.getBoundingClientRect().top + window.scrollY)
+    })
+    expect(
+      firstVisualY,
+      'the operating home renders no visualization at all'
+    ).toBeGreaterThan(0)
+    expect(
+      firstVisualY,
+      `the first visualization begins ${String(firstVisualY)} px down, which is more ` +
+        'than two screens. It was 2,194 px before UX.1 and the whole increment was ' +
+        'about that number.'
+    ).toBeLessThan(1800)
+  })
+
+  test('opens with a heading, the scope and the controls, not with a lede', async ({
     page,
   }) => {
     await gotoRendered(page, '/')
-    const ids = await page.evaluate(() => {
+    // The `h1` is a NAME. The rail says where the reader is; a sentence-length
+    // heading on a working screen is an article title.
+    const heading = await page.getByRole('heading', { level: 1 }).innerText()
+    expect(heading.trim().split(/\s+/).length, `the h1 reads "${heading}"`).toBeLessThan(
+      4
+    )
+    // And the filter form is in the same band.
+    await expect(page.getByRole('form', { name: /filters/i }).first()).toBeVisible()
+  })
+
+  test('carries no marketing hero, badge row or provenance line above the figures', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await gotoRendered(page, '/')
+    const aboveFold = await page.evaluate(() => {
       const main = document.querySelector('main')
-      if (!main) return []
-      return [...main.querySelectorAll('section')]
-        .filter((section) => section.parentElement?.closest('section') === null)
-        .map((section) => section.id || '(unnamed)')
+      if (main === null) return ''
+      const parts: string[] = []
+      for (const element of main.querySelectorAll('p, h1, h2, span')) {
+        const box = element.getBoundingClientRect()
+        if (box.top < 900 && box.bottom > 0 && box.height > 0) {
+          parts.push((element as HTMLElement).innerText ?? '')
+        }
+      }
+      return parts.join(' ')
+    })
+    for (const [what, pattern] of [
+      ['a dataset version badge', /dataset v/i],
+      ['a contract fingerprint', /contract [0-9a-f]{8}/i],
+      ['a semantic-model status', /semantic model/i],
+      ['a real-engine validation badge', /real-engine validation/i],
+    ] as const) {
+      expect(aboveFold, `${what} is in the operating home's first viewport`).not.toMatch(
+        pattern
+      )
+    }
+  })
+
+  for (const [name, width, height, budget] of [
+    ['desktop', 1440, 900, DESKTOP_FOLD_PROSE],
+    ['mobile', 390, 844, MOBILE_FOLD_PROSE],
+  ] as const) {
+    test(`keeps first-viewport prose under ${String(budget)} words on ${name}`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height })
+      await gotoRendered(page, '/')
+      const words = await page.evaluate((foldHeight) => {
+        const main = document.querySelector('main')
+        if (main === null) return 0
+        let total = 0
+        for (const paragraph of main.querySelectorAll('p')) {
+          if (paragraph.closest('.sr-only, figcaption, td, th, caption')) continue
+          if (paragraph.classList.contains('sr-only')) continue
+          const box = paragraph.getBoundingClientRect()
+          if (box.top >= foldHeight || box.height === 0) continue
+          total += paragraph.innerText
+            .split(/\s+/)
+            .filter((token) => /[\p{L}\p{N}]/u.test(token)).length
+        }
+        return total
+      }, height)
+      expect(
+        words,
+        `the operating home renders ${String(words)} words of prose in the first ` +
+          `${name} viewport, over the ${String(budget)}-word budget. Move an ` +
+          'explanation into the methodology disclosure rather than shortening a label.'
+      ).toBeLessThanOrEqual(budget)
+    })
+  }
+})
+
+/**
+ * The prose measurement, shared by the budget above.
+ */
+async function measureProse(page: Page) {
+  return page.evaluate(() => {
+    const main = document.querySelector('main')
+    if (!main) return null
+
+    const paragraphs = [...main.querySelectorAll('p')].filter((paragraph) => {
+      if (paragraph.classList.contains('sr-only')) return false
+      return !paragraph.closest('.sr-only, figcaption, td, th, caption')
     })
 
-    expect(
-      ids.length,
-      `the home page renders ${String(ids.length)} top-level sections (${ids.join(', ')}), ` +
-        `which is more than the ${String(SECTION_BUDGET)} the composition allows`
-    ).toBeLessThanOrEqual(SECTION_BUDGET)
+    const words = (value: string) =>
+      value.split(/\s+/).filter((token) => /[\p{L}\p{N}]/u.test(token)).length
+
+    const longest = paragraphs
+      .map((paragraph) => ({
+        words: words(paragraph.innerText),
+        text: paragraph.innerText.trim().slice(0, 60),
+      }))
+      .filter((entry) => entry.words > 0)
+      .sort((a, b) => b.words - a.words)
+      .slice(0, 3)
+
+    return {
+      total: paragraphs.reduce((sum, paragraph) => sum + words(paragraph.innerText), 0),
+      counted: paragraphs.filter((paragraph) => words(paragraph.innerText) > 0).length,
+      longest,
+    }
   })
-})
+}
 
 /* -------------------------------------------------------------------------- */
 /* The redesign's own content rules                                            */
@@ -813,119 +946,49 @@ test.describe('the home page stays inside its prose budget', () => {
  *
  * Recorded in portfolio/docs/EXPERIENCE_REDESIGN_V2.md sections 2 and 3.
  */
-test.describe('the hero stays a hero', () => {
-  test('offers exactly two calls to action, and no more', async ({ page }) => {
+/**
+ * `UX.1` RETIRED THE HERO, AND THIS IS WHAT REPLACED ITS RULES.
+ *
+ * The old block asserted that the home page's hero carried exactly two calls to
+ * action, no status badge, and its headline plus both actions on the first phone
+ * screen. Those were the right rules for a landing page introducing a product a
+ * reader could not yet see. `/` IS the product now, so the equivalent obligations
+ * are the operating first-viewport contract above — no badge row, no marketing
+ * hero, a name rather than a sentence, and the controls in the same band as the
+ * heading.
+ *
+ * What survives here is the one rule that was never about the hero: the reference
+ * domain still opens on the group and its three stores, and the author sentence
+ * is still the `h1` of `/about` and of nowhere else.
+ */
+test.describe('the group context still names the group and its three stores', () => {
+  test('names all three above the fold on a desktop', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 })
-    await gotoRendered(page, '/')
-
-    // Buttons and button-styled links inside the hero. An earlier build's hero
-    // carried two of these plus two status badges, a bordered caveat panel and
-    // a three-item legend.
-    //
-    // Located by `#hero`, NOT by `main > section:first-of-type`. The structural
-    // path stopped matching when the floating canvas put two wrapper elements
-    // between <main> and the section - and it failed silently in the sibling
-    // test below, where a locator resolving to nothing makes "there are no
-    // status badges here" pass by finding no elements at all. Both tests now
-    // assert the hero exists before asserting anything about its contents.
-    const hero = page.locator('#hero')
-    await expect(hero).toHaveCount(1)
-    await expect(hero.locator('a[class*="min-h-11"]')).toHaveCount(2)
-  })
-
-  test('renders no status badge in the hero', async ({ page }) => {
-    await gotoRendered(page, '/')
-    const hero = page.locator('#hero')
-    await expect(hero).toHaveCount(1)
-    // `data-status` is what StatusBadge stamps. A hero that opens with two
-    // badges is reporting its own risk before it has said what it is.
-    await expect(hero.locator('[data-status]')).toHaveCount(0)
-  })
-
-  test('puts the headline, the explanation, both actions and the trust line on the first phone screen', async ({
-    page,
-  }) => {
-    // The single worst thing about the previous build: at this viewport a
-    // visitor saw a headline, a paragraph and two risk disclosures, with the
-    // first call to action roughly 1,050px down. Finding A-01.
-    await page.setViewportSize({ width: 390, height: 844 })
-    await gotoRendered(page, '/')
-
-    const fold = 844
-    for (const [name, locator] of [
-      ['the headline', page.getByRole('heading', { level: 1 })],
-      [
-        // The primary action is the inventory explorer, and it did not used to
-        // be. The hero now opens with a working slice of that explorer, so the
-        // one thing a visitor is most likely to want next is the whole of it.
-        'the primary action',
-        page.locator('#hero').getByRole('link', { name: /open the inventory explorer/i }),
-      ],
-      [
-        'the secondary action',
-        page
-          .locator('#hero')
-          .getByRole('link', { name: /see how it is built/i })
-          .first(),
-      ],
-    ] as const) {
-      const box = await locator.first().boundingBox()
-      expect(box, `${name} is not rendered`).not.toBeNull()
-      expect(box!.y, `${name} starts below the first screen`).toBeLessThan(fold)
+    await gotoRendered(page, '/technical?view=overview')
+    const text = await mainText(page)
+    for (const store of ['Granite Chevrolet', 'Granite Subaru', 'Granite Pre-Owned']) {
+      expect(text, `${store} is missing from the group context`).toContain(store)
     }
   })
 
-  /**
-   * WHAT THE FIRST SCREEN HAS TO SAY, AND WHAT IT MUST NOT.
-   *
-   * This assertion used to require the author headline above the fold: "run the
-   * dealership" and "25 years" both had to be there, because the hero's whole job
-   * was the differentiator. That was the right test for a home page whose subject
-   * was the author.
-   *
-   * The subject is now the product, so the requirement inverts on the first half
-   * and survives on the second. The group and its three stores must be above the
-   * fold. The career claim must still be there, because it is real credibility
-   * and burying it entirely would be over-correcting - but as ONE CLAUSE, not as
-   * the proposition, and the headline must not be the author sentence.
-   */
-  test('names the group and its three stores above the fold on a desktop', async ({
+  test('does not make the author sentence the headline of anything but /about', async ({
     page,
   }) => {
-    await page.setViewportSize({ width: 1440, height: 900 })
-    await gotoRendered(page, '/')
-    const aboveFold = await page.evaluate(() => {
-      const texts: string[] = []
-      for (const element of document.querySelectorAll('main h1, main p')) {
-        const box = element.getBoundingClientRect()
-        if (box.top < window.innerHeight && box.bottom > 0) {
-          texts.push(element.textContent ?? '')
-        }
-      }
-      return texts.join(' ')
-    })
-
-    expect(aboveFold, 'the group is not named').toContain('Granite Auto Group')
-    for (const store of [
-      'Granite Chevrolet of Nashua',
-      'Granite Subaru of Manchester',
-      'Granite Pre-Owned Center of Merrimack',
-    ]) {
-      expect(aboveFold, `${store} is not named above the fold`).toContain(store)
+    for (const route of ['/', '/technical', '/technical?view=overview', '/inventory']) {
+      await gotoRendered(page, route)
+      const headline = await page.getByRole('heading', { level: 1 }).innerText()
+      expect(headline, route).not.toMatch(/run the dealership/i)
     }
-
-    // The credibility clause survives, and stays a clause.
-    expect(aboveFold, 'the experience claim is gone entirely').toMatch(/25 years/i)
-
-    // The author sentence is not the headline. It is the h1 of `/about`.
-    const headline = await page.getByRole('heading', { level: 1 }).innerText()
-    expect(headline).not.toMatch(/run the dealership/i)
+    await gotoRendered(page, '/about')
+    expect(await page.getByRole('heading', { level: 1 }).innerText()).toMatch(
+      /run the dealership/i
+    )
   })
 })
 
 test.describe('the engineering proof shows the strongest four counts', () => {
   test('sets exactly four figures as headline numerals', async ({ page }) => {
-    await gotoRendered(page, '/')
+    await gotoRendered(page, '/technical?view=overview')
     await mainText(page)
     // The previous build showed seven at equal weight, three of which described
     // the size of a fictional dealer group. Finding B-03.
@@ -936,7 +999,11 @@ test.describe('the engineering proof shows the strongest four counts', () => {
   test('shows the four agreed figures and none of the secondary ones by default', async ({
     page,
   }) => {
-    await gotoRendered(page, '/')
+    // `UX.1` rehomed the engineering proof strip from the marketing home page to
+    // the technical overview, which is where the product tour and the store story
+    // went with it. The obligation is unchanged: every value a visitor can reach
+    // must equal the manifest, which is generated from repository evidence.
+    await gotoRendered(page, '/technical?view=overview')
     const proof = page.locator('#proof')
     const numerals = await proof.locator('.text-numeral').allInnerTexts()
     expect(numerals.map((value) => value.trim())).toEqual([
@@ -950,7 +1017,7 @@ test.describe('the engineering proof shows the strongest four counts', () => {
   })
 
   test('opens the evidence drawer on activation, and only then', async ({ page }) => {
-    await gotoRendered(page, '/')
+    await gotoRendered(page, '/technical?view=overview')
     const trigger = page.getByRole('button', { name: /see all engineering evidence/i })
     await expect(trigger).toHaveAttribute('aria-expanded', 'false')
     await trigger.click()
@@ -1037,7 +1104,7 @@ test.describe('public copy carries no em dash', () => {
     // reported a failure that looked like a detection - which is its own small
     // lesson: a content check that cannot reach the content fails loudly, and
     // that is the correct behaviour, but only if the failure is read properly.
-    await gotoRendered(page, '/data-model')
+    await gotoRendered(page, '/technical?view=data-model')
     const entity = page.getByRole('option', { name: /vehicle sale/i }).first()
     await expect(entity, 'no selectable entity found in the explorer').toBeVisible()
     await entity.click()
@@ -1047,14 +1114,14 @@ test.describe('public copy carries no em dash', () => {
       'the data-model explorer renders an em dash once an entity is selected'
     ).toBe(false)
 
-    await gotoRendered(page, '/architecture')
+    await gotoRendered(page, '/technical?view=architecture')
     const node = page.getByRole('option').first()
     if ((await node.count()) > 0) {
       await node.click()
       expect((await page.locator('main').innerText()).includes('\u2014')).toBe(false)
     }
 
-    await gotoRendered(page, '/')
+    await gotoRendered(page, '/technical?view=overview')
     await page.getByRole('button', { name: /see all engineering evidence/i }).click()
     const tabs = await page
       .getByRole('tablist', { name: /analytical domain/i })
@@ -1078,7 +1145,7 @@ test.describe('public copy carries no em dash', () => {
  */
 test.describe('the operating view is a product surface, not a dashboard', () => {
   test('offers six domains as real tabs', async ({ page }) => {
-    await gotoRendered(page, '/kpis')
+    await gotoRendered(page, '/technical?view=kpis')
     const tablist = page.getByRole('tablist', { name: /analytical domain/i })
     await expect(tablist).toBeVisible()
     await expect(tablist.getByRole('tab')).toHaveCount(6)
@@ -1089,7 +1156,7 @@ test.describe('the operating view is a product surface, not a dashboard', () => 
   test('changes the panel when a domain is chosen, by click and by arrow key', async ({
     page,
   }) => {
-    await gotoRendered(page, '/kpis')
+    await gotoRendered(page, '/technical?view=kpis')
     const tablist = page.getByRole('tablist', { name: /analytical domain/i })
     // Scoped to `#operating-view`, not located by role alone. The home page now
     // carries four tab sets and a bare `getByRole('tabpanel')` resolves to all
@@ -1114,7 +1181,7 @@ test.describe('the operating view is a product surface, not a dashboard', () => 
   })
 
   test('shows no value in any domain', async ({ page }) => {
-    await gotoRendered(page, '/kpis')
+    await gotoRendered(page, '/technical?view=kpis')
     const tablist = page.getByRole('tablist', { name: /analytical domain/i })
     const tabs = await tablist.getByRole('tab').all()
 
@@ -1133,7 +1200,7 @@ test.describe('the operating view is a product surface, not a dashboard', () => 
   })
 
   test('states that no engine has evaluated the measures it shows', async ({ page }) => {
-    await gotoRendered(page, '/kpis')
+    await gotoRendered(page, '/technical?view=kpis')
     const frame = page.locator('#operating-view')
     await expect(frame).toContainText(/no engine has evaluated these measures/i)
   })
@@ -1173,15 +1240,35 @@ test.describe('progressive disclosure withholds reasoning, never qualification',
     readonly path: string
     readonly pattern: RegExp
   }[] = [
+    /*
+      THE FIRST TWO ARE ON THE OPERATING HOME, AND THE OTHER THREE ARE NOT.
+
+      `UX.1` made `/` the operating console. The two statements a reader must not
+      be able to miss while looking at a gross figure — the group is fictional and
+      the figures are synthetic — are in the control band's disclosure SUMMARY, so
+      they survive the collapsed-details filter below and are above the fold at
+      both viewport sizes.
+
+      The other three describe the reference-data lane and the validation gate.
+      They belong to the reader who went looking for provenance, and they are on
+      the routes whose subject they are: the listing explorer for the first two,
+      the technical status view for Gate 2. Asserting them on an operating screen
+      would be asserting that a manager reading December gross must first read
+      about a workbook capture date.
+    */
     { label: 'the fictional-entity notice', path: '/', pattern: /fictional/i },
     { label: 'the synthetic-data statement', path: '/', pattern: /synthetic/i },
-    { label: 'the sanitized-listing provenance', path: '/', pattern: /sanitiz/i },
+    {
+      label: 'the sanitized-listing provenance',
+      path: '/inventory',
+      pattern: /sanitiz/i,
+    },
     {
       label: 'the "listings are not sales" boundary',
-      path: '/',
+      path: '/inventory',
       pattern: /listings, not sales results/i,
     },
-    { label: 'the Gate 2 position', path: '/', pattern: /Gate 2/ },
+    { label: 'the Gate 2 position', path: '/technical?view=status', pattern: /Gate 2/ },
     {
       label: 'the "not a performance result" boundary on /governance',
       path: '/governance',
@@ -1224,11 +1311,12 @@ test.describe('progressive disclosure withholds reasoning, never qualification',
     const vague =
       /^(learn|read|see|show|view)( more| less| details?)?\.?$|^(more|details?|expand|additional information)\.?$/i
 
-    // The two routes that actually carry disclosures: the home page's
+    // The routes that actually carry disclosures: the technical overview's
     // supplemental reasoning, and the chart table alternatives on `/inventory`.
-    // `/architecture` has none - its long form is the always-present component
-    // list, which is a different and better answer to the same problem.
-    for (const path of ['/', '/inventory']) {
+    // `/technical?view=architecture` has none — its long form is the
+    // always-present component list, which is a different and better answer to
+    // the same problem.
+    for (const path of ['/technical?view=overview', '/inventory']) {
       await gotoRendered(page, path)
       const labels = await page.locator('main details > summary').allInnerTexts()
       expect(labels.length, `${path} has no disclosures at all`).toBeGreaterThan(0)
@@ -1250,14 +1338,14 @@ test.describe('progressive disclosure withholds reasoning, never qualification',
     // The whole argument for `<details>` over a custom control: the text is in
     // the document whether or not JavaScript ran. A disclosure whose contents
     // arrive with hydration is hidden content, not progressive disclosure.
-    const html = await (await request.get('/')).text()
+    const html = await (await request.get('/technical?view=overview')).text()
     expect(html).toContain('Why these stores cannot share one operating model')
     // And the paragraph behind that summary, not merely the summary itself.
     expect(html).toMatch(/allocation: the store orders into a build schedule/i)
   })
 
   test('a disclosure opens from the keyboard and reports its state', async ({ page }) => {
-    await gotoRendered(page, '/')
+    await gotoRendered(page, '/technical?view=overview')
     // Located from the OUTSIDE in: `filter({ has })` takes a locator relative to
     // the element being filtered, so passing a page-rooted `main details >
     // summary` into it resolves to nothing and every assertion then times out
@@ -1280,20 +1368,22 @@ test.describe('progressive disclosure withholds reasoning, never qualification',
     await expect(details).not.toHaveAttribute('open', /.*/)
   })
 
-  test('the home page keeps its four chapters', async ({ page }) => {
-    // Disclosure reduces prose. It must not have been used to remove a chapter,
-    // and the composition is not to grow back either.
+  test('the rehomed home-page chapters survived the move', async ({ page }) => {
+    // Disclosure reduces prose. It must not have been used to remove a chapter.
     //
-    // Four, not seven. `operating-view` is the first thing on `/kpis`,
-    // `builder`'s three floor decisions are chapter four of `/about`, and
-    // `proof` is no longer a section: its four numerals open the closing
-    // chapter, so the page ends on evidence and an action. The id survives on
-    // the strip, because it is a deep-link target and three tests locate by it.
-    await gotoRendered(page, '/')
+    // `UX.1` retired the marketing home page and rehomed its sections rather than
+    // deleting them: the store story and the product tour are the technical
+    // overview, the engineering proof strip is below them, and the author
+    // positioning is `/about`. What is genuinely gone is the hero, whose job was
+    // to introduce a product the reader could not yet see, and the closing call to
+    // action that followed it. This is the assertion that the other three are
+    // still somewhere a reader can reach.
+    await gotoRendered(page, '/technical?view=overview')
     const ids = await page.evaluate(() =>
       [...document.querySelectorAll('main section[id]')].map((node) => node.id)
     )
-    expect(ids).toEqual(['hero', 'stores', 'tour', 'review'])
+    expect(ids).toContain('stores')
+    expect(ids).toContain('tour')
     await expect(page.locator('#proof')).toHaveCount(1)
   })
 })

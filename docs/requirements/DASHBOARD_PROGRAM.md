@@ -500,11 +500,45 @@ pending/stale/passed state from the same evidence files CI already checks.
 
 ## 18. Delivery increments
 
-Fourteen increments `DASH.0` – `DASH.13` plus recorded optional items, each with purpose,
-dependencies, complexity, acceptance criteria, tests, documentation updates, non-goals, and
-completion evidence, in [`DASHBOARD_BACKLOG.md`](DASHBOARD_BACKLOG.md). Sequencing is binding:
-an increment does not start until its data contract is resolved and its dependencies are Done, and
-every increment leaves the repository green.
+Fourteen increments `DASH.0` – `DASH.13`, one productization increment `UX.1`, plus recorded optional
+items, each with purpose, dependencies, complexity, acceptance criteria, tests, documentation updates,
+non-goals, and completion evidence, in [`DASHBOARD_BACKLOG.md`](DASHBOARD_BACKLOG.md). Sequencing is
+binding: an increment does not start until its data contract is resolved and its dependencies are
+Done, and every increment leaves the repository green.
+
+### 18.1 `UX.1` sits between `DASH.11` and `DASH.12`
+
+The delivery sequence is:
+
+```
+DASH.11  →  UX.1  →  DASH.12  →  DASH.13
+```
+
+**No `DASH` identifier was renumbered.** `DASH.11` is still employee performance, `DASH.12` is still
+the Management Action Center and change drivers, `DASH.13` is still hardening and release. `UX.1`
+carries its own identifier because it is a different kind of increment: it adds no warehouse entity,
+no reporting view, no export dataset and no KPI, and numbering it `DASH.11.5` would have implied it
+belongs to the data program.
+
+**Why `DASH.12` depends on completed `UX.1`, and this is a real dependency rather than a preference.**
+`DASH.12` is about management ATTENTION: a deterministic action queue, its severity ordering, its
+placement relative to the figures it points at, its navigation weight, and the executive block that
+surfaces the top of it. Every one of those is a decision about the operating experience, and before
+`UX.1` there was no operating experience to make them inside — there was a marketing home page in
+front of a console reached through one item in a seven-item documentation header, on routes whose
+filters did not survive a navigation.
+
+Building an action queue into that information architecture would have meant deciding where Actions
+sits in a navigation that `UX.1` was about to replace, how an action's drill-through carries filter
+context through a mechanism that did not yet exist, and how an action's evidence disclosure relates to
+a methodology pattern that had not been established. The work would have been done twice.
+
+`UX.1` therefore delivers the substrate `DASH.12` needs: the operating shell, the rail, cross-route
+filter continuity, the methodology disclosure pattern, and the copy boundary that keeps a management
+action written in dealership language. What it deliberately does NOT deliver is any part of `DASH.12`
+itself — no action rule, no action dataset, no `/dashboard/actions` route and no navigation item for
+one. `PLANNED_DASHBOARD_SECTIONS` names it as text in the rail, and `site.test.ts` fails if that text
+ever becomes a link before the route exists.
 
 ## 19. Dependencies
 
@@ -518,7 +552,10 @@ every increment leaves the repository green.
   which is a different thing and is the reason the distinction is worth stating -- each RE-GRAINS an
   existing fact so a console question can be asked at the grain it is actually asked at, and none adds
   a fact, a dimension or a KPI identifier. The MVP baselines are unchanged.
-- `DASH.12` depends on every surface it links into; `DASH.13` closes the program.
+- `UX.1` depends on `DASH.11` — it productizes the nine operating surfaces, so it starts once the last
+  of them exists. It promotes no entity, adds no reporting view and adds no export dataset.
+- `DASH.12` depends on every surface it links into AND on completed `UX.1`, for the reason in §18.1;
+  `DASH.13` closes the program.
 - External: none. No new paid service, no live AI, no third-party data. A charting library is not
   assumed; visualization needs are met by extending the existing hand-built SVG/DOM primitives unless
   a measured evaluation in `DASH.3` concludes otherwise.

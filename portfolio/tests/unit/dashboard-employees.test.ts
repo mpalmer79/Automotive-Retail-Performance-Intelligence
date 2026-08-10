@@ -123,7 +123,7 @@ function laneSources(): readonly { relative: string; text: string }[] {
     'lib/dashboard/employees-data.ts',
     'lib/dashboard/employees-chunks.ts',
     'components/dashboard/employees-sections.tsx',
-    'app/dashboard/employees/page.tsx',
+    'app/(operating)/dashboard/employees/page.tsx',
   ]
   for (const relative of targets) {
     files.push({ relative, text: readFileSync(join(SRC, relative), 'utf8') })
@@ -1023,7 +1023,7 @@ describe('the route state is addressable and the partitions cannot collide', () 
   })
 
   it('has one route directory and no client island', () => {
-    const dir = join(SRC, 'app/dashboard/employees')
+    const dir = join(SRC, 'app/(operating)/dashboard/employees')
     expect(readdirSync(dir)).toEqual(['page.tsx'])
     for (const file of laneSources()) {
       // Stripped, because `employees-chunks.ts` names the directive in a comment explaining

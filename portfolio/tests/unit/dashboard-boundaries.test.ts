@@ -117,7 +117,7 @@ const PROSE_DOCUMENTATION_FILES: readonly string[] = [
   // pipeline.
   'content/architecture.ts',
   // The design-system lab, which shows a lineage chip as a worked example.
-  'app/ui-lab/page.tsx',
+  'app/(site)/ui-lab/page.tsx',
 ]
 
 describe('the frontend never references a non-reporting schema', () => {
@@ -310,9 +310,12 @@ describe('the console ships exactly the routes its increments have delivered', (
    * exist. A route that appeared without an increment fails here.
    */
   it('has exactly the delivered console routes and no others', () => {
-    const root = join(SRC, 'app/dashboard')
+    const root = join(SRC, 'app/(operating)/dashboard')
     expect(existsSync(root)).toBe(true)
-    expect(existsSync(join(root, 'page.tsx'))).toBe(true)
+    // `UX.1` moved the Executive surface from `/dashboard` to `/`, so the console's
+    // own index is the operating group's root page rather than a `dashboard/page.tsx`.
+    expect(existsSync(join(SRC, 'app/(operating)/page.tsx'))).toBe(true)
+    expect(existsSync(join(root, 'page.tsx'))).toBe(false)
     const nested = readdirSync(root, { withFileTypes: true })
       .filter((entry) => entry.isDirectory())
       .map((entry) => entry.name)
@@ -347,22 +350,25 @@ describe('the console ships exactly the routes its increments have delivered', (
     expect(clientComponents).toEqual(['filter-bar.tsx'])
   })
 
-  it('adds exactly one dashboard entry to the primary navigation', () => {
+  it('adds exactly one operating entry to the reference navigation', () => {
     /*
      * Asserted against the exported value rather than against the source text. The
      * first version of this check sliced `site.ts` between `PRIMARY_NAV` and
      * `MAX_PRIMARY_NAV_ITEMS`, and the new entry's own comment mentions the cap by
      * name — so the slice ended inside the comment and the guard failed on prose it
      * should have been reading past. The data cannot be misread that way.
+     *
+     * `UX.1` inverted what this is guarding. The header used to carry one link INTO
+     * a console that lived under `/dashboard`; the console is the site's front door
+     * now, and the header is what the REFERENCE half wears. So the assertion is that
+     * exactly one item leads back to the operating application, and that none of the
+     * application's seven sub-routes has been promoted into a header the reader
+     * reached by leaving the application.
      */
-    const dashboardItems = PRIMARY_NAV.filter((item) =>
-      item.href.startsWith(ROUTES.dashboard.href)
-    )
-    expect(dashboardItems).toHaveLength(1)
-    expect(dashboardItems[0]?.href).toBe(ROUTES.dashboard.href)
+    const operatingItems = PRIMARY_NAV.filter((item) => item.href === ROUTES.home.href)
+    expect(operatingItems).toHaveLength(1)
     expect(PRIMARY_NAV.length).toBeLessThanOrEqual(MAX_PRIMARY_NAV_ITEMS)
 
-    // No console sub-route reaches the public header; `DashboardNav` carries them.
     for (const item of PRIMARY_NAV) {
       for (const match of item.matches) {
         expect(/^\/dashboard\/./.test(match), match).toBe(false)
@@ -517,7 +523,10 @@ describe('the generated dashboard data stays out of the existing route bundles',
       .sort()
     expect(jacketImporters).toEqual(['lib/dashboard/deal-jacket.ts'])
 
-    for (const route of ['app/dashboard/page.tsx', 'app/dashboard/deals/page.tsx']) {
+    for (const route of [
+      'app/(operating)/page.tsx',
+      'app/(operating)/dashboard/deals/page.tsx',
+    ]) {
       expect(readFileSync(join(SRC, route), 'utf8')).not.toMatch(/jacket-chunks/)
     }
     for (const viewModel of ['lib/dashboard/executive.ts', 'lib/dashboard/deals.ts']) {
@@ -544,18 +553,18 @@ describe('the generated dashboard data stays out of the existing route bundles',
       .filter((file) => /from '[^']*inventory-chunks'/.test(file.text))
       .map((file) => file.relative)
       .sort()
-    expect(inventoryImporters).toEqual(['app/dashboard/inventory/page.tsx'])
+    expect(inventoryImporters).toEqual(['app/(operating)/dashboard/inventory/page.tsx'])
 
     const accountingImporters = files
       .filter((file) => /from '[^']*accounting-chunks'/.test(file.text))
       .map((file) => file.relative)
       .sort()
-    expect(accountingImporters).toEqual(['app/dashboard/inventory/page.tsx'])
+    expect(accountingImporters).toEqual(['app/(operating)/dashboard/inventory/page.tsx'])
 
     // Matched as an IMPORT rather than as a mention: `executive.ts` explains in prose why
     // it must not open these doors, and a guard that fired on its own explanation would be
     // a guard somebody deletes.
-    for (const executive of ['app/dashboard/page.tsx', 'lib/dashboard/executive.ts']) {
+    for (const executive of ['app/(operating)/page.tsx', 'lib/dashboard/executive.ts']) {
       const text = readFileSync(join(SRC, executive), 'utf8')
       expect(text, `${executive} opens the stock partitions`).not.toMatch(
         /from '[^']*inventory-chunks'/
@@ -595,7 +604,7 @@ describe('the generated dashboard data stays out of the existing route bundles',
       'lib/dashboard/deals.ts',
       'lib/dashboard/sales-gross.ts',
     ])
-    const overview = readFileSync(join(SRC, 'app/dashboard/page.tsx'), 'utf8')
+    const overview = readFileSync(join(SRC, 'app/(operating)/page.tsx'), 'utf8')
     expect(overview).not.toMatch(/deal-chunks/)
     expect(readFileSync(join(SRC, 'lib/dashboard/executive.ts'), 'utf8')).not.toMatch(
       /deal-chunks/
@@ -651,7 +660,7 @@ describe('ADR-0013 condition 2: no frontend redefines a KPI', () => {
         (file) =>
           file.relative.startsWith('lib/dashboard/') ||
           file.relative.startsWith('components/dashboard/') ||
-          file.relative.startsWith('app/dashboard/')
+          file.relative.startsWith('app/(operating)/')
       )
       .filter((file) =>
         /\b(addExact|subtractExact|divideExact|sumExact|multiplyByInteger)\s*\(/.test(
@@ -779,7 +788,7 @@ describe('ADR-0013 condition 2: no frontend redefines a KPI', () => {
     const componentFiles = files.filter(
       (file) =>
         file.relative.startsWith('components/dashboard/') ||
-        file.relative.startsWith('app/dashboard/')
+        file.relative.startsWith('app/(operating)/')
     )
     const offenders = componentFiles
       .filter((file) =>
@@ -1141,9 +1150,9 @@ describe('the print rules land on elements that actually carry them', () => {
       /data-arpi-print=/.test(stripComments(file.text))
     )
     expect(users.map((file) => file.relative).sort()).toEqual([
-      'app/dashboard/deals/[saleId]/page.tsx',
+      'app/(operating)/dashboard/deals/[saleId]/page.tsx',
       'components/dashboard/deal-jacket-sections.tsx',
-      'components/shell/dashboard-nav.tsx',
+      'components/shell/operating-rail.tsx',
       'components/shell/site-footer.tsx',
       'components/shell/site-header.tsx',
     ])

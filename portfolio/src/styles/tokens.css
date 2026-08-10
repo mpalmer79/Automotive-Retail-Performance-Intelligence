@@ -422,6 +422,14 @@
      drawer's top edge never disagree mid-transition. */
   --arpi-size-header: clamp(3.75rem, 1.2vw + 3.45rem, 4.25rem);
 
+  /* The operating application's navigation rail (`UX.1`). 232px at the `lg`
+     breakpoint where it first appears and 248px from `2xl`, so the eight
+     destination labels never wrap and the widest of them — "Leads & Marketing" —
+     fits on one line at the base type size. Below `lg` the rail is not rendered
+     at all and this token is unused: the navigation is a drawer there, which is
+     the honest answer to a rail that would take a third of a phone's width. */
+  --arpi-size-rail: 14.5rem;
+
   --arpi-radius-none: 0;
   --arpi-radius-xs: 0.125rem;
   --arpi-radius-sm: 0.25rem;

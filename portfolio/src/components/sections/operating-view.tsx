@@ -70,8 +70,8 @@ import { DOMAIN_ICON } from '@/components/ui/domain-icon'
 import { Container, Section, SectionHeader } from '@/components/ui/layout'
 import { CodeLabel, Text } from '@/components/ui/typography'
 import { DOMAINS, entities, kpis, type DomainId } from '@/lib/content'
-import { ROUTES } from '@/lib/site'
 import { cx } from '@/lib/utils'
+import { technicalHref } from '@/lib/technical'
 
 /**
  * The evidence path for a domain's definitions. One per domain, all of them
@@ -284,7 +284,7 @@ export function OperatingView() {
                         <KpiChip
                           id={kpi.id}
                           name={kpi.name}
-                          href={`${ROUTES.kpis.href}#${kpi.id}`}
+                          href={`${technicalHref('kpis')}#${kpi.id}`}
                         />
                       </li>
                     ))}
@@ -377,7 +377,7 @@ export function OperatingView() {
             report has never been run.
           </Text>
           <LinkButton
-            href={`${ROUTES.kpis.href}#kpi-catalogue`}
+            href={`${technicalHref('kpis')}#kpi-catalogue`}
             variant="secondary"
             iconAfter={<ArrowRight />}
             className="shrink-0"
