@@ -269,8 +269,15 @@ describe('the committed root export validates', () => {
   })
 
   it('holds the export directory to a closed set of files', () => {
+    /*
+     * The manifest, one file per contracted dataset, and ONE derived artifact: `DASH.12`'s
+     * action queue, which is read from the datasets rather than from any reporting view.
+     * Naming it explicitly is what would catch a second derived file appearing without a
+     * contract to describe it.
+     */
     const declared = new Set([
       'manifest.json',
+      'management-actions.json',
       ...exportManifest.datasets.map((entry) => entry.file),
     ])
     const present = readdirSync(EXPORT_DIR).filter((name) => name.endsWith('.json'))
@@ -546,7 +553,7 @@ describe('the generated client artefacts are current and consistent', () => {
   })
 
   it('writes every declared file, and only declared files', () => {
-    const declared = new Set<string>(['manifest.json'])
+    const declared = new Set<string>(['manifest.json', 'management-actions.json'])
     for (const entry of clientManifest.datasets) {
       if (entry.chunks) for (const chunk of entry.chunks) declared.add(chunk.file)
       else declared.add(`datasets/${entry.name}.json`)
@@ -663,6 +670,19 @@ function runGeneratorWith(mutate: (exportDir: string) => void): {
   cpSync(join(PORTFOLIO, 'src/types'), join(sandbox, 'portfolio/src/types'), {
     recursive: true,
   })
+  /*
+   * `DASH.12` gave the generator a dependency outside `scripts/` and `types/`: the action
+   * queue's drill-throughs are checked against the console's own route registry, which
+   * lives in `src/lib/dashboard/`. Copying the three pure modules that check reaches --
+   * `action-contract` and the two it imports -- keeps the sandbox a faithful copy of what
+   * the generator actually runs, rather than a copy that would pass for want of a checker.
+   */
+  for (const module of ['action-contract.ts', 'navigation.ts', 'filters.ts']) {
+    cpSync(
+      join(PORTFOLIO, 'src/lib/dashboard', module),
+      join(sandbox, 'portfolio/src/lib/dashboard', module)
+    )
+  }
   cpSync(GENERATED_DIR, join(sandbox, 'portfolio/src/generated/dashboard'), {
     recursive: true,
   })

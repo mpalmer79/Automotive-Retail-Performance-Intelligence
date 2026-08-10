@@ -155,8 +155,13 @@ export const DASHBOARD_ROUTES: readonly string[] = [
  *
  * Asserted as a negative in `dashboard.spec.ts`: no anchor on any operating route
  * points at one of these, and each 404s if fetched directly.
+ *
+ * EMPTY SINCE `DASH.12`. It held `/dashboard/actions` from the increment that named
+ * the section until the increment that built it, and the negative assertion is what
+ * stopped a navigation item arriving first. The export stays so the next planned
+ * section has a guard waiting for it.
  */
-export const UNBUILT_DASHBOARD_ROUTES: readonly string[] = ['/dashboard/actions']
+export const UNBUILT_DASHBOARD_ROUTES: readonly string[] = []
 
 /**
  * The widths the console's responsive assertions run at.
@@ -225,6 +230,7 @@ export const ALL_TESTED_ROUTES: readonly string[] = [
   '/dashboard/leads-marketing',
   '/dashboard/employees',
   '/dashboard/accounting',
+  '/dashboard/actions',
   '/ui-lab',
 ]
 
