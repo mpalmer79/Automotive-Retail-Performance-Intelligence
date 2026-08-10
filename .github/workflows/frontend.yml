@@ -335,10 +335,10 @@ jobs:
         run: |
           docker run -d --name arpi-ci -e PORT=8412 -p 8412:8412 arpi-portfolio:ci
           for _ in $(seq 1 60); do
-            curl -sf -o /dev/null http://127.0.0.1:8412/status && break
+            curl -sf -o /dev/null http://127.0.0.1:8412/technical && break
             sleep 2
           done
-          curl -sf -o /dev/null http://127.0.0.1:8412/status
+          curl -sf -o /dev/null http://127.0.0.1:8412/technical
 
       - name: Assert the runtime contract
         working-directory: .
@@ -373,7 +373,15 @@ jobs:
         run: |
           set -euo pipefail
           base=http://127.0.0.1:8412
-          for path in / /architecture /data-model /kpis /governance /status /about /case-study \
+          # The routes that must answer 200. `UX.1` moved six documentation routes
+          # into `/technical?view=...` and the console to `/`; the retired URLs are
+          # asserted separately below, as the permanent redirects they now are.
+          for path in / /technical '/technical?view=architecture' '/technical?view=data-model' \
+                      '/technical?view=kpis' '/technical?view=governance' \
+                      '/technical?view=data-sources' '/technical?view=status' \
+                      '/technical?view=product-vision' /about /inventory /case-study \
+                      /dashboard/sales-gross /dashboard/deals /dashboard/inventory /dashboard/fi \
+                      /dashboard/leads-marketing /dashboard/employees /dashboard/accounting \
                       /robots.txt /sitemap.xml /manifest.webmanifest /favicon.svg /social-preview.png; do
             code="$(curl -s -o /dev/null -w '%{http_code}' "${base}${path}")"
             if [ "$code" != "200" ]; then
@@ -381,6 +389,30 @@ jobs:
               exit 1
             fi
           done
+
+          # The eight retired URLs answer a PERMANENT redirect, not a 200 and not a
+          # 404. Asserted on the deployable artefact because a redirect declared in
+          # `next.config.ts` is a property of the build: a container that lost it
+          # would serve 404s to every link anybody has shared.
+          for path in /dashboard /dealerships /architecture /data-model /kpis /governance \
+                      /status /inventory-operations; do
+            code="$(curl -s -o /dev/null -w '%{http_code}' "${base}${path}")"
+            if [ "$code" != "308" ] && [ "$code" != "301" ]; then
+              echo "::error title=Retired URL::${path} returned ${code}, expected a permanent redirect"
+              exit 1
+            fi
+          done
+
+          # And the console redirect carries its query string, which is what makes
+          # every shared `/dashboard?...` link keep reproducing its view.
+          located="$(curl -s -o /dev/null -w '%{redirect_url}' "${base}/dashboard?period=2025-11&store=GSA-002")"
+          case "$located" in
+            *"period=2025-11"*"store=GSA-002"*) ;;
+            *)
+              echo "::error title=Retired URL::/dashboard dropped its query string, landing at ${located}"
+              exit 1
+              ;;
+          esac
 
           # The canonical origin came from RAILWAY_PUBLIC_DOMAIN, not from a
           # localhost fallback. This is the assertion that would have caught a
