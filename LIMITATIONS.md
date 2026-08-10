@@ -627,7 +627,7 @@ live, and it is not.
 | Environment | staging |
 | Service name | `arpi-portfolio` |
 | Public URL | https://arpi.up.railway.app |
-| Health route | `/status` |
+| Health route | `/technical` |
 | Deployment commit | b90e3244a9b0db2f9ee1ccfc9f6d85e93959e806 |
 | Deployment timestamp | UNVERIFIED |
 | Health verification | 2026-08-01T20:31:00+00:00 |

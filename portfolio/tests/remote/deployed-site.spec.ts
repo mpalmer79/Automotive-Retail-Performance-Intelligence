@@ -95,12 +95,37 @@ test.describe('every route is reachable', () => {
     })
   }
 
-  test('/status is reachable — it is the health-check path', async ({ page }) => {
+  test('/technical is reachable — it is the health-check path', async ({ page }) => {
     // Railway's health check probes this exact route. If it 404s or 500s the
     // deployment is reported as failed, so it is asserted separately from the
-    // sweep above rather than only as one of eight.
-    const response = await page.goto('/status')
+    // sweep above rather than only as one of several.
+    //
+    // It was `/status` until `UX.1` consolidated that route into
+    // `/technical?view=status`. The health check points at the DESTINATION rather
+    // than at the retired path: a probe that followed a redirect would be checking
+    // the redirect rather than the application.
+    const response = await page.goto('/technical')
     expect(response?.status()).toBe(200)
+  })
+
+  test('every retired URL still resolves on the deployment', async ({ page }) => {
+    // The eight permanent redirects are a property of the BUILD, declared in
+    // `next.config.ts`. A deployment that lost them would serve 404s to every link
+    // anybody has shared, and would still pass every assertion above.
+    for (const path of [
+      '/dashboard',
+      '/dealerships',
+      '/architecture',
+      '/data-model',
+      '/kpis',
+      '/governance',
+      '/status',
+      '/inventory-operations',
+    ]) {
+      const response = await page.goto(path)
+      expect(response?.status(), path).toBe(200)
+      expect(new URL(page.url()).pathname, path).not.toBe(path)
+    }
   })
 
   test('the machine-readable routes are served', async ({ request }) => {
@@ -177,7 +202,7 @@ test.describe("metadata is on the deployment's own origin", () => {
   }
 
   test('Open Graph URLs are on the deployed host', async ({ page }) => {
-    await gotoRendered(page, '/kpis')
+    await gotoRendered(page, '/technical?view=kpis')
     const ogUrl = await page
       .locator('meta[property="og:url"]')
       .first()
@@ -295,7 +320,7 @@ test.describe('the deployed site overstates nothing', () => {
   test('/status reports Lifecycle Phase 5 as in progress, not complete', async ({
     page,
   }) => {
-    await gotoRendered(page, '/status')
+    await gotoRendered(page, '/technical?view=status')
     await settle(page)
     const text = (await page.locator('body').innerText()).replace(/\s+/g, ' ')
     // POSITIVE assertion on the phase's own rendered status, not a negative
@@ -315,7 +340,7 @@ test.describe('the deployed site overstates nothing', () => {
   test('/status reports BOTH engine paths as pending external validation', async ({
     page,
   }) => {
-    await gotoRendered(page, '/status')
+    await gotoRendered(page, '/technical?view=status')
     await settle(page)
     const text = (await page.locator('body').innerText()).replace(/\s+/g, ' ')
     expect(text).toMatch(/Pending external validation/i)
