@@ -1107,6 +1107,154 @@ VIEW_CORRUPTIONS: dict[str, tuple[str, str, str]] = {
         "    first_response_seconds,",
         "    COALESCE(first_response_seconds, 0) AS first_response_seconds,",
     ),
+    # ----------------------------------------------------------------------------------
+    # DASH.11 -- the employee-performance views
+    # ----------------------------------------------------------------------------------
+    # Every corruption below is a defect somebody could plausibly write, not a syntactic
+    # break. Employee cuts are unusually easy to get wrong in ways that look right: one
+    # delivery is credited to three different people, one person can hold several historical
+    # versions, and three role keys are nullable.
+    #
+    # The substitution targets are the CATALOGUE's text, which PostgreSQL normalises --
+    # `l_1` for the inner alias, `::text` casts made explicit, whitespace collapsed -- and
+    # not the source file's. `_corrupt_view` asserts the target is present, so a view edit
+    # that moves one of these fails loudly here rather than silently stopping the test.
+    "RECON-EMP-GRAIN": (
+        # The declared grain widened by one word. The two appointment bases carry the same
+        # store, date and employee on most rows, so UNION ALL duplicates the grain -- and
+        # every measure column still reads correctly on each copy, which is why only a
+        # uniqueness check finds it.
+        "vw_employee_performance",
+        "           FROM bdc_scheduled_basis\n        UNION\n"
+        "         SELECT bdc_show_basis.dealership_key,",
+        "           FROM bdc_scheduled_basis\n        UNION ALL\n"
+        "         SELECT bdc_show_basis.dealership_key,",
+    ),
+    "RECON-EMP-ROLE-COMPAT": (
+        # The family resolved from the DEPARTMENT rather than the job role. Departments are a
+        # coarser vocabulary the map does not cover, so every credited employee falls into the
+        # Unassigned bucket beside genuinely uncredited activity -- and the page would render
+        # an empty comparison rather than an error.
+        "vw_employee_performance",
+        "COALESCE(warehouse.fn_employee_role_family(ev.job_role), "
+        "'Unassigned'::character varying) AS role_family,",
+        "COALESCE(warehouse.fn_employee_role_family(ev.department), "
+        "'Unassigned'::character varying) AS role_family,",
+    ),
+    "RECON-EMP-SCD2-ATTRIBUTION": (
+        # The correlation predicate dropped from a version lookup, so every row takes the
+        # roster's first store instead of the one its own employee version was assigned to.
+        #
+        # A MORE FAITHFUL CORRUPTION WAS TRIED FIRST AND WAS BENIGN, WHICH IS ITSELF THE
+        # FINDING. Resolving the person to their CURRENT version -- the canonical SCD Type 2
+        # defect, and the one this rule was written for -- changes nothing on either profile,
+        # because every employee who ever transferred did so BEFORE the reporting window
+        # opened, so the fact-linked version and the current version are the same row. Taking
+        # the EARLIEST version instead is benign for the same reason on the test profile. The
+        # rule is an equality over every row and fails the moment a divergent version appears;
+        # what the generated data cannot currently provide is a case that would fail under the
+        # wrong join, and LIMITATIONS.md section 17.2 says so rather than implying otherwise.
+        # This substitution therefore proves the rule DISCRIMINATES -- that it compares the two
+        # stores at all -- which is the part a corruption can honestly establish here.
+        "vw_employee_performance",
+        "    ev.dealership_id AS employee_version_dealership_id,",
+        "    (( SELECT min(v2.dealership_id) FROM warehouse.dim_employee v2))"
+        "::character varying(16) AS employee_version_dealership_id,",
+    ),
+    "RECON-EMP-SALES-UNITS": (
+        # Wholesale and dealer-trade units inside the retail denominator. Every per-unit gross
+        # figure on the page divides by this column, so the effect is a plausible-looking
+        # reduction rather than an obvious break.
+        "vw_employee_performance",
+        "            sum(c.retail_unit_count)::integer AS sold_retail_units,",
+        "            sum(c.retail_unit_count + c.non_retail_unit_count)::integer "
+        "AS sold_retail_units,",
+    ),
+    "RECON-EMP-SALES-GROSS": (
+        # Total gross published as front gross. Both are real numbers from the same row and
+        # both are plausible per-unit figures; only the reconciliation against
+        # vw_vehicle_sales can tell which one is in the column.
+        "vw_employee_performance",
+        "            sum(c.retail_front_end_gross) AS sold_front_end_gross,",
+        "            sum(c.retail_total_gross) AS sold_front_end_gross,",
+    ),
+    "RECON-EMP-FINANCE": (
+        # Cash deals dropped from the finance denominator -- the single most flattering
+        # mistake available on an F&I surface. A cash deal cannot generate reserve, so
+        # removing it raises reserve PVR for every manager with a cash mix, and the figure
+        # stays entirely believable.
+        "vw_employee_performance",
+        "            sum(c.retail_unit_count)::integer AS financed_retail_units,",
+        "            sum(c.retail_unit_count) FILTER "
+        "(WHERE c.finance_structure::text <> 'Cash'::text)::integer AS financed_retail_units,",
+    ),
+    "RECON-EMP-LEADS": (
+        # Duplicates readmitted to the valid-lead denominator. vw_leads zeroes every valid
+        # measure on a duplicate row, so switching to lead_count is the one edit that undoes a
+        # structural exclusion, and it inflates the denominator of every funnel rate.
+        "vw_employee_performance",
+        "            sum(l_1.valid_lead_count)::integer AS valid_lead_count,",
+        "            sum(l_1.lead_count)::integer AS valid_lead_count,",
+    ),
+    "RECON-EMP-APPOINTMENTS": (
+        # Advance cancellations readmitted to the show-rate denominator. That exclusion is the
+        # manipulable part of the measure, and a show rate computed over all scheduled
+        # appointments is lower rather than absurd -- nothing about the number says it is the
+        # wrong one.
+        "vw_employee_performance",
+        "            sum(a.eligible_appointment_count)::integer AS bdc_eligible_appointments,",
+        "            sum(a.appointment_count)::integer AS bdc_eligible_appointments,",
+    ),
+    "RECON-EMP-UNASSIGNED": (
+        # The inner join that makes employee totals look tidy. Leads assigned to nobody stop
+        # existing, every employee figure remains correct, and the store's opportunity quietly
+        # shrinks by 296 leads.
+        "vw_employee_performance",
+        "           FROM reporting.vw_leads l_1\n          GROUP BY l_1.dealership_key,",
+        "           FROM reporting.vw_leads l_1\n"
+        "          WHERE l_1.assigned_employee_key IS NOT NULL\n"
+        "          GROUP BY l_1.dealership_key,",
+    ),
+    "RECON-EMP-MIX-PARTITION": (
+        # Certified units promoted to a third category by being added to new as well. The mix
+        # stops partitioning its own denominator, and a reader adding the published shares
+        # gets more than 100% without any single figure looking wrong.
+        "vw_employee_performance",
+        "            sum(c.new_unit_count)::integer AS sold_new_units,",
+        "            sum(c.new_unit_count + c.certified_unit_count)::integer AS sold_new_units,",
+    ),
+    "RECON-EMP-SOURCE-ROLLUP": (
+        # The supporting view re-cutting a DIFFERENT population from the one it claims to.
+        # Duplicates enter the source mix only, so the mix and the employee row disagree while
+        # each is internally consistent.
+        "vw_employee_lead_source_response",
+        "    sum(l.valid_lead_count)::integer AS valid_lead_count,",
+        "    sum(l.lead_count)::integer AS valid_lead_count,",
+    ),
+    "RECON-EMP-SOURCE-MEDIAN": (
+        # The response value coarsened to whole minutes -- the shape of estimating a median
+        # from bands rather than recomputing it from the population.
+        #
+        # COALESCING THE NEVER-RESPONDED BIN TO ZERO WAS TRIED FIRST AND WAS BENIGN, which is
+        # worth recording because it is the defect this view exists to prevent. It is benign
+        # HERE only because the null bin carries responded_lead_count = 0, so the order
+        # statistic never weights it whatever value sits beside it -- the shape defends itself
+        # twice, by predicate and by weight. The console-side version of the same mistake is
+        # not benign and is seeded in `dashboard-employees.test.ts`, where coalescing moves the
+        # median. A corruption a rule correctly tolerates proves nothing about the rule, so it
+        # was replaced rather than the rule widened.
+        "vw_employee_lead_source_response",
+        "    l.first_response_seconds,",
+        "    l.first_response_seconds / 60 * 60 AS first_response_seconds,",
+    ),
+    "RECON-EMP-SAMPLE-FLOOR": (
+        # The floor hard-coded and drifted. A literal that once equalled the function is the
+        # whole failure mode: nothing about a page saying "minimum 12" looks wrong, and the
+        # suppression it drives is silently stricter than the project's rule.
+        "vw_employee_performance",
+        "    warehouse.fn_minimum_sample_floor() AS minimum_sample_floor",
+        "    12 AS minimum_sample_floor",
+    ),
 }
 
 

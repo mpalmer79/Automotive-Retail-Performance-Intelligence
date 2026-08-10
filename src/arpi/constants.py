@@ -1771,6 +1771,40 @@ SQL_RECONCILIATION_IDS: Final[tuple[str, ...]] = (
     "RECON-LEAD-STAGE-GRAIN",
     "RECON-LEAD-RESPONSE-DIST-ROLLUP",
     "RECON-LEAD-RESPONSE-DIST-MEDIAN",
+    # DASH.11. Thirteen rules over the two employee-performance views, which add no fact and
+    # no KPI and are therefore pure claims that existing numbers survive being cut by the
+    # role-playing employee keys the facts already carry. Employee cuts are unusually easy to
+    # get plausibly wrong: one delivery is credited to three different people, one person can
+    # hold several historical versions, and three role keys are nullable.
+    # -GRAIN holds both declared grains. -ROLE-COMPAT proves every job role that reaches a
+    # credited fact is mapped, and that each role-playing key resolves only to a role it may
+    # carry. -SCD2-ATTRIBUTION proves a current-version join has not rewritten history -- the
+    # defect that moves August units to a December store while every total still balances.
+    # -SALES-UNITS and -SALES-GROSS prove both sale credits reproduce vw_vehicle_sales with NO
+    # family filter, which is the property the per-credit column naming buys. -FINANCE compares
+    # against vw_fi_summary at full grain rather than in total, because two managers' figures
+    # could be swapped and still sum. -LEADS and -APPOINTMENTS reconcile every funnel
+    # component, the latter on both date bases with the two shown-appointment populations kept
+    # apart. -UNASSIGNED proves activity credited to nobody survives -- the one defect every
+    # other rollup would survive, because the row would be missing from both sides.
+    # -MIX-PARTITION proves each published mix partitions its own denominator and that
+    # certified units never escape used. -SOURCE-ROLLUP and -SOURCE-MEDIAN prove the supporting
+    # view re-cuts the same lead population and yields a TRUE median per employee.
+    # -SAMPLE-FLOOR proves the floor comes from warehouse.fn_minimum_sample_floor() and nowhere
+    # else.
+    "RECON-EMP-GRAIN",
+    "RECON-EMP-ROLE-COMPAT",
+    "RECON-EMP-SCD2-ATTRIBUTION",
+    "RECON-EMP-SALES-UNITS",
+    "RECON-EMP-SALES-GROSS",
+    "RECON-EMP-FINANCE",
+    "RECON-EMP-LEADS",
+    "RECON-EMP-APPOINTMENTS",
+    "RECON-EMP-UNASSIGNED",
+    "RECON-EMP-MIX-PARTITION",
+    "RECON-EMP-SOURCE-ROLLUP",
+    "RECON-EMP-SOURCE-MEDIAN",
+    "RECON-EMP-SAMPLE-FLOOR",
 )
 
 #: The reconciliations whose failure invalidates the numbers built on them.
@@ -1805,3 +1839,156 @@ CRITICAL_SQL_RECONCILIATION_IDS: Final[tuple[str, ...]] = tuple(
 #: compared to the cent or a rate crosses a documented grain shift. A third value would
 #: be an unexplained tolerance, which is a hole in the evidence rather than a setting.
 ALLOWED_RECONCILIATION_TOLERANCES: Final[frozenset[str]] = frozenset({"0", "0.01"})
+
+# ---------------------------------------------------------------------------------------
+# The employee vocabulary
+# ---------------------------------------------------------------------------------------
+# WHY THESE LIVE HERE RATHER THAN IN THE GENERATOR THAT INVENTED THEM
+# -------------------------------------------------------------------
+# They were in `arpi.generation.employee.contract` until `DASH.11` needed them in
+# `arpi.dashboard.contract`, to declare the closed enumerations of the employee export. That
+# import broke the repository-checks job, which runs `export_dashboard_dataset.py --check`
+# OFFLINE with no pandas: importing anything under `arpi.generation` executes that package's
+# `__init__`, which imports the whole generator, which imports pandas. The dashboard contract
+# has to stay importable from a bare interpreter, because a manifest check that cannot run
+# without the data stack is a check that stops running.
+#
+# `arpi.constants` imports nothing but the standard library, which is exactly why cross-cutting
+# vocabulary belongs in it -- `ALLOWED_STORE_TYPES`, `FINANCE_PRODUCT_CATEGORIES` and
+# `LENDER_CATEGORIES` are already here for the same reason. `arpi.generation.employee.contract`
+# re-exports every name below, so nothing that imported them from there had to move.
+
+DEPARTMENT_SALES: Final = "Sales"
+DEPARTMENT_FINANCE: Final = "Finance"
+DEPARTMENT_BDC: Final = "BDC"
+DEPARTMENT_MANAGEMENT: Final = "Management"
+DEPARTMENT_SERVICE: Final = "Service"
+
+ALLOWED_DEPARTMENTS: Final[tuple[str, ...]] = (
+    DEPARTMENT_SALES,
+    DEPARTMENT_FINANCE,
+    DEPARTMENT_BDC,
+    DEPARTMENT_MANAGEMENT,
+    DEPARTMENT_SERVICE,
+)
+
+JOB_ROLE_SALESPERSON: Final = "Salesperson"
+JOB_ROLE_SALES_MANAGER: Final = "Sales Manager"
+JOB_ROLE_DESK_MANAGER: Final = "Desk Manager"
+JOB_ROLE_FINANCE_MANAGER: Final = "Finance Manager"
+JOB_ROLE_BDC_REPRESENTATIVE: Final = "BDC Representative"
+JOB_ROLE_BDC_MANAGER: Final = "BDC Manager"
+JOB_ROLE_GENERAL_MANAGER: Final = "General Manager"
+JOB_ROLE_SERVICE_ADVISOR: Final = "Service Advisor"
+
+ALLOWED_JOB_ROLES: Final[tuple[str, ...]] = (
+    JOB_ROLE_SALESPERSON,
+    JOB_ROLE_SALES_MANAGER,
+    JOB_ROLE_DESK_MANAGER,
+    JOB_ROLE_FINANCE_MANAGER,
+    JOB_ROLE_BDC_REPRESENTATIVE,
+    JOB_ROLE_BDC_MANAGER,
+    JOB_ROLE_GENERAL_MANAGER,
+    JOB_ROLE_SERVICE_ADVISOR,
+)
+
+TENURE_BAND_UNDER_1: Final = "Under 1 Year"
+TENURE_BAND_1_TO_3: Final = "1-3 Years"
+TENURE_BAND_3_TO_5: Final = "3-5 Years"
+TENURE_BAND_5_TO_10: Final = "5-10 Years"
+TENURE_BAND_OVER_10: Final = "Over 10 Years"
+
+ALLOWED_TENURE_BANDS: Final[tuple[str, ...]] = (
+    TENURE_BAND_UNDER_1,
+    TENURE_BAND_1_TO_3,
+    TENURE_BAND_3_TO_5,
+    TENURE_BAND_5_TO_10,
+    TENURE_BAND_OVER_10,
+)
+
+# ---------------------------------------------------------------------------------------
+# Employee-performance role families (DASH.11)
+# ---------------------------------------------------------------------------------------
+# A ROLE FAMILY IS THE OPERATING SURFACE a person's measured activity belongs to. It is not
+# a rank, a seniority order, a pay band or a judgement, and nothing may order these five
+# values as though one were better than another. They exist because the surfaces have
+# genuinely different opportunities and genuinely different governed denominators: a
+# contact rate belongs to a lead population, a gross per retail unit to a delivered-unit
+# population, and presenting one against the other is a category error rather than a
+# comparison.
+#
+# THE MAP WAS DERIVED FROM THE FACTS, NOT ASSUMED FROM THE TITLES. Every entry below was
+# chosen after auditing which job roles actually appear in each role-playing foreign key on
+# the development profile; the audit is recorded in docs/reviews/DASH-11-REVIEW.md.
+#
+# TWO LAYERS, ONE MEANING, PROVED RATHER THAN PROMISED. warehouse.fn_employee_role_family()
+# is the SQL authority and this is the Python one, because two languages cannot share a
+# function body. tests/integration/test_employee_role_family_parity.py evaluates both over
+# every declared job role and asserts they agree, which is the same arrangement
+# arpi.generation.fi_eligibility has with the governed F&I functions.
+
+ROLE_FAMILY_SALESPERSON: Final = "Salesperson"
+ROLE_FAMILY_DESK_MANAGEMENT: Final = "Desk Management"
+ROLE_FAMILY_FINANCE: Final = "Finance"
+ROLE_FAMILY_BDC: Final = "BDC"
+
+#: The bucket for activity credited to nobody. A real population -- deliveries written with
+#: no finance manager, leads assigned to no one, appointments with no BDC employee -- kept
+#: OUTSIDE the employee comparison and INSIDE every total. It is never given an EMP code.
+ROLE_FAMILY_UNASSIGNED: Final = "Unassigned"
+
+#: Declaration order, which is presentation order. NOT a ranking.
+EMPLOYEE_ROLE_FAMILIES: Final[tuple[str, ...]] = (
+    ROLE_FAMILY_SALESPERSON,
+    ROLE_FAMILY_DESK_MANAGEMENT,
+    ROLE_FAMILY_FINANCE,
+    ROLE_FAMILY_BDC,
+    ROLE_FAMILY_UNASSIGNED,
+)
+
+#: The four families a person can hold, in presentation order. Excludes Unassigned, which
+#: belongs to no person.
+EMPLOYEE_ROLE_FAMILIES_WITH_PEOPLE: Final[tuple[str, ...]] = EMPLOYEE_ROLE_FAMILIES[:-1]
+
+#: job_role -> role family. A role absent from this map has NO employee-performance surface.
+#:
+#: Sales Manager and General Manager are Desk Management because both are credited on real
+#: deliveries in fact_vehicle_sale.desk_manager_key -- 231 and 241 of them on the
+#: development profile -- and each keeps its own job_role label on every row rather than
+#: being promoted to a Desk Manager.
+#:
+#: Service Advisor is ABSENT, deliberately: warehouse.fact_service_visit is Deferred, so no
+#: fact credits a service advisor with anything. Absence means "no surface", which is the
+#: truthful answer; a Service family would render a page of zeroes that read as poor
+#: performance rather than as absent data.
+#:
+#: BDC Manager is mapped but unpopulated: it is in the dim_employee job_role domain and no
+#: generated employee holds it. The entry makes the map total over the declared domain; it
+#: does not claim a surface.
+ROLE_FAMILY_BY_JOB_ROLE: Final[Mapping[str, str]] = MappingProxyType(
+    {
+        JOB_ROLE_SALESPERSON: ROLE_FAMILY_SALESPERSON,
+        JOB_ROLE_DESK_MANAGER: ROLE_FAMILY_DESK_MANAGEMENT,
+        JOB_ROLE_SALES_MANAGER: ROLE_FAMILY_DESK_MANAGEMENT,
+        JOB_ROLE_GENERAL_MANAGER: ROLE_FAMILY_DESK_MANAGEMENT,
+        JOB_ROLE_FINANCE_MANAGER: ROLE_FAMILY_FINANCE,
+        JOB_ROLE_BDC_REPRESENTATIVE: ROLE_FAMILY_BDC,
+        JOB_ROLE_BDC_MANAGER: ROLE_FAMILY_BDC,
+    }
+)
+
+
+def role_family(job_role: str) -> str | None:
+    """Return the employee-performance role family for a job role.
+
+    The Python half of the two-layer authority; ``warehouse.fn_employee_role_family()`` is
+    the SQL half and an integration test proves the two agree over every declared role.
+
+    Args:
+        job_role: A value from :data:`ALLOWED_JOB_ROLES`.
+
+    Returns:
+        The role family, or ``None`` where the role has no employee-performance surface --
+        which is a truthful answer and never a default into some other family.
+    """
+    return ROLE_FAMILY_BY_JOB_ROLE.get(job_role)

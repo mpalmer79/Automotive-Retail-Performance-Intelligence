@@ -15,9 +15,80 @@ be*, which is exactly what a contract states.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-from types import MappingProxyType
 from typing import Final
+
+# The employee vocabulary moved to `arpi.constants` with `DASH.11` and is re-exported here,
+# so every importer of this module is unchanged. The move was forced by a real failure: the
+# offline repository-checks job imports `arpi.dashboard.contract`, and reaching this package
+# for an enumeration executed `arpi.generation.__init__` and therefore pandas.
+from arpi.constants import (
+    ALLOWED_DEPARTMENTS,
+    ALLOWED_JOB_ROLES,
+    ALLOWED_TENURE_BANDS,
+    DEPARTMENT_BDC,
+    DEPARTMENT_FINANCE,
+    DEPARTMENT_MANAGEMENT,
+    DEPARTMENT_SALES,
+    DEPARTMENT_SERVICE,
+    EMPLOYEE_ROLE_FAMILIES,
+    EMPLOYEE_ROLE_FAMILIES_WITH_PEOPLE,
+    JOB_ROLE_BDC_MANAGER,
+    JOB_ROLE_BDC_REPRESENTATIVE,
+    JOB_ROLE_DESK_MANAGER,
+    JOB_ROLE_FINANCE_MANAGER,
+    JOB_ROLE_GENERAL_MANAGER,
+    JOB_ROLE_SALES_MANAGER,
+    JOB_ROLE_SALESPERSON,
+    JOB_ROLE_SERVICE_ADVISOR,
+    ROLE_FAMILY_BDC,
+    ROLE_FAMILY_BY_JOB_ROLE,
+    ROLE_FAMILY_DESK_MANAGEMENT,
+    ROLE_FAMILY_FINANCE,
+    ROLE_FAMILY_SALESPERSON,
+    ROLE_FAMILY_UNASSIGNED,
+    TENURE_BAND_1_TO_3,
+    TENURE_BAND_3_TO_5,
+    TENURE_BAND_5_TO_10,
+    TENURE_BAND_OVER_10,
+    TENURE_BAND_UNDER_1,
+    role_family,
+)
+
+# EXPLICIT re-export, so `--no-implicit-reexport` accepts these names here. The list is only
+# the relocated vocabulary: names defined in this module below are exported by definition and
+# do not belong in it.
+__all__ = [
+    "ALLOWED_DEPARTMENTS",
+    "ALLOWED_JOB_ROLES",
+    "ALLOWED_TENURE_BANDS",
+    "DEPARTMENT_BDC",
+    "DEPARTMENT_FINANCE",
+    "DEPARTMENT_MANAGEMENT",
+    "DEPARTMENT_SALES",
+    "DEPARTMENT_SERVICE",
+    "EMPLOYEE_ROLE_FAMILIES",
+    "EMPLOYEE_ROLE_FAMILIES_WITH_PEOPLE",
+    "JOB_ROLE_BDC_MANAGER",
+    "JOB_ROLE_BDC_REPRESENTATIVE",
+    "JOB_ROLE_DESK_MANAGER",
+    "JOB_ROLE_FINANCE_MANAGER",
+    "JOB_ROLE_GENERAL_MANAGER",
+    "JOB_ROLE_SALESPERSON",
+    "JOB_ROLE_SALES_MANAGER",
+    "JOB_ROLE_SERVICE_ADVISOR",
+    "ROLE_FAMILY_BDC",
+    "ROLE_FAMILY_BY_JOB_ROLE",
+    "ROLE_FAMILY_DESK_MANAGEMENT",
+    "ROLE_FAMILY_FINANCE",
+    "ROLE_FAMILY_SALESPERSON",
+    "ROLE_FAMILY_UNASSIGNED",
+    "TENURE_BAND_1_TO_3",
+    "TENURE_BAND_3_TO_5",
+    "TENURE_BAND_5_TO_10",
+    "TENURE_BAND_OVER_10",
+    "TENURE_BAND_UNDER_1",
+    "role_family",
+]
 
 # ---------------------------------------------------------------------------------------
 # Entity identity and seeding namespaces
@@ -96,39 +167,6 @@ EMPLOYEE_HASH_COLUMNS: Final[tuple[str, ...]] = (
 # ---------------------------------------------------------------------------------------
 # Controlled vocabularies
 # ---------------------------------------------------------------------------------------
-DEPARTMENT_SALES: Final = "Sales"
-DEPARTMENT_FINANCE: Final = "Finance"
-DEPARTMENT_BDC: Final = "BDC"
-DEPARTMENT_MANAGEMENT: Final = "Management"
-DEPARTMENT_SERVICE: Final = "Service"
-
-ALLOWED_DEPARTMENTS: Final[tuple[str, ...]] = (
-    DEPARTMENT_SALES,
-    DEPARTMENT_FINANCE,
-    DEPARTMENT_BDC,
-    DEPARTMENT_MANAGEMENT,
-    DEPARTMENT_SERVICE,
-)
-
-JOB_ROLE_SALESPERSON: Final = "Salesperson"
-JOB_ROLE_SALES_MANAGER: Final = "Sales Manager"
-JOB_ROLE_DESK_MANAGER: Final = "Desk Manager"
-JOB_ROLE_FINANCE_MANAGER: Final = "Finance Manager"
-JOB_ROLE_BDC_REPRESENTATIVE: Final = "BDC Representative"
-JOB_ROLE_BDC_MANAGER: Final = "BDC Manager"
-JOB_ROLE_GENERAL_MANAGER: Final = "General Manager"
-JOB_ROLE_SERVICE_ADVISOR: Final = "Service Advisor"
-
-ALLOWED_JOB_ROLES: Final[tuple[str, ...]] = (
-    JOB_ROLE_SALESPERSON,
-    JOB_ROLE_SALES_MANAGER,
-    JOB_ROLE_DESK_MANAGER,
-    JOB_ROLE_FINANCE_MANAGER,
-    JOB_ROLE_BDC_REPRESENTATIVE,
-    JOB_ROLE_BDC_MANAGER,
-    JOB_ROLE_GENERAL_MANAGER,
-    JOB_ROLE_SERVICE_ADVISOR,
-)
 
 #: ``department`` is a pure function of ``job_role``: it is never drawn independently, so a
 #: BDC representative can never land in the Finance department.
@@ -153,109 +191,6 @@ MANAGER_JOB_ROLES: Final[frozenset[str]] = frozenset(
         JOB_ROLE_GENERAL_MANAGER,
     }
 )
-
-# ---------------------------------------------------------------------------------------
-# Employee-performance role families (DASH.11)
-# ---------------------------------------------------------------------------------------
-# A ROLE FAMILY IS THE OPERATING SURFACE a person's measured activity belongs to. It is not
-# a rank, a seniority order, a pay band or a judgement, and nothing may order these five
-# values as though one were better than another. They exist because the surfaces have
-# genuinely different opportunities and genuinely different governed denominators: a
-# contact rate belongs to a lead population, a gross per retail unit to a delivered-unit
-# population, and presenting one against the other is a category error rather than a
-# comparison.
-#
-# THE MAP WAS DERIVED FROM THE FACTS, NOT ASSUMED FROM THE TITLES. Every entry below was
-# chosen after auditing which job roles actually appear in each role-playing foreign key on
-# the development profile; the audit is recorded in docs/reviews/DASH-11-REVIEW.md.
-#
-# TWO LAYERS, ONE MEANING, PROVED RATHER THAN PROMISED. warehouse.fn_employee_role_family()
-# is the SQL authority and this is the Python one, because two languages cannot share a
-# function body. tests/integration/test_employee_role_family_parity.py evaluates both over
-# every declared job role and asserts they agree, which is the same arrangement
-# arpi.generation.fi_eligibility has with the governed F&I functions.
-
-ROLE_FAMILY_SALESPERSON: Final = "Salesperson"
-ROLE_FAMILY_DESK_MANAGEMENT: Final = "Desk Management"
-ROLE_FAMILY_FINANCE: Final = "Finance"
-ROLE_FAMILY_BDC: Final = "BDC"
-
-#: The bucket for activity credited to nobody. A real population -- deliveries written with
-#: no finance manager, leads assigned to no one, appointments with no BDC employee -- kept
-#: OUTSIDE the employee comparison and INSIDE every total. It is never given an EMP code.
-ROLE_FAMILY_UNASSIGNED: Final = "Unassigned"
-
-#: Declaration order, which is presentation order. NOT a ranking.
-EMPLOYEE_ROLE_FAMILIES: Final[tuple[str, ...]] = (
-    ROLE_FAMILY_SALESPERSON,
-    ROLE_FAMILY_DESK_MANAGEMENT,
-    ROLE_FAMILY_FINANCE,
-    ROLE_FAMILY_BDC,
-    ROLE_FAMILY_UNASSIGNED,
-)
-
-#: The four families a person can hold, in presentation order. Excludes Unassigned, which
-#: belongs to no person.
-EMPLOYEE_ROLE_FAMILIES_WITH_PEOPLE: Final[tuple[str, ...]] = EMPLOYEE_ROLE_FAMILIES[:-1]
-
-#: job_role -> role family. A role absent from this map has NO employee-performance surface.
-#:
-#: Sales Manager and General Manager are Desk Management because both are credited on real
-#: deliveries in fact_vehicle_sale.desk_manager_key -- 231 and 241 of them on the
-#: development profile -- and each keeps its own job_role label on every row rather than
-#: being promoted to a Desk Manager.
-#:
-#: Service Advisor is ABSENT, deliberately: warehouse.fact_service_visit is Deferred, so no
-#: fact credits a service advisor with anything. Absence means "no surface", which is the
-#: truthful answer; a Service family would render a page of zeroes that read as poor
-#: performance rather than as absent data.
-#:
-#: BDC Manager is mapped but unpopulated: it is in the dim_employee job_role domain and no
-#: generated employee holds it. The entry makes the map total over the declared domain; it
-#: does not claim a surface.
-ROLE_FAMILY_BY_JOB_ROLE: Final[Mapping[str, str]] = MappingProxyType(
-    {
-        JOB_ROLE_SALESPERSON: ROLE_FAMILY_SALESPERSON,
-        JOB_ROLE_DESK_MANAGER: ROLE_FAMILY_DESK_MANAGEMENT,
-        JOB_ROLE_SALES_MANAGER: ROLE_FAMILY_DESK_MANAGEMENT,
-        JOB_ROLE_GENERAL_MANAGER: ROLE_FAMILY_DESK_MANAGEMENT,
-        JOB_ROLE_FINANCE_MANAGER: ROLE_FAMILY_FINANCE,
-        JOB_ROLE_BDC_REPRESENTATIVE: ROLE_FAMILY_BDC,
-        JOB_ROLE_BDC_MANAGER: ROLE_FAMILY_BDC,
-    }
-)
-
-
-def role_family(job_role: str) -> str | None:
-    """Return the employee-performance role family for a job role.
-
-    The Python half of the two-layer authority; ``warehouse.fn_employee_role_family()`` is
-    the SQL half and an integration test proves the two agree over every declared role.
-
-    Args:
-        job_role: A value from :data:`ALLOWED_JOB_ROLES`.
-
-    Returns:
-        The role family, or ``None`` where the role has no employee-performance surface --
-        which is a truthful answer and never a default into some other family.
-    """
-    return ROLE_FAMILY_BY_JOB_ROLE.get(job_role)
-
-
-TENURE_BAND_UNDER_1: Final = "Under 1 Year"
-TENURE_BAND_1_TO_3: Final = "1-3 Years"
-TENURE_BAND_3_TO_5: Final = "3-5 Years"
-TENURE_BAND_5_TO_10: Final = "5-10 Years"
-TENURE_BAND_OVER_10: Final = "Over 10 Years"
-
-ALLOWED_TENURE_BANDS: Final[tuple[str, ...]] = (
-    TENURE_BAND_UNDER_1,
-    TENURE_BAND_1_TO_3,
-    TENURE_BAND_3_TO_5,
-    TENURE_BAND_5_TO_10,
-    TENURE_BAND_OVER_10,
-)
-
 #: Upper bound (exclusive, in years) for each band except the open-ended final one.
 _TENURE_BAND_UPPER_BOUNDS: Final[tuple[tuple[float, str], ...]] = (
     (1.0, TENURE_BAND_UNDER_1),
