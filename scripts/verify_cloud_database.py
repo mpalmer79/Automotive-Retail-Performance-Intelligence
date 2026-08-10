@@ -263,16 +263,26 @@ EXPECTED_REPORTING_ROW_COUNTS: dict[str, int] = {
 #: `DQ-*` check for the same reason DASH.9 did not -- the views store nothing, they re-grain
 #: `fact_lead` and `fact_appointment`, whose existing checks already run. Measured on a
 #: fresh warehouse built by the canonical sequence, not inferred from a failing run.
+#: `DASH.11` adds thirteen and no checks (121 -> 134), on the same terms: the thirteen
+#: `RECON-EMP-*` rules over the two employee-performance views. It registers no `DQ-*` check
+#: for the same reason `DASH.9` and `DASH.10` did not -- the views store nothing, they cut
+#: `fact_vehicle_sale`, `fact_lead`, `fact_appointment` and the two F&I facts by the
+#: role-playing employee keys those facts already carry, and every one of those facts' checks
+#: already runs. Thirteen rather than a smaller number because employee cuts fail in
+#: thirteen distinguishable ways: two declared grains, the role-family map, historical SCD
+#: Type 2 attribution, two sale credits, the finance credit, the lead funnel, both
+#: appointment date bases, the population credited to nobody, each published mix, the
+#: supporting view's roll-up, its median, and the sample floor's single authority.
 EXPECTED_REPORTING_ROW_COUNTS_PER_RUN: dict[str, int] = {
     "vw_data_quality_trend": 9,
-    "vw_reconciliation_status": 121,
+    "vw_reconciliation_status": 134,
     "vw_pipeline_run_summary": 1,
     "vw_data_quality_summary": 226,
 }
 
 #: Reconciliations the loader records on every run, and how many may fail.
 #: Per run, for the reason recorded above.
-EXPECTED_RECONCILIATION_COUNT_PER_RUN: int = 121
+EXPECTED_RECONCILIATION_COUNT_PER_RUN: int = 134
 EXPECTED_FAILING_RECONCILIATION_COUNT: int = 0
 
 #: The profile and seed the cloud database must have been loaded from.

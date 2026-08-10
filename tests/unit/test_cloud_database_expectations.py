@@ -137,12 +137,16 @@ def test_the_reconciliation_count_excludes_the_listing_lane() -> None:
     No new entity and therefore no new loader chain: the increment adds a reporting view,
     not a warehouse table.
 
+    134 since ``DASH.11``: thirteen ``RECON-EMP-*`` rules over the two employee-performance
+    views, and again no new entity and no new loader chain -- the views cut facts that are
+    already reconciled by the employee keys those facts already carry.
+
     That is a count of what the pipeline records on a run, and it moved because the
     pipeline records more -- not because the expectation was relaxed to fit a failure. The
-    121 was READ OFF a loaded fixture before it was written here, not inferred from the
+    134 was READ OFF a loaded fixture before it was written here, not inferred from the
     delta.
     """
-    assert verifier.EXPECTED_RECONCILIATION_COUNT_PER_RUN == 121
+    assert verifier.EXPECTED_RECONCILIATION_COUNT_PER_RUN == 134
 
 
 def test_no_listing_view_carries_an_expected_row_count() -> None:
