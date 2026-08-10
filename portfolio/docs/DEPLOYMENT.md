@@ -78,12 +78,21 @@ and fails if any source either of them touches is missing from the Dockerfile's
 | Root Directory    | **unset**                      | see above; `/portfolio` would break the content-integrity gate         |
 | Builder           | `DOCKERFILE`                   | declared in [`railway.json`](../../railway.json)                       |
 | Dockerfile path   | `portfolio/Dockerfile.railway` | named explicitly so no other tool picks it up by convention            |
-| Health-check path | `/status`                      | an existing prerendered route, not an endpoint invented to be probed   |
+| Health-check path | `/technical`                   | an existing prerendered route, not an endpoint invented to be probed   |
 | Restart policy    | `ON_FAILURE`, 3 retries        | this container has no legitimate reason to exit, so an exit is a fault |
 | Replicas          | 1                              | nineteen static routes with no session state                           |
 | Wait for CI       | on (`checkSuites`)             | the CI checks are what prove the manifest is current                   |
 | Node version      | 22                             | matches CI and `engines.node`                                          |
 | Autodeploy branch | `main`                         | Railway's GitHub integration is the one routine deployment owner       |
+
+The health check probed `/status` until `UX.1` consolidated the six documentation
+routes into `/technical?view=...`. `/status` still answers — it is one of the eight
+permanent redirects in [`next.config.ts`](../next.config.ts) — but a probe pointed at
+it would be checking the redirect rather than the application, so the check names the
+DESTINATION. The value here is the one in
+[`railway.json`](../../railway.json) and
+[`deployment/railway/project.config.json`](../../deployment/railway/project.config.json);
+those two are the configuration, and this table describes them.
 
 All of the build and deploy half lives in [`railway.json`](../../railway.json), so
 it is reviewable in a diff rather than in a dashboard — and

@@ -317,7 +317,11 @@ test.describe('the deployed site overstates nothing', () => {
     }
   })
 
-  test('/status reports Lifecycle Phase 5 as in progress, not complete', async ({
+  // Titled for the destination rather than for `/status`, which `UX.1` retired to
+  // a redirect. The assertion already navigated here; only the name lagged, and a
+  // green report naming a route that is no longer a page reads as evidence about
+  // one.
+  test('the status view reports Lifecycle Phase 5 as in progress, not complete', async ({
     page,
   }) => {
     await gotoRendered(page, '/technical?view=status')
@@ -337,7 +341,7 @@ test.describe('the deployed site overstates nothing', () => {
     )
   })
 
-  test('/status reports BOTH engine paths as pending external validation', async ({
+  test('the status view reports BOTH engine paths as pending external validation', async ({
     page,
   }) => {
     await gotoRendered(page, '/technical?view=status')
@@ -560,14 +564,59 @@ test.describe('behaviour on the deployed site', () => {
       testInfo.project.name !== 'remote-mobile',
       'The mobile navigation is only present at a mobile viewport.'
     )
+    /*
+     * THE TARGET MOVED AT `UX.1`, AND THE ASSERTION HAD NOT.
+     *
+     * This test used to open the drawer, click a link labelled "Architecture" and
+     * expect the heading "A layered batch pipeline". Both belonged to a route that
+     * `UX.1` retired: `/architecture` is now a permanent redirect into
+     * `/technical?view=architecture`, and the label is gone from every navigation
+     * surface because the six documentation routes were consolidated into one
+     * utility destination. The deployment was behaving correctly and this was the
+     * only test that said otherwise.
+     *
+     * `Technical` is the current entry — `UTILITY_NAV` in `lib/site.ts`, rendered
+     * into the drawer by `<OperatingRail>` — so the test now asks the same four
+     * questions of the destination that actually exists. It deliberately does NOT
+     * fall back to "some link is visible": a drawer that rendered the wrong list,
+     * or a link that navigated nowhere, has to fail here.
+     *
+     * The retired `/architecture` URL keeps its own coverage in "every retired URL
+     * still resolves on the deployment", which is where a redirect belongs. Testing
+     * it through the navigation would assert that a retired route is a current
+     * destination, which is the defect this change removes.
+     */
     await gotoRendered(page, '/')
     const toggle = page.getByRole('button', { name: /menu|navigation/i }).first()
     await expect(toggle).toBeVisible()
     await toggle.click()
-    const architecture = page.getByRole('link', { name: 'Architecture' }).first()
-    await expect(architecture).toBeVisible()
-    await architecture.click()
-    await expect(page.locator('h1').first()).toContainText('A layered batch pipeline')
+
+    // Scoped to the drawer the toggle controls, so the assertion cannot be
+    // satisfied by a link in the page body that happens to share the label.
+    const drawer = page.locator('#operating-navigation')
+    await expect(drawer).toBeVisible()
+
+    // Anchored rather than exact: the drawer renders each item's purpose line
+    // beneath its label, so the accessible name is "Technical" followed by the
+    // sentence in `UTILITY_NAV`.
+    const technical = drawer.getByRole('link', { name: /^Technical\b/ })
+    await expect(technical).toBeVisible()
+    await technical.click()
+
+    // Navigation SUCCEEDED: the URL is the utility destination and the document is
+    // the one that destination serves.
+    await expect(page).toHaveURL(/\/technical$/)
+    await expect(page.locator('h1').first()).toContainText('How ARPI works')
+
+    // And the drawer closed. `/technical` wears the reference shell rather than the
+    // operating one, so the operating drawer is gone from the document entirely,
+    // and the shell that IS there reports its own menu as collapsed. Asserting both
+    // is what distinguishes "the drawer closed" from "the drawer was replaced by a
+    // different open one".
+    await expect(drawer).toHaveCount(0)
+    await expect(
+      page.getByRole('button', { name: /menu|navigation/i }).first()
+    ).toHaveAttribute('aria-expanded', 'false')
   })
 
   test('no route scrolls horizontally at any viewport', async ({ page }) => {
