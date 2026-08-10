@@ -26,6 +26,7 @@ from record_deployment_evidence import (  # noqa: E402  (path set above)
     REQUIRED_CHECKS,
     UNVERIFIED,
     check_results,
+    host_answered,
     read_playwright_report,
     same_commit,
 )
@@ -261,6 +262,26 @@ def test_an_abbreviation_too_short_to_identify_a_commit_does_not_match() -> None
 
 def test_the_comparison_is_case_insensitive_and_ignores_surrounding_space() -> None:
     assert same_commit(f"  {FULL.upper()}  ", FULL) is True
+
+
+def test_a_silent_homepage_is_a_dead_host_whichever_commit_is_deployed() -> None:
+    assert host_answered(homepage_ok=False, healthy=True, about_this_tree=True) is False
+    assert host_answered(homepage_ok=False, healthy=True, about_this_tree=False) is False
+
+
+def test_both_probes_must_answer_when_the_deployment_is_this_build() -> None:
+    assert host_answered(homepage_ok=True, healthy=True, about_this_tree=True) is True
+    assert host_answered(homepage_ok=True, healthy=False, about_this_tree=True) is False
+
+
+def test_the_health_path_is_not_asked_of_a_build_that_never_had_it() -> None:
+    """The health path is declared by this tree, so it is artefact-dependent.
+
+    `UX.1` moved it from `/status` to `/technical`. Probing `/technical` against a
+    deployment running the commit before that asks the old build for a route it
+    never had, and answering "the deployment is down" would be false.
+    """
+    assert host_answered(homepage_ok=True, healthy=False, about_this_tree=False) is True
 
 
 def test_the_workflow_names_the_commit_the_suite_was_read_from() -> None:

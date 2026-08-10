@@ -143,6 +143,21 @@ def same_commit(deployed: str, expected: str) -> bool:
     return left[:shared] == right[:shared]
 
 
+def host_answered(homepage_ok: bool, healthy: bool, about_this_tree: bool) -> bool:
+    """Whether the deployment answered, as distinct from whether it is this build.
+
+    ``/`` exists in every build, so a homepage that does not answer is a fact about
+    the host. The health path is not: it is declared by *this* tree and names a route
+    of the build this tree produces, so probing it against a deployment running some
+    other commit asks the deployed build for a route it may never have had. That is
+    the same category error as reading the suite's results as a verdict, one level
+    down, so the health probe only counts when the artefact matches.
+    """
+    if not homepage_ok:
+        return False
+    return healthy or not about_this_tree
+
+
 def health_check(base_url: str, health_path: str) -> tuple[bool, bool, str]:
     """Probe the homepage and the platform's health route directly.
 
@@ -307,8 +322,10 @@ def main() -> int:
     print("ARPI deployment evidence")
     print(f"  base URL          : {base_url}")
     print(f"  homepage          : {'200' if homepage_ok else 'NO ANSWER'}")
+    health_note = "" if healthy or about_this_tree else "  (not a route of the deployed build)"
     print(
-        f"  health route      : {target.get('health_path')} -> {'200' if healthy else 'NO ANSWER'}"
+        f"  health route      : {target.get('health_path')} -> "
+        f"{'200' if healthy else 'NO ANSWER'}{health_note}"
     )
     print(f"  deployed commit   : {commit}")
     print(f"  suite             : {target.get('remote_smoke_test')}")
@@ -323,9 +340,8 @@ def main() -> int:
         EVIDENCE_PATH.write_text(rendered, encoding="utf-8")
         print(f"\nwrote {EVIDENCE_PATH.relative_to(REPO_ROOT).as_posix()}")
 
-    # A deployment that does not answer is a failure whichever commit it is running:
-    # the two probes above are about the host, not about the artefact on it.
-    if not (homepage_ok and healthy):
+    # A deployment that does not answer is a failure whichever commit it is running.
+    if not host_answered(homepage_ok, healthy, about_this_tree):
         print(
             "\nFAILED: the deployment did not answer. The evidence file records exactly "
             "what was obtained; the fields that were not obtained still read UNVERIFIED "

@@ -456,6 +456,15 @@ observed the artefact it describes. Such a run cannot fail the branch either, fo
 same reason it cannot verify it. What it can still fail on is the host not answering at
 all — that is a fact about the deployment, not about the artefact on it.
 
+The first attempt at that fix was still wrong, and the way it failed is the clearest
+statement of the principle. It kept the *health-path* probe as a hard failure, reasoning
+that a health check is about the host. It is not. `health_path` is declared by this tree
+and names `/technical`, a route `UX.1` created; asking a deployment running the previous
+commit for it is the same category error one level down, and the job failed with "the
+deployment did not answer" about a deployment that had answered `200` on `/`. Only the
+homepage is artefact-independent, because `/` exists in every build. So the health result
+counts as a verdict when the commits agree and is reported as context when they do not.
+
 A manual run after a deploy is unaffected and still strict: the SHAs agree, every check
 must pass, and the evidence is written. Comparison is by prefix in both directions, so an
 abbreviated SHA in the footer is the commit it abbreviates; `UNVERIFIED`, an empty value
@@ -469,8 +478,10 @@ and binds the eight permanent redirects, which are a property of the build and w
 otherwise be the one `UX.1` guarantee the deployed-site suite did not record.
 
 The evidence file's own recorded run is left exactly as it stands. It is a faithful
-record of what happened on 2026-08-01 against `f5a1eac`, where `/status` did exist, and
-rewriting an observation by hand is the thing this repository forbids most plainly.
+record of what happened on 2026-08-01 against `b90e3244` — 81 passed, 0 failed — a
+commit where `/status` did exist, and rewriting an observation by hand is the thing this
+repository forbids most plainly. Its `checks` therefore still carry the key
+`status_route`, which is the correct name for what that run measured.
 
 ## M. Roadmap
 
