@@ -27,6 +27,7 @@ from record_deployment_evidence import (  # noqa: E402  (path set above)
     UNVERIFIED,
     check_results,
     read_playwright_report,
+    same_commit,
 )
 
 
@@ -218,6 +219,62 @@ def test_markup_without_a_commit_link_yields_no_match() -> None:
 # --------------------------------------------------------------------------------------
 # The workflow that runs it
 # --------------------------------------------------------------------------------------
+
+
+# --------------------------------------------------------------------------------------
+# The run has to be about the artefact the deployment is serving
+# --------------------------------------------------------------------------------------
+
+FULL = "b90e3244a9b0db2f9ee1ccfc9f6d85e93959e806"
+
+
+def test_a_full_hash_matches_itself() -> None:
+    assert same_commit(FULL, FULL) is True
+
+
+def test_an_abbreviation_is_the_commit_it_abbreviates() -> None:
+    """The footer may carry a short SHA. That is the same commit, not another one."""
+    assert same_commit(FULL[:8], FULL) is True
+    assert same_commit(FULL, FULL[:8]) is True
+
+
+def test_a_different_commit_does_not_match() -> None:
+    assert same_commit("f5a1eac61ef1e358473151bd32ad4418e818c22c", FULL) is False
+
+
+def test_not_knowing_is_not_a_match() -> None:
+    """UNVERIFIED and an absent value both answer no.
+
+    A missing comparison must never resolve to "same commit", because that is the
+    answer that lets a run be recorded as evidence about a tree it never touched.
+    """
+    assert same_commit(UNVERIFIED, FULL) is False
+    assert same_commit(FULL, UNVERIFIED) is False
+    assert same_commit("", FULL) is False
+    assert same_commit(FULL, "") is False
+
+
+def test_an_abbreviation_too_short_to_identify_a_commit_does_not_match() -> None:
+    """Six characters is not an identity; unrelated commits collide there."""
+    assert same_commit(FULL[:6], FULL) is False
+
+
+def test_the_comparison_is_case_insensitive_and_ignores_surrounding_space() -> None:
+    assert same_commit(f"  {FULL.upper()}  ", FULL) is True
+
+
+def test_the_workflow_names_the_commit_the_suite_was_read_from() -> None:
+    """Without it the recorder compares nothing and a pull request cannot pass.
+
+    The deployment serves whatever was last deployed, so on a pull request it is
+    never this branch. A branch that changes the routes the remote suite targets
+    would otherwise have the deployed build's behaviour recorded as its own failure.
+    """
+    workflow = (REPO_ROOT / ".github" / "workflows" / "verify-deployment.yml").read_text(
+        encoding="utf-8"
+    )
+    assert "--expect-commit" in workflow
+    assert "github.event.pull_request.head.sha" in workflow
 
 
 def test_the_verification_workflow_uses_no_secret() -> None:

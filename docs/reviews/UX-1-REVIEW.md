@@ -430,6 +430,48 @@ horizontal page overflow, and reflow clean at 200% zoom.
 
 **78. Frontend result?** Reported on the pull request head.
 
+### The deployment-verification workflow, and a soundness hole it exposed
+
+`verify-deployment.yml` runs the remote suite against the live deployment, and it runs
+on a pull request that touches the remote suite or the evidence file — which `UX.1`
+does. It went red, and the reason is worth recording because it is not a defect in this
+branch.
+
+The deployment serves `main`, at `f5a1eac`. The remote suite is read from *this* tree,
+where the routes are `UX.1`'s. Twenty-six assertions written for the new build were
+evaluated against the old one; the host answered every request. **On a pull request the
+deployment is never running the branch under review, so a branch that changes routes
+could not make this check green by any means available to it.**
+
+Underneath that is a real soundness hole. The recorder wrote `commit_sha` — the commit
+read off the *deployment's* footer — into the same record as check results produced by a
+suite read from the *workflow's* tree. When those differ the record claims a commit
+passed checks that were never run against it, which is the precise failure
+`portfolio_deployment.json` exists to prevent.
+
+The fix names the commit. `record_deployment_evidence.py` takes `--expect-commit`, and
+the workflow passes the head SHA. When the deployment is running something else the run
+is **reported and nothing is written**: the register is only ever written by a run that
+observed the artefact it describes. Such a run cannot fail the branch either, for the
+same reason it cannot verify it. What it can still fail on is the host not answering at
+all — that is a fact about the deployment, not about the artefact on it.
+
+A manual run after a deploy is unaffected and still strict: the SHAs agree, every check
+must pass, and the evidence is written. Comparison is by prefix in both directions, so an
+abbreviated SHA in the footer is the commit it abbreviates; `UNVERIFIED`, an empty value
+and anything shorter than seven characters all answer *not a match*, because not knowing
+must never resolve to *same commit*.
+
+Two bindings moved with the routes. `status_route` named `/status is reachable`, a test
+`UX.1` renamed; it is now `health_route`, bound to the role rather than the path so the
+next move of the health route does not silently retire the check. `retired_urls` is new
+and binds the eight permanent redirects, which are a property of the build and would
+otherwise be the one `UX.1` guarantee the deployed-site suite did not record.
+
+The evidence file's own recorded run is left exactly as it stands. It is a faithful
+record of what happened on 2026-08-01 against `f5a1eac`, where `/status` did exist, and
+rewriting an observation by hand is the thing this repository forbids most plainly.
+
 ## M. Roadmap
 
 **79. `UX.1` status?** Implemented.

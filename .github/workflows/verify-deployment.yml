@@ -113,11 +113,21 @@ jobs:
       # Every field this writes comes from a response or from the JSON report
       # above. A field it could not obtain keeps UNVERIFIED; nothing is inferred
       # from the suite's overall verdict.
+      #
+      # `--expect-commit` is the commit the suite was read from. The deployment
+      # serves whichever commit was last deployed, which on a pull request is
+      # never this one -- so a pull request that changes the routes the suite
+      # targets would otherwise report the deployed build's behaviour as this
+      # branch's failure. Named here, the recorder reports such a run and records
+      # nothing, and still fails the job if the host does not answer at all.
       - name: Record what the run observed
+        env:
+          ARPI_TREE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           python scripts/record_deployment_evidence.py \
             --base-url "${ARPI_REMOTE_BASE_URL}" \
             --report portfolio/remote-report.json \
+            --expect-commit "${ARPI_TREE_COMMIT}" \
             --run-url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
 
       # Printed between markers so the recorded evidence can be read straight
