@@ -151,6 +151,7 @@ export const DASHBOARD_NAV_ROUTES: readonly { label: string; path: string }[] = 
   { label: 'F&I', path: '/dashboard/fi' },
   { label: 'Inventory', path: '/dashboard/inventory' },
   { label: 'Leads and marketing', path: '/dashboard/leads-marketing' },
+  { label: 'Employees', path: '/dashboard/employees' },
   { label: 'Accounting', path: '/dashboard/accounting' },
 ]
 
@@ -182,6 +183,7 @@ export const DASHBOARD_ROUTES: readonly string[] = [
   '/dashboard/fi',
   '/dashboard/inventory',
   '/dashboard/leads-marketing',
+  '/dashboard/employees',
   '/dashboard/accounting',
   DEAL_JACKET_ROUTE,
 ]
@@ -198,12 +200,12 @@ export const UNBUILT_DASHBOARD_ROUTES: readonly string[] = [
    * deal id as TEXT because an anchor would have pointed at a 404. `DASH.4` delivers
    * the route, so it moves to `DASHBOARD_ROUTES` in the same diff that makes the
    * destination real; `DASH.7` does the same for `/dashboard/fi`, `DASH.9` for
-   * `/dashboard/inventory` and `/dashboard/accounting`, and `DASH.10` for
-   * `/dashboard/leads-marketing`. What remains here is the two sections that genuinely do
-   * not exist, and `dashboard-deal-jacket.spec.ts` covers the negative that replaced the
-   * first one: a deal id that names no transaction still 404s.
+   * `/dashboard/inventory` and `/dashboard/accounting`, `DASH.10` for
+   * `/dashboard/leads-marketing` and `DASH.11` for `/dashboard/employees`. What remains
+   * here is the ONE section that genuinely does not exist, and
+   * `dashboard-deal-jacket.spec.ts` covers the negative that replaced the first one: a deal
+   * id that names no transaction still 404s.
    */
-  '/dashboard/employees',
   '/dashboard/actions',
 ]
 
@@ -270,6 +272,7 @@ export const ALL_TESTED_ROUTES: readonly string[] = [
   '/dashboard/fi',
   '/dashboard/inventory',
   '/dashboard/leads-marketing',
+  '/dashboard/employees',
   '/dashboard/accounting',
   '/ui-lab',
 ]

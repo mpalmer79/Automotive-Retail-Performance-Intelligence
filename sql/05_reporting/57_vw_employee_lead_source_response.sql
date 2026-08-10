@@ -98,6 +98,8 @@ SELECT
     l.assigned_employee_key                                         AS employee_key,
     coalesce(l.assigned_employee_key, 0)                            AS employee_grain_key,
     ev.employee_id                                                  AS employee_code,
+    ev.job_role                                                     AS job_role,
+    ev.tenure_band                                                  AS tenure_band,
     l.lead_source_key                                               AS lead_source_key,
     src.lead_source_code                                            AS lead_source_code,
     l.first_response_seconds                                        AS first_response_seconds,
@@ -126,6 +128,8 @@ GROUP BY
     coalesce(warehouse.fn_employee_role_family(ev.job_role), 'Unassigned'),
     l.assigned_employee_key,
     ev.employee_id,
+    ev.job_role,
+    ev.tenure_band,
     l.lead_source_key,
     src.lead_source_code,
     l.first_response_seconds;
@@ -159,6 +163,8 @@ COMMENT ON COLUMN reporting.vw_employee_lead_source_response.role_family IS 'Rol
 COMMENT ON COLUMN reporting.vw_employee_lead_source_response.employee_key IS 'Surrogate key of the employee VERSION the lead was assigned to -- the version current when the lead arrived -- or NULL where the lead was assigned to nobody. Hide in the semantic model.';
 COMMENT ON COLUMN reporting.vw_employee_lead_source_response.employee_grain_key IS 'coalesce(employee_key, 0), NOT NULL. Part of the declared grain so uniqueness is testable. 0 is the 296 leads assigned to nobody on the development profile: a real population of real opportunity, kept outside the employee comparison and inside the store total.';
 COMMENT ON COLUMN reporting.vw_employee_lead_source_response.employee_code IS 'Stable synthetic person identity, EMP-#####, or NULL where nobody is credited. The only employee label ARPI publishes.';
+COMMENT ON COLUMN reporting.vw_employee_lead_source_response.job_role IS 'Job role AS AT THE LEAD, from the fact-linked SCD Type 2 version. Carried here as well as on reporting.vw_employee_performance because the BDC surface reads its people from this view, and without it their role could only come from the CURRENT-version roster -- which is the substitution this increment refuses everywhere else. Functionally determines role_family.';
+COMMENT ON COLUMN reporting.vw_employee_lead_source_response.tenure_band IS 'Banded tenure carried by the fact-linked version, for the same reason. A BAND FROM THE VERSION RECORD -- not recomputed as at the lead date, and nothing may present it as the person''s exact tenure on that day.';
 COMMENT ON COLUMN reporting.vw_employee_lead_source_response.lead_source_key IS 'Surrogate key of the lead source. Part of the declared grain. Resolve the category through reporting.vw_lead_source rather than re-deriving one here.';
 COMMENT ON COLUMN reporting.vw_employee_lead_source_response.lead_source_code IS 'Business code of the lead source, so a consumer can group by category through the lead-source dimension without carrying a surrogate key.';
 COMMENT ON COLUMN reporting.vw_employee_lead_source_response.first_response_seconds IS 'The observed seconds to first outbound response shared by every lead in this bin. NULL identifies the NEVER-RESPONDED bin and is NOT a value: it must be excluded from any order statistic and must never be coalesced to zero, which would sort ignored leads to the fastest end and improve the median. Zero is a distinct, valid observation meaning an instant response. Part of the declared grain, NULL included.';

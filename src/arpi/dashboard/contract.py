@@ -3359,7 +3359,7 @@ _EMPLOYEES = DatasetContract(
     source_view="vw_employee",
     grain="One row per employee, current SCD Type 2 version only.",
     business_key=("employee_code",),
-    date_basis="none -- a current-version dimension carries no date",
+    date_basis=None,
     # STORE, THEN ROLE, THEN CODE. A stable business-key ordering, chosen because it is
     # NOT a performance ordering: a default list sorted by units or gross is a leaderboard
     # whether or not the word "rank" appears anywhere near it.
@@ -3516,7 +3516,7 @@ _EMPLOYEE_FINANCE = DatasetContract(
     date_basis="sale date",
     sort_keys=_EMPLOYEE_PERFORMANCE_BUSINESS_KEY,
     where="base.financed_retail_units <> 0 OR base.financed_contract_count <> 0",
-    chunked=True,
+    chunked=False,
     kpi_ids=("KPI-FNI-001", "KPI-FNI-003", "KPI-FNI-019", "KPI-GRS-002", "KPI-GRS-005"),
     columns=(
         *_employee_identity("vw_employee_performance"),
@@ -3593,13 +3593,10 @@ _EMPLOYEE_APPOINTMENTS = DatasetContract(
         "one date column and each measure names its own."
     ),
     business_key=_EMPLOYEE_PERFORMANCE_BUSINESS_KEY,
-    date_basis=(
-        "appointment SCHEDULED date for the eligibility, cancellation and scheduled-basis "
-        "shown columns; appointment SHOW date for the show-basis and shown-and-sold columns"
-    ),
+    date_basis="appointment scheduled date and appointment show date",
     sort_keys=_EMPLOYEE_PERFORMANCE_BUSINESS_KEY,
     where=("base.bdc_scheduled_appointments <> 0 OR base.bdc_shown_appointments_show_basis <> 0"),
-    chunked=True,
+    chunked=False,
     kpi_ids=("KPI-FUN-004", "KPI-FUN-005"),
     columns=(
         *_employee_identity("vw_employee_performance"),
@@ -3703,6 +3700,24 @@ _EMPLOYEE_LEAD_SOURCE = DatasetContract(
         ),
         _employee_role_family("vw_employee_lead_source_response"),
         _employee_code("vw_employee_lead_source_response"),
+        # THE EVENT-TIME IDENTITY, on this dataset too. The BDC surface reads its people from
+        # here, and without these two columns their role and tenure band could only have come
+        # from the CURRENT-version roster -- which is the exact substitution the whole
+        # increment refuses everywhere else. 58 bytes a row is what it costs to keep one rule.
+        _attribute(
+            "job_role",
+            "string",
+            nullable=True,
+            view="vw_employee_lead_source_response",
+            enumeration=ALLOWED_JOB_ROLES,
+        ),
+        _attribute(
+            "tenure_band",
+            "string",
+            nullable=True,
+            view="vw_employee_lead_source_response",
+            enumeration=ALLOWED_TENURE_BANDS,
+        ),
         ColumnContract(
             name="lead_source_code",
             type="string",

@@ -1,13 +1,13 @@
 {
   "schema": "arpi.dashboard_export/1",
   "contract_version": 1,
-  "contract_sha256": "507680f78ef3dec0d411b2ded7cf48f4a9521f5272b56a7bcf93c3ec24b8f2d5",
-  "dataset_version": 13,
-  "generated_at": "2026-08-10T01:26:34+00:00",
+  "contract_sha256": "4b77a5bf9322595f7131dde8f1ab106929473b1a767a70d2321e793b5c9c442d",
+  "dataset_version": 16,
+  "generated_at": "2026-08-10T02:11:33+00:00",
   "as_of_date": "2025-12-31",
   "profile": "development",
   "random_seed": 20250701,
-  "source_commit": "c653b318f2a920c6c4d7e4926f3b12b33026561c",
+  "source_commit": "76c90bf78348ef89bebb72628af5130fa077c3b4",
   "exporter_version": "0.1.0",
   "query_normalisation": "arpi.sql_whitespace_canonical/1",
   "reporter_role": "arpi_reporter",
@@ -7033,7 +7033,7 @@
       "business_key": [
         "employee_code"
       ],
-      "date_basis": "none -- a current-version dimension carries no date",
+      "date_basis": null,
       "sort_keys": [
         "dealership_id",
         "job_role",
@@ -7436,7 +7436,7 @@
         "role_family",
         "employee_code"
       ],
-      "chunked": true,
+      "chunked": false,
       "kpi_ids": [
         "KPI-FNI-001",
         "KPI-FNI-003",
@@ -7645,14 +7645,14 @@
         "role_family",
         "employee_code"
       ],
-      "date_basis": "appointment SCHEDULED date for the eligibility, cancellation and scheduled-basis shown columns; appointment SHOW date for the show-basis and shown-and-sold columns",
+      "date_basis": "appointment scheduled date and appointment show date",
       "sort_keys": [
         "dealership_id",
         "activity_date",
         "role_family",
         "employee_code"
       ],
-      "chunked": true,
+      "chunked": false,
       "kpi_ids": [
         "KPI-FUN-004",
         "KPI-FUN-005"
@@ -7895,6 +7895,41 @@
           "source_column": "reporting.vw_employee_lead_source_response.employee_code"
         },
         {
+          "name": "job_role",
+          "type": "string",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "Salesperson",
+            "Sales Manager",
+            "Desk Manager",
+            "Finance Manager",
+            "BDC Representative",
+            "BDC Manager",
+            "General Manager",
+            "Service Advisor"
+          ],
+          "source_column": "reporting.vw_employee_lead_source_response.job_role"
+        },
+        {
+          "name": "tenure_band",
+          "type": "string",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "Under 1 Year",
+            "1-3 Years",
+            "3-5 Years",
+            "5-10 Years",
+            "Over 10 Years"
+          ],
+          "source_column": "reporting.vw_employee_lead_source_response.tenure_band"
+        },
+        {
           "name": "lead_source_code",
           "type": "string",
           "nullable": false,
@@ -7996,11 +8031,11 @@
         }
       ],
       "notes": "THE ASSIGNED-LEAD POPULATION BENEATH THE EMPLOYEE ROW, and the only place the lead funnel is published per employee -- `employee-sales`, `employee-finance` and `employee-appointments` carry none of these columns, so no number here has a second publisher that could disagree with it. A COUNTED DISTRIBUTION, NOT LEAD ROWS: grouping by the response value and counting preserves the multiset exactly, so a median over these rows weighted by responded_lead_count equals the median over the leads themselves (RECON-EMP-SOURCE-MEDIAN), while the artefact carries no lead key, lead code, customer, sale or vehicle at all. The rows are histogram bins and must never be rendered as leads: a bin with valid_lead_count 1 is still a bin, this is not a drill-through, and this route is not a CRM screen. first_response_seconds null is the NEVER-RESPONDED bin -- it must be excluded from any order statistic and NEVER coalesced to zero, which would sort ignored leads to the fastest end and improve every response figure; zero seconds is a real instant response and an ordinary included observation. unresponded_lead_count must be shown beside any median or mean, because both statistics are blind to that population by definition and a person who ignores half their leads can otherwise report an excellent one. DENOMINATORS: contact rate is contacted over VALID leads; appointment-set rate is appointment-set over CONTACTED leads and never over all valid ones. Duplicates are excluded structurally and stay visible in duplicate_lead_count. SOURCE MIX IS CONTEXT, NEVER A JUDGEMENT -- no lead-quality score, difficulty index or source weighting exists anywhere in ARPI and none may be invented; it is published because comparing two people's contact rates without it compares two different jobs. Carries NO unit, gross or appointment measure, so reading it beside the other employee datasets cannot fan one out. response_time_band is deliberately not exported: it is derivable from the seconds and publishing it would invite a median estimated from bands, which is not a median.",
-      "query_sha256": "c1ef4e0d68234691f253ff4614d8e9b3eabb1ebe92e744c12c1ed6aaac15431b",
+      "query_sha256": "cb80935d0767875956d644ece16d2fcf20cbf7d1a7abb5ed96e871c459fa4c1d",
       "row_count": 5963,
       "file": "employee-lead-source.json",
-      "file_sha256": "54be33865b38322b13c174c49376cfc7dfa5057d91e814160157b7773e0150f4",
-      "file_bytes": 2261991
+      "file_sha256": "9bd44e74787cc0ab64fe650af7a206eb1ce81ab523c2ae04d368fb2a2b4a10ff",
+      "file_bytes": 2583782
     },
     {
       "name": "reconciliation-status",
@@ -8767,7 +8802,7 @@
   "privacy_scan": {
     "status": "passed",
     "prohibited_hits": 0,
-    "columns_scanned": 674,
+    "columns_scanned": 676,
     "primary_control": "contract allowlist",
     "secondary_control": "arpi.validation.privacy prohibited-name tripwire"
   },
@@ -8779,11 +8814,11 @@
     "reconciliations_failed": 0
   },
   "sizes": {
-    "dataset_bytes_total": 22424627,
+    "dataset_bytes_total": 22746418,
     "largest_dataset": {
-      "name": "lead-response",
-      "bytes": 2269345,
-      "rows": 4099
+      "name": "employee-lead-source",
+      "bytes": 2583782,
+      "rows": 5963
     },
     "limits": {
       "single_export_file": 3145728,

@@ -39,6 +39,7 @@ import {
 } from '../../src/lib/dashboard/fi-chunks.ts'
 import { jacketChunkKeys } from '../../src/lib/dashboard/jacket-chunks.ts'
 import { inventoryUnitChunkKeys } from '../../src/lib/dashboard/inventory-chunks.ts'
+import { employeesChunkKeys } from '@/lib/dashboard/employees-chunks'
 import { leadsMarketingChunkKeys } from '@/lib/dashboard/leads-marketing-chunks'
 import { accountingChunkKeys } from '../../src/lib/dashboard/accounting-chunks.ts'
 import { CHUNK_TABLES, chunkKey } from '../../src/lib/dashboard/chunks.ts'
@@ -255,7 +256,7 @@ describe('the selector registry is governed', () => {
 
 describe('the static chunk tables match the manifest chunk index', () => {
   /*
-   * NINE route-scoped tables since `DASH.10`, plus the shared one. `CHUNK_TABLES` holds
+   * ELEVEN route-scoped tables since `DASH.11`, plus the shared one. `CHUNK_TABLES` holds
    * the five date-grained partitions the Executive Overview reads; the 18 deal INDEX
    * partitions, the 18 deal RECORD partitions, the 18 F&I penetration partitions and
    * the 18 deal PRODUCT partitions each live outside it so that importing any one does
@@ -285,6 +286,11 @@ describe('the static chunk tables match the manifest chunk index', () => {
     'lead-stage-loss': () => leadsMarketingChunkKeys()['lead-stage-loss'] ?? [],
     'lead-response-distribution': () =>
       leadsMarketingChunkKeys()['lead-response-distribution'] ?? [],
+    // DASH.11. The two employee partition sets, route-scoped on the same grounds: no other
+    // console route reads a figure credited to a person, and `employee-lead-source` alone is
+    // 522 kB of response bins.
+    'employee-sales': () => employeesChunkKeys()['employee-sales'] ?? [],
+    'employee-lead-source': () => employeesChunkKeys()['employee-lead-source'] ?? [],
   }
 
   it('carries exactly the partitions the export declares, in both directions', () => {
