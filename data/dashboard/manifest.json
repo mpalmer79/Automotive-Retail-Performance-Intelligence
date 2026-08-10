@@ -2,19 +2,19 @@
   "schema": "arpi.dashboard_export/1",
   "contract_version": 1,
   "contract_sha256": "4b77a5bf9322595f7131dde8f1ab106929473b1a767a70d2321e793b5c9c442d",
-  "dataset_version": 16,
-  "generated_at": "2026-08-10T02:11:33+00:00",
+  "dataset_version": 17,
+  "generated_at": "2026-08-10T21:57:23+00:00",
   "as_of_date": "2025-12-31",
   "profile": "development",
   "random_seed": 20250701,
-  "source_commit": "76c90bf78348ef89bebb72628af5130fa077c3b4",
+  "source_commit": "a618c628a521bd83ad954da613f49da0ed26a0de",
   "exporter_version": "0.1.0",
   "query_normalisation": "arpi.sql_whitespace_canonical/1",
   "reporter_role": "arpi_reporter",
   "synthetic_data": true,
   "fictional_dealer_group": true,
   "pipeline_run": {
-    "run_uuid": "9f0465b6-a1c0-4a50-a557-9d94bf9ee6c9",
+    "run_uuid": "40f491ba-a58e-43f4-acea-18cb63d2a6ef",
     "logical_run_key": null,
     "status": "succeeded"
   },
@@ -8159,10 +8159,10 @@
       ],
       "notes": "The source view's grain is reconciliation x run; this dataset selects the export's own run, so the console shows the evidence belonging to the data it is rendering. Three of the view's columns are deliberately NOT exported -- the two source columns and the prose description -- because all three embed schema-qualified names of internal warehouse and audit objects, which ADR-0013 condition 8 keeps out of the public lane. The governed reconciliation_id is the public handle: KPI_CATALOG.md section 36 documents what each identifier compares, so the console links to the definition instead of restating an internal object path. The values, the tolerance and the outcome are what make a reconciliation public evidence.",
       "query_sha256": "aa70b6a47c645d0784272a562223ec2fb1eabb499dac4e403e8a1cc0e0d6f50e",
-      "row_count": 121,
+      "row_count": 134,
       "file": "reconciliation-status.json",
-      "file_sha256": "e442bc5ca47b9a4af4c7d32490bae230f8f271abc8f8207f99d65fd3cff7ae4c",
-      "file_bytes": 27570
+      "file_sha256": "effb624b6d35a6a4159ffdf422190bb9c94a64090f3aa2960564c01279404f30",
+      "file_bytes": 30433
     },
     {
       "name": "pipeline-run",
@@ -8383,10 +8383,128 @@
       "query_sha256": "adca98ad620f10e4795dec1cda7735ca8ccc2a03111636becea487320e109e43",
       "row_count": 1,
       "file": "pipeline-run.json",
-      "file_sha256": "6e8f2732d231e7fab913aec14f13c2486c1f42506df3bb3b7ea321ec79592c9e",
+      "file_sha256": "2d33f474a80a1b2b523f133d094ffc82e42ee6df47ecc64eac911dfea774d184",
       "file_bytes": 538
     }
   ],
+  "management_actions": {
+    "schema": "arpi.management_actions/1",
+    "file": "management-actions.json",
+    "file_sha256": "153bf45a1cd5ec20115c7d062f0f13c27730768052b70dca206ed84182a3457d",
+    "file_bytes": 85714,
+    "row_count": 47,
+    "as_of_date": "2025-12-31",
+    "ruleset": {
+      "schema": "arpi.action_rules/1",
+      "ruleset_version": 1,
+      "file": "config/dashboard/action_rules.yaml",
+      "file_sha256": "911c6bd4a2266a012e267ee8caeb6fa771e938a1acfb67cf8bb2e53af710f674",
+      "expiry": "dataset",
+      "rule_count": 30,
+      "enabled_rule_ids": [
+        "ACT-INV-001",
+        "ACT-INV-003",
+        "ACT-SLS-001",
+        "ACT-SLS-002",
+        "ACT-SLS-003",
+        "ACT-SLS-004",
+        "ACT-SLS-005",
+        "ACT-FNI-006",
+        "ACT-LED-001",
+        "ACT-LED-004",
+        "ACT-ACC-001",
+        "ACT-ACC-002"
+      ],
+      "disabled_rule_ids": [
+        "ACT-INV-002",
+        "ACT-INV-004",
+        "ACT-INV-005",
+        "ACT-INV-006",
+        "ACT-INV-007",
+        "ACT-SLS-006",
+        "ACT-FNI-001",
+        "ACT-FNI-002",
+        "ACT-FNI-003",
+        "ACT-FNI-004",
+        "ACT-FNI-005",
+        "ACT-FNI-007",
+        "ACT-LED-002",
+        "ACT-LED-003",
+        "ACT-LED-005",
+        "ACT-ACC-003",
+        "ACT-ACC-004",
+        "ACT-ACC-005"
+      ]
+    },
+    "source_datasets": [
+      "accounting-exceptions",
+      "appointment-funnel",
+      "deal-explorer",
+      "deal-jacket",
+      "gross-change-bridge",
+      "inventory-units",
+      "lead-response"
+    ],
+    "counts": {
+      "by_severity": {
+        "high": 18,
+        "medium": 29
+      },
+      "by_domain": {
+        "inventory": 17,
+        "sales-gross": 16,
+        "fi": 7,
+        "leads": 3,
+        "accounting": 4
+      },
+      "by_store": {
+        "GSA-001": 15,
+        "GSA-002": 24,
+        "GSA-003": 8
+      },
+      "by_owner_role": {
+        "BDC manager": 3,
+        "Controller": 4,
+        "F&I manager": 8,
+        "General manager": 2,
+        "General sales manager": 13,
+        "Used-car manager": 17
+      },
+      "by_rule": {
+        "ACT-ACC-001": 2,
+        "ACT-ACC-002": 2,
+        "ACT-FNI-006": 7,
+        "ACT-INV-001": 11,
+        "ACT-INV-003": 6,
+        "ACT-LED-004": 3,
+        "ACT-SLS-001": 10,
+        "ACT-SLS-003": 2,
+        "ACT-SLS-004": 1,
+        "ACT-SLS-005": 3
+      }
+    },
+    "change_drivers": {
+      "authority": "reporting.vw_gross_change_bridge",
+      "dataset": "gross-change-bridge",
+      "decomposition_order": [
+        "volume",
+        "front_pvr",
+        "back_pvr"
+      ],
+      "materiality": {
+        "value": "500",
+        "units": "USD",
+        "label": "Display materiality \u2014 project default",
+        "rationale": "A contribution smaller than five hundred dollars against a store month measured in six figures is below the resolution at which a manager would act on it, so it is grouped rather than listed. A round number chosen for legibility, not an accounting materiality standard and not an industry benchmark. The remainder keeps the bridge reconciling exactly, so nothing is lost by grouping it."
+      }
+    },
+    "boundaries": [
+      "Actions are review prompts produced by a deterministic rule file, not findings, recommendations of business action, or evidence of real-world conditions.",
+      "The queue is stateless. It is regenerated with every dataset version, holds no history, and carries no acknowledgement, assignment or completion.",
+      "No language model, learned model or scoring heuristic takes any part in producing it.",
+      "Every threshold the rule file owns is a project default for a fictional dealer group, never an industry benchmark, an OEM standard or a compliance requirement."
+    ]
+  },
   "reconciliation": {
     "status": "passed",
     "method": "Every total is an exact sum over an additive exported column. A ratio publishes its numerator sum and its denominator sum and no quotient: the reporting layer's rule 7 puts division in the consumer, which is also what makes an average of store averages impossible to form from this block and what lets a consumer in any language reproduce the figure without first agreeing on a rounding convention. Non-additive figures -- medians, percentiles, days supply, inventory turn -- carry no group total by design, because a group median is not the average of store medians; their evidence is row-level equality with the source view, asserted by tests/integration/test_dashboard_export.py.",
@@ -8810,11 +8928,11 @@
     "critical_failures": 0,
     "warnings": 0,
     "checks_evaluated": 226,
-    "reconciliations_evaluated": 121,
+    "reconciliations_evaluated": 134,
     "reconciliations_failed": 0
   },
   "sizes": {
-    "dataset_bytes_total": 22746418,
+    "dataset_bytes_total": 22749281,
     "largest_dataset": {
       "name": "employee-lead-source",
       "bytes": 2583782,
@@ -8829,7 +8947,9 @@
   "limitations": [
     "SYNTHETIC DATA -- 100% machine generated. Granite Auto Group and every store, employee role and transaction referenced by this project are fictional. No real customer, employee, dealership or vendor data is present, and no record here describes a real person or a real business.",
     "Granite Auto Group is a fictional dealer group. Every store, employee role and transaction in this export is machine generated.",
-    "The export carries the governed KPIs implemented to date. Lead-source quality, campaign cost, employee performance and a management action queue are not modelled yet and no dataset here stands in for them.",
+    "The export carries the governed KPIs implemented to date. Lead-source quality, campaign cost and employee performance are modelled; no dataset here stands in for anything that is not.",
+    "management-actions is a DERIVED artifact. It reads no view: it is produced by evaluating config/dashboard/action_rules.yaml against the datasets in this same export, so every action can be recomputed by hand from files in the repository. Its rows are review prompts, not findings, recommendations of business action, or evidence of real-world conditions, and the queue is stateless -- regenerated with each dataset version, holding no history, acknowledgement, assignment or completion. No language model, learned model or scoring heuristic takes any part in producing it, and every threshold the rule file owns is a project default for a fictional dealer group.",
+    "The action register retains every proposed rule identifier, including those that do not fire. A disabled identifier carries the audited reason it is disabled: the project holds no such evidence, the evidence exists at a different grain, or the condition cannot survive into a valid export and belongs to the validation layer rather than to a management queue.",
     "The GL control accounts are SYNTHETIC and there are three of them. They are a selected inventory control catalogue, not a chart of accounts, and no real dealer group's account numbering was consulted. ARPI models no journal entry, journal line, posting batch, trial balance, period close or financial statement, so nothing in this export is or supports a financial-statement assertion.",
     "Both sides of the inventory reconciliation are generated from one governed model. It is not agreement between two independent systems, and the development dataset contains deliberately planted controlled variance scenarios so that all four comparison states are exercised. A nonzero variance is a position to investigate and is not evidence of an accounting error.",
     "Inventory control balances are semi-additive. They add across stores and control accounts on ONE comparison date and never across dates; a period figure is the last comparable date within it. A missing side is published as null, never as zero, because a balance that does not exist is not a balance of zero.",

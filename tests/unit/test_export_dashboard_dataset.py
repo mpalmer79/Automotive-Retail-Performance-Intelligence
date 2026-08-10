@@ -24,6 +24,7 @@ from typing import Any, ClassVar
 
 import pytest
 
+from arpi.dashboard import actions
 from arpi.dashboard import contract as spec
 from arpi.dashboard.export import (
     SIZE_LIMITS,
@@ -894,8 +895,20 @@ class TestManifest:
         assert limitations == list(known_limitations())
         joined = " ".join(limitations)
 
-        # The scope boundary: what is not modelled at all.
-        assert "not modelled yet" in joined
+        # The scope boundary: what stands in for nothing.
+        #
+        # THIS ASSERTION USED TO PIN "not modelled yet", AND THAT PHRASE HAS NOW GONE STALE
+        # FOR THE SECOND TIME. The sentence it anchored listed lead-source quality, campaign
+        # cost, employee performance and a management action queue as unmodelled; `DASH.10`,
+        # `DASH.11` and `DASH.12` have since built all four. Pinning the phrase again would
+        # keep the same false sentence present that the docstring above describes.
+        assert "stands in for" in joined
+        # The DASH.12 boundaries. The action queue is the one derived artifact in the
+        # export, and every claim a reader could otherwise make about it is refused here.
+        assert "management-actions is a DERIVED artifact" in joined
+        assert "review prompts, not findings" in joined
+        assert "No language model, learned model or scoring heuristic" in joined
+        assert "retains every proposed rule identifier" in joined
         # The two-lane trust boundary, unchanged since DASH.1.
         assert "Power BI real-engine validation remains pending" in joined
         assert "project defaults" in joined
@@ -1846,7 +1859,12 @@ class TestCheckMode:
         result = check_export(output_dir=exported)
         assert result.ok, result.problems
         assert result.files[spec.MANIFEST_FILE_NAME] > 0
-        assert len(result.files) == len(spec.DATASETS) + 1
+        # One file per contracted dataset, the manifest, and the one DERIVED artifact:
+        # `DASH.12`'s management-action queue, which is read from the datasets above rather
+        # than from any view. Counting it explicitly is what would catch a second derived
+        # file appearing without a contract to describe it.
+        assert len(result.files) == len(spec.DATASETS) + 2
+        assert result.files[actions.ACTIONS_FILE_NAME] > 0
 
     def test_a_missing_manifest_fails(self, tmp_path: Path) -> None:
         result = check_export(output_dir=tmp_path)
