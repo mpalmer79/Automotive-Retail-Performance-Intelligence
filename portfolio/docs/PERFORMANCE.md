@@ -1133,3 +1133,37 @@ operating group declares itself dynamic instead, so the rail is in the initial H
 Lighthouse, Core Web Vitals from real devices, and any figure from the deployed
 Railway environment. The egress policy in this session cannot reach it, and a
 number this repository cannot reproduce is not a number it publishes.
+
+---
+
+## 9.11 The `DASH.12` Action Center, measured
+
+| Route                                               | HTML     | Route JS | CSS     | Total as paid |
+| --------------------------------------------------- | -------- | -------- | ------- | ------------- |
+| `/dashboard/actions`                                | 113.4 kB | 168.5 kB | 15.6 kB | 413.0 kB      |
+| `/dashboard/actions?severity=high&domain=inventory` | 51.6 kB  | 168.5 kB | 15.6 kB | 351.2 kB      |
+| `/` (Executive, after the top-actions block)        | 135.6 kB | 171.2 kB | 15.6 kB | 437.9 kB      |
+
+**Zero client islands added.** Every component on the route is a server component and every
+facet is an anchor, so the JS figure is the shared console bundle and nothing else. A filtered
+view is smaller because it renders fewer cards — the queue is HTML, not a payload the browser
+filters.
+
+**One data door, one file.** `actions-data.ts` carries `management-actions.json` at 126 kB
+generated (85,774 bytes in the root export, 47 rows) and is imported by two routes. It is
+unchunked on the measurement: `DATA_CONTRACT.md` asks for the measurement before the chunking
+decision, and partitioning by store and month would also be the wrong shape, since an action's
+scope is set by its rule rather than by a month.
+
+**`change-drivers-data.ts` exists to keep a graph edge out.** The gross bridge is 15 kB and
+used to sit behind `sales-gross-data.ts` beside a 95 kB trend. Once the Executive Overview and
+the Action Center both needed the bridge, keeping them together would have put the trend into
+two more server graphs to serve neither.
+
+**The bundle report's route list is hand-maintained**, so a new route is invisible to it until
+someone adds one. `/dashboard/actions` was added in the same change that built it.
+
+|                        | Files | Bytes      |
+| ---------------------- | ----- | ---------- |
+| Root export            | 40    | 23,157,777 |
+| Generated console tree | 312   | 7,356,934  |

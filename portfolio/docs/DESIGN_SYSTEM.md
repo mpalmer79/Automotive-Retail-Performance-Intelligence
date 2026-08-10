@@ -851,3 +851,29 @@ business area and never a state; the categorical store marks are still derived
 from the business code rather than from row position; and green and red still mark
 only the three governed cases — which side of zero a value falls, whether an
 explicit target was met, and how old a unit is.
+
+---
+
+## The Action Center (`DASH.12`)
+
+**No new primitive.** The queue is built from `Card`, `Badge`, `Disclosure`, `Cluster`, `Stack`
+and `Text` exactly as they were. An action card is a composition, not a component the system
+needed to grow.
+
+**Severity borrows tone, not meaning.** `failed`, `pending` and `neutral` carry the visual
+weight of the three levels. They are borrowed for weight alone: a high-severity action is not
+a failure, and the WORD beside the colour is what carries the meaning. Never colour alone.
+
+**A facet is a link that looks like a chip.** Selected state is `aria-current` plus the accent
+wash; unselected is the line border on surface. It is a navigation, and it is styled to look
+like one a reader can bookmark rather than like a toggle that holds session state.
+
+**It must not read as a task manager.** No checkbox, no status pill, no assignee avatar, no due
+date, no progress bar. Those are the vocabulary of a system that remembers what you did, and
+this one cannot. The queue is analytical evidence with a drill-through, and the visual language
+says so.
+
+**Evidence is formatted, never converted.** An exact value crosses the boundary as a string and
+is parsed into the console's own exact representation before rendering at a sane precision. A
+bridge effect published as `-14067.506129032258` is the exact quotient; twelve decimal places of
+a dollar figure is noise, and the underlying value is unchanged.
