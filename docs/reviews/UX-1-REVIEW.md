@@ -19,6 +19,28 @@ discovered:
    because they could not be built honestly from a published grain. Q52 names all
    four and `PRODUCT_GAPS.md` §3 states each one's grain problem.
 
+### How the review was carried out
+
+Measurement and rendered-text inspection, not screenshot comparison. Every figure
+in this document came from loading a production build in Chromium and reading the
+DOM: visible paragraph text inside `<main>` excluding collapsed disclosures and
+`sr-only` content, the scroll offset of the first `<figure>`, `<main>`'s own
+height at 1440 × 900 and 390 × 844, and compressed transfer summed per route.
+
+Screenshots were taken during the work and are not committed — the repository
+does not store review captures, and `.gitignore` says so. The measurement tooling
+was scratch and was removed before merge, per the increment's instruction not to
+commit scratch tooling; what survives is the numbers it produced, in
+[`UX-1-BASELINE.md`](UX-1-BASELINE.md) and in the tables below, and the two
+permanent guards that now enforce what the review found —
+`operating-copy.spec.ts` and `ux1-visual-geometry.test.tsx`.
+
+The reason to prefer measurement here: the questions §72 asks — how many
+paragraphs before the first visualization, can the primary question be answered in
+ten seconds, does the page look like software or documentation — are answered more
+honestly by a number a later reader can reproduce than by a capture only this
+session could see.
+
 ---
 
 ## A. Product identity
