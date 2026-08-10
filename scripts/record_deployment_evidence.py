@@ -143,6 +143,22 @@ def same_commit(deployed: str, expected: str) -> bool:
     return left[:shared] == right[:shared]
 
 
+def write_status(path: Path, *, admissible: bool, verified: bool) -> None:
+    """Append two booleans, as ``key=value`` lines, to a file the caller names.
+
+    The caller decides what the file is for; this script only states what it found.
+    ``verify-deployment.yml`` points it at ``$GITHUB_OUTPUT`` so a later step can ask
+    *was this run even about this tree* before treating a red suite as a verdict --
+    which keeps the workflow from re-deriving the comparison and disagreeing with the
+    recorder about it.
+
+    Appended, not written, because the file may already hold a caller's own keys.
+    """
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(f"admissible={'true' if admissible else 'false'}\n")
+        handle.write(f"verified={'true' if verified else 'false'}\n")
+
+
 def host_answered(homepage_ok: bool, healthy: bool, about_this_tree: bool) -> bool:
     """Whether the deployment answered, as distinct from whether it is this build.
 
@@ -253,8 +269,42 @@ def _parse_arguments() -> argparse.Namespace:
             "nothing, which is the behaviour of a run whose caller cannot say."
         ),
     )
+    parser.add_argument(
+        "--status-file",
+        type=Path,
+        default=None,
+        help=(
+            "append `admissible=` and `verified=` to this file, so a caller can act on "
+            "what this run was about without re-deriving it"
+        ),
+    )
     parser.add_argument("--dry-run", action="store_true", help="print the result without writing")
     return parser.parse_args()
+
+
+def _print_report(
+    *,
+    base_url: str,
+    target: dict[str, Any],
+    homepage_ok: bool,
+    healthy: bool,
+    about_this_tree: bool,
+    commit: str,
+    results: dict[str, str],
+) -> None:
+    """Everything the run found, so the job log is readable without the artefact."""
+    # A health path that is not a route of the deployed build reads as an outage
+    # unless the reason is printed beside it.
+    note = "" if healthy or about_this_tree else "  (not a route of the deployed build)"
+    print("ARPI deployment evidence")
+    print(f"  base URL          : {base_url}")
+    print(f"  homepage          : {'200' if homepage_ok else 'NO ANSWER'}")
+    print(f"  health route      : {target.get('health_path')} -> ", end="")
+    print(f"{'200' if healthy else 'NO ANSWER'}{note}")
+    print(f"  deployed commit   : {commit}")
+    print(f"  suite             : {target.get('remote_smoke_test')}")
+    for name, value in results.items():
+        print(f"    {name:26} {value}")
 
 
 def main() -> int:
@@ -319,18 +369,15 @@ def main() -> int:
     }
 
     rendered = json.dumps(document, indent=2) + "\n"
-    print("ARPI deployment evidence")
-    print(f"  base URL          : {base_url}")
-    print(f"  homepage          : {'200' if homepage_ok else 'NO ANSWER'}")
-    health_note = "" if healthy or about_this_tree else "  (not a route of the deployed build)"
-    print(
-        f"  health route      : {target.get('health_path')} -> "
-        f"{'200' if healthy else 'NO ANSWER'}{health_note}"
+    _print_report(
+        base_url=base_url,
+        target=target,
+        homepage_ok=homepage_ok,
+        healthy=healthy,
+        about_this_tree=about_this_tree,
+        commit=commit,
+        results=results,
     )
-    print(f"  deployed commit   : {commit}")
-    print(f"  suite             : {target.get('remote_smoke_test')}")
-    for name, value in results.items():
-        print(f"    {name:26} {value}")
 
     if arguments.dry_run:
         print("\n(dry run: nothing written)")
@@ -340,8 +387,16 @@ def main() -> int:
         EVIDENCE_PATH.write_text(rendered, encoding="utf-8")
         print(f"\nwrote {EVIDENCE_PATH.relative_to(REPO_ROOT).as_posix()}")
 
+    answered = host_answered(homepage_ok, healthy, about_this_tree)
+    if arguments.status_file is not None:
+        write_status(
+            arguments.status_file,
+            admissible=about_this_tree,
+            verified=answered and about_this_tree and suite_green and every_check_passed,
+        )
+
     # A deployment that does not answer is a failure whichever commit it is running.
-    if not host_answered(homepage_ok, healthy, about_this_tree):
+    if not answered:
         print(
             "\nFAILED: the deployment did not answer. The evidence file records exactly "
             "what was obtained; the fields that were not obtained still read UNVERIFIED "

@@ -29,6 +29,7 @@ from record_deployment_evidence import (  # noqa: E402  (path set above)
     host_answered,
     read_playwright_report,
     same_commit,
+    write_status,
 )
 
 
@@ -282,6 +283,46 @@ def test_the_health_path_is_not_asked_of_a_build_that_never_had_it() -> None:
     never had, and answering "the deployment is down" would be false.
     """
     assert host_answered(homepage_ok=True, healthy=False, about_this_tree=False) is True
+
+
+def test_the_status_file_states_both_booleans(tmp_path: Path) -> None:
+    path = tmp_path / "out"
+    write_status(path, admissible=False, verified=False)
+    assert path.read_text(encoding="utf-8") == "admissible=false\nverified=false\n"
+
+
+def test_the_status_file_is_appended_to_rather_than_replaced(tmp_path: Path) -> None:
+    """It is pointed at `$GITHUB_OUTPUT`, which may already hold a caller's keys."""
+    path = tmp_path / "out"
+    path.write_text("existing=value\n", encoding="utf-8")
+    write_status(path, admissible=True, verified=True)
+    assert path.read_text(encoding="utf-8") == ("existing=value\nadmissible=true\nverified=true\n")
+
+
+def test_the_workflow_fails_on_a_red_suite_only_when_the_run_was_admissible() -> None:
+    """The last gate is the one that kept failing branches for the deployed build.
+
+    `Fail if the suite did not pass` fired on the suite's outcome alone, so a branch
+    whose assertions were written for a build the deployment is not serving was
+    failed for the deployed build's behaviour. It must ask the recorder first.
+    """
+    workflow = (REPO_ROOT / ".github" / "workflows" / "verify-deployment.yml").read_text(
+        encoding="utf-8"
+    )
+    assert "--status-file" in workflow
+    assert "steps.record.outputs.admissible == 'true'" in workflow, (
+        "the red-suite gate must be conditioned on the recorder's own admissibility "
+        "verdict, not on the suite outcome alone"
+    )
+
+
+def test_the_admissibility_comparison_lives_in_one_place() -> None:
+    """The workflow must not re-derive it; two implementations could disagree."""
+    workflow = (REPO_ROOT / ".github" / "workflows" / "verify-deployment.yml").read_text(
+        encoding="utf-8"
+    )
+    condition_lines = [line for line in workflow.splitlines() if line.strip().startswith("if:")]
+    assert not any("deployed_commit" in line or "curl" in line for line in condition_lines)
 
 
 def test_the_workflow_names_the_commit_the_suite_was_read_from() -> None:

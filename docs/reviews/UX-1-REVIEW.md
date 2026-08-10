@@ -456,14 +456,27 @@ observed the artefact it describes. Such a run cannot fail the branch either, fo
 same reason it cannot verify it. What it can still fail on is the host not answering at
 all — that is a fact about the deployment, not about the artefact on it.
 
-The first attempt at that fix was still wrong, and the way it failed is the clearest
-statement of the principle. It kept the *health-path* probe as a hard failure, reasoning
-that a health check is about the host. It is not. `health_path` is declared by this tree
-and names `/technical`, a route `UX.1` created; asking a deployment running the previous
-commit for it is the same category error one level down, and the job failed with "the
-deployment did not answer" about a deployment that had answered `200` on `/`. Only the
-homepage is artefact-independent, because `/` exists in every build. So the health result
-counts as a verdict when the commits agree and is reported as context when they do not.
+It took three passes to get right, and the two wrong ones are the clearest statement of
+the principle — the same category error kept reappearing one level further out.
+
+**The health probe.** The first fix kept `health_path` as a hard failure, reasoning that
+a health check is about the host. It is not: `health_path` is declared by this tree and
+names `/technical`, a route `UX.1` created, so asking a deployment running the previous
+commit for it is the same mistake one level down. The job failed with "the deployment did
+not answer" about a deployment that had answered `200` on `/`. Only the homepage is
+artefact-independent, because `/` exists in every build. The health result is a verdict
+when the commits agree and context when they do not.
+
+**The workflow's last gate.** `Fail if the suite did not pass` was conditioned on the
+suite's outcome alone, so it failed the branch for the deployed build's behaviour after
+the recorder had already declined to record any of it. It now asks the recorder: the
+recorder writes `admissible=` and `verified=` to a file the caller names — pointed at
+`$GITHUB_OUTPUT` — and the gate reads that. **The comparison is deliberately not repeated
+in YAML.** A second implementation of it could disagree with the first, and then the job's
+verdict and the register's would part company, which is the failure mode this whole area
+exists to prevent. A run that could not be about this tree reports itself in a step of its
+own rather than being silently skipped, because a run that verified nothing must not read
+like a run that verified everything.
 
 A manual run after a deploy is unaffected and still strict: the SHAs agree, every check
 must pass, and the evidence is written. Comparison is by prefix in both directions, so an
