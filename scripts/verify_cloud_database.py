@@ -120,7 +120,7 @@ TABLE_PRIVILEGES: tuple[str, ...] = (
 #: were measured against; six is the sanitized public listing lane (ADR-0011), which the
 #: semantic model does not read; thirteen is the dashboard program's own lane, which it
 #: does not read either; three is the inventory accounting and GL control lane (`DASH.8`),
-#: which has no browser dataset and no console route at all. A reader who saw only 50
+#: which has no browser dataset and no console route at all. A reader who saw only 52
 #: could not tell which had moved.
 #:
 #: `DASH.10` moved the dashboard lane from ten to thirteen: `vw_appointment_source_funnel`,
@@ -128,13 +128,19 @@ TABLE_PRIVILEGES: tuple[str, ...] = (
 #: existing facts for the leads and marketing route. The MVP twenty-eight is untouched,
 #: which is the point of keeping the lanes apart.
 #:
+#: `DASH.11` moves it from thirteen to fifteen: `vw_employee_performance` and
+#: `vw_employee_lead_source_response`, which cut existing facts by the role-playing employee
+#: keys those facts already carry. Employee performance is a presentation grain, not a new
+#: measure family, so no fact, dimension or KPI identifier arrives with them and the MVP
+#: twenty-eight is untouched again.
+#:
 #: They are duplicated from `arpi.constants` because this script imports only the standard
 #: library -- it runs against a database from a bare interpreter. `tests/unit/
 #: test_cloud_database_expectations.py` fails if these numbers and the constants disagree,
 #: so the duplication cannot drift.
 EXPECTED_MVP_REPORTING_VIEW_COUNT: int = 28
 EXPECTED_LISTING_REPORTING_VIEW_COUNT: int = 6
-EXPECTED_DASHBOARD_REPORTING_VIEW_COUNT: int = 13
+EXPECTED_DASHBOARD_REPORTING_VIEW_COUNT: int = 15
 EXPECTED_ACCOUNTING_REPORTING_VIEW_COUNT: int = 3
 EXPECTED_REPORTING_VIEW_COUNT: int = (
     EXPECTED_MVP_REPORTING_VIEW_COUNT
@@ -257,16 +263,26 @@ EXPECTED_REPORTING_ROW_COUNTS: dict[str, int] = {
 #: `DQ-*` check for the same reason DASH.9 did not -- the views store nothing, they re-grain
 #: `fact_lead` and `fact_appointment`, whose existing checks already run. Measured on a
 #: fresh warehouse built by the canonical sequence, not inferred from a failing run.
+#: `DASH.11` adds thirteen and no checks (121 -> 134), on the same terms: the thirteen
+#: `RECON-EMP-*` rules over the two employee-performance views. It registers no `DQ-*` check
+#: for the same reason `DASH.9` and `DASH.10` did not -- the views store nothing, they cut
+#: `fact_vehicle_sale`, `fact_lead`, `fact_appointment` and the two F&I facts by the
+#: role-playing employee keys those facts already carry, and every one of those facts' checks
+#: already runs. Thirteen rather than a smaller number because employee cuts fail in
+#: thirteen distinguishable ways: two declared grains, the role-family map, historical SCD
+#: Type 2 attribution, two sale credits, the finance credit, the lead funnel, both
+#: appointment date bases, the population credited to nobody, each published mix, the
+#: supporting view's roll-up, its median, and the sample floor's single authority.
 EXPECTED_REPORTING_ROW_COUNTS_PER_RUN: dict[str, int] = {
     "vw_data_quality_trend": 9,
-    "vw_reconciliation_status": 121,
+    "vw_reconciliation_status": 134,
     "vw_pipeline_run_summary": 1,
     "vw_data_quality_summary": 226,
 }
 
 #: Reconciliations the loader records on every run, and how many may fail.
 #: Per run, for the reason recorded above.
-EXPECTED_RECONCILIATION_COUNT_PER_RUN: int = 121
+EXPECTED_RECONCILIATION_COUNT_PER_RUN: int = 134
 EXPECTED_FAILING_RECONCILIATION_COUNT: int = 0
 
 #: The profile and seed the cloud database must have been loaded from.

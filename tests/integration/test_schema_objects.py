@@ -196,6 +196,16 @@ AUDIT_VIEWS = (
     # and its grain, the response distribution's population, and KPI-FUN-008 recomputed
     # from the bins against the median over the governed lead rows.
     "vw_recon_leads_marketing",
+    # The employee-performance reconciliations (DASH.11). Unioned INTO vw_recon_all: the two
+    # employee views add no fact and no KPI, so each is a claim that existing numbers survive
+    # being cut by the role-playing employee keys the facts already carry. All thirteen rules
+    # are per-run evidence -- both declared grains, the role-family map against every
+    # role-playing key, historical SCD Type 2 attribution, both sale credits against
+    # vw_vehicle_sales with no family filter, the finance credit against vw_fi_summary at full
+    # grain, every lead and appointment component on all three date bases, the activity
+    # credited to nobody, each published mix as a partition, the supporting view's roll-up and
+    # its true per-employee median, and the sample floor's single authority.
+    "vw_recon_employee_performance",
 )
 
 EXPECTED_VIEWS = {

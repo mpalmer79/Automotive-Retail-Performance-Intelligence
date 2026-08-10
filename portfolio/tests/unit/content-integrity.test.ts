@@ -264,8 +264,11 @@ describe('every displayed count traces to repository evidence', () => {
     // vw_inventory_units, the console's unit-grain inventory surface; DASH.10 contributed
     // three presentation-grain views for the leads and marketing route -- the source-aware
     // appointment funnel, the lead stage-loss partition and the response distribution.
-    // None of the three adds a fact, a dimension or a KPI identifier.
-    expect([...lane].filter((f) => f.startsWith('05_reporting/'))).toHaveLength(13)
+    // DASH.11 contributed two more on the same terms: vw_employee_performance and
+    // vw_employee_lead_source_response, which cut existing facts by the role-playing
+    // employee keys those facts already carry.
+    // None of the five adds a fact, a dimension or a KPI identifier.
+    expect([...lane].filter((f) => f.startsWith('05_reporting/'))).toHaveLength(15)
   })
 
   it('keeps the sanitized listing lane out of the MVP counts and declares it once', () => {

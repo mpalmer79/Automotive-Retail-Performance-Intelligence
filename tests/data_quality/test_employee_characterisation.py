@@ -332,32 +332,56 @@ def test_the_checks_are_registered_exactly_once() -> None:
 
 
 def test_the_contract_module_declares_no_heavyweight_dependency() -> None:
-    """The column contract is data and its module imports nothing to say so.
+    """The column contract is data and its module imports nothing heavyweight to say so.
 
     Asserted by parsing the module's own imports rather than by watching `sys.modules`:
     importing it at runtime still pulls pandas in transitively, because
     `arpi.generation.__init__` eagerly imports every generator. That is the parent
     package's behaviour, and changing it would be a behaviour change rather than a split.
     What this pins is that the contract itself stays dependency-free.
+
+    `DASH.11` ADDED ONE PERMITTED ARPI IMPORT, AND THE GUARD GOT STRONGER RATHER THAN
+    LOOSER. The employee vocabulary moved to `arpi.constants` because the dashboard contract
+    needs the enumerations and cannot reach into `arpi.generation` without executing that
+    package's `__init__` and therefore pandas -- which broke the offline repository-checks
+    job. `arpi.constants` is permitted here on ONE condition, and the condition is checked
+    below rather than assumed: it must itself import nothing but the standard library. A
+    permitted import that was allowed to grow a dependency would defeat this test entirely,
+    so the transitive check is the point.
     """
     import ast
     from pathlib import Path
 
-    module = Path("src/arpi/generation/employee/contract.py")
-    tree = ast.parse(module.read_text(encoding="utf-8"))
-    imported = {
-        node.module.split(".")[0]
-        for node in ast.walk(tree)
-        if isinstance(node, ast.ImportFrom) and node.module
-    } | {
-        alias.name.split(".")[0]
-        for node in ast.walk(tree)
-        if isinstance(node, ast.Import)
-        for alias in node.names
-    }
-    assert imported <= {"__future__", "datetime", "typing"}, (
+    def first_level_imports(path: Path) -> set[str]:
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        return {
+            node.module.split(".")[0]
+            for node in ast.walk(tree)
+            if isinstance(node, ast.ImportFrom) and node.module
+        } | {
+            alias.name.split(".")[0]
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Import)
+            for alias in node.names
+        }
+
+    stdlib_only = {"__future__", "collections", "datetime", "types", "typing"}
+
+    imported = first_level_imports(Path("src/arpi/generation/employee/contract.py"))
+    assert imported <= stdlib_only | {"arpi"}, (
         f"the column contract imports {sorted(imported)}; it should need nothing beyond "
-        "the standard library's type and date names"
+        "the standard library's type and date names and the vocabulary in arpi.constants"
+    )
+
+    # THE CONDITION ON THE ONE PERMITTED ARPI IMPORT. If `arpi.constants` ever grows a
+    # third-party dependency, this contract stops being dependency-free through it and the
+    # offline job that forced the move breaks again -- silently, because the assertion above
+    # would still hold.
+    constants = first_level_imports(Path("src/arpi/constants.py"))
+    assert constants <= stdlib_only, (
+        f"arpi.constants imports {sorted(constants)}; the employee contract and the dashboard "
+        "contract both reach it from contexts with no data stack, so it must stay "
+        "standard-library only"
     )
     assert isinstance(DIM_EMPLOYEE_COLUMNS, tuple)
     assert all(isinstance(column, str) for column in DIM_EMPLOYEE_COLUMNS)

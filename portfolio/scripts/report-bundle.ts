@@ -103,6 +103,13 @@ const ROUTES = [
   '/dashboard/leads-marketing',
   '/dashboard/leads-marketing?store=GSA-001&period=2025-11',
   '/dashboard/leads-marketing?source=LDS-007',
+  // DASH.11. The default surface, the widest of the four role families, and the state that
+  // suppresses most figures — because the interesting measurement is whether withholding a
+  // ratio costs anything, and whether the BDC surface's source mix does.
+  '/dashboard/employees',
+  '/dashboard/employees?role=bdc',
+  '/dashboard/employees?period=2025-12',
+  '/dashboard/employees?role=finance&employee=EMP-00005',
   '/architecture',
   '/data-model',
   '/kpis',

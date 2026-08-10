@@ -113,6 +113,8 @@ describe('the thirteen primary routes exist and the lab is not one of them', () 
     '/dashboard/fi',
     '/dashboard/inventory',
     '/dashboard/leads-marketing',
+    // `DASH.11`. The employee-performance surface, on the same terms as the others.
+    '/dashboard/employees',
     '/dashboard/accounting',
   ]
 
@@ -130,10 +132,11 @@ describe('the thirteen primary routes exist and the lab is not one of them', () 
     '/dashboard/fi',
     '/dashboard/inventory',
     '/dashboard/leads-marketing',
+    '/dashboard/employees',
     '/dashboard/accounting',
   ]
 
-  it('declares exactly the twenty primary routes plus the lab', () => {
+  it('declares exactly the twenty-one primary routes plus the lab', () => {
     expect(ALL_ROUTES.map((route) => route.href).sort()).toEqual(
       [...PRIMARY, '/ui-lab'].sort()
     )

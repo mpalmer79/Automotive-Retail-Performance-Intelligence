@@ -17,6 +17,79 @@ from __future__ import annotations
 
 from typing import Final
 
+# The employee vocabulary moved to `arpi.constants` with `DASH.11` and is re-exported here,
+# so every importer of this module is unchanged. The move was forced by a real failure: the
+# offline repository-checks job imports `arpi.dashboard.contract`, and reaching this package
+# for an enumeration executed `arpi.generation.__init__` and therefore pandas.
+from arpi.constants import (
+    ALLOWED_DEPARTMENTS,
+    ALLOWED_JOB_ROLES,
+    ALLOWED_TENURE_BANDS,
+    DEPARTMENT_BDC,
+    DEPARTMENT_FINANCE,
+    DEPARTMENT_MANAGEMENT,
+    DEPARTMENT_SALES,
+    DEPARTMENT_SERVICE,
+    EMPLOYEE_ROLE_FAMILIES,
+    EMPLOYEE_ROLE_FAMILIES_WITH_PEOPLE,
+    JOB_ROLE_BDC_MANAGER,
+    JOB_ROLE_BDC_REPRESENTATIVE,
+    JOB_ROLE_DESK_MANAGER,
+    JOB_ROLE_FINANCE_MANAGER,
+    JOB_ROLE_GENERAL_MANAGER,
+    JOB_ROLE_SALES_MANAGER,
+    JOB_ROLE_SALESPERSON,
+    JOB_ROLE_SERVICE_ADVISOR,
+    ROLE_FAMILY_BDC,
+    ROLE_FAMILY_BY_JOB_ROLE,
+    ROLE_FAMILY_DESK_MANAGEMENT,
+    ROLE_FAMILY_FINANCE,
+    ROLE_FAMILY_SALESPERSON,
+    ROLE_FAMILY_UNASSIGNED,
+    TENURE_BAND_1_TO_3,
+    TENURE_BAND_3_TO_5,
+    TENURE_BAND_5_TO_10,
+    TENURE_BAND_OVER_10,
+    TENURE_BAND_UNDER_1,
+    role_family,
+)
+
+# EXPLICIT re-export, so `--no-implicit-reexport` accepts these names here. The list is only
+# the relocated vocabulary: names defined in this module below are exported by definition and
+# do not belong in it.
+__all__ = [
+    "ALLOWED_DEPARTMENTS",
+    "ALLOWED_JOB_ROLES",
+    "ALLOWED_TENURE_BANDS",
+    "DEPARTMENT_BDC",
+    "DEPARTMENT_FINANCE",
+    "DEPARTMENT_MANAGEMENT",
+    "DEPARTMENT_SALES",
+    "DEPARTMENT_SERVICE",
+    "EMPLOYEE_ROLE_FAMILIES",
+    "EMPLOYEE_ROLE_FAMILIES_WITH_PEOPLE",
+    "JOB_ROLE_BDC_MANAGER",
+    "JOB_ROLE_BDC_REPRESENTATIVE",
+    "JOB_ROLE_DESK_MANAGER",
+    "JOB_ROLE_FINANCE_MANAGER",
+    "JOB_ROLE_GENERAL_MANAGER",
+    "JOB_ROLE_SALESPERSON",
+    "JOB_ROLE_SALES_MANAGER",
+    "JOB_ROLE_SERVICE_ADVISOR",
+    "ROLE_FAMILY_BDC",
+    "ROLE_FAMILY_BY_JOB_ROLE",
+    "ROLE_FAMILY_DESK_MANAGEMENT",
+    "ROLE_FAMILY_FINANCE",
+    "ROLE_FAMILY_SALESPERSON",
+    "ROLE_FAMILY_UNASSIGNED",
+    "TENURE_BAND_1_TO_3",
+    "TENURE_BAND_3_TO_5",
+    "TENURE_BAND_5_TO_10",
+    "TENURE_BAND_OVER_10",
+    "TENURE_BAND_UNDER_1",
+    "role_family",
+]
+
 # ---------------------------------------------------------------------------------------
 # Entity identity and seeding namespaces
 # ---------------------------------------------------------------------------------------
@@ -94,39 +167,6 @@ EMPLOYEE_HASH_COLUMNS: Final[tuple[str, ...]] = (
 # ---------------------------------------------------------------------------------------
 # Controlled vocabularies
 # ---------------------------------------------------------------------------------------
-DEPARTMENT_SALES: Final = "Sales"
-DEPARTMENT_FINANCE: Final = "Finance"
-DEPARTMENT_BDC: Final = "BDC"
-DEPARTMENT_MANAGEMENT: Final = "Management"
-DEPARTMENT_SERVICE: Final = "Service"
-
-ALLOWED_DEPARTMENTS: Final[tuple[str, ...]] = (
-    DEPARTMENT_SALES,
-    DEPARTMENT_FINANCE,
-    DEPARTMENT_BDC,
-    DEPARTMENT_MANAGEMENT,
-    DEPARTMENT_SERVICE,
-)
-
-JOB_ROLE_SALESPERSON: Final = "Salesperson"
-JOB_ROLE_SALES_MANAGER: Final = "Sales Manager"
-JOB_ROLE_DESK_MANAGER: Final = "Desk Manager"
-JOB_ROLE_FINANCE_MANAGER: Final = "Finance Manager"
-JOB_ROLE_BDC_REPRESENTATIVE: Final = "BDC Representative"
-JOB_ROLE_BDC_MANAGER: Final = "BDC Manager"
-JOB_ROLE_GENERAL_MANAGER: Final = "General Manager"
-JOB_ROLE_SERVICE_ADVISOR: Final = "Service Advisor"
-
-ALLOWED_JOB_ROLES: Final[tuple[str, ...]] = (
-    JOB_ROLE_SALESPERSON,
-    JOB_ROLE_SALES_MANAGER,
-    JOB_ROLE_DESK_MANAGER,
-    JOB_ROLE_FINANCE_MANAGER,
-    JOB_ROLE_BDC_REPRESENTATIVE,
-    JOB_ROLE_BDC_MANAGER,
-    JOB_ROLE_GENERAL_MANAGER,
-    JOB_ROLE_SERVICE_ADVISOR,
-)
 
 #: ``department`` is a pure function of ``job_role``: it is never drawn independently, so a
 #: BDC representative can never land in the Finance department.
@@ -151,21 +191,6 @@ MANAGER_JOB_ROLES: Final[frozenset[str]] = frozenset(
         JOB_ROLE_GENERAL_MANAGER,
     }
 )
-
-TENURE_BAND_UNDER_1: Final = "Under 1 Year"
-TENURE_BAND_1_TO_3: Final = "1-3 Years"
-TENURE_BAND_3_TO_5: Final = "3-5 Years"
-TENURE_BAND_5_TO_10: Final = "5-10 Years"
-TENURE_BAND_OVER_10: Final = "Over 10 Years"
-
-ALLOWED_TENURE_BANDS: Final[tuple[str, ...]] = (
-    TENURE_BAND_UNDER_1,
-    TENURE_BAND_1_TO_3,
-    TENURE_BAND_3_TO_5,
-    TENURE_BAND_5_TO_10,
-    TENURE_BAND_OVER_10,
-)
-
 #: Upper bound (exclusive, in years) for each band except the open-ended final one.
 _TENURE_BAND_UPPER_BOUNDS: Final[tuple[tuple[float, str], ...]] = (
     (1.0, TENURE_BAND_UNDER_1),

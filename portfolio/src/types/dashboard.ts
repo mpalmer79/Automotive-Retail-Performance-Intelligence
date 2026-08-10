@@ -404,6 +404,61 @@ export const DASHBOARD_DATASETS = [
     chunked: false,
   },
   {
+    // DASH.11. The employee roster, current version only: 30 rows and 5 KB. Chunking a
+    // dimension every route reads whole would add partitions with no read to save.
+    name: 'employees',
+    businessKey: ['employee_code'],
+    dateBasis: null,
+    chunked: false,
+  },
+  {
+    // DASH.11. CHUNKED ON THE MEASUREMENT: 1,036 rows and 614 KB in the root export, which
+    // re-encodes columnar to 159,201 B -- 62% of the 256 KB whole-file ceiling, which is
+    // inside it but not comfortably so, and the employee lane grows with deliveries. Store x
+    // month partitions the page's two commonest filters and takes the largest partition to
+    // 11,503 B. `employee-finance` at 43,910 B and `employee-appointments` at 48,101 B are
+    // one file each for the inverse reason.
+    name: 'employee-sales',
+    businessKey: ['dealership_id', 'activity_date', 'role_family', 'employee_code'],
+    dateBasis: 'sale date',
+    chunked: true,
+  },
+  {
+    // DASH.11. 354 rows and 165 KB, so one file, for the same reason `fi-summary` is one
+    // file at 267 KB: the partitions would each be a few kilobytes and the page reads the
+    // set to total a structure mix across stores anyway.
+    name: 'employee-finance',
+    businessKey: ['dealership_id', 'activity_date', 'role_family', 'employee_code'],
+    dateBasis: 'sale date',
+    chunked: false,
+  },
+  {
+    // DASH.11. 539 rows and 218 KB, one file on the same grounds. Its date column carries
+    // TWO bases -- appointment scheduled and appointment show -- so a month partition would
+    // key partitions by a date whose meaning changes per column, which is exactly the
+    // reason `fi-adjustment-summary` is unchunked.
+    name: 'employee-appointments',
+    businessKey: ['dealership_id', 'activity_date', 'role_family', 'employee_code'],
+    dateBasis: 'appointment scheduled date and appointment show date',
+    chunked: false,
+  },
+  {
+    // DASH.11. CHUNKED: 5,963 rows and 2.26 MB, the largest dataset in the employee lane and
+    // the second largest in the export. One row per response bin, so the set grows with
+    // leads rather than with employees.
+    name: 'employee-lead-source',
+    businessKey: [
+      'dealership_id',
+      'lead_created_date',
+      'role_family',
+      'employee_code',
+      'lead_source_code',
+      'first_response_seconds',
+    ],
+    dateBasis: 'lead creation date',
+    chunked: true,
+  },
+  {
     name: 'reconciliation-status',
     businessKey: ['reconciliation_id'],
     dateBasis: null,

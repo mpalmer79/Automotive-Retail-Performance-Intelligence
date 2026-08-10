@@ -446,3 +446,37 @@ against updated `model_documentation`; the source-hash staleness consequence sta
 Power BI state only from `powerbi/validation/*.json` (never a hardcoded "validated"). SQL-to-DAX
 reconciliation extensions (new measures ↔ new baseline contexts) are specified in the future
 Power BI increment, not silently assumed by this program.
+
+## 10.7 As-built: what `DASH.11` added
+
+Two model lanes and one browser lane, on the same contract as `DASH.10`: a guard is accepted only
+after the defect it claims to catch has been observed failing.
+
+| Lane | File | Covers |
+|---|---|---|
+| Model | `portfolio/tests/unit/dashboard-employees.test.ts` | 42 tests: sample discipline per denominator, ratio-of-sums, the four funnel denominators, the true median, the finance denominator, the non-ranking contract, store context, source mix, route mechanics |
+| Export | `tests/unit/test_export_dashboard_dataset.py` | The exact `employees` allowlist by equality; personal/pay vocabulary and rank/score/target vocabulary on every dataset carrying an employee code |
+| Database | `sql/08_validation/17_recon_employee_performance.sql` | 13 `RECON-EMP-*` rules, evaluated on every pipeline run |
+| Browser | `portfolio/tests/e2e/dashboard-employees.spec.ts` | 43 tests: role addressability, the below-floor rendering, drill-through honesty, no-JavaScript on all four surfaces, axe on seven states, the eight-width responsive matrix |
+
+**Seeded defects added by `DASH.11`**, each observed failing before the guard was accepted:
+
+| Defect | Guard that caught it | Observed |
+|---|---|---|
+| Appointment-set rate divided by valid leads instead of contacted leads | "divides appointment-set leads by CONTACTED leads" | Rate moved 12.1 points |
+| The comparison ordered by volume descending | "orders the comparison by store, role and code" | Order assertion failed |
+| The never-responded bin coalesced to zero seconds | "excludes the never-responded bin rather than treating it as zero" | Median fell |
+
+**Two guards had to learn the difference between an assertion and a disclaimer.** A raw source scan
+for `leaderboard` and `difficulty` failed on the page's own visible copy — "a list sorted by gross is
+a leaderboard whether or not it is labelled one", "availability and not difficulty" — which is the
+contract being STATED rather than broken, and a guard that banned the word would push the page toward
+explaining itself less. The full vocabulary is now checked against every string the model produces as
+a LABEL, where a disclaimer cannot occur; the source scan keeps only the terms with no legitimate
+disclaiming use, and reads comment-stripped source so a file may still document its own ban.
+
+**Three tests refuse to pass vacuously.** The below-floor test asserts that BOTH a suppressed and an
+eligible population exist and fails with a message saying the browser assertion has become vacuous if
+either disappears. The ratio-of-sums test asserts the two implementations differ by more than $0.50 on
+the committed data before asserting which one the model produced. The wholesale, certified, duplicate
+and cancellation tests each assert the excluded population is non-empty first.

@@ -101,7 +101,7 @@ Secondary audiences include regional operations, fixed-operations, and new-car m
 | **Vehicle sales and gross** | Units, front-end and back-end gross, discounting, new versus used |
 | **Inventory health** | Aging, days supply, turn, capital at risk, price-to-market |
 | **Lead funnel and BDC** | Contact rate, appointment set and show rates, lead-to-sale conversion, response time |
-| **Employee performance** | Balanced volume, conversion, gross, and process compliance — always with context |
+| **Employee performance** | Balanced volume, conversion, gross, and process compliance — always with context. **Built (`DASH.11`):** `/dashboard/employees`, four role-aware surfaces, every comparative figure withheld below its own governed minimum sample, no ranking and no personnel data |
 | **Marketing performance** | Cost per lead, cost per sale, gross return on advertising spend |
 | **F&I performance** | Product penetration against **eligible** deals, products per retail unit, finance reserve, cancellations and chargebacks |
 | **Customer retention** | Repeat purchase behaviour and cohort return rates |

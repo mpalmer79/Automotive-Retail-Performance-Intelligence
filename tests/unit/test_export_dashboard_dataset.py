@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections import Counter
 from dataclasses import replace
 from datetime import date
 from decimal import Decimal
@@ -148,7 +149,7 @@ class FakeCursor:
             (collapsed.startswith("SELECT max(c.calendar_date)"), lambda: [(world.as_of_date,)]),
             (
                 collapsed.startswith("SELECT"),
-                lambda: list(world.rows_by_view.get(_view_of(collapsed, alias=True), ())),
+                lambda: world.rows_for(collapsed, _view_of(collapsed, alias=True)),
             ),
         )
         for matches, handler in handlers:
@@ -220,16 +221,55 @@ class FakeWorld:
             0,
             0,
         )
-        self.view_columns = {
-            entry.source_view: tuple(
-                column.source_column.split(".", 1)[1] for column in entry.columns
+        # ONE VIEW CAN FEED SEVERAL DATASETS, so neither map may be a plain
+        # `{source_view: ...}` comprehension: DASH.11 splits
+        # reporting.vw_employee_performance into three datasets by measure group, and a
+        # last-one-wins comprehension would declare only the third one's columns and hand
+        # every dataset the third one's row arity. The columns are therefore UNIONED across
+        # the datasets sharing a view, and the rows are keyed by DATASET.
+        self.view_columns: dict[str, tuple[str, ...]] = {}
+        for entry in spec.DATASETS:
+            declared = tuple(column.source_column.split(".", 1)[1] for column in entry.columns)
+            existing = self.view_columns.get(entry.source_view, ())
+            self.view_columns[entry.source_view] = existing + tuple(
+                name for name in declared if name not in existing
             )
-            for entry in spec.DATASETS
+        self.rows_by_dataset = {entry.name: _fixture_rows(entry) for entry in spec.DATASETS}
+        # Kept keyed by view because every seeded-defect test addresses it that way, and
+        # every view those tests touch feeds exactly one dataset. Where a view feeds several,
+        # `rows_by_dataset` is what the cursor actually serves.
+        self.rows_by_view = {
+            entry.source_view: self.rows_by_dataset[entry.name] for entry in spec.DATASETS
         }
-        self.rows_by_view = {entry.source_view: _fixture_rows(entry) for entry in spec.DATASETS}
         self.source_counts = {
-            entry.source_view: len(self.rows_by_view[entry.source_view]) for entry in spec.DATASETS
+            entry.source_view: len(self.rows_by_dataset[entry.name]) for entry in spec.DATASETS
         }
+        self._dataset_by_sql = {
+            " ".join(spec.dataset_sql(entry).split()): entry.name for entry in spec.DATASETS
+        }
+        self._shared_views = Counter(entry.source_view for entry in spec.DATASETS)
+
+    def rows_for(self, collapsed: str, view: str) -> list[tuple[Any, ...]]:
+        """Return the rows a dataset query should serve.
+
+        The view-keyed map is authoritative wherever a view feeds exactly ONE dataset, so
+        every seeded-defect test that rewrites ``rows_by_view`` -- including the ones that
+        deliberately change a row's arity -- still takes effect unchanged. Only where a view
+        feeds several datasets, which DASH.11 was the first increment to do, is the dataset
+        resolved from the exact statement instead: one row tuple cannot serve three different
+        column lists.
+
+        Args:
+            collapsed: The whitespace-collapsed statement.
+            view: The view the statement reads.
+
+        Returns:
+            The rows to serve.
+        """
+        name = self._dataset_by_sql.get(collapsed)
+        if name is not None and self._shared_views[view] > 1:
+            return list(self.rows_by_dataset[name])
+        return list(self.rows_by_view.get(view, ()))
 
 
 #: One contract-valid value per column type, for the fixture world.
@@ -250,6 +290,9 @@ _FIXTURE_CODES: dict[str, str] = {
     "dealership_id": "GSA-001",
     "lead_source_code": "SRC-001",
     "campaign_code": "CMP-001",
+    # The only employee label ARPI publishes, and the shape the route's `employee=` filter
+    # validates against. A generic placeholder here would let a malformed code pass unnoticed.
+    "employee_code": "EMP-00001",
 }
 
 
@@ -1405,14 +1448,177 @@ class TestPrivacyControls:
             assert "vw_customer" not in entry.join_views
             assert not any("customer" in name for name in entry.column_names)
 
-    def test_no_employee_or_vehicle_identity_is_exported(self) -> None:
-        """DASH.1 has no dataset that needs one, so none is exported."""
+    def test_no_vehicle_identity_view_is_exported(self) -> None:
+        """No vehicle-identity view is a source or a join, at any increment.
+
+        ``DASH.1`` had no dataset needing one and none has appeared since. The vehicle views
+        stay out because a vehicle identifier is a drill-through key this lane does not
+        publish; ``test_no_vehicle_identifier_column_is_declared`` is the column-level half.
+        """
         for entry in spec.DATASETS:
-            assert entry.source_view not in {"vw_employee", "vw_vehicle", "vw_vehicle_model"}
-            assert not any(
-                view in {"vw_employee", "vw_vehicle", "vw_vehicle_model"}
-                for view in entry.join_views
-            )
+            assert entry.source_view not in {"vw_vehicle", "vw_vehicle_model"}
+            assert not any(view in {"vw_vehicle", "vw_vehicle_model"} for view in entry.join_views)
+
+    def test_the_employee_dimension_is_exported_only_as_a_minimised_roster(self) -> None:
+        """``DASH.11`` promotes ``vw_employee``, and this is the exact price of that.
+
+        THIS TEST CHANGED WITH ``DASH.11``, AND THAT IS THE MECHANISM WORKING, not a control
+        being relaxed. Through ``DASH.10`` no dataset needed an employee dimension, so the
+        cheapest protection was to leave no field for one to arrive in. ``DASH.11`` builds the
+        employee-performance route and cannot render ``EMP-#####`` with a store, a role and a
+        tenure band without one.
+
+        So the blanket prohibition becomes an EXACT ALLOWLIST instead of disappearing. The
+        column set below is the whole permitted surface, asserted by equality rather than by
+        containment: adding a field to the contract fails here until someone changes this
+        list deliberately, which is the point. ``vw_employee`` may be a source view and may
+        NOT be a join view, so no other dataset can pick up an employee attribute sideways.
+
+        Everything the dimension knows and does not publish is the real content of this test:
+        no name, initial, photo, avatar, email, phone or address; no hire date, termination
+        date, exact tenure, age or birth date; no salary, commission, pay plan, bonus or any
+        other compensation; and no protected attribute of any kind. None of those exists in
+        the warehouse either -- this is defence in depth, not the only defence.
+        """
+        employee_sources = [entry for entry in spec.DATASETS if entry.source_view == "vw_employee"]
+        assert [entry.name for entry in employee_sources] == ["employees"]
+        assert not any("vw_employee" in entry.join_views for entry in spec.DATASETS)
+        assert set(employee_sources[0].column_names) == {
+            "employee_code",
+            "dealership_id",
+            "department",
+            "job_role",
+            "is_manager",
+            "tenure_band",
+            "is_active",
+        }
+
+    def test_no_employee_dataset_declares_a_personal_or_pay_column(self) -> None:
+        """Defence in depth over every dataset carrying an employee code.
+
+        The privacy tripwire already rejects these names, and the allowlist already rejects
+        anything undeclared. This is the third control and it is deliberately specific to the
+        employee lane: it names the fields a future increment would most plausibly reach for
+        on an employee surface -- a pay plan to explain a gross figure, a hire date to
+        explain a tenure band, a termination date to explain an absence -- and fails on the
+        substring rather than on the exact spelling.
+        """
+        # Split into two rules for the reason arpi.constants does: some of these words are
+        # fragments of wholly innocent ones. "age" lives inside "manager" and "pay" inside
+        # "payment", so those are matched as complete `_`-separated WORDS; the rest cannot
+        # appear inside a legitimate ARPI column name and are matched as substrings.
+        word_tokens = frozenset(
+            {
+                # "first" and "last" are NOT here: `first_response_seconds` is a governed
+                # measure on this very lane. The personal spellings are caught as exact
+                # substrings below instead, which is the precise rule rather than the broad one.
+                "name",
+                "names",
+                "initial",
+                "initials",
+                "age",
+                "dob",
+                "pay",
+                "wage",
+                "wages",
+                "bonus",
+                "salary",
+                "hire",
+                "hired",
+                "sex",
+                "race",
+                "gender",
+                "religion",
+                "marital",
+                "veteran",
+                "orientation",
+                "note",
+                "notes",
+                "comment",
+                "comments",
+                "remarks",
+            }
+        )
+        substrings = (
+            "first_name",
+            "last_name",
+            "given_name",
+            "middle_name",
+            "surname",
+            "maiden",
+            "email",
+            "e_mail",
+            "phone",
+            "address",
+            "street",
+            "termination",
+            "terminated",
+            "birth",
+            "date_of_birth",
+            "commission",
+            "compensation",
+            "payroll",
+            "payplan",
+            "pay_plan",
+            "pay_grade",
+            "ethnic",
+            "disab",
+            "national_origin",
+            "sexual_",
+            "gender_",
+        )
+        for entry in spec.DATASETS:
+            if "employee_code" not in entry.column_names:
+                continue
+            for column in entry.column_names:
+                # store_short_name names a BUSINESS and is the one permitted "name".
+                if column == "store_short_name":
+                    continue
+                lowered = column.lower()
+                offending = (set(lowered.split("_")) & word_tokens) or {
+                    token for token in substrings if token in lowered
+                }
+                assert not offending, (
+                    f"dataset {entry.name!r} declares {column!r} on a surface that carries an "
+                    f"employee code ({', '.join(sorted(offending))}). ARPI publishes no "
+                    "personal, personnel or pay field."
+                )
+
+    def test_no_employee_dataset_declares_a_score_rank_or_target_column(self) -> None:
+        """The non-ranking contract, asserted against the schema rather than the rendering.
+
+        ``PRIVACY_AND_ETHICS.md`` section 5 treats a bare employee ranking as a design defect.
+        A column named for a rank, a score, a tier or a quota would make one derivable no
+        matter how the page chose to draw it, so none may be declared. Employee-scope targets
+        are deliberately unpopulated in ``fact_sales_target`` and nothing here may publish one.
+        """
+        forbidden = (
+            "rank",
+            "score",
+            "percentile",
+            "quartile",
+            "decile",
+            "tier",
+            "grade",
+            "rating",
+            "target",
+            "quota",
+            "goal",
+            "attainment",
+            "pace",
+            "best",
+            "worst",
+            "top_",
+            "bottom_",
+        )
+        for entry in spec.DATASETS:
+            if "employee_code" not in entry.column_names:
+                continue
+            for column in entry.column_names:
+                assert not any(token in column.lower() for token in forbidden), (
+                    f"dataset {entry.name!r} declares {column!r}. No employee rank, score, "
+                    "tier, target or quota exists in ARPI and none may be made derivable."
+                )
 
     def test_no_vehicle_identifier_column_is_declared(self) -> None:
         """The allowlist is the control here, because the tripwire deliberately is not.

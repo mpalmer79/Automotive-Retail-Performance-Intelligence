@@ -105,12 +105,23 @@ _MAX_ROW_PROBLEMS: Final = 5
 #: where the per-row JSON object repeats every column name. One record per line was chosen
 #: over a columnar encoding because a reviewer has to be able to read a diff and see which
 #: measure moved, and that readability costs roughly four bytes of key for every byte of
-#: value. The ceiling is therefore set from the measurement with about 30% headroom, and the
-#: directory total stays where it was because the measured total is an order of magnitude
-#: inside it.
+#: value. The ceiling is therefore set from the measurement with about 30% headroom.
+#:
+#: THE DIRECTORY TOTAL WAS RE-DERIVED THE SAME WAY BY DASH.11, AND FOR THE SAME REASON. The
+#: 20 MB figure was written when the measured total was 13,608,954 bytes (DASH.7) and was
+#: never revisited; DASH.8, DASH.9 and DASH.10 carried it to 19,438,359, leaving 1.46 MB of
+#: headroom, and DASH.11's employee lane measures 3,303,354 more. The design was minimised
+#: first rather than afterwards -- the employee surface is split by measure group instead of
+#: exported as one 51-column view (5,282,320 bytes on its own, past the single-file ceiling),
+#: each split is filtered to the rows its group actually populates, and the lead funnel is
+#: published once rather than in two datasets -- and it still measures 22,741,713 bytes. So
+#: the ceiling is re-derived from the measurement with the same ~30% headroom the single-file
+#: ceiling uses, rather than the design being distorted to fit a number nobody had checked
+#: since DASH.7. That is the precedent section 10 already set for this file, and DASH.13-02
+#: owns setting the real budgets from the route measurements.
 SIZE_LIMITS: Final[Mapping[str, int]] = {
     "single_export_file": 3 * 1024 * 1024,
-    "total_export_directory": 20 * 1024 * 1024,
+    "total_export_directory": 28 * 1024 * 1024,
 }
 
 

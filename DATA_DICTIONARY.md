@@ -454,6 +454,7 @@ attribute values in force at the time of the transaction. Type 2 rows carry `eff
 | **Entity name** | `warehouse.dim_employee` |
 | **Layer** | Warehouse (dimension) |
 | **Purpose** | Describes the synthetic sales, BDC, desk-management, and finance staff whose activity is attributed in the sales and funnel facts. Supplies the *contextual* attributes (tenure, department, store) that [ARCHITECTURE.md §23](ARCHITECTURE.md) requires before any employee performance figure may be shown. |
+| **Consumed by `DASH.11`** | `reporting.vw_employee_performance` and `reporting.vw_employee_lead_source_response` join the **fact-linked version key**, never `employee_id` resolved to its current row, so `job_role`, `department`, `tenure_band` and the assignment store on every employee-performance row are the values that were true AT THE EVENT. `reporting.vw_employee` — the current version only — is exported as the `employees` roster, limited by an exact allowlist to `employee_code`, `dealership_id`, `department`, `job_role`, `is_manager`, `tenure_band` and `is_active`. `hire_date` and `termination_date` are in the dimension and reach no view and no export. |
 | **Declared grain** | **One row per employee role-assignment version (SCD Type 2).** A single person who moves store or changes role produces multiple rows. |
 | **Primary key** | `employee_key` |
 | **Natural / source key** | `employee_id` (`EMP-#####`) |

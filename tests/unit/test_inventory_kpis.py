@@ -220,8 +220,11 @@ def test_the_dashboard_program_views_are_not_part_of_the_mvp_reporting_surface()
     # browser. DASH.10 added three more that a console route reads -- the source-aware
     # appointment funnel, the lead stage-loss partition and the response distribution --
     # each of which re-grains an existing fact so the leads and marketing route can ask a
-    # question the MVP grain cannot answer honestly. None adds a fact or a KPI identifier.
-    assert len(DASHBOARD_PROGRAM_VIEWS) == 13
+    # question the MVP grain cannot answer honestly. DASH.11 added two on the same terms:
+    # vw_employee_performance and vw_employee_lead_source_response cut existing facts by the
+    # role-playing employee keys those facts already carry, because employee performance is a
+    # PRESENTATION GRAIN and not a new measure family. None adds a fact or a KPI identifier.
+    assert len(DASHBOARD_PROGRAM_VIEWS) == 15
     # DASH.8's three accounting views are a FOURTH lane, not part of this one. They add no
     # browser dataset and no console route at all, so folding them into the dashboard
     # program's register would misdescribe both.
@@ -236,7 +239,7 @@ def test_the_full_reporting_surface_is_the_union_of_the_four() -> None:
         | set(DASHBOARD_PROGRAM_VIEWS)
         | set(ACCOUNTING_REPORTING_VIEWS)
     )
-    assert len(REPORTING_VIEWS) == 50
+    assert len(REPORTING_VIEWS) == 52
     assert list(REPORTING_VIEWS) == sorted(REPORTING_VIEWS)
 
 

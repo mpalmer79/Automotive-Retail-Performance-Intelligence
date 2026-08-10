@@ -302,7 +302,8 @@ describe('the console ships exactly the routes its increments have delivered', (
    * navigation entry" - written that way deliberately, so that the first route would
    * arrive in the same diff as the expectation change and a reviewer would see both.
    * `DASH.2` re-aimed them at one route; `DASH.3` re-aimed them at three; `DASH.7`
-   * adds `fi`.
+   * adds `fi`; `DASH.11` adds `employees`, which leaves `actions` (`DASH.12`) as the one
+   * console section that still does not exist.
    *
    * What is guarded is unchanged: the console has EXACTLY the routes its increments
    * have delivered, and the others in `INFORMATION_ARCHITECTURE.md` §1 do not
@@ -316,9 +317,10 @@ describe('the console ships exactly the routes its increments have delivered', (
       .filter((entry) => entry.isDirectory())
       .map((entry) => entry.name)
       .sort()
-    expect(nested, 'DASH.11 onward own the other console routes').toEqual([
+    expect(nested, 'DASH.12 owns the one console route that is left').toEqual([
       'accounting',
       'deals',
+      'employees',
       'fi',
       'inventory',
       'leads-marketing',
@@ -460,20 +462,37 @@ describe('the generated dashboard data stays out of the existing route bundles',
      *                                       `lead-funnel` through `chunks.ts` and nothing
      *                                       more
      *
-     * Folding any of the last eleven into `data.ts` would have put deal-level records
-     * and a 95 kB trend into `/dashboard`'s graph, which has no use for either. Thirteen
+     *   lib/dashboard/employees-chunks.ts   the 36 employee partitions (`DASH.11`): the
+     *                                       sales credit and the assigned-lead response
+     *                                       bins, 681 kB in total
+     *   lib/dashboard/employees-data.ts     the three UNCHUNKED employee sets (`DASH.11`)
+     *                                       -- the 2 kB roster, the 43 kB finance credit
+     *                                       and the 48 kB appointment credit -- plus the
+     *                                       accessors over the partitions above. Only
+     *                                       /dashboard/employees opens either. It
+     *                                       deliberately does NOT re-import
+     *                                       `inventory-health`: the store inventory context
+     *                                       that route shows is the same governed figure
+     *                                       `/dashboard/inventory` publishes, read through
+     *                                       `chunks.ts`, and a second door would have made
+     *                                       it a second number
+     *
+     * Folding any of the last thirteen into `data.ts` would have put deal-level records
+     * and a 95 kB trend into `/dashboard`'s graph, which has no use for either. Fifteen
      * narrow doors is a stronger boundary than two wide ones, and the list is
-     * exhaustive: a fourteenth importer fails here.
+     * exhaustive: a sixteenth importer fails here.
      */
     expect(
       importers.map((file) => file.relative).sort(),
-      'the generated dashboard data has exactly thirteen declared doors'
+      'the generated dashboard data has exactly fifteen declared doors'
     ).toEqual([
       'lib/dashboard/accounting-chunks.ts',
       'lib/dashboard/accounting-data.ts',
       'lib/dashboard/chunks.ts',
       'lib/dashboard/data.ts',
       'lib/dashboard/deal-chunks.ts',
+      'lib/dashboard/employees-chunks.ts',
+      'lib/dashboard/employees-data.ts',
       'lib/dashboard/fi-chunks.ts',
       'lib/dashboard/fi-data.ts',
       'lib/dashboard/inventory-chunks.ts',
@@ -734,8 +753,15 @@ describe('ADR-0013 condition 2: no frontend redefines a KPI', () => {
       'lib/dashboard/accounting.ts',
       'lib/dashboard/deal-jacket.ts',
       'lib/dashboard/deals.ts',
+      'lib/dashboard/employees.ts',
       'lib/dashboard/executive.ts',
       'lib/dashboard/fi.ts',
+      // DASH.11 extracted the absence vocabulary, `sumColumn`, `ratio` and
+      // `percentileFromBins` here from `leads-marketing.ts`, so that `/dashboard/employees`
+      // could reuse them rather than write a second median. It is a view-model module by the
+      // same test this list applies: it resolves exported components into `Exact` figures and
+      // renders nothing.
+      'lib/dashboard/figures.ts',
       'lib/dashboard/inventory.ts',
       'lib/dashboard/leads-marketing.ts',
       'lib/dashboard/sales-gross.ts',
@@ -852,7 +878,10 @@ describe('ADR-0013 condition 2: no frontend redefines a KPI', () => {
      * sizes its own stage bars against leads received; `leads-marketing-sections.tsx`
      * (`DASH.10`) reaches it in exactly one function, `widthOf`, which returns a CSS
      * percentage for a funnel, band, stage-loss or source bar and is the only float on that
-     * page. `pace-bar.tsx` is deliberately absent: it reaches the same conversion through
+     * page. `employees-sections.tsx` (`DASH.11`) reaches it in exactly one function,
+     * `shareWidth`, which turns a governed share into a CSS percentage for a mix bar; that
+     * page's other bar divides two integer counts and never touches an exact value at all.
+     * `pace-bar.tsx` is deliberately absent: it reaches the same conversion through
      * `paceBarGeometry` in `targets.ts`, which divides exactly first and hands the component
      * a ratio.
      */
@@ -864,6 +893,7 @@ describe('ADR-0013 condition 2: no frontend redefines a KPI', () => {
       geometryImporters,
       'a module converted an exact value to a float for something other than geometry'
     ).toEqual([
+      'components/dashboard/employees-sections.tsx',
       'components/dashboard/lead-funnel.tsx',
       'components/dashboard/leads-marketing-sections.tsx',
       'components/dashboard/visuals.tsx',

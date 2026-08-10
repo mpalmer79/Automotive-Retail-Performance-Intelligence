@@ -351,6 +351,16 @@ export const ROUTES = {
     indexable: true,
     priority: 0.8,
   },
+  dashboardEmployees: {
+    href: '/dashboard/employees',
+    navLabel: 'Employees',
+    title: 'Employee performance',
+    description:
+      'Role-aware views of what was credited to each synthetic employee: units and gross, desked deliveries, finance structure, and the BDC lead funnel. Every comparative figure carries its own governed denominator and is withheld below the minimum sample. No ranking, no score, no personnel data.',
+    inPrimaryNav: false,
+    indexable: true,
+    priority: 0.8,
+  },
   dashboardAccounting: {
     href: '/dashboard/accounting',
     navLabel: 'Accounting',
@@ -649,6 +659,19 @@ export const DASHBOARD_NAV: readonly NavItem[] = [
     purpose: 'Funnel, response time, lost stages and what marketing bought',
   },
   {
+    /*
+     * `DASH.11`. Employee performance. It sits after Leads and marketing and before
+     * Accounting, which is the order `INFORMATION_ARCHITECTURE.md` gives. Role and selected
+     * employee are query parameters on this one route rather than child paths, so `matches`
+     * alone is right: `?role=bdc&employee=EMP-00011` is the same document showing a
+     * different surface, and a reader who opens it has not navigated away.
+     */
+    href: ROUTES.dashboardEmployees.href,
+    label: 'Employees',
+    matches: [ROUTES.dashboardEmployees.href],
+    purpose: 'Role-aware activity with its own denominators and sample discipline',
+  },
+  {
     href: ROUTES.dashboardAccounting.href,
     label: 'Accounting',
     matches: [ROUTES.dashboardAccounting.href],
@@ -680,11 +703,6 @@ export interface PlannedDashboardSection {
  * names a route the console can already navigate to.
  */
 export const PLANNED_DASHBOARD_SECTIONS: readonly PlannedDashboardSection[] = [
-  {
-    label: 'Employee performance',
-    increment: 'DASH.11',
-    purpose: 'Role-aware views with minimum-sample discipline',
-  },
   {
     label: 'Management actions',
     increment: 'DASH.12',

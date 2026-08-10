@@ -86,6 +86,9 @@ one commit is a check failure.
 | `reporting.vw_inventory_accounting` | `inventory-accounting` | One unit's accounting position on one month-end date (`DASH.9`) |
 | `reporting.vw_inventory_gl_reconciliation` | `inventory-gl-reconciliation` | Store × GL control account × comparison date (`DASH.9`) |
 | `reporting.vw_accounting_exceptions` | `accounting-exceptions` | One accounting exception (`DASH.9`) |
+| `reporting.vw_employee` | `employees` | One employee, current SCD Type 2 version only (`DASH.11`) |
+| `reporting.vw_employee_performance` | `employee-sales`, `employee-finance`, `employee-appointments` | Store × calendar date × role family × employee **version**, split by measure group (`DASH.11`) |
+| `reporting.vw_employee_lead_source_response` | `employee-lead-source` | + lead source × first-response value, including the never-responded bin (`DASH.11`) |
 | `reporting.vw_reconciliation_status` | `reconciliation-status` | Reconciliation, for the export's own run |
 | `reporting.vw_pipeline_run_summary` | `pipeline-run` | The export's own run |
 
@@ -551,7 +554,7 @@ measured by `python scripts/export_dashboard_dataset.py --check --sizes` and
 | Artifact | Ceiling | Measured (development profile) |
 |---|---|---|
 | Any single committed export file | **3 MB** | 2,269,345 B — `lead-response.json`, 4,099 rows; `fi-product-penetration.json` is next at 2,170,439 B (`DASH.7`) |
-| Total committed `data/dashboard/` | 20 MB | 13,608,954 B across 27 files, 23,328 rows in 26 datasets (`DASH.7`) |
+| Total committed `data/dashboard/` | **28 MB** (re-derived `DASH.11`) | 22,741,713 B across 39 files, 38 datasets (`DASH.11`); was 19,438,359 B across 34 files before this increment |
 | Any single generated chunk | 256 KB | 57,674 B — `datasets/fi-product-penetration/GSA-001/2025-07.json` (`DASH.7`); largest lead-funnel partition 47,325 B, largest deal-jacket partition 44,190 B, largest deal-product-detail partition 34,769 B |
 | Any single generated whole-dataset file | 256 KB (same ceiling) | 95,189 B — `datasets/sales-gross-trend.json` (`DASH.3`); `datasets/fi-summary.json` is 79,488 B and `datasets/fi-adjustment-summary.json` 14,860 B (`DASH.7`) |
 | Client-safe manifest | not separately budgeted | 169,500 B (the largest generated file) (`DASH.7`) |
@@ -574,8 +577,16 @@ The single-file ceiling was a provisional 2 MB written before anything had been 
 measurement broke it: `lead-response.json` is 2.16 MB, because a per-row JSON object repeats every
 column name and one record per line was chosen over a columnar encoding so a reviewer can read the
 diff. The ceiling is therefore set from the measurement with about 30% headroom rather than the
-build being failed against a number nobody had checked. The directory total stays where it was
-because the measured total is well inside it.
+build being failed against a number nobody had checked. The directory total was re-derived the same way
+by `DASH.11`, and for the same reason: the 20 MB figure was written when the measured total was
+13,608,954 B (`DASH.7`) and was never revisited, `DASH.8`–`DASH.10` carried it to 19,438,359 B, and
+`DASH.11`'s employee lane adds 3,303,354 B. The design was minimised first rather than afterwards —
+the employee surface is split by measure group instead of exported as one 51-column view
+(5,282,320 B on its own, past the single-file ceiling), each split is filtered to the rows its group
+actually populates, and the lead funnel is published once rather than in two datasets — and it still
+measures 22,741,713 B. So the ceiling is re-derived from the measurement with the same ~30% headroom
+the single-file ceiling uses, rather than the design being distorted to fit a number nobody had
+checked since `DASH.7`. `DASH.13-02` owns setting the real budgets from the route measurements.
 
 Exceeding a ceiling fails `--check` with the measured number in the message.
 

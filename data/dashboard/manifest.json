@@ -1,20 +1,20 @@
 {
   "schema": "arpi.dashboard_export/1",
   "contract_version": 1,
-  "contract_sha256": "7aa3bac9903bcdc591e8ea9a8e39e0ab9023a225780d0b40cea0813abbb466d5",
-  "dataset_version": 12,
-  "generated_at": "2026-08-09T15:55:53+00:00",
+  "contract_sha256": "4b77a5bf9322595f7131dde8f1ab106929473b1a767a70d2321e793b5c9c442d",
+  "dataset_version": 16,
+  "generated_at": "2026-08-10T02:11:33+00:00",
   "as_of_date": "2025-12-31",
   "profile": "development",
   "random_seed": 20250701,
-  "source_commit": "fd6eb0ba93aa04b12020526da4c19c706285300f",
+  "source_commit": "76c90bf78348ef89bebb72628af5130fa077c3b4",
   "exporter_version": "0.1.0",
   "query_normalisation": "arpi.sql_whitespace_canonical/1",
   "reporter_role": "arpi_reporter",
   "synthetic_data": true,
   "fictional_dealer_group": true,
   "pipeline_run": {
-    "run_uuid": "4a6ed216-01cc-43de-b3a2-9c7562e910d2",
+    "run_uuid": "9f0465b6-a1c0-4a50-a557-9d94bf9ee6c9",
     "logical_run_key": null,
     "status": "succeeded"
   },
@@ -29,6 +29,9 @@
     "reporting.vw_deal_jacket",
     "reporting.vw_deal_product_detail",
     "reporting.vw_dealership",
+    "reporting.vw_employee",
+    "reporting.vw_employee_lead_source_response",
+    "reporting.vw_employee_performance",
     "reporting.vw_fi_adjustment_summary",
     "reporting.vw_fi_product_penetration",
     "reporting.vw_fi_summary",
@@ -7023,6 +7026,1018 @@
       "file_bytes": 2358
     },
     {
+      "name": "employees",
+      "source_view": "reporting.vw_employee",
+      "join_views": [],
+      "grain": "One row per employee, current SCD Type 2 version only.",
+      "business_key": [
+        "employee_code"
+      ],
+      "date_basis": null,
+      "sort_keys": [
+        "dealership_id",
+        "job_role",
+        "employee_code"
+      ],
+      "chunked": false,
+      "kpi_ids": [],
+      "columns": [
+        {
+          "name": "employee_code",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee.employee_code"
+        },
+        {
+          "name": "dealership_id",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee.dealership_code"
+        },
+        {
+          "name": "department",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "Sales",
+            "Finance",
+            "BDC",
+            "Management",
+            "Service"
+          ],
+          "source_column": "reporting.vw_employee.department"
+        },
+        {
+          "name": "job_role",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "Salesperson",
+            "Sales Manager",
+            "Desk Manager",
+            "Finance Manager",
+            "BDC Representative",
+            "BDC Manager",
+            "General Manager",
+            "Service Advisor"
+          ],
+          "source_column": "reporting.vw_employee.job_role"
+        },
+        {
+          "name": "is_manager",
+          "type": "boolean",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee.is_manager"
+        },
+        {
+          "name": "tenure_band",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "Under 1 Year",
+            "1-3 Years",
+            "3-5 Years",
+            "5-10 Years",
+            "Over 10 Years"
+          ],
+          "source_column": "reporting.vw_employee.tenure_band"
+        },
+        {
+          "name": "is_active",
+          "type": "boolean",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee.is_active"
+        }
+      ],
+      "notes": "THE EMPLOYEE ROSTER, MINIMISED TO WHAT AN OPERATING COMPARISON NEEDS. ARPI publishes no employee name, initial, photo, avatar, email, phone, address, hire date, termination date, exact tenure, age, compensation, commission, pay plan or bonus, and none of those exists in the warehouse to publish. employee_code is the only label, and it identifies a FICTIONAL person in a synthetic dataset. employee_label is deliberately not exported: it is the code and the role concatenated, and both are already here, so a consumer composes the label it wants rather than inheriting one. version_effective_date is not exported either -- it is a record-change date nothing on the route needs. TENURE IS A BAND, NEVER A DATE: the band answers every legitimate analytical question and the precise value does not. is_active IS CURRENT ROSTER CONTEXT AND NOT A HISTORICAL FILTER -- a person who has left is still the person who sold the car, so their activity stays in the period it happened in, and nothing may drop a performance row because this is false. No termination date is published and no leaving vocabulary is available: 'inactive in current roster' is the whole statement. THIS IS NOT AN HR DIRECTORY.",
+      "query_sha256": "51af72cbb3678f7a1bc98c14e599c69d11cb51eacc8806ef2ca79050e42c6af2",
+      "row_count": 30,
+      "file": "employees.json",
+      "file_sha256": "8971ac6925f131ed985b67e7b2a3366bed16edb740a4b79e3637b6272d9f9e7c",
+      "file_bytes": 5133
+    },
+    {
+      "name": "employee-sales",
+      "source_view": "reporting.vw_employee_performance",
+      "join_views": [],
+      "grain": "One row per store, per sale date, per role family, per employee -- restricted to the rows carrying units delivered under a salesperson or desk-manager credit.",
+      "business_key": [
+        "dealership_id",
+        "activity_date",
+        "role_family",
+        "employee_code"
+      ],
+      "date_basis": "sale date",
+      "sort_keys": [
+        "dealership_id",
+        "activity_date",
+        "role_family",
+        "employee_code"
+      ],
+      "chunked": true,
+      "kpi_ids": [
+        "KPI-SLS-001",
+        "KPI-SLS-002",
+        "KPI-SLS-003",
+        "KPI-GRS-001",
+        "KPI-GRS-003",
+        "KPI-GRS-004"
+      ],
+      "columns": [
+        {
+          "name": "dealership_id",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_performance.dealership_id"
+        },
+        {
+          "name": "activity_date",
+          "type": "date",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "see the dataset's date_basis: each measure group names its own",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_performance.activity_date"
+        },
+        {
+          "name": "role_family",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "Salesperson",
+            "Desk Management",
+            "Finance",
+            "BDC",
+            "Unassigned"
+          ],
+          "source_column": "reporting.vw_employee_performance.role_family"
+        },
+        {
+          "name": "employee_code",
+          "type": "string",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_performance.employee_code"
+        },
+        {
+          "name": "job_role",
+          "type": "string",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "Salesperson",
+            "Sales Manager",
+            "Desk Manager",
+            "Finance Manager",
+            "BDC Representative",
+            "BDC Manager",
+            "General Manager",
+            "Service Advisor"
+          ],
+          "source_column": "reporting.vw_employee_performance.job_role"
+        },
+        {
+          "name": "tenure_band",
+          "type": "string",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "Under 1 Year",
+            "1-3 Years",
+            "3-5 Years",
+            "5-10 Years",
+            "Over 10 Years"
+          ],
+          "source_column": "reporting.vw_employee_performance.tenure_band"
+        },
+        {
+          "name": "sold_retail_units",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "units",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_performance.sold_retail_units"
+        },
+        {
+          "name": "sold_new_units",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "units",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_performance.sold_new_units"
+        },
+        {
+          "name": "sold_used_units",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "units",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_performance.sold_used_units"
+        },
+        {
+          "name": "sold_certified_units",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "units",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_performance.sold_certified_units"
+        },
+        {
+          "name": "sold_non_retail_units",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "units",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_performance.sold_non_retail_units"
+        },
+        {
+          "name": "sold_front_end_gross",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": 2,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_performance.sold_front_end_gross"
+        },
+        {
+          "name": "sold_total_gross",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": 2,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_performance.sold_total_gross"
+        },
+        {
+          "name": "sold_retail_units_with_desk_manager",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "units",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_performance.sold_retail_units_with_desk_manager"
+        },
+        {
+          "name": "desked_retail_units",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "units",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_performance.desked_retail_units"
+        },
+        {
+          "name": "desked_new_units",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "units",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_performance.desked_new_units"
+        },
+        {
+          "name": "desked_used_units",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "units",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_performance.desked_used_units"
+        },
+        {
+          "name": "desked_certified_units",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "units",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_performance.desked_certified_units"
+        },
+        {
+          "name": "desked_non_retail_units",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "units",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_performance.desked_non_retail_units"
+        },
+        {
+          "name": "desked_front_end_gross",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": 2,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_performance.desked_front_end_gross"
+        },
+        {
+          "name": "desked_total_gross",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": 2,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_performance.desked_total_gross"
+        },
+        {
+          "name": "minimum_sample_floor",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "units",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_performance.minimum_sample_floor"
+        }
+      ],
+      "notes": "TWO CREDITS ON ONE DELIVERY, PUBLISHED AS TWO COLUMN GROUPS. A car is credited to a salesperson AND to a desk manager, so sold_* and desked_* are separately named rather than sharing a 'retail units' column that role_family would disambiguate. The shared design was rejected on purpose: it triples every delivery for anything summing across families. As built, each group sums correctly over the whole dataset with no family filter, which is what RECON-EMP-SALES-UNITS proves. RATIOS ARE NOT PUBLISHED, ONLY THEIR COMPONENTS: gross per retail unit is SUM(gross)/SUM(units) at whatever grain is being reported and NEVER the average of daily or per-employee ratios, so the consumer divides once, itself. THE DENOMINATOR IS RETAIL ONLY -- sold_non_retail_units and desked_non_retail_units publish the wholesale and dealer-trade units excluded from it, so the exclusion is checkable rather than asserted. CERTIFIED UNITS ARE USED UNITS: sold_certified_units and desked_certified_units are SUBSETS of the used columns published for context, and adding either to its used column double counts -- KPI-SLS-003 remains the governed used measure and certified is not a third one. sold_retail_units_with_desk_manager is MANAGEMENT PARTICIPATION CONTEXT ONLY and asserts nothing about manager quality, help or interference; on the development profile it equals sold_retail_units on every row, so the context is structurally constant and a consumer should say so plainly rather than give it prominent space. minimum_sample_floor governs the per-unit gross figures and their sample count is the RETAIL UNIT COLUMN OF THE SAME CREDIT, never a generic row count. NOTHING HERE IS SORTED BY A MEASURE and nothing may be: the sort is store, date, family, code.",
+      "query_sha256": "7f0e838a2595dab01ad870ef203113bb3687081d4f776a29f558a7ef55a8d2d9",
+      "row_count": 1036,
+      "file": "employee-sales.json",
+      "file_sha256": "24f2bd76b35be1de4c7556042ceb9e90b1ea211aa2f95e67d5b41ec8295e7c17",
+      "file_bytes": 613720
+    },
+    {
+      "name": "employee-finance",
+      "source_view": "reporting.vw_employee_performance",
+      "join_views": [],
+      "grain": "One row per store, per sale date, per role family, per employee -- restricted to the rows carrying retail deliveries or product contracts under a finance-manager credit, including the 'nobody on the F&I desk' group.",
+      "business_key": [
+        "dealership_id",
+        "activity_date",
+        "role_family",
+        "employee_code"
+      ],
+      "date_basis": "sale date",
+      "sort_keys": [
+        "dealership_id",
+        "activity_date",
+        "role_family",
+        "employee_code"
+      ],
+      "chunked": false,
+      "kpi_ids": [
+        "KPI-FNI-001",
+        "KPI-FNI-003",
+        "KPI-FNI-019",
+        "KPI-GRS-002",
+        "KPI-GRS-005"
+      ],
+      "columns": [
+        {
+          "name": "dealership_id",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_performance.dealership_id"
+        },
+        {
+          "name": "activity_date",
+          "type": "date",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "see the dataset's date_basis: each measure group names its own",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_performance.activity_date"
+        },
+        {
+          "name": "role_family",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "Salesperson",
+            "Desk Management",
+            "Finance",
+            "BDC",
+            "Unassigned"
+          ],
+          "source_column": "reporting.vw_employee_performance.role_family"
+        },
+        {
+          "name": "employee_code",
+          "type": "string",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_performance.employee_code"
+        },
+        {
+          "name": "job_role",
+          "type": "string",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "Salesperson",
+            "Sales Manager",
+            "Desk Manager",
+            "Finance Manager",
+            "BDC Representative",
+            "BDC Manager",
+            "General Manager",
+            "Service Advisor"
+          ],
+          "source_column": "reporting.vw_employee_performance.job_role"
+        },
+        {
+          "name": "tenure_band",
+          "type": "string",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "Under 1 Year",
+            "1-3 Years",
+            "3-5 Years",
+            "5-10 Years",
+            "Over 10 Years"
+          ],
+          "source_column": "reporting.vw_employee_performance.tenure_band"
+        },
+        {
+          "name": "financed_retail_units",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "units",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_performance.financed_retail_units"
+        },
+        {
+          "name": "financed_cash_deals",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "deals",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_performance.financed_cash_deals"
+        },
+        {
+          "name": "financed_retail_finance_deals",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "deals",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_performance.financed_retail_finance_deals"
+        },
+        {
+          "name": "financed_lease_deals",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "deals",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_performance.financed_lease_deals"
+        },
+        {
+          "name": "financed_reserve_gross",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": 2,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_performance.financed_reserve_gross"
+        },
+        {
+          "name": "financed_back_end_gross",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": 2,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_performance.financed_back_end_gross"
+        },
+        {
+          "name": "financed_product_gross",
+          "type": "currency",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "USD",
+          "display_precision": 2,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_performance.financed_product_gross"
+        },
+        {
+          "name": "financed_contract_count",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "contracts",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_performance.financed_contract_count"
+        },
+        {
+          "name": "financed_deals_with_a_product",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "deals",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_performance.financed_deals_with_a_product"
+        },
+        {
+          "name": "minimum_sample_floor",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "units",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_performance.minimum_sample_floor"
+        }
+      ],
+      "notes": "THE CASH-MIX CAUTION IS ON THE ROW, NOT THREE DISCLOSURES AWAY. financed_retail_units is the governed denominator of reserve PVR and back gross per retail unit, and it INCLUDES CASH DEALS, which cannot generate reserve. A manager with a different cash mix therefore shows a different PVR for reasons that have nothing to do with skill, so financed_cash_deals, financed_retail_finance_deals and financed_lease_deals are published beside it and MUST be shown wherever a reserve or back PVR figure is. The three structure counts sum exactly to financed_retail_units, which is what makes the mix a partition. null employee_code is the 'nobody on the F&I desk' group -- 135 real deliveries on the development profile -- and it is never dropped. financed_contract_count is CONTRACT ROWS AND NOT PENETRATED DEALS, and financed_deals_with_a_product is not a governed penetration figure either: penetration has a per-category ELIGIBLE-DEAL denominator and reporting.vw_fi_product_penetration owns it, as it does for the F&I page. The as-of and adjustment-period bases are deliberately absent: this dataset is on the DEAL-DATE basis only, /dashboard/fi owns the other two, and blending them on one surface would put three populations behind one number. Reconciles to reporting.vw_fi_summary at full grain (RECON-EMP-FINANCE). No APR, buy rate, sell rate, rate spread or money factor is modelled anywhere in ARPI and nothing here may be read as rate guidance.",
+      "query_sha256": "33523faba5bf9c470695bce5c93dcd11c786a55aa2f667730457529e0ecd1fb1",
+      "row_count": 354,
+      "file": "employee-finance.json",
+      "file_sha256": "79d96e78a5e245ca3a9aa6ba937cb789ec442c43de2154647de2ac3fc8cb6c4f",
+      "file_bytes": 164903
+    },
+    {
+      "name": "employee-appointments",
+      "source_view": "reporting.vw_employee_performance",
+      "join_views": [],
+      "grain": "One row per store, per calendar date, per role family, per employee -- restricted to the rows carrying appointments under a BDC credit. TWO DATE BASES travel on the one date column and each measure names its own.",
+      "business_key": [
+        "dealership_id",
+        "activity_date",
+        "role_family",
+        "employee_code"
+      ],
+      "date_basis": "appointment scheduled date and appointment show date",
+      "sort_keys": [
+        "dealership_id",
+        "activity_date",
+        "role_family",
+        "employee_code"
+      ],
+      "chunked": false,
+      "kpi_ids": [
+        "KPI-FUN-004",
+        "KPI-FUN-005"
+      ],
+      "columns": [
+        {
+          "name": "dealership_id",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_performance.dealership_id"
+        },
+        {
+          "name": "activity_date",
+          "type": "date",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "see the dataset's date_basis: each measure group names its own",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_performance.activity_date"
+        },
+        {
+          "name": "role_family",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "Salesperson",
+            "Desk Management",
+            "Finance",
+            "BDC",
+            "Unassigned"
+          ],
+          "source_column": "reporting.vw_employee_performance.role_family"
+        },
+        {
+          "name": "employee_code",
+          "type": "string",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_performance.employee_code"
+        },
+        {
+          "name": "job_role",
+          "type": "string",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "Salesperson",
+            "Sales Manager",
+            "Desk Manager",
+            "Finance Manager",
+            "BDC Representative",
+            "BDC Manager",
+            "General Manager",
+            "Service Advisor"
+          ],
+          "source_column": "reporting.vw_employee_performance.job_role"
+        },
+        {
+          "name": "tenure_band",
+          "type": "string",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "Under 1 Year",
+            "1-3 Years",
+            "3-5 Years",
+            "5-10 Years",
+            "Over 10 Years"
+          ],
+          "source_column": "reporting.vw_employee_performance.tenure_band"
+        },
+        {
+          "name": "bdc_scheduled_appointments",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "appointments",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_performance.bdc_scheduled_appointments"
+        },
+        {
+          "name": "bdc_eligible_appointments",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "appointments",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_performance.bdc_eligible_appointments"
+        },
+        {
+          "name": "bdc_cancelled_in_advance_appointments",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "appointments",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_performance.bdc_cancelled_in_advance_appointments"
+        },
+        {
+          "name": "bdc_shown_appointments_scheduled_basis",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "appointments",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_performance.bdc_shown_appointments_scheduled_basis"
+        },
+        {
+          "name": "bdc_shown_appointments_show_basis",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "appointments",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_performance.bdc_shown_appointments_show_basis"
+        },
+        {
+          "name": "bdc_shown_and_sold_appointments",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "appointments",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_performance.bdc_shown_and_sold_appointments"
+        },
+        {
+          "name": "minimum_sample_floor",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "appointments",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_performance.minimum_sample_floor"
+        }
+      ],
+      "notes": "APPOINTMENT GRAIN, NOT LEAD GRAIN. One lead can produce several appointments, so these denominators are not the lead denominators in `employee-lead-source` and the two must never share a funnel width. TWO DATE BASES ON ONE DATE COLUMN, and the column names carry them: show rate is shown-on-the-SCHEDULED-basis over bdc_eligible_appointments, because an appointment booked for next month is not eligible to show this month; show-to-sale is bdc_shown_and_sold_appointments over bdc_shown_appointments_show_basis, so the visit and its outcome sit in the same period. SHOWN APPOINTMENTS APPEAR TWICE ON PURPOSE -- they are two different populations, and one column would have served one of the two governed ratios wrongly. THE CANCELLATION EXCLUSION IS THE MANIPULABLE PART: appointments cancelled before the scheduled date are outside the show-rate denominator, reclassifying no-shows as advance cancellations produces a flattering show rate, and bdc_cancelled_in_advance_appointments must therefore appear on the same visual as show rate rather than in a methodology note. Each rate's sample count is ITS OWN governed denominator -- eligible appointments for show rate, shown appointments for show-to-sale -- never a shared row count. Show-to-sale improves as data matures, because a customer who visits late in a period and buys days later still counts at the visit; period-to-date figures must be labelled incomplete.",
+      "query_sha256": "ac2e7e6b29f1cd89ddb8cc64b7e0a39dd80d20774bb4d6acd0362800e9be433f",
+      "row_count": 539,
+      "file": "employee-appointments.json",
+      "file_sha256": "ebc1a6b95395f6ed89a460d37ef528c85410e8903798f9a03ddf09d3b609e187",
+      "file_bytes": 218018
+    },
+    {
+      "name": "employee-lead-source",
+      "source_view": "reporting.vw_employee_lead_source_response",
+      "join_views": [],
+      "grain": "One row per store, per lead-creation date, per role family, per employee, per lead source, per distinct first-response value -- including the never-responded bin.",
+      "business_key": [
+        "dealership_id",
+        "lead_created_date",
+        "role_family",
+        "employee_code",
+        "lead_source_code",
+        "first_response_seconds"
+      ],
+      "date_basis": "lead creation date",
+      "sort_keys": [
+        "dealership_id",
+        "lead_created_date",
+        "role_family",
+        "employee_code",
+        "lead_source_code",
+        "first_response_seconds"
+      ],
+      "chunked": true,
+      "kpi_ids": [
+        "KPI-FUN-001",
+        "KPI-FUN-002",
+        "KPI-FUN-003",
+        "KPI-FUN-006",
+        "KPI-FUN-008"
+      ],
+      "columns": [
+        {
+          "name": "dealership_id",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_lead_source_response.dealership_id"
+        },
+        {
+          "name": "lead_created_date",
+          "type": "date",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "lead creation date",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_lead_source_response.lead_created_date"
+        },
+        {
+          "name": "role_family",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "Salesperson",
+            "Desk Management",
+            "Finance",
+            "BDC",
+            "Unassigned"
+          ],
+          "source_column": "reporting.vw_employee_lead_source_response.role_family"
+        },
+        {
+          "name": "employee_code",
+          "type": "string",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_lead_source_response.employee_code"
+        },
+        {
+          "name": "job_role",
+          "type": "string",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "Salesperson",
+            "Sales Manager",
+            "Desk Manager",
+            "Finance Manager",
+            "BDC Representative",
+            "BDC Manager",
+            "General Manager",
+            "Service Advisor"
+          ],
+          "source_column": "reporting.vw_employee_lead_source_response.job_role"
+        },
+        {
+          "name": "tenure_band",
+          "type": "string",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": [
+            "Under 1 Year",
+            "1-3 Years",
+            "3-5 Years",
+            "5-10 Years",
+            "Over 10 Years"
+          ],
+          "source_column": "reporting.vw_employee_lead_source_response.tenure_band"
+        },
+        {
+          "name": "lead_source_code",
+          "type": "string",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": null,
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_lead_source_response.lead_source_code"
+        },
+        {
+          "name": "first_response_seconds",
+          "type": "integer",
+          "nullable": true,
+          "class": "non-personal",
+          "unit": "seconds",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_lead_source_response.first_response_seconds"
+        },
+        {
+          "name": "valid_lead_count",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "leads",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_lead_source_response.valid_lead_count"
+        },
+        {
+          "name": "duplicate_lead_count",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "leads",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_lead_source_response.duplicate_lead_count"
+        },
+        {
+          "name": "contacted_lead_count",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "leads",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_lead_source_response.contacted_lead_count"
+        },
+        {
+          "name": "appointment_set_lead_count",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "leads",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_lead_source_response.appointment_set_lead_count"
+        },
+        {
+          "name": "sold_lead_count",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "leads",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_lead_source_response.sold_lead_count"
+        },
+        {
+          "name": "responded_lead_count",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "leads",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_lead_source_response.responded_lead_count"
+        },
+        {
+          "name": "unresponded_lead_count",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "leads",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_lead_source_response.unresponded_lead_count"
+        },
+        {
+          "name": "response_seconds_total",
+          "type": "integer",
+          "nullable": false,
+          "class": "non-personal",
+          "unit": "seconds",
+          "display_precision": null,
+          "enumeration": null,
+          "source_column": "reporting.vw_employee_lead_source_response.response_seconds_total"
+        }
+      ],
+      "notes": "THE ASSIGNED-LEAD POPULATION BENEATH THE EMPLOYEE ROW, and the only place the lead funnel is published per employee -- `employee-sales`, `employee-finance` and `employee-appointments` carry none of these columns, so no number here has a second publisher that could disagree with it. A COUNTED DISTRIBUTION, NOT LEAD ROWS: grouping by the response value and counting preserves the multiset exactly, so a median over these rows weighted by responded_lead_count equals the median over the leads themselves (RECON-EMP-SOURCE-MEDIAN), while the artefact carries no lead key, lead code, customer, sale or vehicle at all. The rows are histogram bins and must never be rendered as leads: a bin with valid_lead_count 1 is still a bin, this is not a drill-through, and this route is not a CRM screen. first_response_seconds null is the NEVER-RESPONDED bin -- it must be excluded from any order statistic and NEVER coalesced to zero, which would sort ignored leads to the fastest end and improve every response figure; zero seconds is a real instant response and an ordinary included observation. unresponded_lead_count must be shown beside any median or mean, because both statistics are blind to that population by definition and a person who ignores half their leads can otherwise report an excellent one. DENOMINATORS: contact rate is contacted over VALID leads; appointment-set rate is appointment-set over CONTACTED leads and never over all valid ones. Duplicates are excluded structurally and stay visible in duplicate_lead_count. SOURCE MIX IS CONTEXT, NEVER A JUDGEMENT -- no lead-quality score, difficulty index or source weighting exists anywhere in ARPI and none may be invented; it is published because comparing two people's contact rates without it compares two different jobs. Carries NO unit, gross or appointment measure, so reading it beside the other employee datasets cannot fan one out. response_time_band is deliberately not exported: it is derivable from the seconds and publishing it would invite a median estimated from bands, which is not a median.",
+      "query_sha256": "cb80935d0767875956d644ece16d2fcf20cbf7d1a7abb5ed96e871c459fa4c1d",
+      "row_count": 5963,
+      "file": "employee-lead-source.json",
+      "file_sha256": "9bd44e74787cc0ab64fe650af7a206eb1ce81ab523c2ae04d368fb2a2b4a10ff",
+      "file_bytes": 2583782
+    },
+    {
       "name": "reconciliation-status",
       "source_view": "reporting.vw_reconciliation_status",
       "join_views": [],
@@ -7368,8 +8383,8 @@
       "query_sha256": "adca98ad620f10e4795dec1cda7735ca8ccc2a03111636becea487320e109e43",
       "row_count": 1,
       "file": "pipeline-run.json",
-      "file_sha256": "a2b0a365251c4375b6189a40cabb41c932f5951abbafbe4eb92d7aa35b9c9ce1",
-      "file_bytes": 542
+      "file_sha256": "6e8f2732d231e7fab913aec14f13c2486c1f42506df3bb3b7ea321ec79592c9e",
+      "file_bytes": 538
     }
   ],
   "reconciliation": {
@@ -7787,7 +8802,7 @@
   "privacy_scan": {
     "status": "passed",
     "prohibited_hits": 0,
-    "columns_scanned": 602,
+    "columns_scanned": 676,
     "primary_control": "contract allowlist",
     "secondary_control": "arpi.validation.privacy prohibited-name tripwire"
   },
@@ -7799,15 +8814,15 @@
     "reconciliations_failed": 0
   },
   "sizes": {
-    "dataset_bytes_total": 19160866,
+    "dataset_bytes_total": 22746418,
     "largest_dataset": {
-      "name": "lead-response",
-      "bytes": 2269345,
-      "rows": 4099
+      "name": "employee-lead-source",
+      "bytes": 2583782,
+      "rows": 5963
     },
     "limits": {
       "single_export_file": 3145728,
-      "total_export_directory": 20971520
+      "total_export_directory": 29360128
     }
   },
   "stale": false,

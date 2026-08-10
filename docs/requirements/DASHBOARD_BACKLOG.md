@@ -50,7 +50,7 @@
 | `DASH.8` | Inventory accounting and GL controls | Large | **Implemented** |
 | `DASH.9` | Accounting dashboard and inventory integration | Large | **Implemented** |
 | `DASH.10` | Leads and Marketing dashboard | Large | **Implemented** |
-| `DASH.11` | Employee performance | Medium | Planned |
+| `DASH.11` | Employee performance | Medium | **Implemented** |
 | `DASH.12` | Management Action Center and change drivers | Large | Planned |
 | `DASH.13` | Hardening and release | Large | Planned |
 | `DASH.O-*` | Optional enhancements | — | Deferred |
@@ -924,14 +924,75 @@ tests; 34 route end-to-end tests; zero route-owned client JavaScript.
 | **Estimated complexity** | **Medium** (no new warehouse entity; one view + export + route on established patterns) |
 | **Blocking gate** | None |
 | **Architecture references** | PRIVACY_AND_ETHICS §5–6; program §6 |
-| **Status** | Planned |
+| **Status** | **Implemented** |
 
-Items: `DASH.11-01` `vw_employee_performance` (role × period measures per program §7, current
-role-assignment version from the SCD2 timeline) + export slice (Medium); `DASH.11-02`
-`/dashboard/employees` (Medium) — role tabs, minimum-sample disclosure, role-appropriate
-denominators, store context, no protected attributes, no subjective scoring, no punitive language.
-Tests: unit (sample rule, denominator selection), e2e (role views, axe). Evidence: a below-floor
-employee renders the insufficient-sample state, asserted.
+Items: `DASH.11-01` `vw_employee_performance` + export slices — **Implemented**;
+`DASH.11-02` `/dashboard/employees` — **Implemented**. Evidence held: a below-floor employee
+renders the insufficient-sample state, and it comes from real committed data rather than a
+fixture — most salespeople fall under the floor in December 2025 on the development profile, and
+`dashboard-employees.test.ts` fails if that ever stops being true, so the browser assertion cannot
+quietly become vacuous.
+
+### `DASH.11` as-built notes
+
+**The planning line said "current role-assignment version from the SCD2 timeline". As built it is
+the FACT-LINKED version, which is the opposite reading and the correct one.** Every role-playing
+foreign key on every fact points at the employee version current when the event happened, so
+`vw_employee_performance` joins on that key and never resolves `employee_id` to its current row.
+Job role, department, tenure band and the assignment store on every row are the values that were
+true AT THE EVENT. The alternative would move a salesperson's August units to the store they
+transferred to in December and relabel them with the title they hold now — while every total still
+balanced. `RECON-EMP-SCD2-ATTRIBUTION` is what turns that from an intention into a check on every
+database run.
+
+**Two views, not one, and the divergence is recorded rather than absorbed.** The plan expected a
+single `vw_employee_performance`. Two required pieces of fairness context — lead-source mix (SQ-08)
+and a response median (SQ-28) — are both grained BENEATH employee × role × store × date, and
+neither can sit on the employee row honestly: adding the source to the grain repeats that
+employee-day's units, gross and reserve on every source row for anything that sums them, and a
+median is not decomposable at all. `reporting.vw_employee_lead_source_response` carries that
+population, cut by source and by distinct first-response value, and carries no unit, gross or
+appointment measure — so reading the two together cannot fan one out. Correct grain outranks
+preserving a planning count.
+
+**Five export datasets from two views, split by MEASURE GROUP.** Exported whole,
+`vw_employee_performance` measures 5,282,320 B — past the 3 MB single-file ceiling on its own —
+because most cells are structurally zero: a salesperson's row carries twenty-five finance and
+appointment columns that can only ever be nought. `employee-sales`, `employee-finance` and
+`employee-appointments` each carry one group and are filtered to the rows that group populates,
+which is also a stronger statement of "not applicable" than a zero could be: a salesperson has no
+row in `employee-finance` at all. The lead funnel is published ONCE, in `employee-lead-source`, so
+no employee number has a second publisher that could disagree with it.
+
+**The 20 MB export-directory ceiling was re-derived from measurement, to 28 MB.** It was written
+when the measured total was 13,608,954 B (`DASH.7`) and was never revisited; `DASH.8`–`DASH.10`
+carried it to 19,438,359 B. The design was minimised first and the lane still measures 3,626,017 B,
+so the ceiling was re-derived with the same ~30% headroom `DATA_CONTRACT.md` §10 used for the
+single-file ceiling rather than the design being distorted to fit a number nobody had checked in
+four increments. Recorded in §10 with both measurements.
+
+**Role families were derived from the facts, not assumed from the titles.** The audit found
+`salesperson_key` carries only Salespeople; `desk_manager_key` carries Desk Managers, Sales
+Managers AND General Managers; `finance_manager_key` and the F&I facts carry only Finance Managers;
+`bdc_employee_key` carries only BDC Representatives; and `assigned_employee_key` carries BDC
+Representatives, Salespeople, Sales Managers and General Managers. So Sales Manager and General
+Manager are Desk Management — each keeping its own `job_role` label — because real deliveries
+credit them there, and Service Advisor has no family at all because `fact_service_visit` is
+Deferred and no fact credits one. `warehouse.fn_employee_role_family()` is the single authority and
+`RECON-EMP-ROLE-COMPAT` proves every role-playing key resolves to a role it is allowed to carry.
+
+**`compare` is declared not-applicable, deliberately.** A prior-period employee delta needs both
+periods to independently satisfy the same role assignment, the same denominator and the minimum-
+sample floor. On this data most people clear the floor in neither period, so most deltas would be
+computed from a value the page had just declined to print — and where someone changed role or store
+between the periods, the difference would be an assignment change presented as performance
+movement. `dept` is not-applicable for a narrower reason: the role families already partition the
+population on a finer, fact-derived basis, and the two disagree for Management.
+
+**No employee target was populated.** `fact_sales_target` supports an Employee scope and `DASH.5`
+deliberately leaves it unpopulated; a structural capability is not a business policy, and two
+export tests assert that no column named for a rank, score, tier, target or quota exists on any
+dataset carrying an employee code.
 
 ---
 

@@ -1,17 +1,17 @@
 {
   "schema": "arpi.dashboard_client/1",
-  "datasetVersion": 12,
+  "datasetVersion": 16,
   "contractVersion": 1,
-  "contractSha256": "7aa3bac9903bcdc591e8ea9a8e39e0ab9023a225780d0b40cea0813abbb466d5",
-  "generatedAt": "2026-08-09T15:55:53+00:00",
+  "contractSha256": "4b77a5bf9322595f7131dde8f1ab106929473b1a767a70d2321e793b5c9c442d",
+  "generatedAt": "2026-08-10T02:11:33+00:00",
   "asOfDate": "2025-12-31",
   "profile": "development",
   "randomSeed": 20250701,
-  "sourceCommit": "fd6eb0ba93aa04b12020526da4c19c706285300f",
+  "sourceCommit": "76c90bf78348ef89bebb72628af5130fa077c3b4",
   "exporterVersion": "0.1.0",
   "syntheticData": true,
   "fictionalDealerGroup": true,
-  "pipelineRunUuid": "4a6ed216-01cc-43de-b3a2-9c7562e910d2",
+  "pipelineRunUuid": "9f0465b6-a1c0-4a50-a557-9d94bf9ee6c9",
   "pipelineRunStatus": "succeeded",
   "sourceViews": [
     "reporting.vw_accounting_exceptions",
@@ -24,6 +24,9 @@
     "reporting.vw_deal_jacket",
     "reporting.vw_deal_product_detail",
     "reporting.vw_dealership",
+    "reporting.vw_employee",
+    "reporting.vw_employee_lead_source_response",
+    "reporting.vw_employee_performance",
     "reporting.vw_fi_adjustment_summary",
     "reporting.vw_fi_product_penetration",
     "reporting.vw_fi_summary",
@@ -7680,6 +7683,1058 @@
       "chunks": null
     },
     {
+      "name": "employees",
+      "grain": "One row per employee, current SCD Type 2 version only.",
+      "businessKey": [
+        "employee_code"
+      ],
+      "dateBasis": null,
+      "kpiIds": [],
+      "rowCount": 30,
+      "columns": [
+        {
+          "name": "employee_code",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "dealership_id",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "department",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": [
+            "Sales",
+            "Finance",
+            "BDC",
+            "Management",
+            "Service"
+          ]
+        },
+        {
+          "name": "job_role",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": [
+            "Salesperson",
+            "Sales Manager",
+            "Desk Manager",
+            "Finance Manager",
+            "BDC Representative",
+            "BDC Manager",
+            "General Manager",
+            "Service Advisor"
+          ]
+        },
+        {
+          "name": "is_manager",
+          "type": "boolean",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "tenure_band",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": [
+            "Under 1 Year",
+            "1-3 Years",
+            "3-5 Years",
+            "5-10 Years",
+            "Over 10 Years"
+          ]
+        },
+        {
+          "name": "is_active",
+          "type": "boolean",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        }
+      ],
+      "chunks": null
+    },
+    {
+      "name": "employee-sales",
+      "grain": "One row per store, per sale date, per role family, per employee -- restricted to the rows carrying units delivered under a salesperson or desk-manager credit.",
+      "businessKey": [
+        "dealership_id",
+        "activity_date",
+        "role_family",
+        "employee_code"
+      ],
+      "dateBasis": "sale date",
+      "kpiIds": [
+        "KPI-SLS-001",
+        "KPI-SLS-002",
+        "KPI-SLS-003",
+        "KPI-GRS-001",
+        "KPI-GRS-003",
+        "KPI-GRS-004"
+      ],
+      "rowCount": 1036,
+      "columns": [
+        {
+          "name": "dealership_id",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "activity_date",
+          "type": "date",
+          "nullable": false,
+          "unit": "see the dataset's date_basis: each measure group names its own",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "role_family",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": [
+            "Salesperson",
+            "Desk Management",
+            "Finance",
+            "BDC",
+            "Unassigned"
+          ]
+        },
+        {
+          "name": "employee_code",
+          "type": "string",
+          "nullable": true,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "job_role",
+          "type": "string",
+          "nullable": true,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": [
+            "Salesperson",
+            "Sales Manager",
+            "Desk Manager",
+            "Finance Manager",
+            "BDC Representative",
+            "BDC Manager",
+            "General Manager",
+            "Service Advisor"
+          ]
+        },
+        {
+          "name": "tenure_band",
+          "type": "string",
+          "nullable": true,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": [
+            "Under 1 Year",
+            "1-3 Years",
+            "3-5 Years",
+            "5-10 Years",
+            "Over 10 Years"
+          ]
+        },
+        {
+          "name": "sold_retail_units",
+          "type": "integer",
+          "nullable": false,
+          "unit": "units",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "sold_new_units",
+          "type": "integer",
+          "nullable": false,
+          "unit": "units",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "sold_used_units",
+          "type": "integer",
+          "nullable": false,
+          "unit": "units",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "sold_certified_units",
+          "type": "integer",
+          "nullable": false,
+          "unit": "units",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "sold_non_retail_units",
+          "type": "integer",
+          "nullable": false,
+          "unit": "units",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "sold_front_end_gross",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": 2,
+          "enumeration": null
+        },
+        {
+          "name": "sold_total_gross",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": 2,
+          "enumeration": null
+        },
+        {
+          "name": "sold_retail_units_with_desk_manager",
+          "type": "integer",
+          "nullable": false,
+          "unit": "units",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "desked_retail_units",
+          "type": "integer",
+          "nullable": false,
+          "unit": "units",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "desked_new_units",
+          "type": "integer",
+          "nullable": false,
+          "unit": "units",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "desked_used_units",
+          "type": "integer",
+          "nullable": false,
+          "unit": "units",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "desked_certified_units",
+          "type": "integer",
+          "nullable": false,
+          "unit": "units",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "desked_non_retail_units",
+          "type": "integer",
+          "nullable": false,
+          "unit": "units",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "desked_front_end_gross",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": 2,
+          "enumeration": null
+        },
+        {
+          "name": "desked_total_gross",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": 2,
+          "enumeration": null
+        },
+        {
+          "name": "minimum_sample_floor",
+          "type": "integer",
+          "nullable": false,
+          "unit": "units",
+          "displayPrecision": null,
+          "enumeration": null
+        }
+      ],
+      "chunks": [
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-07",
+          "file": "datasets/employee-sales/GSA-001/2025-07.json",
+          "rowCount": 73,
+          "bytes": 11078
+        },
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-08",
+          "file": "datasets/employee-sales/GSA-001/2025-08.json",
+          "rowCount": 76,
+          "bytes": 11503
+        },
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-09",
+          "file": "datasets/employee-sales/GSA-001/2025-09.json",
+          "rowCount": 70,
+          "bytes": 10653
+        },
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-10",
+          "file": "datasets/employee-sales/GSA-001/2025-10.json",
+          "rowCount": 60,
+          "bytes": 9191
+        },
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-11",
+          "file": "datasets/employee-sales/GSA-001/2025-11.json",
+          "rowCount": 61,
+          "bytes": 9304
+        },
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-12",
+          "file": "datasets/employee-sales/GSA-001/2025-12.json",
+          "rowCount": 69,
+          "bytes": 10468
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-07",
+          "file": "datasets/employee-sales/GSA-002/2025-07.json",
+          "rowCount": 64,
+          "bytes": 9851
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-08",
+          "file": "datasets/employee-sales/GSA-002/2025-08.json",
+          "rowCount": 67,
+          "bytes": 10269
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-09",
+          "file": "datasets/employee-sales/GSA-002/2025-09.json",
+          "rowCount": 60,
+          "bytes": 9194
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-10",
+          "file": "datasets/employee-sales/GSA-002/2025-10.json",
+          "rowCount": 60,
+          "bytes": 9251
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-11",
+          "file": "datasets/employee-sales/GSA-002/2025-11.json",
+          "rowCount": 56,
+          "bytes": 8666
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-12",
+          "file": "datasets/employee-sales/GSA-002/2025-12.json",
+          "rowCount": 57,
+          "bytes": 8838
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-07",
+          "file": "datasets/employee-sales/GSA-003/2025-07.json",
+          "rowCount": 50,
+          "bytes": 7731
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-08",
+          "file": "datasets/employee-sales/GSA-003/2025-08.json",
+          "rowCount": 61,
+          "bytes": 9269
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-09",
+          "file": "datasets/employee-sales/GSA-003/2025-09.json",
+          "rowCount": 35,
+          "bytes": 5546
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-10",
+          "file": "datasets/employee-sales/GSA-003/2025-10.json",
+          "rowCount": 40,
+          "bytes": 6242
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-11",
+          "file": "datasets/employee-sales/GSA-003/2025-11.json",
+          "rowCount": 36,
+          "bytes": 5695
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-12",
+          "file": "datasets/employee-sales/GSA-003/2025-12.json",
+          "rowCount": 41,
+          "bytes": 6452
+        }
+      ]
+    },
+    {
+      "name": "employee-finance",
+      "grain": "One row per store, per sale date, per role family, per employee -- restricted to the rows carrying retail deliveries or product contracts under a finance-manager credit, including the 'nobody on the F&I desk' group.",
+      "businessKey": [
+        "dealership_id",
+        "activity_date",
+        "role_family",
+        "employee_code"
+      ],
+      "dateBasis": "sale date",
+      "kpiIds": [
+        "KPI-FNI-001",
+        "KPI-FNI-003",
+        "KPI-FNI-019",
+        "KPI-GRS-002",
+        "KPI-GRS-005"
+      ],
+      "rowCount": 354,
+      "columns": [
+        {
+          "name": "dealership_id",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "activity_date",
+          "type": "date",
+          "nullable": false,
+          "unit": "see the dataset's date_basis: each measure group names its own",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "role_family",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": [
+            "Salesperson",
+            "Desk Management",
+            "Finance",
+            "BDC",
+            "Unassigned"
+          ]
+        },
+        {
+          "name": "employee_code",
+          "type": "string",
+          "nullable": true,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "job_role",
+          "type": "string",
+          "nullable": true,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": [
+            "Salesperson",
+            "Sales Manager",
+            "Desk Manager",
+            "Finance Manager",
+            "BDC Representative",
+            "BDC Manager",
+            "General Manager",
+            "Service Advisor"
+          ]
+        },
+        {
+          "name": "tenure_band",
+          "type": "string",
+          "nullable": true,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": [
+            "Under 1 Year",
+            "1-3 Years",
+            "3-5 Years",
+            "5-10 Years",
+            "Over 10 Years"
+          ]
+        },
+        {
+          "name": "financed_retail_units",
+          "type": "integer",
+          "nullable": false,
+          "unit": "units",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "financed_cash_deals",
+          "type": "integer",
+          "nullable": false,
+          "unit": "deals",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "financed_retail_finance_deals",
+          "type": "integer",
+          "nullable": false,
+          "unit": "deals",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "financed_lease_deals",
+          "type": "integer",
+          "nullable": false,
+          "unit": "deals",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "financed_reserve_gross",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": 2,
+          "enumeration": null
+        },
+        {
+          "name": "financed_back_end_gross",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": 2,
+          "enumeration": null
+        },
+        {
+          "name": "financed_product_gross",
+          "type": "currency",
+          "nullable": false,
+          "unit": "USD",
+          "displayPrecision": 2,
+          "enumeration": null
+        },
+        {
+          "name": "financed_contract_count",
+          "type": "integer",
+          "nullable": false,
+          "unit": "contracts",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "financed_deals_with_a_product",
+          "type": "integer",
+          "nullable": false,
+          "unit": "deals",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "minimum_sample_floor",
+          "type": "integer",
+          "nullable": false,
+          "unit": "units",
+          "displayPrecision": null,
+          "enumeration": null
+        }
+      ],
+      "chunks": null
+    },
+    {
+      "name": "employee-appointments",
+      "grain": "One row per store, per calendar date, per role family, per employee -- restricted to the rows carrying appointments under a BDC credit. TWO DATE BASES travel on the one date column and each measure names its own.",
+      "businessKey": [
+        "dealership_id",
+        "activity_date",
+        "role_family",
+        "employee_code"
+      ],
+      "dateBasis": "appointment scheduled date and appointment show date",
+      "kpiIds": [
+        "KPI-FUN-004",
+        "KPI-FUN-005"
+      ],
+      "rowCount": 539,
+      "columns": [
+        {
+          "name": "dealership_id",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "activity_date",
+          "type": "date",
+          "nullable": false,
+          "unit": "see the dataset's date_basis: each measure group names its own",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "role_family",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": [
+            "Salesperson",
+            "Desk Management",
+            "Finance",
+            "BDC",
+            "Unassigned"
+          ]
+        },
+        {
+          "name": "employee_code",
+          "type": "string",
+          "nullable": true,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "job_role",
+          "type": "string",
+          "nullable": true,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": [
+            "Salesperson",
+            "Sales Manager",
+            "Desk Manager",
+            "Finance Manager",
+            "BDC Representative",
+            "BDC Manager",
+            "General Manager",
+            "Service Advisor"
+          ]
+        },
+        {
+          "name": "tenure_band",
+          "type": "string",
+          "nullable": true,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": [
+            "Under 1 Year",
+            "1-3 Years",
+            "3-5 Years",
+            "5-10 Years",
+            "Over 10 Years"
+          ]
+        },
+        {
+          "name": "bdc_scheduled_appointments",
+          "type": "integer",
+          "nullable": false,
+          "unit": "appointments",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "bdc_eligible_appointments",
+          "type": "integer",
+          "nullable": false,
+          "unit": "appointments",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "bdc_cancelled_in_advance_appointments",
+          "type": "integer",
+          "nullable": false,
+          "unit": "appointments",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "bdc_shown_appointments_scheduled_basis",
+          "type": "integer",
+          "nullable": false,
+          "unit": "appointments",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "bdc_shown_appointments_show_basis",
+          "type": "integer",
+          "nullable": false,
+          "unit": "appointments",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "bdc_shown_and_sold_appointments",
+          "type": "integer",
+          "nullable": false,
+          "unit": "appointments",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "minimum_sample_floor",
+          "type": "integer",
+          "nullable": false,
+          "unit": "appointments",
+          "displayPrecision": null,
+          "enumeration": null
+        }
+      ],
+      "chunks": null
+    },
+    {
+      "name": "employee-lead-source",
+      "grain": "One row per store, per lead-creation date, per role family, per employee, per lead source, per distinct first-response value -- including the never-responded bin.",
+      "businessKey": [
+        "dealership_id",
+        "lead_created_date",
+        "role_family",
+        "employee_code",
+        "lead_source_code",
+        "first_response_seconds"
+      ],
+      "dateBasis": "lead creation date",
+      "kpiIds": [
+        "KPI-FUN-001",
+        "KPI-FUN-002",
+        "KPI-FUN-003",
+        "KPI-FUN-006",
+        "KPI-FUN-008"
+      ],
+      "rowCount": 5963,
+      "columns": [
+        {
+          "name": "dealership_id",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "lead_created_date",
+          "type": "date",
+          "nullable": false,
+          "unit": "lead creation date",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "role_family",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": [
+            "Salesperson",
+            "Desk Management",
+            "Finance",
+            "BDC",
+            "Unassigned"
+          ]
+        },
+        {
+          "name": "employee_code",
+          "type": "string",
+          "nullable": true,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "job_role",
+          "type": "string",
+          "nullable": true,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": [
+            "Salesperson",
+            "Sales Manager",
+            "Desk Manager",
+            "Finance Manager",
+            "BDC Representative",
+            "BDC Manager",
+            "General Manager",
+            "Service Advisor"
+          ]
+        },
+        {
+          "name": "tenure_band",
+          "type": "string",
+          "nullable": true,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": [
+            "Under 1 Year",
+            "1-3 Years",
+            "3-5 Years",
+            "5-10 Years",
+            "Over 10 Years"
+          ]
+        },
+        {
+          "name": "lead_source_code",
+          "type": "string",
+          "nullable": false,
+          "unit": null,
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "first_response_seconds",
+          "type": "integer",
+          "nullable": true,
+          "unit": "seconds",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "valid_lead_count",
+          "type": "integer",
+          "nullable": false,
+          "unit": "leads",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "duplicate_lead_count",
+          "type": "integer",
+          "nullable": false,
+          "unit": "leads",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "contacted_lead_count",
+          "type": "integer",
+          "nullable": false,
+          "unit": "leads",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "appointment_set_lead_count",
+          "type": "integer",
+          "nullable": false,
+          "unit": "leads",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "sold_lead_count",
+          "type": "integer",
+          "nullable": false,
+          "unit": "leads",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "responded_lead_count",
+          "type": "integer",
+          "nullable": false,
+          "unit": "leads",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "unresponded_lead_count",
+          "type": "integer",
+          "nullable": false,
+          "unit": "leads",
+          "displayPrecision": null,
+          "enumeration": null
+        },
+        {
+          "name": "response_seconds_total",
+          "type": "integer",
+          "nullable": false,
+          "unit": "seconds",
+          "displayPrecision": null,
+          "enumeration": null
+        }
+      ],
+      "chunks": [
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-07",
+          "file": "datasets/employee-lead-source/GSA-001/2025-07.json",
+          "rowCount": 418,
+          "bytes": 48210
+        },
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-08",
+          "file": "datasets/employee-lead-source/GSA-001/2025-08.json",
+          "rowCount": 427,
+          "bytes": 49366
+        },
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-09",
+          "file": "datasets/employee-lead-source/GSA-001/2025-09.json",
+          "rowCount": 393,
+          "bytes": 45467
+        },
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-10",
+          "file": "datasets/employee-lead-source/GSA-001/2025-10.json",
+          "rowCount": 347,
+          "bytes": 40107
+        },
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-11",
+          "file": "datasets/employee-lead-source/GSA-001/2025-11.json",
+          "rowCount": 343,
+          "bytes": 39752
+        },
+        {
+          "dealershipId": "GSA-001",
+          "month": "2025-12",
+          "file": "datasets/employee-lead-source/GSA-001/2025-12.json",
+          "rowCount": 412,
+          "bytes": 47462
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-07",
+          "file": "datasets/employee-lead-source/GSA-002/2025-07.json",
+          "rowCount": 373,
+          "bytes": 43240
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-08",
+          "file": "datasets/employee-lead-source/GSA-002/2025-08.json",
+          "rowCount": 380,
+          "bytes": 44336
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-09",
+          "file": "datasets/employee-lead-source/GSA-002/2025-09.json",
+          "rowCount": 349,
+          "bytes": 40525
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-10",
+          "file": "datasets/employee-lead-source/GSA-002/2025-10.json",
+          "rowCount": 336,
+          "bytes": 39215
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-11",
+          "file": "datasets/employee-lead-source/GSA-002/2025-11.json",
+          "rowCount": 324,
+          "bytes": 37581
+        },
+        {
+          "dealershipId": "GSA-002",
+          "month": "2025-12",
+          "file": "datasets/employee-lead-source/GSA-002/2025-12.json",
+          "rowCount": 365,
+          "bytes": 42745
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-07",
+          "file": "datasets/employee-lead-source/GSA-003/2025-07.json",
+          "rowCount": 249,
+          "bytes": 29436
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-08",
+          "file": "datasets/employee-lead-source/GSA-003/2025-08.json",
+          "rowCount": 274,
+          "bytes": 32513
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-09",
+          "file": "datasets/employee-lead-source/GSA-003/2025-09.json",
+          "rowCount": 262,
+          "bytes": 30789
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-10",
+          "file": "datasets/employee-lead-source/GSA-003/2025-10.json",
+          "rowCount": 242,
+          "bytes": 28649
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-11",
+          "file": "datasets/employee-lead-source/GSA-003/2025-11.json",
+          "rowCount": 216,
+          "bytes": 25540
+        },
+        {
+          "dealershipId": "GSA-003",
+          "month": "2025-12",
+          "file": "datasets/employee-lead-source/GSA-003/2025-12.json",
+          "rowCount": 253,
+          "bytes": 30010
+        }
+      ]
+    },
+    {
       "name": "reconciliation-status",
       "grain": "One row per reconciliation identifier, for the pipeline run this export describes.",
       "businessKey": [
@@ -7952,12 +9007,12 @@
     }
   ],
   "sizes": {
-    "totalBytes": 6029805,
-    "fileCount": 271,
+    "totalBytes": 6978470,
+    "fileCount": 310,
     "largestFile": {
       "file": "datasets/sales-gross-trend.json",
       "bytes": 95189
     },
-    "rootExportBytes": 19160866
+    "rootExportBytes": 22746418
   }
 }

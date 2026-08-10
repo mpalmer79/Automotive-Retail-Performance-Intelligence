@@ -46,9 +46,13 @@ from typing import Final, Literal
 from arpi.constants import (
     ACCOUNTING_EXCEPTION_CODES,
     ADJUSTMENT_TYPES,
+    ALLOWED_DEPARTMENTS,
+    ALLOWED_JOB_ROLES,
     ALLOWED_STORE_TYPES,
+    ALLOWED_TENURE_BANDS,
     ARPI_VERSION,
     ELIGIBILITY_RULE_IDS,
+    EMPLOYEE_ROLE_FAMILIES,
     FINANCE_PRODUCT_CATEGORIES,
     INVENTORY_CONTROL_CATEGORIES,
     LENDER_CATEGORIES,
@@ -357,6 +361,11 @@ DASHBOARD_LANE_SQL_FILES: Final[tuple[str, ...]] = (
     "03_dimensions/21_dim_finance_product_merge.sql",
     "03_dimensions/22_dim_lender_merge.sql",
     "03_dimensions/23_fi_governed_functions.sql",
+    # DASH.11. THE employee role-family map, derived from which job roles actually appear in
+    # each role-playing foreign key rather than assumed from the titles. A scalar function
+    # for the same reason the F&I ones are: the reporting view and the reconciliation view
+    # both ask the question, and the third inline copy is the one that disagrees.
+    "03_dimensions/26_employee_governed_functions.sql",
     "04_facts/06_fact_sales_target.sql",
     "04_facts/07_fact_finance_product_sale.sql",
     "04_facts/08_fact_finance_product_adjustment.sql",
@@ -383,6 +392,15 @@ DASHBOARD_LANE_SQL_FILES: Final[tuple[str, ...]] = (
     "05_reporting/53_vw_appointment_source_funnel.sql",
     "05_reporting/54_vw_lead_stage_loss.sql",
     "05_reporting/55_vw_lead_response_distribution.sql",
+    # DASH.11. Two views for the employee-performance route. The first publishes role-aware
+    # components at store x date x role family x employee VERSION -- the SCD Type 2 version
+    # the fact points at, so history keeps its store and its title. The second carries the
+    # assigned-lead population beneath that grain, by source and by distinct first-response
+    # value, which is the one deliberate divergence from the single-view plan: lead-source
+    # mix and a true median are both grained beneath the employee row and carrying either on
+    # it would repeat that employee-day's units and gross on every source row.
+    "05_reporting/56_vw_employee_performance.sql",
+    "05_reporting/57_vw_employee_lead_source_response.sql",
     "06_indexes/03_fi_indexes.sql",
     "08_validation/11_recon_target.sql",
     "08_validation/13_recon_fi.sql",
@@ -396,6 +414,12 @@ DASHBOARD_LANE_SQL_FILES: Final[tuple[str, ...]] = (
     # from 16 to 17 -- the same move DASH.5, DASH.6 and DASH.8 each made -- and takes 16.
     # Only recon_all moves, and it is the one file whose position is meant to be last.
     "08_validation/16_recon_leads_marketing.sql",
+    # DASH.11. The thirteen rules that prove the two employee views agree with every
+    # authority they re-grain, that a current-version join has not rewritten history, and
+    # that activity credited to nobody survives. recon_all moves from 17 to 18 -- the same
+    # move DASH.5, DASH.6, DASH.8 and DASH.10 each made -- because the ordered sequence is a
+    # sorted glob and a file unioned by recon_all must sort before it.
+    "08_validation/17_recon_employee_performance.sql",
 )
 
 #: The vehicle condition vocabulary, exactly as ``warehouse.dim_vehicle`` constrains it.
@@ -3199,6 +3223,587 @@ _DEAL_PRODUCT_DETAIL = DatasetContract(
 )
 
 #: Every dataset, in export order. This tuple is the allowlist.
+# ---------------------------------------------------------------------------------------
+# DASH.11: the employee-performance surface crosses the browser boundary
+# ---------------------------------------------------------------------------------------
+# FIVE DATASETS FROM TWO VIEWS, AND THE SPLIT IS THE POINT.
+#
+# reporting.vw_employee_performance publishes fifty-one columns across four measure groups.
+# Exported whole it measures 5,282,320 bytes on the development profile -- past the 3 MB
+# single-file ceiling on its own -- because most cells are structurally zero: a
+# salesperson's row carries twenty-five finance and appointment columns that can only ever
+# be nought. Splitting by MEASURE GROUP and filtering each dataset to the rows that group
+# actually populates is not a size trick; it is the same discipline section 20 of the
+# increment brief asks of the page. A salesperson has no row in `employee-finance` because
+# the measure does not belong to the role -- which is a stronger statement of
+# "not applicable" than a zero could ever be, and it is made structurally.
+#
+# THE LEAD COLUMNS ARE PUBLISHED ONCE, NOT TWICE. reporting.vw_employee_performance carries
+# them and so does the finer-grained source view, so a sixth `employee-funnel` dataset would
+# have published the same numbers a second time with a second chance to disagree. The route
+# rolls the lead components up from `employee-lead-source` instead, and only the BDC
+# APPOINTMENT columns -- which the source view does not carry -- get their own dataset.
+#
+# NO SURROGATE KEY CROSSES THIS BOUNDARY. employee_key and employee_grain_key stay in the
+# warehouse: the first is a version surrogate and the second is coalesce(employee_key, 0),
+# and both are internal identity this project does not intend to make promises about.
+# employee_code plus the store, the date and the role family identify a row publicly, with
+# null employee_code as a legitimate member of the key meaning ACTIVITY CREDITED TO NOBODY.
+#
+# WHY employee_code IS UNIQUE WITHIN THE KEY DESPITE THE GRAIN BEING VERSION-KEYED. The view
+# is grained on the employee VERSION and the export publishes the stable person code, which
+# would be a defect if one person could hold two versions on one calendar date. They cannot:
+# dim_employee versions are date-ranged and non-overlapping, so exactly one version of a
+# person is effective on any given day, and every fact on that day therefore points at the
+# same version. _assert_business_key_unique is what turns that argument into a check.
+#
+# WHAT IS DELIBERATELY NOT EXPORTED. No name, initial, contact detail, hire date,
+# termination date, exact tenure, age, compensation, commission, pay plan, bonus or
+# protected attribute -- none of which exists in the warehouse to export. No target, quota
+# or attainment, because employee-scope targets are deliberately unpopulated. No score,
+# rank, percentile or tier, because none is computed anywhere and none may be. No customer
+# column of any kind: this is an employee surface, not a CRM.
+
+
+def _employee_store_id(view: str) -> ColumnContract:
+    """The store's business code, already resolved by the employee view.
+
+    Both DASH.11 views publish ``dealership_id`` themselves, so these datasets take it from
+    the view rather than joining ``vw_dealership``, exactly as the F&I datasets do. A join
+    that resolves a key the source has already resolved can only introduce a defect.
+    """
+    return ColumnContract(
+        name="dealership_id",
+        type="string",
+        nullable=False,
+        expression="base.dealership_id",
+        source_column=f"{view}.dealership_id",
+    )
+
+
+def _employee_code(view: str) -> ColumnContract:
+    """The employee's synthetic code, or ``null`` for activity credited to nobody.
+
+    ``null`` here means NOBODY WAS CREDITED -- a real population of real deliveries, leads
+    and appointments -- and never "employee unknown". THE ONLY EMPLOYEE LABEL ARPI
+    PUBLISHES: there is no name, no initial and no avatar anywhere in this lane, and the
+    code identifies a fictional person in a synthetic dataset.
+    """
+    return ColumnContract(
+        name="employee_code",
+        type="string",
+        nullable=True,
+        expression="base.employee_code",
+        source_column=f"{view}.employee_code",
+    )
+
+
+def _employee_role_family(view: str) -> ColumnContract:
+    """The role family, as a closed enumeration. Not a rank and not an ordering."""
+    return ColumnContract(
+        name="role_family",
+        type="string",
+        nullable=False,
+        expression="base.role_family",
+        source_column=f"{view}.role_family",
+        enumeration=EMPLOYEE_ROLE_FAMILIES,
+    )
+
+
+#: The identity columns every employee-performance dataset carries, in file order.
+#:
+#: job_role and tenure_band are the FACT-LINKED VERSION's values -- what was true at the
+#: event -- and are on the row rather than looked up from `employees` for exactly that
+#: reason: `employees` publishes the CURRENT version, and resolving a historical row
+#: through it would relabel August with December's title. tenure_band is also required
+#: beside the figure rather than behind a disclosure, because tenure is part of what a
+#: comparison means.
+#:
+#: store_short_name, department and is_active_in_current_roster are deliberately absent.
+#: The first is in `stores`; the third is current-roster context and belongs with the
+#: current-version dimension; department is a version attribute the role families already
+#: partition on a finer, fact-derived basis, and a department filter would duplicate the
+#: role navigation while disagreeing with it for Management.
+def _employee_identity(view: str) -> tuple[ColumnContract, ...]:
+    """The shared identity prefix of the three performance datasets."""
+    return (
+        _employee_store_id(view),
+        ColumnContract(
+            name="activity_date",
+            type="date",
+            nullable=False,
+            expression="base.activity_date",
+            source_column=f"{view}.activity_date",
+            unit="see the dataset's date_basis: each measure group names its own",
+        ),
+        _employee_role_family(view),
+        _employee_code(view),
+        _attribute("job_role", "string", nullable=True, view=view, enumeration=ALLOWED_JOB_ROLES),
+        _attribute(
+            "tenure_band", "string", nullable=True, view=view, enumeration=ALLOWED_TENURE_BANDS
+        ),
+    )
+
+
+_EMPLOYEE_PERFORMANCE_BUSINESS_KEY: Final[tuple[str, ...]] = (
+    "dealership_id",
+    "activity_date",
+    "role_family",
+    "employee_code",
+)
+
+_EMPLOYEES = DatasetContract(
+    name="employees",
+    source_view="vw_employee",
+    grain="One row per employee, current SCD Type 2 version only.",
+    business_key=("employee_code",),
+    date_basis=None,
+    # STORE, THEN ROLE, THEN CODE. A stable business-key ordering, chosen because it is
+    # NOT a performance ordering: a default list sorted by units or gross is a leaderboard
+    # whether or not the word "rank" appears anywhere near it.
+    sort_keys=("dealership_id", "job_role", "employee_code"),
+    chunked=False,
+    columns=(
+        ColumnContract(
+            name="employee_code",
+            type="string",
+            nullable=False,
+            expression="base.employee_code",
+            source_column="vw_employee.employee_code",
+        ),
+        ColumnContract(
+            name="dealership_id",
+            type="string",
+            nullable=False,
+            expression="base.dealership_code",
+            source_column="vw_employee.dealership_code",
+        ),
+        _attribute("department", "string", view="vw_employee", enumeration=ALLOWED_DEPARTMENTS),
+        _attribute("job_role", "string", view="vw_employee", enumeration=ALLOWED_JOB_ROLES),
+        _attribute("is_manager", "boolean", view="vw_employee"),
+        _attribute("tenure_band", "string", view="vw_employee", enumeration=ALLOWED_TENURE_BANDS),
+        _attribute("is_active", "boolean", view="vw_employee"),
+    ),
+    notes=(
+        "THE EMPLOYEE ROSTER, MINIMISED TO WHAT AN OPERATING COMPARISON NEEDS. ARPI "
+        "publishes no employee name, initial, photo, avatar, email, phone, address, hire "
+        "date, termination date, exact tenure, age, compensation, commission, pay plan or "
+        "bonus, and none of those exists in the warehouse to publish. employee_code is the "
+        "only label, and it identifies a FICTIONAL person in a synthetic dataset. "
+        "employee_label is deliberately not exported: it is the code and the role "
+        "concatenated, and both are already here, so a consumer composes the label it wants "
+        "rather than inheriting one. version_effective_date is not exported either -- it is "
+        "a record-change date nothing on the route needs. TENURE IS A BAND, NEVER A DATE: "
+        "the band answers every legitimate analytical question and the precise value does "
+        "not. is_active IS CURRENT ROSTER CONTEXT AND NOT A HISTORICAL FILTER -- a person "
+        "who has left is still the person who sold the car, so their activity stays in the "
+        "period it happened in, and nothing may drop a performance row because this is "
+        "false. No termination date is published and no leaving vocabulary is available: "
+        "'inactive in current roster' is the whole statement. THIS IS NOT AN HR DIRECTORY."
+    ),
+)
+
+_EMPLOYEE_SALES = DatasetContract(
+    name="employee-sales",
+    source_view="vw_employee_performance",
+    grain=(
+        "One row per store, per sale date, per role family, per employee -- restricted to "
+        "the rows carrying units delivered under a salesperson or desk-manager credit."
+    ),
+    business_key=_EMPLOYEE_PERFORMANCE_BUSINESS_KEY,
+    date_basis="sale date",
+    sort_keys=_EMPLOYEE_PERFORMANCE_BUSINESS_KEY,
+    where=(
+        "base.sold_retail_units <> 0 OR base.desked_retail_units <> 0 "
+        "OR base.sold_non_retail_units <> 0 OR base.desked_non_retail_units <> 0"
+    ),
+    chunked=True,
+    kpi_ids=(
+        "KPI-SLS-001",
+        "KPI-SLS-002",
+        "KPI-SLS-003",
+        "KPI-GRS-001",
+        "KPI-GRS-003",
+        "KPI-GRS-004",
+    ),
+    columns=(
+        *_employee_identity("vw_employee_performance"),
+        _measure("sold_retail_units", "integer", unit="units", view="vw_employee_performance"),
+        _measure("sold_new_units", "integer", unit="units", view="vw_employee_performance"),
+        _measure("sold_used_units", "integer", unit="units", view="vw_employee_performance"),
+        _measure("sold_certified_units", "integer", unit="units", view="vw_employee_performance"),
+        _measure("sold_non_retail_units", "integer", unit="units", view="vw_employee_performance"),
+        _measure(
+            "sold_front_end_gross",
+            "currency",
+            unit="USD",
+            precision=2,
+            view="vw_employee_performance",
+        ),
+        _measure(
+            "sold_total_gross",
+            "currency",
+            unit="USD",
+            precision=2,
+            view="vw_employee_performance",
+        ),
+        _measure(
+            "sold_retail_units_with_desk_manager",
+            "integer",
+            unit="units",
+            view="vw_employee_performance",
+        ),
+        _measure("desked_retail_units", "integer", unit="units", view="vw_employee_performance"),
+        _measure("desked_new_units", "integer", unit="units", view="vw_employee_performance"),
+        _measure("desked_used_units", "integer", unit="units", view="vw_employee_performance"),
+        _measure("desked_certified_units", "integer", unit="units", view="vw_employee_performance"),
+        _measure(
+            "desked_non_retail_units", "integer", unit="units", view="vw_employee_performance"
+        ),
+        _measure(
+            "desked_front_end_gross",
+            "currency",
+            unit="USD",
+            precision=2,
+            view="vw_employee_performance",
+        ),
+        _measure(
+            "desked_total_gross",
+            "currency",
+            unit="USD",
+            precision=2,
+            view="vw_employee_performance",
+        ),
+        _measure("minimum_sample_floor", "integer", unit="units", view="vw_employee_performance"),
+    ),
+    notes=(
+        "TWO CREDITS ON ONE DELIVERY, PUBLISHED AS TWO COLUMN GROUPS. A car is credited to a "
+        "salesperson AND to a desk manager, so sold_* and desked_* are separately named "
+        "rather than sharing a 'retail units' column that role_family would disambiguate. "
+        "The shared design was rejected on purpose: it triples every delivery for anything "
+        "summing across families. As built, each group sums correctly over the whole dataset "
+        "with no family filter, which is what RECON-EMP-SALES-UNITS proves. "
+        "RATIOS ARE NOT PUBLISHED, ONLY THEIR COMPONENTS: gross per retail unit is "
+        "SUM(gross)/SUM(units) at whatever grain is being reported and NEVER the average of "
+        "daily or per-employee ratios, so the consumer divides once, itself. THE DENOMINATOR "
+        "IS RETAIL ONLY -- sold_non_retail_units and desked_non_retail_units publish the "
+        "wholesale and dealer-trade units excluded from it, so the exclusion is checkable "
+        "rather than asserted. CERTIFIED UNITS ARE USED UNITS: sold_certified_units and "
+        "desked_certified_units are SUBSETS of the used columns published for context, and "
+        "adding either to its used column double counts -- KPI-SLS-003 remains the governed "
+        "used measure and certified is not a third one. sold_retail_units_with_desk_manager "
+        "is MANAGEMENT PARTICIPATION CONTEXT ONLY and asserts nothing about manager quality, "
+        "help or interference; on the development profile it equals sold_retail_units on "
+        "every row, so the context is structurally constant and a consumer should say so "
+        "plainly rather than give it prominent space. minimum_sample_floor governs the "
+        "per-unit gross figures and their sample count is the RETAIL UNIT COLUMN OF THE "
+        "SAME CREDIT, never a generic row count. NOTHING HERE IS SORTED BY A MEASURE and "
+        "nothing may be: the sort is store, date, family, code."
+    ),
+)
+
+_EMPLOYEE_FINANCE = DatasetContract(
+    name="employee-finance",
+    source_view="vw_employee_performance",
+    grain=(
+        "One row per store, per sale date, per role family, per employee -- restricted to "
+        "the rows carrying retail deliveries or product contracts under a finance-manager "
+        "credit, including the 'nobody on the F&I desk' group."
+    ),
+    business_key=_EMPLOYEE_PERFORMANCE_BUSINESS_KEY,
+    date_basis="sale date",
+    sort_keys=_EMPLOYEE_PERFORMANCE_BUSINESS_KEY,
+    where="base.financed_retail_units <> 0 OR base.financed_contract_count <> 0",
+    chunked=False,
+    kpi_ids=("KPI-FNI-001", "KPI-FNI-003", "KPI-FNI-019", "KPI-GRS-002", "KPI-GRS-005"),
+    columns=(
+        *_employee_identity("vw_employee_performance"),
+        _measure("financed_retail_units", "integer", unit="units", view="vw_employee_performance"),
+        _measure("financed_cash_deals", "integer", unit="deals", view="vw_employee_performance"),
+        _measure(
+            "financed_retail_finance_deals",
+            "integer",
+            unit="deals",
+            view="vw_employee_performance",
+        ),
+        _measure("financed_lease_deals", "integer", unit="deals", view="vw_employee_performance"),
+        _measure(
+            "financed_reserve_gross",
+            "currency",
+            unit="USD",
+            precision=2,
+            view="vw_employee_performance",
+        ),
+        _measure(
+            "financed_back_end_gross",
+            "currency",
+            unit="USD",
+            precision=2,
+            view="vw_employee_performance",
+        ),
+        _measure(
+            "financed_product_gross",
+            "currency",
+            unit="USD",
+            precision=2,
+            view="vw_employee_performance",
+        ),
+        _measure(
+            "financed_contract_count", "integer", unit="contracts", view="vw_employee_performance"
+        ),
+        _measure(
+            "financed_deals_with_a_product",
+            "integer",
+            unit="deals",
+            view="vw_employee_performance",
+        ),
+        _measure("minimum_sample_floor", "integer", unit="units", view="vw_employee_performance"),
+    ),
+    notes=(
+        "THE CASH-MIX CAUTION IS ON THE ROW, NOT THREE DISCLOSURES AWAY. financed_retail_units "
+        "is the governed denominator of reserve PVR and back gross per retail unit, and it "
+        "INCLUDES CASH DEALS, which cannot generate reserve. A manager with a different cash "
+        "mix therefore shows a different PVR for reasons that have nothing to do with skill, "
+        "so financed_cash_deals, financed_retail_finance_deals and financed_lease_deals are "
+        "published beside it and MUST be shown wherever a reserve or back PVR figure is. The "
+        "three structure counts sum exactly to financed_retail_units, which is what makes the "
+        "mix a partition. null employee_code is the 'nobody on the F&I desk' group -- 135 "
+        "real deliveries on the development profile -- and it is never dropped. "
+        "financed_contract_count is CONTRACT ROWS AND NOT PENETRATED DEALS, and "
+        "financed_deals_with_a_product is not a governed penetration figure either: "
+        "penetration has a per-category ELIGIBLE-DEAL denominator and "
+        "reporting.vw_fi_product_penetration owns it, as it does for the F&I page. The "
+        "as-of and adjustment-period bases are deliberately absent: this dataset is on the "
+        "DEAL-DATE basis only, /dashboard/fi owns the other two, and blending them on one "
+        "surface would put three populations behind one number. Reconciles to "
+        "reporting.vw_fi_summary at full grain (RECON-EMP-FINANCE). No APR, buy rate, sell "
+        "rate, rate spread or money factor is modelled anywhere in ARPI and nothing here may "
+        "be read as rate guidance."
+    ),
+)
+
+_EMPLOYEE_APPOINTMENTS = DatasetContract(
+    name="employee-appointments",
+    source_view="vw_employee_performance",
+    grain=(
+        "One row per store, per calendar date, per role family, per employee -- restricted "
+        "to the rows carrying appointments under a BDC credit. TWO DATE BASES travel on the "
+        "one date column and each measure names its own."
+    ),
+    business_key=_EMPLOYEE_PERFORMANCE_BUSINESS_KEY,
+    date_basis="appointment scheduled date and appointment show date",
+    sort_keys=_EMPLOYEE_PERFORMANCE_BUSINESS_KEY,
+    where=("base.bdc_scheduled_appointments <> 0 OR base.bdc_shown_appointments_show_basis <> 0"),
+    chunked=False,
+    kpi_ids=("KPI-FUN-004", "KPI-FUN-005"),
+    columns=(
+        *_employee_identity("vw_employee_performance"),
+        _measure(
+            "bdc_scheduled_appointments",
+            "integer",
+            unit="appointments",
+            view="vw_employee_performance",
+        ),
+        _measure(
+            "bdc_eligible_appointments",
+            "integer",
+            unit="appointments",
+            view="vw_employee_performance",
+        ),
+        _measure(
+            "bdc_cancelled_in_advance_appointments",
+            "integer",
+            unit="appointments",
+            view="vw_employee_performance",
+        ),
+        _measure(
+            "bdc_shown_appointments_scheduled_basis",
+            "integer",
+            unit="appointments",
+            view="vw_employee_performance",
+        ),
+        _measure(
+            "bdc_shown_appointments_show_basis",
+            "integer",
+            unit="appointments",
+            view="vw_employee_performance",
+        ),
+        _measure(
+            "bdc_shown_and_sold_appointments",
+            "integer",
+            unit="appointments",
+            view="vw_employee_performance",
+        ),
+        _measure(
+            "minimum_sample_floor", "integer", unit="appointments", view="vw_employee_performance"
+        ),
+    ),
+    notes=(
+        "APPOINTMENT GRAIN, NOT LEAD GRAIN. One lead can produce several appointments, so "
+        "these denominators are not the lead denominators in `employee-lead-source` and the "
+        "two must never share a funnel width. TWO DATE BASES ON ONE DATE COLUMN, and the "
+        "column names carry them: show rate is shown-on-the-SCHEDULED-basis over "
+        "bdc_eligible_appointments, because an appointment booked for next month is not "
+        "eligible to show this month; show-to-sale is bdc_shown_and_sold_appointments over "
+        "bdc_shown_appointments_show_basis, so the visit and its outcome sit in the same "
+        "period. SHOWN APPOINTMENTS APPEAR TWICE ON PURPOSE -- they are two different "
+        "populations, and one column would have served one of the two governed ratios "
+        "wrongly. THE CANCELLATION EXCLUSION IS THE MANIPULABLE PART: appointments cancelled "
+        "before the scheduled date are outside the show-rate denominator, reclassifying "
+        "no-shows as advance cancellations produces a flattering show rate, and "
+        "bdc_cancelled_in_advance_appointments must therefore appear on the same visual as "
+        "show rate rather than in a methodology note. Each rate's sample count is ITS OWN "
+        "governed denominator -- eligible appointments for show rate, shown appointments for "
+        "show-to-sale -- never a shared row count. Show-to-sale improves as data matures, "
+        "because a customer who visits late in a period and buys days later still counts at "
+        "the visit; period-to-date figures must be labelled incomplete."
+    ),
+)
+
+_EMPLOYEE_LEAD_SOURCE = DatasetContract(
+    name="employee-lead-source",
+    source_view="vw_employee_lead_source_response",
+    grain=(
+        "One row per store, per lead-creation date, per role family, per employee, per lead "
+        "source, per distinct first-response value -- including the never-responded bin."
+    ),
+    business_key=(
+        "dealership_id",
+        "lead_created_date",
+        "role_family",
+        "employee_code",
+        "lead_source_code",
+        "first_response_seconds",
+    ),
+    date_basis="lead creation date",
+    sort_keys=(
+        "dealership_id",
+        "lead_created_date",
+        "role_family",
+        "employee_code",
+        "lead_source_code",
+        "first_response_seconds",
+    ),
+    chunked=True,
+    kpi_ids=("KPI-FUN-001", "KPI-FUN-002", "KPI-FUN-003", "KPI-FUN-006", "KPI-FUN-008"),
+    columns=(
+        _employee_store_id("vw_employee_lead_source_response"),
+        ColumnContract(
+            name="lead_created_date",
+            type="date",
+            nullable=False,
+            expression="base.lead_created_date",
+            source_column="vw_employee_lead_source_response.lead_created_date",
+            unit="lead creation date",
+        ),
+        _employee_role_family("vw_employee_lead_source_response"),
+        _employee_code("vw_employee_lead_source_response"),
+        # THE EVENT-TIME IDENTITY, on this dataset too. The BDC surface reads its people from
+        # here, and without these two columns their role and tenure band could only have come
+        # from the CURRENT-version roster -- which is the exact substitution the whole
+        # increment refuses everywhere else. 58 bytes a row is what it costs to keep one rule.
+        _attribute(
+            "job_role",
+            "string",
+            nullable=True,
+            view="vw_employee_lead_source_response",
+            enumeration=ALLOWED_JOB_ROLES,
+        ),
+        _attribute(
+            "tenure_band",
+            "string",
+            nullable=True,
+            view="vw_employee_lead_source_response",
+            enumeration=ALLOWED_TENURE_BANDS,
+        ),
+        ColumnContract(
+            name="lead_source_code",
+            type="string",
+            nullable=False,
+            expression="base.lead_source_code",
+            source_column="vw_employee_lead_source_response.lead_source_code",
+        ),
+        _measure(
+            "first_response_seconds",
+            "integer",
+            nullable=True,
+            unit="seconds",
+            view="vw_employee_lead_source_response",
+        ),
+        _measure(
+            "valid_lead_count", "integer", unit="leads", view="vw_employee_lead_source_response"
+        ),
+        _measure(
+            "duplicate_lead_count",
+            "integer",
+            unit="leads",
+            view="vw_employee_lead_source_response",
+        ),
+        _measure(
+            "contacted_lead_count",
+            "integer",
+            unit="leads",
+            view="vw_employee_lead_source_response",
+        ),
+        _measure(
+            "appointment_set_lead_count",
+            "integer",
+            unit="leads",
+            view="vw_employee_lead_source_response",
+        ),
+        _measure(
+            "sold_lead_count", "integer", unit="leads", view="vw_employee_lead_source_response"
+        ),
+        _measure(
+            "responded_lead_count",
+            "integer",
+            unit="leads",
+            view="vw_employee_lead_source_response",
+        ),
+        _measure(
+            "unresponded_lead_count",
+            "integer",
+            unit="leads",
+            view="vw_employee_lead_source_response",
+        ),
+        _measure(
+            "response_seconds_total",
+            "integer",
+            unit="seconds",
+            view="vw_employee_lead_source_response",
+        ),
+    ),
+    notes=(
+        "THE ASSIGNED-LEAD POPULATION BENEATH THE EMPLOYEE ROW, and the only place the lead "
+        "funnel is published per employee -- `employee-sales`, `employee-finance` and "
+        "`employee-appointments` carry none of these columns, so no number here has a second "
+        "publisher that could disagree with it. A COUNTED DISTRIBUTION, NOT LEAD ROWS: "
+        "grouping by the response value and counting preserves the multiset exactly, so a "
+        "median over these rows weighted by responded_lead_count equals the median over the "
+        "leads themselves (RECON-EMP-SOURCE-MEDIAN), while the artefact carries no lead key, "
+        "lead code, customer, sale or vehicle at all. The rows are histogram bins and must "
+        "never be rendered as leads: a bin with valid_lead_count 1 is still a bin, this is "
+        "not a drill-through, and this route is not a CRM screen. "
+        "first_response_seconds null is the NEVER-RESPONDED bin -- it must be excluded from "
+        "any order statistic and NEVER coalesced to zero, which would sort ignored leads to "
+        "the fastest end and improve every response figure; zero seconds is a real instant "
+        "response and an ordinary included observation. unresponded_lead_count must be shown "
+        "beside any median or mean, because both statistics are blind to that population by "
+        "definition and a person who ignores half their leads can otherwise report an "
+        "excellent one. DENOMINATORS: contact rate is contacted over VALID leads; "
+        "appointment-set rate is appointment-set over CONTACTED leads and never over all "
+        "valid ones. Duplicates are excluded structurally and stay visible in "
+        "duplicate_lead_count. SOURCE MIX IS CONTEXT, NEVER A JUDGEMENT -- no lead-quality "
+        "score, difficulty index or source weighting exists anywhere in ARPI and none may be "
+        "invented; it is published because comparing two people's contact rates without it "
+        "compares two different jobs. Carries NO unit, gross or appointment measure, so "
+        "reading it beside the other employee datasets cannot fan one out. "
+        "response_time_band is deliberately not exported: it is derivable from the seconds "
+        "and publishing it would invite a median estimated from bands, which is not a median."
+    ),
+)
+
+
 DATASETS: Final[tuple[DatasetContract, ...]] = (
     _STORES,
     _CALENDAR,
@@ -3236,6 +3841,16 @@ DATASETS: Final[tuple[DatasetContract, ...]] = (
     _INVENTORY_ACCOUNTING,
     _INVENTORY_GL_RECONCILIATION,
     _ACCOUNTING_EXCEPTIONS,
+    # DASH.11. The employee-performance surface, split by MEASURE GROUP rather than
+    # exported as one 51-column view: most cells of a whole-view export are structurally
+    # zero, and a salesperson having no row in `employee-finance` states "not applicable"
+    # more strongly than a zero could. The lead funnel is published once, in
+    # `employee-lead-source`, so no employee number has two publishers.
+    _EMPLOYEES,
+    _EMPLOYEE_SALES,
+    _EMPLOYEE_FINANCE,
+    _EMPLOYEE_APPOINTMENTS,
+    _EMPLOYEE_LEAD_SOURCE,
     _RECONCILIATION_STATUS,
     _PIPELINE_RUN,
 )

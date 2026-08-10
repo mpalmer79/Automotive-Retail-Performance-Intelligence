@@ -1061,7 +1061,7 @@ export const LEADS_MARKETING_SUPPORT: RouteFilterSupport = {
   employee: {
     support: 'not-applicable',
     label: 'Employee',
-    note: 'Employee performance arrives with DASH.11. This page is deliberately not a BDC leaderboard: no employee-grain dataset is exported and none is read here.',
+    note: 'This page is deliberately not a BDC leaderboard: it reads no employee-grain dataset and scopes nothing by a person. DASH.11 built /dashboard/employees, which does, with a minimum-sample floor on every comparative figure.',
   },
   condition: {
     support: 'not-applicable',
@@ -1087,5 +1087,88 @@ export const LEADS_MARKETING_SUPPORT: RouteFilterSupport = {
     support: 'not-applicable',
     label: 'F&I product category',
     note: 'F&I products belong to the F&I surface; no lead-grain dataset carries them.',
+  },
+}
+
+/**
+ * The employee-performance page's declaration (`DASH.11`).
+ *
+ * FOUR PARAMETERS CHANGE WHAT THIS PAGE SHOWS AND NINE DO NOT, and the nine are worth reading
+ * rather than skipping: several of them could have been made to work and were deliberately
+ * not, because a filter that narrows a numerator without narrowing its governed denominator
+ * is worse than a filter that says no.
+ *
+ * `compare` IS NOT-APPLICABLE, AND THAT IS THE INCREMENT'S MOST DELIBERATE OMISSION. A
+ * prior-period delta on an employee figure needs both periods to independently satisfy the
+ * same role assignment, the same measure, the same denominator AND the minimum-sample floor.
+ * On this data most people clear the floor in neither period, so most deltas would be
+ * computed from a value the page had just declined to print — and where a person changed role
+ * or store between the periods, the difference would be an assignment change presented as
+ * performance movement. Declaring it not-applicable is the more honest contract than shipping
+ * a delta with four conditions attached.
+ *
+ * `dept` IS NOT-APPLICABLE for a reason specific to this page: department is an employee-
+ * VERSION attribute, and the role families already partition the population on a finer,
+ * fact-derived basis. The two disagree — a Sales Manager and a General Manager are both
+ * department Management and both are credited desk management — so a department control
+ * beside the role navigation would offer two answers to the same question.
+ */
+export const EMPLOYEES_SUPPORT: RouteFilterSupport = {
+  period: { support: 'applied', label: 'Period' },
+  store: { support: 'applied', label: 'Store' },
+  employee: {
+    support: 'applied',
+    label: 'Employee',
+    note: 'Opens one synthetic employee for investigation. Validated against the exported roster: a well-formed code the export does not contain is reported as unknown rather than silently rendering an empty page.',
+  },
+  source: {
+    support: 'partial',
+    label: 'Lead source',
+    note: 'Scopes the lead-source mix and the lead funnel, which are the only blocks a source can reach. Units, gross and finance structure are properties of a delivery and are not narrowed by it, so the page reports the selection rather than applying it everywhere.',
+  },
+  compare: {
+    support: 'not-applicable',
+    label: 'Comparison',
+    note: 'Deliberately not offered. A prior-period employee delta needs both periods to satisfy the same role assignment, the same denominator and the minimum-sample floor independently — and a delta computed from a value the page declined to print, or across a role or store change, would present an assignment change as performance movement.',
+  },
+  dept: {
+    support: 'not-applicable',
+    label: 'Department',
+    note: 'The role families already partition the population on a finer, fact-derived basis, and the two disagree: a Sales Manager and a General Manager are both department Management and both are credited desk management. A department control here would answer the same question differently.',
+  },
+  condition: {
+    support: 'not-applicable',
+    label: 'Condition',
+    note: 'The new and used mix is shown on every selling row as context, because it is part of what a gross figure means. A condition filter would narrow the gross numerator without narrowing the retail-unit denominator the floor is applied to, which is the defect the mix exists to make visible instead.',
+  },
+  structure: {
+    support: 'not-applicable',
+    label: 'Finance structure',
+    note: 'The structure mix travels beside every finance figure for the same reason: reserve and back PVR divide by ALL retail units including cash deals, so filtering to one structure would narrow the numerator and leave the governed denominator alone.',
+  },
+  scope: {
+    support: 'not-applicable',
+    label: 'Sale-type scope',
+    note: 'Every employee measure here is retail-only by governed definition. The wholesale and dealer-trade units excluded from each denominator are published beside it so the exclusion is checkable, which is what a scope control would otherwise be for.',
+  },
+  product: {
+    support: 'not-applicable',
+    label: 'F&I product category',
+    note: 'Category-grain penetration has a per-category eligible-deal denominator that this page does not carry. The F&I route owns it, and the finance rows link to it.',
+  },
+  campaign: {
+    support: 'not-applicable',
+    label: 'Campaign',
+    note: 'The employee lead dataset carries the lead source but not its campaign.',
+  },
+  make: {
+    support: 'not-applicable',
+    label: 'Make',
+    note: 'No employee dataset carries a vehicle attribute. Vehicle filters belong to the Deal Explorer.',
+  },
+  model: {
+    support: 'not-applicable',
+    label: 'Model',
+    note: 'No employee dataset carries a vehicle attribute. Vehicle filters belong to the Deal Explorer.',
   },
 }
