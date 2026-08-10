@@ -99,6 +99,8 @@ const ROUTES = [
   // only console route where a filter narrows BOTH sides of a reconciliation at once.
   '/dashboard/accounting',
   '/dashboard/accounting?store=GSA-001&period=2025-11',
+  '/dashboard/actions',
+  '/dashboard/actions?severity=high&domain=inventory',
   // The leads and marketing route (`DASH.10`). Seven sections over five datasets, three
   // of them partitioned, all server components. Measured three ways because its cost is
   // decided by two independent things and one of them is new to the console: how many
