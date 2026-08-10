@@ -79,9 +79,22 @@ import {
   DASHBOARD_CLIENT_SCHEMA,
   DASHBOARD_CONTRACT_VERSION,
   DASHBOARD_DATASETS,
+  DASHBOARD_ACTIONS_SCHEMA,
   DASHBOARD_EXPORT_SCHEMA,
 } from '../src/types/dashboard.ts'
+import type { ManagementAction } from '../src/types/dashboard.ts'
+import {
+  isActionDomain,
+  isActionOwnerRole,
+  isActionSeverity,
+  drillThroughProblem,
+} from '../src/lib/dashboard/action-contract.ts'
 import type {
+  ActionEvidence,
+  ActionQueueCounts,
+  ActionThreshold,
+  DashboardActionManifest,
+  DashboardActionFile,
   DashboardCell,
   DashboardChunkPointer,
   DashboardClientColumn,
@@ -1136,6 +1149,19 @@ function toValues(
   return columns.map((column) => row[column] ?? null)
 }
 
+/**
+ * Serialise the action queue.
+ *
+ * ROW-PER-OBJECT, unlike every dataset file, and for a reason that is the mirror of theirs.
+ * A dataset is thousands of rows of one shape, where repeating the column names on each row
+ * would cost more in keys than in values. The queue is a few dozen rows of a NESTED shape —
+ * evidence and thresholds are lists of objects — which a columnar encoding cannot express
+ * without flattening the very structure that makes an action checkable.
+ */
+function serialiseActions(file: DashboardActionFile): string {
+  return `${JSON.stringify(file, null, 2)}\n`
+}
+
 function serialiseManifest(manifest: DashboardClientManifest): string {
   return `${JSON.stringify(manifest, null, 2)}\n`
 }
@@ -1155,6 +1181,487 @@ function assertSanitized(label: string, serialised: string): void {
 }
 
 /* -------------------------------------------------------------------------- */
+/* 7b. The management action queue                                             */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Read, verify and re-encode `DASH.12`'s action queue.
+ *
+ * WHAT THIS STAGE DOES NOT DO
+ * ---------------------------
+ * It does not evaluate a rule, decide a severity, read a threshold or build a URL. Every
+ * one of those happened at export time, in Python, against the rule file — and doing any of
+ * them again here would create a second implementation whose disagreement with the first
+ * nobody would notice until a reader saw two different queues.
+ *
+ * What it does is refuse anything it cannot verify: an identity that does not follow the
+ * documented contract, a vocabulary term outside the governed set, an evidence field no
+ * source dataset publishes, a threshold with no value, a drill-through that no longer
+ * resolves, or a count that disagrees with the rows it is a count of. The queue is public
+ * data on a public site, and the check that it is still true has to run somewhere the
+ * routes are known.
+ */
+function readActionQueue(
+  manifest: DashboardExportManifest,
+  loaded: ReadonlyMap<DashboardDatasetName, LoadedDataset>
+): { readonly file: DashboardActionFile; readonly manifest: DashboardActionManifest } | undefined {
+  // Read from the RAW document rather than from the normalised manifest: that reader
+  // constructs its result field by field, so a block it does not know about is not on the
+  // object it returns.
+  const document = readJson(EXPORT_MANIFEST)
+  const block = isRecord(document) ? document['management_actions'] : undefined
+  if (!isRecord(block)) {
+    fail(
+      `${EXPORT_MANIFEST} carries no management_actions block. Regenerate the export: the ` +
+        'action queue is part of it, not an optional extra.'
+    )
+    return undefined
+  }
+  if (block['schema'] !== DASHBOARD_ACTIONS_SCHEMA) {
+    fail(
+      `the action queue declares schema ${JSON.stringify(block['schema'])}; this consumer ` +
+        `understands ${DASHBOARD_ACTIONS_SCHEMA}.`
+    )
+    return undefined
+  }
+
+  const ruleset = block['ruleset']
+  if (!isRecord(ruleset)) {
+    fail('the action queue declares no ruleset, so its rows cannot be traced to any policy.')
+    return undefined
+  }
+  const enabledIds = requireStringArray(ruleset, 'enabled_rule_ids', 'the action ruleset')
+  const disabledIds = requireStringArray(ruleset, 'disabled_rule_ids', 'the action ruleset')
+  const rulesetSha = requireString(ruleset, 'file_sha256', 'the action ruleset')
+  const rulesetFile = requireString(ruleset, 'file', 'the action ruleset')
+  const ruleCount = requireNumber(ruleset, 'rule_count', 'the action ruleset')
+  if (
+    enabledIds !== undefined &&
+    disabledIds !== undefined &&
+    ruleCount !== undefined &&
+    enabledIds.length + disabledIds.length !== ruleCount
+  ) {
+    fail(
+      `the action ruleset reports ${String(ruleCount)} rules but names ` +
+        `${String(enabledIds.length)} enabled and ${String(disabledIds.length)} disabled. A ` +
+        'permanent identifier is never deleted, so the two lists must account for all of them.'
+    )
+  }
+
+  const raw = readJson(`${EXPORT_DIR}/management-actions.json`)
+  if (!Array.isArray(raw)) {
+    fail(`${EXPORT_DIR}/management-actions.json does not contain a JSON array.`)
+    return undefined
+  }
+  const declaredSha = requireString(block, 'file_sha256', 'the action queue')
+  const bytes = readFileSync(repoPath(`${EXPORT_DIR}/management-actions.json`))
+  const actualSha = createHash('sha256').update(bytes).digest('hex')
+  if (declaredSha !== undefined && declaredSha !== actualSha) {
+    fail(
+      `management-actions.json hashes to ${actualSha} but the export manifest declares ` +
+        `${declaredSha}. The committed queue was edited by hand or is stale.`
+    )
+  }
+  const declaredRows = requireNumber(block, 'row_count', 'the action queue')
+  if (declaredRows !== undefined && declaredRows !== raw.length) {
+    fail(
+      `the action queue declares ${String(declaredRows)} rows and carries ` +
+        `${String(raw.length)}.`
+    )
+  }
+
+  // Every column any source dataset publishes. An evidence field outside this set is a
+  // value with no contract behind it, which is the one thing evidence may never be.
+  const sourceDatasets = requireStringArray(block, 'source_datasets', 'the action queue') ?? []
+  const publishedColumns = new Set<string>()
+  for (const name of sourceDatasets) {
+    const dataset = manifest.datasets.find((entry) => entry.name === name)
+    if (dataset === undefined) {
+      fail(`the action queue reads ${name}, which the export contract does not publish.`)
+      continue
+    }
+    if (!loaded.has(name as DashboardDatasetName)) continue
+    for (const column of dataset.columns) publishedColumns.add(column.name)
+  }
+
+  const datasetVersion = manifest.dataset_version
+  const seen = new Set<string>()
+  const actions: ManagementAction[] = []
+  for (const [index, entry] of raw.entries()) {
+    const action = readAction(entry, index, {
+      datasetVersion,
+      enabledIds: new Set(enabledIds ?? []),
+      publishedColumns,
+    })
+    if (action === undefined) continue
+    if (seen.has(action.actionId)) {
+      fail(
+        `action ${action.actionId} appears more than once. Exactly one action may exist per ` +
+          'rule per entity per dataset version.'
+      )
+      continue
+    }
+    seen.add(action.actionId)
+    actions.push(action)
+  }
+
+  const counts = readCounts(block, actions)
+  const drivers = readChangeDrivers(block, manifest)
+  if (counts === undefined || drivers === undefined) return undefined
+
+  return {
+    file: {
+      schema: DASHBOARD_ACTIONS_SCHEMA,
+      rowCount: actions.length,
+      actions,
+    },
+    manifest: {
+      schema: DASHBOARD_ACTIONS_SCHEMA,
+      rowCount: actions.length,
+      asOfDate: manifest.as_of_date,
+      fileSha256: actualSha,
+      rootExportBytes: bytes.length,
+      ruleset: {
+        schema: requireString(ruleset, 'schema', 'the action ruleset') ?? '',
+        rulesetVersion: requireNumber(ruleset, 'ruleset_version', 'the action ruleset') ?? 0,
+        file: rulesetFile ?? '',
+        fileSha256: rulesetSha ?? '',
+        expiry: 'dataset',
+        ruleCount: ruleCount ?? 0,
+        enabledRuleIds: enabledIds ?? [],
+        disabledRuleIds: disabledIds ?? [],
+      },
+      sourceDatasets: sourceDatasets as readonly DashboardDatasetName[],
+      counts,
+      changeDrivers: drivers,
+      boundaries: requireStringArray(block, 'boundaries', 'the action queue') ?? [],
+    },
+  }
+}
+
+interface ActionContext {
+  readonly datasetVersion: number
+  readonly enabledIds: ReadonlySet<string>
+  readonly publishedColumns: ReadonlySet<string>
+}
+
+/** Verify and re-encode one action. */
+function readAction(
+  entry: unknown,
+  index: number,
+  context: ActionContext
+): ManagementAction | undefined {
+  const where = `management-actions[${String(index)}]`
+  if (!isRecord(entry)) {
+    fail(`${where} is not an object.`)
+    return undefined
+  }
+  const actionId = requireString(entry, 'action_id', where)
+  const ruleId = requireString(entry, 'rule_id', where)
+  const entityId = requireString(entry, 'entity_id', where)
+  const severity = requireString(entry, 'severity', where)
+  const domain = requireString(entry, 'domain', where)
+  const ownerRole = requireString(entry, 'owner_role', where)
+  const drillThrough = requireString(entry, 'drill_through', where)
+  const title = requireString(entry, 'title', where)
+  const recommendedReview = requireString(entry, 'recommended_review', where)
+  const limitations = requireString(entry, 'limitations', where)
+  const asOfDate = requireString(entry, 'as_of_date', where)
+  if (
+    actionId === undefined ||
+    ruleId === undefined ||
+    entityId === undefined ||
+    severity === undefined ||
+    domain === undefined ||
+    ownerRole === undefined ||
+    drillThrough === undefined ||
+    title === undefined ||
+    recommendedReview === undefined ||
+    limitations === undefined ||
+    asOfDate === undefined
+  ) {
+    return undefined
+  }
+
+  // The identity contract, checked rather than trusted: the action id IS the rule, the
+  // entity and the dataset version, so a reader can take one apart by eye.
+  const expectedId = `${ruleId}:${entityId}:${String(context.datasetVersion)}`
+  if (actionId !== expectedId) {
+    fail(
+      `${where} declares action_id ${actionId} but its rule, entity and dataset version make ` +
+        `${expectedId}. The identity contract is {rule_id}:{entity_id}:{dataset_version}.`
+    )
+    return undefined
+  }
+  if (!context.enabledIds.has(ruleId)) {
+    fail(`${where} was produced by ${ruleId}, which the ruleset does not list as enabled.`)
+    return undefined
+  }
+  if (!isActionSeverity(severity)) {
+    fail(`${where} carries severity ${JSON.stringify(severity)}, outside the governed set.`)
+    return undefined
+  }
+  if (!isActionDomain(domain)) {
+    fail(`${where} carries domain ${JSON.stringify(domain)}, outside the governed set.`)
+    return undefined
+  }
+  if (!isActionOwnerRole(ownerRole)) {
+    fail(`${where} carries review role ${JSON.stringify(ownerRole)}, outside the governed set.`)
+    return undefined
+  }
+  const routeProblem = drillThroughProblem(drillThrough)
+  if (routeProblem !== null) {
+    fail(`${where} cannot drill through: ${routeProblem}.`)
+    return undefined
+  }
+
+  const evidence = readEvidence(entry['evidence'], where, context.publishedColumns)
+  const thresholds = readThresholds(entry['thresholds_used'], where)
+  if (evidence === undefined || thresholds === undefined) return undefined
+
+  const store = entry['store']
+  const observedDate = entry['observed_date']
+  const dateBasis = entry['date_basis']
+  const entityType = requireString(entry, 'entity_type', where) ?? ''
+
+  return {
+    actionId,
+    ruleId,
+    domain,
+    asOfDate,
+    store: typeof store === 'string' ? store : null,
+    entityType,
+    entityId,
+    severity,
+    title,
+    ownerRole,
+    recommendedReview,
+    limitations,
+    dateBasis: typeof dateBasis === 'string' ? dateBasis : null,
+    observedDate: typeof observedDate === 'string' ? observedDate : null,
+    drillThrough,
+    evidence,
+    thresholdsUsed: thresholds,
+  }
+}
+
+/** Verify an action's evidence against the columns its source datasets publish. */
+function readEvidence(
+  raw: unknown,
+  where: string,
+  publishedColumns: ReadonlySet<string>
+): readonly ActionEvidence[] | undefined {
+  if (!Array.isArray(raw) || raw.length === 0) {
+    fail(`${where} carries no evidence. An action a reader cannot check is not an action.`)
+    return undefined
+  }
+  const evidence: ActionEvidence[] = []
+  for (const item of raw) {
+    if (!isRecord(item)) {
+      fail(`${where} carries a malformed evidence entry.`)
+      return undefined
+    }
+    const name = requireString(item, 'name', `${where}.evidence`)
+    const type = requireString(item, 'type', `${where}.evidence`)
+    if (name === undefined || type === undefined) return undefined
+    if (!publishedColumns.has(name)) {
+      fail(
+        `${where} offers ${name} as evidence, which none of the queue's source datasets ` +
+          'publishes. Evidence is copied from a contracted column or it is not evidence.'
+      )
+      return undefined
+    }
+    if (!COLUMN_TYPES.includes(type as DashboardColumnType)) {
+      fail(`${where} offers ${name} with unknown type ${JSON.stringify(type)}.`)
+      return undefined
+    }
+    const value = item['value']
+    if (!isCell(value)) {
+      fail(`${where} offers ${name} with a value that is not a scalar.`)
+      return undefined
+    }
+    const unit = item['unit']
+    const precision = item['display_precision']
+    evidence.push({
+      name,
+      value,
+      type: type as DashboardColumnType,
+      unit: typeof unit === 'string' ? unit : null,
+      displayPrecision: typeof precision === 'number' ? precision : null,
+    })
+  }
+  return evidence
+}
+
+/** Verify an action's threshold disclosure. */
+function readThresholds(raw: unknown, where: string): readonly ActionThreshold[] | undefined {
+  if (!Array.isArray(raw)) {
+    fail(`${where} carries no threshold disclosure.`)
+    return undefined
+  }
+  const thresholds: ActionThreshold[] = []
+  for (const item of raw) {
+    if (!isRecord(item)) {
+      fail(`${where} carries a malformed threshold entry.`)
+      return undefined
+    }
+    const name = requireString(item, 'name', `${where}.thresholds_used`)
+    const label = requireString(item, 'label', `${where}.thresholds_used`)
+    const units = requireString(item, 'units', `${where}.thresholds_used`)
+    const source = requireString(item, 'source', `${where}.thresholds_used`)
+    const authority = requireString(item, 'authority', `${where}.thresholds_used`)
+    if (
+      name === undefined ||
+      label === undefined ||
+      units === undefined ||
+      source === undefined ||
+      authority === undefined
+    ) {
+      return undefined
+    }
+    if (source !== 'governed' && source !== 'project-default-review-threshold') {
+      fail(`${where} discloses ${name} with unknown source ${JSON.stringify(source)}.`)
+      return undefined
+    }
+    // A threshold this file owns must SAY it is a project default, wherever it is rendered.
+    // Nothing in this repository is an industry standard and the label may never imply one.
+    if (source === 'project-default-review-threshold' && !/project default/i.test(label)) {
+      fail(
+        `${where} discloses ${name} as ${JSON.stringify(label)} without naming it a project ` +
+          'default. No threshold here is an industry benchmark.'
+      )
+      return undefined
+    }
+    const value = item['value']
+    if (value !== null && typeof value !== 'string') {
+      fail(`${where} discloses ${name} with a non-exact value.`)
+      return undefined
+    }
+    thresholds.push({ name, label, value, units, source, authority })
+  }
+  return thresholds
+}
+
+/** Re-derive the facet counts from the rows, and require the manifest to agree. */
+function readCounts(
+  block: Record<string, unknown>,
+  actions: readonly ManagementAction[]
+): ActionQueueCounts | undefined {
+  const declared = block['counts']
+  if (!isRecord(declared)) {
+    fail('the action queue declares no counts.')
+    return undefined
+  }
+  const tally = (pick: (action: ManagementAction) => string | null): Record<string, number> => {
+    const counts: Record<string, number> = {}
+    for (const action of actions) {
+      const key = pick(action)
+      if (key === null) continue
+      counts[key] = (counts[key] ?? 0) + 1
+    }
+    return counts
+  }
+  const derived: ActionQueueCounts = {
+    bySeverity: tally((action) => action.severity),
+    byDomain: tally((action) => action.domain),
+    byStore: tally((action) => action.store),
+    byOwnerRole: tally((action) => action.ownerRole),
+    byRule: tally((action) => action.ruleId),
+  }
+  const pairs: readonly (readonly [string, Readonly<Record<string, number>>])[] = [
+    ['by_severity', derived.bySeverity],
+    ['by_domain', derived.byDomain],
+    ['by_store', derived.byStore],
+    ['by_owner_role', derived.byOwnerRole],
+    ['by_rule', derived.byRule],
+  ]
+  for (const [key, ours] of pairs) {
+    const theirs = declared[key]
+    if (!isRecord(theirs)) {
+      fail(`the action queue declares no ${key} counts.`)
+      continue
+    }
+    const sameKeys =
+      Object.keys(theirs).length === Object.keys(ours).length &&
+      Object.entries(ours).every(([name, count]) => theirs[name] === count)
+    if (!sameKeys) {
+      fail(
+        `the action queue's ${key} counts disagree with the rows they count. A facet count ` +
+          'is a presentation figure derived from the queue, so the two cannot differ.'
+      )
+    }
+  }
+  return derived
+}
+
+/** Verify the change-driver display policy against the bridge the export publishes. */
+function readChangeDrivers(
+  block: Record<string, unknown>,
+  manifest: DashboardExportManifest
+): DashboardActionManifest['changeDrivers'] | undefined {
+  const drivers = block['change_drivers']
+  if (!isRecord(drivers)) {
+    fail('the action queue declares no change-driver policy.')
+    return undefined
+  }
+  const dataset = requireString(drivers, 'dataset', 'the change-driver policy')
+  const authority = requireString(drivers, 'authority', 'the change-driver policy')
+  const order = requireStringArray(drivers, 'decomposition_order', 'the change-driver policy')
+  const materiality = drivers['materiality']
+  if (
+    dataset === undefined ||
+    authority === undefined ||
+    order === undefined ||
+    !isRecord(materiality)
+  ) {
+    return undefined
+  }
+  const entry = manifest.datasets.find((item) => item.name === dataset)
+  if (entry === undefined) {
+    fail(`the change-driver policy names ${dataset}, which the export does not publish.`)
+    return undefined
+  }
+  // The components come from the dataset's own enumeration. A mix effect SQL does not
+  // compute cannot be named here, which is what stops one being invented in TypeScript.
+  const component = entry.columns.find((column) => column.name === 'component_code')
+  const governed = component?.enumeration ?? null
+  if (governed === null || governed.length !== order.length ||
+      governed.some((code, index) => code !== order[index])) {
+    fail(
+      `the change-driver decomposition order ${JSON.stringify(order)} is not the order ` +
+        `${dataset} enumerates (${JSON.stringify(governed)}).`
+    )
+    return undefined
+  }
+  const value = materiality['value']
+  const units = requireString(materiality, 'units', 'the change-driver materiality')
+  const label = requireString(materiality, 'label', 'the change-driver materiality')
+  const rationale = requireString(materiality, 'rationale', 'the change-driver materiality')
+  if (
+    typeof value !== 'string' ||
+    units === undefined ||
+    label === undefined ||
+    rationale === undefined
+  ) {
+    fail('the change-driver materiality threshold is incomplete.')
+    return undefined
+  }
+  if (!/project default/i.test(label)) {
+    fail(
+      `the change-driver materiality is labelled ${JSON.stringify(label)}; it is a project ` +
+        'default for a fictional group, not an accounting materiality standard.'
+    )
+    return undefined
+  }
+  return {
+    authority,
+    dataset: dataset as DashboardDatasetName,
+    decompositionOrder: order,
+    materiality: { value, units, label, rationale },
+  }
+}
+
+/* -------------------------------------------------------------------------- */
 /* 8. Build                                                                    */
 /* -------------------------------------------------------------------------- */
 
@@ -1168,6 +1675,7 @@ interface Artefact {
 
 const artefacts: Artefact[] = []
 const clientDatasets: DashboardClientDataset[] = []
+let actionManifest: DashboardActionManifest | undefined
 
 if (manifest) {
   checkRegistry(manifest)
@@ -1181,6 +1689,18 @@ if (manifest) {
   if (loaded.size === manifest.datasets.length) {
     checkReferences(loaded)
     checkReconciliation(manifest, loaded)
+  }
+
+  // The action queue rides on the datasets above: its evidence is checked against their
+  // published columns, so it is read after they are loaded and never before.
+  const queue = readActionQueue(manifest, loaded)
+  if (queue !== undefined) {
+    actionManifest = queue.manifest
+    artefacts.push({
+      path: join(OUTPUT_ROOT, 'management-actions.json'),
+      label: 'management-actions.json',
+      body: serialiseActions(queue.file),
+    })
   }
 
   for (const entry of manifest.datasets) {
@@ -1317,6 +1837,12 @@ if (manifest) {
     limitations: manifest.limitations,
     datasets: clientDatasets,
     sizes,
+    actions:
+      actionManifest ??
+      (() => {
+        fail('the client manifest cannot be written without a verified action queue.')
+        return undefined as unknown as DashboardActionManifest
+      })(),
   }
 
   artefacts.push({

@@ -296,24 +296,40 @@ def _drill_through(rule: ActionRule, row: Mapping[str, Any]) -> str:
     """
     if rule.drill_through is None:  # pragma: no cover - disabled rules never reach here
         raise ActionEngineError(f"{rule.rule_id} has no drill-through")
+    route, missing = _substitute(rule.drill_through.route, row)
+    if missing:
+        raise ActionEngineError(
+            f"{rule.rule_id} builds its destination from {rule.drill_through.route!r}, but "
+            f"{missing} is null on a firing row; an action must resolve to a real page"
+        )
     pairs: list[str] = []
     for key, template in rule.drill_through.params:
-        resolved = template
-        dropped = False
-        start = template.find("{")
-        while start != -1:
-            end = template.find("}", start)
-            column = template[start + 1 : end]
-            value = row.get(column)
-            if value is None:
-                dropped = True
-                break
-            resolved = resolved.replace(f"{{{column}}}", str(value))
-            start = template.find("{", end)
-        if not dropped:
+        resolved, absent = _substitute(template, row)
+        if absent is None:
             pairs.append(f"{key}={resolved}")
     query = "&".join(pairs)
-    return f"{rule.drill_through.route}?{query}" if query else rule.drill_through.route
+    return f"{route}?{query}" if query else route
+
+
+def _substitute(template: str, row: Mapping[str, Any]) -> tuple[str, str | None]:
+    """Fill a template's ``{column}`` slots from a row.
+
+    Returns the filled text and the name of the first column whose value was null, if any.
+    A null in a PARAMETER drops the parameter -- a link carrying ``?unit=`` would arrive at
+    a destination that filters on nothing while saying it filters. A null in the PATH is a
+    different matter and the caller refuses it, because there is no page to arrive at.
+    """
+    resolved = template
+    start = template.find("{")
+    while start != -1:
+        end = template.find("}", start)
+        column = template[start + 1 : end]
+        value = row.get(column)
+        if value is None:
+            return resolved, column
+        resolved = resolved.replace(f"{{{column}}}", str(value))
+        start = template.find("{", end)
+    return resolved, None
 
 
 def _render_text(template: str, row: Mapping[str, Any], evidence: Sequence[str]) -> str:

@@ -832,6 +832,15 @@ def _read_drill_through(
             f"{where}.drill_through.route {route!r} must be a bare absolute path; query "
             "parameters are declared separately so each one can be validated"
         )
+    # A path may carry slots of its own -- a Deal Jacket is /dashboard/deals/{sale_id},
+    # where the identity is the path and not a parameter. They are validated exactly as a
+    # parameter's slots are, against the columns the rule's dataset exports.
+    for slot in _SLOT.findall(route):
+        if slot not in columns:
+            raise RuleError(
+                f"{where}.drill_through.route substitutes {{{slot}}}, which this dataset "
+                "does not export"
+            )
     params_raw = body.get("params") or {}
     params = _require_mapping(params_raw, f"{where}.drill_through.params")
     resolved: list[tuple[str, str]] = []
