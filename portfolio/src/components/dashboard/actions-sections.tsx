@@ -96,7 +96,8 @@ export function QueueSummary({
           <Text size="sm" tone="muted" className="mt-1">
             {filtered ? (
               <>
-                of {view.total} open review {view.total === 1 ? 'prompt' : 'prompts'} shown
+                of {view.total} open review {view.total === 1 ? 'prompt' : 'prompts'}{' '}
+                shown
               </>
             ) : (
               <>open review {view.total === 1 ? 'prompt' : 'prompts'}</>
@@ -121,13 +122,22 @@ export function QueueSummary({
           means "present in the dataset version being served" and nothing else: no workflow
           state exists, nothing was assigned, and nothing is overdue.
         */}
-        Open means present in this dataset version as of {formatIsoDate(asOfDate)}. The queue
-        is regenerated with the data and holds no workflow state: nothing here is assigned,
-        acknowledged, completed or overdue.
+        Open means present in the data this console is currently serving, as of{' '}
+        {formatIsoDate(asOfDate)}. The queue is rebuilt whenever that data is, and holds
+        no workflow state: nothing here is assigned, acknowledged, completed or overdue.
       </Text>
       {filtered ? (
         <Text size="sm" className="mt-3">
-          <Link href={actionsHref({ ...facets, severity: null, domain: null, owner: null, store: [] })} className="underline underline-offset-4">
+          <Link
+            href={actionsHref({
+              ...facets,
+              severity: null,
+              domain: null,
+              owner: null,
+              store: [],
+            })}
+            className="underline underline-offset-4"
+          >
             Clear all filters
           </Link>
         </Text>
@@ -152,13 +162,22 @@ function FacetGroup<T extends string>({
   if (options.length === 0) return null
   return (
     <div>
-      <p className="text-xs font-medium tracking-wide text-ink-muted uppercase">{legend}</p>
+      <p className="text-xs font-medium tracking-wide text-ink-muted uppercase">
+        {legend}
+      </p>
       <ul className="mt-2 flex flex-wrap gap-2">
         {options.map((option) => (
           <li key={option.value}>
             <Link
               href={hrefFor(option)}
-              aria-pressed={option.selected}
+              /*
+                `aria-current`, NOT `aria-pressed`. A facet is a LINK — it navigates to a
+                URL a reader can copy — and `aria-pressed` belongs to buttons, so axe
+                reports it as a critical violation on an anchor. `aria-current="true"` is
+                the attribute for "this is the one currently in effect", and it is what the
+                operating rail already uses to mark the current route.
+              */
+              aria-current={option.selected ? 'true' : undefined}
               className={cx(
                 'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition-colors',
                 'focus-visible:outline-accent focus-visible:outline-2 focus-visible:outline-offset-2',
@@ -168,7 +187,14 @@ function FacetGroup<T extends string>({
               )}
             >
               <span>{option.label}</span>
-              <span className="font-mono text-xs tabular-nums opacity-70">{option.count}</span>
+              {/*
+                NO `opacity-70` HERE. It was, and axe caught it: blending `ink-muted` at
+                70% over the card ground produced #7d878e at 3.49:1, under the 4.5:1 floor
+                for 12px text. The palette's muted token is measured and correct on its own;
+                an opacity applied on top of it re-opens exactly the failure
+                `tokens.css` documents fixing.
+              */}
+              <span className="font-mono text-xs tabular-nums">{option.count}</span>
             </Link>
           </li>
         ))}
@@ -234,12 +260,14 @@ function evidenceDisplay(entry: ManagementAction['evidence'][number]): string {
   // Guarded on the COLUMN TYPE, not on whether the string happens to parse. `cellToExact`
   // throws on "Used" rather than returning null, and asking it to parse a condition group
   // is a category error whichever way it answers.
-  const numeric = entry.type === 'currency' || entry.type === 'exact' || entry.type === 'double'
+  const numeric =
+    entry.type === 'currency' || entry.type === 'exact' || entry.type === 'double'
   if (numeric) {
     const exact = cellToExact(entry.value)
     if (exact !== null) {
       if (entry.unit === 'USD') return formatCurrencyExact(exact, 2)
-      if (entry.unit === 'ratio') return formatRateExact(exact, entry.displayPrecision ?? 4)
+      if (entry.unit === 'ratio')
+        return formatRateExact(exact, entry.displayPrecision ?? 4)
     }
   }
   if (entry.unit !== null && entry.unit !== 'ratio') return `${text} ${entry.unit}`
@@ -290,7 +318,9 @@ export function ActionCard({ action }: { readonly action: ManagementAction }) {
           {action.thresholdsUsed.map((threshold) => (
             <li key={threshold.name} className="text-sm text-ink-muted">
               <span className="text-ink">{threshold.label}:</span>{' '}
-              <span className="font-mono tabular-nums">{threshold.value ?? 'not set'}</span>
+              <span className="font-mono tabular-nums">
+                {threshold.value ?? 'not set'}
+              </span>
               {threshold.units === '' ? null : ` ${threshold.units}`}
             </li>
           ))}
@@ -317,7 +347,8 @@ export function ActionCard({ action }: { readonly action: ManagementAction }) {
             {action.limitations}
           </Text>
           <Text size="sm" tone="muted" className="mt-2">
-            Rule {action.ruleId} · {action.entityType.split('_').join(' ')} {action.entityId}
+            Rule {action.ruleId} · {action.entityType.split('_').join(' ')}{' '}
+            {action.entityId}
             {action.dateBasis === null ? null : ` · ${action.dateBasis} basis`}
           </Text>
         </Disclosure>
@@ -345,9 +376,9 @@ export function ActionQueue({ view }: { readonly view: ActionQueueView }) {
           where eighteen of thirty identifiers are switched off for want of evidence.
         */}
         <Text size="sm" tone="muted" className="mt-2">
-          That is not a statement that nothing needs attention. It means no rule this project
-          can evaluate honestly matched, over a register in which most proposed rules remain
-          disabled for want of the evidence they would need.
+          That is not a statement that nothing needs attention. It means no rule this
+          project can evaluate honestly matched, over a register in which most proposed
+          rules remain disabled for want of the evidence they would need.
         </Text>
       </Card>
     )
@@ -418,8 +449,8 @@ export function ChangeDriverPanel({
               {effect.label}
               {effect.grouped && effect.absorbed.length > 0 ? (
                 <span className="ml-1 text-xs">
-                  ({effect.absorbed.length} effect{effect.absorbed.length === 1 ? '' : 's'} and
-                  rounding)
+                  ({effect.absorbed.length} effect
+                  {effect.absorbed.length === 1 ? '' : 's'} and rounding)
                 </span>
               ) : null}
             </dt>
@@ -444,17 +475,19 @@ export function ChangeDriverPanel({
 
       <Disclosure label="How this decomposition works" className="mt-4">
         <Text size="sm" tone="muted">
-          The bridge is computed in SQL by {authority} and carried through the export. It is a
-          SEQUENTIAL decomposition: each effect is measured with the earlier ones already
-          applied, so the order is part of the method and a different order would apportion
-          the same change differently. The bridge attributes; it does not establish cause.
+          The bridge is computed in SQL by {authority} and carried through the export. It
+          is a SEQUENTIAL decomposition: each effect is measured with the earlier ones
+          already applied, so the order is part of the method and a different order would
+          apportion the same change differently. The bridge attributes; it does not
+          establish cause.
         </Text>
         <Text size="sm" tone="muted" className="mt-2">
           Effects smaller than {drivers.materiality.display} are grouped into a single
-          remainder rather than listed — {drivers.materiality.label.toLowerCase()}. Grouped,
-          never dropped: the listed effects and the remainder sum to the period change
-          exactly
-          {drivers.reconciles ? '' : ', and this comparison currently does not reconcile'}.
+          remainder rather than listed — {drivers.materiality.label.toLowerCase()}.
+          Grouped, never dropped: the listed effects and the remainder sum to the period
+          change exactly
+          {drivers.reconciles ? '' : ', and this comparison currently does not reconcile'}
+          .
         </Text>
         {drivers.verified ? null : (
           <Text size="sm" tone="muted" className="mt-2">
@@ -508,7 +541,9 @@ export function TopActions({
               <Text size="sm" tone="muted" className="mt-1">
                 {DOMAIN_LABELS[action.domain]}
                 {action.store === null ? '' : ` · ${action.store}`}
-                {lead === undefined ? '' : ` · ${evidenceDisplay(lead)} ${evidenceLabel(lead.name).toLowerCase()}`}
+                {lead === undefined
+                  ? ''
+                  : ` · ${evidenceDisplay(lead)} ${evidenceLabel(lead.name).toLowerCase()}`}
               </Text>
             </li>
           )

@@ -91,7 +91,9 @@ describe('the committed queue', () => {
     const aged = ACTIONS.filter((action) => action.ruleId === 'ACT-INV-001')
     expect(aged.length).toBeGreaterThan(0)
     for (const action of aged) {
-      const disclosed = action.thresholdsUsed.find((t) => t.name === 'aged_threshold_days')
+      const disclosed = action.thresholdsUsed.find(
+        (t) => t.name === 'aged_threshold_days'
+      )
       expect(disclosed?.value).toBe('60')
       expect(disclosed?.source).toBe('governed')
     }
@@ -113,7 +115,13 @@ describe('the committed queue', () => {
 
   it('carries no workflow state, because none exists', () => {
     const text = JSON.stringify(ACTIONS).toLowerCase()
-    for (const banned of ['assigned', 'acknowledged', 'completed', 'overdue', 'created_at']) {
+    for (const banned of [
+      'assigned',
+      'acknowledged',
+      'completed',
+      'overdue',
+      'created_at',
+    ]) {
       expect(text).not.toContain(banned)
     }
   })
@@ -122,7 +130,12 @@ describe('the committed queue', () => {
 describe('facets narrow the queue and never re-run it', () => {
   it('parses the four route parameters', () => {
     const facets = parseActionFacets(
-      { severity: 'high', domain: 'inventory', owner: 'Used-car manager', store: 'GSA-001' },
+      {
+        severity: 'high',
+        domain: 'inventory',
+        owner: 'Used-car manager',
+        store: 'GSA-001',
+      },
       STORE_IDS
     )
     expect(facets).toEqual({
@@ -181,11 +194,15 @@ describe('facets narrow the queue and never re-run it', () => {
   })
 
   it('combines facets conjunctively', () => {
-    const facets = { ...NO_FACETS, severity: 'high' as const, domain: 'inventory' as const }
+    const facets = {
+      ...NO_FACETS,
+      severity: 'high' as const,
+      domain: 'inventory' as const,
+    }
     const selected = selectActions(ACTIONS, facets)
-    expect(
-      selected.every((a) => a.severity === 'high' && a.domain === 'inventory')
-    ).toBe(true)
+    expect(selected.every((a) => a.severity === 'high' && a.domain === 'inventory')).toBe(
+      true
+    )
   })
 
   it('counts facets over the whole queue, not the filtered one', () => {
@@ -207,10 +224,12 @@ describe('facets narrow the queue and never re-run it', () => {
       DOMAIN_LABELS,
       SEVERITY_LABELS
     )
-    expect(filtered.severities).toEqual(unfiltered.severities.map((option) => ({
-      ...option,
-      selected: option.value === 'high',
-    })))
+    expect(filtered.severities).toEqual(
+      unfiltered.severities.map((option) => ({
+        ...option,
+        selected: option.value === 'high',
+      }))
+    )
     expect(filtered.total).toBe(ACTIONS.length)
     expect(filtered.shown).toBeLessThan(filtered.total)
   })
@@ -232,7 +251,11 @@ describe('facets narrow the queue and never re-run it', () => {
   })
 
   it('supports an empty result without pretending it is a clean bill of health', () => {
-    const impossible = { ...NO_FACETS, severity: 'low' as const, domain: 'leads' as const }
+    const impossible = {
+      ...NO_FACETS,
+      severity: 'low' as const,
+      domain: 'leads' as const,
+    }
     const view = buildActionQueue(
       ACTIONS,
       impossible,
@@ -389,13 +412,17 @@ describe('the change drivers reconcile exactly', () => {
 
 describe('drill-through validation is real, not a regex over the string', () => {
   it('accepts the routes the console serves', () => {
-    expect(drillThroughProblem('/dashboard/inventory?store=GSA-001&unit=VEH-0000103')).toBeNull()
+    expect(
+      drillThroughProblem('/dashboard/inventory?store=GSA-001&unit=VEH-0000103')
+    ).toBeNull()
     expect(drillThroughProblem('/dashboard/deals/SLE-00000001')).toBeNull()
     expect(drillThroughProblem('/dashboard/accounting?store=GSA-002')).toBeNull()
   })
 
   it('refuses a route that does not exist', () => {
-    expect(drillThroughProblem('/dashboard/pricing')).toContain('not a current operating route')
+    expect(drillThroughProblem('/dashboard/pricing')).toContain(
+      'not a current operating route'
+    )
     expect(drillThroughProblem('/dashboard')).toContain('not a current operating route')
   })
 
@@ -416,6 +443,8 @@ describe('drill-through validation is real, not a regex over the string', () => 
 
   it('refuses an empty value and a repeated key', () => {
     expect(drillThroughProblem('/dashboard/inventory?store=')).toContain('with no value')
-    expect(drillThroughProblem('/dashboard/inventory?store=A&store=B')).toContain('repeats')
+    expect(drillThroughProblem('/dashboard/inventory?store=A&store=B')).toContain(
+      'repeats'
+    )
   })
 })

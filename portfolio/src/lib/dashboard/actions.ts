@@ -207,7 +207,11 @@ export function buildActionQueue(
 ): ActionQueueView {
   const shown = selectActions(actions, facets)
   const storeCodes = [
-    ...new Set(actions.map((action) => action.store).filter((code): code is string => code !== null)),
+    ...new Set(
+      actions
+        .map((action) => action.store)
+        .filter((code): code is string => code !== null)
+    ),
   ].sort()
   return {
     total: actions.length,
@@ -266,6 +270,8 @@ export function topActions(
  * the days in stock, the gross, the unresponded count — so leading with the first is the
  * rule's own choice rather than a heuristic this module invented.
  */
-export function primaryEvidence(action: ManagementAction): ManagementAction['evidence'][number] | null {
+export function primaryEvidence(
+  action: ManagementAction
+): ManagementAction['evidence'][number] | null {
   return action.evidence[0] ?? null
 }

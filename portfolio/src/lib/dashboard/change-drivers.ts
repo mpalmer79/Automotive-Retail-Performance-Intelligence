@@ -370,7 +370,8 @@ export function buildChangeDrivers(
   for (const component of bridge.components) {
     // Magnitude decides, not sign: a large negative contribution is as material as a large
     // positive one, and grouping by signed value would hide exactly the wrong half.
-    const material = floor === null || compareExact(absoluteExact(component.amount), floor) >= 0
+    const material =
+      floor === null || compareExact(absoluteExact(component.amount), floor) >= 0
     if (material) {
       listed.push({ ...component, grouped: false, absorbed: [] })
     } else {

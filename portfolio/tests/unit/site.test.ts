@@ -416,9 +416,10 @@ describe('the operating rail is the definition of the operating application', ()
     expect(planned).toEqual([])
     const navLabels = OPERATING_NAV.map((item) => item.label)
     for (const label of planned) {
-      expect(navLabels, `${label} is described as unbuilt but is in the rail`).not.toContain(
-        label
-      )
+      expect(
+        navLabels,
+        `${label} is described as unbuilt but is in the rail`
+      ).not.toContain(label)
     }
     // The rail is the definition of the operating application, so every href it derives
     // must point at a route that exists. `/dashboard/actions` is one of them as of

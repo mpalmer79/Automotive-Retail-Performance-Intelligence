@@ -1204,7 +1204,9 @@ function assertSanitized(label: string, serialised: string): void {
 function readActionQueue(
   manifest: DashboardExportManifest,
   loaded: ReadonlyMap<DashboardDatasetName, LoadedDataset>
-): { readonly file: DashboardActionFile; readonly manifest: DashboardActionManifest } | undefined {
+):
+  | { readonly file: DashboardActionFile; readonly manifest: DashboardActionManifest }
+  | undefined {
   // Read from the RAW document rather than from the normalised manifest: that reader
   // constructs its result field by field, so a block it does not know about is not on the
   // object it returns.
@@ -1227,11 +1229,17 @@ function readActionQueue(
 
   const ruleset = block['ruleset']
   if (!isRecord(ruleset)) {
-    fail('the action queue declares no ruleset, so its rows cannot be traced to any policy.')
+    fail(
+      'the action queue declares no ruleset, so its rows cannot be traced to any policy.'
+    )
     return undefined
   }
   const enabledIds = requireStringArray(ruleset, 'enabled_rule_ids', 'the action ruleset')
-  const disabledIds = requireStringArray(ruleset, 'disabled_rule_ids', 'the action ruleset')
+  const disabledIds = requireStringArray(
+    ruleset,
+    'disabled_rule_ids',
+    'the action ruleset'
+  )
   const rulesetSha = requireString(ruleset, 'file_sha256', 'the action ruleset')
   const rulesetFile = requireString(ruleset, 'file', 'the action ruleset')
   const ruleCount = requireNumber(ruleset, 'rule_count', 'the action ruleset')
@@ -1272,7 +1280,8 @@ function readActionQueue(
 
   // Every column any source dataset publishes. An evidence field outside this set is a
   // value with no contract behind it, which is the one thing evidence may never be.
-  const sourceDatasets = requireStringArray(block, 'source_datasets', 'the action queue') ?? []
+  const sourceDatasets =
+    requireStringArray(block, 'source_datasets', 'the action queue') ?? []
   const publishedColumns = new Set<string>()
   for (const name of sourceDatasets) {
     const dataset = manifest.datasets.find((entry) => entry.name === name)
@@ -1323,7 +1332,8 @@ function readActionQueue(
       rootExportBytes: bytes.length,
       ruleset: {
         schema: requireString(ruleset, 'schema', 'the action ruleset') ?? '',
-        rulesetVersion: requireNumber(ruleset, 'ruleset_version', 'the action ruleset') ?? 0,
+        rulesetVersion:
+          requireNumber(ruleset, 'ruleset_version', 'the action ruleset') ?? 0,
         file: rulesetFile ?? '',
         fileSha256: rulesetSha ?? '',
         expiry: 'dataset',
@@ -1394,11 +1404,15 @@ function readAction(
     return undefined
   }
   if (!context.enabledIds.has(ruleId)) {
-    fail(`${where} was produced by ${ruleId}, which the ruleset does not list as enabled.`)
+    fail(
+      `${where} was produced by ${ruleId}, which the ruleset does not list as enabled.`
+    )
     return undefined
   }
   if (!isActionSeverity(severity)) {
-    fail(`${where} carries severity ${JSON.stringify(severity)}, outside the governed set.`)
+    fail(
+      `${where} carries severity ${JSON.stringify(severity)}, outside the governed set.`
+    )
     return undefined
   }
   if (!isActionDomain(domain)) {
@@ -1406,7 +1420,9 @@ function readAction(
     return undefined
   }
   if (!isActionOwnerRole(ownerRole)) {
-    fail(`${where} carries review role ${JSON.stringify(ownerRole)}, outside the governed set.`)
+    fail(
+      `${where} carries review role ${JSON.stringify(ownerRole)}, outside the governed set.`
+    )
     return undefined
   }
   const routeProblem = drillThroughProblem(drillThrough)
@@ -1452,7 +1468,9 @@ function readEvidence(
   publishedColumns: ReadonlySet<string>
 ): readonly ActionEvidence[] | undefined {
   if (!Array.isArray(raw) || raw.length === 0) {
-    fail(`${where} carries no evidence. An action a reader cannot check is not an action.`)
+    fail(
+      `${where} carries no evidence. An action a reader cannot check is not an action.`
+    )
     return undefined
   }
   const evidence: ActionEvidence[] = []
@@ -1494,7 +1512,10 @@ function readEvidence(
 }
 
 /** Verify an action's threshold disclosure. */
-function readThresholds(raw: unknown, where: string): readonly ActionThreshold[] | undefined {
+function readThresholds(
+  raw: unknown,
+  where: string
+): readonly ActionThreshold[] | undefined {
   if (!Array.isArray(raw)) {
     fail(`${where} carries no threshold disclosure.`)
     return undefined
@@ -1525,7 +1546,10 @@ function readThresholds(raw: unknown, where: string): readonly ActionThreshold[]
     }
     // A threshold this file owns must SAY it is a project default, wherever it is rendered.
     // Nothing in this repository is an industry standard and the label may never imply one.
-    if (source === 'project-default-review-threshold' && !/project default/i.test(label)) {
+    if (
+      source === 'project-default-review-threshold' &&
+      !/project default/i.test(label)
+    ) {
       fail(
         `${where} discloses ${name} as ${JSON.stringify(label)} without naming it a project ` +
           'default. No threshold here is an industry benchmark.'
@@ -1552,7 +1576,9 @@ function readCounts(
     fail('the action queue declares no counts.')
     return undefined
   }
-  const tally = (pick: (action: ManagementAction) => string | null): Record<string, number> => {
+  const tally = (
+    pick: (action: ManagementAction) => string | null
+  ): Record<string, number> => {
     const counts: Record<string, number> = {}
     for (const action of actions) {
       const key = pick(action)
@@ -1606,7 +1632,11 @@ function readChangeDrivers(
   }
   const dataset = requireString(drivers, 'dataset', 'the change-driver policy')
   const authority = requireString(drivers, 'authority', 'the change-driver policy')
-  const order = requireStringArray(drivers, 'decomposition_order', 'the change-driver policy')
+  const order = requireStringArray(
+    drivers,
+    'decomposition_order',
+    'the change-driver policy'
+  )
   const materiality = drivers['materiality']
   if (
     dataset === undefined ||
@@ -1625,8 +1655,11 @@ function readChangeDrivers(
   // compute cannot be named here, which is what stops one being invented in TypeScript.
   const component = entry.columns.find((column) => column.name === 'component_code')
   const governed = component?.enumeration ?? null
-  if (governed === null || governed.length !== order.length ||
-      governed.some((code, index) => code !== order[index])) {
+  if (
+    governed === null ||
+    governed.length !== order.length ||
+    governed.some((code, index) => code !== order[index])
+  ) {
     fail(
       `the change-driver decomposition order ${JSON.stringify(order)} is not the order ` +
         `${dataset} enumerates (${JSON.stringify(governed)}).`
@@ -1636,7 +1669,11 @@ function readChangeDrivers(
   const value = materiality['value']
   const units = requireString(materiality, 'units', 'the change-driver materiality')
   const label = requireString(materiality, 'label', 'the change-driver materiality')
-  const rationale = requireString(materiality, 'rationale', 'the change-driver materiality')
+  const rationale = requireString(
+    materiality,
+    'rationale',
+    'the change-driver materiality'
+  )
   if (
     typeof value !== 'string' ||
     units === undefined ||

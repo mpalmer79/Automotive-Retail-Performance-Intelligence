@@ -31,7 +31,9 @@ test.describe('the route exists and says what it is', () => {
   test('answers 200 and renders its name', async ({ page }) => {
     const response = await page.goto(ROUTE)
     expect(response?.status()).toBe(200)
-    await expect(page.getByRole('heading', { level: 1, name: 'Management Actions' })).toBeVisible()
+    await expect(
+      page.getByRole('heading', { level: 1, name: 'Management Actions' })
+    ).toBeVisible()
   })
 
   test('is in the operating rail, in last position', async ({ page }) => {
@@ -88,12 +90,14 @@ test.describe('a queue row carries what a reader needs to check it', () => {
      * due date". A naive `not.toContain('due date')` fails on the sentence that exists to
      * rule the concept out, which would have meant weakening the disclosure to pass a test.
      */
-    expect(affirmativeSentences(text, /\b(due date|overdue|acknowledged|completed)\b/i)).toEqual(
-      []
-    )
+    expect(
+      affirmativeSentences(text, /\b(due date|overdue|acknowledged|completed)\b/i)
+    ).toEqual([])
   })
 
-  test('discloses the threshold that fired, named a project default', async ({ page }) => {
+  test('discloses the threshold that fired, named a project default', async ({
+    page,
+  }) => {
     await gotoRendered(page, ROUTE)
     const text = await mainText(page)
     expect(text).toMatch(/Aged threshold/)
@@ -108,7 +112,10 @@ test.describe('a queue row carries what a reader needs to check it', () => {
     // Same reasoning: the methodology copy states that NONE of these is an industry
     // benchmark, so what must be absent is an affirmative claim rather than the words.
     expect(
-      affirmativeSentences(text, /\b(industry standard|industry benchmark|best practice)\b/i)
+      affirmativeSentences(
+        text,
+        /\b(industry standard|industry benchmark|best practice)\b/i
+      )
     ).toEqual([])
   })
 
@@ -116,7 +123,9 @@ test.describe('a queue row carries what a reader needs to check it', () => {
     await gotoRendered(page, ROUTE)
     const text = await mainText(page)
     expect(text).toMatch(/Review next:/)
-    await expect(page.getByRole('link', { name: /Open the evidence behind this/ }).first()).toBeVisible()
+    await expect(
+      page.getByRole('link', { name: /Open the evidence behind this/ }).first()
+    ).toBeVisible()
   })
 })
 
@@ -132,7 +141,10 @@ test.describe('a drill-through lands on the evidence', () => {
     expect(response?.status()).toBe(200)
   })
 
-  test('every drill-through on the page resolves to a real route', async ({ page, request }) => {
+  test('every drill-through on the page resolves to a real route', async ({
+    page,
+    request,
+  }) => {
     await gotoRendered(page, ROUTE)
     const hrefs = await page
       .getByRole('link', { name: /Open the evidence behind this/ })
@@ -189,13 +201,17 @@ test.describe('the facets are URL state', () => {
   })
 
   test('facets compose in one URL', async ({ page }) => {
-    const response = await page.goto(`${ROUTE}?severity=high&store=GSA-002&domain=inventory`)
+    const response = await page.goto(
+      `${ROUTE}?severity=high&store=GSA-002&domain=inventory`
+    )
     expect(response?.status()).toBe(200)
     const text = await mainText(page)
     expect(text).toContain('GSA-002')
   })
 
-  test('an unknown value shows the whole queue rather than an empty one', async ({ page }) => {
+  test('an unknown value shows the whole queue rather than an empty one', async ({
+    page,
+  }) => {
     await gotoRendered(page, `${ROUTE}?severity=urgent`)
     const text = await mainText(page)
     // The unfiltered summary, which is what a stale link should produce.
@@ -236,7 +252,9 @@ test.describe('the change drivers explain a change without claiming a cause', ()
     await gotoRendered(page, ROUTE)
     await openAll(page)
     const text = await mainText(page)
-    expect(text).toMatch(/grouped into a single remainder|Effects below the review threshold/i)
+    expect(text).toMatch(
+      /grouped into a single remainder|Effects below the review threshold/i
+    )
     expect(text).toMatch(/project default/i)
   })
 })
@@ -248,9 +266,14 @@ test.describe('nothing here is a workflow', () => {
     expect(await page.locator('input[type="checkbox"]').count()).toBe(0)
     const labels = await page.getByRole('button').allInnerTexts()
     for (const label of labels.map((item) => item.trim().toLowerCase())) {
-      expect(['done', 'complete', 'resolve', 'acknowledge', 'assign', 'dismiss']).not.toContain(
-        label
-      )
+      expect([
+        'done',
+        'complete',
+        'resolve',
+        'acknowledge',
+        'assign',
+        'dismiss',
+      ]).not.toContain(label)
     }
   })
 
@@ -304,14 +327,14 @@ test.describe('the Executive Overview carries the top of the queue', () => {
     await gotoRendered(page, '/')
     const text = await mainText(page)
     expect(text).toMatch(/Management attention/i)
-    await expect(page.getByRole('link', { name: /View all \d+ review prompts/ })).toBeVisible()
+    await expect(
+      page.getByRole('link', { name: /View all \d+ review prompts/ })
+    ).toBeVisible()
   })
 
   test('the block is deterministic across loads', async ({ page }) => {
     await gotoRendered(page, '/')
-    const first = await page
-      .locator('#management-attention')
-      .innerText()
+    const first = await page.locator('#management-attention').innerText()
     await page.reload()
     await settle(page)
     expect(await page.locator('#management-attention').innerText()).toBe(first)
@@ -332,7 +355,9 @@ test.describe('the Executive Overview carries the top of the queue', () => {
     expect(positions.actions).toBeGreaterThan(positions.kpi)
   })
 
-  test('does not acquire the whole queue on a phone before the KPIs', async ({ page }) => {
+  test('does not acquire the whole queue on a phone before the KPIs', async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: 375, height: 812 })
     await gotoRendered(page, '/')
     const text = await mainText(page)

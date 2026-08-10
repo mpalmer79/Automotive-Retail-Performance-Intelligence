@@ -48,9 +48,10 @@ test.describe('the operating rail', () => {
     for (const route of ['/', '/dashboard/sales-gross', '/dashboard/accounting']) {
       await gotoRendered(page, route)
       for (const unbuilt of UNBUILT_DASHBOARD_ROUTES) {
-        await expect(page.locator(`a[href^="${unbuilt}"]`), `${route} -> ${unbuilt}`).toHaveCount(
-          0
-        )
+        await expect(
+          page.locator(`a[href^="${unbuilt}"]`),
+          `${route} -> ${unbuilt}`
+        ).toHaveCount(0)
       }
     }
     // The counterpart claim, now that the rail is complete: Actions IS reachable.
@@ -139,7 +140,9 @@ test.describe('the rail carries the analytical context', () => {
        */
       expect(href, `${item.label} lost the store`).toContain('store=GSA-002')
       if (item.path === '/dashboard/actions') {
-        expect(href, 'Actions must not carry a period it cannot apply').not.toContain('period=')
+        expect(href, 'Actions must not carry a period it cannot apply').not.toContain(
+          'period='
+        )
         continue
       }
       expect(href, `${item.label} lost the period`).toContain('period=2025-11')

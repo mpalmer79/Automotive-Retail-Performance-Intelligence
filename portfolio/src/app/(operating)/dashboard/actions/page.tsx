@@ -7,7 +7,11 @@ import {
   QueueSummary,
 } from '@/components/dashboard/actions-sections'
 import { ExportProvenance } from '@/components/dashboard/export-provenance'
-import { FilterNotice, ReconciliationBanner, StaleBanner } from '@/components/dashboard/notices'
+import {
+  FilterNotice,
+  ReconciliationBanner,
+  StaleBanner,
+} from '@/components/dashboard/notices'
 import {
   OperatingPageHeader,
   operatingContext,
@@ -120,38 +124,38 @@ export default async function DashboardActionsPage({
           <Disclosure label="What an action is, and what it is not">
             <div className="flex flex-col gap-3">
               <Text size="sm">
-                Each prompt below exists because a condition written down in advance holds in
-                this dataset version. It is a reason to look, not a finding, a recommendation
-                of business action, or evidence of a real-world condition.
+                Each prompt below exists because a condition written down in advance holds
+                in this dataset version. It is a reason to look, not a finding, a
+                recommendation of business action, or evidence of a real-world condition.
               </Text>
               <Text size="sm">
-                Nothing here claims a cause. A rule states that a condition holds and shows
-                the exported values that made it hold; why it holds is what the drill-through
-                is for.
+                Nothing here claims a cause. A rule states that a condition holds and
+                shows the exported values that made it hold; why it holds is what the
+                drill-through is for.
               </Text>
               <Text size="sm">
-                The queue is stateless. It is rebuilt from the data every time the export is
-                regenerated, so it holds no history and carries no acknowledgement,
-                assignment, completion or due date. Reloading this page reconstructs the same
-                queue; nothing remembers what was clicked.
+                The queue is stateless. It is rebuilt from the data every time the export
+                is regenerated, so it holds no history and carries no acknowledgement,
+                assignment, completion or due date. Reloading this page reconstructs the
+                same queue; nothing remembers what was clicked.
               </Text>
               <Text size="sm">
                 No language model, learned model or scoring heuristic takes any part in
-                producing it. Every word of every prompt comes from a rule template and every
-                number from an exported column, so any action can be recomputed by hand from
-                files in the repository.
+                producing it. Every word of every prompt comes from a rule template and
+                every number from an exported column, so any action can be recomputed by
+                hand from files in the repository.
               </Text>
               <Text size="sm">
                 {ruleset.enabledRuleIds.length} of {ruleset.ruleCount} permanent rules are
-                enabled. The other {ruleset.disabledRuleIds.length} are retained and switched
-                off, each with the audited reason the project cannot evaluate it honestly —
-                the evidence is absent, it exists only at a different grain, or the condition
-                is one an earlier data-quality gate already prevents.
+                enabled. The other {ruleset.disabledRuleIds.length} are retained and
+                switched off, each with the audited reason the project cannot evaluate it
+                honestly — the evidence is absent, it exists only at a different grain, or
+                the condition is one an earlier data-quality gate already prevents.
               </Text>
               <Text size="sm">
-                Every threshold this register owns is a project default for a fictional dealer
-                group. None is an industry benchmark, an OEM standard, a best practice or a
-                compliance requirement.
+                Every threshold this register owns is a project default for a fictional
+                dealer group. None is an industry benchmark, an OEM standard, a best
+                practice or a compliance requirement.
               </Text>
             </div>
           </Disclosure>
@@ -166,7 +170,7 @@ export default async function DashboardActionsPage({
           <SectionHeader
             eyebrow="Review queue"
             title="What meets a review rule right now"
-            lede="Ordered by severity, then domain, then store, then rule. The order is a property of the data: the same dataset version produces the same sequence for every reader."
+            lede="Ordered by severity, then domain, then store, then rule. The order is a property of the data rather than of the reader: everyone looking at the same figures sees the same sequence."
           />
           <div className="flex flex-col gap-5">
             <QueueSummary
@@ -202,25 +206,27 @@ export default async function DashboardActionsPage({
           <Disclosure label="How this queue is produced">
             <div className="flex flex-col gap-3">
               <Text size="sm">
-                Rules live in <code>{ruleset.file}</code> as data, not code, and are evaluated
-                once at export time against the datasets this console already publishes. The
-                queue is then a governed artifact with its own hash, exactly like a dataset.
+                Rules live in <code>{ruleset.file}</code> as data, not code, and are
+                evaluated once at export time against the datasets this console already
+                publishes. The queue is then a governed artifact with its own hash,
+                exactly like a dataset.
               </Text>
               <Text size="sm">
-                The rule file is an input to the published data. Changing a threshold changes
-                the queue even though no business fact moved, so the export check re-derives
-                the queue from the current rule file and fails if the committed one differs.
-                Ruleset {ruleset.fileSha256.slice(0, 12)} produced what is shown here.
+                The rule file is an input to the published data. Changing a threshold
+                changes the queue even though no business fact moved, so the export check
+                re-derives the queue from the current rule file and fails if the committed
+                one differs. Ruleset {ruleset.fileSha256.slice(0, 12)} produced what is
+                shown here.
               </Text>
               <Text size="sm">
                 Facet counts are counts of the queue on this page. They are presentation
-                figures derived from the rows, not new measures, and the generator refuses a
-                count that disagrees with the rows it counts.
+                figures derived from the rows, not new measures, and the generator refuses
+                a count that disagrees with the rows it counts.
               </Text>
               <Text size="sm">
-                Every drill-through is checked against the console&rsquo;s own route registry
-                before the queue is written, so a link here cannot point at a retired route or
-                carry a parameter its destination does not read.
+                Every drill-through is checked against the console&rsquo;s own route
+                registry before the queue is written, so a link here cannot point at a
+                retired route or carry a parameter its destination does not read.
               </Text>
             </div>
           </Disclosure>

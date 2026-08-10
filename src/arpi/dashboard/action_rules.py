@@ -49,8 +49,6 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any, Final
 
-import yaml
-
 from arpi.constants import MINIMUM_SAMPLE_ELIGIBLE_DEALS
 from arpi.dashboard import contract as spec
 from arpi.dashboard.action_predicate import (
@@ -59,6 +57,7 @@ from arpi.dashboard.action_predicate import (
     ValueKind,
     compile_predicate,
 )
+from arpi.dashboard.action_yaml import ActionYamlError, parse_document
 from arpi.dashboard.serialization import content_sha256
 from arpi.exceptions import ArpiError
 
@@ -1077,6 +1076,26 @@ def _read_rule(payload: dict[str, Any], index: int) -> ActionRule:
     return rule
 
 
+def _read_yaml(text: str) -> Any:
+    """Parse the rule file, preferring PyYAML and falling back to the stdlib reader.
+
+    ``ci.yml``'s ``repository-checks`` job runs the offline export check on a bare
+    interpreter that installs nothing, so the import cannot be unconditional. PyYAML is used
+    wherever it exists -- the application, the test suite, every developer machine -- and
+    :mod:`arpi.dashboard.action_yaml` reads the same document where it does not.
+    ``tests/unit/test_action_yaml.py`` parses the committed rule file with both and requires
+    an identical structure, so the fallback cannot drift into accepting something different.
+    """
+    try:
+        import yaml  # noqa: PLC0415 - deliberately conditional; see the docstring above
+    except ModuleNotFoundError:
+        return parse_document(text)
+    try:
+        return yaml.safe_load(text)
+    except yaml.YAMLError as error:
+        raise ActionYamlError(str(error)) from error
+
+
 def load_ruleset(path: Path | None = None, *, repo_root: Path | None = None) -> Ruleset:
     """Read, validate and fingerprint the rule file.
 
@@ -1100,8 +1119,8 @@ def load_ruleset(path: Path | None = None, *, repo_root: Path | None = None) -> 
     except OSError as error:
         raise RuleError(f"cannot read the action rule file at {location}: {error}") from error
     try:
-        document = yaml.safe_load(raw_bytes.decode("utf-8"))
-    except yaml.YAMLError as error:
+        document = _read_yaml(raw_bytes.decode("utf-8"))
+    except ActionYamlError as error:
         raise RuleError(f"{location} is not valid YAML: {error}") from error
 
     payload = _require_mapping(document, "the rule file")

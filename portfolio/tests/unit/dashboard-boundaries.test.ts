@@ -321,7 +321,10 @@ describe('the console ships exactly the routes its increments have delivered', (
       .filter((entry) => entry.isDirectory())
       .map((entry) => entry.name)
       .sort()
-    expect(nested, 'every console section the information architecture names, and no other').toEqual([
+    expect(
+      nested,
+      'every console section the information architecture names, and no other'
+    ).toEqual([
       'accounting',
       'actions',
       'deals',

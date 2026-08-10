@@ -201,14 +201,15 @@ export function PlannedSections({
         <Text size="sm" tone="muted" className="max-w-prose">
           Every console section the information architecture names is built. Nothing is
           outstanding, so nothing is listed here — this region reports completion rather
-          than disappearing, because a disclosure that vanished would leave a reader unsure
-          whether the work closed or the claim was withdrawn.
+          than disappearing, because a disclosure that vanished would leave a reader
+          unsure whether the work closed or the claim was withdrawn.
         </Text>
         <Text size="sm" tone="muted" className="max-w-prose">
           The Management Action Center was the last entry, delivered by `DASH.12`. What
           remains in the backlog is hardening and release rather than a surface: the
-          delivery increments are recorded in the dashboard backlog, and this console still
-          publishes figures and deterministic rule outputs rather than recommendations.
+          delivery increments are recorded in the dashboard backlog, and this console
+          still publishes figures and deterministic rule outputs rather than
+          recommendations.
         </Text>
       </div>
     )
@@ -242,8 +243,8 @@ export function PlannedSections({
       </ul>
       <Text size="sm" tone="muted" className="max-w-prose">
         A section stays absent until the governed data behind it exists and can show its
-        evidence. This console publishes figures and deterministic rule outputs rather than
-        recommendations.
+        evidence. This console publishes figures and deterministic rule outputs rather
+        than recommendations.
       </Text>
     </div>
   )
