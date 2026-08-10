@@ -48,7 +48,7 @@
         "environment": "staging",
         "service_name": "arpi-portfolio",
         "public_url": "https://arpi.up.railway.app",
-        "health_path": "/status",
+        "health_path": "/technical",
         "deployment_branch": "main",
         "commit_sha": "b90e3244a9b0db2f9ee1ccfc9f6d85e93959e806",
         "deployed_at": "UNVERIFIED",

@@ -86,8 +86,13 @@ export interface RouteDefinition {
   readonly description: string
   /**
    * Whether the route is reachable from the site's own navigation surfaces at
-   * all - the header, the platform sub-navigation, or the footer's primary
-   * list. Governs the footer list and the test sweep, not the header.
+   * all - the operating rail, the reference header, the group sub-navigation or
+   * the footer's index. Governs the footer list and the test sweep, not any one
+   * navigation.
+   *
+   * `false` therefore means "exists, is indexed, and is reached from the body of
+   * another page": the three store pages, the locked case study and the internal
+   * lab.
    */
   readonly inPrimaryNav: boolean
   /** Whether search engines may index it. */
@@ -97,138 +102,142 @@ export interface RouteDefinition {
 }
 
 /**
- * WHERE `/dealerships` WENT
- * -------------------------
- * It is not in this map because it is not a page. The group overview it used to
- * render IS the home page now, and `/dealerships` is a permanent redirect to `/`
- * declared in `next.config.ts`.
+ * THE ROUTE MAP AFTER `UX.1`
+ * ---------------------------
+ * Two information domains, and the map says which is which.
  *
- * Deliberately not left here as an entry pointing at `/`. A route map that
- * declares two hrefs for one document produces two sitemap URLs, two canonical
- * candidates and two navigation items for the same content, which is the
- * duplication the redirect exists to prevent. The three store routes beneath it
- * are unaffected and stay exactly where they were.
+ *   OPERATING   `/` and the seven `/dashboard/*` surfaces. What a dealership
+ *               manager uses. Business language, governed figures, drill-through.
+ *   REFERENCE   `/technical`, `/about`, `/inventory` and the three store pages.
+ *               How the platform is built, who built it, and what the demo group
+ *               is. A reader goes here deliberately.
+ *
+ * SIX ROUTES LEFT THIS MAP AND ARE NOT GONE. `/architecture`, `/data-model`,
+ * `/kpis`, `/governance`, `/status` and `/inventory-operations` are permanent
+ * redirects into `/technical?view=...`, declared in `next.config.ts`. They are
+ * deliberately NOT left here as entries pointing at a query state: a route map
+ * that declares two hrefs for one document produces two sitemap URLs, two
+ * canonical candidates and two navigation items for the same content, which is
+ * the duplication the redirects exist to prevent. `/dealerships` and
+ * `/dashboard` are absent for the same reason and by the same mechanism.
  */
 export const ROUTES = {
+  /*
+   * THE PRODUCT'S FRONT DOOR.
+   *
+   * `/` was a marketing landing page — hero, store story, product tour, closing
+   * call to action — in front of a working operating console at `/dashboard`.
+   * ADR-0015 makes the console the canonical entry experience and `/dashboard` a
+   * permanent redirect here, query string preserved. The retired landing sections
+   * were rehomed rather than deleted: the tour and the store story are
+   * `/technical?view=overview`, the author positioning is `/about`.
+   */
   home: {
     href: '/',
-    navLabel: 'Overview',
-    title: 'Automotive Retail Performance Intelligence',
+    navLabel: 'Executive',
+    title: 'Executive Command Center',
     /*
      * THE WORD "FICTIONAL" IS IN THE FIRST CLAUSE, AND THAT IS DELIBERATE.
      *
      * This string is the home page's meta description, which means it is the
      * text under the link when the site is shared on LinkedIn or returned by a
-     * search engine. The previous version opened "Granite Auto Group runs three
-     * dealerships..." - true on the site, where the group is declared fictional
-     * six times, and misleading in a preview card read on its own, where it
-     * reads as a real dealer group and ARPI as its vendor.
+     * search engine. A disclosure that only holds inside its own page is not a
+     * disclosure; it has to survive being quoted.
      *
-     * A disclosure that only holds inside its own page is not a disclosure. It
-     * has to survive being quoted.
+     * What changed at `UX.1` is what the sentence leads with. It led with the
+     * pipeline — seeded Python, a PostgreSQL warehouse, a source-controlled
+     * semantic model — which described how the thing was built to a reader who
+     * had not yet been told what it does.
      */
     description:
-      'A portfolio data platform for Granite Auto Group, a fictional three-store dealer group: a Chevrolet franchise, a Subaru franchise and an independent pre-owned center. Seeded synthetic data in Python, a PostgreSQL warehouse, a governed KPI catalogue and a source-controlled Power BI model.',
+      'One operating view of a dealer group: retail units, gross, inventory, F&I, demand and accounting integrity on a single screen, with drill-through to the transactions behind every figure. Granite Auto Group is a fictional three-store dealer group and every operating figure is synthetic.',
     inPrimaryNav: true,
     indexable: true,
     priority: 1,
   },
-  graniteChevrolet: {
-    href: '/dealerships/granite-chevrolet',
-    navLabel: 'Granite Chevrolet',
-    title: 'Granite Chevrolet of Nashua',
+  dashboardSalesGross: {
+    href: '/dashboard/sales-gross',
+    navLabel: 'Sales & Gross',
+    title: 'Sales and gross',
     description:
-      'The volume franchise rooftop of Granite Auto Group. New Chevrolet trucks and utilities arriving on manufacturer allocation, a small pre-owned presence beside them, and the inventory profile that sanitized reference data actually supports.',
-    inPrimaryNav: false,
+      'Volume, gross and per-unit gross across the group and by store, with the trend, the new and used mix, discount against asking price, the deal-level gross distribution, and the decomposition of what changed month over month. Synthetic data for a fictional dealer group.',
+    inPrimaryNav: true,
     indexable: true,
-    priority: 0.7,
+    priority: 0.9,
   },
-  graniteSubaru: {
-    href: '/dealerships/granite-subaru',
-    navLabel: 'Granite Subaru',
-    title: 'Granite Subaru of Manchester',
+  dashboardDeals: {
+    href: '/dashboard/deals',
+    navLabel: 'Deals',
+    title: 'Deal Explorer',
     description:
-      'The all-weather franchise rooftop of Granite Auto Group. A narrow new-vehicle line, a materially larger pre-owned share than the Chevrolet store, and a partial reference sample that says so.',
-    inPrimaryNav: false,
+      'Every finalized transaction in the governed export, searchable by deal, unit, make and model, filterable by period, store, condition, sale type and lead source. Synthetic data for a fictional dealer group.',
+    inPrimaryNav: true,
     indexable: true,
-    priority: 0.7,
+    priority: 0.9,
   },
-  granitePreOwned: {
-    href: '/dealerships/granite-pre-owned',
-    navLabel: 'Granite Pre-Owned',
-    title: 'Granite Pre-Owned Center of Merrimack',
-    description:
-      'The independent store of Granite Auto Group. No franchise, no allocation, every unit bought rather than shipped, and the widest multi-brand model-year and price spread in the group.',
-    inPrimaryNav: false,
-    indexable: true,
-    priority: 0.7,
-  },
-  inventory: {
-    href: '/inventory',
+  dashboardInventory: {
+    href: '/dashboard/inventory',
     navLabel: 'Inventory',
-    title: 'Inventory explorer',
+    title: 'Inventory',
     description:
-      'Every sanitized inventory listing Granite Auto Group carries, filterable by store, condition, make, model, model year, price and mileage. Derived at build time from the reference workbooks in the repository, never fetched or invented.',
+      'Unit-level stock at a governed snapshot date: age against a project-default threshold, the five governed age buckets, asking price against a synthetic market estimate, snapshot-derived price movement, and drill-through to one unit with its accounting position. The market estimate is synthetic, not a valuation.',
     inPrimaryNav: true,
     indexable: true,
     priority: 0.9,
   },
-  architecture: {
-    href: '/architecture',
-    navLabel: 'Architecture',
-    title: 'Architecture',
+  dashboardFi: {
+    href: '/dashboard/fi',
+    navLabel: 'F&I',
+    title: 'F&I',
     description:
-      'An interactive explorer of the ARPI pipeline: seeded Python generation, in-memory validation, the raw, staging, warehouse, reporting and audit schemas, and the source-controlled semantic model above them.',
+      'Finance reserve against product gross, product penetration on its own eligible denominator, category economics, cancellations and chargebacks on their own posting dates, and a finance-manager comparison under the minimum-sample rule. Synthetic data; every lender, product and provider is invented.',
     inPrimaryNav: true,
     indexable: true,
     priority: 0.9,
   },
-  dataModel: {
-    href: '/data-model',
-    navLabel: 'Data Model',
-    title: 'Data model',
+  dashboardLeadsMarketing: {
+    href: '/dashboard/leads-marketing',
+    navLabel: 'Leads & Marketing',
+    title: 'Leads and marketing',
     description:
-      'The eight conformed dimensions and five facts of the ARPI warehouse, each with its declared grain, its keys, its history policy and its privacy classification.',
+      'The BDC and marketing surface: the lead-created cohort funnel, appointment outcomes on their own two date bases, first-response times with the leads nobody answered beside them, where the cohort stopped, and spend against attributed outcomes. Synthetic data for a fictional dealer group.',
     inPrimaryNav: true,
     indexable: true,
     priority: 0.9,
   },
-  inventoryOperations: {
-    href: '/inventory-operations',
-    navLabel: 'Inventory Operations',
-    title: 'Inventory operations',
+  dashboardEmployees: {
+    href: '/dashboard/employees',
+    navLabel: 'Employees',
+    title: 'Employees',
     description:
-      'Ingesting a de-identified public inventory listing snapshot: what sanitization removes, what a listing can and cannot prove, the listing snapshot grain, six governed reporting views, and the Excel operating report built from them. The one part of ARPI that is not fully synthetic, and it says so.',
-    inPrimaryNav: true,
-    indexable: true,
-    priority: 0.8,
-  },
-  kpis: {
-    href: '/kpis',
-    navLabel: 'KPIs',
-    title: 'KPI catalogue',
-    description:
-      'Every governed KPI in ARPI with its formula, explicit numerator and denominator, grain, date basis, null rule, source reporting view and interpretation caution. Searchable and filterable.',
+      'Role-aware views of what was credited to each synthetic employee: units and gross, desked deliveries, finance structure, and the BDC lead funnel. Every comparative figure carries its own governed denominator and is withheld below the minimum sample. No ranking, no score, no personnel data.',
     inPrimaryNav: true,
     indexable: true,
     priority: 0.9,
   },
-  governance: {
-    href: '/governance',
-    navLabel: 'Governance',
-    title: 'Governance and privacy',
+  dashboardAccounting: {
+    href: '/dashboard/accounting',
+    navLabel: 'Accounting',
+    title: 'Accounting',
     description:
-      'How ARPI keeps its numbers honest: synthetic-only data, no PII by construction, declared grains, documented lineage, reconciliation, a read-only reporting role, and scope gates that block work rather than describe it.',
+      'The inventory subledger against selected synthetic GL control accounts: the signed variance, the four comparison states with missing sides preserved as missing, and the governed accounting exceptions with drill-through. An inventory control reconciliation, not a general ledger. Every account is invented.',
     inPrimaryNav: true,
     indexable: true,
-    priority: 0.8,
+    priority: 0.9,
   },
-  status: {
-    href: '/status',
-    navLabel: 'Status',
-    title: 'Project status',
+  /*
+   * THE ONE TECHNICAL DESTINATION.
+   *
+   * `UX.1` consolidated six routes into this one, addressed by `?view=`. The
+   * views are declared in `lib/technical.ts`, which owns the mapping from a view
+   * to the legacy route it replaced; the redirects are in `next.config.ts`.
+   */
+  technical: {
+    href: '/technical',
+    navLabel: 'Technical',
+    title: 'How ARPI works',
     description:
-      'The current state of every lifecycle phase and delivery increment, the two scope gates, and both real-engine semantic-model validation paths, derived from source-controlled evidence.',
+      'The engineering behind the operating application: the pipeline, the dimensional model, the governed KPI catalogue, privacy and reconciliation controls, the data sources, the delivery status, and the production vision for authorized dealership system integrations.',
     inPrimaryNav: true,
     indexable: true,
     priority: 0.8,
@@ -243,6 +252,64 @@ export const ROUTES = {
     indexable: true,
     priority: 0.7,
   },
+  /*
+   * THE REFERENCE LISTING EXPLORER, AND WHY IT IS NO LONGER CALLED "INVENTORY".
+   *
+   * There were two destinations named Inventory. `/dashboard/inventory` is the
+   * operating surface: synthetic units, age, capital, price movement, accounting
+   * position, drill-through. This one is a de-identified snapshot of what a public
+   * listing source exposed — listings, not sales results, not an operating
+   * position. A general manager who has to choose between two things both called
+   * Inventory has been handed the ambiguity instead of an answer.
+   *
+   * `UX.1` resolves it by NAME AND BY PLACEMENT rather than by moving the URL.
+   * Inventory in the operating navigation now means the operating surface and
+   * nothing else; this route is labelled "Reference listings", is reached from
+   * `/technical?view=data-sources`, and is not in the operating rail at all. The
+   * URL is unchanged, so every deep link into it — and its own `make`, `model`,
+   * `year`, `price` and `sort` grammar, which is not the console's grammar — keeps
+   * working exactly as it did.
+   */
+  inventory: {
+    href: '/inventory',
+    navLabel: 'Reference listings',
+    title: 'Reference listing explorer',
+    description:
+      'Every sanitized public inventory listing in the reference workbooks, filterable by store, condition, make, model, model year, price and mileage. De-identified listing attributes captured from a public source, not a dealer management system export and not an operating inventory position.',
+    inPrimaryNav: true,
+    indexable: true,
+    priority: 0.6,
+  },
+  graniteChevrolet: {
+    href: '/dealerships/granite-chevrolet',
+    navLabel: 'Granite Chevrolet',
+    title: 'Granite Chevrolet of Nashua',
+    description:
+      'The volume franchise rooftop of Granite Auto Group, a fictional dealer group. New Chevrolet trucks and utilities arriving on manufacturer allocation, a small pre-owned presence beside them, and the inventory profile that sanitized reference data actually supports.',
+    inPrimaryNav: false,
+    indexable: true,
+    priority: 0.5,
+  },
+  graniteSubaru: {
+    href: '/dealerships/granite-subaru',
+    navLabel: 'Granite Subaru',
+    title: 'Granite Subaru of Manchester',
+    description:
+      'The all-weather franchise rooftop of Granite Auto Group, a fictional dealer group. A narrow new-vehicle line, a materially larger pre-owned share than the Chevrolet store, and a partial reference sample that says so.',
+    inPrimaryNav: false,
+    indexable: true,
+    priority: 0.5,
+  },
+  granitePreOwned: {
+    href: '/dealerships/granite-pre-owned',
+    navLabel: 'Granite Pre-Owned',
+    title: 'Granite Pre-Owned Center of Merrimack',
+    description:
+      'The independent store of Granite Auto Group, a fictional dealer group. No franchise, no allocation, every unit bought rather than shipped, and the widest multi-brand model-year and price spread in the group.',
+    inPrimaryNav: false,
+    indexable: true,
+    priority: 0.5,
+  },
   caseStudy: {
     href: '/case-study',
     navLabel: 'Case Study',
@@ -251,125 +318,7 @@ export const ROUTES = {
       'The public analytical case study for ARPI. Held closed by Gate 2 until report pages are complete, SQL and Power BI totals reconcile, and executive findings are drafted.',
     inPrimaryNav: false,
     indexable: true,
-    priority: 0.6,
-  },
-  /*
-   * THE CONSOLE.
-   *
-   * `/dashboard` is the ARPI Dealer Operations Command Center, admitted by
-   * ADR-0013 under fifteen binding conditions and delivered by the `DASH.*`
-   * increments. It is the only dashboard route that exists today: the nine
-   * others in `INFORMATION_ARCHITECTURE.md` §1 arrive with the increments that
-   * own them, and a route entry here for a page that does not exist would put a
-   * dead link in the footer, the sitemap and the navigation sweep.
-   *
-   * `indexable`, deliberately. The console renders published, reconciled,
-   * synthetic figures and states its own provenance in the page body; there is
-   * nothing here that a crawler may not read, and the alternative - a noindex
-   * flagship - would say the opposite of what the trust panel says.
-   */
-  dashboard: {
-    href: '/dashboard',
-    navLabel: 'Dashboard',
-    title: 'Dealer Operations Command Center',
-    description:
-      'The ARPI operating console: group and store performance from the governed SQL export: retail units, gross and per-unit gross, inventory risk, the lead funnel, and the evidence behind every figure. Synthetic data for a fictional dealer group.',
-    inPrimaryNav: true,
-    indexable: true,
-    priority: 0.9,
-  },
-  /*
-   * `DASH.3` adds the two routes below. Both are real destinations with real
-   * content, which is the only reason they may appear in `DASHBOARD_NAV`.
-   *
-   * Neither is in `PRIMARY_NAV`: the header already carries `Dashboard`, and the
-   * console's own navigation is where its sections belong. `MAX_PRIMARY_NAV_ITEMS`
-   * is a cap on how many destinations a reader is asked to choose between at the
-   * top level, and a console section is not a top-level destination.
-   */
-  dashboardSalesGross: {
-    href: '/dashboard/sales-gross',
-    navLabel: 'Sales and gross',
-    title: 'Sales and gross',
-    description:
-      'Volume, gross and per-unit gross across the group and by store, with the trend, the new and used mix, discount against asking price, the deal-level gross distribution, and the documented decomposition of what changed month over month. Synthetic data for a fictional dealer group.',
-    inPrimaryNav: false,
-    indexable: true,
-    priority: 0.8,
-  },
-  dashboardDeals: {
-    href: '/dashboard/deals',
-    navLabel: 'Deal Explorer',
-    title: 'Deal Explorer',
-    description:
-      'Every finalized transaction in the governed export, searchable by deal, unit, make and model, filterable by period, store, condition, sale type and lead source. Synthetic data for a fictional dealer group.',
-    inPrimaryNav: false,
-    indexable: true,
-    priority: 0.8,
-  },
-  /*
-   * `DASH.7` adds the F&I performance surface. `DASH.6` built the domain in SQL and
-   * exported none of it; this is the route that reads it.
-   */
-  dashboardFi: {
-    href: '/dashboard/fi',
-    navLabel: 'F&I',
-    title: 'F&I performance',
-    description:
-      'Finance reserve against product gross, product penetration on its own eligible denominator, category economics, cancellations and chargebacks on their own posting dates, and a finance-manager comparison under the minimum-sample rule. Synthetic data; every lender, product and provider is invented.',
-    inPrimaryNav: false,
-    indexable: true,
-    priority: 0.8,
-  },
-  /*
-   * `DASH.9` adds the two operating surfaces over the inventory and accounting domains.
-   * `DASH.8` built the accounting domain in SQL and exported none of it; the export
-   * promotion and these two routes are what make it readable.
-   *
-   * They sit after `dashboardFi` because that is the order the console's navigation
-   * follows, and the order a reader works in: sales and gross, then the deals behind them,
-   * then the stock those deals came out of, then the F&I attached to them, then whether
-   * the books agree with any of it.
-   */
-  dashboardInventory: {
-    href: '/dashboard/inventory',
-    navLabel: 'Inventory',
-    title: 'Inventory operations',
-    description:
-      'Unit-level stock at a governed snapshot date: age against a project-default threshold, the five governed age buckets, asking price against a synthetic market estimate, snapshot-derived price movement, and drill-through to one unit with its accounting position. The market estimate is synthetic, not a valuation.',
-    inPrimaryNav: false,
-    indexable: true,
-    priority: 0.8,
-  },
-  dashboardLeadsMarketing: {
-    href: '/dashboard/leads-marketing',
-    navLabel: 'Leads and marketing',
-    title: 'Leads and marketing',
-    description:
-      'The BDC and marketing surface: the lead-created cohort funnel, appointment outcomes on their own two date bases, first-response times with the leads nobody answered beside them, where the cohort stopped, and spend against attributed outcomes. Synthetic data for a fictional dealer group.',
-    inPrimaryNav: false,
-    indexable: true,
-    priority: 0.8,
-  },
-  dashboardEmployees: {
-    href: '/dashboard/employees',
-    navLabel: 'Employees',
-    title: 'Employee performance',
-    description:
-      'Role-aware views of what was credited to each synthetic employee: units and gross, desked deliveries, finance structure, and the BDC lead funnel. Every comparative figure carries its own governed denominator and is withheld below the minimum sample. No ranking, no score, no personnel data.',
-    inPrimaryNav: false,
-    indexable: true,
-    priority: 0.8,
-  },
-  dashboardAccounting: {
-    href: '/dashboard/accounting',
-    navLabel: 'Accounting',
-    title: 'Accounting integrity',
-    description:
-      'The inventory subledger against selected synthetic GL control accounts: the signed variance, the four comparison states with missing sides preserved as missing, and the governed accounting exceptions with drill-through. An inventory control reconciliation, not a general ledger. Every account is invented.',
-    inPrimaryNav: false,
-    indexable: true,
-    priority: 0.8,
+    priority: 0.4,
   },
   uiLab: {
     href: '/ui-lab',
@@ -430,242 +379,68 @@ export interface NavItem {
 }
 
 /**
- * THE PRIMARY NAVIGATION: five content destinations, plus GitHub.
+ * THE OPERATING NAVIGATION — the application rail.
  *
- * Down from seven. What changed and why, recorded in
- * EXPERIENCE_REDESIGN_V2.md section 3.1:
+ * Eight destinations, in the order a manager works: the group result, the volume
+ * and gross behind it, the transactions behind that, the stock those transactions
+ * came out of, the F&I attached to them, the demand that produced them, the people
+ * credited with them, and whether the books agree with any of it.
  *
- *   Architecture, Data Model and Governance  →  one item, "Platform"
+ * WHAT IS DELIBERATELY NOT HERE.
  *
- *     Three peers competing for one click, of which Governance was the least
- *     likely first destination and Data Model the least self-explanatory.
- *     "Platform" points at `/architecture` and every one of the three renders
- *     `<PlatformNav>`, which links all three with `aria-current`. Both routes
- *     stay directly addressable, indexable and linked from the footer.
+ *   Actions        `DASH.12`. There is no action queue, so there is no link to
+ *                  one. A navigation item for an unbuilt route is a promise, and
+ *                  `PLANNED_DASHBOARD_SECTIONS` states it as text instead.
+ *   Technical      A utility destination, not an operating one. It is in
+ *                  {@link UTILITY_NAV}, rendered apart from the rail.
+ *   Reference listings
+ *                  `/inventory` is sanitized public listing data. Putting it in
+ *                  the rail beside `/dashboard/inventory` is what created two
+ *                  destinations called Inventory; see the route comment there.
  *
- *     A disclosure menu in the header was rejected: it buys nothing over two
- *     links and costs a focus trap, an escape handler and a hover ambiguity. A
- *     new `/platform` overview route was rejected: its only content would be
- *     links to two better pages.
- *
- *   Case Study  →  out of the header entirely
- *
- *     It was the only bordered, filled control in the header, which made the
- *     emptiest page on the site its most prominent destination. It is still
- *     visible - the footer, the status page and the home page's closing section
- *     all carry it, all of them saying "locked" in words.
- *
- * The count is asserted by `tests/unit/site.test.ts` and by the content
- * integrity suite, so a sixth item cannot arrive without a decision.
+ * `matchPrefixes` covers the Deal Jacket, which is a drill-through rather than a
+ * sibling: nobody navigates to "a deal", they arrive at one specific deal from the
+ * index, and there are 650 of them so an exact list is not available.
  */
-export const PRIMARY_NAV: readonly NavItem[] = [
+export const OPERATING_NAV: readonly NavItem[] = [
   {
     href: ROUTES.home.href,
-    label: 'Overview',
-    matches: ['/'],
-    purpose: 'What ARPI is, who built it, and what it proves',
-  },
-  /*
-   * "Dealerships" is NOT a separate item, and that is the point of this change.
-   *
-   * It used to be, pointing at `/dealerships`. The group overview is now the
-   * home page, so a "Dealerships" item would be a second header link to the same
-   * document as "Overview" - two names for one URL, which reads as two
-   * destinations and is the duplication this restructure exists to remove.
-   *
-   * The stores are still one click from anywhere. The home page's own store
-   * cards link each of them, `<GroupNav>` carries all three on every store page
-   * and on the inventory explorer, and the mobile drawer expands the group in
-   * full. What is gone is a redundant header entry, not a route.
-   */
-  /*
-   * The seventh item, and the last one this header will take.
-   *
-   * `MAX_PRIMARY_NAV_ITEMS` is 7 and this reaches it exactly, which is why the
-   * console's own ten destinations live in `DASHBOARD_NAV` on the page rather
-   * than in the header: the public site gains one destination, not an
-   * application menu. `matches` covers the whole `/dashboard` family so the
-   * header marks Dashboard current on every console route as they land.
-   *
-   * Placed second, ahead of Inventory: it is the product this project builds
-   * toward, and burying it after four documentation destinations would make the
-   * header disagree with what the site is for.
-   */
-  {
-    href: ROUTES.dashboard.href,
-    label: 'Dashboard',
-    matches: [ROUTES.dashboard.href],
-    purpose: 'The operating console: units, gross, inventory risk and the funnel',
-  },
-  {
-    href: ROUTES.inventory.href,
-    label: 'Inventory',
-    matches: [ROUTES.inventory.href],
-    purpose: 'Every sanitized listing, filterable and sortable',
-  },
-  {
-    href: ROUTES.architecture.href,
-    label: 'Platform',
-    matches: [
-      ROUTES.architecture.href,
-      ROUTES.dataModel.href,
-      ROUTES.inventoryOperations.href,
-      ROUTES.governance.href,
-    ],
-    purpose: 'Architecture, the data model, inventory operations and how it is governed',
-  },
-  {
-    href: ROUTES.kpis.href,
-    label: 'KPIs',
-    matches: [ROUTES.kpis.href],
-    purpose: 'Every governed metric definition',
-  },
-  {
-    href: ROUTES.status.href,
-    label: 'Status',
-    matches: [ROUTES.status.href],
-    purpose: 'What is finished, what is pending, what is blocked',
-  },
-  {
-    href: ROUTES.about.href,
-    label: 'About',
-    matches: [ROUTES.about.href],
-    purpose: 'Twenty-five years in dealerships, then the engineering',
-  },
-]
-
-/**
- * The ceiling on primary navigation, stated as a constant so the test that
- * enforces it reads as a rule rather than as a magic number.
- */
-export const MAX_PRIMARY_NAV_ITEMS = 7
-
-/**
- * The platform sub-navigation.
- *
- * Rendered by `/architecture`, `/data-model`, `/inventory-operations` and
- * `/governance`, which is what makes "Platform" a real destination group rather
- * than a relabelled link to one page. Ordered as a reader would take them: how
- * the data moves, what it becomes, what happens when something arrives from
- * outside, and the rules that hold all three.
- *
- * `/inventory-operations` sits inside the group rather than in the header for the
- * same reason the other three do: it is a platform capability, not a top-level
- * destination, and MAX_PRIMARY_NAV_ITEMS is a rule rather than a preference.
- */
-export const PLATFORM_NAV: readonly NavItem[] = [
-  {
-    href: ROUTES.architecture.href,
-    label: 'Architecture',
-    matches: [ROUTES.architecture.href],
-    purpose: 'How data travels from source systems to governed layers',
-  },
-  {
-    href: ROUTES.dataModel.href,
-    label: 'Data model',
-    matches: [ROUTES.dataModel.href],
-    purpose: 'Facts, dimensions, declared grains and history policies',
-  },
-  {
-    href: ROUTES.inventoryOperations.href,
-    label: 'Inventory operations',
-    matches: [ROUTES.inventoryOperations.href],
-    purpose: 'Ingesting a sanitized public listing snapshot end to end',
-  },
-  {
-    href: ROUTES.governance.href,
-    label: 'Governance',
-    matches: [ROUTES.governance.href],
-    purpose: 'Synthetic data, privacy, metric governance and the gates',
-  },
-]
-
-/**
- * The console's internal navigation.
- *
- * ONLY IMPLEMENTED DESTINATIONS APPEAR HERE, and today that is one.
- * `INFORMATION_ARCHITECTURE.md` §1 lists ten console routes; nine of them arrive
- * with the increments that own them, and listing them now would put nine dead
- * links into the navigation sweep, the sitemap and a reader's expectations. The
- * planned sections are named on the page instead, as text, beside the increment
- * that delivers each — a roadmap a reader can read is not a menu a reader can
- * click, and conflating the two is how a portfolio starts promising features.
- *
- * `DashboardNav` grows as they land. The rendering follows `PlatformNav`: a
- * `<nav>` of plain links with `aria-current`, explicitly not `role="tablist"`,
- * because it navigates between documents rather than switching panels inside one.
- */
-export const DASHBOARD_NAV: readonly NavItem[] = [
-  {
-    href: ROUTES.dashboard.href,
-    label: 'Command center',
-    matches: [ROUTES.dashboard.href],
-    purpose: 'Group and store operating performance on one screen',
+    label: 'Executive',
+    matches: [ROUTES.home.href],
+    purpose: 'The group on one screen: result, pace, stock, demand, integrity',
   },
   {
     href: ROUTES.dashboardSalesGross.href,
-    label: 'Sales and gross',
+    label: 'Sales & Gross',
     matches: [ROUTES.dashboardSalesGross.href],
     purpose: 'Volume, gross, mix, discount and what changed',
   },
   {
-    /*
-     * `matchPrefixes` covers the Deal Jacket, so a reader on
-     * `/dashboard/deals/SLE-00000123` sees the section they are inside marked
-     * current. The Jacket is a drill-through, not a sibling: it is deliberately
-     * NOT its own navigation item, because nothing navigates to "a deal" -- one
-     * arrives at a specific deal from the index.
-     */
     href: ROUTES.dashboardDeals.href,
-    label: 'Deal Explorer',
+    label: 'Deals',
     matches: [ROUTES.dashboardDeals.href],
     matchPrefixes: [`${ROUTES.dashboardDeals.href}/`],
     purpose: 'Every finalized transaction behind the numbers',
   },
   {
-    /*
-     * `DASH.7`. The Deal Jacket is deliberately NOT matched here even though it now
-     * itemizes F&I: a reader who drilled from the Deal Explorer into one transaction
-     * is inside Deals, and marking F&I current would tell them they navigated
-     * somewhere they did not.
-     */
+    href: ROUTES.dashboardInventory.href,
+    label: 'Inventory',
+    matches: [ROUTES.dashboardInventory.href],
+    purpose: 'Age, capital tied up, price position and unit drill-through',
+  },
+  {
     href: ROUTES.dashboardFi.href,
     label: 'F&I',
     matches: [ROUTES.dashboardFi.href],
     purpose: 'Reserve against product gross, penetration on eligible denominators',
   },
   {
-    /*
-     * `DASH.9`. Unit detail is a query parameter on this route rather than a child path,
-     * so `matches` alone is right and no prefix is needed: `?unit=VEH-0000013` is the same
-     * document with one panel open, and a reader who opens it has not navigated away.
-     */
-    href: ROUTES.dashboardInventory.href,
-    label: 'Inventory',
-    matches: [ROUTES.dashboardInventory.href],
-    purpose:
-      'Unit-level age, price against a synthetic estimate, and stock drill-through',
-  },
-  {
-    /*
-     * `DASH.10`. The BDC surface. It sits after Inventory and before Accounting, which is
-     * the order `INFORMATION_ARCHITECTURE.md` gives once the sections that do not exist yet
-     * are removed: Employees (`DASH.11`) and Actions (`DASH.12`) are still text on the
-     * Executive page rather than links here.
-     */
     href: ROUTES.dashboardLeadsMarketing.href,
-    label: 'Leads and marketing',
+    label: 'Leads & Marketing',
     matches: [ROUTES.dashboardLeadsMarketing.href],
-    purpose: 'Funnel, response time, lost stages and what marketing bought',
+    purpose: 'Funnel, response time, where the cohort stopped, and spend',
   },
   {
-    /*
-     * `DASH.11`. Employee performance. It sits after Leads and marketing and before
-     * Accounting, which is the order `INFORMATION_ARCHITECTURE.md` gives. Role and selected
-     * employee are query parameters on this one route rather than child paths, so `matches`
-     * alone is right: `?role=bdc&employee=EMP-00011` is the same document showing a
-     * different surface, and a reader who opens it has not navigated away.
-     */
     href: ROUTES.dashboardEmployees.href,
     label: 'Employees',
     matches: [ROUTES.dashboardEmployees.href],
@@ -679,50 +454,72 @@ export const DASHBOARD_NAV: readonly NavItem[] = [
   },
 ]
 
-/** A console section that does not exist yet, and the increment that delivers it. */
-export interface PlannedDashboardSection {
-  readonly label: string
-  /** The delivery increment, so the claim is checkable against the backlog. */
-  readonly increment: string
-  readonly purpose: string
-}
-
 /**
- * The console sections that are not built.
+ * The utility destinations, rendered at the foot of the rail and in the drawer.
  *
- * Rendered as text on `/dashboard`, never as links. Each names its increment so a
- * reader can check the claim against `docs/requirements/DASHBOARD_BACKLOG.md`
- * rather than take "coming soon" on trust — and so that this list cannot quietly
- * outlive the work it describes.
- *
- * WHAT LEAVING THIS LIST LOOKS LIKE. `Deal Jacket` (`DASH.4`) was still listed here after
- * `/dashboard/deals/[saleId]` shipped, and `DASH.9`'s two routes were never added, so the
- * Executive page was telling a reader that a built route did not exist. An entry leaves
- * this list in the same commit its route becomes reachable; it is checked against
- * `ROUTES` and against the backlog by `site.test.ts`, which fails if a planned label
- * names a route the console can already navigate to.
+ * They leave the operating application. That is the point of separating them: a
+ * manager reading gross is not choosing between "Inventory" and "Governance", and
+ * a header that offers both as equal choices is a portfolio's table of contents
+ * wearing an application's clothes.
  */
-export const PLANNED_DASHBOARD_SECTIONS: readonly PlannedDashboardSection[] = [
+export const UTILITY_NAV: readonly NavItem[] = [
   {
-    label: 'Management actions',
-    increment: 'DASH.12',
-    purpose: 'A deterministic action queue with evidence and drill-through',
+    href: ROUTES.technical.href,
+    label: 'Technical',
+    matches: [ROUTES.technical.href],
+    purpose: 'How ARPI is built, governed, sourced and validated',
+  },
+  {
+    href: ROUTES.about.href,
+    label: 'About',
+    matches: [ROUTES.about.href],
+    purpose: 'Twenty-five years in dealerships, then the engineering',
   },
 ]
 
 /**
+ * The reference domain's own header navigation.
+ *
+ * Three items. `Executive` is first and returns to the operating application,
+ * because every one of these routes is somewhere a reader arrived at FROM the
+ * application and needs a way back out of.
+ *
+ * It is still called `PRIMARY_NAV` because it is still what `<SiteHeader>`
+ * renders and what the navigation sweep and the item cap are asserted against;
+ * what changed is that it is no longer the whole site's navigation, because the
+ * operating half of the site now has a rail of its own.
+ */
+export const PRIMARY_NAV: readonly NavItem[] = [
+  {
+    href: ROUTES.home.href,
+    label: 'Executive',
+    matches: [ROUTES.home.href],
+    purpose: 'Back to the operating application',
+  },
+  ...UTILITY_NAV,
+]
+
+/**
+ * The ceiling on primary navigation, stated as a constant so the test that
+ * enforces it reads as a rule rather than as a magic number.
+ */
+export const MAX_PRIMARY_NAV_ITEMS = 7
+
+/**
  * The Granite Auto Group sub-navigation.
  *
- * Rendered by `/dealerships`, the three store pages and `/inventory`, which is
- * what makes "Dealerships" a destination group rather than a link to one page.
- * Ordered as a reader takes them: the group first, then each store, then the
- * inventory those stores hold.
+ * Rendered by the three store routes and by the reference listing explorer. It is
+ * DEMO-BUSINESS CONTEXT, not an operating destination group: store selection in the
+ * operating application happens through the `store` filter, and nobody should have
+ * to navigate to a separate page to pick a rooftop. `UX.1` retargets its first
+ * entry from `/` — which is now the operating console — to the group context that
+ * actually describes the three stores.
  */
 export const GROUP_NAV: readonly NavItem[] = [
   {
-    href: ROUTES.home.href,
+    href: `${ROUTES.technical.href}?view=overview`,
     label: 'The group',
-    matches: [ROUTES.home.href],
+    matches: [ROUTES.technical.href],
     purpose: 'Three stores, three operating models, one reporting layer',
   },
   {
@@ -745,11 +542,62 @@ export const GROUP_NAV: readonly NavItem[] = [
   },
   {
     href: ROUTES.inventory.href,
-    label: 'Inventory explorer',
+    label: 'Reference listings',
     matches: [ROUTES.inventory.href],
-    purpose: 'Every listing, filterable and sortable',
+    purpose: 'Sanitized public listing data, filterable and sortable',
   },
 ]
+
+/** A console section that does not exist yet, and the increment that delivers it. */
+export interface PlannedDashboardSection {
+  readonly label: string
+  /** The delivery increment, so the claim is checkable against the backlog. */
+  readonly increment: string
+  readonly purpose: string
+}
+
+/**
+ * The console sections that are not built.
+ *
+ * Rendered as text, never as links. Each names its increment so a reader can check
+ * the claim against `docs/requirements/DASHBOARD_BACKLOG.md` rather than take
+ * "coming soon" on trust — and so that this list cannot quietly outlive the work it
+ * describes. `site.test.ts` fails if a planned label names a route the application
+ * can already navigate to.
+ */
+export const PLANNED_DASHBOARD_SECTIONS: readonly PlannedDashboardSection[] = [
+  {
+    label: 'Management actions',
+    increment: 'DASH.12',
+    purpose: 'A deterministic action queue with evidence and drill-through',
+  },
+]
+
+/**
+ * The operating application's pathnames, derived from the rail rather than typed.
+ *
+ * The rail is the definition of what "the operating application" means, so the
+ * shell, the filter-carrying link helper and the copy guard all read it from one
+ * place. A ninth operating route that arrives without joining the rail is not an
+ * operating route; a ninth rail entry is one automatically.
+ */
+export const OPERATING_ROUTE_HREFS: readonly string[] = OPERATING_NAV.map(
+  (item) => item.href
+)
+
+/**
+ * Whether a pathname is inside the operating application.
+ *
+ * The Deal Jacket is: `/dashboard/deals/SLE-00000646` is a drill-through from an
+ * operating route and wears the operating shell. Nothing under `/technical`,
+ * `/about`, `/inventory` or `/dealerships` is.
+ */
+export function isOperatingRoute(pathname: string): boolean {
+  if (OPERATING_ROUTE_HREFS.includes(pathname)) return true
+  return OPERATING_NAV.some((item) =>
+    (item.matchPrefixes ?? []).some((prefix) => pathname.startsWith(prefix))
+  )
+}
 
 /** Whether a navigation item is the current one for a pathname. */
 export function isNavItemCurrent(item: NavItem, pathname: string): boolean {
@@ -777,6 +625,25 @@ export const SYNTHETIC_DATA_STATEMENT =
 
 /** The short form, for space-constrained placements. */
 export const SYNTHETIC_DATA_SHORT = 'Synthetic data. Granite Auto Group is fictional.'
+
+/**
+ * The operating application's compact demo statement.
+ *
+ * ONE STATEMENT, ONCE PER SCREEN, IN THE SHELL. `UX.1` replaced a per-route trust
+ * line, three status badges in the executive header and a repeated provenance
+ * paragraph with this single line in the top bar, which activates the same
+ * methodology disclosure the figures link to. The full statement above is
+ * unchanged, is still rendered on every operating route inside that disclosure,
+ * and `content-integrity` still asserts it route by route: what was reduced is
+ * repetition, not disclosure.
+ *
+ * Written from the reader's side of the screen. "Every warehouse record in this
+ * project is synthetic" is a sentence about a repository; a manager looking at a
+ * gross figure needs to know that the dealer group is invented and the figure is
+ * not a real result.
+ */
+export const SYNTHETIC_DEMO_SHORT =
+  'Granite Auto Group is fictional. Operating figures are synthetic.'
 
 /**
  * The inventory disclosure, and why it is a SECOND statement rather than a

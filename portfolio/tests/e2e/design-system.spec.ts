@@ -1,5 +1,17 @@
 import { expect, test } from '@playwright/test'
 
+/**
+ * The route these suites measure the SHELL on.
+ *
+ * It was `/`, which wore the site header and footer until `UX.1` made it the
+ * operating console — a different shell with a rail instead of a masthead and no
+ * footer at all. The design-system and visual-system contracts are about the
+ * reference domain's chrome, so they measure it where it is rendered. The
+ * operating shell has its own assertions in `dashboard.spec.ts` and
+ * `navigation.spec.ts`.
+ */
+const SHELL_ROUTE = '/technical'
+
 import { gotoRendered } from './helpers'
 import { PRIMARY_ROUTES } from './routes'
 
@@ -29,7 +41,7 @@ test.describe('token references resolve to real values', () => {
     page,
   }) => {
     await page.setViewportSize({ width: 375, height: 812 })
-    await page.goto('/')
+    await page.goto(SHELL_ROUTE)
 
     const headerZ = await page.$eval('header', (el) => getComputedStyle(el).zIndex)
     expect(headerZ, 'the sticky header has no z-index').not.toBe('auto')
@@ -83,7 +95,7 @@ test.describe('token references resolve to real values', () => {
   })
 
   test('the skip link sits above everything else', async ({ page }) => {
-    await page.goto('/')
+    await page.goto(SHELL_ROUTE)
     await page.keyboard.press('Tab')
     const z = await page.$eval(
       'a[href="#main-content"]',
@@ -99,10 +111,10 @@ test.describe('token references resolve to real values', () => {
   test('custom transition durations are applied, not silently dropped', async ({
     page,
   }) => {
-    await page.goto('/')
+    await page.goto(SHELL_ROUTE)
     // The primary call to action uses duration-(--arpi-motion-fast) = 140ms.
     const duration = await page.$eval(
-      'a[href="/architecture"]',
+      'a[href="/about"]',
       (el) => getComputedStyle(el).transitionDuration
     )
     expect(duration, 'the button has no transition duration').not.toBe('0s')
@@ -124,7 +136,7 @@ test.describe('token references resolve to real values', () => {
      * separation between the white shell and the blue field that the design
      * depends on.
      */
-    await page.goto('/')
+    await page.goto(SHELL_ROUTE)
     const header = await page.$eval('header', (el) => {
       const style = getComputedStyle(el)
       return { filter: style.backdropFilter, background: style.backgroundColor }
@@ -175,7 +187,7 @@ test.describe('token references resolve to real values', () => {
   })
 
   test('the palette is closed: no default Tailwind colour compiles', async ({ page }) => {
-    await page.goto('/')
+    await page.goto(SHELL_ROUTE)
     // `--color-*: initial` in theme.css resets Tailwind's ramps, so a stray
     // `bg-slate-700` produces no rule at all. If someone re-enables the defaults,
     // this class would start resolving and the closed palette would be a fiction.
@@ -200,7 +212,7 @@ test.describe('the reduced-motion floor is real', () => {
   test.use({ contextOptions: { reducedMotion: 'reduce' } })
 
   test('no element animates or transitions for longer than a frame', async ({ page }) => {
-    await page.goto('/')
+    await page.goto(SHELL_ROUTE)
     const offenders = await page.evaluate(() => {
       const found: string[] = []
       for (const element of document.querySelectorAll('body *')) {
@@ -231,7 +243,7 @@ test.describe('the reduced-motion floor is real', () => {
   })
 
   test('every SVG path that draws itself renders complete', async ({ page }) => {
-    await page.goto('/')
+    await page.goto(SHELL_ROUTE)
     const undrawn = await page.$$eval('[data-arpi-draw]', (paths) =>
       paths
         .map((path) => ({
@@ -255,7 +267,7 @@ test.describe('the reduced-motion floor is real', () => {
     // must be correct on the first paint for every visitor, not after an
     // animation - so this now asserts the stronger property, which is that no
     // scroll, no wait and no motion preference is required to read it.
-    await page.goto('/')
+    await page.goto(SHELL_ROUTE)
     const proof = page.locator('#proof')
     const text = (await proof.innerText()).replace(/\s+/g, ' ')
     expect(text).toMatch(/\b28\b/)

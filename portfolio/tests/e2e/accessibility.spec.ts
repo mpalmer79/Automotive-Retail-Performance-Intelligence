@@ -89,7 +89,7 @@ test.describe('axe-core', () => {
   test('the KPI catalogue is still clean with a filter and a search applied', async ({
     page,
   }) => {
-    await page.goto('/kpis')
+    await page.goto('/technical?view=kpis')
     await page.getByRole('button', { name: /^Inventory/ }).click()
     await page.getByLabel(/search by identifier/i).fill('aged')
     await page.waitForTimeout(300)
@@ -108,7 +108,7 @@ test.describe('axe-core', () => {
 
   test('the mobile navigation drawer is clean while open', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 })
-    await page.goto('/architecture')
+    await page.goto('/technical?view=architecture')
     await page.getByRole('button', { name: /open navigation menu/i }).click()
     await expect(page.locator('#mobile-navigation')).toBeVisible()
 
@@ -162,7 +162,7 @@ test.describe('keyboard operation', () => {
   test('the skip link is the first focusable element and moves focus to main', async ({
     page,
   }) => {
-    await page.goto('/status')
+    await page.goto('/technical?view=status')
     await page.keyboard.press('Tab')
     const skip = page.getByRole('link', { name: /skip to main content/i })
     await expect(skip).toBeFocused()
@@ -199,7 +199,7 @@ test.describe('keyboard operation', () => {
     page,
   }) => {
     await page.setViewportSize({ width: 375, height: 812 })
-    await page.goto('/kpis')
+    await page.goto('/technical?view=kpis')
     const trigger = page.getByRole('button', { name: /open navigation menu/i })
     await trigger.click()
 
@@ -242,7 +242,7 @@ test.describe('keyboard operation', () => {
     page,
   }) => {
     await page.setViewportSize({ width: 375, height: 812 })
-    await page.goto('/status')
+    await page.goto('/technical?view=status')
     const overflowBefore = await page.evaluate(
       () => getComputedStyle(document.body).overflowY
     )
@@ -257,7 +257,7 @@ test.describe('keyboard operation', () => {
   })
 
   test('the architecture graph is operable by keyboard alone', async ({ page }) => {
-    await page.goto('/architecture')
+    await page.goto('/technical?view=architecture')
     const listbox = page.getByRole('listbox', { name: 'Architecture components' })
     await listbox.focus()
     await expect(listbox).toBeFocused()
@@ -280,7 +280,7 @@ test.describe('keyboard operation', () => {
   })
 
   test('the data-model graph is operable by keyboard alone', async ({ page }) => {
-    await page.goto('/data-model')
+    await page.goto('/technical?view=data-model')
     const listbox = page.getByRole('listbox', { name: 'Warehouse entities' })
     await listbox.focus()
     await page.keyboard.press('ArrowDown')
@@ -292,12 +292,14 @@ test.describe('keyboard operation', () => {
   })
 
   test('focus is not lost on a route change', async ({ page }) => {
-    await page.goto('/')
+    // From a reference route, because this is the reference header's navigation.
+    // The operating rail's equivalent is asserted in `navigation.spec.ts`.
+    await page.goto('/about')
     await page
       .getByRole('navigation', { name: 'Primary' })
-      .getByRole('link', { name: 'Status' })
+      .getByRole('link', { name: 'Technical' })
       .click()
-    await expect(page).toHaveURL(/\/status$/)
+    await expect(page).toHaveURL(/\/technical$/)
     // Focus must be on a real element, not nowhere.
     const activeTag = await page.evaluate(() =>
       document.activeElement?.tagName.toLowerCase()
@@ -419,12 +421,13 @@ test.describe('reflow and target size', () => {
 
   test('primary controls meet the 44px target-size floor', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 })
-    await page.goto('/')
-    // The hero's two calls to action and the navigation trigger are the controls
-    // a visitor must be able to hit on a phone.
+    await page.goto('/technical?view=overview')
+    // The tour's calls to action and the navigation trigger are the controls a
+    // visitor must be able to hit on a phone. The hero's two are gone with the
+    // hero; `UX.1` §12 requires the same floor of the operating shell's own
+    // controls, which the block below covers.
     const controls: { role: 'link' | 'button'; name: RegExp }[] = [
       { role: 'link', name: /open the inventory explorer/i },
-      { role: 'link', name: /see how it is built/i },
       { role: 'button', name: /open navigation menu/i },
     ]
     for (const control of controls) {
@@ -441,11 +444,36 @@ test.describe('reflow and target size', () => {
       ).toBeGreaterThanOrEqual(43)
     }
   })
+
+  test('the operating shell meets the same floor on a phone', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 })
+    await page.goto('/')
+    // The compact app bar's menu trigger, and every link inside the drawer it
+    // opens: on a phone this is the entire navigation of the application.
+    const trigger = page.getByRole('button', { name: /open navigation menu/i })
+    const triggerBox = await trigger.boundingBox()
+    expect(triggerBox, 'no box for the navigation trigger').not.toBeNull()
+    expect(triggerBox!.height).toBeGreaterThanOrEqual(43)
+    expect(triggerBox!.width).toBeGreaterThanOrEqual(43)
+
+    await trigger.click()
+    const links = page.locator('#operating-navigation a')
+    const count = await links.count()
+    expect(count, 'the drawer opened with no links in it').toBeGreaterThan(8)
+    for (let index = 0; index < count; index += 1) {
+      const box = await links.nth(index).boundingBox()
+      if (box === null) continue
+      expect(
+        box.height,
+        `drawer link ${String(index)} is ${String(box.height)}px tall`
+      ).toBeGreaterThanOrEqual(43)
+    }
+  })
 })
 
 test.describe('no hover-only or tooltip-only information', () => {
   test('every filter chip is a real button with a pressed state', async ({ page }) => {
-    await page.goto('/kpis')
+    await page.goto('/technical?view=kpis')
     // The catalogue sits behind a Suspense boundary, so its controls do not
     // exist on the first paint. Wait for the search field before counting.
     await expect(page.getByLabel(/search by identifier/i)).toBeVisible()
@@ -463,7 +491,7 @@ test.describe('no hover-only or tooltip-only information', () => {
     // word-count pass, because six domains with one definition each is reference
     // material and the catalogue is the page whose subject it is. The obligation
     // travelled with it unchanged.
-    await gotoRendered(page, '/kpis')
+    await gotoRendered(page, '/technical?view=kpis')
     const tablist = page.getByRole('tablist', { name: /analytical domain/i })
     const inventory = tablist.getByRole('tab', { name: /inventory/i })
     await inventory.scrollIntoViewIfNeeded()
@@ -490,7 +518,7 @@ test.describe('no hover-only or tooltip-only information', () => {
   })
 
   test('the operating view is fully operable from the keyboard', async ({ page }) => {
-    await gotoRendered(page, '/kpis')
+    await gotoRendered(page, '/technical?view=kpis')
     const tablist = page.getByRole('tablist', { name: /analytical domain/i })
     // Roving tabindex: exactly one tab is in the tab order at a time, which is
     // what stops a six-item rail costing a keyboard user six tab stops.

@@ -480,3 +480,70 @@ eligible population exist and fails with a message saying the browser assertion 
 either disappears. The ratio-of-sums test asserts the two implementations differ by more than $0.50 on
 the committed data before asserting which one the model produced. The wholesale, certified, duplicate
 and cancellation tests each assert the excluded population is non-empty first.
+
+---
+
+## `UX.1` — what the productization increment added to the strategy
+
+`UX.1` changed no business logic, so it added no reconciliation rule and no
+seeded defect. What it added is guards for three classes of claim the suite could
+not previously fail.
+
+### 1. The operating-copy boundary — `portfolio/tests/e2e/operating-copy.spec.ts`
+
+**Why it is a browser test and not a source scan.** The rule is about what a
+manager READS, and a source scan cannot separate four things that look identical
+in a file: an identifier, a comment, a term inside a collapsed disclosure, and a
+term above the KPI rail. Only the fourth is a violation. The guard therefore reads
+`innerText` from `<main>` on a running build, which excludes `display:none`,
+excludes `.sr-only`, and excludes the contents of a collapsed `<details>`.
+
+**Both halves are asserted, and the second is what makes it honest.** A rule that
+only checks the collapsed state can be satisfied by deleting the evidence. So the
+same nine routes are checked again with every `<details>` open, and there the
+dataset version and the real-engine validation state must be PRESENT. Together the
+two halves say *not first, and not gone*.
+
+**What is deliberately not restricted:** GL, DMS, CRM, KPI, PVR, F&I, subledger,
+variance. These are dealership words. The restricted list is implementation
+vocabulary — languages, frameworks, storage engines, file formats, build systems
+and internal artifact names — and nothing else.
+
+### 2. The geometry contract — `portfolio/tests/unit/ux1-visual-geometry.test.tsx`
+
+`dashboard-visuals.test.tsx` asserts that nothing is available ONLY as a length:
+every value a bar encodes is also text, the table is in the document, a null is a
+gap with a stated reason. That is the accessibility contract and it is the more
+important of the two.
+
+This suite asserts the other half, which nothing checked before: **that the length
+moves.** A test that finds a `<div class="bar">` passes just as happily against a
+fixed decorative graphic. Each primitive is rendered twice against materially
+different data and the emitted geometry is compared — different data must draw a
+different shape, identical data must draw an identical one, and a flat series must
+draw fewer distinct geometries than a varied one. A "not vacuous" case proves the
+collector finds marks at all, so a refactor that stopped it reading geometry
+cannot turn every comparison into two empty arrays.
+
+### 3. Redirect, canonical and filter-continuity integrity — `navigation.spec.ts`
+
+- Every one of the eight retired URLs answers a permanent redirect, lands on the
+  right destination, and does not take the paths beneath it with it.
+- **`/dashboard` carries its query string through the redirect.** The most
+  load-bearing assertion in the file: every console link anybody has shared is a
+  `/dashboard?…` URL, and a redirect that dropped the filters would silently
+  resolve all of them to the default period while the page still looked correct.
+- No two URLs claim the same canonical.
+- No retired URL is in the sitemap.
+- The rail carries `period` and `store` to every destination that declares them
+  applicable, drops `source` where a route declares it not-applicable, survives a
+  real navigation rather than only appearing in an href, emits no duplicate
+  parameter, and produces the same links with scripting disabled.
+
+### What did not change
+
+The `DASH.11` fairness assertions, the export boundary guards, the exact-money
+boundary, the reconciliation suites and the seeded defects are untouched. `UX.1`
+updated route targets where a route moved and rewrote assertions where the thing
+being asserted was genuinely replaced; it deleted no test because the information
+architecture changed.

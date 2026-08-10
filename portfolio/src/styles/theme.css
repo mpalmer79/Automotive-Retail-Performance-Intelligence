@@ -131,6 +131,7 @@
   --spacing-gutter: var(--arpi-layout-gutter);
   --spacing-touch: var(--arpi-size-touch);
   --spacing-header: var(--arpi-size-header);
+  --spacing-rail: var(--arpi-size-rail);
 
   /* --- radius ---------------------------------------------------------- */
   --radius-xs: var(--arpi-radius-xs);

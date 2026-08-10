@@ -32,25 +32,23 @@ test.describe('the route exists and is the F&I destination', () => {
   test('answers 200 and names what the page is', async ({ page }) => {
     const response = await page.goto(ROUTE)
     expect(response?.status()).toBe(200)
-    await expect(page.locator('h1')).toContainText(
-      /What the finance office produced, and what the store kept/i
-    )
+    await expect(page.locator('h1')).toHaveText('F&I')
   })
 
-  test('marks F&I current in the console navigation', async ({ page }) => {
+  test('marks F&I current in the operating rail', async ({ page }) => {
     await gotoRendered(page, ROUTE)
     const current = page.locator('[aria-current="page"]')
     await expect(current.filter({ hasText: /^F&I$/ }).first()).toBeVisible()
   })
 
-  test('is reachable from the console bar rather than only by typing the URL', async ({
+  test('is reachable from the rail rather than only by typing the URL', async ({
     page,
   }) => {
-    await gotoRendered(page, '/dashboard')
-    const link = page.locator(`a[href="${ROUTE}"]`).first()
+    await gotoRendered(page, '/')
+    const link = page.locator(`a[href^="${ROUTE}"]`).first()
     await expect(link).toBeVisible()
     await link.click()
-    await expect(page.locator('h1')).toContainText(/finance office/i)
+    await expect(page.locator('h1')).toHaveText('F&I')
   })
 
   test('no longer names F&I as an unbuilt section anywhere in the console', async ({
@@ -109,8 +107,19 @@ test.describe('the page works with scripting disabled', () => {
 
 test.describe('the page says what it is before it says anything else', () => {
   test('puts the synthetic-data disclosure above the money', async ({ page }) => {
+    /*
+     * The band replaced the `#context` section at `UX.1`, and it is still the first
+     * thing on the page and still carries the statement — in the methodology
+     * summary, where it is visible without opening anything. Located by the
+     * statement itself rather than by an id, which is the more durable locator: it
+     * asserts the DISCLOSURE is above the figures rather than that a particular
+     * element is.
+     */
     await gotoRendered(page, ROUTE)
-    const disclosure = page.locator('#context')
+    const disclosure = page
+      .locator('main')
+      .getByText(/Granite Auto Group is fictional/i)
+      .first()
     await expect(disclosure).toBeVisible()
 
     const disclosureTop = await disclosure.evaluate(

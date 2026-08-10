@@ -31,7 +31,14 @@ test.describe('the accounting route renders its governed figures', () => {
 
     const headings = page.locator('main h1')
     await expect(headings).toHaveCount(1)
-    await expect(headings.first()).toContainText(/control accounts/i)
+    // The `h1` is the route's NAME now. The claim the sentence used to make —
+    // this is a reconciliation against selected control accounts, not a general
+    // ledger — is the subtitle immediately under it, which a reader meets before
+    // any figure and which `operating-copy.spec.ts` proves is visible.
+    await expect(headings.first()).toHaveText('Accounting')
+    await expect(page.locator('main')).toContainText(
+      'Inventory control reconciliation. Not a general ledger.'
+    )
   })
 
   test('shows both balances, the signed variance and the comparison date', async ({

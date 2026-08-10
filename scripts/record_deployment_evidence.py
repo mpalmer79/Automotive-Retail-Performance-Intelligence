@@ -25,6 +25,12 @@ WHAT IT WILL NOT DO
   neighbours.
 * It will not write a field it could not obtain. A failed probe leaves ``UNVERIFIED``
   in place, so a partial run degrades to the truth rather than to a half-claim.
+* It will not record a run against a *different* artefact as evidence about this one.
+  The suite is read from this tree and the deployment serves whatever commit was last
+  deployed; when ``--expect-commit`` says which commit this tree is and the deployment
+  is running another, the run is reported and nothing is written. This cuts both ways:
+  such a run cannot fail the tree either, because its assertions describe a build the
+  deployment is not serving.
 * It will not write a secret. The values it records are a URL, a commit SHA, a
   timestamp and a pass count.
 
@@ -60,7 +66,14 @@ REQUIRED_CHECKS: dict[str, tuple[str, ...]] = {
     # Titled per route by the suite, so the needle is the static part of the
     # template and the match count is the number of routes that answered.
     "routes_reachable": ("returns 200 and renders its heading",),
-    "status_route": ("/status is reachable",),
+    # The route the platform's health check probes. It was `/status` until `UX.1`
+    # consolidated that route into `/technical?view=status`, so the binding names
+    # the role rather than the path and survives the next move of it.
+    "health_route": ("it is the health-check path",),
+    # The eight permanent redirects are a property of the build. A deployment that
+    # lost them would serve 404s to every link anybody has shared and would still
+    # pass every other check here.
+    "retired_urls": ("every retired URL still resolves on the deployment",),
     "machine_readable_routes": ("the machine-readable routes are served",),
     "canonical_metadata": ("has a canonical URL on the deployed host",),
     "sitemap": ("the sitemap lists the deployed host and nothing else",),
@@ -98,7 +111,7 @@ def deployed_commit(base_url: str) -> str:
     correct answer rather than a reason to fall back to the local checkout: the
     local commit is what *this* tree is at, not what the deployment is running.
     """
-    for path in ("/status", "/"):
+    for path in ("/technical", "/"):
         status, body = _get(f"{base_url}{path}")
         if status != HTTP_OK:
             continue
@@ -106,6 +119,59 @@ def deployed_commit(base_url: str) -> str:
         if match:
             return match.group(1)
     return UNVERIFIED
+
+
+#: The shortest abbreviation this script will compare. Below it the comparison is
+#: not a commit identity, and two unrelated commits share a prefix often enough.
+_MIN_ABBREVIATION = 7
+
+
+def same_commit(deployed: str, expected: str) -> bool:
+    """Whether the deployment is running the commit this tree is at.
+
+    Compared by prefix in both directions, because the footer may carry an
+    abbreviated SHA and an abbreviation is the same commit as the full hash it
+    abbreviates. ``UNVERIFIED``, an empty value or an abbreviation shorter than
+    seven characters answers ``False``: not knowing is not a match.
+    """
+    if not deployed or not expected or UNVERIFIED in (deployed, expected):
+        return False
+    left, right = deployed.strip().lower(), expected.strip().lower()
+    shared = min(len(left), len(right))
+    if shared < _MIN_ABBREVIATION:
+        return False
+    return left[:shared] == right[:shared]
+
+
+def write_status(path: Path, *, admissible: bool, verified: bool) -> None:
+    """Append two booleans, as ``key=value`` lines, to a file the caller names.
+
+    The caller decides what the file is for; this script only states what it found.
+    ``verify-deployment.yml`` points it at ``$GITHUB_OUTPUT`` so a later step can ask
+    *was this run even about this tree* before treating a red suite as a verdict --
+    which keeps the workflow from re-deriving the comparison and disagreeing with the
+    recorder about it.
+
+    Appended, not written, because the file may already hold a caller's own keys.
+    """
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(f"admissible={'true' if admissible else 'false'}\n")
+        handle.write(f"verified={'true' if verified else 'false'}\n")
+
+
+def host_answered(homepage_ok: bool, healthy: bool, about_this_tree: bool) -> bool:
+    """Whether the deployment answered, as distinct from whether it is this build.
+
+    ``/`` exists in every build, so a homepage that does not answer is a fact about
+    the host. The health path is not: it is declared by *this* tree and names a route
+    of the build this tree produces, so probing it against a deployment running some
+    other commit asks the deployed build for a route it may never have had. That is
+    the same category error as reading the suite's results as a verdict, one level
+    down, so the health probe only counts when the artefact matches.
+    """
+    if not homepage_ok:
+        return False
+    return healthy or not about_this_tree
 
 
 def health_check(base_url: str, health_path: str) -> tuple[bool, bool, str]:
@@ -183,8 +249,7 @@ def check_results(report: dict[str, Any]) -> dict[str, str]:
     return resolved
 
 
-def main() -> int:
-    """Record what the run observed. Returns ``0`` on success, ``1`` on a bad run."""
+def _parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--base-url", required=True, help="the deployment's public URL")
     parser.add_argument(
@@ -194,8 +259,57 @@ def main() -> int:
         help="Playwright's JSON report from the remote suite",
     )
     parser.add_argument("--run-url", default="", help="the workflow run that produced this")
+    parser.add_argument(
+        "--expect-commit",
+        default="",
+        help=(
+            "the commit this tree is at. When the deployment is running a different "
+            "one, the run is reported and nothing is written: the suite came from "
+            "here and the deployment is serving something else. Omit to compare "
+            "nothing, which is the behaviour of a run whose caller cannot say."
+        ),
+    )
+    parser.add_argument(
+        "--status-file",
+        type=Path,
+        default=None,
+        help=(
+            "append `admissible=` and `verified=` to this file, so a caller can act on "
+            "what this run was about without re-deriving it"
+        ),
+    )
     parser.add_argument("--dry-run", action="store_true", help="print the result without writing")
-    arguments = parser.parse_args()
+    return parser.parse_args()
+
+
+def _print_report(
+    *,
+    base_url: str,
+    target: dict[str, Any],
+    homepage_ok: bool,
+    healthy: bool,
+    about_this_tree: bool,
+    commit: str,
+    results: dict[str, str],
+) -> None:
+    """Everything the run found, so the job log is readable without the artefact."""
+    # A health path that is not a route of the deployed build reads as an outage
+    # unless the reason is printed beside it.
+    note = "" if healthy or about_this_tree else "  (not a route of the deployed build)"
+    print("ARPI deployment evidence")
+    print(f"  base URL          : {base_url}")
+    print(f"  homepage          : {'200' if homepage_ok else 'NO ANSWER'}")
+    print(f"  health route      : {target.get('health_path')} -> ", end="")
+    print(f"{'200' if healthy else 'NO ANSWER'}{note}")
+    print(f"  deployed commit   : {commit}")
+    print(f"  suite             : {target.get('remote_smoke_test')}")
+    for name, value in results.items():
+        print(f"    {name:26} {value}")
+
+
+def main() -> int:
+    """Record what the run observed. Returns ``0`` on success, ``1`` on a bad run."""
+    arguments = _parse_arguments()
 
     base_url = arguments.base_url.rstrip("/")
     document = json.loads(EVIDENCE_PATH.read_text(encoding="utf-8"))
@@ -219,6 +333,12 @@ def main() -> int:
     suite_ran = report["passed"] > 0
     suite_green = suite_ran and report["failed"] == 0
     every_check_passed = all(value != UNVERIFIED for value in results.values())
+
+    # Whether the deployment is serving the artefact this suite describes. When the
+    # caller names no commit nothing is compared and the run is treated as it always
+    # was; that keeps a hand-run verification against a fresh deployment strict.
+    expected = arguments.expect_commit.strip()
+    about_this_tree = expected == "" or same_commit(commit, expected)
 
     # Each field closes on its own evidence. A green suite does not close the health
     # timestamp, and a healthy probe does not close the smoke result.
@@ -249,26 +369,56 @@ def main() -> int:
     }
 
     rendered = json.dumps(document, indent=2) + "\n"
-    print("ARPI deployment evidence")
-    print(f"  base URL          : {base_url}")
-    print(f"  homepage          : {'200' if homepage_ok else 'NO ANSWER'}")
-    print(
-        f"  health route      : {target.get('health_path')} -> {'200' if healthy else 'NO ANSWER'}"
+    _print_report(
+        base_url=base_url,
+        target=target,
+        homepage_ok=homepage_ok,
+        healthy=healthy,
+        about_this_tree=about_this_tree,
+        commit=commit,
+        results=results,
     )
-    print(f"  deployed commit   : {commit}")
-    print(f"  suite             : {target.get('remote_smoke_test')}")
-    for name, value in results.items():
-        print(f"    {name:26} {value}")
 
     if arguments.dry_run:
         print("\n(dry run: nothing written)")
+    elif not about_this_tree:
+        print(f"\n(nothing written: the deployment is running {commit}, this tree is {expected})")
     else:
         EVIDENCE_PATH.write_text(rendered, encoding="utf-8")
         print(f"\nwrote {EVIDENCE_PATH.relative_to(REPO_ROOT).as_posix()}")
 
-    # The same verdict in both modes. A dry run that reported success while the
-    # real one would fail would be the exact confusion this script exists to avoid.
-    if not (homepage_ok and healthy and suite_green and every_check_passed):
+    answered = host_answered(homepage_ok, healthy, about_this_tree)
+    if arguments.status_file is not None:
+        write_status(
+            arguments.status_file,
+            admissible=about_this_tree,
+            verified=answered and about_this_tree and suite_green and every_check_passed,
+        )
+
+    # A deployment that does not answer is a failure whichever commit it is running.
+    if not answered:
+        print(
+            "\nFAILED: the deployment did not answer. The evidence file records exactly "
+            "what was obtained; the fields that were not obtained still read UNVERIFIED "
+            "and must not be filled in by hand.",
+            file=sys.stderr,
+        )
+        return 1
+
+    # Beyond that, a run against a different commit proves nothing either way. Its
+    # assertions were written for a build the deployment is not serving, so reading
+    # them as a verdict on this tree would be wrong in whichever direction they fell.
+    if not about_this_tree:
+        print(
+            f"\nNOT ADMISSIBLE for this tree: the deployment is running {commit} and the "
+            f"suite was read from {expected}. The host answered, so this is not a "
+            "deployment failure; the route-level results describe the deployed build "
+            "and were not recorded against this one. Re-run once this commit is "
+            "deployed to obtain evidence about it."
+        )
+        return 0
+
+    if not (suite_green and every_check_passed):
         print(
             "\nFAILED: the deployment was not fully verified. The evidence file records "
             "exactly what was obtained; the fields that were not obtained still read "

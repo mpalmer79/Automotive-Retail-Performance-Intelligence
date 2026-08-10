@@ -100,13 +100,17 @@ export function ReconciliationSection({
         </dl>
       </div>
 
+      {/* The scenario note is a CAVEAT and stays visible: a reader who does not know
+          some of these variances were planted to prove the control surface will read
+          them as discovered errors in a dealership. What left is the sentence
+          describing what the destination contains. */}
       <Text size="xs" tone="faint" className="max-w-prose">
-        {signal.scenarioNote}{' '}
+        {signal.scenarioNote}
+      </Text>
+      <Text size="xs" tone="faint">
         <Link className="underline" href={ROUTES.dashboardAccounting.href}>
-          Open accounting integrity
-        </Link>{' '}
-        for the four comparison states account by account, and the governed exceptions
-        behind that count.
+          Open accounting integrity, account by account
+        </Link>
       </Text>
     </div>
   )

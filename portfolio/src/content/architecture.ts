@@ -338,7 +338,7 @@ export const ARCHITECTURE_NODES: readonly ArchitectureNode[] = [
       'Gate 2 requires complete report pages, reconciled SQL and Power BI totals, and drafted executive findings. None of the three is met. ADR-0009 records why the portfolio website foundation was permitted to ship while the analytical case study stayed gated.',
     ownership: 'This website',
     status: null,
-    sourcePaths: ['portfolio/src/app/case-study/page.tsx'],
+    sourcePaths: ['portfolio/src/app/(site)/case-study/page.tsx'],
     docPaths: [
       'docs/architecture-decisions/ADR-0009-portfolio-ui-foundation-before-gate-2.md',
       'docs/requirements/PHASE_2_BACKLOG.md',

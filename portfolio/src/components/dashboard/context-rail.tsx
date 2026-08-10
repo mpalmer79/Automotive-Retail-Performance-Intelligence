@@ -18,6 +18,21 @@
  * are marked "not applied here" in words rather than dropped, because a filter that
  * is in the URL and not in the summary is a filter the reader believes is working.
  *
+ * `UX.1` SPLIT IT IN TWO, ALONG THE LINE THAT WAS ALREADY THERE
+ * -------------------------------------------------------------
+ * The rail carried two different kinds of thing under one heading. The active
+ * filters, their removal links and the "not applied here" notes are CONTROLS: a
+ * reader acts on them, and hiding them behind a disclosure would hide the only way
+ * to remove a filter. The period/comparison/scope facts, the dataset version, the
+ * contract fingerprint and the URL grammar reference are PROVENANCE: true,
+ * checkable, and not what a general manager opens a dashboard for.
+ *
+ * So `<ActiveFilters>` stays in the control band beside the filter form, and
+ * `<ContextProvenance>` moved into the band's methodology disclosure. One
+ * component became two rather than one component growing a `variant` prop,
+ * because the two halves have different audiences and are rendered in different
+ * places.
+ *
  * Server component.
  */
 import Link from 'next/link'
@@ -30,56 +45,22 @@ import { filtersHref, withoutFilter } from '@/lib/dashboard/filters'
 import { formatIsoDate } from '@/lib/dashboard/format'
 import { cx } from '@/lib/utils'
 
-export function ContextRail({
+/**
+ * The controls: which parameters are active, and how to remove one.
+ *
+ * Visible, never collapsed. A reader who cannot see that a store filter is applied
+ * is reading a group figure as a store figure.
+ */
+export function ActiveFilters({
   overview,
   route,
-  datasetVersion,
-  contractFingerprint,
 }: {
   overview: ExecutiveOverview
   route: string
-  datasetVersion: number
-  /** The first twelve characters of the contract digest: a compact evidence id. */
-  contractFingerprint: string
 }) {
-  const { periodContext, scope, filters, chips } = overview
-
-  const facts: readonly { readonly term: string; readonly value: string }[] = [
-    { term: 'Selected period', value: periodContext.period.label },
-    {
-      term: 'Comparison',
-      value:
-        periodContext.comparison === null
-          ? periodContext.compareMode === 'none'
-            ? 'None selected'
-            : `${periodContext.comparisonLabel}: unavailable`
-          : `${periodContext.comparisonLabel}: ${periodContext.comparison.label}`,
-    },
-    { term: 'Store scope', value: scope.label },
-    { term: 'Data as of', value: formatIsoDate(overview.asOfDate) },
-    {
-      term: 'Dataset',
-      value: `Version ${datasetVersion} · contract ${contractFingerprint}`,
-    },
-    {
-      term: 'Provenance',
-      value: 'Deterministic synthetic data. Granite Auto Group is fictional.',
-    },
-  ]
-
+  const { filters, chips } = overview
   return (
-    <div className="flex flex-col gap-5">
-      <dl className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">
-        {facts.map((fact) => (
-          <div key={fact.term} className="flex min-w-0 flex-col gap-1">
-            <dt className="font-mono text-2xs tracking-wide text-ink-muted uppercase">
-              {fact.term}
-            </dt>
-            <dd className="text-sm font-medium break-words text-ink">{fact.value}</dd>
-          </div>
-        ))}
-      </dl>
-
+    <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
         <span className="font-mono text-2xs tracking-wide text-ink-muted uppercase">
           Active filters
@@ -143,6 +124,60 @@ export function ContextRail({
             ))}
         </ul>
       ) : null}
+    </div>
+  )
+}
+
+/** The provenance: the scope in full, the version it came from, and the grammar. */
+export function ContextProvenance({
+  overview,
+  route,
+  datasetVersion,
+  contractFingerprint,
+}: {
+  overview: ExecutiveOverview
+  route: string
+  datasetVersion: number
+  /** The first twelve characters of the contract digest: a compact evidence id. */
+  contractFingerprint: string
+}) {
+  const { periodContext, scope } = overview
+
+  const facts: readonly { readonly term: string; readonly value: string }[] = [
+    { term: 'Selected period', value: periodContext.period.label },
+    {
+      term: 'Comparison',
+      value:
+        periodContext.comparison === null
+          ? periodContext.compareMode === 'none'
+            ? 'None selected'
+            : `${periodContext.comparisonLabel}: unavailable`
+          : `${periodContext.comparisonLabel}: ${periodContext.comparison.label}`,
+    },
+    { term: 'Store scope', value: scope.label },
+    { term: 'Data as of', value: formatIsoDate(overview.asOfDate) },
+    {
+      term: 'Dataset',
+      value: `Version ${datasetVersion} · contract ${contractFingerprint}`,
+    },
+    {
+      term: 'Provenance',
+      value: 'Deterministic synthetic data. Granite Auto Group is fictional.',
+    },
+  ]
+
+  return (
+    <div className="flex flex-col gap-5">
+      <dl className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">
+        {facts.map((fact) => (
+          <div key={fact.term} className="flex min-w-0 flex-col gap-1">
+            <dt className="font-mono text-2xs tracking-wide text-ink-muted uppercase">
+              {fact.term}
+            </dt>
+            <dd className="text-sm font-medium break-words text-ink">{fact.value}</dd>
+          </div>
+        ))}
+      </dl>
 
       <FilterGrammar route={route} />
     </div>

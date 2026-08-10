@@ -1,21 +1,31 @@
 'use client'
 
 /**
- * The site header.
+ * The reference domain's header.
  *
- * Seven content destinations, a GitHub action, and a menu button below the large
+ * Three content destinations, a GitHub action, and a menu button below the large
  * breakpoint. That is the whole surface.
  *
- * WHAT THE REDESIGN REMOVED, AND WHY
- * ----------------------------------
- *   - Two primary destinations. Architecture, Data Model and Governance are now
- *     reached through one item, "Platform", and are linked to each other by
- *     `<PlatformNav>` on all three pages. Both routes stay directly addressable.
+ * WHAT `UX.1` REMOVED, AND WHY
+ * ----------------------------
+ *   - Four destinations, and the header's claim to be the site's navigation. It
+ *     carried seven items covering both halves of the site at once, so a
+ *     dealership manager reading gross was offered "Status" and "KPIs" as peers
+ *     of "Dashboard". The operating application has a rail of its own now; this
+ *     header covers the reference half and opens with a link back into the
+ *     application, because every route it serves is one a reader arrived at FROM
+ *     there.
+ *   - "Platform". It grouped Architecture, Data Model, Inventory Operations and
+ *     Governance; all four are states of `/technical` now, reached from one
+ *     "Technical" item and linked to each other by `<TechnicalNav>`.
+ *
+ * WHAT AN EARLIER PASS REMOVED, AND WHY IT STAYS REMOVED
+ * -----------------------------------------------------
  *   - The bordered amber "Case Study LOCKED" control. It was the only filled,
  *     bordered element in a header of plain links, which made the emptiest page
  *     on the site its loudest destination. The case study is still visible in
- *     the footer, on the status page and in the home page's closing section, and
- *     it still says "locked" in words.
+ *     the footer and on the technical status view, and it still says "locked" in
+ *     words.
  *
  * ACCESSIBILITY DECISIONS WORTH NAMING
  * ------------------------------------
@@ -36,12 +46,12 @@ import { IconButton } from '@/components/ui/button'
 import { useEscapeKey, useFocusTrap, useScrollLock } from '@/lib/hooks'
 import {
   GROUP_NAV,
-  PLATFORM_NAV,
   PRIMARY_NAV,
   REPOSITORY_URL,
   isNavItemCurrent,
   type NavItem,
 } from '@/lib/site'
+import { TECHNICAL_VIEW_DEFINITIONS, technicalHref } from '@/lib/technical'
 import { cx } from '@/lib/utils'
 
 export function SiteHeader() {
@@ -275,16 +285,21 @@ export function SiteHeader() {
                   then discover a sub-navigation. On a desktop that job belongs
                   to `<PlatformNav>` and `<GroupNav>`, which are on the pages
                   themselves. */}
+              {/* On a phone there is room to show the eight technical views and the
+                  demo group's pages rather than making a visitor land on one and
+                  then discover a sub-navigation. On a desktop that job belongs to
+                  `<TechnicalNav>` and `<GroupNav>`, which are on the pages. */}
               <NavGroup
-                heading="Inside the platform"
-                items={PLATFORM_NAV}
+                heading="How ARPI works"
+                items={TECHNICAL_VIEW_DEFINITIONS.map((entry) => ({
+                  href: technicalHref(entry.view),
+                  label: entry.label,
+                  matches: [technicalHref(entry.view)],
+                  purpose: entry.lede,
+                }))}
                 pathname={pathname}
               />
-              <NavGroup
-                heading="Inside the group"
-                items={GROUP_NAV}
-                pathname={pathname}
-              />
+              <NavGroup heading="The demo group" items={GROUP_NAV} pathname={pathname} />
             </nav>
           </div>
         </>

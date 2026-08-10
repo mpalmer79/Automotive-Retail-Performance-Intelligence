@@ -24,6 +24,7 @@ import { counts } from '@/lib/manifest'
 import { inventorySummary } from '@/lib/inventory'
 import { ROUTES } from '@/lib/site'
 import { formatCount } from '@/lib/utils'
+import { technicalHref } from '@/lib/technical'
 
 /**
  * Exported so `tests/unit/media.test.ts` can hold the declared dimensions
@@ -61,7 +62,7 @@ export const TOUR_STEPS: readonly TourStep[] = [
     id: 'architecture',
     tab: 'Architecture',
     title: 'Trace the data architecture',
-    href: ROUTES.architecture.href,
+    href: technicalHref('architecture'),
     surface: 'Architecture explorer',
     provenance: 'capture',
     provenanceNote: 'Component states read from the manifest',
@@ -82,7 +83,7 @@ export const TOUR_STEPS: readonly TourStep[] = [
     id: 'data-model',
     tab: 'Data model',
     title: 'Inspect the dimensional model',
-    href: ROUTES.dataModel.href,
+    href: technicalHref('data-model'),
     surface: 'Data model explorer',
     provenance: 'capture',
     provenanceNote: 'Synthetic warehouse. Row counts are of generated data',
@@ -102,7 +103,7 @@ export const TOUR_STEPS: readonly TourStep[] = [
     id: 'kpis',
     tab: 'KPIs',
     title: 'Read the governed definitions',
-    href: ROUTES.kpis.href,
+    href: technicalHref('kpis'),
     surface: 'KPI catalogue',
     provenance: 'capture',
     provenanceNote: 'Definitions only. No engine has evaluated these measures',

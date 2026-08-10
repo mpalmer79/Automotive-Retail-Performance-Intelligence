@@ -10,6 +10,49 @@ verdict and no count.
 
 ---
 
+## 0. Superseded in its product priority by `UX.1`, and not in its evidence
+
+**`UX.1` supersedes this document's PRODUCT PRIORITY. It does not supersede its
+measurements, its findings, or the reasoning behind them, and nothing below has
+been rewritten to look as though `UX.1` existed at the time.**
+
+What changed between the two, and why this document went stale where it did:
+
+- **This redesign was correct for a site with two working surfaces.** When it was
+  written the operating console was `/dashboard` and one page. A landing page
+  introducing the product, a four-route product tour and a seven-item header were
+  the right architecture for a project whose product was mostly still a promise.
+- **By the end of `DASH.11` there were nine operating surfaces**, reading
+  twenty-eight governed reporting views. The site in front of them still opened on
+  an introduction and still offered "Inventory" and "Governance" as equal
+  top-level choices. The product-tour architecture was describing an application
+  that had become larger than the description.
+- **`UX.1` inverted the hierarchy.** `/` is the Executive Command Center;
+  `/dashboard` is a permanent redirect to it; six documentation routes became one
+  technical destination; the console's sections became an application rail; and
+  the marketing home's sections were rehomed rather than deleted — the store story
+  and the product tour are `/technical?view=overview`, the author positioning is
+  `/about`.
+
+What survived unchanged, because it was right: the token bridge, the two-family
+type pairing, the canvas-on-field composition, the single trust line per reference
+route, the disclosure-over-deletion rule, and the finding that a project stating
+its trust position seven times reads as an apology. `UX.1` applied that last
+finding to the operating half of the site, which this redesign had not reached.
+
+The `UX.1` decision is
+[ADR-0015](../../docs/architecture-decisions/ADR-0015-product-first-operating-experience.md);
+its measured before-and-after is
+[`UX-1-BASELINE.md`](../../docs/reviews/UX-1-BASELINE.md) and
+[`UX-1-REVIEW.md`](../../docs/reviews/UX-1-REVIEW.md).
+
+Where a section below describes a route that has moved, the route is named as it
+was. `/kpis` meant what `/technical?view=kpis` means now; `/dashboard` meant what
+`/` means now. Rewriting those references would make a record of what was
+measured into a claim about what is.
+
+---
+
 ## 1. Baseline
 
 |                 |                                                                    |

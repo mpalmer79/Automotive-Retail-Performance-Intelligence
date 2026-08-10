@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 import type { NextConfig } from 'next'
 
 import { PORTRAIT_CANDIDATES, PORTRAIT_ENV_VARIABLE } from './src/lib/portrait.ts'
+import { LEGACY_TECHNICAL_ROUTES } from './src/lib/technical.ts'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 
@@ -128,30 +129,56 @@ const nextConfig: NextConfig = {
   // fetches the route without parsing it. It is declared here so it travels with
   // the application to any Node host.
   /**
-   * The one redirect this application has.
+   * The permanent redirects.
    *
-   * `/dealerships` was the group overview until the home page became it. The old
-   * URL is linked from README screenshots, from anything anyone bookmarked, and
-   * from a sitemap search engines have already fetched, so it resolves rather
-   * than 404s - permanently, because the move is permanent and a 308 is what
-   * tells a crawler to transfer the ranking rather than keep re-checking.
+   * EIGHT OF THEM, IN THREE GROUPS, ALL 308.
    *
-   * `source` IS THE EXACT PATH, NOT A PREFIX. `/dealerships/:slug*` would take
-   * the three store pages with it, which is the opposite of the requirement:
-   * those routes stay exactly where they are and every deep link into them keeps
-   * working. Next matches `source` literally unless it carries a parameter
-   * segment, so this catches `/dealerships` and nothing beneath it.
+   *   `/dashboard`            → `/`
+   *   `/dealerships`          → `/`
+   *   six technical routes    → `/technical?view=...`
    *
-   * `tests/e2e/navigation.spec.ts` asserts both halves: the redirect is a
-   * permanent one to `/`, and each store route still answers 200.
+   * `/dashboard` IS THE IMPORTANT ONE. ADR-0015 makes the operating console the
+   * canonical entry experience, so `/` renders it and the old console URL resolves
+   * here. Permanent, because the move is permanent and a 308 tells a crawler to
+   * transfer the ranking rather than keep re-checking; 308 rather than 301 because
+   * it is the method-preserving form and the filter bar's no-JavaScript path is a
+   * GET form whose action could otherwise be rewritten.
+   *
+   * QUERY STRINGS SURVIVE, AND THAT IS THE WHOLE POINT. Next appends the incoming
+   * query to the destination when the destination declares none of its own, so
+   * `/dashboard?period=2025-12&store=GSA-002` arrives at
+   * `/?period=2025-12&store=GSA-002` and reproduces the view somebody shared. That
+   * is asserted in `tests/e2e/navigation.spec.ts` rather than assumed: a redirect
+   * that dropped the filters would turn every shared console link into the default
+   * period, silently.
+   *
+   * `source` IS AN EXACT PATH IN EVERY CASE, NEVER A PREFIX. `/dashboard/:path*`
+   * would take the seven operating sub-routes with it, which is the opposite of the
+   * requirement — they stay exactly where they are and every deep link into them
+   * keeps working. Next matches `source` literally unless it carries a parameter
+   * segment, so each of these catches one path and nothing beneath it.
+   *
+   * The six technical sources are derived from `LEGACY_TECHNICAL_ROUTES` rather
+   * than typed here, so the redirect, the view registry and the navigation cannot
+   * disagree about which view answers for which retired URL.
    */
   async redirects() {
     return [
+      {
+        source: '/dashboard',
+        destination: '/',
+        permanent: true,
+      },
       {
         source: '/dealerships',
         destination: '/',
         permanent: true,
       },
+      ...LEGACY_TECHNICAL_ROUTES.map((entry) => ({
+        source: entry.from,
+        destination: entry.to,
+        permanent: true,
+      })),
     ]
   },
 

@@ -59,9 +59,15 @@ const BASE = process.env.ARPI_REVIEW_BASE_URL ?? 'http://localhost:3111'
  * the budgets, from measurements rather than from invented figures.
  */
 const ROUTES = [
+  /*
+   * The Executive surface is `/` since `UX.1`, and `/dashboard` is a permanent
+   * redirect to it. Measuring the redirect would measure a hop rather than the
+   * route; the two entries below are the surface at its default state and under a
+   * filter, which is what makes "the payload does not grow with the filter" a
+   * checkable claim rather than an assumption.
+   */
   '/',
-  '/dashboard',
-  '/dashboard?store=GSA-001&period=2025-11&condition=Used',
+  '/?store=GSA-001&period=2025-11&condition=Used',
   '/dashboard/sales-gross',
   '/dashboard/sales-gross?store=GSA-001&period=2025-11&condition=New',
   '/dashboard/deals',
@@ -110,11 +116,22 @@ const ROUTES = [
   '/dashboard/employees?role=bdc',
   '/dashboard/employees?period=2025-12',
   '/dashboard/employees?role=finance&employee=EMP-00005',
-  '/architecture',
-  '/data-model',
-  '/kpis',
-  '/governance',
-  '/status',
+  /*
+   * The technical destination, at each of the eight states `UX.1` consolidated six
+   * routes into. Measured per state rather than once: the point of rendering one
+   * view per request is that a reader on the KPI catalogue does not pay for the
+   * architecture explorer, and that is only a claim until the two are measured
+   * separately.
+   */
+  '/technical',
+  '/technical?view=architecture',
+  '/technical?view=data-model',
+  '/technical?view=kpis',
+  '/technical?view=governance',
+  '/technical?view=data-sources',
+  '/technical?view=status',
+  '/technical?view=product-vision',
+  '/inventory',
   '/about',
   '/case-study',
 ]

@@ -1053,3 +1053,83 @@ single-file ceiling on its own. Splitting by measure group and filtering each sp
 populates took the same information to 996,641 B across three datasets. That split is also the
 product decision `DASH.11` needed: a salesperson has no row in `employee-finance` at all, which is a
 stronger statement of "not applicable" than a zero could be.
+
+## 9.10 The `UX.1` productization, measured
+
+Measured against a production build served locally, Chromium, cold load, compressed
+transfer summed per route (`npm run bundle`). The before figures are the same
+measurement against `main` at `f5a1eac`, recorded in
+[`UX-1-BASELINE.md`](../../docs/reviews/UX-1-BASELINE.md) §3.
+
+### The headline: the operating application got 199.8 kB lighter
+
+| Route                                      |   Before |        After |                      Δ |
+| ------------------------------------------ | -------: | -----------: | ---------------------: |
+| The Executive surface (`/dashboard` → `/`) | 680.6 kB | **432.2 kB** | **−248.4 kB (−36.5%)** |
+| `/dashboard/inventory`                     | 620.3 kB |     424.1 kB |              −196.2 kB |
+| `/dashboard/sales-gross`                   | 612.7 kB |     416.2 kB |              −196.5 kB |
+| `/dashboard/leads-marketing`               | 610.9 kB |     413.1 kB |              −197.8 kB |
+| `/dashboard/deals`                         | 604.4 kB |     408.3 kB |              −196.1 kB |
+| `/dashboard/fi`                            | 596.4 kB |     396.7 kB |              −199.7 kB |
+| `/dashboard/employees`                     | 592.3 kB |     396.7 kB |              −195.6 kB |
+| `/dashboard/deals/SLE-00000646`            | 591.1 kB |     392.9 kB |              −198.2 kB |
+| `/dashboard/accounting`                    | 582.8 kB |     381.4 kB |              −201.4 kB |
+
+**Where it came from, and it is not the shell.** Route JavaScript on every
+operating route fell from **317.9 kB to 170.6 kB**. `UX.1` added a client island —
+the rail — and the routes still got lighter by 147 kB, because of what the rail
+REPLACED: the reference masthead, which prefetched all seven of its destinations on
+every page. An operating route now prefetches the seven operating routes a manager
+actually moves between, and the technical destination is one link rather than five.
+
+The trade is visible in the other direction and was accepted deliberately:
+
+| Route                    |   Script | Note                                                                                                           |
+| ------------------------ | -------: | -------------------------------------------------------------------------------------------------------------- |
+| `/technical?view=status` | 257.3 kB | The heaviest route on the site. It carries the generated status evidence and the reference masthead's prefetch |
+| `/technical` (overview)  | 257.3 kB |                                                                                                                |
+| `/about`                 | 170.0 kB |                                                                                                                |
+
+### The technical destination is rendered one view at a time
+
+| View                   |    HTML |    Total |
+| ---------------------- | ------: | -------: |
+| `?view=status`         | 81.1 kB | 469.4 kB |
+| `?view=data-sources`   | 60.7 kB | 449.1 kB |
+| `?view=governance`     | 54.8 kB | 443.2 kB |
+| `` (overview)          | 52.9 kB | 441.3 kB |
+| `?view=architecture`   | 41.8 kB | 430.1 kB |
+| `?view=kpis`           | 40.8 kB | 429.2 kB |
+| `?view=data-model`     | 38.6 kB | 427.0 kB |
+| `?view=product-vision` | 35.7 kB | 424.1 kB |
+
+The 45 kB spread between the lightest and heaviest state is the evidence that the
+consolidation renders one view rather than eight: a reader on the product vision is
+not paying for the status page's generated manifest. The script figure is flat
+across the views because the explorers are separate chunks and only the rendered
+one is referenced.
+
+### The client-island delta
+
+|                               |                     Before |                            After |
+| ----------------------------- | -------------------------: | -------------------------------: |
+| Islands on an operating route |            1 (`FilterBar`) | 2 (`FilterBar`, `OperatingRail`) |
+| Islands on a reference route  | 1–2 (header, one explorer) |       1–2 (header, one explorer) |
+| Chart library                 |                       none |                             none |
+
+**The rail is the only island `UX.1` added, and it imports no dataset.** The modules
+it does import — `filters.ts` for the grammar and `navigation.ts` for the route
+applicability — were already in the client bundle for the filter bar, so the marginal
+cost is the component itself. `dashboard-boundaries.test.ts` still fails the build
+if any client module reaches the generated dashboard tree.
+
+**No Suspense boundary, and it is a performance note as well as an accessibility
+one.** Wrapping the rail made Next stream it and land it with an inline script,
+which cost a paint and — with scripting disabled — the whole navigation. The
+operating group declares itself dynamic instead, so the rail is in the initial HTML.
+
+### What was not measured
+
+Lighthouse, Core Web Vitals from real devices, and any figure from the deployed
+Railway environment. The egress policy in this session cannot reach it, and a
+number this repository cannot reproduce is not a number it publishes.

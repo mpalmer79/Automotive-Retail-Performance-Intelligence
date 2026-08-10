@@ -4,25 +4,56 @@
  * Duplicated from `src/lib/site.ts` deliberately: importing the app's own route
  * map would mean a route deleted from the map silently disappears from the test
  * sweep as well, and the suite would go green while covering less. An
- * independent list is a second opinion, and `tests/e2e/navigation.spec.ts`
- * asserts the two agree.
+ * independent list is a second opinion, and `tests/unit/site.test.ts` asserts
+ * the two agree.
+ *
+ * `UX.1` RESHAPED THIS FILE, AND THE RESHAPING IS THE POINT
+ * --------------------------------------------------------
+ * There are two information domains now — an operating application and a
+ * reference destination — and the constants below name them separately, because a
+ * sweep that treats `/dashboard/fi` and `/governance` as the same kind of page
+ * cannot check what is true of each. Nothing was deleted from the sweep: the six
+ * retired documentation routes are asserted as REDIRECTS, and the content they
+ * carried is swept as the technical destination's eight views.
  */
 export interface RouteUnderTest {
   readonly path: string
   /** The expected h1, as a substring. */
   readonly heading: string
-  /** Whether the route appears in the primary navigation. */
+  /** Whether the route appears in the reference domain's header navigation. */
   readonly inNav: boolean
-  /** The primary-navigation label, where it has one. */
+  /** The header navigation label, where it has one. */
   readonly navLabel?: string
 }
 
+/**
+ * The reference domain: what a reader reaches deliberately.
+ *
+ * These wear the site header and footer and are held to the public-copy rules in
+ * `content-integrity.spec.ts`. The operating routes are held to different rules
+ * and are listed separately below.
+ */
 export const PRIMARY_ROUTES: readonly RouteUnderTest[] = [
   {
-    path: '/',
-    heading: 'Three dealerships. Three operating models. One governed reporting layer.',
+    path: '/technical',
+    heading: 'How ARPI works',
     inNav: true,
-    navLabel: 'Overview',
+    navLabel: 'Technical',
+  },
+  {
+    path: '/about',
+    heading: 'Dealership intelligence built by someone who has run the dealership',
+    inNav: true,
+    navLabel: 'About',
+  },
+  {
+    path: '/inventory',
+    heading: 'Every listing the three stores carried',
+    // Reachable from the group sub-navigation and from the footer index, and
+    // deliberately NOT from the operating rail: see the route comment in
+    // `lib/site.ts` on the two surfaces that were both called Inventory.
+    inNav: true,
+    navLabel: 'Reference listings',
   },
   {
     path: '/dealerships/granite-chevrolet',
@@ -42,77 +73,19 @@ export const PRIMARY_ROUTES: readonly RouteUnderTest[] = [
     inNav: false,
     navLabel: 'Granite Pre-Owned',
   },
-  {
-    path: '/dashboard',
-    heading: 'How the group is performing, and which store needs attention',
-    inNav: true,
-    navLabel: 'Dashboard',
-  },
-  {
-    path: '/inventory',
-    heading: 'Every listing the three stores carried',
-    inNav: true,
-    navLabel: 'Inventory',
-  },
-  {
-    path: '/architecture',
-    heading: 'A layered batch pipeline',
-    inNav: true,
-    navLabel: 'Architecture',
-  },
-  {
-    path: '/data-model',
-    heading: 'Every fact declares one grain',
-    inNav: true,
-    navLabel: 'Data Model',
-  },
-  { path: '/kpis', heading: 'A ratio without both sides', inNav: true, navLabel: 'KPIs' },
-  {
-    path: '/inventory-operations',
-    heading: 'Ingesting something the project did not write',
-    inNav: true,
-    navLabel: 'Inventory Operations',
-  },
-  {
-    path: '/governance',
-    heading: 'The constraints are the design',
-    inNav: true,
-    navLabel: 'Governance',
-  },
-  {
-    path: '/status',
-    heading: 'What is finished, what is not',
-    inNav: true,
-    navLabel: 'Status',
-  },
-  {
-    path: '/about',
-    heading: 'Dealership intelligence built by someone who has run the dealership',
-    inNav: true,
-    navLabel: 'About',
-  },
   { path: '/case-study', heading: 'Case study in progress', inNav: false },
 ]
 
 /**
- * The HEADER navigation, which is a different list from the routes above.
+ * The reference domain's HEADER navigation.
  *
- * Seven items for fourteen routes, at the declared cap. One of them is a destination GROUP: "Platform"
- * points at `/architecture` and is current on `/data-model`,
- * `/inventory-operations` and `/governance` too, and those four carry a
- * sub-navigation on the page itself.
+ * Three items, down from seven. The first returns to the operating application,
+ * because every route this header serves is one a reader arrived at FROM there.
+ * The operating application's own eight destinations are in the rail, which is a
+ * different component on a different set of routes; `OPERATING_NAV_ROUTES` below
+ * is the second opinion on that one.
  *
- * There is no "Dealerships" item. The group overview IS the home page now, so a
- * Dealerships entry would be a second header link to the same document as
- * Overview. The three store pages are reached from the home page's store cards,
- * from `<GroupNav>`, and from the mobile drawer's expanded group.
- *
- * `tests/unit/site.test.ts` asserts this list agrees with `PRIMARY_NAV`, so the
- * two cannot drift.
- *
- * The case study is deliberately not here. It was a bordered control in the
- * header and is now in the footer, on the status page and in the home page's
- * closing section.
+ * `tests/unit/site.test.ts` asserts this list agrees with `PRIMARY_NAV`.
  */
 export interface HeaderNavItem {
   readonly label: string
@@ -122,35 +95,25 @@ export interface HeaderNavItem {
 }
 
 export const HEADER_NAV: readonly HeaderNavItem[] = [
-  { label: 'Overview', path: '/', currentOn: ['/'] },
-  { label: 'Dashboard', path: '/dashboard', currentOn: ['/dashboard'] },
-  { label: 'Inventory', path: '/inventory', currentOn: ['/inventory'] },
-  {
-    label: 'Platform',
-    path: '/architecture',
-    currentOn: ['/architecture', '/data-model', '/inventory-operations', '/governance'],
-  },
-  { label: 'KPIs', path: '/kpis', currentOn: ['/kpis'] },
-  { label: 'Status', path: '/status', currentOn: ['/status'] },
+  { label: 'Executive', path: '/', currentOn: ['/'] },
+  { label: 'Technical', path: '/technical', currentOn: ['/technical'] },
   { label: 'About', path: '/about', currentOn: ['/about'] },
 ]
 
 /**
- * The console's own internal navigation.
+ * The operating application's rail.
  *
- * Four destinations. `INFORMATION_ARCHITECTURE.md` §1 lists ten console routes; `DASH.2`
- * built the first, `DASH.3` two more and `DASH.7` the fourth. The remaining six are named
- * on the page as text beside the increment that delivers each, and are deliberately not
- * links. A navigation item that goes nowhere is worse than a navigation bar with one item
- * in it.
+ * Eight destinations, in the order a manager works. `Actions` is deliberately
+ * absent: `DASH.12` has not been built, and `dashboard.spec.ts` asserts no anchor
+ * anywhere points at `/dashboard/actions`.
  */
-export const DASHBOARD_NAV_ROUTES: readonly { label: string; path: string }[] = [
-  { label: 'Command center', path: '/dashboard' },
-  { label: 'Sales and gross', path: '/dashboard/sales-gross' },
-  { label: 'Deal Explorer', path: '/dashboard/deals' },
-  { label: 'F&I', path: '/dashboard/fi' },
+export const OPERATING_NAV_ROUTES: readonly { label: string; path: string }[] = [
+  { label: 'Executive', path: '/' },
+  { label: 'Sales & Gross', path: '/dashboard/sales-gross' },
+  { label: 'Deals', path: '/dashboard/deals' },
   { label: 'Inventory', path: '/dashboard/inventory' },
-  { label: 'Leads and marketing', path: '/dashboard/leads-marketing' },
+  { label: 'F&I', path: '/dashboard/fi' },
+  { label: 'Leads & Marketing', path: '/dashboard/leads-marketing' },
   { label: 'Employees', path: '/dashboard/employees' },
   { label: 'Accounting', path: '/dashboard/accounting' },
 ]
@@ -167,17 +130,16 @@ export const DEAL_JACKET_SALE_ID = 'SLE-00000646'
 export const DEAL_JACKET_ROUTE = `/dashboard/deals/${DEAL_JACKET_SALE_ID}`
 
 /**
- * Every route that renders the console sub-navigation.
+ * Every route that wears the operating shell.
  *
- * Five, against four navigation items. `/dashboard/deals/[saleId]` — the Deal
- * Jacket — carries the console bar so a reader who arrived by drill-through can get
- * back out, but it is NOT a navigation destination: a manager reaches a jacket by
- * finding a deal, never by picking one of 650 from a menu. It marks DEALS current
- * rather than F&I, even though it now itemizes F&I: a reader who drilled into one
- * transaction is inside Deals.
+ * Nine, against eight rail destinations. The Deal Jacket wears the shell so a
+ * reader who arrived by drill-through can get back out, but it is NOT a rail
+ * destination: a manager reaches a jacket by finding a deal, never by picking one
+ * of 650 from a menu. It marks DEALS current rather than F&I, even though it
+ * itemizes F&I: a reader who drilled into one transaction is inside Deals.
  */
 export const DASHBOARD_ROUTES: readonly string[] = [
-  '/dashboard',
+  '/',
   '/dashboard/sales-gross',
   '/dashboard/deals',
   '/dashboard/fi',
@@ -191,32 +153,13 @@ export const DASHBOARD_ROUTES: readonly string[] = [
 /**
  * The console sections that must NOT be reachable, because they do not exist.
  *
- * Asserted as a negative in `dashboard.spec.ts`: no anchor on any dashboard route
+ * Asserted as a negative in `dashboard.spec.ts`: no anchor on any operating route
  * points at one of these, and each 404s if fetched directly.
  */
-export const UNBUILT_DASHBOARD_ROUTES: readonly string[] = [
-  /*
-   * `/dashboard/deals/[saleId]` was on this list through `DASH.3`, which rendered each
-   * deal id as TEXT because an anchor would have pointed at a 404. `DASH.4` delivers
-   * the route, so it moves to `DASHBOARD_ROUTES` in the same diff that makes the
-   * destination real; `DASH.7` does the same for `/dashboard/fi`, `DASH.9` for
-   * `/dashboard/inventory` and `/dashboard/accounting`, `DASH.10` for
-   * `/dashboard/leads-marketing` and `DASH.11` for `/dashboard/employees`. What remains
-   * here is the ONE section that genuinely does not exist, and
-   * `dashboard-deal-jacket.spec.ts` covers the negative that replaced the first one: a deal
-   * id that names no transaction still 404s.
-   */
-  '/dashboard/actions',
-]
+export const UNBUILT_DASHBOARD_ROUTES: readonly string[] = ['/dashboard/actions']
 
 /**
  * The widths the console's responsive assertions run at.
- *
- * The shared `VIEWPORTS` list is the site-wide matrix and `DASH.13-01` owns adding
- * 390 to it. The console needs it now — 390 is the modern iPhone width and the
- * scoreboard's card presentation is decided between 375 and 430 — so the dashboard
- * suites carry their own list rather than changing the runtime of every existing
- * responsive test ahead of the increment that owns that change.
  */
 export const DASHBOARD_VIEWPORTS = [
   { name: '320', width: 320, height: 800 },
@@ -229,44 +172,52 @@ export const DASHBOARD_VIEWPORTS = [
   { name: '1920', width: 1920, height: 1080 },
 ] as const
 
-/** The four routes that render the platform sub-navigation. */
-export const PLATFORM_ROUTES: readonly { label: string; path: string }[] = [
-  { label: 'Architecture', path: '/architecture' },
-  { label: 'Data model', path: '/data-model' },
-  { label: 'Inventory operations', path: '/inventory-operations' },
-  { label: 'Governance', path: '/governance' },
+/**
+ * The technical destination's eight view states.
+ *
+ * One route, eight server-addressable states, each with its own canonical link.
+ * The sweep visits all eight because six of them carry content that used to be a
+ * route of its own and the other two are new: a consolidation that quietly stopped
+ * rendering one of the six would otherwise go unnoticed.
+ */
+export const TECHNICAL_VIEW_ROUTES: readonly { label: string; path: string }[] = [
+  { label: 'Overview', path: '/technical' },
+  { label: 'Architecture', path: '/technical?view=architecture' },
+  { label: 'Data model', path: '/technical?view=data-model' },
+  { label: 'KPI catalogue', path: '/technical?view=kpis' },
+  { label: 'Governance', path: '/technical?view=governance' },
+  { label: 'Data sources', path: '/technical?view=data-sources' },
+  { label: 'Status', path: '/technical?view=status' },
+  { label: 'Product vision', path: '/technical?view=product-vision' },
 ]
 
 /**
  * The five ITEMS the Granite Auto Group sub-navigation carries.
  *
- * "The group" points at `/` because the home page is the group overview. The old
- * `/dealerships` path is a permanent redirect to it and is asserted as one in
- * `navigation.spec.ts` rather than swept as a route.
+ * "The group" points at the technical overview, which is where the store story
+ * went when the home page became the operating console.
  */
 export const GROUP_ROUTES: readonly { label: string; path: string }[] = [
-  { label: 'The group', path: '/' },
+  { label: 'The group', path: '/technical?view=overview' },
   { label: 'Granite Chevrolet', path: '/dealerships/granite-chevrolet' },
   { label: 'Granite Subaru', path: '/dealerships/granite-subaru' },
   { label: 'Granite Pre-Owned', path: '/dealerships/granite-pre-owned' },
-  { label: 'Inventory explorer', path: '/inventory' },
+  { label: 'Reference listings', path: '/inventory' },
 ]
 
 /** Every route the accessibility sweep covers, including the internal lab. */
 export const ALL_TESTED_ROUTES: readonly string[] = [
   ...PRIMARY_ROUTES.map((route) => route.path),
-  // The console's own sections. They are real routes with real content and are in
-  // `ROUTES`, but they are NOT primary navigation destinations: the header carries
-  // `Dashboard`, and the console's own bar carries its sections.
+  // The operating application. Real routes with real content, in `ROUTES`, and
+  // NOT reference destinations.
   //
-  // Membership of THIS list rather than of `PRIMARY_ROUTES` is what exempts them from
-  // the public-copy rules in `content-integrity.spec.ts` — no currency figure, no
-  // percentage result, no em dash — which were written for the documentation routes and
-  // which the console legitimately breaks: it renders governed KPI values from a
-  // versioned export, under the fifteen conditions ADR-0013 states. `/dashboard/fi` was
-  // briefly in `PRIMARY_ROUTES` during `DASH.7` and failed four of those rules on its
-  // first browser run, which is the mechanism working: a console route added to the wrong
-  // list is caught rather than quietly exempted.
+  // Membership of THIS list rather than of `PRIMARY_ROUTES` is what exempts them
+  // from the public-copy rules in `content-integrity.spec.ts` — no currency
+  // figure, no percentage result, no em dash — which were written for the
+  // documentation routes and which the console legitimately breaks: it renders
+  // governed KPI values from a versioned export, under the fifteen conditions
+  // ADR-0013 states.
+  '/',
   '/dashboard/sales-gross',
   '/dashboard/deals',
   '/dashboard/fi',
@@ -280,39 +231,58 @@ export const ALL_TESTED_ROUTES: readonly string[] = [
 /**
  * Routes the accessibility sweep covers that are NOT in the site's route map.
  *
- * `ALL_TESTED_ROUTES` is asserted equal to the route map by `tests/unit/site.test.ts`,
- * which is what makes this file a second opinion rather than a copy. A drill-through
- * is deliberately absent from that map — there are 650 Deal Jackets, the sitemap lists
- * the index only, and each jacket asks not to be indexed — so it cannot go on that
- * list without breaking a real invariant.
+ * `ALL_TESTED_ROUTES` is asserted equal to the route map by
+ * `tests/unit/site.test.ts`, which is what makes this file a second opinion rather
+ * than a copy. A drill-through is deliberately absent from that map — there are
+ * 650 Deal Jackets and the sitemap lists the index only — so it cannot go on that
+ * list without breaking a real invariant. The seven non-default technical views
+ * are absent for a different reason: they are states of one route, not routes.
  *
- * It still needs scanning: the Deal Jacket is the densest page in the console, with
- * four calculation blocks, a timeline, a checklist and a disclosure. So it gets its
- * own list, and the sweep runs over both.
+ * Both still need scanning, so they get their own list and the sweep runs over it.
  */
-export const DRILL_THROUGH_ROUTES: readonly string[] = [DEAL_JACKET_ROUTE]
+export const DRILL_THROUGH_ROUTES: readonly string[] = [
+  DEAL_JACKET_ROUTE,
+  ...TECHNICAL_VIEW_ROUTES.filter((view) => view.path !== '/technical').map(
+    (view) => view.path
+  ),
+]
 
 /**
- * The routes that RENDER that sub-navigation.
+ * The routes that RENDER the group sub-navigation.
  *
- * Four, not five: the home page is itself the group overview, so a sub-navigation
- * bar on it would be a rail whose first item points at the document the reader is
- * already on. The home page reaches every store through its store-cards section
- * instead, which `inventory.spec.ts` asserts.
+ * Four, not five: the technical overview carries the store story in its own body,
+ * so a sub-navigation bar whose first item points at the document the reader is
+ * already on would be a rail to nowhere.
  */
 export const GROUP_NAV_ROUTES: readonly { label: string; path: string }[] =
-  GROUP_ROUTES.filter((route) => route.path !== '/')
+  GROUP_ROUTES.filter((route) => route.path !== '/technical?view=overview')
 
 /**
  * Paths that must answer with a permanent redirect rather than a page.
  *
- * `/dealerships` was the group overview until the home page became it. It stays
- * resolvable because it is bookmarked, linked from documentation and already in
- * a fetched sitemap - and it must NOT take the store routes beneath it with it,
- * which is why the redirect is declared on the exact path.
+ * Eight, and every one of them was a real destination that a reader may have
+ * bookmarked, a document may link to, and a search engine has already fetched.
+ *
+ *   `/dashboard`   the operating console's old URL. `UX.1` made `/` the canonical
+ *                  entry experience, so this is the redirect that matters most:
+ *                  `navigation.spec.ts` asserts the QUERY STRING survives it, or
+ *                  every shared console link silently loses its filters.
+ *   `/dealerships` the group overview, before the home page became it.
+ *   six documentation routes
+ *                  consolidated into `/technical?view=...`.
+ *
+ * None of these may take a path beneath it: `/dashboard/sales-gross` and the three
+ * store pages stay exactly where they are, which is asserted alongside.
  */
 export const PERMANENT_REDIRECTS: readonly { from: string; to: string }[] = [
+  { from: '/dashboard', to: '/' },
   { from: '/dealerships', to: '/' },
+  { from: '/architecture', to: '/technical?view=architecture' },
+  { from: '/data-model', to: '/technical?view=data-model' },
+  { from: '/kpis', to: '/technical?view=kpis' },
+  { from: '/governance', to: '/technical?view=governance' },
+  { from: '/status', to: '/technical?view=status' },
+  { from: '/inventory-operations', to: '/technical?view=data-sources' },
 ]
 
 /** The viewport matrix the responsive assertions run at. */

@@ -1,7 +1,21 @@
 # Information Architecture — ARPI Dealer Operations Command Center
 
-**Status:** As-built for `/dashboard` (`DASH.2`), `/dashboard/sales-gross` and `/dashboard/deals`
-(`DASH.3`); planning contract for every route below them.
+**Status:** As-built through `DASH.11` and restructured by `UX.1`; planning contract for
+`/dashboard/actions` (`DASH.12`) alone.
+
+> ### `UX.1` moved the console to the site's root
+>
+> [ADR-0015](../architecture-decisions/ADR-0015-product-first-operating-experience.md) makes the
+> Executive Command Center the canonical entry experience. **`/` renders it and `/dashboard` is a
+> permanent 308 redirect to `/` with the query string preserved.** The seven sub-routes are
+> unchanged and every deep link into them still resolves.
+>
+> Three other things in this document were superseded rather than deleted, and each is marked
+> **Superseded by `UX.1`** where it appears: the console's internal navigation (§2) is now the
+> operating rail rather than a bar under the page header; the public header no longer carries a
+> Dashboard item because the site's front door IS the console; and cross-route filter continuity
+> (§6) is implemented rather than planned. The pre-`UX.1` text is kept because it records what was
+> built and why, which is the point of an as-built document.
 Sections marked **As-built** record what shipped and where it diverges from the plan, with the
 reason. Nothing in this document was quietly rewritten to match the code.
 **Parents:** [DASHBOARD_PROGRAM.md](../requirements/DASHBOARD_PROGRAM.md) ·
@@ -14,7 +28,7 @@ portfolio [`CONTENT_MODEL.md`](../../portfolio/docs/CONTENT_MODEL.md) / `lib/sit
 
 | Route | Title | Status | Registered in |
 |---|---|---|---|
-| `/dashboard` | Dealer Operations Command Center | **Built (`DASH.2`)** | `ROUTES.dashboard` in `portfolio/src/lib/site.ts`, mirrored in `tests/e2e/routes.ts` |
+| `/` | Executive Command Center | **Built (`DASH.2`), moved to `/` by `UX.1`** | `ROUTES.home` in `portfolio/src/lib/site.ts`, mirrored in `tests/e2e/routes.ts`. `/dashboard` is a permanent 308 to `/`, query preserved |
 | `/dashboard/sales-gross` | Sales and gross | **Built (`DASH.3`)** | `ROUTES.dashboardSalesGross`, mirrored in `tests/e2e/routes.ts` |
 | `/dashboard/deals` | Deal Explorer | **Built (`DASH.3`)** | `ROUTES.dashboardDeals`, mirrored in `tests/e2e/routes.ts` |
 | `/dashboard/deals/[saleId]` | Deal Jacket (dynamic; title carries the synthetic deal id) | **Implemented (DASH.4)** | dynamic — excluded from `inPrimaryNav`, sitemap lists the index route only, and each jacket asks not to be indexed. Marks Deal Explorer current via `NavItem.matchPrefixes`: nobody navigates to "a deal", so it is a drill-through rather than a navigation destination |
@@ -25,10 +39,18 @@ portfolio [`CONTENT_MODEL.md`](../../portfolio/docs/CONTENT_MODEL.md) / `lib/sit
 | `/dashboard/accounting` | Accounting integrity | **Built (`DASH.9`)** | `ROUTES.dashboardAccounting`, mirrored in `tests/e2e/routes.ts`. The exception drill-through targets this route with `store` and `period`, never a warehouse surrogate |
 | `/dashboard/actions` | Management actions | Planned (DASH.12) | ” |
 
-The public header gains exactly one destination: **Dashboard → `/dashboard`** — the seventh
-`PRIMARY_NAV` item, at the existing `MAX_PRIMARY_NAV_ITEMS = 7` cap. Its `matches` array covers the
-whole `/dashboard` family so the header marks it current on every dashboard route. No other public
-header change.
+**Superseded by `UX.1`.** ~~The public header gains exactly one destination: Dashboard →
+`/dashboard` — the seventh `PRIMARY_NAV` item, at the existing `MAX_PRIMARY_NAV_ITEMS = 7` cap.~~
+
+The site has two navigations now, on two disjoint sets of routes:
+
+- **`OPERATING_NAV`** — the application rail. Eight destinations: Executive, Sales & Gross, Deals,
+  Inventory, F&I, Leads & Marketing, Employees, Accounting. Rendered by
+  `components/shell/operating-rail.tsx` on every route in the `(operating)` route group.
+- **`PRIMARY_NAV`** — the reference header, three items: Executive (back into the application),
+  Technical, About. Rendered by `components/shell/site-header.tsx` on the `(site)` group.
+
+`MAX_PRIMARY_NAV_ITEMS = 7` is unchanged and now unspent: the header uses three of it.
 
 **As-built (`DASH.2`).** Only `/dashboard` is registered in `ROUTES`. The nine routes above it in
 this table are *not* registered, because a route entry is what puts a destination into the footer
@@ -39,6 +61,18 @@ have made the header disagree with what the site is for. `dashboard.spec.ts` ass
 unbuilt routes answers 404 and that no anchor anywhere on the console points at one.
 
 ## 2. Internal dashboard navigation
+
+**Superseded by `UX.1`.** `DashboardNav` and `PlatformNav` are both gone. The console's eight
+destinations are the operating rail — a left rail at `lg` and above, a drawer below it, one list of
+links, `aria-current="page"` on the current one, explicitly not `role="tablist"` for the same reason
+recorded below. The four platform routes are states of `/technical` and are linked by `TechnicalNav`,
+which follows the same pattern.
+
+**What the rail added that the bar did not have:** every rail link carries the reader's analytical
+context to its destination, and drops the parameters the destination declares `not-applicable` (§6).
+That was planned here from the beginning and was not implemented until `UX.1`.
+
+The original as-built record follows.
 
 `DashboardNav`, following the `PlatformNav` pattern exactly: a `<nav aria-label="Dashboard">` of
 plain links with `aria-current="page"`, rendered on every dashboard route between the page header

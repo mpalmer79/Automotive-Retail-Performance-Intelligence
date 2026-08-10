@@ -18,9 +18,7 @@ test.describe('the route exists and states its scope', () => {
   test('answers 200 and renders its heading', async ({ page }) => {
     const response = await page.goto(ROUTE)
     expect(response?.status()).toBe(200)
-    await expect(page.locator('h1')).toHaveText(
-      /Every finalized transaction, and what each one made/
-    )
+    await expect(page.locator('h1')).toHaveText('Deal Explorer')
   })
 
   test('states how many deals are in scope and which page is shown', async ({ page }) => {
@@ -29,10 +27,10 @@ test.describe('the route exists and states its scope', () => {
     expect(text).toMatch(/Showing 1 to 25 of \d+ deals, page 1 of \d+\./)
   })
 
-  test('marks itself current in the console navigation', async ({ page }) => {
+  test('marks itself current in the operating rail', async ({ page }) => {
     await gotoRendered(page, ROUTE)
     const current = page.locator('[aria-current="page"]')
-    await expect(current.filter({ hasText: /Deal Explorer/i }).first()).toBeVisible()
+    await expect(current.filter({ hasText: /^Deals$/ }).first()).toBeVisible()
   })
 })
 

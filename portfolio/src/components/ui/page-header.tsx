@@ -15,20 +15,21 @@
  *   - The header sits on the `cinematic` ground, so every route opens on the
  *     same deeper band the home page's hero uses and the content below it reads
  *     as a step up rather than as more of the same.
- *   - `platformNav` renders the platform sub-navigation, which is what lets the
- *     primary navigation carry one item where it used to carry three.
+ *   - `UX.1` narrowed its audience. It opens the REFERENCE half of the site now:
+ *     the technical destination, the author page, the store pages, the reference
+ *     listing explorer and the case study. The operating application opens with
+ *     `<OperatingPageHeader>` instead, which carries a name rather than a
+ *     sentence and puts the filter controls where the lede used to be.
  */
 import type { ReactNode } from 'react'
 
-import { DashboardNav } from '@/components/shell/dashboard-nav'
 import { GroupNav } from '@/components/shell/group-nav'
-import { PlatformNav } from '@/components/shell/platform-nav'
 import { Container, Section } from '@/components/ui/layout'
 import { Breadcrumbs } from '@/components/ui/states'
 import { TrustLine } from '@/components/ui/trust-line'
 import { Heading, Text } from '@/components/ui/typography'
-import { ROUTES } from '@/lib/site'
 import { cx } from '@/lib/utils'
+import { technicalHref } from '@/lib/technical'
 
 export interface PageHeaderProps {
   eyebrow: string
@@ -48,21 +49,17 @@ export interface PageHeaderProps {
   crumbLabel?: string
   /** Status badges, source links, or a jump list. */
   meta?: ReactNode
-  /** Render the platform sub-navigation. Set by the three platform routes. */
-  platformNav?: boolean
   /**
-   * Render the console sub-navigation. Set by every `/dashboard` route.
+   * Render the Granite Auto Group sub-navigation. Set by the three store routes
+   * and by the reference listing explorer.
    *
-   * A third flag rather than one `subNav` prop naming a group: the three
-   * navigations have different contents, different labels and different
-   * membership rules, and a route belongs to exactly one of them. Collapsing them
-   * would let a page ask for two.
-   */
-  dashboardNav?: boolean
-  /**
-   * Render the Granite Auto Group sub-navigation. Set by `/dealerships`, the
-   * three store routes and `/inventory`. Mutually exclusive with `platformNav`
-   * in practice: a page belongs to one destination group.
+   * IT IS THE ONLY SUB-NAVIGATION FLAG LEFT. There were three. `platformNav`
+   * linked Architecture, Data Model, Inventory Operations and Governance to each
+   * other, and `dashboardNav` linked the console's eight sections; `UX.1` replaced
+   * the first with the technical destination's own view navigation and the second
+   * with the operating rail, and both flags went with them. A header prop that
+   * renders a navigation is right when a handful of sibling documents need to
+   * reach each other and wrong once one of them becomes an application.
    */
   groupNav?: boolean
   /**
@@ -102,12 +99,10 @@ export function PageHeader({
   supporting,
   crumbLabel,
   meta,
-  platformNav = false,
   groupNav = false,
-  dashboardNav = false,
   parentCrumb,
   trustScope = 'synthetic',
-  trustHref = ROUTES.governance.href,
+  trustHref = technicalHref('governance'),
   suppressTrustLine = false,
   className,
 }: PageHeaderProps) {
@@ -125,7 +120,11 @@ export function PageHeader({
         <div className="flex flex-col gap-6">
           <Breadcrumbs
             trail={[
-              { href: '/', label: 'Overview' },
+              /* THE ROOT CRUMB IS THE APPLICATION.
+                 It read "Overview" and pointed at a marketing landing page. `/`
+                 is the operating console now, so the trail says so: a reader on
+                 the governance view is one click from the screen they left. */
+              { href: '/', label: 'Executive' },
               ...(parentCrumb ? [parentCrumb] : []),
               { href: '#', label: crumbLabel ?? title },
             ]}
@@ -152,9 +151,7 @@ export function PageHeader({
             ) : null}
           </div>
 
-          {platformNav ? <PlatformNav className="pt-1" /> : null}
           {groupNav ? <GroupNav className="pt-1" /> : null}
-          {dashboardNav ? <DashboardNav className="pt-1" /> : null}
 
           {meta ? <div className="flex flex-wrap items-center gap-3">{meta}</div> : null}
 

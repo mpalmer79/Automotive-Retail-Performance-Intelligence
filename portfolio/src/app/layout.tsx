@@ -3,8 +3,6 @@ import type { ReactNode } from 'react'
 
 import { FieldMotif } from '@/components/shell/field'
 import { PreviewNotice } from '@/components/shell/preview-notice'
-import { SiteFooter } from '@/components/shell/site-footer'
-import { SiteHeader } from '@/components/shell/site-header'
 import { SkipLink } from '@/components/ui/states'
 import { fontVariables } from '@/lib/fonts'
 import { rootMetadata, structuredData } from '@/lib/metadata'
@@ -27,7 +25,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={fontVariables} suppressHydrationWarning>
-      <body className="flex min-h-dvh flex-col">
+      <body className="min-h-dvh">
         {/* Motion serialises its `initial` variant into the server-rendered
             markup, so every revealed section ships with `opacity: 0` in the HTML.
             If the bundle fails to load - a CDN hiccup, a blocked script, a
@@ -62,22 +60,16 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <FieldMotif />
 
         <PreviewNotice />
-        <SiteHeader />
-        {/* The skip link's target. `tabIndex={-1}` so that programmatic focus
-            lands here without adding <main> to the tab order.
 
-            `pb-*` is the gap between the last canvas and the footer: the blue
-            field has to be visible there, or the canvas and the footer meet as
-            one continuous white column and the page loses the floating quality
-            the whole design rests on. */}
-        <main
-          id="main-content"
-          tabIndex={-1}
-          className="flex-1 pt-canvas-inset pb-section-tight focus:outline-none"
-        >
-          {children}
-        </main>
-        <SiteFooter />
+        {/* THE CHROME MOVED DOWN A LEVEL AT `UX.1`.
+            This layout used to render the masthead, `<main>` and the footer for
+            every route on the site. It renders none of them now: the operating
+            application and the reference domain wear different shells, and each
+            group layout owns its own — including its own `<main>`, because the
+            operating shell puts the rail beside the content rather than above it.
+            What stays here is what is genuinely site-wide: the document, the
+            fonts, the skip link, the structured-data graph and the blue field. */}
+        {children}
       </body>
     </html>
   )

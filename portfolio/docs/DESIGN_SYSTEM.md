@@ -791,3 +791,63 @@ contains neither token and no bare `green`/`red`/`emerald`/`rose` utility.
 PUBLICATION state — the project declining to print a ratio over a denominator this small — and not a
 verdict about a person. It always appears with the words "Insufficient sample" and the count that
 caused it, so the colour is never the only carrier of the meaning.
+
+## The operating shell (`UX.1`)
+
+`UX.1` split the site into two information domains with different chrome, and the
+design system gained one token and two components for it. Nothing was retired from
+the system itself: the token bridge, the grounds, the type pairing and the
+component inventory above are unchanged, and the operating shell is composed from
+them.
+
+### The rail token
+
+| Token              | Value              | Where                                                          |
+| ------------------ | ------------------ | -------------------------------------------------------------- |
+| `--arpi-size-rail` | `14.5rem` (232 px) | `tokens.css`, bridged as `--spacing-rail`, used as `lg:w-rail` |
+
+232 px is the width at which the widest of the eight destination labels — "Leads &
+Marketing" — fits on one line at the base type size, measured rather than chosen.
+Below the `lg` breakpoint the token is unused: the rail is not rendered there at
+all, and the navigation is a drawer.
+
+### Two shells, and the rule for deciding which a route wears
+
+| Domain    | Chrome                                                                                                                  | Routes                                                                     |
+| --------- | ----------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Operating | `components/shell/operating-rail.tsx` — left rail at `lg`, compact app bar and drawer below it. No masthead, no footer. | `/` and the seven `/dashboard/*` surfaces                                  |
+| Reference | `components/shell/site-header.tsx` + `site-footer.tsx` — masthead of three items, full footer index                     | `/technical`, `/about`, `/inventory`, the three store pages, `/case-study` |
+
+Declared by route group — `app/(operating)/layout.tsx` and `app/(site)/layout.tsx`
+— rather than by a prop, so a route cannot accidentally wear both or neither.
+
+### The control band
+
+`components/dashboard/operating-page-header.tsx` is the operating equivalent of
+`<PageHeader>`, and it is deliberately smaller:
+
+| `<PageHeader>` (reference)           | `<OperatingPageHeader>` (operating)                          |
+| ------------------------------------ | ------------------------------------------------------------ |
+| Breadcrumb                           | — the application is flat and the rail marks the destination |
+| Eyebrow                              | —                                                            |
+| Sentence-length `h1`                 | The route's NAME: "Executive", "Inventory"                   |
+| Lede + optional supporting paragraph | One line of analytical scope in business words               |
+| Status badges                        | Inside the methodology disclosure                            |
+| `<TrustLine>`                        | The compact demo statement, in the disclosure's own summary  |
+| —                                    | The route's filter controls                                  |
+
+**The rule the split encodes: a caveat is visible, a mechanism is disclosed.** A
+project-default threshold, a cohort basis, a denominator that is not the obvious
+one and a statement that a figure is not a valuation all stay on the page. How an
+order statistic is computed, at which grain the export publishes it and which
+version produced it move into `components/dashboard/methodology.tsx`, which is a
+`<details>` for the same reasons every chart's data table is one.
+
+### Colour
+
+Unchanged. `UX.1` added no colour token, no domain palette and no new semantic
+use. The `zone-*` washes introduced by the executive visual pass still encode a
+business area and never a state; the categorical store marks are still derived
+from the business code rather than from row position; and green and red still mark
+only the three governed cases — which side of zero a value falls, whether an
+explicit target was met, and how old a unit is.

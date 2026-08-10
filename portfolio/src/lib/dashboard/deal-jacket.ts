@@ -1052,7 +1052,7 @@ function buildChecks(
         products.contractCount === 0
           ? 'No product was written on this deal, so there is no eligibility to check. Recorded as passed rather than hidden, because an absent check reads exactly like a passing one.'
           : products.eligibilityRecorded
-            ? `Every contract on this deal names the governed eligibility rule its category resolves to, and was written on a retail structure a product can attach to. The rule itself is evaluated in the warehouse by DQ-FPS-011 and RECON-FI-ELIGIBILITY; this page checks that the evidence travelled with the row rather than re-implementing the predicate.`
+            ? `Every contract on this deal names the governed eligibility rule its category resolves to, and was written on a retail structure a product can attach to. The rule itself is evaluated once in the governed layer by DQ-FPS-011 and RECON-FI-ELIGIBILITY; this page checks that the evidence travelled with the row rather than re-implementing the predicate.`
             : 'A contract on this deal carries no governed eligibility rule identifier, or was written on a structure no product can attach to.',
     },
     {
@@ -1094,7 +1094,7 @@ function buildChecks(
       id: 'source-lineage',
       label: 'Source lineage',
       state: 'passed',
-      detail: `Read from the committed deal-jacket export, dataset version ${String(dashboardManifest.datasetVersion)}, contract ${dashboardManifest.contractSha256.slice(0, 12)}, as of ${formatIsoDate(dashboardManifest.asOfDate)}.`,
+      detail: `Published figures for one delivery, as of ${formatIsoDate(dashboardManifest.asOfDate)}. The version and contract this was read from are in the methodology disclosure at the top of the page.`,
     },
   ]
 }

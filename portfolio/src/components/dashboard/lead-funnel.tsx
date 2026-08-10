@@ -45,7 +45,8 @@ import { Heading, Text } from '@/components/ui/typography'
 import { exactToApproxNumber } from '@/lib/dashboard/decimal'
 import { kpiDefinition, type FunnelSummary } from '@/lib/dashboard/executive'
 import { formatCountExact } from '@/lib/dashboard/format'
-import { filtersHref, type DashboardFilters } from '@/lib/dashboard/filters'
+import type { DashboardFilters } from '@/lib/dashboard/filters'
+import { operatingHref } from '@/lib/dashboard/navigation'
 import type { ComparedMetric } from '@/lib/dashboard/selectors'
 import { ROUTES } from '@/lib/site'
 
@@ -271,17 +272,17 @@ export function LeadFunnel({
         detail. The link is the whole extent of this increment's change to the Executive
         Overview -- route activation, not a redesign.
       */}
-      <Text size="xs" tone="faint" className="max-w-prose">
+      {/* The forty-seven words that used to follow this link listed what the
+          destination contains. The rail carries the reader's filters to every
+          operating route now, so the sentence promising that one link did is
+          describing the shell rather than the destination. */}
+      <Text size="xs" tone="faint">
         <Link
           className="underline"
-          href={filtersHref(ROUTES.dashboardLeadsMarketing.href, filters)}
+          href={operatingHref(ROUTES.dashboardLeadsMarketing.href, filters)}
         >
-          Open leads and marketing
-        </Link>{' '}
-        for this cohort by source and campaign: where it stopped progressing, the full
-        first-response distribution with the leads nobody answered, appointment outcomes
-        on their own two date bases, and what the spend behind these leads bought. Your
-        current filters travel with the link.
+          Open this cohort by source and campaign
+        </Link>
       </Text>
     </div>
   )

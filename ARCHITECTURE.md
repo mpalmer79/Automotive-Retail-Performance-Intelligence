@@ -2490,6 +2490,15 @@ no real VIN data, and expressing no owner relationship.
 document. **ADR-0004** fixes the validation-category vocabulary that `audit.validation_result` enforces.
 **ADR-0006** fixes the slowly-changing-dimension type of every Phase 1 dimension.
 
+**ADR-0015 is the product-experience decision of record.** It presents ARPI primarily as a dealership
+management intelligence application: the operating console is the canonical entry experience at `/`,
+`/dashboard` is a permanent redirect to it with the query string preserved, six documentation routes are
+consolidated into one `/technical` destination, and operating routes carry business language with
+implementation detail one disclosure away. It changes presentation and information architecture only —
+no KPI definition, no reporting view, no export dataset, no warehouse entity and no Power BI artifact —
+and it does not weaken ADR-0013's data boundary: the browser still consumes committed governed exports
+and nothing else.
+
 **ADR-0007 is the Power BI storage decision of record.** It fixes the PBIP project format with the semantic
 model stored as TMDL and the report as a PBIR shell, keeps Import mode and the `arpi_reporter` identity from
 §19.1 and §22.3, records that no `.pbix` is committed during `P2.1` and why, and states that Power BI Desktop

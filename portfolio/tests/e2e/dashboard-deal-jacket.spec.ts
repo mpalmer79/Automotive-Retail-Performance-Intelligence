@@ -41,8 +41,12 @@ test.describe('the route exists, and only for a deal that exists', () => {
     page,
   }) => {
     await gotoRendered(page, DEAL_JACKET_ROUTE)
-    const current = page.locator('[aria-current="page"]')
-    await expect(current.filter({ hasText: /Deal Explorer/i }).first()).toBeVisible()
+    const current = page
+      .getByRole('navigation', { name: 'Operating' })
+      .first()
+      .locator('[aria-current="page"]')
+    await expect(current).toHaveCount(1)
+    await expect(current).toContainText('Deals')
   })
 
   test('asks search engines not to index one of 650 near-identical documents', async ({

@@ -88,11 +88,15 @@ function webpDimensions(file: string): { width: number; height: number } {
 describe('the product tour captures', () => {
   it('shows four steps, one per explorable route', () => {
     expect(TOUR_STEPS).toHaveLength(4)
+    // Three of the four now point at a technical VIEW rather than at a route of
+    // its own: `UX.1` consolidated the six documentation routes into `/technical`,
+    // and a tour step that pointed at a redirect would send a reader through a hop
+    // to reach the thing it is showing them.
     expect(TOUR_STEPS.map((step) => step.href)).toEqual([
       '/inventory',
-      '/architecture',
-      '/data-model',
-      '/kpis',
+      '/technical?view=architecture',
+      '/technical?view=data-model',
+      '/technical?view=kpis',
     ])
   })
 

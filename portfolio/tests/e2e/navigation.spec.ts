@@ -1,23 +1,188 @@
 import { expect, test } from '@playwright/test'
 
 import { bodyText, gotoRendered } from './helpers'
-import { GROUP_ROUTES, HEADER_NAV, PLATFORM_ROUTES, PRIMARY_ROUTES } from './routes'
+import {
+  GROUP_ROUTES,
+  HEADER_NAV,
+  OPERATING_NAV_ROUTES,
+  PERMANENT_REDIRECTS,
+  PRIMARY_ROUTES,
+  TECHNICAL_VIEW_ROUTES,
+} from './routes'
 
 /**
- * Navigation, metadata and the 404.
+ * Navigation, metadata, redirects and the 404.
  *
  * The route list this sweeps is an independent copy in `tests/e2e/routes.ts`
- * rather than an import of the app's own map, and the first test asserts the two
- * agree - so a route removed from the app cannot silently vanish from the test
- * sweep as well.
+ * rather than an import of the app's own map, and `tests/unit/site.test.ts`
+ * asserts the two agree — so a route removed from the app cannot silently vanish
+ * from the test sweep as well.
  */
 
-test.describe('primary navigation', () => {
-  test('offers exactly five content destinations and nothing else', async ({ page }) => {
-    await page.goto('/')
-    const nav = page.getByRole('navigation', { name: 'Primary' })
-    // Five, not seven. Architecture, the data model and governance are grouped
-    // under "Platform"; the locked case study is out of the header entirely.
+/* -------------------------------------------------------------------------- */
+/* The operating application                                                   */
+/* -------------------------------------------------------------------------- */
+
+test.describe('the operating rail', () => {
+  test('offers the eight built destinations and nothing else', async ({ page }) => {
+    await gotoRendered(page, '/')
+    const nav = page.getByRole('navigation', { name: 'Operating' }).first()
+    await expect(nav.getByRole('link')).toHaveCount(OPERATING_NAV_ROUTES.length)
+
+    for (const item of OPERATING_NAV_ROUTES) {
+      await expect(nav.getByRole('link', { name: item.label, exact: true })).toHaveCount(
+        1
+      )
+    }
+  })
+
+  test('never links to a section that is not built', async ({ page }) => {
+    for (const route of ['/', '/dashboard/sales-gross', '/dashboard/accounting']) {
+      await gotoRendered(page, route)
+      await expect(page.locator('a[href^="/dashboard/actions"]'), route).toHaveCount(0)
+    }
+  })
+
+  test('marks exactly one destination current on every operating route', async ({
+    page,
+  }) => {
+    for (const item of OPERATING_NAV_ROUTES) {
+      await gotoRendered(page, item.path)
+      const current = page
+        .getByRole('navigation', { name: 'Operating' })
+        .first()
+        .locator('[aria-current="page"]')
+      await expect(current, `${item.path} should mark ${item.label}`).toHaveCount(1)
+      await expect(current).toContainText(item.label)
+    }
+  })
+
+  test('marks Deals current inside a Deal Jacket', async ({ page }) => {
+    // A drill-through is inside the section it was reached from. Marking F&I
+    // current on a jacket that itemizes F&I would tell a reader they navigated
+    // somewhere they did not.
+    await gotoRendered(page, '/dashboard/deals/SLE-00000646')
+    const current = page
+      .getByRole('navigation', { name: 'Operating' })
+      .first()
+      .locator('[aria-current="page"]')
+    await expect(current).toHaveCount(1)
+    await expect(current).toContainText('Deals')
+  })
+
+  test('carries the demo statement on every operating screen', async ({ page }) => {
+    for (const item of OPERATING_NAV_ROUTES) {
+      await gotoRendered(page, item.path)
+      const text = await bodyText(page)
+      expect(text, item.path).toMatch(/Granite Auto Group is fictional/i)
+    }
+  })
+
+  test('offers Technical and About as utilities rather than as peers', async ({
+    page,
+  }) => {
+    await gotoRendered(page, '/')
+    const utility = page.getByRole('navigation', { name: 'Utility' }).first()
+    await expect(utility.getByRole('link', { name: 'Technical' })).toHaveAttribute(
+      'href',
+      '/technical'
+    )
+    await expect(utility.getByRole('link', { name: 'About' })).toHaveAttribute(
+      'href',
+      '/about'
+    )
+  })
+})
+
+/* -------------------------------------------------------------------------- */
+/* Filter continuity                                                           */
+/* -------------------------------------------------------------------------- */
+
+test.describe('the rail carries the analytical context', () => {
+  test('preserves period and store across every applicable destination', async ({
+    page,
+  }) => {
+    await gotoRendered(page, '/?period=2025-11&store=GSA-002')
+    const nav = page.getByRole('navigation', { name: 'Operating' }).first()
+
+    for (const item of OPERATING_NAV_ROUTES.filter((entry) => entry.path !== '/')) {
+      const href = await nav
+        .getByRole('link', { name: item.label, exact: true })
+        .getAttribute('href')
+      expect(href, `${item.label} lost the period`).toContain('period=2025-11')
+      expect(href, `${item.label} lost the store`).toContain('store=GSA-002')
+    }
+  })
+
+  test('drops a parameter the destination declares not applicable', async ({ page }) => {
+    // `source` reaches the lead funnel and reaches nothing on the accounting
+    // reconciliation. Carrying it there would render a chip claiming a lead source
+    // is selected on a page whose every figure ignores it.
+    await gotoRendered(page, '/?period=2025-11&source=LDS-007')
+    const nav = page.getByRole('navigation', { name: 'Operating' }).first()
+
+    const leads = await nav
+      .getByRole('link', { name: 'Leads & Marketing', exact: true })
+      .getAttribute('href')
+    expect(leads).toContain('source=LDS-007')
+
+    const accounting = await nav
+      .getByRole('link', { name: 'Accounting', exact: true })
+      .getAttribute('href')
+    expect(accounting).toContain('period=2025-11')
+    expect(accounting).not.toContain('source=')
+  })
+
+  test('survives an actual navigation, not only an href', async ({ page }) => {
+    await gotoRendered(page, '/?period=2025-11&store=GSA-002')
+    await page
+      .getByRole('navigation', { name: 'Operating' })
+      .first()
+      .getByRole('link', { name: 'Sales & Gross', exact: true })
+      .click()
+    await expect(page).toHaveURL(/\/dashboard\/sales-gross\?/)
+    expect(page.url()).toContain('period=2025-11')
+    expect(page.url()).toContain('store=GSA-002')
+  })
+
+  test('produces the same links with scripting disabled', async ({ browser }) => {
+    // The rail reads the query string in the browser, so this is the assertion
+    // that the reading happens on the SERVER too and the no-JavaScript path keeps
+    // its analytical context rather than silently resetting to the default period.
+    const context = await browser.newContext({ javaScriptEnabled: false })
+    const page = await context.newPage()
+    await page.goto('/?period=2025-11&store=GSA-002')
+    const href = await page
+      .locator('a[href^="/dashboard/sales-gross"]')
+      .first()
+      .getAttribute('href')
+    expect(href).toContain('period=2025-11')
+    expect(href).toContain('store=GSA-002')
+    await context.close()
+  })
+
+  test('never emits a duplicate parameter', async ({ page }) => {
+    await gotoRendered(page, '/?period=2025-11&store=GSA-002&condition=Used')
+    const hrefs = await page
+      .locator('a[href*="?"]')
+      .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('href') ?? ''))
+    for (const href of hrefs) {
+      const query = href.split('?')[1]
+      if (query === undefined) continue
+      const keys = query.split('&').map((pair) => pair.split('=')[0])
+      expect(new Set(keys).size, href).toBe(keys.length)
+    }
+  })
+})
+
+/* -------------------------------------------------------------------------- */
+/* The reference domain                                                        */
+/* -------------------------------------------------------------------------- */
+
+test.describe('the reference header', () => {
+  test('offers three destinations and nothing else', async ({ page }) => {
+    await gotoRendered(page, '/technical')
+    const nav = page.locator('header').getByRole('navigation', { name: 'Primary' })
     await expect(nav.getByRole('link')).toHaveCount(HEADER_NAV.length)
 
     for (const item of HEADER_NAV) {
@@ -28,16 +193,27 @@ test.describe('primary navigation', () => {
     }
   })
 
+  test('opens with a link back into the operating application', async ({ page }) => {
+    await gotoRendered(page, '/technical')
+    const first = page
+      .locator('header')
+      .getByRole('navigation', { name: 'Primary' })
+      .getByRole('link')
+      .first()
+    await expect(first).toHaveAttribute('href', '/')
+    await expect(first).toHaveText('Executive')
+  })
+
   test('keeps the locked case study out of the header', async ({ page }) => {
-    await page.goto('/')
-    const nav = page.getByRole('navigation', { name: 'Primary' })
+    await gotoRendered(page, '/technical')
+    const nav = page.locator('header').getByRole('navigation', { name: 'Primary' })
     await expect(nav.getByRole('link', { name: /case study/i })).toHaveCount(0)
   })
 
   test('still offers the case study, saying locked in words, in the footer', async ({
     page,
   }) => {
-    await gotoRendered(page, '/')
+    await gotoRendered(page, '/technical')
     const caseStudy = page
       .locator('footer')
       .getByRole('link', { name: /case study/i })
@@ -47,14 +223,10 @@ test.describe('primary navigation', () => {
     await expect(caseStudy).toHaveAccessibleName(/gate 2 is closed/i)
   })
 
-  test('never labels the case study complete', async ({ page }) => {
-    await page.goto('/')
-    const nav = page.getByRole('navigation', { name: 'Primary' })
-    await expect(nav).not.toContainText(/complete/i)
-  })
-
-  test('marks exactly one item current on every navigable route', async ({ page }) => {
-    for (const item of HEADER_NAV) {
+  test('marks exactly one item current on every reference route it names', async ({
+    page,
+  }) => {
+    for (const item of HEADER_NAV.filter((entry) => entry.path !== '/')) {
       for (const path of item.currentOn) {
         await gotoRendered(page, path)
         const current = page
@@ -66,110 +238,244 @@ test.describe('primary navigation', () => {
       }
     }
   })
+})
 
-  test('navigates between every header destination without a full reload', async ({
+/* -------------------------------------------------------------------------- */
+/* The technical destination                                                   */
+/* -------------------------------------------------------------------------- */
+
+test.describe('the technical destination', () => {
+  test('renders all eight views, each with its own heading', async ({ page }) => {
+    const headings = new Set<string>()
+    for (const view of TECHNICAL_VIEW_ROUTES) {
+      const response = await page.goto(view.path)
+      expect(response?.status(), view.path).toBe(200)
+      const heading = await page.getByRole('heading', { level: 1 }).innerText()
+      expect(headings.has(heading), `${view.path} duplicates a heading`).toBe(false)
+      headings.add(heading)
+    }
+  })
+
+  test('links every view from every view, as plain links and not a tab set', async ({
     page,
   }) => {
-    await page.goto('/')
-    for (const item of HEADER_NAV.slice(1)) {
-      await page
-        .locator('header')
-        .getByRole('navigation', { name: 'Primary' })
-        .getByRole('link', { name: item.label })
-        .click()
-      await expect(page).toHaveURL(new RegExp(`${item.path.replace('/', '\\/')}$`))
+    for (const view of TECHNICAL_VIEW_ROUTES) {
+      await gotoRendered(page, view.path)
+      const nav = page.getByRole('navigation', { name: 'Technical views' })
+      await expect(nav, view.path).toBeVisible()
+      await expect(nav.getByRole('link')).toHaveCount(TECHNICAL_VIEW_ROUTES.length)
+      // Announcing links as tabs promises arrow-key panel switching and no
+      // navigation, and both are false: each view is a server-rendered document
+      // at its own URL.
+      //
+      // SCOPED TO THE NAVIGATION, not to the page. The overview view carries the
+      // store story and the product tour, which ARE real tab sets — panels
+      // switched in place inside one document, with no URL of their own — and
+      // banning `role="tablist"` from the whole page would be banning a correct
+      // use of it to catch an incorrect one.
+      await expect(nav.locator('[role="tablist"]'), view.path).toHaveCount(0)
+      await expect(nav.locator('[role="tab"]'), view.path).toHaveCount(0)
+    }
+  })
+
+  test('marks the current view and only the current view', async ({ page }) => {
+    for (const view of TECHNICAL_VIEW_ROUTES) {
+      await gotoRendered(page, view.path)
+      const current = page
+        .getByRole('navigation', { name: 'Technical views' })
+        .locator('[aria-current="page"]')
+      await expect(current, view.path).toHaveCount(1)
+      await expect(current).toContainText(view.label)
+    }
+  })
+
+  test('gives every view a canonical URL of its own state', async ({ page }) => {
+    for (const view of TECHNICAL_VIEW_ROUTES) {
+      await page.goto(view.path)
+      const canonical = await page.locator('link[rel="canonical"]').getAttribute('href')
+      expect(canonical, view.path).toContain(view.path)
+    }
+  })
+
+  test('falls back to the overview for an unknown view rather than 404ing', async ({
+    page,
+  }) => {
+    const response = await page.goto('/technical?view=not-a-view')
+    expect(response?.status()).toBe(200)
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('How ARPI works')
+    // And it says so, rather than silently showing something else.
+    expect(await bodyText(page)).toMatch(/There is no .*not-a-view.* view/i)
+  })
+
+  test('states plainly that the product vision is not implemented', async ({ page }) => {
+    await gotoRendered(page, '/technical?view=product-vision')
+    const text = await bodyText(page)
+    expect(text).toMatch(/Nothing on this page is implemented/i)
+    expect(text).toMatch(/ARPI has no connection to any dealer management system/i)
+  })
+
+  test('works with scripting disabled', async ({ browser }) => {
+    const context = await browser.newContext({ javaScriptEnabled: false })
+    const page = await context.newPage()
+    for (const view of TECHNICAL_VIEW_ROUTES) {
+      const response = await page.goto(view.path)
+      expect(response?.status(), view.path).toBe(200)
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
     }
+    await context.close()
   })
 })
 
-test.describe('the platform sub-navigation', () => {
-  /**
-   * The whole justification for a five-item header: a visitor who arrives at
-   * Architecture from "Platform" must be able to see, without scrolling, that
-   * the data model and the governance rules belong with it. If this navigation
-   * is missing from any of the three, two routes have been hidden rather than
-   * grouped.
-   */
-  test('appears on all three platform routes and links all three', async ({ page }) => {
-    for (const route of PLATFORM_ROUTES) {
-      await gotoRendered(page, route.path)
-      const nav = page.getByRole('navigation', { name: 'Platform' })
-      await expect(nav, `${route.path} has no platform navigation`).toBeVisible()
-      for (const sibling of PLATFORM_ROUTES) {
-        await expect(nav.getByRole('link', { name: sibling.label })).toHaveAttribute(
-          'href',
-          sibling.path
-        )
-      }
+/* -------------------------------------------------------------------------- */
+/* Redirects                                                                   */
+/* -------------------------------------------------------------------------- */
+
+test.describe('the retired URLs', () => {
+  for (const redirect of PERMANENT_REDIRECTS) {
+    test(`${redirect.from} redirects permanently to ${redirect.to}`, async ({ page }) => {
+      const response = await page.goto(redirect.from)
+      expect(response?.status()).toBe(200)
+
+      const landed = new URL(page.url())
+      const target = new URL(redirect.to, 'http://localhost')
+      expect(landed.pathname).toBe(target.pathname)
+      expect(landed.searchParams.get('view')).toBe(target.searchParams.get('view'))
+
+      // The status of the redirect itself, not only where it landed. A 302 here
+      // would keep search engines re-fetching a path that is never coming back.
+      const chain = response?.request().redirectedFrom()
+      expect(chain, `${redirect.from} did not redirect at all`).toBeTruthy()
+      const redirectResponse = await chain?.response()
+      expect([301, 308]).toContain(redirectResponse?.status())
+    })
+  }
+
+  test('/dashboard carries its filters through the redirect', async ({ page }) => {
+    // THE MOST LOAD-BEARING ASSERTION IN THIS FILE. Every console link anybody has
+    // shared, bookmarked or pasted into a document is a `/dashboard?...` URL. A
+    // redirect that dropped the query would resolve all of them to the default
+    // period and the whole group, silently, and the page would look fine.
+    const response = await page.goto('/dashboard?period=2025-11&store=GSA-002')
+    expect(response?.status()).toBe(200)
+    const landed = new URL(page.url())
+    expect(landed.pathname).toBe('/')
+    expect(landed.searchParams.get('period')).toBe('2025-11')
+    expect(landed.searchParams.get('store')).toBe('GSA-002')
+  })
+
+  test('/dashboard does not take the operating sub-routes with it', async ({ page }) => {
+    for (const item of OPERATING_NAV_ROUTES.filter((entry) => entry.path !== '/')) {
+      const response = await page.goto(item.path)
+      expect(response?.status(), item.path).toBe(200)
+      expect(new URL(page.url()).pathname, item.path).toBe(item.path)
     }
   })
 
-  test('marks its own page current, and only its own', async ({ page }) => {
-    for (const route of PLATFORM_ROUTES) {
-      await gotoRendered(page, route.path)
-      const current = page
-        .getByRole('navigation', { name: 'Platform' })
-        .locator('[aria-current="page"]')
-      await expect(current).toHaveCount(1)
-      await expect(current).toContainText(route.label)
+  test('/dealerships does not take the store routes with it', async ({ page }) => {
+    for (const route of PRIMARY_ROUTES.filter((entry) =>
+      entry.path.startsWith('/dealerships/')
+    )) {
+      const response = await page.goto(route.path)
+      expect(response?.status(), route.path).toBe(200)
+      expect(new URL(page.url()).pathname, route.path).toBe(route.path)
     }
   })
 
-  test('does not appear on a route outside the platform group', async ({ page }) => {
-    for (const path of ['/', '/kpis', '/status', '/about']) {
-      await gotoRendered(page, path)
-      await expect(page.getByRole('navigation', { name: 'Platform' }), path).toHaveCount(
-        0
-      )
+  test('leaves no retired URL in the sitemap', async ({ request }) => {
+    const xml = await (await request.get('/sitemap.xml')).text()
+    for (const redirect of PERMANENT_REDIRECTS) {
+      expect(
+        xml,
+        `${redirect.from} is a redirect and must not be in the sitemap`
+      ).not.toMatch(new RegExp(`<loc>[^<]*${redirect.from}</loc>`))
     }
   })
 
-  test('reaches the data model and governance in one click from Platform', async ({
-    page,
-  }) => {
-    await gotoRendered(page, '/')
-    await page
-      .locator('header')
-      .getByRole('navigation', { name: 'Primary' })
-      .getByRole('link', { name: 'Platform' })
-      .click()
-    await expect(page).toHaveURL(/\/architecture$/)
-
-    await page
-      .getByRole('navigation', { name: 'Platform' })
-      .getByRole('link', { name: 'Data model' })
-      .click()
-    await expect(page).toHaveURL(/\/data-model$/)
+  test('produces exactly one canonical document per URL', async ({ page }) => {
+    // The duplication the consolidation exists to prevent: two URLs rendering the
+    // same document, each claiming to be canonical.
+    const canonicals = new Map<string, string[]>()
+    // `TECHNICAL_VIEW_ROUTES` already opens with `/technical`, so the list is
+    // deduplicated rather than written out: a path checked twice would claim its
+    // own canonical twice and fail a rule it does not break.
+    for (const path of [
+      ...new Set([
+        '/',
+        '/technical',
+        ...TECHNICAL_VIEW_ROUTES.map((view) => view.path),
+        '/about',
+        '/inventory',
+      ]),
+    ]) {
+      await page.goto(path)
+      const canonical =
+        (await page.locator('link[rel="canonical"]').getAttribute('href')) ?? ''
+      canonicals.set(canonical, [...(canonicals.get(canonical) ?? []), path])
+    }
+    for (const [canonical, paths] of canonicals) {
+      expect(paths.length, `${canonical} is claimed by ${paths.join(', ')}`).toBe(1)
+    }
   })
 })
+
+/* -------------------------------------------------------------------------- */
+/* Mobile                                                                      */
+/* -------------------------------------------------------------------------- */
 
 test.describe('mobile navigation', () => {
   test.use({ viewport: { width: 375, height: 812 } })
 
-  test('is hidden until opened, and offers every primary route when open', async ({
+  test('the operating drawer is unmounted until opened and offers every destination', async ({
     page,
   }) => {
-    await page.goto('/')
-    await expect(page.locator('#mobile-navigation')).toHaveCount(0)
+    await gotoRendered(page, '/')
+    await expect(page.locator('#operating-navigation')).toHaveCount(0)
 
     const trigger = page.getByRole('button', { name: /open navigation menu/i })
     await expect(trigger).toHaveAttribute('aria-expanded', 'false')
     await trigger.click()
 
-    const drawer = page.locator('#mobile-navigation')
+    const drawer = page.locator('#operating-navigation')
     await expect(drawer).toBeVisible()
     await expect(
       page.getByRole('button', { name: /close navigation menu/i })
     ).toHaveAttribute('aria-expanded', 'true')
 
-    // Scoped to the drawer's PRIMARY list, not to the whole drawer.
-    //
-    // The drawer also carries two expanded destination groups below that list,
-    // and "Inventory" appears in both - once as a primary item and once as
-    // "Inventory explorer" inside the group. An unscoped name match resolves to
-    // two links and fails in strict mode, which is the test telling the truth
-    // about the DOM rather than a defect in it.
+    for (const item of OPERATING_NAV_ROUTES) {
+      await expect(
+        drawer.getByRole('link', { name: new RegExp(escapeRegExp(item.label)) }).first(),
+        `${item.label} is missing from the drawer`
+      ).toBeVisible()
+    }
+    await expect(drawer.getByRole('link', { name: /Technical/ })).toBeVisible()
+  })
+
+  test('the operating drawer closes on a route change and unlocks the scroll', async ({
+    page,
+  }) => {
+    await gotoRendered(page, '/')
+    await page.getByRole('button', { name: /open navigation menu/i }).click()
+    await page
+      .locator('#operating-navigation')
+      .getByRole('link', { name: /Accounting/ })
+      .first()
+      .click()
+
+    await expect(page).toHaveURL(/\/dashboard\/accounting/)
+    await expect(page.locator('#operating-navigation')).toHaveCount(0)
+    expect(await page.evaluate(() => document.body.style.overflow)).not.toBe('hidden')
+  })
+
+  test('the reference drawer offers the header items and the technical views', async ({
+    page,
+  }) => {
+    await gotoRendered(page, '/about')
+    await expect(page.locator('#mobile-navigation')).toHaveCount(0)
+    await page.getByRole('button', { name: /open navigation menu/i }).click()
+
+    const drawer = page.locator('#mobile-navigation')
+    await expect(drawer).toBeVisible()
+
     const primaryList = drawer.locator('nav > ul').first()
     for (const item of HEADER_NAV) {
       await expect(
@@ -178,73 +484,22 @@ test.describe('mobile navigation', () => {
       ).toBeVisible()
     }
 
-    // And both destination groups, expanded. On a phone there is room to show
-    // them rather than making a visitor land on Architecture or on the group page
-    // and then discover a sub-navigation, so no route is more than one tap away.
-    for (const route of [...PLATFORM_ROUTES, ...GROUP_ROUTES]) {
+    for (const route of [...TECHNICAL_VIEW_ROUTES, ...GROUP_ROUTES]) {
       await expect(
-        drawer.getByRole('link', { name: route.label, exact: true }),
+        drawer.getByRole('link', { name: route.label, exact: true }).first(),
         `${route.label} is missing from the drawer's expanded groups`
       ).toBeVisible()
     }
   })
 
-  test('closes when a route is chosen, and does not leave the scroll locked', async ({
-    page,
-  }) => {
-    await page.goto('/')
-    await page.getByRole('button', { name: /open navigation menu/i }).click()
-    await page
-      .locator('#mobile-navigation')
-      .getByRole('link', { name: /Governance/ })
-      .click()
-
-    await expect(page).toHaveURL(/\/governance$/)
-    await expect(page.locator('#mobile-navigation')).toHaveCount(0)
-    expect(await page.evaluate(() => document.body.style.overflow)).not.toBe('hidden')
-  })
-
-  test('closes when the scrim is clicked', async ({ page }) => {
-    // A taller viewport than the rest of this group uses. The drawer's rows plus
-    // their secondary lines and the expanded platform group fill the entire area
-    // below the header at 375x812, so no scrim is exposed and there is nothing to
-    // click - the close button and Escape are the only ways out at that height,
-    // and both are covered elsewhere. This viewport leaves the scrim visible so
-    // the behaviour can actually be exercised.
-    await page.setViewportSize({ width: 375, height: 1400 })
-    await gotoRendered(page, '/about')
-    await page.getByRole('button', { name: /open navigation menu/i }).click()
-
-    const drawer = page.locator('#mobile-navigation')
-    await expect(drawer).toBeVisible()
-
-    const box = await drawer.boundingBox()
-    const viewport = page.viewportSize()!
-    const targetY = box!.y + box!.height + 40
-    expect(
-      targetY,
-      'the drawer fills the viewport, so no scrim is exposed to click'
-    ).toBeLessThan(viewport.height - 10)
-
-    await page.mouse.click(viewport.width / 2, targetY)
-    await expect(drawer).toHaveCount(0)
-  })
-
-  test('keeps no reachable link inside the closed drawer', async ({ page }) => {
-    await page.goto('/')
-    // The drawer is UNMOUNTED when closed rather than hidden, so there is no set
-    // of links that exists in the DOM but cannot be reached. An earlier version
-    // of this test measured bounding boxes and flagged the desktop navigation,
-    // whose links sit inside a `display: none` ancestor at this width - correctly
-    // removed from both the tab order and the accessibility tree, and not a trap.
-    await expect(page.locator('#mobile-navigation')).toHaveCount(0)
+  test('keeps no reachable link inside a closed drawer', async ({ page }) => {
+    await gotoRendered(page, '/')
+    await expect(page.locator('#operating-navigation')).toHaveCount(0)
 
     const reachableButInvisible = await page.$$eval<number, HTMLElement>(
       'a, button',
       (controls) =>
         controls.filter((control) => {
-          // `offsetParent === null` means the control is inside a `display: none`
-          // subtree, which is the correct way to hide something.
           if (control.offsetParent === null) return false
           if (control.closest('.sr-only-focusable, .sr-only')) return false
           if (control.classList.contains('sr-only-focusable')) return false
@@ -255,21 +510,30 @@ test.describe('mobile navigation', () => {
     expect(reachableButInvisible).toBe(0)
   })
 
-  test('hides the desktop navigation with display, not with opacity', async ({
-    page,
-  }) => {
-    await page.goto('/')
-    // A nav hidden with opacity or visibility stays in the tab order, which is
-    // the classic way a mobile layout ends up with fourteen invisible tab stops.
-    // Queried by CSS, not by role: `getByRole` excludes hidden elements, so a
-    // role query for something we expect to be hidden can never resolve.
+  test('hides the desktop rail with display, not with opacity', async ({ page }) => {
+    await gotoRendered(page, '/')
     const display = await page
-      .locator('header nav[aria-label="Primary"]')
+      .locator('nav[aria-label="Operating"]')
       .first()
-      .evaluate((element) => getComputedStyle(element).display)
+      .evaluate((element) => {
+        let node: HTMLElement | null = element as HTMLElement
+        while (node !== null) {
+          if (getComputedStyle(node).display === 'none') return 'none'
+          node = node.parentElement
+        }
+        return 'visible'
+      })
     expect(display).toBe('none')
   })
 })
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+/* -------------------------------------------------------------------------- */
+/* Metadata and discovery                                                      */
+/* -------------------------------------------------------------------------- */
 
 test.describe('metadata and discovery', () => {
   test('gives every route a unique title, description and canonical URL', async ({
@@ -302,6 +566,19 @@ test.describe('metadata and discovery', () => {
     }
   })
 
+  test('leads the root preview with the product rather than with the stack', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    const description =
+      (await page.locator('meta[name="description"]').getAttribute('content')) ?? ''
+    expect(description).toMatch(/operating view of a dealer group/i)
+    expect(description).toMatch(/fictional/i)
+    // The stack may be described on the technical destination; it may not be the
+    // first thing a shared link says about the product.
+    expect(description).not.toMatch(/PostgreSQL|Power BI|Python/i)
+  })
+
   test('does not render the home page title as "ARPI - ARPI"', async ({ page }) => {
     await page.goto('/')
     expect(await page.title()).toBe('Automotive Retail Performance Intelligence')
@@ -326,7 +603,7 @@ test.describe('metadata and discovery', () => {
     expect(response.headers()['content-type']).toContain('image/png')
   })
 
-  test('serves a sitemap listing eight indexable routes and excluding the UI lab', async ({
+  test('serves a sitemap listing every indexable route and excluding the UI lab', async ({
     request,
   }) => {
     const response = await request.get('/sitemap.xml')
@@ -334,6 +611,14 @@ test.describe('metadata and discovery', () => {
     const xml = await response.text()
     for (const route of PRIMARY_ROUTES) {
       expect(xml, `sitemap is missing ${route.path}`).toContain(`${route.path}</loc>`)
+    }
+    // The seven non-default technical views, which are documents a reader can
+    // share and a crawler can reach.
+    for (const view of TECHNICAL_VIEW_ROUTES.filter(
+      (entry) => entry.path !== '/technical'
+    )) {
+      const query = view.path.split('?')[1] ?? ''
+      expect(xml, `sitemap is missing ${view.path}`).toContain(query)
     }
     expect(xml, 'the UI lab must not be in the sitemap').not.toContain('/ui-lab')
   })
@@ -373,6 +658,10 @@ test.describe('metadata and discovery', () => {
   })
 })
 
+/* -------------------------------------------------------------------------- */
+/* External links                                                              */
+/* -------------------------------------------------------------------------- */
+
 test.describe('external links', () => {
   test('every external link opens in a new tab with a safe rel', async ({ page }) => {
     for (const route of PRIMARY_ROUTES) {
@@ -393,7 +682,7 @@ test.describe('external links', () => {
   })
 
   test('points at the real repository and at no other host', async ({ page }) => {
-    await page.goto('/')
+    await page.goto('/technical')
     const hosts = await page.$$eval('a[href^="http"]', (anchors) => [
       ...new Set(anchors.map((anchor) => new URL(anchor.getAttribute('href')!).host)),
     ])
@@ -401,7 +690,7 @@ test.describe('external links', () => {
   })
 
   test('links every source path to a file on the default branch', async ({ page }) => {
-    await page.goto('/status')
+    await page.goto('/technical?view=status')
     const sources = await page.$$eval(
       'a[href*="/blob/main/"], a[href*="/tree/main/"]',
       (anchors) => anchors.map((anchor) => anchor.getAttribute('href') ?? '')
@@ -418,26 +707,20 @@ test.describe('external links', () => {
   })
 })
 
+/* -------------------------------------------------------------------------- */
+/* The 404                                                                     */
+/* -------------------------------------------------------------------------- */
+
 test.describe('the 404 page', () => {
   test('returns a useful page that lists every route', async ({ page }) => {
     const response = await page.goto('/this-route-does-not-exist')
     expect(response?.status()).toBe(404)
     await expect(page.getByRole('heading', { level: 1 })).toContainText('Page not found')
-
-    // The route map, not an apology.
-    for (const route of PRIMARY_ROUTES.filter((r) => r.inNav)) {
-      await expect(
-        page.getByRole('link', { name: new RegExp(route.navLabel!) }).first()
-      ).toBeVisible()
-    }
     await expect(page.getByRole('link', { name: /back to the overview/i })).toBeVisible()
   })
 
   test('is not indexed', async ({ page }) => {
     await page.goto('/this-route-does-not-exist')
-    // Next emits its own `noindex` for a not-found response, and the route's
-    // metadata adds `noindex, nofollow`. Two nodes is correct, so the assertion
-    // is on the collection rather than on a single one.
     const contents = await page
       .locator('meta[name="robots"]')
       .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('content') ?? ''))
@@ -447,24 +730,33 @@ test.describe('the 404 page', () => {
 })
 
 /* -------------------------------------------------------------------------- */
-/* The information architecture                                               */
+/* The information architecture                                                */
 /* -------------------------------------------------------------------------- */
 
-test.describe('the group overview is the home page', () => {
-  test('the root route answers 200 and leads with the product', async ({ page }) => {
+test.describe('the operating console is the home page', () => {
+  test('the root route answers 200 and opens on the Executive surface', async ({
+    page,
+  }) => {
     const response = await page.goto('/')
     expect(response?.status()).toBe(200)
-    await expect(page.getByRole('heading', { level: 1 })).toContainText(
-      'Three dealerships. Three operating models. One governed reporting layer.'
-    )
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('Executive')
   })
 
-  test('the root heading is not the author headline', async ({ page }) => {
-    // The specific regression this guards: the two pages swapping back, or the
-    // author sentence being restored to `/` "as well".
+  test('the root page is not a marketing landing page', async ({ page }) => {
+    // The specific regression this guards: a hero, a store story or a closing call
+    // to action being restored in front of the application "as well".
     await gotoRendered(page, '/')
-    const heading = await page.getByRole('heading', { level: 1 }).innerText()
-    expect(heading).not.toMatch(/built by someone who has run the dealership/i)
+    const text = await bodyText(page)
+    for (const [what, pattern] of [
+      [
+        'the old hero headline',
+        /Three dealerships\. Three operating models\. One governed reporting layer\./i,
+      ],
+      ['the career essay', /computer science retraining/i],
+      ['the analytical philosophy essay', /analytical philosophy/i],
+    ] as const) {
+      expect(text, `${what} is back on the operating home page`).not.toMatch(pattern)
+    }
   })
 
   test('/about is where the author headline lives', async ({ page }) => {
@@ -488,12 +780,6 @@ test.describe('the group overview is the home page', () => {
   test('/about carries the three decisions that came from the floor', async ({
     page,
   }) => {
-    // These arrived with the home page's builder chapter. They were the strongest
-    // content on that page and they were told under a second, shorter version of
-    // the career narrative this page tells in full, which is the shape that goes
-    // stale. The assertion moved with them rather than being dropped: each
-    // decision, its artefact, and the argument that used to sit behind a
-    // disclosure are all readable here.
     await gotoRendered(page, '/about')
     const text = await bodyText(page)
     expect(text, 'the section heading').toMatch(
@@ -503,99 +789,60 @@ test.describe('the group overview is the home page', () => {
     expect(text, 'the ranking decision').toMatch(/volume alone never ranks a person/i)
     expect(text, 'the aged-inventory decision').toMatch(/median age leads/i)
     expect(text, 'the artefact references').toMatch(/KPI-GRS-001/)
-    // The argument, not only the decision. On the home page this was behind a
-    // disclosure to keep the page short; this is the page where length is the
-    // point, so it is visible.
     expect(text, 'the argument').toMatch(/destroys the diagnosis/i)
   })
 
-  test('the home page carries no long-form author section', async ({ page }) => {
-    // WHAT THIS RULE PROTECTS, AND WHAT CHANGED
-    //
-    // The concern has never been that the author is mentioned on the home page.
-    // It is that the same STORY gets told twice at two lengths, so the shorter
-    // copy quietly goes stale against the longer one. The rule used to enforce
-    // that by banning a phrase, which stopped being the right instrument when
-    // the home page grew a deliberate builder chapter: a scannable list of role
-    // functions is a fact set, and two pages agreeing on a fact set is
-    // consistency rather than drift.
-    //
-    // So the rule now names the NARRATIVE. The three long-form passages below
-    // are `/about`'s own prose, they are asserted present there by the test
-    // above, and none of them may appear here.
-    //
-    // THE BUILDER CHAPTER IS GONE ENTIRELY, AND THE RULE GOT SIMPLER FOR IT.
-    // This test used to permit one section, `#builder`, and required its link
-    // out. The home page's word-count pass moved that chapter's three decisions
-    // to `/about` and deleted the rest as a second telling of a page one click
-    // away, so what is left here is the clause and the link - which is what this
-    // rule was protecting all along. The three decisions are asserted on
-    // `/about` by the test above.
-    await gotoRendered(page, '/')
+  test('the store story survives on the technical overview', async ({ page }) => {
+    // The retired home page's sections were REHOMED, not deleted. If this fails,
+    // the consolidation lost content rather than moving it.
+    await gotoRendered(page, '/technical?view=overview')
     const text = await bodyText(page)
-    for (const [what, pattern] of [
-      [
-        'the career essay',
-        /which reports get used and which get closed without reading/i,
-      ],
-      ['the retraining narrative', /computer science retraining/i],
-      ['the analytical philosophy essay', /analytical philosophy/i],
-      ['the floor decisions, now on /about', /three decisions that came from the floor/i],
-    ] as const) {
-      expect(text, `${what} is duplicated on the home page`).not.toMatch(pattern)
+    expect(text, 'the group context').toMatch(/Granite/i)
+    for (const store of GROUP_ROUTES.filter((route) =>
+      route.path.startsWith('/dealerships/')
+    )) {
+      expect(text, `${store.label} is missing from the group context`).toContain(
+        store.label
+      )
     }
-
-    // The permitted clause and the link out. Both stay: the claim is real
-    // credibility and burying it entirely would be over-correcting.
-    expect(text).toMatch(/more than 25 years in automotive retail/i)
-    await expect(page.getByRole('link', { name: 'About the author' })).toBeVisible()
-    await expect(page.locator('#builder')).toHaveCount(0)
   })
 })
 
-test.describe('the retired /dealerships path', () => {
-  test('redirects permanently to the home page', async ({ page }) => {
-    const response = await page.goto('/dealerships')
-    expect(response?.status()).toBe(200)
-    expect(new URL(page.url()).pathname).toBe('/')
-
-    // The status of the redirect itself, not only where it landed. A 302 here
-    // would keep search engines re-fetching a path that is never coming back.
-    const chain = response?.request().redirectedFrom()
-    expect(chain, '/dealerships did not redirect at all').toBeTruthy()
-    const redirectResponse = await chain?.response()
-    expect([301, 308]).toContain(redirectResponse?.status())
+test.describe('the two inventory surfaces are no longer ambiguous', () => {
+  test('the rail means the operating surface', async ({ page }) => {
+    await gotoRendered(page, '/')
+    const href = await page
+      .getByRole('navigation', { name: 'Operating' })
+      .first()
+      .getByRole('link', { name: 'Inventory', exact: true })
+      .getAttribute('href')
+    expect(href).toContain('/dashboard/inventory')
   })
 
-  test('does not take the store routes with it', async ({ page }) => {
-    // The whole reason the redirect is declared on the exact path. A prefix rule
-    // would send every deep link to the home page and silently break every
-    // bookmark into a store.
-    for (const route of PRIMARY_ROUTES.filter((entry) =>
-      entry.path.startsWith('/dealerships/')
-    )) {
-      const response = await page.goto(route.path)
-      expect(response?.status(), route.path).toBe(200)
-      expect(new URL(page.url()).pathname, route.path).toBe(route.path)
-    }
-  })
-
-  test('is absent from the sitemap, which lists the destination instead', async ({
-    request,
+  test('the reference explorer is labelled as listings and is not in the rail', async ({
+    page,
   }) => {
-    const xml = await (await request.get('/sitemap.xml')).text()
-    expect(xml).not.toContain('<loc>http://127.0.0.1:3210/dealerships</loc>')
-    expect(xml).toMatch(/<loc>[^<]*\/dealerships\/granite-chevrolet<\/loc>/)
+    await gotoRendered(page, '/')
+    await expect(
+      page
+        .getByRole('navigation', { name: 'Operating' })
+        .first()
+        .locator('a[href^="/inventory"]')
+    ).toHaveCount(0)
+
+    await gotoRendered(page, '/inventory')
+    const text = await bodyText(page)
+    expect(text).toMatch(/Listings, not sales results|sanitized public reference data/i)
   })
 })
 
 test.describe('breadcrumbs on a store page', () => {
-  test('name the group and resolve to the home page', async ({ page }) => {
+  test('name the group and resolve to the group context', async ({ page }) => {
     await gotoRendered(page, '/dealerships/granite-subaru')
     const crumbs = page.getByRole('navigation', { name: 'Breadcrumb' })
     await expect(crumbs).toBeVisible()
     const groupCrumb = crumbs.getByRole('link', { name: 'Granite Auto Group' })
-    await expect(groupCrumb).toHaveAttribute('href', '/')
+    await expect(groupCrumb).toHaveAttribute('href', '/technical?view=overview')
     // And the trail does not contain a link to the retired path.
     const hrefs = await crumbs
       .locator('a')
@@ -603,12 +850,11 @@ test.describe('breadcrumbs on a store page', () => {
     expect(hrefs).not.toContain('/dealerships')
   })
 
-  test('the store links on the home page reach each store', async ({ page }) => {
-    await gotoRendered(page, '/')
+  test('the store links on the technical overview reach each store', async ({ page }) => {
     for (const route of PRIMARY_ROUTES.filter((entry) =>
       entry.path.startsWith('/dealerships/')
     )) {
-      await gotoRendered(page, '/')
+      await gotoRendered(page, '/technical?view=overview')
       const link = page.locator(`main a[href="${route.path}"]`).first()
       await link.scrollIntoViewIfNeeded()
       await link.click()

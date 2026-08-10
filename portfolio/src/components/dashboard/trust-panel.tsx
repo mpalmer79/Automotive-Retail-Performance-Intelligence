@@ -30,7 +30,7 @@ import { Heading, Text } from '@/components/ui/typography'
 import type { ExportTrust, PowerBiTrust, TrustCheck } from '@/lib/dashboard/trust'
 import { GATE_2_STATEMENT } from '@/lib/dashboard/trust'
 import { formatIsoDate } from '@/lib/dashboard/format'
-import { ROUTES } from '@/lib/site'
+import { technicalHref } from '@/lib/technical'
 
 export function TrustPanel({
   exportState,
@@ -183,7 +183,7 @@ function PowerBiLane({ state }: { state: PowerBiTrust }) {
           renders exported SQL figures; it does not run DAX, does not validate the
           semantic model, and may not be cited as evidence toward Gate 2 or ADR-0008.{' '}
           <Link
-            href={ROUTES.status.href}
+            href={technicalHref('status')}
             className="underline decoration-dotted underline-offset-4 hover:text-accent"
           >
             The status page holds the full validation ledger.

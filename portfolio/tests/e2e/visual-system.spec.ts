@@ -18,6 +18,18 @@
  */
 import { expect, test } from '@playwright/test'
 
+/**
+ * The route these suites measure the SHELL on.
+ *
+ * It was `/`, which wore the site header and footer until `UX.1` made it the
+ * operating console — a different shell with a rail instead of a masthead and no
+ * footer at all. The design-system and visual-system contracts are about the
+ * reference domain's chrome, so they measure it where it is rendered. The
+ * operating shell has its own assertions in `dashboard.spec.ts` and
+ * `navigation.spec.ts`.
+ */
+const SHELL_ROUTE = '/technical'
+
 import { PRIMARY_ROUTES } from './routes'
 
 /** Parse `rgb()` / `rgba()` into channels plus alpha. */
@@ -47,7 +59,7 @@ test.describe('the shell is white and the field is blue', () => {
   })
 
   test('the footer is white and closes the field', async ({ page }) => {
-    await page.goto('/')
+    await page.goto(SHELL_ROUTE)
     const { r, g, b, a } = parseColour(
       await page.$eval('footer', (el) => getComputedStyle(el).backgroundColor)
     )
@@ -151,7 +163,7 @@ test.describe('the field motif stays out of the way', () => {
   test('is decorative: hidden from assistive technology and unclickable', async ({
     page,
   }) => {
-    await page.goto('/')
+    await page.goto(SHELL_ROUTE)
 
     const motif = page.locator('svg[role="presentation"]').first()
     await expect(motif).toHaveCount(1)
@@ -173,7 +185,7 @@ test.describe('the field motif stays out of the way', () => {
   test('is fixed and behind the content, so it can produce no layout shift', async ({
     page,
   }) => {
-    await page.goto('/')
+    await page.goto(SHELL_ROUTE)
     const style = await page
       .locator('[aria-hidden="true"]')
       .filter({ has: page.locator('svg[role="presentation"]') })
@@ -199,7 +211,7 @@ test.describe('the field motif stays out of the way', () => {
     for (const reducedMotion of ['no-preference', 'reduce'] as const) {
       const context = await browser.newContext({ reducedMotion })
       const page = await context.newPage()
-      await page.goto('/')
+      await page.goto(SHELL_ROUTE)
 
       const animated = await page.evaluate(() => {
         const container = document.querySelector(
@@ -252,7 +264,7 @@ test.describe('typography is bundled, never fetched', () => {
       if (response.url().includes('.woff2')) fonts.push(response.url())
     })
 
-    await page.goto('/', { waitUntil: 'networkidle' })
+    await page.goto(SHELL_ROUTE, { waitUntil: 'networkidle' })
 
     // Preloaded faces are requested on the first paint: the sans and the serif
     // display. The monospace is deliberately not preloaded.
@@ -280,7 +292,7 @@ test.describe('typography is bundled, never fetched', () => {
      * face resolves to a serif. That is the substance of the two-family pairing
      * the direction asks for.
      */
-    await page.goto('/')
+    await page.goto(SHELL_ROUTE)
 
     const headline = await page.$eval('h1', (el) => getComputedStyle(el).fontFamily)
     // The hero's supporting copy, by its text. NOT `page.$eval('p', ...)`: the
@@ -291,8 +303,14 @@ test.describe('typography is bundled, never fetched', () => {
     // Anchored on a phrase from the product hero. It used to anchor on "More than
     // 25 years of automotive retail experience", which was the hero's first line
     // until the home page stopped being about the author.
+    // The technical destination's own lede, by its text. NOT `page.$eval('p',
+    // ...)`: the first paragraph in the document is the eyebrow, which is
+    // deliberately monospace, so the generic selector was testing the wrong of the
+    // three faces. The sentence this used to locate belonged to the retired home
+    // page's store story and is a section of `?view=overview` now.
     const body = await page
-      .getByText('operate under different inventory realities', { exact: false })
+      .getByText('Nothing here queries a database at request time', { exact: false })
+      .first()
       .evaluate((el) => getComputedStyle(el).fontFamily)
 
     expect(headline, 'the headline and body share a family').not.toBe(body)

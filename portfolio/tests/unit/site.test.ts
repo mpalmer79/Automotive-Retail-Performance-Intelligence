@@ -26,9 +26,12 @@ import {
   GROUP_NAV,
   MAX_PRIMARY_NAV_ITEMS,
   NAVIGABLE_ROUTES,
+  OPERATING_NAV,
+  OPERATING_ROUTE_HREFS,
   PLANNED_DASHBOARD_SECTIONS,
-  PLATFORM_NAV,
   PRIMARY_NAV,
+  UTILITY_NAV,
+  isOperatingRoute,
   REPOSITORY_URL,
   ROUTES,
   SITE_URL,
@@ -87,71 +90,61 @@ describe('the route map is well-formed', () => {
   })
 })
 
-describe('the thirteen primary routes exist and the lab is not one of them', () => {
+describe('the fifteen primary routes exist and the lab is not one of them', () => {
   // Declaration order, which is also navigation order and footer order.
   const PRIMARY = [
+    // The operating application, in rail order.
     '/',
+    '/dashboard/sales-gross',
+    '/dashboard/deals',
+    '/dashboard/inventory',
+    '/dashboard/fi',
+    '/dashboard/leads-marketing',
+    '/dashboard/employees',
+    '/dashboard/accounting',
+    // The reference domain.
+    '/technical',
+    '/about',
+    '/inventory',
     '/dealerships/granite-chevrolet',
     '/dealerships/granite-subaru',
     '/dealerships/granite-pre-owned',
-    '/inventory',
-    '/architecture',
-    '/data-model',
-    '/inventory-operations',
-    '/kpis',
-    '/governance',
-    '/status',
-    '/about',
     '/case-study',
-    '/dashboard',
-    // The console's own sections, added by `DASH.3`. Indexed and real, but not
-    // header destinations: the header carries `Dashboard`, and `DashboardNav`
-    // carries what is inside it.
-    '/dashboard/sales-gross',
-    '/dashboard/deals',
-    // `DASH.7`. Real, indexed, and reached from the console bar rather than the header.
-    '/dashboard/fi',
-    '/dashboard/inventory',
-    '/dashboard/leads-marketing',
-    // `DASH.11`. The employee-performance surface, on the same terms as the others.
-    '/dashboard/employees',
-    '/dashboard/accounting',
   ]
 
-  /** Routes that exist and are indexed but are not navigation destinations. */
+  /**
+   * Routes that exist and are indexed but are reached from the body of another
+   * page rather than from a navigation surface.
+   *
+   * The seven operating sub-routes LEFT this list at `UX.1`. They are the rail
+   * now — eight peer destinations a manager chooses between — so declaring them
+   * unreachable from navigation would be false. What keeps the reference header
+   * inside its cap is that the rail is a different navigation on a different half
+   * of the site, not that the console's sections are hidden.
+   */
   const NOT_IN_NAV = [
     '/case-study',
     '/dealerships/granite-chevrolet',
     '/dealerships/granite-subaru',
     '/dealerships/granite-pre-owned',
-    // Reached from the console's own sub-navigation, not from the header. Putting
-    // them in `inPrimaryNav` would restate the console three times in the footer
-    // index and push the header past MAX_PRIMARY_NAV_ITEMS.
-    '/dashboard/sales-gross',
-    '/dashboard/deals',
-    '/dashboard/fi',
-    '/dashboard/inventory',
-    '/dashboard/leads-marketing',
-    '/dashboard/employees',
-    '/dashboard/accounting',
   ]
 
-  it('declares exactly the twenty-one primary routes plus the lab', () => {
+  it('declares exactly the fifteen primary routes plus the lab', () => {
     expect(ALL_ROUTES.map((route) => route.href).sort()).toEqual(
       [...PRIMARY, '/ui-lab'].sort()
     )
   })
 
-  it("keeps ten routes reachable from the site's own header navigation", () => {
+  it("keeps every non-store route reachable from the site's own navigation", () => {
     // The case study is deliberately absent: it is locked, and it is reached from
-    // the footer, the status page and the home page's closing section rather than
-    // from a navigation surface.
+    // the footer and the technical status view rather than from a navigation
+    // surface.
     //
     // The three store pages are absent for a different reason. They are reached
-    // from `<GroupNav>`, from the dealership cards and from the mobile drawer's
-    // expanded group, which is what keeps "Dealerships" one header item rather
-    // than four. `inPrimaryNav` governs the footer index and the test sweep, and
-    // a store page in either would restate the group page four times.
+    // from `<GroupNav>`, from the group context on the technical overview and from
+    // the mobile drawer's expanded group. `inPrimaryNav` governs the footer index
+    // and the test sweep, and a store page in either would restate the group four
+    // times.
     expect(NAVIGABLE_ROUTES.map((route) => route.href)).toEqual(
       PRIMARY.filter((href) => !NOT_IN_NAV.includes(href))
     )
@@ -172,8 +165,11 @@ describe('the thirteen primary routes exist and the lab is not one of them', () 
   })
 
   it('resolves a route by href, and only on an exact match', () => {
-    expect(routeByHref('/kpis')?.title).toBe('KPI catalogue')
-    expect(routeByHref('/kpis/')).toBeUndefined()
+    expect(routeByHref('/technical')?.title).toBe('How ARPI works')
+    expect(routeByHref('/technical/')).toBeUndefined()
+    // A retired route resolves to nothing here BY DESIGN: it is a redirect, and a
+    // route map that still knew about it would put it back in the sitemap.
+    expect(routeByHref('/kpis')).toBeUndefined()
     expect(routeByHref('/nope')).toBeUndefined()
   })
 })
@@ -223,36 +219,34 @@ describe('the primary navigation stays inside its budget', () => {
   /**
    * The ceiling is the design decision, not an implementation detail. Seven
    * top-level destinations of equal weight is a table of contents rather than
-   * navigation, and the whole point of grouping Architecture, Data Model and
-   * Governance under "Platform" was to get under it. A sixth item arriving
-   * without a decision is exactly what this stops.
+   * navigation.
+   *
+   * `UX.1` did not raise it; it stopped needing most of it. The header carried
+   * seven items covering both halves of the site at once, and the whole
+   * consolidation — six documentation routes into one technical destination, the
+   * console into a rail of its own — took it to three. The cap stays because the
+   * pressure that produced seven is still there.
    */
   it('offers no more than the agreed number of content destinations', () => {
     expect(PRIMARY_NAV.length).toBeLessThanOrEqual(MAX_PRIMARY_NAV_ITEMS)
   })
 
-  it('offers exactly the seven agreed destinations, in order', () => {
-    /*
-     * Seven, and the cap is seven. `DASH.2` spends the last slot on the console —
-     * ADR-0013 authorizes one new public destination and `INFORMATION_ARCHITECTURE.md`
-     * §1 says the header gains exactly that one; the other nine console routes live
-     * in `DASHBOARD_NAV` on the page. An eighth item now requires either a decision
-     * to raise the cap or a decision to group two existing destinations, which is
-     * what this assertion is for.
-     */
+  it('offers exactly the three agreed destinations, in order', () => {
     expect(PRIMARY_NAV.map((item) => item.label)).toEqual([
-      'Overview',
-      'Dashboard',
-      'Inventory',
-      'Platform',
-      'KPIs',
-      'Status',
+      'Executive',
+      'Technical',
       'About',
     ])
   })
 
-  it('spends the last slot deliberately, at the declared ceiling', () => {
-    expect(PRIMARY_NAV).toHaveLength(MAX_PRIMARY_NAV_ITEMS)
+  it('leaves the cap unspent rather than filling it', () => {
+    // The opposite assertion from the one this replaced, and deliberately so. The
+    // previous header sat exactly at the ceiling, so every new destination was a
+    // decision to raise it or to group two existing ones. Three items is room a
+    // later increment can spend on purpose — `DASH.12` adds an operating
+    // destination, not a header one — and an assertion that the header is FULL
+    // would now be enforcing a shape the site no longer has.
+    expect(PRIMARY_NAV.length).toBeLessThan(MAX_PRIMARY_NAV_ITEMS)
   })
 
   it('never lists two header items pointing at the same document', () => {
@@ -269,7 +263,7 @@ describe('the primary navigation stays inside its budget', () => {
     // That is the state this prevents.
     const hrefs = GROUP_NAV.map((item) => item.href)
     for (const href of [
-      ROUTES.home.href,
+      `${ROUTES.technical.href}?view=overview`,
       ROUTES.graniteChevrolet.href,
       ROUTES.graniteSubaru.href,
       ROUTES.granitePreOwned.href,
@@ -291,7 +285,11 @@ describe('the primary navigation stays inside its budget', () => {
   })
 
   it('points every navigation item and every match at a real route', () => {
-    for (const item of [...PRIMARY_NAV, ...PLATFORM_NAV, ...GROUP_NAV]) {
+    // `GROUP_NAV` is deliberately excluded from the href check: its first
+    // entry is a technical VIEW state, `/technical?view=overview`, which is
+    // one route at one of its states and so has no entry of its own in the
+    // route map. Its `matches` still resolves, and is checked below.
+    for (const item of [...PRIMARY_NAV, ...OPERATING_NAV, ...UTILITY_NAV]) {
       expect(routeByHref(item.href), item.href).toBeDefined()
       for (const match of item.matches) {
         expect(routeByHref(match), `${item.label} matches ${match}`).toBeDefined()
@@ -300,53 +298,68 @@ describe('the primary navigation stays inside its budget', () => {
   })
 
   it('gives every navigation item a purpose line for the mobile drawer', () => {
-    for (const item of [...PRIMARY_NAV, ...PLATFORM_NAV, ...GROUP_NAV]) {
+    for (const item of [...PRIMARY_NAV, ...OPERATING_NAV, ...UTILITY_NAV, ...GROUP_NAV]) {
       expect(item.purpose.length, item.label).toBeGreaterThan(20)
     }
   })
 
   it('marks exactly one item current for every navigable route', () => {
+    /*
+     * TWO NAVIGATIONS, AND EACH ANSWERS FOR ITS OWN HALF.
+     *
+     * Before `UX.1` one header covered every navigable route, so one list could be
+     * asserted against all of them. The site has two navigations now, on two
+     * disjoint sets of routes, and the invariant is per navigation: exactly one
+     * current item on a route the navigation serves, and none on a route it does
+     * not — which is what stops the reference header lighting up "Executive" while
+     * a reader is three clicks into the governance view.
+     */
+    const NAVIGATIONS = [
+      ['operating rail', OPERATING_NAV],
+      ['reference header', PRIMARY_NAV],
+      ['group sub-navigation', GROUP_NAV],
+    ] as const
+
     for (const route of NAVIGABLE_ROUTES) {
-      const current = PRIMARY_NAV.filter((item) => isNavItemCurrent(item, route.href))
-      expect(
-        current,
-        `${route.href} matches ${String(current.length)} items`
-      ).toHaveLength(1)
+      let marking = 0
+      for (const [name, navigation] of NAVIGATIONS) {
+        const current = navigation.filter((item) => isNavItemCurrent(item, route.href))
+        // Never twice inside ONE navigation: that is a navigation disagreeing with
+        // itself about where the reader is.
+        expect(
+          current.length,
+          `${route.href} matches ${String(current.length)} items in the ${name}`
+        ).toBeLessThanOrEqual(1)
+        marking += current.length
+      }
+      // And at least one navigation knows where the reader is.
+      expect(marking, `${route.href} is current in no navigation`).toBeGreaterThan(0)
     }
   })
 
-  it('marks Platform current on all three of its pages, and nowhere else', () => {
-    const platform = PRIMARY_NAV.find((item) => item.label === 'Platform')
-    expect(platform).toBeDefined()
-    for (const href of ['/architecture', '/data-model', '/governance']) {
-      expect(isNavItemCurrent(platform!, href), href).toBe(true)
-    }
-    for (const href of [
-      '/',
-      '/kpis',
-      '/status',
-      '/about',
-      '/case-study',
-      '/dealerships',
-      '/inventory',
-    ]) {
-      expect(isNavItemCurrent(platform!, href), href).toBe(false)
+  it('lights no reference item on an operating route beyond the way back', () => {
+    // "Executive" is current on `/` in both navigations, and correctly: it is the
+    // way back into the application AND the application's first destination. On
+    // the other seven operating routes the reference header must be silent.
+    for (const item of OPERATING_NAV.filter((entry) => entry.href !== '/')) {
+      const current = PRIMARY_NAV.filter((entry) => isNavItemCurrent(entry, item.href))
+      expect(current, `${item.href} lights the reference header`).toHaveLength(0)
     }
   })
 
   it('matches on an exact pathname, never on a prefix', () => {
-    const status = PRIMARY_NAV.find((item) => item.label === 'Status')!
+    const technical = PRIMARY_NAV.find((item) => item.label === 'Technical')!
     // A prefix rule would light this up for a route that does not exist yet, and
     // that class of defect only appears once the route is added.
-    expect(isNavItemCurrent(status, '/status-report')).toBe(false)
-    expect(isNavItemCurrent(status, '/status')).toBe(true)
+    expect(isNavItemCurrent(technical, '/technical-report')).toBe(false)
+    expect(isNavItemCurrent(technical, '/technical')).toBe(true)
   })
 })
 
 describe('the group sub-navigation is what makes the Dealerships grouping honest', () => {
   it('links the group page, all three stores and the explorer, in that order', () => {
     expect(GROUP_NAV.map((item) => item.href)).toEqual([
-      ROUTES.home.href,
+      `${ROUTES.technical.href}?view=overview`,
       ROUTES.graniteChevrolet.href,
       ROUTES.graniteSubaru.href,
       ROUTES.granitePreOwned.href,
@@ -355,8 +368,11 @@ describe('the group sub-navigation is what makes the Dealerships grouping honest
   })
 
   it('keeps every one of them indexable and in the sitemap', () => {
+    // The first entry is a technical VIEW state rather than a route of its own, so
+    // it is checked against the route it is a state of.
     for (const item of GROUP_NAV) {
-      expect(routeByHref(item.href)?.indexable, item.href).toBe(true)
+      const href = item.href.split('?')[0] ?? item.href
+      expect(routeByHref(href)?.indexable, item.href).toBe(true)
     }
   })
 
@@ -366,27 +382,61 @@ describe('the group sub-navigation is what makes the Dealerships grouping honest
   })
 })
 
-describe('the platform sub-navigation is what makes the grouping honest', () => {
-  it('links exactly the four pages Platform covers', () => {
-    expect(PLATFORM_NAV.map((item) => item.href)).toEqual([
-      ROUTES.architecture.href,
-      ROUTES.dataModel.href,
-      ROUTES.inventoryOperations.href,
-      ROUTES.governance.href,
+describe('the operating rail is the definition of the operating application', () => {
+  it('carries the eight built destinations, in working order', () => {
+    expect(OPERATING_NAV.map((item) => item.label)).toEqual([
+      'Executive',
+      'Sales & Gross',
+      'Deals',
+      'Inventory',
+      'F&I',
+      'Leads & Marketing',
+      'Employees',
+      'Accounting',
     ])
   })
 
-  it('covers exactly what the Platform item claims to match', () => {
-    const platform = PRIMARY_NAV.find((item) => item.label === 'Platform')!
-    expect([...platform.matches].sort()).toEqual(
-      PLATFORM_NAV.map((item) => item.href).sort()
+  it('points every rail item at a route that exists and is indexable', () => {
+    for (const item of OPERATING_NAV) {
+      expect(routeByHref(item.href)?.indexable, item.href).toBe(true)
+    }
+  })
+
+  it('offers no link to a section that is not built', () => {
+    // `DASH.12` is named as text and never as a destination. A navigation item
+    // for an unbuilt route is a promise, and this is the assertion that stops one
+    // arriving before the increment does.
+    const planned = PLANNED_DASHBOARD_SECTIONS.map((section) => section.label)
+    expect(planned).toContain('Management actions')
+    for (const href of OPERATING_ROUTE_HREFS) {
+      expect(href).not.toBe('/dashboard/actions')
+    }
+  })
+
+  it('treats a Deal Jacket as inside the application and the reference domain as outside', () => {
+    expect(isOperatingRoute('/')).toBe(true)
+    expect(isOperatingRoute('/dashboard/deals')).toBe(true)
+    expect(isOperatingRoute('/dashboard/deals/SLE-00000646')).toBe(true)
+    expect(isOperatingRoute('/technical')).toBe(false)
+    expect(isOperatingRoute('/inventory')).toBe(false)
+    expect(isOperatingRoute('/about')).toBe(false)
+  })
+})
+
+describe('the reference header is three items and one of them leaves', () => {
+  it('opens with a link back into the operating application', () => {
+    expect(PRIMARY_NAV[0]?.href).toBe(ROUTES.home.href)
+    expect(PRIMARY_NAV[0]?.label).toBe('Executive')
+  })
+
+  it('carries the two utility destinations after it', () => {
+    expect(PRIMARY_NAV.slice(1).map((item) => item.href)).toEqual(
+      UTILITY_NAV.map((item) => item.href)
     )
   })
 
-  it('keeps every one of them indexable and in the sitemap', () => {
-    // Grouping three destinations under one navigation item must not remove any
-    // of them from a search index. The grouping is a navigation decision.
-    for (const item of PLATFORM_NAV) {
+  it('keeps both utility destinations indexable', () => {
+    for (const item of UTILITY_NAV) {
       expect(routeByHref(item.href)?.indexable, item.href).toBe(true)
     }
   })
@@ -501,9 +551,9 @@ describe('page metadata', () => {
   })
 
   it('lets a route override a field without losing the rest', () => {
-    const metadata = pageMetadata('kpis', { title: 'Overridden' })
+    const metadata = pageMetadata('technical', { title: 'Overridden' })
     expect(metadata.title).toBe('Overridden')
-    expect(metadata.description).toBe(ROUTES.kpis.description)
+    expect(metadata.description).toBe(ROUTES.technical.description)
   })
 })
 

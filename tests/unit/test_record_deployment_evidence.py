@@ -26,7 +26,10 @@ from record_deployment_evidence import (  # noqa: E402  (path set above)
     REQUIRED_CHECKS,
     UNVERIFIED,
     check_results,
+    host_answered,
     read_playwright_report,
+    same_commit,
+    write_status,
 )
 
 
@@ -218,6 +221,122 @@ def test_markup_without_a_commit_link_yields_no_match() -> None:
 # --------------------------------------------------------------------------------------
 # The workflow that runs it
 # --------------------------------------------------------------------------------------
+
+
+# --------------------------------------------------------------------------------------
+# The run has to be about the artefact the deployment is serving
+# --------------------------------------------------------------------------------------
+
+FULL = "b90e3244a9b0db2f9ee1ccfc9f6d85e93959e806"
+
+
+def test_a_full_hash_matches_itself() -> None:
+    assert same_commit(FULL, FULL) is True
+
+
+def test_an_abbreviation_is_the_commit_it_abbreviates() -> None:
+    """The footer may carry a short SHA. That is the same commit, not another one."""
+    assert same_commit(FULL[:8], FULL) is True
+    assert same_commit(FULL, FULL[:8]) is True
+
+
+def test_a_different_commit_does_not_match() -> None:
+    assert same_commit("f5a1eac61ef1e358473151bd32ad4418e818c22c", FULL) is False
+
+
+def test_not_knowing_is_not_a_match() -> None:
+    """UNVERIFIED and an absent value both answer no.
+
+    A missing comparison must never resolve to "same commit", because that is the
+    answer that lets a run be recorded as evidence about a tree it never touched.
+    """
+    assert same_commit(UNVERIFIED, FULL) is False
+    assert same_commit(FULL, UNVERIFIED) is False
+    assert same_commit("", FULL) is False
+    assert same_commit(FULL, "") is False
+
+
+def test_an_abbreviation_too_short_to_identify_a_commit_does_not_match() -> None:
+    """Six characters is not an identity; unrelated commits collide there."""
+    assert same_commit(FULL[:6], FULL) is False
+
+
+def test_the_comparison_is_case_insensitive_and_ignores_surrounding_space() -> None:
+    assert same_commit(f"  {FULL.upper()}  ", FULL) is True
+
+
+def test_a_silent_homepage_is_a_dead_host_whichever_commit_is_deployed() -> None:
+    assert host_answered(homepage_ok=False, healthy=True, about_this_tree=True) is False
+    assert host_answered(homepage_ok=False, healthy=True, about_this_tree=False) is False
+
+
+def test_both_probes_must_answer_when_the_deployment_is_this_build() -> None:
+    assert host_answered(homepage_ok=True, healthy=True, about_this_tree=True) is True
+    assert host_answered(homepage_ok=True, healthy=False, about_this_tree=True) is False
+
+
+def test_the_health_path_is_not_asked_of_a_build_that_never_had_it() -> None:
+    """The health path is declared by this tree, so it is artefact-dependent.
+
+    `UX.1` moved it from `/status` to `/technical`. Probing `/technical` against a
+    deployment running the commit before that asks the old build for a route it
+    never had, and answering "the deployment is down" would be false.
+    """
+    assert host_answered(homepage_ok=True, healthy=False, about_this_tree=False) is True
+
+
+def test_the_status_file_states_both_booleans(tmp_path: Path) -> None:
+    path = tmp_path / "out"
+    write_status(path, admissible=False, verified=False)
+    assert path.read_text(encoding="utf-8") == "admissible=false\nverified=false\n"
+
+
+def test_the_status_file_is_appended_to_rather_than_replaced(tmp_path: Path) -> None:
+    """It is pointed at `$GITHUB_OUTPUT`, which may already hold a caller's keys."""
+    path = tmp_path / "out"
+    path.write_text("existing=value\n", encoding="utf-8")
+    write_status(path, admissible=True, verified=True)
+    assert path.read_text(encoding="utf-8") == ("existing=value\nadmissible=true\nverified=true\n")
+
+
+def test_the_workflow_fails_on_a_red_suite_only_when_the_run_was_admissible() -> None:
+    """The last gate is the one that kept failing branches for the deployed build.
+
+    `Fail if the suite did not pass` fired on the suite's outcome alone, so a branch
+    whose assertions were written for a build the deployment is not serving was
+    failed for the deployed build's behaviour. It must ask the recorder first.
+    """
+    workflow = (REPO_ROOT / ".github" / "workflows" / "verify-deployment.yml").read_text(
+        encoding="utf-8"
+    )
+    assert "--status-file" in workflow
+    assert "steps.record.outputs.admissible == 'true'" in workflow, (
+        "the red-suite gate must be conditioned on the recorder's own admissibility "
+        "verdict, not on the suite outcome alone"
+    )
+
+
+def test_the_admissibility_comparison_lives_in_one_place() -> None:
+    """The workflow must not re-derive it; two implementations could disagree."""
+    workflow = (REPO_ROOT / ".github" / "workflows" / "verify-deployment.yml").read_text(
+        encoding="utf-8"
+    )
+    condition_lines = [line for line in workflow.splitlines() if line.strip().startswith("if:")]
+    assert not any("deployed_commit" in line or "curl" in line for line in condition_lines)
+
+
+def test_the_workflow_names_the_commit_the_suite_was_read_from() -> None:
+    """Without it the recorder compares nothing and a pull request cannot pass.
+
+    The deployment serves whatever was last deployed, so on a pull request it is
+    never this branch. A branch that changes the routes the remote suite targets
+    would otherwise have the deployed build's behaviour recorded as its own failure.
+    """
+    workflow = (REPO_ROOT / ".github" / "workflows" / "verify-deployment.yml").read_text(
+        encoding="utf-8"
+    )
+    assert "--expect-commit" in workflow
+    assert "github.event.pull_request.head.sha" in workflow
 
 
 def test_the_verification_workflow_uses_no_secret() -> None:

@@ -113,11 +113,23 @@ jobs:
       # Every field this writes comes from a response or from the JSON report
       # above. A field it could not obtain keeps UNVERIFIED; nothing is inferred
       # from the suite's overall verdict.
+      #
+      # `--expect-commit` is the commit the suite was read from. The deployment
+      # serves whichever commit was last deployed, which on a pull request is
+      # never this one -- so a pull request that changes the routes the suite
+      # targets would otherwise report the deployed build's behaviour as this
+      # branch's failure. Named here, the recorder reports such a run and records
+      # nothing, and still fails the job if the host does not answer at all.
       - name: Record what the run observed
+        id: record
+        env:
+          ARPI_TREE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           python scripts/record_deployment_evidence.py \
             --base-url "${ARPI_REMOTE_BASE_URL}" \
             --report portfolio/remote-report.json \
+            --expect-commit "${ARPI_TREE_COMMIT}" \
+            --status-file "${GITHUB_OUTPUT}" \
             --run-url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
 
       # Printed between markers so the recorded evidence can be read straight
@@ -143,9 +155,27 @@ jobs:
       # The recorder already failed the job on an incomplete verification. This
       # step makes a red SUITE fail it too, so a deployment that regressed cannot
       # be recorded as verified merely because the recorder wrote a file.
+      #
+      # Gated on `admissible`, which the recorder emitted above. A red suite is a
+      # verdict only when the deployment was serving the commit the suite was read
+      # from; otherwise the assertions were written for a build that is not out
+      # there, and the recorder has already said so and written nothing. The
+      # comparison is not repeated here -- a second implementation of it could
+      # disagree with the recorder, and then the job's verdict and the register's
+      # would part company.
       - name: Fail if the suite did not pass
-        if: steps.remote.outcome != 'success'
+        if: steps.remote.outcome != 'success' && steps.record.outputs.admissible == 'true'
         run: |
-          echo "The remote suite did not pass. The evidence file records the real"
-          echo "result; do not edit it by hand to make this green."
+          echo "The remote suite did not pass against the commit it was read from."
+          echo "The evidence file records the real result; do not edit it by hand"
+          echo "to make this green."
           exit 1
+
+      # Said out loud rather than left as a silently skipped step, because a run
+      # that verified nothing must not read like a run that verified everything.
+      - name: Report a run that could not be about this tree
+        if: steps.record.outputs.admissible != 'true'
+        run: |
+          echo "This run did not verify this commit: the deployment is serving a"
+          echo "different one. Nothing was recorded, and the suite's route-level"
+          echo "results describe the deployed build rather than this branch."

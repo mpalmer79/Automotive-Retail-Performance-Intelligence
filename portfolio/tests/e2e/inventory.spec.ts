@@ -29,7 +29,20 @@ const DEALERSHIP_PATHS = STORES.map((store) => store.href)
  * `/dealerships` path is absent on purpose: it is a permanent redirect, and
  * `navigation.spec.ts` asserts it as one rather than sweeping it as a page.
  */
-const ALL_INVENTORY_PATHS = ['/', ...DEALERSHIP_PATHS, '/inventory']
+/*
+ * Every route that renders a sanitized reference listing figure.
+ *
+ * `/` LEFT THE LIST AT `UX.1` and `/technical?view=overview` took its place: the
+ * root is the operating console, which renders synthetic warehouse figures and
+ * carries the demo statement rather than the reference-data provenance. The
+ * provenance obligation travelled with the content, which is what this list is
+ * for.
+ */
+const ALL_INVENTORY_PATHS = [
+  '/technical?view=overview',
+  ...DEALERSHIP_PATHS,
+  '/inventory',
+]
 
 /** Digits only, so a comparison is not defeated by a thousands separator. */
 function digitsOf(value: number): string {
@@ -40,41 +53,46 @@ function digitsOf(value: number): string {
 /* The home page introduces the group                                         */
 /* -------------------------------------------------------------------------- */
 
-test.describe('the home page introduces Granite Auto Group', () => {
+/**
+ * `UX.1` MOVED THE GROUP INTRODUCTION, NOT THE OBLIGATION.
+ *
+ * The store story, the group snapshot and the three store cards were the home
+ * page; the home page is the operating console now and they are the technical
+ * destination's overview. Every assertion below is unchanged apart from where it
+ * looks, which is the point of rehoming content rather than deleting it.
+ */
+const GROUP_CONTEXT = '/technical?view=overview'
+
+test.describe('the group context introduces Granite Auto Group', () => {
   test('leads with the group, not with the author', async ({ page }) => {
-    await gotoRendered(page, '/')
-    // The h1 is the product proposition. The author headline it replaced is now
-    // the h1 of `/about`, and `no-author-first-homepage` below asserts it is not
-    // also here.
-    await expect(page.getByRole('heading', { level: 1 })).toContainText(
-      'Three dealerships. Three operating models. One governed reporting layer.'
-    )
+    await gotoRendered(page, GROUP_CONTEXT)
+    // The `h1` names the destination; the group is introduced by its own section
+    // heading below it. `UX.1` retired the hero whose headline used to be the
+    // page's proposition, and the proposition it carried — three stores, one
+    // governed layer — is the section this test asserts.
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('How ARPI works')
     await expect(
       page.getByRole('heading', { name: 'One group, three businesses' })
     ).toBeVisible()
   })
 
-  test('names the group above the fold', async ({ page }) => {
+  test('names the group and each store in the group context', async ({ page }) => {
+    // Not "above the fold": the group context is a section of the technical
+    // destination now rather than the first screen of a landing page, and
+    // requiring it in the first 900 px would be requiring the destination to open
+    // with it. What the rule protects is that the group and all three stores are
+    // named on the page a reader is sent to for them.
     await page.setViewportSize({ width: 1440, height: 900 })
-    await gotoRendered(page, '/')
-    const aboveFold = await page.evaluate(() => {
-      const texts: string[] = []
-      for (const element of document.querySelectorAll('main p, main h1, main span')) {
-        const box = element.getBoundingClientRect()
-        if (box.top < window.innerHeight && box.bottom > 0) {
-          texts.push(element.textContent ?? '')
-        }
-      }
-      return texts.join(' ')
-    })
-    expect(aboveFold).toContain('Granite Auto Group')
+    await gotoRendered(page, GROUP_CONTEXT)
+    const text = await mainText(page)
+    expect(text).toContain('Granite Auto Group')
     for (const store of STORES) {
-      expect(aboveFold, `${store.id} is not named above the fold`).toContain(store.name)
+      expect(text, `${store.id} is not named in the group context`).toContain(store.name)
     }
   })
 
   test('names all three stores and links each one', async ({ page }) => {
-    await gotoRendered(page, '/')
+    await gotoRendered(page, GROUP_CONTEXT)
     await settle(page)
     for (const store of STORES) {
       await expect(
@@ -85,7 +103,7 @@ test.describe('the home page introduces Granite Auto Group', () => {
   })
 
   test('shows each store type, location and inventory count', async ({ page }) => {
-    await gotoRendered(page, '/')
+    await gotoRendered(page, GROUP_CONTEXT)
     const text = await mainText(page)
     for (const store of STORES) {
       expect(text, `${store.id} type`).toContain(store.storeTypeLabel)
@@ -100,7 +118,7 @@ test.describe('the home page introduces Granite Auto Group', () => {
   })
 
   test('shows the primary brands each store carries', async ({ page }) => {
-    await gotoRendered(page, '/')
+    await gotoRendered(page, GROUP_CONTEXT)
     const text = await mainText(page)
     for (const store of STORES) {
       const leadBrand = store.inventory.topMakes[0]?.make
@@ -110,19 +128,23 @@ test.describe('the home page introduces Granite Auto Group', () => {
   })
 
   test('shows the group snapshot, derived not authored', async ({ page }) => {
-    await gotoRendered(page, '/')
+    await gotoRendered(page, GROUP_CONTEXT)
     const text = await mainText(page)
+    // The GROUP totals for new and pre-owned were the retired hero's, which
+    // carried a working inventory surface above the store story. The snapshot
+    // itself, its record count, its date and the per-store split all survived the
+    // move — asserted here at the grain the page actually prints them.
     expect(text).toMatch(/Group inventory snapshot/i)
     expect(text).toContain(digitsOf(summary.totalRecords))
-    expect(text).toContain(digitsOf(summary.newRecords))
-    expect(text).toContain(digitsOf(summary.preOwnedRecords))
-    expect(text).toContain(digitsOf(summary.makeCount))
     expect(text).toMatch(/Median advertised price/i)
     expect(text).toMatch(/Snapshot date/i)
+    for (const entry of summary.byDealership) {
+      expect(text, entry.dealershipId).toContain(digitsOf(entry.total))
+    }
   })
 
   test('says the group is fictional in the same section', async ({ page }) => {
-    await gotoRendered(page, '/')
+    await gotoRendered(page, GROUP_CONTEXT)
     const text = await mainText(page)
     expect(text).toMatch(/fictional/i)
   })
@@ -133,18 +155,21 @@ test.describe('the home page introduces Granite Auto Group', () => {
 /* -------------------------------------------------------------------------- */
 
 test.describe('the group is reachable from the navigation', () => {
-  test('offers Overview and Inventory in the header, and no duplicate', async ({
+  test('offers Executive and Technical in the reference header, and no duplicate', async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1440, height: 900 })
-    await gotoRendered(page, '/')
+    await gotoRendered(page, GROUP_CONTEXT)
     const header = page.locator('header nav[aria-label="Primary"]')
-    await expect(header.getByRole('link', { name: 'Overview' })).toBeVisible()
-    await expect(header.getByRole('link', { name: 'Inventory' })).toBeVisible()
+    await expect(header.getByRole('link', { name: 'Executive' })).toBeVisible()
+    await expect(header.getByRole('link', { name: 'Technical' })).toBeVisible()
 
-    // There is no "Dealerships" item: the group overview IS "Overview", and a
-    // second entry pointing at the same document would be two names for one URL.
+    // There is no "Dealerships" item and no "Inventory" one: the group is reached
+    // from the technical overview and the listing explorer is "Reference
+    // listings", under Data sources. Two destinations called Inventory is exactly
+    // what `UX.1` removed.
     await expect(header.getByRole('link', { name: 'Dealerships' })).toHaveCount(0)
+    await expect(header.getByRole('link', { name: 'Inventory' })).toHaveCount(0)
     const hrefs = await header
       .locator('a')
       .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('href') ?? ''))
@@ -475,13 +500,13 @@ test.describe('every chart has a readable alternative', () => {
     await expect(page.locator('details[open] table').first()).toBeVisible()
   })
 
-  test('the home page offers a table for both of its group charts', async ({ page }) => {
-    await gotoRendered(page, '/')
+  test('the group context offers a table for both of its charts', async ({ page }) => {
+    await gotoRendered(page, GROUP_CONTEXT)
     await expect(page.getByText(/Read .* as a table/i)).toHaveCount(2)
   })
 
   test('a chart never carries a figure that is nowhere else', async ({ page }) => {
-    await gotoRendered(page, '/')
+    await gotoRendered(page, GROUP_CONTEXT)
     const text = await mainText(page)
     // The per-store totals the chart draws are also printed beside each bar and
     // again in the store comparison table.
