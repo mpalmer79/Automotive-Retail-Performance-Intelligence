@@ -70,13 +70,14 @@ test.describe('the page works with scripting disabled', () => {
     const text = await mainTextContent(page)
     for (const heading of [
       'What the finance office produced',
-      'Reserve against product, to the cent',
+      // `UX.2B` retitled the region to its module name. The identity it carries is the same.
+      'Reserve against product',
       'How the deliveries were funded',
       'What was sold, against what could have been',
       'What each category earned',
       'What came back, and when it posted',
       'The same measures, by desk, with their context',
-      'How to read this page, and what it cannot tell you',
+      'How to read this page',
     ]) {
       expect(text, `${heading} is missing without JavaScript`).toContain(heading)
     }
@@ -284,14 +285,22 @@ test.describe('the numbers on the page are the numbers in the export', () => {
   }) => {
     await gotoRendered(page, ROUTE)
     const penetration = page.locator('#penetration')
-    const text = (await penetration.innerText()).replace(/\s+/g, ' ')
-    // Numerator and denominator are their own COLUMNS, which is stronger than printing
-    // "227 of 558" in one cell: a reader can sum either side down the table.
-    expect(text).toMatch(/Deals with product/i)
-    expect(text).toMatch(/Eligible deals/i)
-    expect(text).toMatch(/\d+\.\d%/)
-    // And the denominator is described, not left as a bare integer.
-    expect(text).toMatch(/Eligible population/i)
+    const visible = (await penetration.innerText()).replace(/\s+/g, ' ')
+    /*
+     * `UX.2B` drew the rates as bars and put BOTH SIDES beside every one of them, as
+     * "37 of 92" — so the numerator and the denominator are now visible without opening
+     * anything, which is stronger than the two columns this asserted before. The columns
+     * themselves did not go away: they are in the figure's own table disclosure, in the
+     * document, which the second half of this test reads with `textContent`.
+     */
+    expect(visible).toMatch(/\d+ of \d+/)
+    expect(visible).toMatch(/\d+\.\d%/)
+    // The eligible population is named in words beside each bar, not left as an integer.
+    expect(visible).toMatch(/retail deliveries|lease deliveries/i)
+
+    const whole = ((await penetration.textContent()) ?? '').replace(/\s+/g, ' ')
+    expect(whole).toMatch(/Deals with product/i)
+    expect(whole).toMatch(/Eligible deals/i)
   })
 
   test('states the eligibility rule each category was measured under', async ({
@@ -304,12 +313,20 @@ test.describe('the numbers on the page are the numbers in the export', () => {
 
   test('labels the adjustment section as the adjustment-date basis', async ({ page }) => {
     await gotoRendered(page, ROUTE)
-    const text = (await page.locator('#adjustments').innerText()).replace(/\s+/g, ' ')
-    expect(text).toMatch(/grouped by the date each posted/i)
-    expect(text).toMatch(/posted in the selected period/i)
-    expect(text).toMatch(/period proxy/i)
+    const adjustments = page.locator('#adjustments')
+    const visible = (await adjustments.innerText()).replace(/\s+/g, ' ')
+    // The basis is on the figure itself now, visible, rather than in a section lede.
+    expect(visible).toMatch(/grouped by the day they posted/i)
+    expect(visible).toMatch(/Adjustment-period basis/i)
+    expect(visible).toMatch(/not deal-date production/i)
+
+    // The exact event table and its disclosures moved into the module's own disclosure and
+    // are still in the document, unopened.
+    const whole = ((await adjustments.textContent()) ?? '').replace(/\s+/g, ' ')
+    expect(whole).toMatch(/posted in the selected period/i)
+    expect(whole).toMatch(/period proxy/i)
     // The rule stated in the one sentence that makes the basis unmistakable.
-    expect(text).toMatch(/is an August event here/i)
+    expect(whole).toMatch(/is an August event here/i)
   })
 
   test('shows the back-gross identity and states that it reconciled', async ({
@@ -331,7 +348,13 @@ test.describe('the numbers on the page are the numbers in the export', () => {
     if (/insufficient sample/i.test(text)) {
       expect(text).toMatch(/n\s*=\s*\d+/i)
     }
-    expect(text).toMatch(/minimum/i)
+    /*
+     * `UX.2B` removed the module note that carried the word "minimum" because the section
+     * body already stated the rule and the note repeated it. The assertion follows the
+     * claim rather than the word: the floor is named as a NUMBER of retail units and the
+     * page says the ratio is withheld, which is more specific than "minimum" was.
+     */
+    expect(text).toMatch(/Below \d+ retail units a ratio is withheld/i)
   })
 })
 

@@ -69,6 +69,12 @@ test.describe('the index shows the deal, not the customer', () => {
      * stronger than the scan was: no COLUMN names a customer attribute, and no CELL
      * holds a value shaped like a contact detail.
      */
+    /*
+     * ACROSS EVERY TABLE ON THE ROUTE, not just the index. `UX.2B` moved the unit,
+     * lead-source and attribution columns into a second table behind a disclosure, and a
+     * disclosure is exactly where a contact detail would leak unnoticed — so the scan got
+     * wider rather than narrower.
+     */
     const headers = await page
       .locator('main table thead th')
       .evaluateAll((nodes) => nodes.map((node) => (node.textContent ?? '').toLowerCase()))
@@ -90,7 +96,7 @@ test.describe('the index shows the deal, not the customer', () => {
       ).toBe(false)
     }
 
-    const body = (await page.locator('main table tbody').textContent()) ?? ''
+    const body = (await page.locator('main table tbody').allTextContents()).join(' ')
     // An email address, a telephone number, and a US-style postal address line.
     expect(body, 'an email-shaped value reached the deal index').not.toMatch(
       /[\w.]+@[\w.]+\.[a-z]{2,}/i
@@ -175,6 +181,21 @@ test.describe('pagination', () => {
     await page.waitForURL(/page=2/)
     expect(await mainText(page)).toMatch(/Showing 26 to 50/)
     await page.locator('a[rel="prev"]').click()
+    /*
+     * WAIT FOR THE NAVIGATION BEFORE READING THE PAGE.
+     *
+     * The forward click waited; the back one did not, so the assertion below could read
+     * page two's document before page one's arrived and fail with the position sentence it
+     * had just asserted. That race has always been in this test and it started firing under
+     * `UX.2B`, for a reason that is about timing rather than correctness: the route carries
+     * a population summary now, `mainText` scrolls the whole document to settle it, and the
+     * previous-page link is that much further down — so the click lands later and the read
+     * lands closer to the navigation.
+     *
+     * Page one is the default state, so `listStateQuery` omits `page` entirely rather than
+     * writing `page=1`. The condition is therefore "no longer page two".
+     */
+    await page.waitForURL((url) => !url.search.includes('page=2'))
     expect(await mainText(page)).toMatch(/Showing 1 to 25/)
   })
 
@@ -257,8 +278,11 @@ test.describe('the drill-through goes somewhere real', () => {
    */
   test('links every deal id at its own jacket', async ({ page }) => {
     await gotoRendered(page, ROUTE)
+    // Scoped to the index table: `UX.2B`'s attribution disclosure links the same deal ids
+    // a second time, deliberately, so an unscoped locator counts each row twice.
     const hrefs = await page
-      .locator('main tbody th a')
+      .getByRole('table', { name: /Finalized transactions/i })
+      .locator('tbody th a')
       .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('href') ?? ''))
     expect(hrefs.length).toBe(25)
     for (const href of hrefs) {
@@ -270,7 +294,10 @@ test.describe('the drill-through goes somewhere real', () => {
 
   test('the first row link resolves to that deal jacket', async ({ page }) => {
     await gotoRendered(page, ROUTE)
-    const first = page.locator('main tbody th a').first()
+    const first = page
+      .getByRole('table', { name: /Finalized transactions/i })
+      .locator('tbody th a')
+      .first()
     const saleId = ((await first.textContent()) ?? '').trim()
     await first.click()
     await page.waitForURL(`**/dashboard/deals/${saleId}`)

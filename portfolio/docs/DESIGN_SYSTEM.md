@@ -675,6 +675,79 @@ question, sitting beside three others on the same screen.
   pass none. A note describing what a module contains is describing what its title and its labels
   already say, and six of those on one screen is what made this route read as a document.
 
+### 6.0e `UX.2B`: the library question asked a third time, against a scatter
+
+`UX.2B` §44 required the decision to be re-made once more, and named the case that makes it a real
+question rather than a formality: **an inventory scatter of days in stock against price to market**,
+one mark per unit, sized by capital and coloured by age band. A share, a length and a nesting are one
+division each; a scatter is the first form on this console that needs two continuous positions at
+once, and §6.0c named exactly that class as the point at which hand-building stops being cheaper.
+
+It was measured against the criterion §6.0c wrote down, and it does not reach it:
+
+| The condition §6.0c set                         | What the scatter actually needs                                                                                                                                                                                                                                                                             |
+| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| a **continuous scale**                          | two linear min–max normalisations, one per axis. Four lines. No log, no time, no band, no nice-number rounding.                                                                                                                                                                                             |
+| an **axis with computed ticks**                 | none. The axes carry a DIRECTION (`Older ↑`, `Higher price to market →`) and one reference rule at parity with the estimate, which is a defined point rather than a tick. Quadrant and threshold labelling is forbidden by §29, so a tick generator would be building something the increment may not draw. |
+| a **layout algorithm** (force, treemap, sankey) | none. A mark's position is its two values; nothing is packed, nested or routed.                                                                                                                                                                                                                             |
+
+So the scatter is positioned marks in a relatively-positioned box, and the outcome is unchanged for
+the third time. The measured client-JavaScript delta across all five `UX.2B` routes is **zero bytes**.
+
+**The condition stands, unchanged, for `UX.2C` and `UX.2D`.** The first primitive that genuinely needs
+a computed tick scale, a time axis or a layout algorithm is the point at which this is re-opened —
+and an increment that reaches it should measure the four options rather than reuse §6.0c's published
+sizes.
+
+#### The `UX.2B` primitives
+
+Two primitives MOVED rather than arrived. `components/dashboard/exec-visuals.tsx` said in its own
+docstring that its three forms would move if a second route ever rendered them; four now do, so
+`MetricSwitch` and the grouped comparison are in `components/dashboard/workspace-visuals.tsx` under a
+stated membership rule — _rendered by two or more operating routes, and needed by the workspace layout
+rather than by one page's subject_. `FunnelChart` is still rendered by one route and stayed.
+`exec-grid.tsx` became `workspace-grid.tsx` in the same pass, for the same reason: five more routes
+lay out with it, and a file named after one of them was a false statement.
+
+| Primitive              | Where                     | What it encodes                                                                              | Alternate composition                                      |
+| ---------------------- | ------------------------- | -------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `GroupedMeasureBars`   | `workspace-visuals.tsx`   | several governed measures across a set of identities, each measure scaled to its own maximum | a real `<table>` behind a disclosure                       |
+| `StoreMeasureBars`     | `workspace-visuals.tsx`   | the store-scoped call of the above, supplying `storeMarkClass`                               | as above                                                   |
+| `FrontEconomicsLadder` | `deal-headline.tsx`       | one deal's sale price and the three costs taken out of it, each as a share of the price      | the exact `<dl>` in the verification disclosure beside it  |
+| `BackEndComposition`   | `deal-headline.tsx`       | one deal's finance reserve against its original product gross                                | the exact reconciliation table in its own disclosure       |
+| `AgePriceMap`          | `inventory-workspace.tsx` | days in stock against price to market, sized by investment, coloured by exported age band    | the route's own unit table, linked                         |
+| `StructureComposition` | `fi-workspace.tsx`        | retail deliveries by finance structure, as one part-to-whole bar                             | a real `<table>` behind a disclosure, with the denominator |
+| `PenetrationBars`      | `fi-workspace.tsx`        | attached distinct deals over eligible deals, per category, against full eligibility          | a real `<table>` behind a disclosure                       |
+| `AdjustmentBars`       | `fi-workspace.tsx`        | signed adjustment amounts by event type, on the adjustment-period basis                      | the exact event table in its own disclosure                |
+
+Five rules bind them beyond §6.0a and §6.0c:
+
+**A ladder is not a waterfall, and the difference is the question.** A waterfall's steps float between
+two anchors and are read as contributions to a CHANGE — which is what the gross-change bridge is, and
+the right form there. The deal's front gross is not a change: it is one price with three costs taken
+out of it, so every deduction is a slice of the same starting amount and the ladder draws it against
+the full track. Using a waterfall would have implied a period-over-period movement that does not exist.
+
+**A proportion is drawn against its ceiling, never against the largest observation.** Every penetration
+bar runs from zero to full eligibility. Scaling the set to its own maximum makes the best-attached
+category a full bar whatever it actually reached, which is the single most misleading thing a
+proportion chart can do, and the geometry suite fails if any bar reaches 100% in the fixture.
+
+**A mark's AREA carries the amount, not its diameter.** Mapping a value to the diameter draws a unit
+worth four times another one sixteen times as large. `AgePriceMap` maps investment to area and takes
+the square root for the diameter, with a floor so the smallest unit on the lot is still a visible mark.
+
+**A missing value is excluded from a plot and counted, never plotted at zero.** A unit the estimator
+declined to price has no price-to-market ratio, so it has no horizontal position. Placing it at the
+left edge of an axis it is not on would be the same false statement a zero-length bar makes.
+
+**Colour by sign is permitted where the sign IS the accounting.** `AdjustmentBars` colours an amount
+that reduced retained gross differently from one that restored it, under the same rule the bridge
+colours its steps: that is a fact about the ledger rather than a judgement about the business. The
+direction is also a word — _reduces retained gross_, _restores retained gross_ — because an arrow
+alone was not enough: a reinstatement carries a negative amount and an upward direction, and `↑ -$297`
+reads as a contradiction until the word is there.
+
 ### 6.1 Why there is no headless component library
 
 `radix-ui` was a dependency, and `ui/overlays.tsx` wrapped it as `Tooltip`, `Popover`,

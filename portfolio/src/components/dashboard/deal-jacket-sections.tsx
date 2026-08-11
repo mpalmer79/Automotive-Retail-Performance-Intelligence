@@ -31,6 +31,8 @@ import type {
 } from '@/lib/dashboard/deal-jacket'
 import { cx } from '@/lib/utils'
 
+import { BackEndComposition, FrontEconomicsLadder } from './deal-headline'
+
 /* -------------------------------------------------------------------------- */
 /* Building blocks                                                             */
 /* -------------------------------------------------------------------------- */
@@ -227,12 +229,30 @@ export function VehicleSection({ jacket }: { readonly jacket: DealJacket }) {
   )
 }
 
+/**
+ * The front-end economics: the shape first, the arithmetic behind a disclosure.
+ *
+ * `UX.2B` §24 asks for the verification to remain easy for a technical reviewer to inspect and
+ * to stop outranking the transaction. Both hold here. The exact `<dl>` in the formula's own
+ * order, the recomputation and the exclusions are all still in the document, in the
+ * accessibility tree's reading order, in a browser text search, in the printed page and with
+ * scripting off — `<details>` does not remove them, it collapses them.
+ *
+ * A FAILED VERIFICATION IS NEVER COLLAPSED. Where the components do not recompute the exported
+ * figure, that is a defect and it renders visibly, above the disclosure, with both amounts.
+ * A caveat a reader has to open is a caveat the page is hoping they will not read, and the
+ * whole reason this page recomputes rather than trusting a stored flag is so a disagreement
+ * is loud.
+ */
 export function FrontGrossSection({ jacket }: { readonly jacket: DealJacket }) {
   const { frontGross } = jacket
   return (
     <div className="flex flex-col gap-4">
-      <Calculation caption="Front-end gross calculation" lines={frontGross.lines} />
-      <VerificationLine verification={frontGross.verification} />
+      <FrontEconomicsLadder lines={frontGross.lines} />
+
+      {frontGross.verification.verified ? null : (
+        <VerificationLine verification={frontGross.verification} />
+      )}
 
       <dl className="grid gap-3 sm:grid-cols-3">
         {frontGross.discounts.map((discount) => (
@@ -249,21 +269,31 @@ export function FrontGrossSection({ jacket }: { readonly jacket: DealJacket }) {
         ))}
       </dl>
 
-      <Disclosure label="What this figure excludes, and why">
-        <Text size="xs" tone="muted">
-          Front-end gross is the ARPI definition of <code>KPI-GRS-001</code>: selling
-          price less what the unit cost to acquire, recondition and pack. Trade variance
-          is <strong>not</strong> part of it and is shown separately below, because
-          folding it in would change what the KPI means.
-        </Text>
-        <Text size="xs" tone="muted" className="pt-2">
-          Manufacturer holdback, dealer cash, stair-step money, floorplan credits and
-          unposted accounting adjustments are all excluded by the model. They arrive on a
-          different cadence than the deal and are not attributable to a single vehicle at
-          the time of sale, so including them would make this figure disagree with the
-          deal jacket a manager reads. ARPI does not model any of them, and nothing here
-          implies it does.
-        </Text>
+      <Disclosure label="Verify this calculation, and what the figure excludes">
+        <div className="flex flex-col gap-4">
+          <Calculation caption="Front-end gross calculation" lines={frontGross.lines} />
+          {/* THE VERIFICATION SENTENCE APPEARS EXACTLY ONCE. A failure is rendered above,
+              visibly; a pass is rendered here, beside the arithmetic it describes. Printing
+              it in both places put the same sentence on screen twice on a failing deal,
+              which reads as two defects. */}
+          {frontGross.verification.verified ? (
+            <VerificationLine verification={frontGross.verification} />
+          ) : null}
+          <Text size="xs" tone="muted">
+            Front-end gross is the ARPI definition of <code>KPI-GRS-001</code>: selling
+            price less what the unit cost to acquire, recondition and pack. Trade variance
+            is <strong>not</strong> part of it and is shown separately below, because
+            folding it in would change what the KPI means.
+          </Text>
+          <Text size="xs" tone="muted">
+            Manufacturer holdback, dealer cash, stair-step money, floorplan credits and
+            unposted accounting adjustments are all excluded by the model. They arrive on
+            a different cadence than the deal and are not attributable to a single vehicle
+            at the time of sale, so including them would make this figure disagree with
+            the deal jacket a manager reads. ARPI does not model any of them, and nothing
+            here implies it does.
+          </Text>
+        </div>
       </Disclosure>
     </div>
   )
@@ -585,90 +615,100 @@ export function BackGrossSectionBlock({ jacket }: { readonly jacket: DealJacket 
   const { backGross } = jacket
   return (
     <div className="flex flex-col gap-4">
-      <table className="w-full text-sm">
-        <caption className="sr-only">
-          Deal-date back-end gross, decomposed into finance reserve and product gross
-        </caption>
-        <tbody>
-          <tr className="border-b border-line-subtle">
-            <th scope="row" className="py-2 text-left font-normal">
-              Finance reserve
-            </th>
-            <td className="numeric py-2 text-right">{backGross.reserve}</td>
-          </tr>
-          <tr className="border-b border-line-subtle">
-            <th scope="row" className="py-2 text-left font-normal">
-              <span className="mr-1 text-ink-faint">+</span> Original product gross
-            </th>
-            <td className="numeric py-2 text-right">{backGross.originalProductGross}</td>
-          </tr>
-          <tr className="border-b border-line-subtle text-ink-muted">
-            <th scope="row" className="py-2 text-left font-normal">
-              <span className="mr-1 text-ink-faint">+</span> Other F&amp;I income
-            </th>
-            <td className="numeric py-2 text-right">{backGross.otherFiIncome}</td>
-          </tr>
-          <tr className="font-medium">
-            <th scope="row" className="py-2 text-left">
-              <span className="mr-1 text-ink-faint">=</span> Back-end gross
-            </th>
-            <td className="numeric py-2 text-right">{backGross.backEndGross}</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <div
-        className={cx(
-          'rounded border px-3 py-2 text-sm',
-          backGross.verified
-            ? 'border-line-subtle bg-surface text-ink-muted'
-            : 'border-warning bg-warning/10 text-ink'
-        )}
-      >
-        {backGross.verified ? (
-          <>
-            <strong className="font-medium text-ink">Reconciled to the cent.</strong>{' '}
-            Finance reserve plus original product gross equals this deal&rsquo;s back-end
-            gross exactly, with other F&amp;I income of $0.00 and no balancing figure.
-            Recomputed here from the components above.
-          </>
-        ) : (
-          <>
-            <strong className="font-medium">Back-end gross does not reconcile.</strong>{' '}
-            The components leave {backGross.residual} unexplained. The exported figures
-            are shown unchanged rather than adjusted to agree.
-          </>
-        )}
-      </div>
-
-      <table className="w-full text-sm">
-        <caption className="sr-only">
-          Produced and retained F&amp;I gross on this deal
-        </caption>
-        <tbody>
-          <tr className="border-b border-line-subtle text-ink-muted">
-            <th scope="row" className="py-2 text-left font-normal">
-              Cumulative product adjustments through {backGross.asOfDate}
-            </th>
-            <td className="numeric py-2 text-right">{backGross.cumulativeAdjustments}</td>
-          </tr>
-          <tr>
-            <th scope="row" className="py-2 text-left font-normal">
+      <BackEndComposition jacket={jacket}>
+        {/*
+          THE RETAINED CONTEXT SITS UNDER THE BAR AND CARRIES ITS OWN DATE. It is not a
+          segment of the composition and can never become one: the bar is the deal-date
+          identity, and retained gross answers what the store still has as of the export's
+          own as-of date. Two bases, two statements, and the date is on the statement rather
+          than in a paragraph a reader has to remember.
+        */}
+        <dl className="flex flex-wrap gap-x-8 gap-y-3 border-t border-line-subtle pt-3">
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <dt className="text-2xs uppercase tracking-wide text-ink-muted">
+              Adjustments through {backGross.asOfDate}
+            </dt>
+            <dd className="numeric text-sm text-ink">
+              {backGross.cumulativeAdjustments}
+            </dd>
+          </div>
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <dt className="text-2xs uppercase tracking-wide text-ink-muted">
               Retained F&amp;I gross as of {backGross.asOfDate}
-            </th>
-            <td className="numeric py-2 text-right font-medium">
+            </dt>
+            <dd className="numeric text-sm font-semibold text-ink">
               {backGross.retainedFiGross}
-            </td>
-          </tr>
-        </tbody>
-      </table>
+            </dd>
+          </div>
+        </dl>
+      </BackEndComposition>
 
-      <Text size="xs" tone="muted">
-        Back-end gross is the deal-date figure and is never rewritten when an adjustment
-        posts later. Retained F&amp;I gross answers a different question — what the store
-        still has — and a difference between the two is expected wherever adjustments
-        posted, not an error in either.
-      </Text>
+      {/*
+        A FAILED RECONCILIATION IS NEVER COLLAPSED, for the reason `FrontGrossSection`
+        records: this page recomputes the identity rather than reading a stored flag so that
+        a disagreement is loud, and a defect behind a disclosure is not loud.
+      */}
+      {backGross.verified ? null : (
+        <div className="rounded border border-warning bg-warning/10 px-3 py-2 text-sm text-ink">
+          <strong className="font-medium">Back-end gross does not reconcile.</strong> The
+          components leave {backGross.residual} unexplained. The exported figures are
+          shown unchanged rather than adjusted to agree.
+        </div>
+      )}
+
+      <Disclosure label="Verify this reconciliation, and the two date bases">
+        <div className="flex flex-col gap-4">
+          <table className="w-full text-sm">
+            <caption className="sr-only">
+              Deal-date back-end gross, decomposed into finance reserve and product gross
+            </caption>
+            <tbody>
+              <tr className="border-b border-line-subtle">
+                <th scope="row" className="py-2 text-left font-normal">
+                  Finance reserve
+                </th>
+                <td className="numeric py-2 text-right">{backGross.reserve}</td>
+              </tr>
+              <tr className="border-b border-line-subtle">
+                <th scope="row" className="py-2 text-left font-normal">
+                  <span className="mr-1 text-ink-faint">+</span> Original product gross
+                </th>
+                <td className="numeric py-2 text-right">
+                  {backGross.originalProductGross}
+                </td>
+              </tr>
+              <tr className="border-b border-line-subtle text-ink-muted">
+                <th scope="row" className="py-2 text-left font-normal">
+                  <span className="mr-1 text-ink-faint">+</span> Other F&amp;I income
+                </th>
+                <td className="numeric py-2 text-right">{backGross.otherFiIncome}</td>
+              </tr>
+              <tr className="font-medium">
+                <th scope="row" className="py-2 text-left">
+                  <span className="mr-1 text-ink-faint">=</span> Back-end gross
+                </th>
+                <td className="numeric py-2 text-right">{backGross.backEndGross}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <Text size="xs" tone="muted">
+            {backGross.verified
+              ? 'Reconciled to the cent: finance reserve plus original product gross equals this deal’s back-end gross exactly, with other F&I income of $0.00 and no balancing figure. Recomputed here from the components above rather than read from a stored flag.'
+              : `The components leave ${backGross.residual} unexplained. The exported figures are shown unchanged rather than adjusted to agree.`}
+          </Text>
+
+          <Text size="xs" tone="muted">
+            Back-end gross is the deal-date figure and is never rewritten when an
+            adjustment posts later. Retained F&amp;I gross answers a different question —
+            what the store still has as of {backGross.asOfDate} — and a difference between
+            the two is expected wherever adjustments posted, not an error in either. The
+            identity above uses ORIGINAL product gross for exactly that reason:
+            substituting the retained figure would make the check fail on every adjusted
+            deal and report correct behaviour as a defect.
+          </Text>
+        </div>
+      </Disclosure>
     </div>
   )
 }

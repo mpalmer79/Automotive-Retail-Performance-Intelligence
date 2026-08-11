@@ -281,6 +281,9 @@ test.describe('the paper recap', () => {
 
     for (const section of [
       '#disclosure',
+      // `UX.2B` added the identity header that carries the five figures a reviewer reads
+      // first. Paper needs it more than the screen does.
+      '#headline',
       '#identity',
       '#vehicle',
       '#front-gross',
@@ -309,7 +312,9 @@ test.describe('the paper recap', () => {
     await gotoRendered(page, DEAL_JACKET_ROUTE)
     await page.emulateMedia({ media: 'print' })
     const contentVisibility = await page
-      .locator('#checks details')
+      // `UX.2B` split the integrity region into two modules: `#checks` carries the eight
+      // recomputed checks and `#lineage` carries the provenance disclosure this test opens.
+      .locator('#lineage details')
       .first()
       .evaluate((node) =>
         getComputedStyle(node, '::details-content').getPropertyValue('content-visibility')

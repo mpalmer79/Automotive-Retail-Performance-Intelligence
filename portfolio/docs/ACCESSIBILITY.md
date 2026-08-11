@@ -748,3 +748,62 @@ naming the scope that would resolve them; a state label alone reads as a broken 
 **Measured.** axe reports 0 violations with no suppressed rules across the swept routes. No
 horizontal overflow at 320, 375, 390, 768, 1024, 1280, 1440 or 1920. Nothing in the increment
 animates, so there is nothing for the reduced-motion preference to suppress.
+
+## The revenue and vehicle workspaces (`UX.2B`)
+
+Five routes gained a ranked figure rail, eight visuals and a scatter plot. Each of those is a place
+accessibility is usually lost, so each is recorded with what was done instead.
+
+**The scatter is decoration inside a labelled region, and its data is a table on the same page.**
+`AgePriceMap` draws one mark per unit, and the marks are `aria-hidden`: the plot region carries
+`role="img"`, an `aria-label` naming the plotted count, both axes, the sizing measure and the units it
+could not place, and `tabIndex={0}` so a keyboard user can reach it. The exact values are the route's
+own unit table — every plotted unit's identifier, age band, days in stock, asking price, synthetic
+estimate, price-to-market ratio and inventory investment as text — which the plot links to.
+
+_Two hundred and fifty tab stops were the alternative and were rejected._ Making each mark a link
+would satisfy the letter of "keyboard accessible" and put a quarter of a thousand stops between a
+reader and the next control. A labelled region plus a real table is the same information, reachable in
+two keystrokes rather than two hundred and fifty, and it is the chart-plus-table contract every other
+figure in this console already uses.
+
+_Nothing is hover-only._ There is no tooltip anywhere in the plot, because there is nothing a tooltip
+would reveal that the table does not carry.
+
+**A caveat never disappears responsively.** The Deal Explorer's summary strip carries "Retail rows
+only" under its total-gross figure, and an early draft hid it below `sm` to save vertical space.
+`hidden` removes an element from the accessibility tree as well as from the page, so that would have
+been a caveat that vanishes on a phone — which is a caveat the page is hoping nobody reads. The note
+is visible at every width.
+
+**Two representations, one accessibility tree.** The Deal Explorer renders a table above 1280px and
+stacked cards below it, each `hidden` at the other's widths, and the attribution disclosure the
+`UX.2B` column re-ranking created renders only above 1280px because the cards already carry those
+three fields inline. `ux2b-workspaces.spec.ts` asserts at 390, 1024 and 1440 that exactly one of the
+two is in the tree.
+
+**The measure switch is the `UX.2A` control, unchanged, on a second route.** Same `<fieldset>`, same
+real radios, same `display: none` on an unselected panel, same focus ring drawn on the label. The
+keyboard test walks it with arrow keys on `/dashboard/sales-gross`.
+
+**Sign is never colour alone, and an arrow was not enough.** The adjustment bars colour a reduction
+differently from a restoration, which is permitted because the sign is the accounting rather than a
+judgement. The direction is also a word — _reduces retained gross_, _restores retained gross_ —
+because a reinstatement carries a negative amount and an upward direction, and `↑ -$297` reads as a
+contradiction until the word is there.
+
+**Verification moved behind a disclosure and a FAILURE did not.** The Deal Jacket's front-gross and
+back-gross recomputations are inside `<details>`, so they stay in reading order and in a text search;
+a recomputation that DISAGREES with the exported figure renders visibly, above the disclosure, with
+both amounts. A defect behind a summary is not a defect anybody reads.
+
+**Every new chart keeps its values in the DOM.** Bars are `aria-hidden` decoration, every encoded
+value is printed as text beside its label, and a real `<table>` sits inside a `<details>` — except
+where that table would be a second copy of one already on the page, which is recorded above and in
+`DESIGN_SYSTEM.md` §6.0e.
+
+**Measured.** axe reports 0 violations with no suppressed rules across the five transformed routes.
+No horizontal overflow at 320, 375, 390, 768, 1024, 1280, 1440 or 1920 on any of them. Nothing in the
+increment animates, so there is nothing for the reduced-motion preference to suppress. Core business
+content — every rail figure, both economics visuals, the age bands, the unit table, the structure mix
+and every eligible denominator — is present with scripting disabled.

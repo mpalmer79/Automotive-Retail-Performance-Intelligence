@@ -33,7 +33,11 @@ import {
 import type { MetricResult } from '@/lib/dashboard/selectors'
 import type { Exact } from '@/lib/dashboard/decimal'
 
-import { MetricSwitch, StoreMeasureBars, type StoreMeasureGroup } from './exec-visuals'
+import {
+  MetricSwitch,
+  StoreMeasureBars,
+  type StoreMeasureGroup,
+} from './workspace-visuals'
 import { formatMetric, stateLabel } from './metric'
 import { TrendChart, type TrendPoint } from './visuals'
 

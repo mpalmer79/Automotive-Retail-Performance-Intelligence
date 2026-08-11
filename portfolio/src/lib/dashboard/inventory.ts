@@ -44,7 +44,15 @@
  */
 import type { DashboardRow } from '@/types/dashboard'
 
-import { addExact, cellToExact, compareExact, exactZero, type Exact } from './decimal'
+import {
+  addExact,
+  cellToExact,
+  compareExact,
+  exactToApproxNumber,
+  exactZero,
+  subtractExact,
+  type Exact,
+} from './decimal'
 import type { DashboardFilters } from './filters'
 
 /* -------------------------------------------------------------------------- */
@@ -271,6 +279,29 @@ export interface BucketProfile {
   readonly investment: Exact
   /** Units in this bucket as a share of the population, to four places. Null when empty. */
   readonly share: number | null
+  /**
+   * This bucket's share of the population's total INVESTMENT. Null on a zero total.
+   *
+   * Published so the age visual can draw units and capital over the same five bands. The
+   * finding a used-vehicle manager is looking for — eleven per cent of the units and
+   * twenty-six per cent of the money — is invisible unless the two distributions are read
+   * against each other, and it cannot be recovered from the unit share alone.
+   */
+  readonly investmentShare: number | null
+  /**
+   * Asking price at this snapshot, summed over the bucket, beside the original.
+   *
+   * TWO EXPORTED COLUMNS SUMMED OVER THE SAME ROWS. `markdown` is the difference between
+   * them and is therefore the reduction taken SINCE LISTING — not since the prior month
+   * end, which is a different figure the unit rows publish separately and which this
+   * module counts rather than sums. Conflating the two would report a month's repricing as
+   * a lifetime's.
+   */
+  readonly originalAsking: Exact
+  readonly currentAsking: Exact
+  readonly markdown: Exact
+  /** Units whose advertised price fell between the prior month end and this one. */
+  readonly reducedSincePrior: number
 }
 
 /** The inventory position for one snapshot date and filter selection. */
@@ -289,7 +320,19 @@ export interface InventorySummary {
   readonly buckets: readonly BucketProfile[]
   readonly unitsWithEstimate: number
   readonly unitsWithoutEstimate: number
+  /**
+   * The share of units the estimator priced, or null on an empty population.
+   *
+   * Named coverage rather than a rate: it describes how much of the lot the price-to-market
+   * ratio can be read over, and a unit with no estimate has no ratio rather than a ratio of
+   * zero.
+   */
+  readonly estimateCoverage: number | null
   readonly reducedSincePrior: number
+  /** The whole population's advertised prices, for the price-movement visual. */
+  readonly originalAsking: Exact
+  readonly currentAsking: Exact
+  readonly markdown: Exact
 }
 
 /**
@@ -330,17 +373,46 @@ export function summarizeInventory(
   }
 
   const units = rows.length
+  const investmentTotal = exactToApproxNumber(investment)
+
+  let originalAskingTotal = exactZero(2)
+  let currentAskingTotal = exactZero(2)
+  for (const row of rows) {
+    originalAskingTotal = addExact(originalAskingTotal, row.originalAskingPrice)
+    currentAskingTotal = addExact(currentAskingTotal, row.currentAskingPrice)
+  }
+
   const buckets = AGE_BUCKETS.map((bucket) => {
     const inBucket = rows.filter((row) => row.ageBucket === bucket)
     let bucketInvestment = exactZero(2)
+    let bucketOriginal = exactZero(2)
+    let bucketCurrent = exactZero(2)
+    let bucketReduced = 0
     for (const row of inBucket) {
       bucketInvestment = addExact(bucketInvestment, row.inventoryInvestment)
+      bucketOriginal = addExact(bucketOriginal, row.originalAskingPrice)
+      bucketCurrent = addExact(bucketCurrent, row.currentAskingPrice)
+      if (row.isPriceReducedSincePrior === true) bucketReduced += 1
     }
     return {
       bucket,
       units: inBucket.length,
       investment: bucketInvestment,
       share: units === 0 ? null : inBucket.length / units,
+      /*
+       * The share is taken against the population's own investment total, not against the
+       * largest bucket: a distribution divided by its own mode is not a distribution. The
+       * float is a SHARE for a bar width and never a displayed amount — every figure the
+       * visual prints comes from `investment`, which stays exact.
+       */
+      investmentShare:
+        investmentTotal === 0
+          ? null
+          : exactToApproxNumber(bucketInvestment) / investmentTotal,
+      originalAsking: bucketOriginal,
+      currentAsking: bucketCurrent,
+      markdown: subtractExact(bucketOriginal, bucketCurrent),
+      reducedSincePrior: bucketReduced,
     }
   })
 
@@ -356,7 +428,11 @@ export function summarizeInventory(
     buckets,
     unitsWithEstimate,
     unitsWithoutEstimate: units - unitsWithEstimate,
+    estimateCoverage: units === 0 ? null : unitsWithEstimate / units,
     reducedSincePrior,
+    originalAsking: originalAskingTotal,
+    currentAsking: currentAskingTotal,
+    markdown: subtractExact(originalAskingTotal, currentAskingTotal),
   }
 }
 

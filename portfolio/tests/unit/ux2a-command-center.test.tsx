@@ -27,11 +27,19 @@ import {
 } from '../../src/components/dashboard/actions-sections.tsx'
 import {
   FunnelChart,
+  type FunnelStageBar,
+} from '../../src/components/dashboard/exec-visuals.tsx'
+/*
+ * `UX.2B` moved the switch and the grouped comparison out of `exec-visuals.tsx` and into
+ * `workspace-visuals.tsx`, because a second, third and fourth route now render them and the
+ * file said in its own docstring that this is what would happen. The assertions below are
+ * unchanged: the same components, the same props, the same expected output.
+ */
+import {
   MetricSwitch,
   StoreMeasureBars,
-  type FunnelStageBar,
   type StoreMeasureGroup,
-} from '../../src/components/dashboard/exec-visuals.tsx'
+} from '../../src/components/dashboard/workspace-visuals.tsx'
 import { LeadFunnel } from '../../src/components/dashboard/lead-funnel.tsx'
 import { InventoryRisk } from '../../src/components/dashboard/inventory-risk.tsx'
 import { StoreComparisonSection } from '../../src/components/dashboard/operating.tsx'

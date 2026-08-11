@@ -316,6 +316,14 @@
   --arpi-colour-zone-plan: var(--arpi-emerald-50);
   --arpi-colour-zone-inventory: var(--arpi-amber-50);
   --arpi-colour-zone-funnel: var(--arpi-violet-50);
+  /* `UX.2B`. The finance office is a business area in its own right and is now the
+     subject of a whole route, so it gets a name. It resolves to the same tint the
+     funnel wash does, deliberately: the two never appear on one screen, the `-50`
+     tier holds only four hues, and inventing a fifth ramp to give a wash a private
+     colour would add a palette step no measurement asked for. What matters is that a
+     module declares the business area it belongs to rather than borrowing a token
+     named after a different one. */
+  --arpi-colour-zone-finance: var(--arpi-violet-50);
 
   /* ---------------------------------------------------------------------
      3. Typography

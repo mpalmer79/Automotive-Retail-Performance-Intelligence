@@ -466,7 +466,12 @@ describe('the console has one source of visual constants and no chart library', 
     const data = new Set(
       [...declared].filter(([name]) => name.includes('-data-')).map(([, value]) => value)
     )
-    expect(zones.length).toBe(4)
+    // Five since `UX.2B` named the finance office as a business area of its own. The
+    // assertion below is the load-bearing one and is unchanged: a wash may share a value
+    // with another WASH — `zone-finance` and `zone-funnel` are the same tint today — and may
+    // never share one with a `data-*` token, because that is the confusion a reader cannot
+    // recover from.
+    expect(zones.length).toBe(5)
     for (const [name, value] of zones) {
       expect(data.has(value), `${name} shares a value with a data token`).toBe(false)
     }

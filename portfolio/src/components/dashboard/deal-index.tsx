@@ -1,6 +1,21 @@
 /**
  * The Deal Explorer's index: a table on wide screens, stacked cards below.
  *
+ * WHAT `UX.2B` CHANGED, AND WHAT IT DID NOT
+ * -----------------------------------------
+ * The table carried thirteen columns of equal weight, three of which answer a question a
+ * reader asks AFTER they have found the deal: which unit it was, where the lead came from and
+ * who worked it. `UX.2B` §16 asks for the transaction economics first and the rest through a
+ * disclosure, so the ten money-and-identity columns stay in the table and the three move into
+ * a second table underneath it, keyed on the same deal id, in the same order, for the same
+ * page of rows. Nothing was dropped: `<details>` keeps that table in the document, in the
+ * accessibility tree's reading order and in a browser text search, and it is the same
+ * `DealRow` fields rendered by the same component.
+ *
+ * The mobile cards were already the deliberate transaction pattern §18 asks for and are
+ * unchanged apart from carrying the drill-through on the deal id, which the table had and the
+ * card did not.
+ *
  * EXACTLY ONE REPRESENTATION IS IN THE ACCESSIBILITY TREE
  * -------------------------------------------------------
  * The established 1280px pattern: both markups exist in the document, and each is
@@ -164,9 +179,6 @@ export function DealIndex({ route, filterQuery, state, rows }: DealIndexProps) {
                 Store
               </th>
               <th scope="col" className="py-2 pr-3 font-medium text-ink-muted">
-                Unit
-              </th>
-              <th scope="col" className="py-2 pr-3 font-medium text-ink-muted">
                 Vehicle
               </th>
               <th scope="col" className="py-2 pr-3 font-medium text-ink-muted">
@@ -187,12 +199,6 @@ export function DealIndex({ route, filterQuery, state, rows }: DealIndexProps) {
                   />
                 </th>
               ))}
-              <th scope="col" className="py-2 pr-3 font-medium text-ink-muted">
-                Lead source
-              </th>
-              <th scope="col" className="py-2 font-medium text-ink-muted">
-                Staff
-              </th>
             </tr>
           </thead>
           <tbody>
@@ -211,9 +217,6 @@ export function DealIndex({ route, filterQuery, state, rows }: DealIndexProps) {
                 </th>
                 <td className="py-2 pr-3 text-ink-secondary">{row.saleDateDisplay}</td>
                 <td className="py-2 pr-3 text-ink-secondary">{row.storeName}</td>
-                <td className="numeric py-2 pr-3 text-ink-secondary">
-                  {row.vehicleCode}
-                </td>
                 <td className="py-2 pr-3 text-ink">
                   {row.vehicle}
                   <span className="ml-1.5 text-xs text-ink-faint">
@@ -239,18 +242,8 @@ export function DealIndex({ route, filterQuery, state, rows }: DealIndexProps) {
                 <td className="numeric py-2 pr-3 text-right font-semibold text-ink">
                   {row.totalGross}
                 </td>
-                <td className="numeric py-2 pr-3 text-right text-ink-secondary">
+                <td className="numeric py-2 text-right text-ink-secondary">
                   {row.daysInInventory}
-                </td>
-                <td className="py-2 pr-3 text-ink-secondary">
-                  {row.isLeadAttributed ? (
-                    row.leadSource
-                  ) : (
-                    <span className="text-ink-faint">Walk-in or unattributed</span>
-                  )}
-                </td>
-                <td className="numeric py-2 text-xs text-ink-secondary">
-                  <StaffCode code={row.salespersonCode} />
                 </td>
               </tr>
             ))}
@@ -268,7 +261,17 @@ export function DealIndex({ route, filterQuery, state, rows }: DealIndexProps) {
             className="flex flex-col gap-2 rounded-lg border border-line-subtle bg-surface p-4"
           >
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <span className="numeric text-sm font-semibold text-ink">{row.saleId}</span>
+              {/* THE DRILL-THROUGH IS ON THE CARD TOO. The table's deal id has been a link
+                  since `DASH.4` and the card's was plain text, so a phone reader could see a
+                  deal and not open it. `UX.2B` §18 asks for drill-through without excessive
+                  interaction; the id is the target for the reason the table records — the
+                  thing they read and the thing they tap are the same thing. */}
+              <a
+                href={`${route}/${row.saleId}`}
+                className="numeric inline-flex min-h-touch items-center text-sm font-semibold text-ink underline decoration-line underline-offset-2 transition-colors duration-(--arpi-motion-fast) hover:text-accent"
+              >
+                {row.saleId}
+              </a>
               <span className="text-xs text-ink-muted">{row.saleDateDisplay}</span>
             </div>
             <div className="text-sm text-ink">{row.vehicle}</div>
@@ -316,6 +319,95 @@ export function DealIndex({ route, filterQuery, state, rows }: DealIndexProps) {
           </li>
         ))}
       </ul>
+
+      {/* -------------------------------------------------------------- */}
+      {/* The attribution and provenance columns, on demand               */}
+      {/* -------------------------------------------------------------- */}
+      {/*
+        WIDE SCREENS ONLY, because the cards below 1280px already carry all three fields
+        inline. Rendering it at every width would put the same twenty-five deals in the
+        accessibility tree twice, which is the defect the two-representation rule at the
+        head of this file exists to prevent.
+
+        NOT SORTABLE, DELIBERATELY. `UX.2B` §17 forbids a sort that accidentally becomes an
+        employee leaderboard, and a salesperson column with a sort control on it is exactly
+        that. The column is context for a deal a reader has already chosen, in the table's
+        current order, and there is no control here to reorder the roster by anything.
+      */}
+      {rows.length === 0 ? null : (
+        <details className="hidden rounded-xl border border-line-subtle bg-surface-sunken/40 min-[1280px]:block">
+          <summary className="flex min-h-touch cursor-pointer items-center px-3 text-sm font-medium text-ink-secondary transition-colors duration-(--arpi-motion-fast) hover:text-accent">
+            Unit, lead source and attribution for these deals
+          </summary>
+          <div className="overflow-x-auto px-3 pb-3">
+            <table className="w-full border-collapse text-sm">
+              <caption className="sr-only">
+                Unit identifier, lead source and staff attribution for the deals listed
+                above, in the same order. Synthetic employee codes; no name exists
+                anywhere in ARPI.
+              </caption>
+              <thead>
+                <tr className="border-b border-line-subtle text-left">
+                  <th scope="col" className="py-2 pr-3 font-medium text-ink-muted">
+                    Deal
+                  </th>
+                  <th scope="col" className="py-2 pr-3 font-medium text-ink-muted">
+                    Unit
+                  </th>
+                  <th scope="col" className="py-2 pr-3 font-medium text-ink-muted">
+                    Lead source
+                  </th>
+                  <th scope="col" className="py-2 pr-3 font-medium text-ink-muted">
+                    Salesperson
+                  </th>
+                  <th scope="col" className="py-2 pr-3 font-medium text-ink-muted">
+                    Desk
+                  </th>
+                  <th scope="col" className="py-2 font-medium text-ink-muted">
+                    Finance
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) => (
+                  <tr
+                    key={row.saleId}
+                    className="border-b border-line-subtle/60 last:border-0"
+                  >
+                    <th scope="row" className="numeric py-1.5 pr-3 font-normal">
+                      <a
+                        href={`${route}/${row.saleId}`}
+                        className="inline-flex min-h-6 items-center text-ink-secondary underline decoration-line underline-offset-2 transition-colors duration-(--arpi-motion-fast) hover:text-accent"
+                      >
+                        {row.saleId}
+                      </a>
+                    </th>
+                    <td className="numeric py-1.5 pr-3 text-ink-secondary">
+                      {row.vehicleCode}
+                    </td>
+                    <td className="py-1.5 pr-3 text-ink-secondary">
+                      {row.isLeadAttributed ? (
+                        row.leadSource
+                      ) : (
+                        <span className="text-ink-faint">Walk-in or unattributed</span>
+                      )}
+                    </td>
+                    <td className="numeric py-1.5 pr-3 text-xs text-ink-secondary">
+                      <StaffCode code={row.salespersonCode} />
+                    </td>
+                    <td className="numeric py-1.5 pr-3 text-xs text-ink-secondary">
+                      <StaffCode code={row.deskManagerCode} />
+                    </td>
+                    <td className="numeric py-1.5 text-xs text-ink-secondary">
+                      <StaffCode code={row.financeManagerCode} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </details>
+      )}
 
       {rows.length === 0 ? (
         <Text size="sm" tone="muted">
