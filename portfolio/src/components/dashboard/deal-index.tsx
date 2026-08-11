@@ -153,7 +153,16 @@ export function DealIndex({ route, filterQuery, state, rows }: DealIndexProps) {
       {/* -------------------------------------------------------------- */}
       {/* Wide: a semantic table                                          */}
       {/* -------------------------------------------------------------- */}
-      <div className="hidden overflow-x-auto min-[1280px]:block">
+      {/* Named and focusable, like every other scroll region on this console: a
+          container that scrolls must be reachable without a pointer (WCAG 2.1.1).
+          The row links make its content tabbable either way, but arrow-key scrolling
+          needs the stop, and `fi-sections.tsx` has carried this pattern since `DASH.9`. */}
+      <div
+        role="region"
+        tabIndex={0}
+        aria-label="Finalized transactions"
+        className="hidden overflow-x-auto min-[1280px]:block"
+      >
         <table className="w-full border-collapse text-sm">
           <caption className="sr-only">
             Finalized transactions matching the current filters, one row per deal.

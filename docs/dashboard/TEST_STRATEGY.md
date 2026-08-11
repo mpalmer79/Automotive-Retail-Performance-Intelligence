@@ -698,3 +698,40 @@ that made it fire: the test passes six times out of six in isolation.
 
 The `DASH.11` fairness assertions, the export boundary guards, the exact-money boundary, the
 reconciliation suites and every seeded defect from earlier increments are untouched.
+
+---
+
+## `UX.2B.1` — the refinement suite, and the six tests a contract change moved
+
+`tests/unit/ux2b1-refinement.test.tsx` adds **11** tests covering the four shared-primitive
+defects an audit of a parallel `UX.2B` implementation surfaced, plus the disclosure the
+inventory unit table now uses. They are written the way the rest of this repository's geometry
+tests are written: each asserts the property that made the defect a defect — an anchor that
+occupies no share of the plot, a trend with no horizontal reference, a scroll region a keyboard
+cannot reach, a module that is not the layout reference for its own contents — rather than the
+class name that happens to encode today's fix.
+
+**Six of them were proved to fail against the unfixed code.** The two `visuals.tsx` defects were
+re-seeded exactly as `main` carried them (`upper`/`lower` taken from the bar's own base and top;
+`axisLabels` defaulted off) and the suite was re-run: six failed, five passed, and the file was
+restored. That is the §58 standard applied to a fix rather than to a feature.
+
+**Six existing e2e tests changed, all for one reason.** The inventory unit table moved into a
+`<details>`, which is an intentional product-contract change, and a closed disclosure is not in
+the accessibility tree — so `getByRole('table')` cannot resolve its rows until it is opened. An
+`openUnits` helper opens it, and the search test reopens it after the form navigation because a
+fresh page is correctly closed again.
+
+Two of the six were made **stronger** rather than merely adjusted, and they are the two that
+matter:
+
+- *the page works without JavaScript › renders the summary, the buckets and the unit table* now
+  asserts a real unit identifier is present in the served markup **while the disclosure is still
+  closed**. That is the assertion that separates collapsing from removing, and it is the one a
+  shorter page would otherwise be hiding. It then opens the native `<details>` with scripting
+  disabled, which is the other half of the claim.
+- *labels the market estimate synthetic everywhere it appears* now asserts both caveats are in
+  the page with nothing opened — proving the disclosure did not take the caveat with it — before
+  checking that the column header still carries the qualifier for a reader who opens the table.
+
+No test was deleted and no assertion was weakened.

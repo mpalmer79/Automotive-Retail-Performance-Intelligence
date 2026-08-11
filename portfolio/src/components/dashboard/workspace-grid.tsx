@@ -63,14 +63,33 @@ import { cx } from '@/lib/utils'
  */
 export function GridRow({
   children,
+  align = 'stretch',
   className,
 }: {
   readonly children: ReactNode
+  /**
+   * Whether the modules in the row stretch to the tallest, or size to their content.
+   *
+   * `stretch` IS THE DEFAULT AND IS USUALLY RIGHT: modules answering sibling questions
+   * read as one band when their panels line up, and a 40 px difference resolved by
+   * stretching is invisible.
+   *
+   * `start` exists for the case where the difference is not 40 px. A five-bar waterfall
+   * beside a module with its own disclosures is a 350 px panel next to a 750 px one, and
+   * stretching draws 400 px of empty bordered box under the waterfall. An empty panel is
+   * not neutral — a reader looks into it for the thing that is missing. A ragged lower
+   * edge says the modules are different sizes, which is true.
+   */
+  readonly align?: 'stretch' | 'start'
   readonly className?: string
 }) {
   return (
     <div
-      className={cx('grid grid-cols-1 gap-3 md:grid-cols-6 xl:grid-cols-12', className)}
+      className={cx(
+        'grid grid-cols-1 gap-3 md:grid-cols-6 xl:grid-cols-12',
+        align === 'start' ? 'items-start' : null,
+        className
+      )}
     >
       {children}
     </div>
@@ -157,6 +176,20 @@ export function Module({
       aria-labelledby={headingId}
       data-visual-region={visual}
       className={cx(
+        /*
+         * `@container` MAKES THE MODULE THE LAYOUT REFERENCE FOR ITS OWN CONTENT.
+         *
+         * The section components were written when each was a full-width band, so their
+         * fact grids ask for four columns at the `lg` VIEWPORT width — and a three-of-
+         * twelve module on a 1440 px screen is about 300 px wide while still satisfying
+         * `lg`. On the Deal Jacket that produced four ~70 px columns and broke a money
+         * value across lines: `AMOUNT FINANCED` rendered as "$21,358." above "02".
+         *
+         * A container query asks how wide THIS PANEL is rather than how wide the window
+         * is, which is the only question a module's contents can usefully ask. The class
+         * costs nothing on its own; the grids inside opt in with `@sm:` / `@lg:`.
+         */
+        '@container',
         'flex min-w-0 flex-col gap-2.5 rounded-2xl border border-line-subtle p-3.5',
         zone === undefined ? 'bg-surface/60' : ZONE[zone],
         SPAN[span],
