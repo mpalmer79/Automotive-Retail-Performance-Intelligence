@@ -323,6 +323,23 @@ export interface DealsView {
   readonly asOfDate: string
   /** Retail units and gross of the WHOLE filtered set, not just the visible page. */
   readonly retailCount: number
+  /**
+   * Front, back and total gross over the retail rows of the whole filtered set.
+   *
+   * `UX.2B` §15 asks the Deal Explorer to state what the filtered population IS before the
+   * table lists it, so a desk manager can tell whether the filter they applied is the one they
+   * meant. These are sums of exported deal-grain columns over the same rows the table pages
+   * through — the same arithmetic `totalGrossDisplay` already did, over the same population,
+   * for two more columns. No rate is formed from them here: a per-unit figure over this
+   * population is `KPI-GRS-004`/`005`/`006` and `/dashboard/sales-gross` is the surface that
+   * owns it.
+   *
+   * THE POPULATION IS THE RETAIL ROWS, NOT EVERY ROW. A wholesale disposal is a real
+   * transaction and is listed in the table, with its sale type and a `not retail` mark; adding
+   * its gross to a retail total would be the error the table's own note warns about.
+   */
+  readonly frontGrossDisplay: string | null
+  readonly backGrossDisplay: string | null
   readonly totalGrossDisplay: string | null
   readonly negativeFrontCount: number
 }
@@ -383,10 +400,16 @@ export function buildDeals(filters: DashboardFilters, state: DealListState): Dea
   const visible = collected.slice(start, start + DEALS_PER_PAGE)
 
   const retailRows = collected.filter((row) => row.is_retail === true)
-  const grossValues = retailRows
-    .map((row) => cellToExact(numericCell(row, 'total_gross')))
-    .filter((value): value is Exact => value !== null)
-  const totalGross = grossValues.length === 0 ? null : sumExact(grossValues)
+  /** One exported money column, summed over the retail rows, or null when none carries it. */
+  const retailSum = (column: string): Exact | null => {
+    const values = retailRows
+      .map((row) => cellToExact(numericCell(row, column)))
+      .filter((value): value is Exact => value !== null)
+    return values.length === 0 ? null : sumExact(values)
+  }
+  const frontGross = retailSum('front_end_gross')
+  const backGross = retailSum('back_end_gross')
+  const totalGross = retailSum('total_gross')
 
   return {
     periodContext,
@@ -407,6 +430,8 @@ export function buildDeals(filters: DashboardFilters, state: DealListState): Dea
     lastRowNumber: Math.min(start + DEALS_PER_PAGE, totalCount),
     asOfDate: dashboardManifest.asOfDate,
     retailCount: retailRows.length,
+    frontGrossDisplay: frontGross === null ? null : formatCurrencyExact(frontGross),
+    backGrossDisplay: backGross === null ? null : formatCurrencyExact(backGross),
     totalGrossDisplay: totalGross === null ? null : formatCurrencyExact(totalGross),
     negativeFrontCount: collected.filter((row) => row.is_negative_front_gross === true)
       .length,

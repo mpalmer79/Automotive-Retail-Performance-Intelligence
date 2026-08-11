@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 
 import { Canvas } from '@/components/shell/field'
 import { DealIndex, DealPagination } from '@/components/dashboard/deal-index'
+import { DealSummaryStrip } from '@/components/dashboard/deal-summary'
 import { FilterBar, type FilterOption } from '@/components/dashboard/filter-bar'
 import { ExportProvenance } from '@/components/dashboard/export-provenance'
 import {
@@ -15,7 +16,7 @@ import {
   ReconciliationBanner,
   StaleBanner,
 } from '@/components/dashboard/notices'
-import { Container, Section, SectionHeader } from '@/components/ui/layout'
+import { GridRow, Module, Workspace } from '@/components/dashboard/workspace-grid'
 import { Text } from '@/components/ui/typography'
 import {
   calendarMonths,
@@ -33,6 +34,7 @@ import {
   type QueryInput,
 } from '@/lib/dashboard/filters'
 import { formatIsoMonth } from '@/lib/dashboard/format'
+import { operatingHref } from '@/lib/dashboard/navigation'
 import { exportTrust, powerBiTrust, reconciliationFailed } from '@/lib/dashboard/trust'
 import { engines } from '@/lib/manifest'
 import { pageMetadata } from '@/lib/metadata'
@@ -44,6 +46,24 @@ const ROUTE = ROUTES.dashboardDeals.href
 
 /**
  * The Deal Explorer — every finalized transaction behind the aggregates.
+ *
+ * WHAT `UX.2B` CHANGED HERE, AND WHAT IT DELIBERATELY DID NOT
+ * ----------------------------------------------------------
+ * This route was already the closest of the five to what `UX.2B` asks for: a control band, a
+ * table, and 128 words of visible prose. `UX.2B` §48 says outright not to enforce a prose
+ * reduction on a route that is primarily a data grid, and §13 says not to replace exact
+ * transaction inspection with charts. Neither was done. There is no chart on this page and
+ * there was never going to be one.
+ *
+ * What was missing is what §15 names: the filtered population's size was a chip in the page
+ * header and what it was WORTH was not stated at all, so a reader who narrowed to one store
+ * and one month met twenty-five rows out of six hundred with no way to tell whether the filter
+ * was the one they meant. The summary strip states it, above the table, from sums over the
+ * same rows the table pages through.
+ *
+ * The rest is layout: the section band becomes two modules of the console's workspace grid,
+ * and the table's three attribution columns move into a disclosure so the ten money-and-
+ * identity columns a desk reviews are what a reader meets first.
  *
  * A MANAGEMENT DEAL LOG, NOT A CRM
  * --------------------------------
@@ -82,6 +102,13 @@ export default async function DealExplorerPage({
   const failedReconciliation = reconciliationFailed(dashboardManifest)
   const chips = activeFilterChips(parsed.filters, DEAL_EXPLORER_SUPPORT)
   const filterQuery = serializeFilters(parsed.filters)
+  /*
+   * The drill-through BACK to the aggregate (`UX.2B` §47). `operatingHref` reduces the
+   * filter state to what Sales & Gross can act on, so the search term and the sale-type
+   * scope — which that route publishes no gross for — are not appended to a destination
+   * that would ignore them.
+   */
+  const salesGrossHref = operatingHref(ROUTES.dashboardSalesGross.href, parsed.filters)
 
   return (
     <Canvas>
@@ -186,42 +213,73 @@ export default async function DealExplorerPage({
         </div>
       </OperatingPageHeader>
 
-      {/* ------------------------------------------------------------------ */}
-      {/* The index                                                           */}
-      {/* ------------------------------------------------------------------ */}
-      <Section rhythm="default" id="deals">
-        <Container width="full">
-          <SectionHeader
-            eyebrow="Deal index"
+      <Workspace>
+        {/* ---------------------------------------------------------------- */}
+        {/* ROW 1 — what the filter actually selected                         */}
+        {/* ---------------------------------------------------------------- */}
+        <GridRow>
+          <Module
+            id="population"
+            title="This filter selects"
+            note="Deals counts every matched transaction; the money figures are over the retail rows only, because a wholesale disposal belongs in the table below and not in a retail gross total. A deal that closed at a front-end loss is counted rather than suppressed."
+            zone="performance"
+            meta={view.periodContext.period.label}
+          >
+            <DealSummaryStrip
+              view={view}
+              dealsLabel={
+                view.state.query === ''
+                  ? 'Matching the current filters'
+                  : `Matching the current filters and the search "${view.state.query}"`
+              }
+            />
+          </Module>
+        </GridRow>
+
+        {/* ---------------------------------------------------------------- */}
+        {/* ROW 2 — the transactions                                          */}
+        {/* ---------------------------------------------------------------- */}
+        <GridRow>
+          <Module
+            id="deals"
             title="The transactions behind the aggregate"
-            lede="Sorted by any money column or by days in stock, always with the deal id as a tie-breaker so a page boundary is stable. A wholesale disposal or dealer trade is shown and labelled as not retail: it is a real transaction, and judging it by retail measures would be the error, not showing it."
-          />
-          <div className="flex flex-col gap-5 pt-6">
-            <DealIndex
-              route={ROUTE}
-              filterQuery={filterQuery}
-              state={view.state}
-              rows={view.rows}
-            />
+            note="A wholesale disposal or dealer trade is shown and labelled as not retail: it is a real transaction, and judging it by retail measures would be the error, not showing it."
+            meta={
+              <a
+                href={salesGrossHref}
+                className="inline-flex min-h-6 items-center underline decoration-line underline-offset-2 transition-colors duration-(--arpi-motion-fast) hover:text-accent"
+              >
+                Sales &amp; Gross for this scope
+              </a>
+            }
+          >
+            <div className="flex flex-col gap-4">
+              <DealIndex
+                route={ROUTE}
+                filterQuery={filterQuery}
+                state={view.state}
+                rows={view.rows}
+              />
 
-            <DealPagination
-              route={ROUTE}
-              filterQuery={filterQuery}
-              state={view.state}
-              pageCount={view.pageCount}
-              totalCount={view.totalCount}
-              firstRowNumber={view.firstRowNumber}
-              lastRowNumber={view.lastRowNumber}
-            />
+              <DealPagination
+                route={ROUTE}
+                filterQuery={filterQuery}
+                state={view.state}
+                pageCount={view.pageCount}
+                totalCount={view.totalCount}
+                firstRowNumber={view.firstRowNumber}
+                lastRowNumber={view.lastRowNumber}
+              />
 
-            <Text size="xs" tone="faint">
-              Each deal id opens its Deal Jacket: the transaction explained to the cent,
-              with the cost components behind its front gross, its trade context, staff
-              attribution, lead timeline, integrity checks and lineage.
-            </Text>
-          </div>
-        </Container>
-      </Section>
+              <Text size="xs" tone="faint">
+                Each deal id opens its Deal Jacket: the transaction explained to the cent,
+                with the cost components behind its front gross, its trade context, staff
+                attribution, lead timeline, integrity checks and lineage.
+              </Text>
+            </div>
+          </Module>
+        </GridRow>
+      </Workspace>
     </Canvas>
   )
 }
