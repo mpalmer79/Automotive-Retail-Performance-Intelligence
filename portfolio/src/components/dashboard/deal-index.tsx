@@ -25,6 +25,25 @@
  * The link is the deal id itself rather than a "view" affordance beside it: the id is
  * what a manager is looking for, and making it the target means the thing they read
  * and the thing they click are the same thing.
+ *
+ * TEN COLUMNS BY DEFAULT, FOURTEEN ON REQUEST (`UX.2B` §4)
+ * --------------------------------------------------------
+ * The table shipped with fourteen columns and every one of them earns its place in SOME
+ * review — which is exactly why a default of fourteen is the wrong answer. At 1440 px they
+ * compress to the point where the money columns, the ones a desk actually scans, are the
+ * same visual weight as the salesperson code. The default is now the ten `UX.2B` §4 names:
+ * deal, date, store, vehicle, condition, sale type, sale price, front, back, total. The
+ * other four — unit identifier, days in stock, lead source and salesperson — arrive
+ * together under `?detail=1`.
+ *
+ * DETAIL MODE IS A URL, NOT A TOGGLE. It is a link to the same route with one more
+ * parameter, so it works with scripting off, it is shareable, it is in browser history, and
+ * it survives a sort or a page change because every link on this table carries the caller's
+ * whole query context. It is a PRESENTATION parameter and changes no figure: the same rows,
+ * the same order, the same values, with four more columns rendered.
+ *
+ * NO CUSTOMER DATA IN EITHER TIER. There is no name, no contact detail, no note field and
+ * no free text anywhere in ARPI to expose. The staff column is a synthetic employee code.
  */
 import { Text } from '@/components/ui/typography'
 import type {
@@ -51,6 +70,19 @@ const SORTABLE: readonly SortableColumn[] = [
   { key: 'total_gross', label: 'Total gross', numeric: true },
   { key: 'days_in_inventory_at_sale', label: 'Days', numeric: true },
 ]
+
+/** The four money columns, always rendered. Sale price, front, back, total. */
+const MONEY_COLUMNS: readonly SortableColumn[] = SORTABLE.slice(1, 5)
+
+/**
+ * Days in stock: a sortable column that lives in the detail tier.
+ *
+ * IT STAYS SORTABLE IN BOTH TIERS AND THAT IS DELIBERATE. `parseListState` accepts
+ * `sort=days_in_inventory_at_sale` whether or not the column is rendered, and a shared URL
+ * carrying that order still produces the order it names. Removing the column from the
+ * default view removed a heading, not a capability.
+ */
+const DAYS_COLUMN: SortableColumn = SORTABLE[5] as SortableColumn
 
 /** The href that sorts by a column, toggling direction when it is already active. */
 function sortHref(
@@ -126,24 +158,42 @@ function StaffCode({ code }: { readonly code: string | null }) {
 
 export interface DealIndexProps {
   readonly route: string
-  /** The global filter query string, so a sort link preserves the filter context. */
+  /**
+   * Everything that must ride along on a sort or page link: the global filters AND the
+   * detail-mode parameter. Passed as one opaque string so this component never has to know
+   * which parameters exist, and a fifteenth one cannot be dropped by forgetting to add it.
+   */
   readonly filterQuery: string
   readonly state: DealListState
   readonly rows: readonly DealRow[]
+  /** Whether the four secondary columns are rendered. A presentation choice only. */
+  readonly detail?: boolean
 }
 
-export function DealIndex({ route, filterQuery, state, rows }: DealIndexProps) {
+export function DealIndex({
+  route,
+  filterQuery,
+  state,
+  rows,
+  detail = false,
+}: DealIndexProps) {
   return (
     <>
       {/* -------------------------------------------------------------- */}
       {/* Wide: a semantic table                                          */}
       {/* -------------------------------------------------------------- */}
-      <div className="hidden overflow-x-auto min-[1280px]:block">
+      {/*
+        THE HEADER STICKS AND THE BODY SCROLLS. Twenty-five rows is more than a viewport at
+        1440 x 900, and a reader who has scrolled to row 20 of a money column with no
+        headings above it is reading unlabelled numbers. `position: sticky` needs no
+        JavaScript and degrades to a normal header where it is unsupported.
+      */}
+      <div className="hidden max-h-[70vh] overflow-auto rounded-lg border border-line-subtle min-[1280px]:block">
         <table className="w-full border-collapse text-sm">
           <caption className="sr-only">
             Finalized transactions matching the current filters, one row per deal.
           </caption>
-          <thead>
+          <thead className="sticky top-0 z-10 bg-surface">
             <tr className="border-b border-line text-left">
               <th scope="col" className="py-2 pr-3 font-medium text-ink-muted">
                 Deal
@@ -163,16 +213,21 @@ export function DealIndex({ route, filterQuery, state, rows }: DealIndexProps) {
               <th scope="col" className="py-2 pr-3 font-medium text-ink-muted">
                 Store
               </th>
-              <th scope="col" className="py-2 pr-3 font-medium text-ink-muted">
-                Unit
-              </th>
+              {detail ? (
+                <th scope="col" className="py-2 pr-3 font-medium text-ink-muted">
+                  Unit
+                </th>
+              ) : null}
               <th scope="col" className="py-2 pr-3 font-medium text-ink-muted">
                 Vehicle
               </th>
               <th scope="col" className="py-2 pr-3 font-medium text-ink-muted">
+                Condition
+              </th>
+              <th scope="col" className="py-2 pr-3 font-medium text-ink-muted">
                 Sale type
               </th>
-              {SORTABLE.slice(1).map((column) => (
+              {MONEY_COLUMNS.map((column) => (
                 <th
                   key={column.key}
                   scope="col"
@@ -187,12 +242,28 @@ export function DealIndex({ route, filterQuery, state, rows }: DealIndexProps) {
                   />
                 </th>
               ))}
-              <th scope="col" className="py-2 pr-3 font-medium text-ink-muted">
-                Lead source
-              </th>
-              <th scope="col" className="py-2 font-medium text-ink-muted">
-                Staff
-              </th>
+              {detail ? (
+                <>
+                  <th
+                    scope="col"
+                    aria-sort={ariaSort(state, 'days_in_inventory_at_sale')}
+                    className="py-2 pr-3 text-right font-medium"
+                  >
+                    <SortLink
+                      route={route}
+                      filterQuery={filterQuery}
+                      state={state}
+                      column={DAYS_COLUMN}
+                    />
+                  </th>
+                  <th scope="col" className="py-2 pr-3 font-medium text-ink-muted">
+                    Lead source
+                  </th>
+                  <th scope="col" className="py-2 pr-3 font-medium text-ink-muted">
+                    Staff
+                  </th>
+                </>
+              ) : null}
             </tr>
           </thead>
           <tbody>
@@ -211,15 +282,13 @@ export function DealIndex({ route, filterQuery, state, rows }: DealIndexProps) {
                 </th>
                 <td className="py-2 pr-3 text-ink-secondary">{row.saleDateDisplay}</td>
                 <td className="py-2 pr-3 text-ink-secondary">{row.storeName}</td>
-                <td className="numeric py-2 pr-3 text-ink-secondary">
-                  {row.vehicleCode}
-                </td>
-                <td className="py-2 pr-3 text-ink">
-                  {row.vehicle}
-                  <span className="ml-1.5 text-xs text-ink-faint">
-                    {row.conditionType}
-                  </span>
-                </td>
+                {detail ? (
+                  <td className="numeric py-2 pr-3 text-ink-secondary">
+                    {row.vehicleCode}
+                  </td>
+                ) : null}
+                <td className="py-2 pr-3 text-ink">{row.vehicle}</td>
+                <td className="py-2 pr-3 text-ink-secondary">{row.conditionType}</td>
                 <td className="py-2 pr-3 text-ink-secondary">
                   {row.saleType}
                   {row.isRetail ? null : (
@@ -239,19 +308,23 @@ export function DealIndex({ route, filterQuery, state, rows }: DealIndexProps) {
                 <td className="numeric py-2 pr-3 text-right font-semibold text-ink">
                   {row.totalGross}
                 </td>
-                <td className="numeric py-2 pr-3 text-right text-ink-secondary">
-                  {row.daysInInventory}
-                </td>
-                <td className="py-2 pr-3 text-ink-secondary">
-                  {row.isLeadAttributed ? (
-                    row.leadSource
-                  ) : (
-                    <span className="text-ink-faint">Walk-in or unattributed</span>
-                  )}
-                </td>
-                <td className="numeric py-2 text-xs text-ink-secondary">
-                  <StaffCode code={row.salespersonCode} />
-                </td>
+                {detail ? (
+                  <>
+                    <td className="numeric py-2 pr-3 text-right text-ink-secondary">
+                      {row.daysInInventory}
+                    </td>
+                    <td className="py-2 pr-3 text-ink-secondary">
+                      {row.isLeadAttributed ? (
+                        row.leadSource
+                      ) : (
+                        <span className="text-ink-faint">Walk-in or unattributed</span>
+                      )}
+                    </td>
+                    <td className="numeric py-2 pr-3 text-xs text-ink-secondary">
+                      <StaffCode code={row.salespersonCode} />
+                    </td>
+                  </>
+                ) : null}
               </tr>
             ))}
           </tbody>

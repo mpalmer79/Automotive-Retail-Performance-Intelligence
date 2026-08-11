@@ -942,6 +942,18 @@ describe('ADR-0013 condition 2: no frontend redefines a KPI', () => {
       'components/dashboard/lead-funnel.tsx',
       'components/dashboard/leads-marketing-sections.tsx',
       'components/dashboard/visuals.tsx',
+      // `UX.2B`. `GroupedMeasureBars` turns a governed value into a bar width against the
+      // measure's own largest category; `PositionMap` turns three of them into a left, a
+      // bottom and a mark radius. Every value is printed as text — beside the bar, in the
+      // mark's accessible name, and in the table — and no displayed figure is derived from
+      // a float.
+      //
+      // `inventory-sections.tsx` is deliberately ABSENT and that is the point of listing
+      // this. The first version of the age-and-capital track divided two exact values in
+      // the component to get a share; this test caught it, and `summarizeInventory` now
+      // publishes `investmentShare` already divided. A share belongs to the view model even
+      // when only a bar consumes it.
+      'components/dashboard/workspace-visuals.tsx',
       'lib/dashboard/decimal.ts',
     ])
   })

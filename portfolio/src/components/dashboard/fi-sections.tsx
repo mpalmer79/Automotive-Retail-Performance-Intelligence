@@ -46,6 +46,8 @@ import type {
   FiView,
 } from '@/lib/dashboard/fi'
 import { exactToString, isZero, type Exact } from '@/lib/dashboard/decimal'
+import { GrossComposition, TableDisclosure, TrendChart } from './visuals'
+import { GroupedMeasureBars } from './workspace-visuals'
 import { kpiDefinition, kpiDefinitionHref } from '@/lib/dashboard/sales-gross'
 import { cx } from '@/lib/utils'
 
@@ -948,5 +950,489 @@ function ManagerRow({ row }: { readonly row: FiManagerRow }) {
         {ratioCell(row.netFiGrossPvr, (value) => formatPerUnitExact(value))}
       </td>
     </tr>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+/* UX.2B — the Finance Director's workspace                                    */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The date basis, as a chip rather than as a sentence.
+ *
+ * `UX.2B` §9 requires the three bases to be VISUALLY OBVIOUS and forbids explaining them in
+ * long paragraphs repeatedly. Before this increment the route stated the basis as a full
+ * line under each of eight figures — "Deal date — what the office produced", "As of
+ * 2025-12-31 — what the store retained" — which is eight sentences saying one of three
+ * things. A chip is the same information at a glance, and it is the same three values
+ * everywhere, so a reader learns the vocabulary once.
+ *
+ * COLOUR IS NOT THE CARRIER. Each chip prints its basis in words; the tint only helps the
+ * eye group figures that share one. The methodology disclosure at the foot of the page still
+ * owns the full definition of each basis, which is where §9 says the detail belongs.
+ */
+const BASIS_TINT: Readonly<Record<FiBasis, string>> = {
+  deal: 'border-line-subtle bg-surface-sunken text-ink-muted',
+  asOf: 'border-accent-muted bg-accent-wash text-accent',
+  adjustment: 'border-line bg-zone-inventory text-ink-secondary',
+}
+
+export type FiBasis = 'deal' | 'asOf' | 'adjustment'
+
+export function BasisTag({
+  basis,
+  asOfDate,
+}: {
+  readonly basis: FiBasis
+  readonly asOfDate?: string
+}) {
+  const label =
+    basis === 'deal'
+      ? 'Deal date'
+      : basis === 'asOf'
+        ? `As of ${asOfDate ?? ''}`
+        : 'Adjustment period'
+  return (
+    <span
+      className={`inline-flex shrink-0 items-center rounded-pill border px-1.5 font-mono text-2xs tracking-wide ${BASIS_TINT[basis]}`}
+    >
+      {label}
+    </span>
+  )
+}
+
+function RailCell({
+  id,
+  label,
+  value,
+  basis,
+  asOfDate,
+  kpiId,
+  note,
+  rank,
+}: {
+  readonly id: string
+  readonly label: string
+  readonly value: string
+  readonly basis: FiBasis
+  readonly asOfDate: string
+  readonly kpiId?: string
+  readonly note?: string
+  readonly rank: 'lead' | 'supporting'
+}) {
+  return (
+    <li
+      data-kpi-card={id}
+      data-kpi-rank={rank}
+      className={cx(
+        'flex min-w-0 flex-col gap-0.5 rounded-lg border border-line-subtle bg-surface',
+        rank === 'lead' ? 'p-3' : 'p-2.5'
+      )}
+    >
+      <h3 className="text-xs leading-snug font-medium text-ink-secondary">{label}</h3>
+      <span
+        className={cx(
+          'numeric font-semibold text-ink',
+          rank === 'lead' ? 'text-2xl' : 'text-lg'
+        )}
+      >
+        {value}
+      </span>
+      <p className="flex flex-wrap items-baseline gap-x-1.5">
+        <BasisTag basis={basis} asOfDate={asOfDate} />
+        {kpiId === undefined ? null : (
+          <span className="font-mono text-2xs tracking-wide text-ink-faint">{kpiId}</span>
+        )}
+      </p>
+      {note === undefined ? null : (
+        <p className="mt-auto pt-0.5 text-2xs text-ink-faint">{note}</p>
+      )}
+    </li>
+  )
+}
+
+/**
+ * The six figures a finance director opens the page holding.
+ *
+ * THE BRIEF'S SIX, AND ONE OF THEM IS NEW TO THE RAIL. Back PVR, reserve PVR, product PVR,
+ * finance reserve, product gross and adjustment impact. The last is the only figure here
+ * that was not already a headline: it is the cumulative adjustment amount, which the page
+ * previously showed only inside the adjustments section, and a finance director reading
+ * "original product gross $412,000" without it is reading a produced figure with no idea
+ * how much of it came back.
+ *
+ * THREE BASES ON ONE RAIL, EACH CHIPPED. Four of the six are deal-date; the adjustment
+ * impact is adjustment-period; net gross is as-of. `UX.2B` §9 forbids mixing them silently
+ * and this is the surface where mixing them is easiest, so every card carries its chip.
+ *
+ * THE EIGHT-FIGURE PRODUCTION GRID DID NOT DISAPPEAR. `ProductionSummary` still renders,
+ * one module down, with products per retail unit and gross per contract and every basis
+ * line it always had. What changed is that six figures are at rail rank and eight are not.
+ */
+export function FiRail({ view }: { readonly view: FiView }) {
+  const p = view.production
+  return (
+    <div className="flex flex-col gap-2">
+      <ul className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+        <RailCell
+          id="back-pvr"
+          rank="lead"
+          label="Back gross per retail unit"
+          value={
+            p.backGrossPvr.value === null
+              ? 'No retail units'
+              : formatPerUnitExact(p.backGrossPvr.value)
+          }
+          basis="deal"
+          asOfDate={view.asOfDate}
+          kpiId="KPI-GRS-005"
+        />
+        <RailCell
+          id="reserve-pvr"
+          rank="lead"
+          label="Reserve per retail unit"
+          value={
+            p.reservePvr.value === null
+              ? 'No retail units'
+              : formatPerUnitExact(p.reservePvr.value)
+          }
+          basis="deal"
+          asOfDate={view.asOfDate}
+          kpiId="KPI-FNI-002"
+          note="Cash deliveries are inside this denominator and cannot earn reserve."
+        />
+        <RailCell
+          id="product-pvr"
+          rank="lead"
+          label="Product gross per retail unit"
+          value={
+            p.productGrossPvr.value === null
+              ? 'No retail units'
+              : formatPerUnitExact(p.productGrossPvr.value)
+          }
+          basis="deal"
+          asOfDate={view.asOfDate}
+          kpiId="KPI-FNI-005"
+        />
+      </ul>
+      <ul className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+        <RailCell
+          id="finance-reserve"
+          rank="supporting"
+          label="Finance reserve"
+          value={formatCurrencyExact(p.financeReserveGross)}
+          basis="deal"
+          asOfDate={view.asOfDate}
+          kpiId="KPI-FNI-001"
+          note="An amount, never a rate."
+        />
+        <RailCell
+          id="product-gross"
+          rank="supporting"
+          label="Original product gross"
+          value={formatCurrencyExact(p.originalProductGross)}
+          basis="deal"
+          asOfDate={view.asOfDate}
+          kpiId="KPI-FNI-003"
+          note="Before any later adjustment posted."
+        />
+        <RailCell
+          id="adjustment-impact"
+          rank="supporting"
+          label="Adjustment impact"
+          value={formatCurrencyExact(view.adjustmentAmountTotal)}
+          basis="adjustment"
+          asOfDate={view.asOfDate}
+          note={`${formatCountExact(view.adjustmentEventTotal)} events posted in the selected period, against contracts written in any period.`}
+        />
+      </ul>
+    </div>
+  )
+}
+
+/**
+ * Back-end gross as its two components, drawn against the governed total.
+ *
+ * THE TOTAL IS THE EXPORTED ONE, never a sum assembled here. `back_end_gross` is what the
+ * denominator is, and the identity that reserve plus original product gross accounts for
+ * all of it is VERIFIED elsewhere on this page and rendered as words. A bar drawn against a
+ * total this component added up itself could not fail that check, which is the point of
+ * having it.
+ *
+ * TWO IDENTITY FILLS, NOT THE SIGNED PAIR. Reserve is not the good half of the finance
+ * office's month and product gross is not the bad half; a store can hold back-end gross
+ * steady while reserve collapses and product compensates, and which of those is preferable
+ * depends on the store rather than on the figure.
+ */
+export function FiGrossComposition({ view }: { readonly view: FiView }) {
+  const p = view.production
+  return (
+    <GrossComposition
+      title="Reserve and product"
+      segments={[
+        {
+          key: 'reserve',
+          label: 'Finance reserve',
+          value: p.financeReserveGross,
+          display: formatCurrencyExact(p.financeReserveGross),
+        },
+        {
+          key: 'product',
+          label: 'Original product gross',
+          value: p.originalProductGross,
+          display: formatCurrencyExact(p.originalProductGross),
+        },
+      ]}
+      total={p.backEndGrossDealDate}
+      shareDisclosure="Reserve and product gross are published separately and are not ranked against each other. Other F&I income is exactly $0.00 and is not a balancing figure: the two components account for all of back-end gross, and the identity is recomputed and stated in words below."
+      headingLevel={4}
+    />
+  )
+}
+
+/**
+ * How the deliveries were funded, as a part-to-whole bar over deal counts.
+ *
+ * STRUCTURE IS CONTEXT, NOT PERFORMANCE. It decides what could be sold before anything
+ * about a customer does: GAP needs financing, Lease Wear Protection needs a lease, and a
+ * cash delivery can earn no finance reserve at all. The bar is here so a reader meets that
+ * shape before they meet a penetration rate, which is the order the rates only make sense
+ * in.
+ *
+ * THE DENOMINATOR IS RETAIL UNITS, which is the governed one: the three structure counts
+ * partition the retail deliveries and nothing else.
+ */
+export function StructureMixChart({ view }: { readonly view: FiView }) {
+  return (
+    <GrossComposition
+      title="Cash, finance and lease"
+      segments={view.structures.map((structure) => ({
+        key: structure.structure,
+        label: structure.structure,
+        value: structure.deals,
+        display: `${formatCountExact(structure.deals)} deals${structure.share.value === null ? '' : ` · ${formatRatioAsPercent(structure.share.value, 1)}`}`,
+      }))}
+      total={view.production.retailUnits}
+      headingLevel={4}
+    />
+  )
+}
+
+/**
+ * Penetration by category, each against ITS OWN eligible population.
+ *
+ * BOTH SIDES OF EVERY RATIO ARE ON THE ROW, which is what makes this drawable at all. A GAP
+ * rate over all retail deliveries would count cash buyers who have no loan for GAP to cover,
+ * and would make every store with a heavier cash mix look worse for a reason that has
+ * nothing to do with its finance office. Each bar's note prints `attached / eligible` so the
+ * denominator is never something a reader has to take on trust.
+ *
+ * A CATEGORY WITH NO ELIGIBLE DEALS DRAWS NO BAR and says so. A rate with no denominator is
+ * undefined and not zero, and a zero-length bar would present the second as the first.
+ *
+ * NOTHING IS RANKED AND NOTHING IS COLOURED "GOOD". The order is `FI_CATEGORY_ORDER`, the
+ * governed vocabulary, and ARPI publishes no F&I benchmark for any of these rates.
+ */
+export function PenetrationChart({ view }: { readonly view: FiView }) {
+  return (
+    <GroupedMeasureBars
+      title="Penetration by category"
+      groups={[
+        {
+          id: 'penetration',
+          label: 'Attached deals as a share of eligible deals',
+          rows: view.categories.map((category) => ({
+            key: category.slug,
+            label: category.category,
+            value: category.penetration.value,
+            display:
+              category.penetration.value === null
+                ? 'No eligible deals'
+                : formatRatioAsPercent(category.penetration.value, 1),
+            note: `${formatCountExact(category.attachedDeals)}/${formatCountExact(category.eligibleDeals)}`,
+          })),
+        },
+      ]}
+      legend={false}
+      categoryHeading="Product category"
+      footnote="Each category is measured against the deals it was ELIGIBLE for under one governed rule, not against all retail deliveries. Both sides of every ratio are printed. No industry benchmark exists for any of these rates."
+      headingLevel={4}
+    />
+  )
+}
+
+/**
+ * What each category earned, on two measures.
+ *
+ * ATTACHMENT AND ECONOMICS ARE DIFFERENT QUESTIONS and this module is the second one. A
+ * category can be attached often and earn little, or rarely and earn a great deal, and the
+ * penetration module directly above answers only the first. Original gross and gross per
+ * contract are drawn together for that reason.
+ *
+ * EACH MEASURE IS SCALED TO ITS OWN LARGEST CATEGORY, because dollars and dollars per
+ * contract share no axis. The primitive's footnote says so; no cross-group length
+ * comparison is available and none is implied.
+ *
+ * THE FULL TABLE — retail, cost, gross, adjustments and net, per category — is still
+ * rendered by `CategoryEconomics` in the module below. This draws two of its columns.
+ */
+export function CategoryEconomicsChart({ view }: { readonly view: FiView }) {
+  return (
+    <GroupedMeasureBars
+      title="Category economics"
+      groups={[
+        {
+          id: 'gross',
+          label: 'Original product gross',
+          kpiId: 'KPI-FNI-003',
+          rows: view.categories.map((category) => ({
+            key: category.slug,
+            label: category.category,
+            value: category.originalProductGross,
+            display: formatCurrencyExact(category.originalProductGross, 0),
+          })),
+        },
+        {
+          id: 'per-contract',
+          label: 'Gross per contract',
+          kpiId: 'KPI-FNI-011',
+          rows: view.categories.map((category) => ({
+            key: category.slug,
+            label: category.category,
+            value: category.grossPerContract.value,
+            display:
+              category.grossPerContract.value === null
+                ? 'No contracts'
+                : formatPerUnitExact(category.grossPerContract.value),
+          })),
+        },
+      ]}
+      categoryHeading="Product category"
+      footnote="Deal-date basis. Each measure is scaled to its own largest category; dollars and dollars per contract share no axis."
+      headingLevel={4}
+    />
+  )
+}
+
+/**
+ * What came back, by the month it posted.
+ *
+ * THE ADJUSTMENT-PERIOD BASIS AND NOTHING ELSE. Every column groups events by the day they
+ * POSTED, from the exported `adjustment_date`. A chargeback in this period against a
+ * contract written earlier belongs to this period; the earlier contract keeps the gross it
+ * was written with, and this chart never touches it. The module's own basis chip says so on
+ * its face rather than in a paragraph, which is what `UX.2B` §9 asks for.
+ *
+ * COLUMNS AND NOT A LINE, for the reason `TrendChart` gives at length: a line implies the
+ * quantity existed between the points, and there is no adjustment amount "between" two
+ * posting months.
+ *
+ * THE PER-TYPE SPLIT IS THE TABLE, not four overlaid series. Four series of four amounts
+ * over a handful of months is a picture nobody can read; the shape a finance director wants
+ * from the columns is whether the total is moving, and which type moved is one row of a
+ * table away. The full per-type economics, with the period-proxy rates and their
+ * disclosures, are in the adjustments module below.
+ */
+export function AdjustmentTrend({ view }: { readonly view: FiView }) {
+  const months = view.adjustmentMonths
+  if (months.length === 0) {
+    return (
+      <Text size="sm" tone="muted">
+        No adjustment posted inside the selected period. That is an absence of events, not
+        an amount of zero.
+      </Text>
+    )
+  }
+  const types = months[0]?.byType.map((entry) => entry.type) ?? []
+
+  /*
+   * ONE POSTING MONTH IS NOT A TREND, AND A ONE-COLUMN COLUMN CHART SAYS OTHERWISE.
+   *
+   * The default period is a single calendar month, so most requests to this page resolve to
+   * exactly one posting month — and a column chart with one column renders as a solid block
+   * filling the panel, which reads as a chart that failed rather than as a period with one
+   * observation in it. The figure and its event count say the same thing truthfully, and the
+   * per-type table below is unchanged either way. Widen the period and the columns appear.
+   */
+  const single = months.length === 1 ? months[0] : undefined
+
+  return (
+    <div className="flex flex-col gap-3">
+      {single === undefined ? null : (
+        <div className="flex flex-col gap-0.5 rounded-lg border border-line-subtle bg-surface p-3">
+          <Text size="xs" tone="muted">
+            {`Posted in ${single.label}`}
+          </Text>
+          <span className="numeric text-2xl font-semibold text-ink">
+            {formatCurrencyExact(single.total)}
+          </span>
+          <Text size="xs" tone="faint">
+            {`${formatCountExact(single.events)} events. The selected period covers one posting month, so there is no shape to draw; widen the period to compare months.`}
+          </Text>
+        </div>
+      )}
+      {single !== undefined ? null : (
+      <TrendChart
+        title="Adjustment amount by posting month"
+        measure="Adjustment amount"
+        points={months.map((month) => ({
+          key: month.key,
+          label: month.label,
+          value: month.total,
+          display: formatCurrencyExact(month.total),
+        }))}
+        periodHeading="Posting month"
+        valueHeading="Amount"
+        summaryMode="sr-only"
+        headingLevel={4}
+      />
+      )}
+      <TableDisclosure title="adjustment amount by posting month and type">
+        <table className="w-full border-collapse text-sm">
+          <caption className="sr-only">
+            Adjustment amount by posting month and adjustment type
+          </caption>
+          <thead>
+            <tr className="border-b border-line-subtle text-left">
+              <th scope="col" className="py-2 pr-3 font-medium text-ink-muted">
+                Posting month
+              </th>
+              {types.map((type) => (
+                <th
+                  key={type}
+                  scope="col"
+                  className="py-2 pl-3 text-right font-medium text-ink-muted"
+                >
+                  {type}
+                </th>
+              ))}
+              <th scope="col" className="py-2 pl-3 text-right font-medium text-ink-muted">
+                Total
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {months.map((month) => (
+              <tr key={month.key} className="border-b border-line-subtle/60 last:border-0">
+                <th scope="row" className="py-1.5 pr-3 font-normal text-ink-secondary">
+                  {month.label}
+                </th>
+                {month.byType.map((entry) => (
+                  <td
+                    key={entry.type}
+                    className="numeric py-1.5 pl-3 text-right text-ink"
+                  >
+                    {formatCurrencyExact(entry.amount)}
+                  </td>
+                ))}
+                <td className="numeric py-1.5 pl-3 text-right font-semibold text-ink">
+                  {formatCurrencyExact(month.total)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </TableDisclosure>
+    </div>
   )
 }

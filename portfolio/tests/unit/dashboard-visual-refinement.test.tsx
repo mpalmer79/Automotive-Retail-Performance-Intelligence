@@ -466,7 +466,10 @@ describe('the console has one source of visual constants and no chart library', 
     const data = new Set(
       [...declared].filter(([name]) => name.includes('-data-')).map(([, value]) => value)
     )
-    expect(zones.length).toBe(4)
+    // Five since `UX.2B` added `zone-fi`, so the F&I workspace does not have to write
+    // `bg-zone-funnel` on a page about the finance office. It resolves to the same value
+    // as the funnel wash and is still checked here against every data token.
+    expect(zones.length).toBe(5)
     for (const [name, value] of zones) {
       expect(data.has(value), `${name} shares a value with a data token`).toBe(false)
     }

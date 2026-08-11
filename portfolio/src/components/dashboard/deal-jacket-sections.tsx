@@ -31,6 +31,8 @@ import type {
 } from '@/lib/dashboard/deal-jacket'
 import { cx } from '@/lib/utils'
 
+import { BridgeChart, GrossComposition } from './visuals'
+
 /* -------------------------------------------------------------------------- */
 /* Building blocks                                                             */
 /* -------------------------------------------------------------------------- */
@@ -138,7 +140,7 @@ function VerificationLine({ verification }: { readonly verification: Verificatio
 export function IdentitySection({ jacket }: { readonly jacket: DealJacket }) {
   const { identity } = jacket
   return (
-    <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <dl className="grid gap-3 @sm:grid-cols-2 @2xl:grid-cols-3">
       <Fact term="Deal">
         <span className="numeric">{identity.saleId}</span>
       </Fact>
@@ -178,7 +180,7 @@ export function IdentitySection({ jacket }: { readonly jacket: DealJacket }) {
 export function VehicleSection({ jacket }: { readonly jacket: DealJacket }) {
   const { vehicle } = jacket
   return (
-    <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <dl className="grid gap-3 @sm:grid-cols-2 @2xl:grid-cols-3">
       <Fact term="Vehicle">{vehicle.display}</Fact>
       <Fact term="Unit identifier">
         <span className="numeric">{vehicle.vehicleCode}</span>
@@ -234,7 +236,7 @@ export function FrontGrossSection({ jacket }: { readonly jacket: DealJacket }) {
       <Calculation caption="Front-end gross calculation" lines={frontGross.lines} />
       <VerificationLine verification={frontGross.verification} />
 
-      <dl className="grid gap-3 sm:grid-cols-3">
+      <dl className="grid gap-3 @sm:grid-cols-2 @2xl:grid-cols-3">
         {frontGross.discounts.map((discount) => (
           <Fact key={discount.label} term={discount.label}>
             {discount.display === null ? (
@@ -281,7 +283,7 @@ export function TradeSectionBlock({ trade }: { readonly trade: TradeSection }) {
   }
   return (
     <div className="flex flex-col gap-3">
-      <dl className="grid gap-4 sm:grid-cols-3">
+      <dl className="grid gap-3 @sm:grid-cols-2 @2xl:grid-cols-3">
         <Fact term="Trade allowance">
           <span className="numeric">{trade.allowance}</span>
         </Fact>
@@ -297,7 +299,7 @@ export function TradeSectionBlock({ trade }: { readonly trade: TradeSection }) {
           </span>
         </Fact>
       </dl>
-      <dl className="grid gap-4 sm:grid-cols-3">
+      <dl className="grid gap-3 @sm:grid-cols-2 @2xl:grid-cols-3">
         <Fact term="Payoff">
           <Absent>Not modelled</Absent>
         </Fact>
@@ -322,7 +324,7 @@ export function FinanceSectionBlock({ jacket }: { readonly jacket: DealJacket })
   const { finance, backGross } = jacket
   return (
     <div className="flex flex-col gap-4">
-      <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <dl className="grid gap-3 @sm:grid-cols-2 @2xl:grid-cols-3">
         <Fact term="Structure">
           {finance.structure}
           <span className="ml-1.5 text-xs text-ink-faint">derived: {finance.basis}</span>
@@ -379,7 +381,7 @@ export function FinanceSectionBlock({ jacket }: { readonly jacket: DealJacket })
           is named anywhere in this project.
         </Text>
       )}
-      <dl className="grid gap-3 sm:grid-cols-3">
+      <dl className="grid gap-3 @sm:grid-cols-2 @2xl:grid-cols-3">
         {finance.notModelled.map((entry) => (
           <Fact key={entry.label} term={entry.label}>
             <Absent>
@@ -552,13 +554,19 @@ export function ProductSectionBlock({ jacket }: { readonly jacket: DealJacket })
         ))}
       </ul>
 
-      <Text size="xs" tone="muted">
-        Original gross is what the contract was written for, on the day of the deal. Net
-        gross is what remained as at {products.asOfDate} after every adjustment posted on
-        or before that date. Status is derived from each contract&rsquo;s own event
-        history and never from today&rsquo;s date. Every product and administrator named
-        here is fictional, and every price is synthetic.
+      <Text size="xs" tone="faint">
+        Every product and administrator named here is fictional, and every price is
+        synthetic.
       </Text>
+
+      <Disclosure label="What original and net each mean">
+        <Text size="xs" tone="muted">
+          Original gross is what the contract was written for, on the day of the deal. Net
+          gross is what remained as at {products.asOfDate} after every adjustment posted on
+          or before that date. Status is derived from each contract&rsquo;s own event
+          history and never from today&rsquo;s date.
+        </Text>
+      </Disclosure>
 
       {products.reconcilesToDealRow ? null : (
         <Text size="xs" tone="muted">
@@ -685,7 +693,7 @@ export function TotalGrossSection({ jacket }: { readonly jacket: DealJacket }) {
 export function StaffSection({ staff }: { readonly staff: readonly StaffMember[] }) {
   return (
     <div className="flex flex-col gap-3">
-      <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <dl className="grid gap-3 @sm:grid-cols-2 @2xl:grid-cols-3">
         {staff.map((member) => (
           <Fact key={member.role} term={member.role}>
             {member.code === null ? (
@@ -756,8 +764,7 @@ export function TimelineSectionBlock({
         ))}
       </ol>
       <Text size="xs" tone="faint">
-        Stages come from the lead and appointment facts. No message, note, email, phone
-        number or free-form CRM text appears here, because none exists in the model: it
+        No message, note, email, phone number or free-form CRM text exists in the model: it
         records that a lead was contacted, not what was said.
       </Text>
     </div>
@@ -803,12 +810,18 @@ export function ChecksSection({
         {needingReview === 0
           ? 'All checks passed.'
           : `${String(needingReview)} check${needingReview === 1 ? '' : 's'} need review.`}{' '}
-        Eight checks, and every one of them recomputes something from the figures on this
-        page rather than reading a stored flag. Back-gross reconciliation, product
-        eligibility and product-adjustment validity were named as absent through{' '}
-        <code className="font-mono text-[0.6875rem]">DASH.4</code> because the F&amp;I
-        model had no surface here; they are real now, and each can fail.
+        Each recomputes something from the figures on this page rather than reading a stored
+        flag.
       </Text>
+      <Disclosure label="Why three of these were once absent">
+        <Text size="xs" tone="muted">
+          Back-gross reconciliation, product eligibility and product-adjustment validity
+          were named as absent through{' '}
+          <code className="font-mono text-[0.6875rem]">DASH.4</code> because the F&amp;I
+          model had no surface here. A check that cannot fail is not a check. They are real
+          now, and each can fail.
+        </Text>
+      </Disclosure>
     </div>
   )
 }
@@ -817,7 +830,7 @@ export function LineageSection({ jacket }: { readonly jacket: DealJacket }) {
   const { lineage } = jacket
   return (
     <Disclosure label="Where every figure on this page came from">
-      <dl className="grid gap-4 pt-2 sm:grid-cols-2">
+      <dl className="grid gap-3 pt-2 @sm:grid-cols-2">
         <Fact term="Source reporting view">
           {lineage.sourceView === null ? (
             <Absent>Not published by this export&rsquo;s manifest</Absent>
@@ -854,5 +867,183 @@ export function LineageSection({ jacket }: { readonly jacket: DealJacket }) {
         </ul>
       </div>
     </Disclosure>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+/* UX.2B — the deal-review record                                              */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The five figures a desk reads first.
+ *
+ * WHAT REPLACED WHAT. `UX.1` opened this route with a header, a synthetic disclosure, an
+ * eight-fact identity grid and then a two-column layout whose right column began with the
+ * front-gross ARITHMETIC — a `<dl>` of five operator lines and a verification sentence.
+ * That is the correct thing to have on the page and the wrong thing to open it with: a
+ * manager pulling a deal jacket asks what the deal made before they ask how the figure was
+ * derived, and `UX.2B` §5 says so outright — do not visually prioritize formula proof over
+ * the transaction.
+ *
+ * NOTHING WAS RECOMPUTED TO BUILD THIS. Every figure here is a line the view model had
+ * already resolved and formatted: the sale price and the front-gross result are the first
+ * and last lines of the front-gross calculation, back gross and total gross are the
+ * published figures the same calculations verify against, and days in stock is the vehicle
+ * row's own column. The arithmetic that produces them is one disclosure away and is
+ * unchanged, still recomputed from the components, still verified, still rendered as words
+ * when it fails.
+ */
+export function DealEconomicsRail({
+  jacket,
+  daysInStock,
+}: {
+  readonly jacket: DealJacket
+  readonly daysInStock: string
+}) {
+  const salePrice = jacket.frontGross.lines[0]
+  const frontResult = jacket.frontGross.lines.find((line) => line.isResult === true)
+  const cells: readonly {
+    id: string
+    label: string
+    value: string
+    note?: string
+  }[] = [
+    {
+      id: 'sale-price',
+      label: 'Sale price',
+      value: salePrice?.display ?? 'Not published',
+    },
+    {
+      id: 'front-gross',
+      label: 'Front gross',
+      value: frontResult?.display ?? 'Not published',
+      note: 'Trade variance is deliberately outside it',
+    },
+    {
+      id: 'back-gross',
+      label: 'Back gross',
+      value: jacket.backGross.backEndGross,
+      note: 'Reserve plus original product gross',
+    },
+    {
+      id: 'total-gross',
+      label: 'Total gross',
+      value:
+        jacket.totalGross.lines.find((line) => line.isResult === true)?.display ??
+        'Not published',
+    },
+    { id: 'days-in-stock', label: 'Days in stock', value: daysInStock },
+  ]
+  return (
+    <ul className="grid grid-cols-2 gap-2 @lg:grid-cols-3 @3xl:grid-cols-5">
+      {cells.map((cell) => (
+        <li
+          key={cell.id}
+          data-kpi-card={cell.id}
+          className="flex min-w-0 flex-col gap-0.5 rounded-lg border border-line-subtle bg-surface p-3"
+        >
+          <h3 className="text-xs leading-snug font-medium text-ink-secondary">
+            {cell.label}
+          </h3>
+          <span className="numeric text-xl font-semibold text-ink">{cell.value}</span>
+          {cell.note === undefined ? null : (
+            <p className="mt-auto pt-0.5 text-2xs text-ink-faint">{cell.note}</p>
+          )}
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+/**
+ * Front-end gross as a waterfall: sale price, the three costs taken out, the result.
+ *
+ * THE SAME LINES, IN THE SAME ORDER, DRAWN INSTEAD OF LISTED. `UX.2B` §5 asks for a
+ * front-gross composition bar — sale price minus acquisition, recon and pack — and the view
+ * model already publishes exactly that as `frontGross.lines`, an ordered list of operator
+ * lines ending in a result. This maps them onto the waterfall primitive the gross-change
+ * bridge uses: the opening line and the result are ANCHORS on the baseline, and each `−`
+ * line is a falling step between them.
+ *
+ * NO ARITHMETIC HAPPENS HERE. The amounts are the exact values the view model resolved and
+ * the displays are the strings it formatted; this file decides which of them is an anchor
+ * and which is a step, and nothing else. The identity is still recomputed and verified in
+ * `deal-jacket.ts`, and the verification sentence is still rendered as words.
+ *
+ * THE SIGN IS THE ARITHMETIC, NOT A JUDGEMENT. A cost that reduces gross is a falling step
+ * and takes the negative fill because it subtracts — the same rule the change bridge
+ * follows. Nothing here calls a reconditioning cost bad.
+ */
+export function FrontGrossWaterfall({ jacket }: { readonly jacket: DealJacket }) {
+  const lines = jacket.frontGross.lines
+  const bars = lines.map((line, index) => ({
+    key: `${line.label}-${String(index)}`,
+    label: line.label,
+    /* The SIGNED amount, published by the view model. A `−` line carries a positive
+       `amount` with a minus operator beside it — how a printed calculation reads — and a
+       waterfall step is a signed movement, so the two are different values of the same
+       figure. The negation happens in `deal-jacket.ts`, which owns the arithmetic; this
+       file chooses which of the two published values a bar is measured from. */
+    value: line.signedAmount,
+    display: line.display,
+    kind: (index === 0 || line.isResult === true ? 'anchor' : 'step') as 'anchor' | 'step',
+  }))
+  return (
+    <div className="flex flex-col gap-3">
+      <BridgeChart
+        title="Sale price, less what the unit cost"
+        bars={bars}
+        summary={jacket.frontGross.verification.statement}
+        headingLevel={4}
+      />
+      <VerificationLine verification={jacket.frontGross.verification} />
+    </div>
+  )
+}
+
+/**
+ * Back-end gross as its two components, drawn against the published total.
+ *
+ * `UX.2B` §5 asks for an F&I composition of reserve plus product gross, and that is exactly
+ * the identity `deal-jacket.ts` recomputes and verifies: other F&I income is exactly $0.00
+ * and is not a balancing figure. The bar is drawn against the PUBLISHED back-end gross
+ * rather than against a sum assembled here, so a component that failed to reconcile would
+ * show as a bar that does not fill its track rather than as a bar that always fills it.
+ *
+ * TWO IDENTITY FILLS. Reserve is not the good half of a deal's back end and product gross
+ * is not the bad half.
+ */
+export function BackGrossComposition({ jacket }: { readonly jacket: DealJacket }) {
+  const { reserve, originalProductGross, backEndGross } = jacket.backGross.exact
+  return (
+    <div className="flex flex-col gap-3">
+      <GrossComposition
+        title="Reserve and product gross"
+        segments={[
+          {
+            key: 'reserve',
+            label: 'Finance reserve',
+            value: reserve,
+            display: jacket.backGross.reserve,
+          },
+          {
+            key: 'product',
+            label: 'Original product gross',
+            value: originalProductGross,
+            display: jacket.backGross.originalProductGross,
+          },
+        ]}
+        total={backEndGross}
+        headingLevel={4}
+      />
+      <Text size="xs" tone={jacket.backGross.verified ? 'muted' : 'secondary'}>
+        {jacket.backGross.verified
+          ? `Recomputed from the two components and equal to the published back-end gross to the cent. Other F&I income is ${jacket.backGross.otherFiIncome} and is not a balancing figure.`
+          : `The components do not sum to the published back-end gross. Residual ${jacket.backGross.residual}. Both figures are shown as exported; this state is a defect rather than a rounding artefact.`}
+      </Text>
+      <Text size="xs" tone="faint">
+        {`Retained F&I gross as of ${jacket.backGross.asOfDate} is ${jacket.backGross.retainedFiGross}, after ${jacket.backGross.cumulativeAdjustments} of adjustments posted since the deal date. Produced and retained are different questions and are never shown as one number.`}
+      </Text>
+    </div>
   )
 }

@@ -316,6 +316,13 @@
   --arpi-colour-zone-plan: var(--arpi-emerald-50);
   --arpi-colour-zone-inventory: var(--arpi-amber-50);
   --arpi-colour-zone-funnel: var(--arpi-violet-50);
+  /* `UX.2B`. The F&I workspace's ground. It resolves to the SAME VALUE as the funnel
+     wash and is a separate token rather than a reuse of it, because the two name
+     different business areas: a route that wrote `bg-zone-funnel` would be saying
+     "leads" on a page about the finance office, and the next person to change the
+     funnel's tint would silently change F&I with it. No new colour is introduced, so
+     the contrast headroom `tokens.test.ts` measures on violet-50 already covers it. */
+  --arpi-colour-zone-fi: var(--arpi-violet-50);
 
   /* ---------------------------------------------------------------------
      3. Typography

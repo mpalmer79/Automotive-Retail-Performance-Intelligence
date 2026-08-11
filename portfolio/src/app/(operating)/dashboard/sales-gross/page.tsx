@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 
 import { Canvas } from '@/components/shell/field'
+import { GridRow, Module, Workspace } from '@/components/dashboard/exec-grid'
 import { FilterBar, type FilterOption } from '@/components/dashboard/filter-bar'
 import {
   FilterNotice,
@@ -11,10 +12,13 @@ import {
 } from '@/components/dashboard/notices'
 import {
   BridgeSection,
+  ConditionSplit,
   ContributionSection,
+  DiscountSection,
   DistributionSection,
-  MixSection,
-  PerformanceGrid,
+  SaleTypeMix,
+  SalesKpiRail,
+  StoreContribution,
   TrendSection,
 } from '@/components/dashboard/sales-gross-sections'
 import { TargetPaceSection } from '@/components/dashboard/target-context'
@@ -24,7 +28,7 @@ import {
   OperatingPageHeader,
   operatingContext,
 } from '@/components/dashboard/operating-page-header'
-import { Container, Section, SectionHeader } from '@/components/ui/layout'
+import { Container, Section } from '@/components/ui/layout'
 import { Text } from '@/components/ui/typography'
 import {
   calendarMonths,
@@ -35,7 +39,7 @@ import {
 } from '@/lib/dashboard/data'
 import { parseFilters, type QueryInput } from '@/lib/dashboard/filters'
 import { formatIsoMonth } from '@/lib/dashboard/format'
-import { buildSalesGross } from '@/lib/dashboard/sales-gross'
+import { buildSalesGross, type SalesGrossView } from '@/lib/dashboard/sales-gross'
 import { exportTrust, powerBiTrust, reconciliationFailed } from '@/lib/dashboard/trust'
 import { engines } from '@/lib/manifest'
 import { pageMetadata } from '@/lib/metadata'
@@ -46,27 +50,51 @@ export const metadata: Metadata = pageMetadata('dashboardSalesGross')
 const ROUTE = ROUTES.dashboardSalesGross.href
 
 /**
- * Sales and gross — the GSM surface.
+ * Sales and gross — the general sales manager's workspace.
  *
- * WHAT THIS PAGE IS FOR
- * ---------------------
- * A general sales manager arrives from the Executive Overview holding one
- * observation: gross moved. This page answers what moved with it. Volume and rate
- * are separated, the mix behind them is shown, the discount taken against asking
- * price is shown, the shape of the deal population is shown, and the bridge states
- * how much of the change the documented decomposition assigns to each.
+ * A WORKSPACE, NOT A DIAGNOSTIC ESSAY
+ * -----------------------------------
+ * `UX.1` left this route as eight full-width bands, each opening with an eyebrow, an `h2`
+ * and a two-to-four-line lede, stacked down a 7,228 px document. Measured on the merge of
+ * `UX.2A`, at 1440 × 900: the first framed visualization began 2,752 px down — three
+ * screens — and the first viewport contained a control band, a notice stack, a filter form
+ * and the top edge of nine identical metric tiles, nine of which carried their own
+ * `How is this calculated?` disclosure. Every figure was present and a manager had to
+ * scroll past three screens of prose to meet a single shape.
  *
- * SECTION ORDER IS THE DIAGNOSTIC ORDER
- * -------------------------------------
- * Totals, then the trend, then the mix, then where the gross came from, then what
- * was given away, then the distribution, then the bridge. The bridge is LAST on
- * purpose: it is the most interpretive thing on the page, and a reader who has
- * already seen units, rate and mix reads it as a summary rather than as a verdict.
+ * `UX.2B` rebuilds it on the twelve-column module grid `UX.2A` established. The eight
+ * region headings are gone, because a module's own title says what it holds, and
+ * `Performance` above a rail of governed figures was the page talking to itself.
  *
- * A SERVER COMPONENT. One client island, the filter bar, receives option lists and
- * no data. With scripting disabled every figure, every table and every chart's data
- * alternative is still in the document, and the filter form degrades to the native
- * GET submission it already is.
+ * THE QUESTIONS, IN THE ORDER A GSM ASKS THEM
+ * -------------------------------------------
+ * How many units, how much gross, what is GPRU — the rail. What changed — the trend and,
+ * decisively, the bridge. Was it front or back — the composition. New or used — the
+ * condition split. Which store — the contribution bars. What does the deal population look
+ * like — the two distributions. Seven questions, seven modules, and the first four are on
+ * one screen.
+ *
+ * THE BRIDGE IS THE PAGE'S LARGEST VISUAL AND ITS ARITHMETIC IS UNTOUCHED
+ * ----------------------------------------------------------------------
+ * `UX.2B` §3 requires the bridge's authority to be preserved exactly, and it is:
+ * `vw_gross_change_bridge` owns the decomposition, `buildBridge` reads the exported
+ * numerators and verifies the identity, and this route renders what that returns. What
+ * changed is that it is now eight columns wide, one row below the rail and the trend, rather
+ * than the last band of a nine-screen document. Signed steps take the semantic pair, the two anchors take the neutral
+ * reference fill because a level is not a direction, and every exact amount is still
+ * printed beside its label.
+ *
+ * WHAT DID NOT CHANGE. No KPI definition, no numerator, no denominator, no date basis, no
+ * rate re-aggregation rule, no bridge arithmetic and no export. Every figure comes from the
+ * same governed selector through `buildSalesGross()`, evaluated on the server. The one
+ * addition to the view model is a selection: the per-deal discount from original asking,
+ * counted into bands and RECONCILED against the governed period total it must sum to.
+ *
+ * A SERVER COMPONENT. One client island, the filter bar, receives option lists and no data.
+ * The trend's metric switch is a radio group and CSS: it ships no JavaScript, it works with
+ * scripting off, and it cannot recalculate anything because there is no code in it. With
+ * scripting disabled every figure, every table and every chart's data alternative is still
+ * in the document.
  */
 export default async function SalesGrossPage({
   searchParams,
@@ -84,6 +112,11 @@ export default async function SalesGrossPage({
   const powerBi = powerBiTrust(engines)
   const failedReconciliation = reconciliationFailed(dashboardManifest)
   const comparisonLabel = view.periodContext.comparison?.label ?? null
+
+  const conditionMix = mixById(view, 'condition')
+  const storeMix = mixById(view, 'store')
+  const saleTypeMix = mixById(view, 'sale-type')
+  const totals = figuresById(view, ['retail-units', 'total-gross'])
 
   return (
     <Canvas>
@@ -115,8 +148,7 @@ export default async function SalesGrossPage({
             stores={storeOptions()}
             conditions={conditionOptions()}
             leadSources={leadSourceOptions()}
-            conditionHint="New and Used select the exported condition split of units and gross."
-            leadSourceHint="Not applied on this page. Deal-level attribution is in the Deal Explorer."
+            leadSourceHint="Not applied here. Deal-level attribution is in the Deal Explorer."
           />
         }
         methodology={
@@ -138,154 +170,174 @@ export default async function SalesGrossPage({
           </Container>
         </Section>
       ) : (
-        <>
-          {/* -------------------------------------------------------------- */}
-          {/* Performance                                                     */}
-          {/* -------------------------------------------------------------- */}
-          <Section rhythm="default" id="performance">
-            <Container width="full">
-              <SectionHeader
-                eyebrow="Performance"
-                title="Volume and gross, with the rate that connects them"
-                lede={
-                  view.conditionFilterApplied
-                    ? 'Units and gross are read from the exported condition split, so the selected condition changes which governed column is summed rather than re-filtering a total that carries no split.'
-                    : 'Nine governed figures. The three per-unit rates share one denominator, which is what makes total PVR the sum of front and back PVR rather than a coincidence.'
-                }
-              />
-              <div className="pt-6">
-                <PerformanceGrid
-                  metrics={view.performance}
-                  comparisonLabel={comparisonLabel}
-                />
-              </div>
-            </Container>
-          </Section>
-
-          {/* -------------------------------------------------------------- */}
-          {/* Targets and selling-day pace                                    */}
-          {/* -------------------------------------------------------------- */}
+        <Workspace>
+          {/* ---------------------------------------------------------------- */}
+          {/* ROW 1 — the rail                                                  */}
+          {/* ---------------------------------------------------------------- */}
           {/*
-            Placed after the totals and before the trend, which is the order a GSM
-            reads: what happened, what was committed to, then how it accumulated.
-
-            The plan is deliberately NOT part of the gross-change bridge further down.
-            The bridge decomposes a period-over-period CHANGE into volume, front-rate
-            and back-rate effects; plan variance answers a different question, and
-            adding it as a fourth effect would change what the other three mean.
+            The condition note is the one sentence a reader would misread the rail without,
+            and only when a condition filter is in force: under `condition=New` the units
+            and gross figures are read from a DIFFERENT governed column rather than from a
+            re-filtered total, and a reader who assumes the latter will not understand why
+            the sale-type counts below did not move with them.
           */}
-          <Section rhythm="default" id="targets">
-            <Container width="full">
-              <SectionHeader
-                eyebrow="Targets and pace"
-                title="Against the month's plan"
-                lede="Units and gross beside the month's committed goal, with the selling days elapsed, the current rate per selling day and where the rate lands the month. A monthly plan is a single-month figure, so it is shown as a reference beside the totals rather than drawn onto the daily trend below. A flat daily target line would state a number the reporting layer does not define."
+          <GridRow>
+            <Module
+              id="performance"
+              title="Result"
+              zone="performance"
+              visual="kpi-rail"
+              meta={view.periodContext.period.label}
+              {...(view.conditionFilterApplied
+                ? {
+                    note: 'Units and gross are read from the exported condition split, so the selected condition changes which governed column is summed rather than re-filtering a total that carries no split.',
+                  }
+                : {})}
+            >
+              <SalesKpiRail
+                metrics={view.performance}
+                comparisonLabel={comparisonLabel}
               />
-              <div className="pt-6">
-                <TargetPaceSection context={view.targets} />
-              </div>
-            </Container>
-          </Section>
+            </Module>
+          </GridRow>
 
-          {/* -------------------------------------------------------------- */}
-          {/* Trend                                                           */}
-          {/* -------------------------------------------------------------- */}
-          <Section rhythm="default" tone="evidence" id="trend">
-            <Container width="full">
-              <SectionHeader
-                eyebrow="Trend"
-                title="How the period accumulated"
-                lede="Columns rather than a line: there is no gross between Tuesday and Wednesday, and a line would imply one. Each chart carries its own data table, present in the document whether or not it is opened."
-              />
-              <div className="pt-6">
-                <TrendSection series={view.series} comparisonLabel={comparisonLabel} />
-              </div>
-            </Container>
-          </Section>
-
-          {/* -------------------------------------------------------------- */}
-          {/* Mix                                                             */}
-          {/* -------------------------------------------------------------- */}
-          <Section rhythm="default" id="mix">
-            <Container width="full">
-              <SectionHeader
-                eyebrow="Mix"
-                title="What the volume was made of"
-                lede="Condition and store carry both units and gross because the export publishes both. Sale type carries units only, and says so: apportioning the retail gross across sale types would invent a measure the governed layer does not own."
-              />
-              <div className="pt-6">
-                <MixSection mixes={view.mixes} />
-              </div>
-            </Container>
-          </Section>
-
-          {/* -------------------------------------------------------------- */}
-          {/* Where the gross came from, and what was given away              */}
-          {/* -------------------------------------------------------------- */}
-          <Section rhythm="default" tone="evidence" id="contribution">
-            <Container width="full">
-              <SectionHeader
-                eyebrow="Gross composition"
-                title="Front and back, and the discount taken to get there"
-                lede="The finance office's contribution is shown beside the vehicle's, and the discount against each asking price is shown per retail unit. The MSRP discount divides by the units that actually carry an MSRP, which is fewer than the retail count."
-              />
-              <div className="grid gap-6 pt-6 lg:grid-cols-2">
-                <ContributionSection
-                  front={view.contribution.front}
-                  back={view.contribution.back}
-                  frontShare={view.contribution.frontShare}
-                  backShare={view.contribution.backShare}
+          {/* ---------------------------------------------------------------- */}
+          {/* ROW 2 — shape, mix, whose                                         */}
+          {/* ---------------------------------------------------------------- */}
+          {/*
+            THE FIRST-VIEWPORT CONTRACT IS MET HERE. Three modules of data-driven geometry
+            sit beside each other under the rail: the shape of the period, what the volume
+            was made of, and which store it came from. They are also the right three on the
+            merits — they are the three follow-up questions a general manager asks after
+            reading the rail, and none of them needs the reader to have scrolled.
+          */}
+          <GridRow>
+            <Module
+              id="trend"
+              title="How the period accumulated"
+              span={6}
+              zone="performance"
+              visual="trend"
+              meta="Columns, not a line"
+            >
+              <TrendSection series={view.series} comparisonLabel={comparisonLabel} />
+            </Module>
+            <Module
+              id="mix"
+              title="New and used"
+              span={3}
+              zone="performance"
+              visual="condition"
+            >
+              {conditionMix === null ? null : (
+                <ConditionSplit
+                  mix={conditionMix}
+                  totalUnits={totals['retail-units'] ?? { kind: 'no-rows' }}
+                  totalGross={totals['total-gross'] ?? { kind: 'no-rows' }}
                 />
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-                  <PerformanceGrid
-                    metrics={view.discounts}
-                    comparisonLabel={comparisonLabel}
-                  />
-                </div>
-              </div>
-            </Container>
-          </Section>
+              )}
+            </Module>
+            <Module
+              id="stores"
+              title="Stores"
+              span={3}
+              zone="performance"
+              visual="store-contribution"
+            >
+              {storeMix === null ? null : <StoreContribution mix={storeMix} />}
+            </Module>
+          </GridRow>
 
-          {/* -------------------------------------------------------------- */}
-          {/* Distribution                                                    */}
-          {/* -------------------------------------------------------------- */}
-          <Section rhythm="default" id="distribution">
-            <Container width="full">
-              <SectionHeader
-                eyebrow="Distribution"
-                title="The shape of the deal population, not just its average"
-                lede="Deal gross has a long tail, so the mean sits above the typical deal. Median and mean are shown together because either alone invites the wrong conclusion."
+          {/* ---------------------------------------------------------------- */}
+          {/* ROW 3 — the bridge, as the page's major visual, and what it splits */}
+          {/* ---------------------------------------------------------------- */}
+          {/*
+            EIGHT COLUMNS, AND IT USED TO BE THE LAST BAND ON THE DOCUMENT.
+
+            `UX.1` put the bridge last on the grounds that it is the most interpretive thing
+            on the page and a reader who has already seen units, rate and mix reads it as a
+            summary rather than as a verdict. That reasoning is sound and it survives: the
+            rail, the trend, the mix and the store contribution are all ABOVE this row, so a
+            reader still meets the bridge having already met the figures it decomposes. What
+            has changed is that they meet it at all — at 7,228 px the previous document put
+            it below six screens of scrolling, which is not "last", it is "unread".
+          */}
+          <GridRow align="start">
+            <Module
+              id="bridge"
+              title="What the decomposition attributes the change to"
+              span={8}
+              zone="performance"
+              visual="bridge"
+            >
+              <BridgeSection bridge={view.bridge} />
+            </Module>
+            <Module
+              id="contribution"
+              title="Gross composition"
+              span={4}
+              zone="performance"
+              visual="composition"
+            >
+              <ContributionSection
+                front={view.contribution.front}
+                back={view.contribution.back}
+                frontShare={view.contribution.frontShare}
+                backShare={view.contribution.backShare}
+                total={totals['total-gross'] ?? { kind: 'no-rows' }}
               />
-              <div className="pt-6">
-                <DistributionSection distribution={view.distribution} />
-              </div>
-            </Container>
-          </Section>
+            </Module>
+          </GridRow>
 
-          {/* -------------------------------------------------------------- */}
-          {/* Bridge                                                          */}
-          {/* -------------------------------------------------------------- */}
-          <Section rhythm="default" tone="evidence" id="bridge">
-            <Container width="full">
-              <SectionHeader
-                eyebrow="Gross change"
-                title="What the decomposition attributes the change to"
-                lede="An attribution under a documented arithmetic order, computed once in the governed layer and verified here. It reports how the change divides between selling a different number of units and earning a different amount per unit. It does not say why either moved."
+          {/* ---------------------------------------------------------------- */}
+          {/* ROW 4 — the plan, and the two distributions                       */}
+          {/* ---------------------------------------------------------------- */}
+          <GridRow align="start">
+            <Module
+              id="targets"
+              title="Plan and pace"
+              span={4}
+              zone="plan"
+              visual="pace"
+              note="The projection is selling-day arithmetic, not a forecast. Targets are synthetic operating goals, not benchmarks."
+            >
+              <TargetPaceSection context={view.targets} headingLevel="h4" />
+            </Module>
+            <Module
+              id="distribution"
+              title="Deal gross, distributed"
+              span={3}
+              zone="performance"
+              visual="deal-gross"
+            >
+              <DistributionSection distribution={view.distribution} />
+            </Module>
+            <Module
+              id="discounts"
+              title="What was given away"
+              span={5}
+              zone="performance"
+              visual="discount"
+            >
+              <DiscountSection
+                distribution={view.discountDistribution}
+                metrics={view.discounts}
+                comparisonLabel={comparisonLabel}
               />
-              <div className="pt-6">
-                <BridgeSection bridge={view.bridge} />
-              </div>
-            </Container>
-          </Section>
+            </Module>
+          </GridRow>
 
-          {/* -------------------------------------------------------------- */}
-          {/* Where to go next                                                */}
-          {/* -------------------------------------------------------------- */}
-          <Section rhythm="default" id="next">
-            <Container width="content">
+          {/* ---------------------------------------------------------------- */}
+          {/* ROW 5 — sale type, and the way out                                */}
+          {/* ---------------------------------------------------------------- */}
+          <GridRow align="start">
+            <Module id="sale-type" title="By sale type" span={5}>
+              {saleTypeMix === null ? null : <SaleTypeMix mix={saleTypeMix} />}
+            </Module>
+            <Module id="next" title="The transactions themselves" span={7}>
               <Text size="sm" tone="muted">
                 Every figure on this page is the sum of finalized transactions. To see the
-                transactions themselves, open the{' '}
+                transactions, open the{' '}
                 <a
                   href={ROUTES.dashboardDeals.href}
                   className="inline-flex min-h-6 items-center underline decoration-line underline-offset-2 transition-colors duration-(--arpi-motion-fast) hover:text-accent"
@@ -294,12 +346,33 @@ export default async function SalesGrossPage({
                 </a>
                 , which carries the same period and store selection.
               </Text>
-            </Container>
-          </Section>
-        </>
+            </Module>
+          </GridRow>
+        </Workspace>
       )}
     </Canvas>
   )
+}
+
+/* -------------------------------------------------------------------------- */
+/* View-model lookups                                                          */
+/* -------------------------------------------------------------------------- */
+// The modules need three of the mixes and two of the nine figures by name. Looked up
+// rather than positioned, so reordering the view model cannot silently hand a module the
+// wrong measure.
+
+function mixById(view: SalesGrossView, id: string) {
+  return view.mixes.find((mix) => mix.id === id) ?? null
+}
+
+function figuresById(view: SalesGrossView, ids: readonly string[]) {
+  const found: Record<string, SalesGrossView['performance'][number]['figure']['current']> =
+    {}
+  for (const id of ids) {
+    const metric = view.performance.find((entry) => entry.id === id)
+    if (metric !== undefined) found[id] = metric.figure.current
+  }
+  return found
 }
 
 /* -------------------------------------------------------------------------- */

@@ -37,6 +37,7 @@ import {
   compareExact,
   isNegative,
   isZero,
+  exactZero,
   subtractExact,
 } from './decimal'
 import { dashboardManifest, dashboardStores, decodeDataset } from './data'
@@ -157,6 +158,18 @@ export interface CalculationLine {
   readonly label: string
   readonly operator: '' | '−' | '+' | '='
   readonly amount: Exact
+  /**
+   * The amount WITH ITS OPERATOR APPLIED, so a waterfall step can be drawn from it.
+   *
+   * A printed calculation shows a subtracted cost as a positive number with a minus sign
+   * beside it, which is how a desk reads a deal jacket and is what `amount` is. A waterfall
+   * step is a SIGNED MOVEMENT, and the two are not the same value. The first version of the
+   * front-gross waterfall flipped the sign inside the component; `dashboard-boundaries.test.ts`
+   * failed it, correctly — ADR-0013 puts every piece of exact arithmetic in a declared view
+   * model, and "it is only a negation" is how that boundary erodes. The negation happens
+   * here, once, in the module that already owns the calculation.
+   */
+  readonly signedAmount: Exact
   readonly display: string
   readonly isResult?: boolean
 }
@@ -323,6 +336,21 @@ export interface ProductSection {
 export interface BackGrossSection {
   readonly reserve: string
   readonly originalProductGross: string
+  /**
+   * The same three figures as exact values, for the composition bar's geometry.
+   *
+   * PUBLISHED RATHER THAN PARSED BACK. A `.tsx` may not touch an exact decimal and may not
+   * turn a formatted string back into a number; a component that needed a width therefore
+   * had two options, and reading `"$1,177.50"` with a regular expression is the wrong one.
+   * The formatted strings above stay because they are what a reader sees, and these are
+   * what a bar is measured from — the same values, resolved once, in the module that owns
+   * the arithmetic.
+   */
+  readonly exact: {
+    readonly reserve: Exact
+    readonly originalProductGross: Exact
+    readonly backEndGross: Exact
+  }
   readonly otherFiIncome: string
   readonly backEndGross: string
   /** reserve + original product gross === back-end gross, to the cent. */
@@ -376,6 +404,31 @@ export interface DealJacket {
 /* -------------------------------------------------------------------------- */
 /* Building                                                                    */
 /* -------------------------------------------------------------------------- */
+
+/**
+ * One calculation line, with its amount both as printed and as signed.
+ *
+ * A `−` line is published as a POSITIVE amount with a minus operator beside it, which is
+ * how a printed deal jacket reads and what `display` shows. `signedAmount` is the same
+ * figure as a signed movement, which is what a waterfall step needs. Both come from the
+ * same exact value and neither is derived from the other's formatted string.
+ */
+function line(
+  label: string,
+  operator: CalculationLine['operator'],
+  amount: Exact,
+  isResult = false
+): CalculationLine {
+  return {
+    label,
+    operator,
+    amount,
+    signedAmount:
+      operator === '−' ? subtractExact(exactZero(amount.scale), amount) : amount,
+    display: formatCurrencyExact(amount, 2),
+    ...(isResult ? { isResult: true } : {}),
+  }
+}
 
 const STORE_NAMES: ReadonlyMap<string, string> = new Map(
   dashboardStores.map((store) => [store.id, store.name])
@@ -499,37 +552,11 @@ export function buildDealJacket(saleId: string): DealJacket | null {
     },
     frontGross: {
       lines: [
-        {
-          label: 'Sale price',
-          operator: '',
-          amount: salePrice,
-          display: formatCurrencyExact(salePrice, 2),
-        },
-        {
-          label: 'Acquisition cost',
-          operator: '−',
-          amount: acquisition,
-          display: formatCurrencyExact(acquisition, 2),
-        },
-        {
-          label: 'Reconditioning cost',
-          operator: '−',
-          amount: reconditioning,
-          display: formatCurrencyExact(reconditioning, 2),
-        },
-        {
-          label: 'Pack amount',
-          operator: '−',
-          amount: pack,
-          display: formatCurrencyExact(pack, 2),
-        },
-        {
-          label: 'Front-end gross',
-          operator: '=',
-          amount: frontGross,
-          display: formatCurrencyExact(frontGross, 2),
-          isResult: true,
-        },
+        line('Sale price', '', salePrice),
+        line('Acquisition cost', '−', acquisition),
+        line('Reconditioning cost', '−', reconditioning),
+        line('Pack amount', '−', pack),
+        line('Front-end gross', '=', frontGross, true),
       ],
       verification: verify(recomputedFront, frontGross, 'the front-end gross'),
       discounts: buildDiscounts(row, msrp),
@@ -540,25 +567,9 @@ export function buildDealJacket(saleId: string): DealJacket | null {
     backGross: buildBackGross(row, backGross, products),
     totalGross: {
       lines: [
-        {
-          label: 'Front-end gross',
-          operator: '',
-          amount: frontGross,
-          display: formatCurrencyExact(frontGross, 2),
-        },
-        {
-          label: 'Back-end gross',
-          operator: '+',
-          amount: backGross,
-          display: formatCurrencyExact(backGross, 2),
-        },
-        {
-          label: 'Total gross',
-          operator: '=',
-          amount: totalGross,
-          display: formatCurrencyExact(totalGross, 2),
-          isResult: true,
-        },
+        line('Front-end gross', '', frontGross),
+        line('Back-end gross', '+', backGross),
+        line('Total gross', '=', totalGross, true),
       ],
       verification: verify(recomputedTotal, totalGross, 'the total gross'),
     },
@@ -836,6 +847,7 @@ function buildBackGross(
   return {
     reserve: formatCurrencyExact(reserve, 2),
     originalProductGross: formatCurrencyExact(original, 2),
+    exact: { reserve, originalProductGross: original, backEndGross: backGross },
     otherFiIncome: formatCurrencyExact(ZERO, 2),
     backEndGross: formatCurrencyExact(backGross, 2),
     verified: compareExact(explained, backGross) === 0,

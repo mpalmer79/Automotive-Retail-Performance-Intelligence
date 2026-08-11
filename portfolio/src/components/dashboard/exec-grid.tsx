@@ -55,14 +55,33 @@ import { cx } from '@/lib/utils'
  */
 export function GridRow({
   children,
+  align = 'stretch',
   className,
 }: {
   readonly children: ReactNode
+  /**
+   * Whether the modules in the row are stretched to the tallest, or sized to content.
+   *
+   * `stretch` IS THE DEFAULT AND IS USUALLY RIGHT: modules that answer sibling questions
+   * read as one band when their panels line up, and a 40 px difference resolved by
+   * stretching is invisible.
+   *
+   * `start` exists for the case `UX.2B` found on `/dashboard/sales-gross`: a five-bar
+   * waterfall beside two pace bullets with their own disclosures is a 350 px module beside
+   * a 750 px one, and stretching drew 400 px of empty bordered box under the waterfall. An
+   * empty panel is not neutral — a reader looks into it for the thing that is missing. A
+   * ragged lower edge says the modules are different sizes, which is true.
+   */
+  readonly align?: 'stretch' | 'start'
   readonly className?: string
 }) {
   return (
     <div
-      className={cx('grid grid-cols-1 gap-3 md:grid-cols-6 xl:grid-cols-12', className)}
+      className={cx(
+        'grid grid-cols-1 gap-3 md:grid-cols-6 xl:grid-cols-12',
+        align === 'start' ? 'items-start' : null,
+        className
+      )}
     >
       {children}
     </div>
@@ -94,11 +113,21 @@ const SPAN: Readonly<Record<3 | 4 | 5 | 6 | 7 | 8 | 12, string>> = {
  * the rule `UX.1` established and this pass keeps, moved from the band to the module now
  * that the module is the unit a reader's eye lands on.
  */
-const ZONE: Readonly<Record<'performance' | 'plan' | 'inventory' | 'funnel', string>> = {
+const ZONE: Readonly<
+  Record<'performance' | 'plan' | 'inventory' | 'funnel' | 'fi' | 'deal', string>
+> = {
   performance: 'bg-zone-performance',
   plan: 'bg-zone-plan',
   inventory: 'bg-zone-inventory',
   funnel: 'bg-zone-funnel',
+  /* `UX.2B` §10 gives the finance office a violet/blue identity. `zone-fi` resolves to the
+     same value as `zone-funnel` and is a distinct token so the two business areas can move
+     apart without one silently dragging the other. */
+  fi: 'bg-zone-fi',
+  /* The transaction routes take the sales identity, because a deal IS the sales result at
+     unit grain. No new token: the Deal Explorer and the Deal Jacket are the same business
+     area as Sales & Gross, read one row at a time. */
+  deal: 'bg-zone-performance',
 }
 
 export interface ModuleProps {
@@ -146,6 +175,20 @@ export function Module({
       aria-labelledby={headingId}
       data-visual-region={visual}
       className={cx(
+        /*
+         * `@container` MAKES THE MODULE THE LAYOUT REFERENCE FOR ITS OWN CONTENT.
+         *
+         * `UX.2B` found the defect this fixes on the Deal Jacket. The section components
+         * were written when each was a full-width band, so their fact grids ask for four
+         * columns at the `lg` VIEWPORT width — and a three-of-twelve module on a 1440 px
+         * screen is about 300 px wide while still satisfying `lg`. The result was four
+         * 70 px columns with headings broken mid-word: "DELIVE RY DATE", "STRUCTU RE".
+         *
+         * A container query asks how wide THIS PANEL is rather than how wide the window is,
+         * which is the only question a module's contents can usefully ask. The class here
+         * costs nothing on its own; the section grids opt in with `@sm:` / `@lg:` variants.
+         */
+        '@container',
         'flex min-w-0 flex-col gap-2.5 rounded-2xl border border-line-subtle p-3.5',
         zone === undefined ? 'bg-surface/60' : ZONE[zone],
         SPAN[span],

@@ -1,7 +1,16 @@
 import type { Metadata } from 'next'
 
+import { GridRow, Module, Workspace } from '@/components/dashboard/exec-grid'
 import { FilterBar, type FilterOption } from '@/components/dashboard/filter-bar'
 import { ExportProvenance } from '@/components/dashboard/export-provenance'
+import {
+  AgeAndCapital,
+  InventoryMethodology,
+  InventoryRail,
+  PositionMapSection,
+  PriceMovementSection,
+  UnitTable,
+} from '@/components/dashboard/inventory-sections'
 import {
   ActiveFilterChips,
   OperatingPageHeader,
@@ -13,8 +22,6 @@ import {
   StaleBanner,
 } from '@/components/dashboard/notices'
 import { Canvas } from '@/components/shell/field'
-import { Disclosure } from '@/components/ui/disclosure'
-import { Container, Section, SectionHeader } from '@/components/ui/layout'
 import { Text } from '@/components/ui/typography'
 import { accountingChunkFile } from '@/lib/dashboard/accounting-chunks'
 import { dashboardManifest, dashboardStores, decodeDataset } from '@/lib/dashboard/data'
@@ -56,35 +63,56 @@ export const metadata: Metadata = pageMetadata('dashboardInventory')
 const ROUTE = ROUTES.dashboardInventory.href
 
 /**
- * Inventory operations — the used-vehicle manager's surface.
+ * Inventory operations — the used-vehicle manager's console.
  *
- * WHAT THE PAGE IS CAREFUL ABOUT
- * ------------------------------
- * THE AGED THRESHOLD IS READ, NOT ASSUMED. Every unit row carries `aged_threshold_days`, so
- * the page states the threshold it applied instead of hardcoding one. It is 60 and it is an
- * ARPI project default. It is NOT the same number as the top age bucket: a unit at 75 days is
- * aged and sits in `61-90`, and reading "Over 120" as the threshold would report a fraction
- * of the aged stock the group holds.
+ * WHAT REPLACED WHAT
+ * ------------------
+ * `UX.1` left this route as four full-width bands: a four-card summary, an age TABLE, an
+ * optional unit panel, and a nine-column table of every unit on the lot. Measured on the
+ * merge of `UX.2A`, at 1440 × 900, it was the longest document in the console at
+ * 11,543 px — thirteen screens — and it contained **zero framed visualizations**. An
+ * inventory manager's three questions are how old the stock is, where the money is sitting
+ * inside that age, and which units are furthest from the reference: the route held all
+ * three answers and drew none of them.
  *
- * THE MARKET ESTIMATE IS SYNTHETIC AND SAYS SO EVERY TIME IT APPEARS. It is generated. No
- * auction result, guidebook or licensed benchmark exists in this project, and the ratio built
- * on it is descriptive: above 1.0 means advertised above the estimate, and nothing more. This
- * page makes no repricing recommendation and contains no "suggested price" of any kind.
+ * `UX.2B` rebuilds it as a workspace on the twelve-column module grid. Four modules of
+ * geometry, and the two hundred rows of unit detail that used to be the page are a
+ * disclosure underneath it.
  *
- * A MISSING VALUE IS MISSING. A unit with no estimate has no ratio and renders as
- * "No estimate", not as 0.00. A unit on its first reportable snapshot has no prior price and
- * renders as "First appearance", not as a zero change.
+ * THE POSITION MAP, AND THE CHECK THAT PRECEDED IT
+ * ------------------------------------------------
+ * `UX.2B` §6C permits an age × price-to-market map only if the CURRENT unit-grain data
+ * supports every dimension without fabrication. It was checked column by column before it
+ * was built, and it does: `days_in_stock`, `price_to_market_ratio` and
+ * `inventory_investment` are all published on the row being plotted. Nothing is imputed, no
+ * fourth measure is derived, and no score is formed.
  *
- * THE POSITION IS AT ONE DATE. Unit counts and investment are semi-additive, so the page
- * resolves one snapshot date and says which, rather than pooling a period.
+ * The vocabulary is neutral by construction, which is §6C's other requirement. No axis, no
+ * legend, no caption and no mark on that plot says overpriced, underpriced, reprice or
+ * opportunity, and `dashboard-inventory.spec.ts` fails the build if any of them appears.
+ * The horizontal axis is a ratio against a SYNTHETIC reference and every surface that draws
+ * it says so.
  *
- * WHY IT READS TWO DOORS
- * ----------------------
- * `inventory-chunks.ts` for the stock, and `accounting-chunks.ts` for one unit's accounting
- * position when the detail panel is open. The two share a grain exactly — month end — which
- * is what lets the panel show a book value beside an asking price without a fuzzy join. The
- * accounting door is opened only for the detail panel, and a unit with no accounting row says
- * so rather than showing zeros.
+ * WHAT WAS REFUSED FOR WANT OF A GRAIN
+ * ------------------------------------
+ * A price TRACK per unit over the six exported months. The route decodes ONE month's
+ * partitions per request, which is a deliberate cost decision recorded below and worth
+ * roughly 1,200 rows of decode per page load; a multi-month line per unit would need five
+ * more partitions per store to draw one chart. What the current grain publishes is
+ * `asking_price_change` — one observation per unit against the prior month end — so §6D is
+ * answered with a DISTRIBUTION of those changes, which is the honest form for one
+ * observation, and the refusal is recorded in `docs/reviews/UX-2B-REVIEW.md`.
+ *
+ * WHAT DID NOT CHANGE. No KPI definition, no aged threshold, no bucket boundary, no
+ * snapshot rule, no export and no new reporting view. Two figures were added to the summary
+ * and both are the same arithmetic the summary already performed for mean age: a summed
+ * exported column over a counted population.
+ *
+ * WHY IT READS TWO DOORS. `inventory-chunks.ts` for the stock, and `accounting-chunks.ts`
+ * for one unit's accounting position when the detail module is open. The two share a grain
+ * exactly — month end — which is what lets the module show a book value beside an asking
+ * price without a fuzzy join. The accounting door is opened only for that module, and a
+ * unit with no accounting row says so rather than showing zeros.
  */
 export default async function InventoryPage({
   searchParams,
@@ -169,444 +197,350 @@ export default async function InventoryPage({
             : `Snapshot ${formatIsoDate(snapshotDate)}`,
           `Aged over ${String(summary.agedThresholdDays ?? 60)} days`,
         ])}
-        subtitle="Stock held at one snapshot date. Positions, never summed across dates."
-        methodology={
-          <ExportProvenance
-            exportState={exportState}
-            powerBi={powerBi}
-            {...(snapshotDate === null ? {} : { asOf: snapshotDate })}
-          />
+        notices={
+          <div className="flex flex-col gap-4 empty:hidden">
+            {/*
+              TWO CAVEATS STAY VISIBLE, AND THE MECHANISM BEHIND THEM DOES NOT.
+
+              `UX.1`'s rule is that a caveat is visible and a mechanism is disclosed. These
+              two are caveats: a reader who takes the aged threshold for an industry standard,
+              or the price estimate for a valuation, has misread every figure on the page. The
+              full notes are in the methodology disclosure beside the filters.
+            */}
+            <Text size="sm" tone="secondary">
+              The aged threshold is an ARPI project default, not an industry benchmark, and
+              it is a different number from the top age bucket. The market estimate is
+              synthetic and is not a market valuation.
+            </Text>
+            <StaleBanner stale={exportState.stale} />
+            <ReconciliationBanner failed={failedReconciliation} />
+            <FilterNotice resets={parsed.reset} resetHref={ROUTE} />
+            <ActiveFilterChips chips={chips} />
+          </div>
         }
-      >
-        <div className="flex flex-col gap-4">
-          {/*
-            TWO CAVEATS STAY VISIBLE, AND THE MECHANISM BEHIND THEM DOES NOT.
+        filters={
+          <div className="flex flex-col gap-3">
+            <FilterBar
+              action={ROUTE}
+              filters={parsed.filters}
+              periodOptions={periodOptions}
+              stores={storeOptions}
+              conditions={CONDITION_OPTIONS}
+              leadSources={[]}
+              leadSourceHint="Not applied here. The inventory datasets carry no lead-source attribute."
+            />
 
-            `UX.1`'s rule is that a caveat is visible and a mechanism is disclosed.
-            These two are caveats: a reader who takes the aged threshold for an
-            industry standard, or the price estimate for a valuation, has misread
-            every figure on the page. The full notes are in the disclosure below.
-          */}
-          <p className="text-sm text-ink-secondary">
-            The aged threshold is an ARPI project default, not an industry benchmark, and
-            it is a different number from the top age bucket. The market estimate is
-            synthetic and is not a market valuation.
-          </p>
-          <StaleBanner stale={exportState.stale} />
-          <ReconciliationBanner failed={failedReconciliation} />
-          <FilterNotice resets={parsed.reset} resetHref={ROUTE} />
-
-          <ActiveFilterChips chips={chips} />
-
-          <FilterBar
-            action={ROUTE}
-            filters={parsed.filters}
-            periodOptions={periodOptions}
-            stores={storeOptions}
-            conditions={CONDITION_OPTIONS}
-            leadSources={[]}
-            leadSourceHint="Not applied here. The inventory datasets carry no lead-source attribute."
-          />
-
-          {/* Unit search and ordering, as a native GET form so the page works without
+            {/* Unit search and ordering, as a native GET form so the page works without
                 JavaScript. Both land in the URL, so a filtered view is copyable and the
                 browser's own history works. */}
-          <form action={ROUTE} method="get" className="flex flex-wrap items-end gap-3">
-            {preservedFilterInputs(params)}
-            <div className="flex flex-col gap-1">
-              <label
-                htmlFor="q"
-                className="text-xs uppercase tracking-wide text-ink-muted"
+            <form action={ROUTE} method="get" className="flex flex-wrap items-end gap-3">
+              {preservedFilterInputs(params)}
+              <div className="flex min-w-0 flex-1 flex-col gap-1">
+                <label htmlFor="q" className="text-xs font-medium text-ink-muted">
+                  Find a unit
+                </label>
+                <input
+                  id="q"
+                  name="q"
+                  type="search"
+                  defaultValue={search ?? ''}
+                  placeholder="VEH-0000013, Chevrolet, Tahoe"
+                  className="min-h-touch rounded-md border border-line-subtle bg-surface px-3 text-sm text-ink placeholder:text-ink-faint focus-visible:border-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label htmlFor="sort" className="text-xs font-medium text-ink-muted">
+                  Order the unit table by
+                </label>
+                <select
+                  id="sort"
+                  name="sort"
+                  defaultValue={sort}
+                  className="min-h-touch rounded-md border border-line-subtle bg-surface px-3 text-sm text-ink"
+                >
+                  <option value="store">Store, then unit</option>
+                  <option value="age-desc">Days in stock, longest first</option>
+                  <option value="age-asc">Days in stock, shortest first</option>
+                  <option value="price-desc">Asking price, highest first</option>
+                  <option value="price-asc">Asking price, lowest first</option>
+                  <option value="ratio-desc">Price to market, highest first</option>
+                  <option value="ratio-asc">Price to market, lowest first</option>
+                </select>
+              </div>
+              <button
+                type="submit"
+                className="inline-flex min-h-touch items-center rounded-md border border-line-subtle px-4 text-sm font-medium text-ink transition-colors duration-(--arpi-motion-fast) hover:border-accent hover:text-accent"
               >
-                Find a unit
-              </label>
-              <input
-                id="q"
-                name="q"
-                type="search"
-                defaultValue={search ?? ''}
-                placeholder="VEH-0000013, Chevrolet, Tahoe"
-                className="min-h-9 rounded border border-line bg-surface px-3 py-1.5 text-sm"
-              />
-              <span className="text-xs text-ink-faint">
+                Apply
+              </button>
+              <span className="text-2xs text-ink-faint">
                 Searches {SEARCHABLE_FIELDS}.
               </span>
-            </div>
-            <div className="flex flex-col gap-1">
-              <label
-                htmlFor="sort"
-                className="text-xs uppercase tracking-wide text-ink-muted"
-              >
-                Order by
-              </label>
-              <select
-                id="sort"
-                name="sort"
-                defaultValue={sort}
-                className="min-h-9 rounded border border-line bg-surface px-3 py-1.5 text-sm"
-              >
-                <option value="store">Store, then unit</option>
-                <option value="age-desc">Days in stock, longest first</option>
-                <option value="age-asc">Days in stock, shortest first</option>
-                <option value="price-desc">Asking price, highest first</option>
-                <option value="price-asc">Asking price, lowest first</option>
-                <option value="ratio-desc">Price to market, highest first</option>
-                <option value="ratio-asc">Price to market, lowest first</option>
-              </select>
-            </div>
-            <button
-              type="submit"
-              className="min-h-9 rounded border border-line bg-surface px-4 py-1.5 text-sm"
-            >
-              Apply
-            </button>
-          </form>
-
-          <Disclosure label="What the market estimate is, and what the aged threshold means">
-            <div className="flex flex-col gap-3">
-              <Text size="sm">{SYNTHETIC_ESTIMATE_NOTE}</Text>
-              <Text size="sm">{AGED_THRESHOLD_NOTE}</Text>
-              <Text size="sm">
-                Price movement is derived from consecutive month-end snapshots of the same
-                unit at the same store. It is an observed change in the advertised price
-                and is not evidence of a manager decision, a pricing strategy or a
-                repricing action; ARPI models none of those.
-              </Text>
-              <Text size="sm">
-                Unit counts and investment are positions at the snapshot date. They add
-                across units and stores on that date and never across dates.
-              </Text>
-            </div>
-          </Disclosure>
-        </div>
-      </OperatingPageHeader>
-
-      {/* ------------------------------------------------------------------ */}
-      {/* Summary                                                             */}
-      {/* ------------------------------------------------------------------ */}
-      <Section id="summary">
-        <Container width="full">
-          <SectionHeader
-            eyebrow="Position"
-            title="The lot at this date"
-            lede="Median age is the headline figure and the mean is beside it: inventory age is right-skewed, and the gap between them is the aged tail."
-          />
-          <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Stat label="Active units" value={String(summary.units)} />
-            <Stat
-              label="Inventory investment"
-              value={formatCurrencyExact(summary.investment)}
-              note="Acquisition plus reconditioning. Not the accounting book value."
-            />
-            <Stat
-              label="Median days in stock"
-              value={summary.medianAge === null ? '—' : String(summary.medianAge)}
-              note={
-                summary.meanAge === null
-                  ? undefined
-                  : `Mean ${summary.meanAge.toFixed(1)} days`
-              }
-            />
-            <Stat
-              label={`Aged over ${summary.agedThresholdDays ?? 60} days`}
-              value={String(summary.agedUnits)}
-              note={
-                summary.agedShare === null
-                  ? undefined
-                  : `${(summary.agedShare * 100).toFixed(1)}% of units · project default`
-              }
-            />
-          </dl>
-        </Container>
-      </Section>
-
-      {/* ------------------------------------------------------------------ */}
-      {/* Age distribution                                                    */}
-      {/* ------------------------------------------------------------------ */}
-      <Section id="age" tone="evidence">
-        <Container width="full">
-          <SectionHeader
-            eyebrow="Age"
-            title="Where the money is sitting"
-            lede="The five governed age buckets. Bucket boundaries and the aged threshold are different rules and a unit can be aged inside any bucket above the threshold."
-          />
-          <div
-            className="overflow-x-auto"
-            tabIndex={0}
-            role="region"
-            aria-label="Age distribution"
-          >
-            <table className="w-full min-w-[36rem] border-collapse text-sm">
-              <caption className="sr-only">Units and investment by age bucket</caption>
-              <thead>
-                <tr className="border-b border-line text-left">
-                  <th scope="col" className="py-2 pr-4 font-medium">
-                    Age bucket
-                  </th>
-                  <th scope="col" className="py-2 pr-4 text-right font-medium">
-                    Units
-                  </th>
-                  <th scope="col" className="py-2 pr-4 text-right font-medium">
-                    Share
-                  </th>
-                  <th scope="col" className="py-2 text-right font-medium">
-                    Investment
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {summary.buckets.map((bucket) => (
-                  <tr key={bucket.bucket} className="border-b border-line-subtle">
-                    <th scope="row" className="py-2 pr-4 text-left font-normal">
-                      {bucket.bucket}
-                    </th>
-                    <td className="py-2 pr-4 text-right font-mono">{bucket.units}</td>
-                    <td className="py-2 pr-4 text-right font-mono">
-                      {bucket.share === null
-                        ? '—'
-                        : `${(bucket.share * 100).toFixed(1)}%`}
-                    </td>
-                    <td className="py-2 text-right font-mono">
-                      {formatCurrencyExact(bucket.investment)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            </form>
           </div>
-        </Container>
-      </Section>
-
-      {/* ------------------------------------------------------------------ */}
-      {/* Unit detail                                                         */}
-      {/* ------------------------------------------------------------------ */}
-      {requestedUnit === null ? null : (
-        <Section id="unit">
-          <Container width="full">
-            <SectionHeader
-              eyebrow="Unit"
-              title={unit === null ? 'Unit not found' : `${unit.vehicleId}`}
-              lede={
-                unit === null
-                  ? 'No unit with that identifier is in stock at this snapshot date and store selection.'
-                  : `${unit.modelYear} ${unit.make} ${unit.modelName} ${unit.trimLevel} · ${unit.conditionType} · ${unit.dealershipId}`
-              }
+        }
+        methodology={
+          <div className="flex flex-col gap-4">
+            <ExportProvenance
+              exportState={exportState}
+              powerBi={powerBi}
+              {...(snapshotDate === null ? {} : { asOf: snapshotDate })}
             />
-            {unitNotFound ? (
-              <p className="text-sm text-ink-muted">
-                Check the identifier, or clear the store and period filters — a unit that
-                sold before this snapshot date is not on the lot and has no row here.{' '}
-                <a className="underline" href={ROUTE}>
-                  Show all units
-                </a>
-                .
-              </p>
-            ) : unit === null ? null : (
-              <div className="grid gap-6 lg:grid-cols-2">
-                <div>
-                  <h3 className="mb-3 text-sm font-medium text-ink">
-                    Operational position
-                  </h3>
-                  <dl className="flex flex-col gap-2 text-sm">
-                    <Row label="Snapshot date" value={formatIsoDate(unit.snapshotDate)} />
-                    <Row label="Days in stock" value={String(unit.daysInStock)} />
-                    <Row
-                      label="Age bucket"
-                      value={`${unit.ageBucket}${unit.isAged ? ` · aged over ${unit.agedThresholdDays} days` : ''}`}
-                    />
-                    <Row
-                      label="Odometer"
-                      value={`${unit.odometerReading.toLocaleString()} mi`}
-                    />
-                    <Row
-                      label="Asking price"
-                      value={formatCurrencyExact(unit.currentAskingPrice)}
-                    />
-                    <Row
-                      label="Original asking price"
-                      value={formatCurrencyExact(unit.originalAskingPrice)}
-                    />
-                    <Row
-                      label="Synthetic market estimate"
-                      value={
-                        unit.marketPriceEstimate === null
-                          ? 'No estimate for this unit'
-                          : `${formatCurrencyExact(unit.marketPriceEstimate)} · synthetic estimate`
-                      }
-                    />
-                    <Row
-                      label="Price to market"
-                      value={
-                        unit.priceToMarketRatio === null
-                          ? 'No ratio without an estimate'
-                          : ratioLabel(unit)
-                      }
-                    />
-                    <Row
-                      label="Since prior snapshot"
-                      value={
-                        unit.askingPriceChange === null
-                          ? 'First appearance — no prior observation'
-                          : `${formatCurrencyDifference(unit.askingPriceChange, 2)} since the prior month end`
-                      }
-                    />
-                    <Row
-                      label="Inventory investment"
-                      value={formatCurrencyExact(unit.inventoryInvestment)}
-                    />
-                  </dl>
-                </div>
-                <div>
-                  <h3 className="mb-3 text-sm font-medium text-ink">
-                    Accounting position
-                  </h3>
-                  {accounting === null ? (
-                    <p className="text-sm text-ink-muted">
-                      No accounting snapshot for this unit at this date. That is a missing
-                      row, not a book value of zero.
-                    </p>
-                  ) : (
-                    <dl className="flex flex-col gap-2 text-sm">
+            <InventoryMethodology
+              syntheticNote={SYNTHETIC_ESTIMATE_NOTE}
+              agedNote={AGED_THRESHOLD_NOTE}
+            />
+          </div>
+        }
+      />
+
+      <Workspace>
+        {/* ------------------------------------------------------------------ */}
+        {/* ROW 1 — the lot at this date                                        */}
+        {/* ------------------------------------------------------------------ */}
+        <GridRow>
+          <Module
+            id="summary"
+            title="Position"
+            zone="inventory"
+            visual="kpi-rail"
+            meta={
+              snapshotDate === null ? 'No snapshot' : `Snapshot ${formatIsoDate(snapshotDate)}`
+            }
+          >
+            <InventoryRail summary={summary} />
+          </Module>
+        </GridRow>
+
+        {/* ------------------------------------------------------------------ */}
+        {/* ROW 2 — where the money is sitting, and which units are where       */}
+        {/* ------------------------------------------------------------------ */}
+        {/*
+          THE FIRST-VIEWPORT CONTRACT IS MET HERE. The rail plus two modules of geometry,
+          and they are the two an inventory manager opens the console for: the age
+          distribution with its capital track, and the position map. Everything below this
+          row is a follow-up.
+        */}
+        <GridRow align="start">
+          <Module
+            id="age"
+            title="Age and capital"
+            span={5}
+            zone="inventory"
+            visual="age"
+          >
+            <AgeAndCapital summary={summary} />
+          </Module>
+          <Module
+            id="position"
+            title="Position map"
+            span={7}
+            zone="inventory"
+            visual="position-map"
+          >
+            <PositionMapSection
+              units={ordered}
+              summary={summary}
+              route={ROUTE}
+              selectedUnitId={requestedUnit}
+              skipTargetId="price-movement"
+            />
+          </Module>
+        </GridRow>
+
+        {/* ------------------------------------------------------------------ */}
+        {/* ROW 3 — price movement, and the selected unit                       */}
+        {/* ------------------------------------------------------------------ */}
+        <GridRow align="start">
+          <Module
+            id="price-movement"
+            title="Price movement"
+            span={5}
+            zone="inventory"
+            visual="price-movement"
+          >
+            <PriceMovementSection
+              movement={summary.priceMovement}
+              units={summary.units}
+            />
+          </Module>
+
+          {/*
+            THE UNIT MODULE IS PRESENT ONLY WHEN A UNIT IS SELECTED. An empty detail panel
+            waiting to be filled is furniture: it takes a seventh of the grid on every load
+            to say nothing. The plot's marks and the unit table's identifiers are both links
+            that select one, and the module then appears here with both doors open.
+          */}
+          {requestedUnit === null ? (
+            <Module id="units" title="Every unit on the lot" span={7} zone="inventory">
+              <UnitTable
+                units={ordered}
+                route={ROUTE}
+                snapshotDate={snapshotDate}
+                emptyReason={
+                  snapshotDate === null
+                    ? 'No snapshot date falls inside the selected period.'
+                    : 'No units match this search and filter selection.'
+                }
+              />
+              <Text size="xs" tone="faint">
+                {`${String(ordered.length)} unit${ordered.length === 1 ? '' : 's'} at this date. Select a unit, here or on the plot, to see its accounting position.`}
+              </Text>
+            </Module>
+          ) : (
+            <Module
+              id="unit"
+              title={unit === null ? 'Unit not found' : unit.vehicleId}
+              span={7}
+              zone="inventory"
+              meta={
+                unit === null
+                  ? undefined
+                  : `${String(unit.modelYear)} ${unit.make} ${unit.modelName} ${unit.trimLevel} · ${unit.conditionType} · ${unit.dealershipId}`
+              }
+            >
+              {unitNotFound ? (
+                <Text size="sm" tone="muted">
+                  No unit with that identifier is in stock at this snapshot date and store
+                  selection. Check the identifier, or clear the store and period filters — a
+                  unit that sold before this snapshot date is not on the lot and has no row
+                  here.{' '}
+                  <a
+                    className="underline decoration-line underline-offset-2 transition-colors duration-(--arpi-motion-fast) hover:text-accent"
+                    href={ROUTE}
+                  >
+                    Show all units
+                  </a>
+                  .
+                </Text>
+              ) : unit === null ? null : (
+                <div className="grid gap-5 lg:grid-cols-2">
+                  <div>
+                    <h3 className="mb-2 text-sm font-semibold text-ink-secondary">
+                      Operational position
+                    </h3>
+                    <dl className="flex flex-col gap-1.5 text-sm">
+                      <Row label="Snapshot date" value={formatIsoDate(unit.snapshotDate)} />
+                      <Row label="Days in stock" value={String(unit.daysInStock)} />
                       <Row
-                        label="Control account"
-                        value={`${accounting.glAccountNumber} · ${accounting.glAccountName}`}
+                        label="Age bucket"
+                        value={`${unit.ageBucket}${unit.isAged ? ` · aged over ${String(unit.agedThresholdDays)} days` : ''}`}
                       />
-                      <Row label="Acquisition cost" value={accounting.acquisitionCost} />
-                      <Row label="Transportation" value={accounting.transportation} />
-                      <Row label="Reconditioning" value={accounting.reconditioning} />
-                      <Row label="Accessories" value={accounting.accessories} />
                       <Row
-                        label="Other capitalized"
-                        value={accounting.otherCapitalized}
+                        label="Odometer"
+                        value={`${unit.odometerReading.toLocaleString()} mi`}
                       />
-                      <Row label="Write-down" value={accounting.writeDown} />
-                      <Row label="Current book value" value={accounting.bookValue} />
                       <Row
-                        label="Floorplan principal"
-                        value={`${accounting.floorplan} · liability context`}
+                        label="Asking price"
+                        value={formatCurrencyExact(unit.currentAskingPrice)}
+                      />
+                      <Row
+                        label="Original asking price"
+                        value={formatCurrencyExact(unit.originalAskingPrice)}
+                      />
+                      <Row
+                        label="Synthetic market estimate"
+                        value={
+                          unit.marketPriceEstimate === null
+                            ? 'No estimate for this unit'
+                            : `${formatCurrencyExact(unit.marketPriceEstimate)} · synthetic estimate`
+                        }
+                      />
+                      <Row
+                        label="Price to market"
+                        value={
+                          unit.priceToMarketRatio === null
+                            ? 'No ratio without an estimate'
+                            : ratioLabel(unit)
+                        }
+                      />
+                      <Row
+                        label="Since prior snapshot"
+                        value={
+                          unit.askingPriceChange === null
+                            ? 'First appearance — no prior observation'
+                            : `${formatCurrencyDifference(unit.askingPriceChange, 2)} since the prior month end`
+                        }
+                      />
+                      <Row
+                        label="Inventory investment"
+                        value={formatCurrencyExact(unit.inventoryInvestment)}
                       />
                     </dl>
-                  )}
-                  <p className="mt-3 text-xs text-ink-faint">
-                    Floorplan principal is a liability carried alongside the unit. It is
-                    not part of book value and is never netted against it; ARPI publishes
-                    no net inventory position and models no floorplan interest,
-                    curtailment or carrying cost.
-                  </p>
+                  </div>
+                  <div>
+                    <h3 className="mb-2 text-sm font-semibold text-ink-secondary">
+                      Accounting position
+                    </h3>
+                    {accounting === null ? (
+                      <Text size="sm" tone="muted">
+                        No accounting snapshot for this unit at this date. That is a missing
+                        row, not a book value of zero.
+                      </Text>
+                    ) : (
+                      <dl className="flex flex-col gap-1.5 text-sm">
+                        <Row
+                          label="Control account"
+                          value={`${accounting.glAccountNumber} · ${accounting.glAccountName}`}
+                        />
+                        <Row
+                          label="Acquisition cost"
+                          value={accounting.acquisitionCost}
+                        />
+                        <Row label="Transportation" value={accounting.transportation} />
+                        <Row label="Reconditioning" value={accounting.reconditioning} />
+                        <Row label="Accessories" value={accounting.accessories} />
+                        <Row
+                          label="Other capitalized"
+                          value={accounting.otherCapitalized}
+                        />
+                        <Row label="Write-down" value={accounting.writeDown} />
+                        <Row label="Current book value" value={accounting.bookValue} />
+                        <Row
+                          label="Floorplan principal"
+                          value={`${accounting.floorplan} · liability context`}
+                        />
+                      </dl>
+                    )}
+                    <Text size="xs" tone="faint" className="pt-2">
+                      Floorplan principal is a liability carried alongside the unit. It is
+                      not part of book value and is never netted against it; ARPI publishes
+                      no net inventory position and models no floorplan interest, curtailment
+                      or carrying cost.
+                    </Text>
+                  </div>
                 </div>
-              </div>
-            )}
-          </Container>
-        </Section>
-      )}
-
-      {/* ------------------------------------------------------------------ */}
-      {/* Unit table                                                          */}
-      {/* ------------------------------------------------------------------ */}
-      <Section id="units" tone="evidence">
-        <Container width="full">
-          <SectionHeader
-            eyebrow="Units"
-            title="Every unit on the lot"
-            lede={`${ordered.length} unit${ordered.length === 1 ? '' : 's'} at this date. Select a unit to see its accounting position.`}
-          />
-          {ordered.length === 0 ? (
-            <p className="text-sm text-ink-muted">
-              {snapshotDate === null
-                ? 'No snapshot date falls inside the selected period.'
-                : 'No units match this search and filter selection.'}
-            </p>
-          ) : (
-            <div
-              className="overflow-x-auto"
-              tabIndex={0}
-              role="region"
-              aria-label="Unit population"
-            >
-              <table className="w-full min-w-[60rem] border-collapse text-sm">
-                <caption className="sr-only">
-                  Inventory units at{' '}
-                  {snapshotDate === null ? 'no date' : formatIsoDate(snapshotDate)}
-                </caption>
-                <thead>
-                  <tr className="border-b border-line text-left">
-                    <th scope="col" className="py-2 pr-4 font-medium">
-                      Unit
-                    </th>
-                    <th scope="col" className="py-2 pr-4 font-medium">
-                      Store
-                    </th>
-                    <th scope="col" className="py-2 pr-4 font-medium">
-                      Vehicle
-                    </th>
-                    <th scope="col" className="py-2 pr-4 text-right font-medium">
-                      Days
-                    </th>
-                    <th scope="col" className="py-2 pr-4 font-medium">
-                      Bucket
-                    </th>
-                    <th scope="col" className="py-2 pr-4 text-right font-medium">
-                      Asking
-                    </th>
-                    <th scope="col" className="py-2 pr-4 text-right font-medium">
-                      Est. (synthetic)
-                    </th>
-                    <th scope="col" className="py-2 pr-4 text-right font-medium">
-                      Price to market
-                    </th>
-                    <th scope="col" className="py-2 text-right font-medium">
-                      Since prior
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {ordered.map((row) => (
-                    <tr key={row.vehicleId} className="border-b border-line-subtle">
-                      <th scope="row" className="py-2 pr-4 text-left font-normal">
-                        <a className="underline" href={`${ROUTE}?unit=${row.vehicleId}`}>
-                          {row.vehicleId}
-                        </a>
-                      </th>
-                      <td className="py-2 pr-4">{row.dealershipId}</td>
-                      <td className="py-2 pr-4">
-                        {row.modelYear} {row.make} {row.modelName}
-                      </td>
-                      <td className="py-2 pr-4 text-right font-mono">
-                        {row.daysInStock}
-                      </td>
-                      <td className="py-2 pr-4">{row.ageBucket}</td>
-                      <td className="py-2 pr-4 text-right font-mono">
-                        {formatCurrencyExact(row.currentAskingPrice)}
-                      </td>
-                      <td className="py-2 pr-4 text-right font-mono">
-                        {row.marketPriceEstimate === null ? (
-                          <span className="text-ink-faint">No estimate</span>
-                        ) : (
-                          formatCurrencyExact(row.marketPriceEstimate)
-                        )}
-                      </td>
-                      <td className="py-2 pr-4 text-right font-mono">
-                        {row.priceToMarketRatio === null ? (
-                          <span className="text-ink-faint">—</span>
-                        ) : (
-                          ratioLabel(row)
-                        )}
-                      </td>
-                      <td className="py-2 text-right font-mono">
-                        {row.askingPriceChange === null ? (
-                          <span className="text-ink-faint">First appearance</span>
-                        ) : (
-                          formatCurrencyDifference(row.askingPriceChange, 2)
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+              )}
+              <a
+                href={ROUTE}
+                className="inline-flex min-h-touch items-center self-start text-sm text-ink-muted underline decoration-line underline-offset-2 transition-colors duration-(--arpi-motion-fast) hover:text-accent"
+              >
+                Clear the unit selection
+              </a>
+            </Module>
           )}
-        </Container>
-      </Section>
+        </GridRow>
+
+        {/* ------------------------------------------------------------------ */}
+        {/* ROW 4 — the whole lot, when a unit is selected above                */}
+        {/* ------------------------------------------------------------------ */}
+        {requestedUnit === null ? null : (
+          <GridRow>
+            <Module id="units" title="Every unit on the lot" span={12} zone="inventory">
+              <UnitTable
+                units={ordered}
+                route={ROUTE}
+                snapshotDate={snapshotDate}
+                emptyReason={
+                  snapshotDate === null
+                    ? 'No snapshot date falls inside the selected period.'
+                    : 'No units match this search and filter selection.'
+                }
+              />
+            </Module>
+          </GridRow>
+        )}
+      </Workspace>
     </Canvas>
   )
 }
@@ -755,21 +689,11 @@ function preservedFilterInputs(params: Record<string, string | string[] | undefi
   })
 }
 
-function Stat({ label, value, note }: { label: string; value: string; note?: string }) {
-  return (
-    <div className="flex flex-col gap-1 rounded-card border border-line p-4">
-      <dt className="text-xs uppercase tracking-wide text-ink-muted">{label}</dt>
-      <dd className="font-mono text-lg text-ink">{value}</dd>
-      {note === undefined ? null : <dd className="text-xs text-ink-faint">{note}</dd>}
-    </div>
-  )
-}
-
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between gap-4 border-b border-line-subtle pb-1">
       <dt className="text-ink-muted">{label}</dt>
-      <dd className="text-right font-mono text-ink">{value}</dd>
+      <dd className="numeric text-right text-ink">{value}</dd>
     </div>
   )
 }

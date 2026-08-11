@@ -44,7 +44,17 @@
  */
 import type { DashboardRow } from '@/types/dashboard'
 
-import { addExact, cellToExact, compareExact, exactZero, type Exact } from './decimal'
+import {
+  addExact,
+  cellToExact,
+  compareExact,
+  divideExact,
+  exactFromInteger,
+  exactToString,
+  exactZero,
+  parseExact,
+  type Exact,
+} from './decimal'
 import type { DashboardFilters } from './filters'
 
 /* -------------------------------------------------------------------------- */
@@ -271,6 +281,52 @@ export interface BucketProfile {
   readonly investment: Exact
   /** Units in this bucket as a share of the population, to four places. Null when empty. */
   readonly share: number | null
+  /**
+   * Capital in this bucket as a share of the total investment. Null when the total is zero.
+   *
+   * PUBLISHED HERE RATHER THAN COMPUTED IN THE COMPONENT. A part-to-whole track needs a
+   * fraction, and the only way for a `.tsx` to get one from two exact values is to convert
+   * both to floats and divide — which is exact arithmetic in a component, and
+   * `dashboard-boundaries.test.ts` forbids it. The division happens once, exactly, in the
+   * module that owns the population; the component receives a ratio and turns it into a
+   * width.
+   */
+  readonly investmentShare: number | null
+}
+
+/** One band of the price-movement distribution. */
+export interface PriceMovementBand {
+  readonly key: string
+  readonly label: string
+  readonly units: number
+  /** True for a band whose values are reductions, so it can be marked as signed. */
+  readonly isReduction: boolean
+}
+
+/**
+ * How the advertised price moved between the two most recent month-end snapshots.
+ *
+ * WHAT THIS IS AND IS NOT. `inventory-units` publishes `asking_price_change` per unit —
+ * the current asking price less the prior snapshot's, computed by the reporting view over
+ * consecutive month ends for the same unit at the same store. Counting those published
+ * values into bands is a selection. It is an OBSERVED change and not evidence of a manager
+ * decision, a pricing strategy or a repricing action; ARPI models none of those, and the
+ * page says so where the bands are drawn.
+ *
+ * A UNIT ON ITS FIRST REPORTABLE SNAPSHOT HAS NO PRIOR OBSERVATION and is counted as such
+ * rather than as an unchanged price. Those are different facts and folding the first into
+ * the second would report a stable lot that is in fact a new one.
+ */
+export interface PriceMovement {
+  readonly bands: readonly PriceMovementBand[]
+  /** Units carrying a prior observation, which is the bands' denominator. */
+  readonly comparable: number
+  readonly firstAppearance: number
+  readonly reduced: number
+  readonly unchanged: number
+  readonly increased: number
+  /** Units with at least one recorded markdown to date. Published per unit. */
+  readonly withMarkdown: number
 }
 
 /** The inventory position for one snapshot date and filter selection. */
@@ -289,7 +345,88 @@ export interface InventorySummary {
   readonly buckets: readonly BucketProfile[]
   readonly unitsWithEstimate: number
   readonly unitsWithoutEstimate: number
+  /**
+   * Units carrying an estimate as a share of the population. Null on an empty lot.
+   *
+   * PUBLISHED AS A COVERAGE FIGURE RATHER THAN LEFT IMPLICIT, because every ratio built on
+   * the synthetic estimate is computed over a SUBSET of the lot, and a reader who takes
+   * the price-to-market picture for a description of all stock has misread it by whatever
+   * this number falls short of 100%.
+   */
+  readonly estimateCoverage: number | null
+  /**
+   * The mean advertised price of the units in scope. Null on an empty lot.
+   *
+   * Summed exported column over a counted population, which is the arithmetic this module
+   * is permitted: the same shape as `meanAge` directly above it. It is not a KPI and
+   * carries no catalogue identifier, and the surface that renders it says so.
+   */
+  readonly meanAskingPrice: Exact | null
   readonly reducedSincePrior: number
+  readonly priceMovement: PriceMovement
+}
+
+/** The governed price-movement bands. One vocabulary, so every picture uses the same. */
+const PRICE_MOVEMENT_BANDS: readonly {
+  key: string
+  label: string
+  /** Inclusive lower bound in whole dollars, or null for open. */
+  min: number | null
+  /** Exclusive upper bound in whole dollars, or null for open. */
+  max: number | null
+}[] = [
+  { key: 'down-2000', label: 'Down $2,000 or more', min: null, max: -2000 },
+  { key: 'down-1000', label: 'Down $1,000 to $1,999', min: -2000, max: -1000 },
+  { key: 'down-500', label: 'Down $500 to $999', min: -1000, max: -500 },
+  { key: 'down-1', label: 'Down $1 to $499', min: -500, max: 0 },
+  { key: 'flat', label: 'Unchanged', min: 0, max: 1 },
+  { key: 'up', label: 'Up since prior snapshot', min: 1, max: null },
+]
+
+function buildPriceMovement(rows: readonly UnitRow[]): PriceMovement {
+  const changes: Exact[] = []
+  let firstAppearance = 0
+  let withMarkdown = 0
+  for (const row of rows) {
+    if (row.markdownCount > 0) withMarkdown += 1
+    if (row.askingPriceChange === null) {
+      firstAppearance += 1
+      continue
+    }
+    changes.push(row.askingPriceChange)
+  }
+
+  const zero = exactZero(2)
+  const bands = PRICE_MOVEMENT_BANDS.map((band) => {
+    const units = changes.filter((change) => {
+      if (band.key === 'flat') return compareExact(change, zero) === 0
+      if (band.key === 'up') return compareExact(change, zero) > 0
+      const min = band.min === null ? null : parseExact(`${String(band.min)}.00`)
+      const max = band.max === null ? null : parseExact(`${String(band.max)}.00`)
+      if (min !== null && compareExact(change, min) < 0) return false
+      if (max !== null && compareExact(change, max) >= 0) return false
+      return true
+    }).length
+    return {
+      key: band.key,
+      label: band.label,
+      units,
+      isReduction: band.key.startsWith('down'),
+    }
+  })
+
+  const reduced = changes.filter((change) => compareExact(change, zero) < 0).length
+  const increased = changes.filter((change) => compareExact(change, zero) > 0).length
+
+  return {
+    bands,
+    comparable: changes.length,
+    firstAppearance,
+    reduced,
+    unchanged: changes.length - reduced - increased,
+    increased,
+    withMarkdown,
+  }
 }
 
 /**
@@ -316,6 +453,7 @@ export function summarizeInventory(
   snapshotDate: string | null
 ): InventorySummary {
   let investment = exactZero(2)
+  let askingTotal = exactZero(2)
   let agedUnits = 0
   let ageTotal = 0
   let unitsWithEstimate = 0
@@ -323,6 +461,7 @@ export function summarizeInventory(
 
   for (const row of rows) {
     investment = addExact(investment, row.inventoryInvestment)
+    askingTotal = addExact(askingTotal, row.currentAskingPrice)
     if (row.isAged) agedUnits += 1
     ageTotal += row.daysInStock
     if (row.marketPriceEstimate !== null) unitsWithEstimate += 1
@@ -336,11 +475,17 @@ export function summarizeInventory(
     for (const row of inBucket) {
       bucketInvestment = addExact(bucketInvestment, row.inventoryInvestment)
     }
+    /* The capital share, divided EXACTLY against the population's own total and then
+       reduced to a ratio. Six places, because the caller uses it as a bar width and a
+       rounding at two places would visibly misplace a small bucket's segment. */
+    const shareOfCapital = divideExact(bucketInvestment, investment, 6)
     return {
       bucket,
       units: inBucket.length,
       investment: bucketInvestment,
       share: units === 0 ? null : inBucket.length / units,
+      investmentShare:
+        shareOfCapital === null ? null : Number(exactToString(shareOfCapital)),
     }
   })
 
@@ -356,7 +501,11 @@ export function summarizeInventory(
     buckets,
     unitsWithEstimate,
     unitsWithoutEstimate: units - unitsWithEstimate,
+    estimateCoverage: units === 0 ? null : unitsWithEstimate / units,
+    meanAskingPrice:
+      units === 0 ? null : divideExact(askingTotal, exactFromInteger(units), 2),
     reducedSincePrior,
+    priceMovement: buildPriceMovement(rows),
   }
 }
 

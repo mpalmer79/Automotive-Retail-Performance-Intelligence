@@ -74,6 +74,7 @@ import { penetrationChunkFile } from './fi-chunks'
 import { decodeDataset } from './data'
 import type { DashboardRow } from '@/types/dashboard'
 import { dashboardCalendar, dashboardManifest } from './data'
+import { formatIsoMonth } from './format'
 import { calendarWindow, resolvePeriod, type PeriodContext } from './periods'
 
 /* -------------------------------------------------------------------------- */
@@ -311,6 +312,8 @@ export interface FiView {
   readonly categories: readonly FiCategoryRow[]
   readonly adjustmentTypes: readonly FiAdjustmentTypeRow[]
   readonly adjustmentCategories: readonly FiAdjustmentCategoryRow[]
+  /** Amount by posting month and type. Adjustment-period basis, never deal date. */
+  readonly adjustmentMonths: readonly FiAdjustmentMonth[]
   readonly adjustmentEventTotal: Exact
   readonly adjustmentAmountTotal: Exact
   readonly managers: readonly FiManagerRow[]
@@ -623,17 +626,36 @@ const ADJUSTMENT_TYPE_ORDER: readonly string[] = [
   'Approved Adjustment',
 ]
 
+/**
+ * One posting month's adjustment amount, by type.
+ *
+ * ON THE ADJUSTMENT-PERIOD BASIS AND NO OTHER. Every row is grouped by the month the event
+ * POSTED, which is `adjustment_date` on the exported row — not the month the contract was
+ * sold. Mixing the two would be the exact error the three-date-basis rule exists to
+ * prevent, and the module that draws this labels the basis on its own face.
+ */
+export interface FiAdjustmentMonth {
+  readonly key: string
+  readonly label: string
+  /** Amount for this month by adjustment type, in `ADJUSTMENT_TYPE_ORDER` order. */
+  readonly byType: readonly { readonly type: string; readonly amount: Exact }[]
+  readonly total: Exact
+  readonly events: Exact
+}
+
 function buildAdjustments(
   rows: readonly DashboardRow[],
   soldGross: Exact
 ): {
   types: readonly FiAdjustmentTypeRow[]
   categories: readonly FiAdjustmentCategoryRow[]
+  months: readonly FiAdjustmentMonth[]
   events: Exact
   amount: Exact
 } {
   const byType = new Map<string, { events: Exact; amount: Exact; contracts: Exact }>()
   const byCategory = new Map<string, { events: Exact; amount: Exact }>()
+  const byMonth = new Map<string, { events: Exact; byType: Map<string, Exact> }>()
   let disclosure = ''
   let events = exactZero(0)
   let amount = exactZero(2)
@@ -645,6 +667,20 @@ function buildAdjustments(
     const rowAmount = money(row, 'adjustment_amount')
     const rowContracts = count(row, 'distinct_adjusted_contract_count')
     disclosure = textCell(row, 'rate_basis_disclosure')
+
+    // The POSTING month, from the exported `adjustment_date`. Grouping exported rows by an
+    // exported date column and summing an additive column is a selection, not a new measure.
+    const month = textCell(row, 'adjustment_date').slice(0, 7)
+    const monthEntry = byMonth.get(month) ?? {
+      events: exactZero(0),
+      byType: new Map<string, Exact>(),
+    }
+    monthEntry.events = addExact(monthEntry.events, rowEvents)
+    monthEntry.byType.set(
+      type,
+      addExact(monthEntry.byType.get(type) ?? exactZero(2), rowAmount)
+    )
+    byMonth.set(month, monthEntry)
 
     const typeEntry = byType.get(type) ?? {
       events: exactZero(0),
@@ -691,7 +727,23 @@ function buildAdjustments(
     }
   )
 
-  return { types, categories, events, amount }
+  const months = [...byMonth.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([month, entry]) => {
+      const perType = ADJUSTMENT_TYPE_ORDER.map((type) => ({
+        type,
+        amount: entry.byType.get(type) ?? exactZero(2),
+      }))
+      return {
+        key: month,
+        label: formatIsoMonth(month),
+        byType: perType,
+        total: perType.reduce((sum, item) => addExact(sum, item.amount), exactZero(2)),
+        events: entry.events,
+      }
+    })
+
+  return { types, categories, months, events, amount }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -926,6 +978,7 @@ export function buildFi(filters: DashboardFilters): FiView {
     categories,
     adjustmentTypes: adjustments.types,
     adjustmentCategories: adjustments.categories,
+    adjustmentMonths: adjustments.months,
     adjustmentEventTotal: adjustments.events,
     adjustmentAmountTotal: adjustments.amount,
     managers,

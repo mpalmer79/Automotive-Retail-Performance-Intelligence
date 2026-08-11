@@ -339,6 +339,9 @@ describe('every text colour clears the WCAG AA floor on every ground', () => {
     '--arpi-colour-zone-plan',
     '--arpi-colour-zone-inventory',
     '--arpi-colour-zone-funnel',
+    // `UX.2B`. The F&I ground. Same value as the funnel wash and a separate token, so it
+    // is measured here in its own right rather than by assuming the two stay equal.
+    '--arpi-colour-zone-fi',
   ]
 
   /** Every opaque surface on the console that can carry text or a mark. */

@@ -268,6 +268,15 @@ export interface MixRow {
   readonly key: string
   readonly label: string
   readonly units: number
+  /**
+   * The same count as an exact value, so a part-to-whole bar can be drawn from it.
+   *
+   * `units` stays because three tables print it and a `number` is what a table cell wants.
+   * A geometry primitive takes `Exact` for the reason `visuals.tsx` states at length: a
+   * component that received a float could not tell a measured zero from an absence, and
+   * every drawable value in this console arrives exact and leaves formatted.
+   */
+  readonly unitsExact: Exact
   readonly gross: Exact
   readonly grossDisplay: string
   /** Share of the mix total, or null when the total is zero. */
@@ -397,6 +406,129 @@ function buildDistribution(
 }
 
 /* -------------------------------------------------------------------------- */
+/* Discount distribution, from deal-grain rows                                 */
+/* -------------------------------------------------------------------------- */
+
+export interface DiscountDistribution {
+  readonly bands: readonly DistributionBand[]
+  readonly dealCount: number
+  readonly median: Exact | null
+  readonly medianDisplay: string | null
+  /** The sum of the per-deal discounts. Compared against the governed total. */
+  readonly total: Exact | null
+  /** The governed period total from `sales-gross-trend`, for the reconciliation. */
+  readonly governedTotal: Exact | null
+  /** True when the two agree to the cent. Rendered as words, never inferred. */
+  readonly reconciled: boolean
+  readonly residual: Exact | null
+  /** Deals sold at or above their original asking price. A real, uncommon outcome. */
+  readonly atOrAboveAsking: number
+}
+
+/**
+ * The governed discount bands. One vocabulary, so every discount picture uses the same.
+ *
+ * The lowest band is SIGNED and named as such: a unit can sell at or above its original
+ * asking price, and folding those deals into "$0 to $499" would hide an outcome the desk
+ * would want to see. Nothing here calls a large discount bad or a small one good.
+ */
+const DISCOUNT_BANDS: readonly {
+  key: string
+  label: string
+  min: number | null
+  max: number | null
+}[] = [
+  { key: 'above', label: 'At or above asking', min: null, max: 0 },
+  { key: 'd0', label: '$1 to $499', min: 0, max: 500 },
+  { key: 'd1', label: '$500 to $999', min: 500, max: 1000 },
+  { key: 'd2', label: '$1,000 to $1,999', min: 1000, max: 2000 },
+  { key: 'd3', label: '$2,000 to $2,999', min: 2000, max: 3000 },
+  { key: 'd4', label: '$3,000 to $4,999', min: 3000, max: 5000 },
+  { key: 'd5', label: '$5,000 and above', min: 5000, max: null },
+]
+
+/**
+ * The per-deal discount from the ORIGINAL asking price, counted into bands.
+ *
+ * WHY THIS IS A SELECTION AND NOT A NEW MEASURE, WHICH IS THE WHOLE QUESTION
+ * --------------------------------------------------------------------------
+ * `deal-explorer` publishes `original_asking_price` and `sale_price` at deal grain, and
+ * `sales-gross-trend` publishes `discount_from_original_total` at store-day grain. The
+ * second is the sum of the first over its rows: that is what the reporting view computes.
+ * Subtracting one exported column from another on the same row is the arithmetic the view
+ * already owns, and counting the results into ranges is a selection — the same two
+ * operations `buildDistribution` performs on `total_gross`.
+ *
+ * THE IDENTITY IS VERIFIED RATHER THAN ASSUMED. The summed per-deal discounts are compared
+ * against the governed period total and the result is rendered as words. If they ever
+ * disagree the page says so and shows the residual, because a distribution that silently
+ * described a different population from the average above it would be the worst available
+ * outcome — plausible, prominent and wrong.
+ *
+ * The population is the RETAIL deals the caller assembled, which is the population
+ * `discount_from_original_total` is summed over. A wholesale disposal has no asking price
+ * to discount from and is not in either side.
+ */
+function buildDiscountDistribution(
+  deals: readonly DashboardRow[],
+  governedTotal: Exact | null
+): DiscountDistribution {
+  const values: Exact[] = []
+  let atOrAboveAsking = 0
+  for (const deal of deals) {
+    const asking = cellToExact(numericCell(deal, 'original_asking_price'))
+    const price = cellToExact(numericCell(deal, 'sale_price'))
+    if (asking === null || price === null) continue
+    const discount = subtractExact(asking, price)
+    values.push(discount)
+    if (isNegative(discount) || isZero(discount)) atOrAboveAsking += 1
+  }
+
+  const bands = DISCOUNT_BANDS.map((band) => {
+    const min = band.min === null ? null : parseExact(`${String(band.min)}.00`)
+    const max = band.max === null ? null : parseExact(`${String(band.max)}.00`)
+    const count = values.filter((value) => {
+      if (min !== null && compareExact(value, min) <= 0) return false
+      if (max !== null && compareExact(value, max) > 0) return false
+      return true
+    }).length
+    return { key: band.key, label: band.label, count, isNegative: band.key === 'above' }
+  })
+
+  const sorted = [...values].sort(compareExact)
+  let median: Exact | null = null
+  if (sorted.length > 0) {
+    const middle = Math.floor(sorted.length / 2)
+    if (sorted.length % 2 === 1) {
+      median = sorted[middle] ?? null
+    } else {
+      const lower = sorted[middle - 1]
+      const upper = sorted[middle]
+      median =
+        lower !== undefined && upper !== undefined
+          ? divideExact(addExact(lower, upper), exactFromInteger(2), 2)
+          : null
+    }
+  }
+
+  const total = sorted.length === 0 ? null : sumExact(sorted)
+  const residual =
+    total === null || governedTotal === null ? null : subtractExact(total, governedTotal)
+
+  return {
+    bands,
+    dealCount: values.length,
+    median,
+    medianDisplay: median === null ? null : formatCurrencyExact(median, 0),
+    total,
+    governedTotal,
+    reconciled: residual !== null && isZero(residual),
+    residual,
+    atOrAboveAsking,
+  }
+}
+
+/* -------------------------------------------------------------------------- */
 /* The view model                                                              */
 /* -------------------------------------------------------------------------- */
 
@@ -423,6 +555,7 @@ export interface SalesGrossView {
     readonly backShare: string | null
   }
   readonly discounts: readonly PerformanceMetric[]
+  readonly discountDistribution: DiscountDistribution
   readonly distribution: GrossDistribution
   readonly bridge: BridgeState
   readonly conditionFilterApplied: boolean
@@ -711,6 +844,18 @@ export function buildSalesGross(filters: DashboardFilters): SalesGrossView {
 
   const deals = dealRowsFor(scope.ids, periodContext.period, filters)
   const distribution = buildDistribution(deals, 'total_gross')
+  /*
+   * The reconciliation reference is the GOVERNED period total, taken from the same trend
+   * rows every other figure on the page is summed from — and only when no condition filter
+   * narrowed the deal population, because `discount_from_original_total` carries no
+   * condition split. Under a condition filter the deals are narrowed and the governed total
+   * is not, so the two describe different populations and the page says the identity is not
+   * checkable rather than printing a residual that means nothing.
+   */
+  const discountDistribution = buildDiscountDistribution(
+    deals,
+    conditionFilterApplied ? null : sumColumn(current, 'discount_from_original_total')
+  )
 
   const bridge = buildBridge(
     grossChangeBridgeRows(),
@@ -729,6 +874,7 @@ export function buildSalesGross(filters: DashboardFilters): SalesGrossView {
     mixes,
     contribution,
     discounts,
+    discountDistribution,
     distribution,
     bridge,
     conditionFilterApplied,
@@ -807,6 +953,7 @@ function buildMixes(
       key,
       label,
       units: Number(exactToString(units)),
+      unitsExact: units,
       gross,
       grossDisplay: formatCurrencyExact(gross),
       share: totalUnits === null ? null : shareOf(units, totalUnits),
@@ -821,6 +968,7 @@ function buildMixes(
       key: store.id,
       label: store.shortName,
       units: Number(exactToString(units)),
+      unitsExact: units,
       gross,
       grossDisplay: formatCurrencyExact(gross),
       share: totalGross === null ? null : shareOf(gross, totalGross),
@@ -843,6 +991,7 @@ function buildMixes(
       key,
       label,
       units: Number(exactToString(units)),
+      unitsExact: units,
       gross: exactZero(2),
       grossDisplay: 'Not published by sale type',
       share: null,

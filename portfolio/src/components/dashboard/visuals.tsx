@@ -238,6 +238,25 @@ export interface TrendChartProps {
   readonly points: readonly TrendPoint[]
   readonly periodHeading?: string
   readonly valueHeading?: string
+  /**
+   * Whether the first and last period labels are drawn under the columns.
+   *
+   * ON BY DEFAULT AS OF `UX.2B`. The chart previously drew a bare column field with no
+   * horizontal reference at all: a reader could see the shape and could not tell whether it
+   * covered a fortnight or six months without opening the table. Two labels is one rendered
+   * row and answers it. The `sr-only` summary and the table are unaffected — both already
+   * carried every period and every value, and neither is what a sighted reader was missing.
+   */
+  readonly axisLabels?: boolean
+  /**
+   * Whether the summary sentence is drawn or carried for assistive technology only.
+   *
+   * Passed through to `ChartFrame`, whose own note states the rule: hide the summary when
+   * the title, the direct labels and the values already carry it, and never hide a caveat.
+   * A trend inside a metric switch, with a caption naming its granularity and axis labels
+   * naming its ends, is the case the rule was written for.
+   */
+  readonly summaryMode?: 'visible' | 'sr-only'
   readonly headingLevel?: 2 | 3 | 4
   readonly className?: string
 }
@@ -265,6 +284,8 @@ export function TrendChart({
   points,
   periodHeading = 'Period',
   valueHeading = 'Value',
+  axisLabels = true,
+  summaryMode = 'visible',
   headingLevel = 3,
   className,
 }: TrendChartProps) {
@@ -290,6 +311,7 @@ export function TrendChart({
       title={title}
       caption={caption}
       summary={summary}
+      summaryMode={summaryMode}
       headingLevel={headingLevel}
       className={className}
     >
@@ -337,6 +359,13 @@ export function TrendChart({
             )
           })}
         </div>
+      ) : null}
+
+      {present.length > 0 && axisLabels ? (
+        <p aria-hidden="true" className="flex justify-between text-2xs text-ink-faint">
+          <span>{points[0]?.label ?? ''}</span>
+          <span>{points[points.length - 1]?.label ?? ''}</span>
+        </p>
       ) : null}
 
       <TableDisclosure title={title}>
@@ -463,8 +492,23 @@ export function BridgeChart({
         {bars.map((bar, index) => {
           const base = levels[index] ?? 0
           const top = tops[index] ?? 0
-          const upper = Math.max(base, top)
-          const lower = Math.min(base, top)
+          /*
+           * AN ANCHOR IS A COLUMN FROM THE AXIS, A STEP IS A FLOATING SEGMENT.
+           *
+           * This drew both from `base` to `top`, which for an anchor are the SAME NUMBER —
+           * so every anchor rendered as the 0.5% minimum sliver at its own level, and the
+           * two totals a waterfall exists to connect were the two marks a reader could not
+           * see. `UX.2B` §3 requires the starting and ending totals to be displayed, and it
+           * is the increment that promotes this chart to the page's largest visual, so the
+           * defect stopped being cosmetic.
+           *
+           * NO ARITHMETIC CHANGED. The levels, the running total, the axis extent and every
+           * printed amount are what they were; this decides which two coordinates the
+           * rectangle is drawn between. The anchors keep the neutral reference fill, because
+           * a level is not a direction.
+           */
+          const upper = bar.kind === 'anchor' ? Math.max(base, lowest) : Math.max(base, top)
+          const lower = bar.kind === 'anchor' ? lowest : Math.min(base, top)
           const height = ((upper - lower) / span) * 100
           const offset = ((lower - lowest) / span) * 100
           const falling = bar.kind === 'step' && isNegative(bar.value)
@@ -496,7 +540,13 @@ export function BridgeChart({
           const rising = bar.kind === 'step' && !isNegative(bar.value)
           return (
             <li key={bar.key} className="flex min-w-0 flex-1 flex-col gap-0.5">
-              <span className="truncate text-xs text-ink-muted">{bar.label}</span>
+              {/* WRAPPED, NOT TRUNCATED. In a five-of-twelve module a column is about
+                  90 px, and `truncate` rendered the closing anchor as "Front-end ..." —
+                  a label that names nothing. Two lines fit every label this chart is
+                  given, and the table below carries them in full regardless. */}
+              <span className="line-clamp-2 text-xs leading-tight text-ink-muted">
+                {bar.label}
+              </span>
               <span className="numeric text-sm font-semibold text-ink">
                 {rising ? <span aria-hidden="true">{'↑ '}</span> : null}
                 {falling ? <span aria-hidden="true">{'↓ '}</span> : null}

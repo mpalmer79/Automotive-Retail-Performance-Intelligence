@@ -79,6 +79,7 @@
   --color-zone-plan: var(--arpi-colour-zone-plan);
   --color-zone-inventory: var(--arpi-colour-zone-inventory);
   --color-zone-funnel: var(--arpi-colour-zone-funnel);
+  --color-zone-fi: var(--arpi-colour-zone-fi);
   --color-model-wash: var(--arpi-colour-model-wash);
 
   --color-verified: var(--arpi-colour-verified);
