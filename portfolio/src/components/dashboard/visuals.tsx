@@ -152,7 +152,25 @@ export function TableDisclosure({
       <summary className="flex min-h-touch cursor-pointer items-center px-3 text-xs font-medium text-ink-muted transition-colors duration-(--arpi-motion-fast) hover:text-accent">
         {`Read ${title.toLowerCase()} as a table`}
       </summary>
-      <div className="overflow-x-auto px-3 pb-3">{children}</div>
+      {/*
+        THE SCROLL CONTAINER IS FOCUSABLE AND NAMED.
+
+        A region that scrolls horizontally must be reachable by keyboard, or a reader
+        without a pointer cannot see its right-hand columns at all — WCAG 2.1.1. The
+        route-level tables on this console have carried `role="region"` and `tabIndex`
+        since `DASH.9`; this primitive did not, so any wide table moved inside it would
+        lose the attribute silently. `aria-label` names the region, because a focus stop
+        announced only as "region" does not tell a screen-reader user which of the page's
+        tables they have landed in.
+      */}
+      <div
+        role="region"
+        tabIndex={0}
+        aria-label={title}
+        className="overflow-x-auto px-3 pb-3"
+      >
+        {children}
+      </div>
     </details>
   )
 }
@@ -238,6 +256,19 @@ export interface TrendChartProps {
   readonly points: readonly TrendPoint[]
   readonly periodHeading?: string
   readonly valueHeading?: string
+  /**
+   * Whether the first and last period labels are drawn under the columns.
+   *
+   * ON BY DEFAULT. The chart otherwise draws a bare column field with no horizontal
+   * reference at all: a reader can see the shape and cannot tell whether it covers a
+   * fortnight or six months without opening the table. Two labels is one rendered row
+   * and answers it, and `ExecutiveMicroTrend` has drawn its ends since `UX.2A` — this
+   * is the same console answering the same question the same way.
+   *
+   * The labels are `aria-hidden`: the `sr-only` summary and the table already carry
+   * every period and every value, and repeating two of them adds nothing but noise.
+   */
+  readonly axisLabels?: boolean
   readonly headingLevel?: 2 | 3 | 4
   readonly className?: string
 }
@@ -265,6 +296,7 @@ export function TrendChart({
   points,
   periodHeading = 'Period',
   valueHeading = 'Value',
+  axisLabels = true,
   headingLevel = 3,
   className,
 }: TrendChartProps) {
@@ -337,6 +369,13 @@ export function TrendChart({
             )
           })}
         </div>
+      ) : null}
+
+      {present.length > 0 && axisLabels ? (
+        <p aria-hidden="true" className="flex justify-between text-2xs text-ink-faint">
+          <span>{points[0]?.label ?? ''}</span>
+          <span>{points[points.length - 1]?.label ?? ''}</span>
+        </p>
       ) : null}
 
       <TableDisclosure title={title}>
@@ -515,7 +554,13 @@ export function BridgeChart({
           const rising = bar.kind === 'step' && !isNegative(bar.value)
           return (
             <li key={bar.key} className="flex min-w-0 flex-1 flex-col gap-0.5">
-              <span className="truncate text-xs text-ink-muted">{bar.label}</span>
+              {/* WRAPPED, NOT TRUNCATED. In a five-of-twelve module a column is about
+                  90 px, and `truncate` rendered the closing anchor as "Front-end ..." —
+                  a label that names nothing. Two lines fit every label this chart is
+                  given, and the table below carries them in full regardless. */}
+              <span className="line-clamp-2 text-xs leading-tight text-ink-muted">
+                {bar.label}
+              </span>
               <span className="numeric text-sm font-semibold text-ink">
                 {rising ? <span aria-hidden="true">{'↑ '}</span> : null}
                 {falling ? <span aria-hidden="true">{'↓ '}</span> : null}

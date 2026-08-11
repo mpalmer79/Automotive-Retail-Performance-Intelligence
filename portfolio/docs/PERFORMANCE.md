@@ -1298,3 +1298,28 @@ add one is restated there, unchanged.
 
 `DASH.13-02` sets the budgets, from measurements taken once `UX.2` is complete. Setting one here
 would fix a number for five routes while `UX.2C` and `UX.2D` are still changing the four around them.
+
+## 9.14 `UX.2B.1` — 9,503 px for 2.8 kB
+
+| Route                       | Height before | Height after | Bytes before | Bytes after |
+| --------------------------- | ------------: | -----------: | -----------: | ----------: |
+| `/dashboard/inventory`      |        11,828 |    **2,325** |      452,409 |     455,222 |
+| `/dashboard/deals/[saleId]` |         4,015 |        3,881 |      385,943 |     386,280 |
+| `/dashboard/sales-gross`    |         3,260 |        3,260 |      403,532 |     404,312 |
+| `/dashboard/deals`          |         2,561 |        2,561 |      401,266 |     402,357 |
+| `/dashboard/fi`             |         3,455 |        3,455 |      392,402 |     392,640 |
+
+Inventory loses **80.3 %** of its height and gains 2.8 kB. The 250 unit rows are unchanged and
+still in the document — the disclosure's own chrome is the whole cost, and the page is shorter
+because those rows stopped being laid out rather than because they stopped being served.
+
+That asymmetry is the thing worth remembering from this increment. The parallel implementation
+measured 2,214 px on this route while weighing **20 kB more** than the canonical one, and the
+combination of "much shorter" and "heavier" is what identified the mechanism before a line of
+its code was read: a page cannot lose nine thousand pixels and gain twenty kilobytes unless the
+content is still there and simply not being laid out.
+
+The four sub-kilobyte increases elsewhere are the same thing in each case: `role`, `tabIndex` and
+`aria-label` on each disclosure's scroll region, plus two axis labels per trend.
+
+Client JavaScript owned by the five operating routes remains **zero bytes**.

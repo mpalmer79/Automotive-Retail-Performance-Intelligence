@@ -1044,3 +1044,30 @@ says so.
 is parsed into the console's own exact representation before rendering at a sane precision. A
 bridge effect published as `-14067.506129032258` is the exact quotient; twelve decimal places of
 a dollar figure is noise, and the underlying value is unchanged.
+
+### 6.0f `UX.2B.1`: a module is the layout reference for its own contents
+
+`Module` carries `@container`, and the section grids inside it ask `@sm:` / `@xl:` rather than
+`sm:` / `lg:`.
+
+The defect that forced it is worth stating plainly, because it is the kind that survives review.
+The section components were written when each was a full-width band, so their fact grids ask for
+four columns at the `lg` **viewport** width. A three-of-twelve module on a 1440 px screen is
+about 300 px wide **and still satisfies `lg`** — the media query is asking about the window, and
+the window is wide. The result on the Deal Jacket was four ~70 px columns, and a money value
+broken across lines: `AMOUNT FINANCED` rendered as "$21,358." above "02".
+
+A container query asks how wide **this panel** is, which is the only question a module's contents
+can usefully ask. Measured across the five operating routes, mid-word breaks on the Deal Jacket
+fell from 14 to 2; the two that remain are table headers about 7 px short of their columns and
+predate the change.
+
+`GridRow` gained `align`. `stretch` remains the default and is usually right — modules answering
+sibling questions read as one band when their panels line up. `start` exists for the case where
+the difference is not 40 px: a five-bar waterfall beside a module with its own disclosures is a
+350 px panel next to a 750 px one, and stretching draws 400 px of empty bordered box under the
+waterfall. An empty panel is not neutral; a reader looks into it for the thing that is missing.
+
+**No chart library was added.** The question was not reopened: nothing in this increment
+introduces a continuous scale, a computed axis or a layout algorithm, which are the three
+conditions §6.0c records. Two static end labels under a column field are not an axis.

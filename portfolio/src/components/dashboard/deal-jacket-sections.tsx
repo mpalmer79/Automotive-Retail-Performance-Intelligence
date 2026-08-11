@@ -140,7 +140,7 @@ function VerificationLine({ verification }: { readonly verification: Verificatio
 export function IdentitySection({ jacket }: { readonly jacket: DealJacket }) {
   const { identity } = jacket
   return (
-    <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <dl className="grid gap-4 @sm:grid-cols-2 @xl:grid-cols-4">
       <Fact term="Deal">
         <span className="numeric">{identity.saleId}</span>
       </Fact>
@@ -180,7 +180,7 @@ export function IdentitySection({ jacket }: { readonly jacket: DealJacket }) {
 export function VehicleSection({ jacket }: { readonly jacket: DealJacket }) {
   const { vehicle } = jacket
   return (
-    <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <dl className="grid gap-4 @sm:grid-cols-2 @xl:grid-cols-3">
       <Fact term="Vehicle">{vehicle.display}</Fact>
       <Fact term="Unit identifier">
         <span className="numeric">{vehicle.vehicleCode}</span>
@@ -254,7 +254,7 @@ export function FrontGrossSection({ jacket }: { readonly jacket: DealJacket }) {
         <VerificationLine verification={frontGross.verification} />
       )}
 
-      <dl className="grid gap-3 sm:grid-cols-3">
+      <dl className="grid gap-3 @sm:grid-cols-3">
         {frontGross.discounts.map((discount) => (
           <Fact key={discount.label} term={discount.label}>
             {discount.display === null ? (
@@ -311,7 +311,7 @@ export function TradeSectionBlock({ trade }: { readonly trade: TradeSection }) {
   }
   return (
     <div className="flex flex-col gap-3">
-      <dl className="grid gap-4 sm:grid-cols-3">
+      <dl className="grid gap-4 @sm:grid-cols-3">
         <Fact term="Trade allowance">
           <span className="numeric">{trade.allowance}</span>
         </Fact>
@@ -327,7 +327,7 @@ export function TradeSectionBlock({ trade }: { readonly trade: TradeSection }) {
           </span>
         </Fact>
       </dl>
-      <dl className="grid gap-4 sm:grid-cols-3">
+      <dl className="grid gap-4 @sm:grid-cols-3">
         <Fact term="Payoff">
           <Absent>Not modelled</Absent>
         </Fact>
@@ -352,7 +352,7 @@ export function FinanceSectionBlock({ jacket }: { readonly jacket: DealJacket })
   const { finance, backGross } = jacket
   return (
     <div className="flex flex-col gap-4">
-      <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <dl className="grid gap-4 @sm:grid-cols-2 @xl:grid-cols-4">
         <Fact term="Structure">
           {finance.structure}
           <span className="ml-1.5 text-xs text-ink-faint">derived: {finance.basis}</span>
@@ -409,7 +409,7 @@ export function FinanceSectionBlock({ jacket }: { readonly jacket: DealJacket })
           is named anywhere in this project.
         </Text>
       )}
-      <dl className="grid gap-3 sm:grid-cols-3">
+      <dl className="grid gap-3 @sm:grid-cols-3">
         {finance.notModelled.map((entry) => (
           <Fact key={entry.label} term={entry.label}>
             <Absent>
@@ -725,7 +725,7 @@ export function TotalGrossSection({ jacket }: { readonly jacket: DealJacket }) {
 export function StaffSection({ staff }: { readonly staff: readonly StaffMember[] }) {
   return (
     <div className="flex flex-col gap-3">
-      <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <dl className="grid gap-4 @sm:grid-cols-2 @xl:grid-cols-4">
         {staff.map((member) => (
           <Fact key={member.role} term={member.role}>
             {member.code === null ? (
@@ -857,7 +857,7 @@ export function LineageSection({ jacket }: { readonly jacket: DealJacket }) {
   const { lineage } = jacket
   return (
     <Disclosure label="Where every figure on this page came from">
-      <dl className="grid gap-4 pt-2 sm:grid-cols-2">
+      <dl className="grid gap-4 pt-2 @sm:grid-cols-2">
         <Fact term="Source reporting view">
           {lineage.sourceView === null ? (
             <Absent>Not published by this export&rsquo;s manifest</Absent>

@@ -807,3 +807,30 @@ No horizontal overflow at 320, 375, 390, 768, 1024, 1280, 1440 or 1920 on any of
 increment animates, so there is nothing for the reduced-motion preference to suppress. Core business
 content — every rail figure, both economics visuals, the age bands, the unit table, the structure mix
 and every eligible denominator — is present with scripting disabled.
+
+## `UX.2B.1` — scroll regions, and what a disclosure costs
+
+**Every scrolling region is focusable and named.** `TableDisclosure` wraps its child in
+`overflow-x-auto`, and until this increment that container carried neither `tabIndex` nor a
+role — so a reader without a pointer could not reach the right-hand columns of anything inside
+it (WCAG 2.1.1). On `main` this was latent: no disclosed table was wide enough to scroll. It
+stopped being latent the moment the 72rem inventory unit table moved inside one, so it is fixed
+as part of that change rather than after it. The region is named with the disclosure's own
+title, because a focus stop announced only as "region" does not tell a screen-reader user which
+of the page's tables they have landed in. The Deal Explorer's own table wrapper was given the
+same treatment, matching the pattern `fi-sections.tsx` has carried since `DASH.9`.
+
+**What collapsing the unit table costs, stated rather than glossed.** The inventory unit table
+is now a `<details>`, which removed 9,503 px from the route. The rows did not go anywhere: they
+are in the served markup with scripting disabled, `globals.css` opens every disclosure for print,
+and the summary states the count so a reader knows what is behind it before opening it. What a
+**closed** `<details>` does cost is the accessibility tree — its contents are not exposed until
+it is opened. That is a real cost and it is the same one every chart's data alternative on this
+console already pays. The position map's summary still points at the table, and its sentence now
+says the table opens from its own summary rather than implying it is already there.
+
+**The scatter's interaction model did not change.** A parallel implementation made all 234 marks
+focusable links with a skip link ahead of them. It is better on discoverability and direct
+drill-through and worse on screen-reader verbosity, touch-target size and payload; it was not
+adopted, and the reasoning is recorded in `docs/reviews/UX-2B-1-REFINEMENT.md` §3 as an open
+question rather than a settled one.

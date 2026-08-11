@@ -18,7 +18,7 @@ import {
   InventoryRail,
   PriceMovement,
 } from '@/components/dashboard/inventory-workspace'
-import { InventoryAgeStack } from '@/components/dashboard/visuals'
+import { InventoryAgeStack, TableDisclosure } from '@/components/dashboard/visuals'
 import { GridRow, Module, Workspace } from '@/components/dashboard/workspace-grid'
 import { Disclosure } from '@/components/ui/disclosure'
 import { Text } from '@/components/ui/typography'
@@ -536,16 +536,34 @@ export default async function InventoryPage({
                   : 'No units match this search and filter selection.'}
               </p>
             ) : (
-              <div
-                className="overflow-x-auto"
-                tabIndex={0}
-                role="region"
-                aria-label="Unit population"
+              /*
+               * IT IS A DISCLOSURE AND IT IS STILL IN THE DOCUMENT.
+               *
+               * Laid out inline this table was 9,550 px of the route's 11,828 px — the
+               * densest domain in the project rendered as thirteen screens of cells, with
+               * the shape of the lot above it and no way to see both. `<details>` collapses
+               * it and changes nothing else: the rows stay in the markup, the print rule in
+               * `globals.css` opens every disclosure on paper, and the summary states the
+               * count so a reader knows what is behind it before opening it.
+               *
+               * This is the pattern every chart's data alternative on this console already
+               * uses. The position map's exact values are these rows, and the map's summary
+               * still points here; a reader following it now opens one disclosure.
+               *
+               * `TableDisclosure` supplies the horizontal scroll region, and as of this
+               * increment supplies it focusable and named — which this table needs, because
+               * `min-w` rose with the investment column `UX.2B` added. At 60rem the ten
+               * columns squeezed the vehicle name until every row wrapped to two lines.
+               *
+               * THE TITLE IS LOWER-CASED INTO THE SUMMARY LINE, as every other caller's is,
+               * so it has to read correctly that way — "31 December 2025" came out as "31
+               * december 2025". The date is on the page header, in the rail and in this
+               * table's own caption, so the summary states the count and leaves the date to
+               * them.
+               */
+              <TableDisclosure
+                title={`all ${String(ordered.length)} units at this snapshot date`}
               >
-                {/* `min-w` rose with the investment column `UX.2B` added. At 60rem the ten
-                  columns squeezed the vehicle name until every row wrapped to two lines,
-                  which added 5,300 px to the unfiltered route — a horizontal scroll region
-                  exists precisely so a wide table stays one line per row. */}
                 <table className="w-full min-w-[72rem] border-collapse text-sm">
                   <caption className="sr-only">
                     Inventory units at{' '}
@@ -639,7 +657,7 @@ export default async function InventoryPage({
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </TableDisclosure>
             )}
           </Module>
         </GridRow>

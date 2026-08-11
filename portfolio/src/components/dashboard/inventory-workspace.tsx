@@ -432,7 +432,8 @@ export function AgePriceMap({
           >
             the unit table below
           </a>
-          , which also lists the units this plot cannot place.
+          , which opens from its own summary and also lists the units this plot cannot
+          place.
         </p>
       )}
     </ChartFrame>

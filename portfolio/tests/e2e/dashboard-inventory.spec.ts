@@ -40,6 +40,27 @@ function unitLinks(page: Page) {
   return page.getByRole('table', { name: /Inventory units at/i }).locator('tbody th a')
 }
 
+/**
+ * Opens the unit population.
+ *
+ * `UX.2B.1` moved the unit table into a `<details>`: laid out inline it was 9,550 px of an
+ * 11,828 px route, and a reader met thirteen screens of cells before the shape of the lot.
+ * The rows did not go anywhere — they are in the markup, they print, and the summary states
+ * the count — but a CLOSED disclosure is not in the accessibility tree, so a role-based
+ * locator cannot see them until it is opened.
+ *
+ * `<details>` is native, so this works with JavaScript disabled too, which is why the no-JS
+ * test uses it rather than a script.
+ */
+async function openUnits(page: Page) {
+  const summary = page.locator('summary', { hasText: /units at/i }).first()
+  const details = page.locator('details', { has: summary })
+  if (!(await details.evaluate((node) => (node as HTMLDetailsElement).open))) {
+    await summary.click()
+  }
+  await expect(unitRows(page).first()).toBeVisible()
+}
+
 const ROUTE = '/dashboard/inventory'
 
 /**
@@ -95,11 +116,16 @@ test.describe('the inventory route renders its governed figures', () => {
     await gotoRendered(page, ROUTE)
     const text = await mainText(page)
 
+    // Both qualifiers are in the page a reader meets, with nothing opened. `UX.2B.1` put
+    // the unit table behind a disclosure, and this is the assertion that says doing so did
+    // not take the caveat with it: it is carried by the visible prose and by the position
+    // map's own axis, not only by the table.
     expect(text).toMatch(/synthetic/i)
     expect(text).toMatch(/not a market valuation/i)
-    // The column header itself carries the qualifier, so a reader scanning the table
-    // sees it without opening a disclosure.
-    expect(text).toMatch(/Est\. \(synthetic\)/i)
+
+    // And the column header still carries it for a reader who does open the table.
+    await openUnits(page)
+    expect(await mainText(page)).toMatch(/Est\. \(synthetic\)/i)
   })
 
   test('makes no repricing recommendation of any kind', async ({ page }) => {
@@ -160,6 +186,8 @@ test.describe('unit drill-through is a URL', () => {
   }) => {
     await gotoRendered(page, ROUTE)
 
+    await openUnits(page)
+
     const firstUnit = unitLinks(page).first()
     const unitId = (await firstUnit.textContent())?.trim() ?? ''
     expect(unitId).toMatch(/^VEH-\d{7}$/)
@@ -179,6 +207,7 @@ test.describe('unit drill-through is a URL', () => {
 
   test('returns to the index on Back and reopens on Forward', async ({ page }) => {
     await gotoRendered(page, ROUTE)
+    await openUnits(page)
     await unitLinks(page).first().click()
     await page.waitForURL(/[?&]unit=/)
 
@@ -210,12 +239,16 @@ test.describe('unit drill-through is a URL', () => {
 test.describe('search, ordering and filters land in the URL', () => {
   test('narrows the table by search term', async ({ page }) => {
     await gotoRendered(page, ROUTE)
+    await openUnits(page)
     const before = await unitRows(page).count()
 
     await page.fill('#q', 'VEH-0000005')
     await page.locator(`${searchForm} button[type="submit"]`).click()
     await page.waitForURL(/[?&]q=/)
 
+    // The search is a real navigation, so the disclosure comes back closed — which is the
+    // correct default for a fresh page and not something the search should change.
+    await openUnits(page)
     const after = await unitRows(page).count()
     expect(after).toBeLessThan(before)
     expect(after).toBeGreaterThan(0)
@@ -241,6 +274,7 @@ test.describe('search, ordering and filters land in the URL', () => {
      * inside a closed `<details>` — so the first `main tbody tr` in document order is now a
      * legitimately hidden row of a different table.
      */
+    await openUnits(page)
     const rows = unitRows(page)
     await expect(rows.first()).toBeVisible()
     const text = await mainText(page)
@@ -263,6 +297,18 @@ test.describe('the page works without JavaScript', () => {
     expect(text).toContain('0-30')
     expect(text).toMatch(/Over 120/)
     expect(text).toMatch(/synthetic/i)
+
+    /*
+     * THE ROWS ARE IN THE DOCUMENT BEFORE ANYTHING IS OPENED. `UX.2B.1` collapsed the unit
+     * table into a `<details>`, and this is the assertion that says collapsing is not
+     * removing: with scripting disabled and the disclosure shut, a real unit identifier is
+     * already in the served markup. That is what makes the print rule work, and it is the
+     * claim a shorter page would otherwise be hiding.
+     */
+    expect(text).toMatch(/VEH-\d{7}/)
+
+    /* And `<details>` is native, so the reader can open it with no script at all. */
+    await openUnits(page)
     await expect(unitRows(page).first()).toBeVisible()
   })
 
