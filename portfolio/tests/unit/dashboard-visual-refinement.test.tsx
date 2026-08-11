@@ -108,7 +108,10 @@ describe('the inventory age ramp is ordered, and its order is the export order',
     // The HORIZONTAL stack only, which is the composition that filters empty bands.
     // The vertical rows below `sm` draw every band including the empty one, and reading
     // both would compare two different populations.
-    const stack = container.querySelector<HTMLElement>('div[class*="sm:flex"]')
+    // `data-stack-track` names the horizontal track. `UX.2A` gave the stack a second
+    // track — the capital standing in each band — so a class-shaped selector would now
+    // match the wrapper that holds both rather than the segments inside one.
+    const stack = container.querySelector<HTMLElement>('[data-stack-track="units"]')
     expect(stack, 'the horizontal stack is not in the document').not.toBeNull()
     const drawn = [...(stack?.children ?? [])]
       .map((node) => RAMP.find((step) => node.className.includes(step)))
@@ -502,11 +505,19 @@ describe('the page collapses detail without removing it', () => {
   })
 
   it('renders the scoreboard only when there are rows to put in it', () => {
-    const emptyBranches = page.match(/overview\.empty \? null :/g) ?? []
-    expect(emptyBranches.length).toBeGreaterThan(0)
+    /*
+     * `UX.2A` replaced the per-region `overview.empty ? null :` guards with one branch
+     * around the whole workspace, which is the same rule expressed once: an empty
+     * selection renders `NoMatchingRecords` and the evidence disclosures, and nothing that
+     * needs matching rows. The assertion follows the structure rather than the old idiom.
+     */
+    const branch = page.indexOf('{overview.empty ? (')
+    expect(branch).toBeGreaterThan(0)
+    expect(page.slice(branch)).toContain('<NoMatchingRecords')
+    const workspace = page.indexOf('<Workspace>')
     const scoreboardIndex = page.indexOf('id="store-scoreboard"')
-    expect(scoreboardIndex).toBeGreaterThan(0)
-    expect(page.slice(scoreboardIndex - 400, scoreboardIndex)).toContain('overview.empty')
+    expect(workspace).toBeGreaterThan(branch)
+    expect(scoreboardIndex).toBeGreaterThan(workspace)
   })
 
   it('opens with figures rather than with a region explaining what is not built', () => {

@@ -76,38 +76,51 @@ export function ReconciliationSection({
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        <ReconciliationScale
-          title="Stock schedule against the general ledger"
-          caption={`At the ${signal.asOfLabel} comparison, the last month end inside the selected period. Balances are positions at a date: they add across stores and control accounts on one date and never across dates.`}
-          accounts={signal.accounts}
-          totalDisplay={signal.signedVarianceLabel ?? 'Not comparable'}
-          directionText={signal.directionSentence}
-          excludedCount={signal.notComparablePositions}
+    <div className="flex flex-col gap-4">
+      {/*
+        FOUR FACTS, IN THE ORDER `UX.2A` §15 ASKS FOR THEM: the two sides, the signed
+        variance between them, and the count of positions that have no variance because a
+        side is absent. The signed figure carries its DIRECTION IN WORDS, because "+$384.60"
+        alone does not say which side carries more, and a reader who cannot see colour gets
+        nothing from a red number. Neither sign is called good or bad: no governed threshold
+        for "how much variance is too much" exists in this project, and inventing one on the
+        Executive page is how a number acquires a verdict it cannot support.
+      */}
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-3 xl:grid-cols-4">
+        <Fact term="Comparable positions" value={String(signal.comparablePositions)} />
+        <Fact term="Reconciled" value={String(signal.reconciledPositions)} />
+        <Fact
+          term="Signed variance"
+          value={signal.signedVarianceLabel ?? 'Not comparable'}
+          note={signal.directionSentence}
         />
+        <Fact
+          term="One-sided"
+          value={String(signal.notComparablePositions)}
+          note="No variance exists, so these are counted and never added to the money."
+        />
+      </dl>
 
-        <dl className="grid grid-cols-2 gap-x-6 gap-y-4 self-start">
-          <Fact term="Comparable positions" value={String(signal.comparablePositions)} />
-          <Fact term="Reconciled" value={String(signal.reconciledPositions)} />
-          <Fact term="Carrying a variance" value={String(signal.variancePositions)} />
-          <Fact term="One-sided" value={String(signal.notComparablePositions)} />
-          <Fact
-            term="Exceptions in scope"
-            value={String(signal.exceptionCount)}
-            note="Raised by the governed exception view over the stores in scope, each on its own business date rather than on the comparison date. A different vocabulary over a different population from the comparison states beside it; the two are never added together, and this is the same count the accounting page lists."
-          />
-        </dl>
-      </div>
+      <ReconciliationScale
+        title="Stock schedule against the general ledger"
+        caption={`At the ${signal.asOfLabel} comparison, the last month end inside the selected period. A position at a date, never summed across dates.`}
+        accounts={signal.accounts}
+        totalDisplay={signal.signedVarianceLabel ?? 'Not comparable'}
+        directionText={signal.directionSentence}
+        excludedCount={signal.notComparablePositions}
+        headingLevel={3}
+      />
 
       {/* The scenario note is a CAVEAT and stays visible: a reader who does not know
           some of these variances were planted to prove the control surface will read
-          them as discovered errors in a dealership. What left is the sentence
-          describing what the destination contains. */}
+          them as discovered errors in a dealership. */}
       <Text size="xs" tone="faint" className="max-w-prose">
         {signal.scenarioNote}
       </Text>
       <Text size="xs" tone="faint">
+        {signal.exceptionCount} governed{' '}
+        {signal.exceptionCount === 1 ? 'exception' : 'exceptions'} in scope, each on its
+        own business date.{' '}
         <Link className="underline" href={ROUTES.dashboardAccounting.href}>
           Open accounting integrity, account by account
         </Link>
@@ -127,10 +140,8 @@ function Fact({
 }) {
   return (
     <div className="flex min-w-0 flex-col gap-0.5">
-      <dt className="font-mono text-2xs tracking-wide text-ink-muted uppercase">
-        {term}
-      </dt>
-      <dd className="numeric text-xl font-semibold text-ink">{value}</dd>
+      <dt className="text-xs font-medium text-ink-secondary">{term}</dt>
+      <dd className="numeric text-lg font-semibold text-ink">{value}</dd>
       {note === undefined ? null : (
         <dd className="text-2xs leading-normal text-ink-faint">{note}</dd>
       )}

@@ -1,65 +1,85 @@
 /**
- * The inventory risk summary.
+ * The inventory exposure module: what is on the lot, and what it is costing.
  *
- * SEMI-ADDITIVE, AND THE PAGE SAYS SO
- * -----------------------------------
- * Active inventory, investment and aged units are read at ONE snapshot date — the
- * latest the selected period contains — and the date is on the section. KPI-INV-001
- * states the trap plainly: "a month-level card showing a summed daily count is
- * wrong by roughly a factor of 30 and looks plausible". The selector layer makes
- * that impossible; this heading makes it visible.
+ * TWO DISTRIBUTIONS OVER ONE SET OF BANDS
+ * ---------------------------------------
+ * `UX.2A` §10 requires the Executive stock reading to communicate unit aging AND capital
+ * exposure where the current datasets support both. They do: `inventory-aging` publishes
+ * `investment_in_bucket` beside `units_in_bucket`, at the same grain, in the export this
+ * route already opens. So the age stack draws two tracks — units, then investment — over
+ * the same five governed bands, and the finding a used-car manager is actually looking for
+ * becomes visible: the share of the MONEY standing past the aged threshold is not the
+ * share of the CARS. Nothing was inferred, no grain was added and no allocation was
+ * invented; where a scope produced no capital for a band, the second track is not drawn at
+ * all.
+ *
+ * SEMI-ADDITIVE, AND THE MODULE SAYS SO
+ * -------------------------------------
+ * Active inventory, investment and aged units are read at ONE snapshot date — the latest
+ * the selected period contains — and the date is on the module. KPI-INV-001 states the
+ * trap plainly: "a month-level card showing a summed daily count is wrong by roughly a
+ * factor of 30 and looks plausible". The selector layer makes that impossible; the scope
+ * line makes it visible.
  *
  * THE MEDIAN TABLE IS THE POINT, NOT A FALLBACK
  * ---------------------------------------------
- * There is no group median inventory age in this data, and there cannot be: a
- * median is an order statistic, the export publishes one per store per condition
- * group per snapshot date, and the catalogue says outright that "group median is not
- * derivable from subgroup medians and must be recomputed from rows". So instead of
- * averaging five medians into a sixth number that is a median of nothing, the
- * section shows all five, at the grain PostgreSQL computed them at. The mean IS
- * derivable and is shown beside them, with the gap between mean and median labelled
- * for what it is: evidence of an aged tail.
+ * There is no group median inventory age in this data, and there cannot be: a median is an
+ * order statistic, the export publishes one per store per condition group per snapshot
+ * date, and the catalogue says outright that "group median is not derivable from subgroup
+ * medians and must be recomputed from rows". So instead of averaging five medians into a
+ * sixth number that is a median of nothing, the module shows all five at the grain
+ * PostgreSQL computed them at. `UX.2A` moved that table behind a disclosure and moved the
+ * median card off the KPI rail for the same reason: it is the right answer to a question a
+ * group-scoped rail cannot ask.
  *
- * THE THRESHOLD IS A PROJECT DEFAULT
- * ----------------------------------
- * Sixty days, read from the export's own `aged_threshold_days` column rather than
- * typed here. KPI-INV-005: "different operators use 30, 45, 60, or 90 days. Any
- * finding depending on the threshold must state it in the same sentence." It is not
- * an industry standard and the page does not call it one.
+ * THE THRESHOLD IS A PROJECT DEFAULT — sixty days, read from the export's own
+ * `aged_threshold_days` column rather than typed here, and printed on the stack where the
+ * colour ramp turns on it. KPI-INV-005: "different operators use 30, 45, 60, or 90 days.
+ * Any finding depending on the threshold must state it in the same sentence." It is not an
+ * industry standard and the page does not call it one.
  *
- * WHERE THIS SECTION STOPS
- * ------------------------
- * At the summary. `DASH.9` delivered `/dashboard/inventory`, which holds the 1,501
- * unit-level rows, their age against the threshold, asking price against the synthetic
- * market estimate and the per-unit accounting position. None of that belongs here: the
- * Executive Overview reads eight governed figures and one distribution over a snapshot,
- * and the drill-through below is how a reader gets from the shape to the units behind
- * it. Reproducing the detail page's content on this page would cost 356 kB of chunks
- * this route never opens, which `dashboard-boundaries.test.ts` forbids outright.
+ * WHERE THIS MODULE STOPS
+ * -----------------------
+ * At the summary. `/dashboard/inventory` holds the 1,501 unit-level rows and the per-unit
+ * accounting position. Reproducing them here would cost 356 kB of chunks this route never
+ * opens, which `dashboard-boundaries.test.ts` forbids outright. There is no repricing
+ * recommendation and no disposal advice: this module reports a position.
  *
  * Server component.
  */
 import Link from 'next/link'
 
-import { Card } from '@/components/ui/card-static'
+import { Disclosure } from '@/components/ui/disclosure'
 import { Heading, Text } from '@/components/ui/typography'
-import { Methodology, MethodologyNote } from '@/components/dashboard/methodology'
 import { kpiDefinition, type InventorySummary } from '@/lib/dashboard/executive'
 import { exactToString } from '@/lib/dashboard/decimal'
-import { formatIsoDate } from '@/lib/dashboard/format'
+import { formatCurrencyExact, formatIsoDate } from '@/lib/dashboard/format'
 import type { ComparedMetric } from '@/lib/dashboard/selectors'
 import { ROUTES } from '@/lib/site'
-import { cx } from '@/lib/utils'
 
-import {
-  KpiMethodology,
-  MetricDifference,
-  MetricReason,
-  MetricValue,
-  unitLabel,
-  valueCarriesUnit,
-} from './metric'
+import { KpiDefinitionList, MetricDifference, MetricValue, stateLabel } from './metric'
 import { InventoryAgeStack } from './visuals'
+
+/** The four figures the Executive reads. The rest belong to the drill-through. */
+function figuresOf(
+  inventory: InventorySummary
+): readonly { readonly label: string; readonly metric: ComparedMetric }[] {
+  /*
+   * FOUR, DOWN FROM EIGHT, AND THE OTHER FOUR DID NOT LEAVE THE CONSOLE.
+   *
+   * Average age is in the aging table. Aged investment is now the second track of the
+   * stack, which is a better reading of it than a card was. Days supply and inventory turn
+   * are governed scoreboard columns, per store, where a group-level single figure was
+   * always the less useful of the two presentations. What is left is the position, the
+   * money, the exposed units and the exposed share — which is the module's whole question.
+   */
+  return [
+    { label: 'Active inventory', metric: inventory.activeUnits },
+    { label: 'Inventory investment', metric: inventory.investment },
+    { label: 'Aged units', metric: inventory.agedUnits },
+    { label: 'Aged percentage', metric: inventory.agedPercentage },
+  ]
+}
 
 export function InventoryRisk({
   inventory,
@@ -68,79 +88,89 @@ export function InventoryRisk({
   inventory: InventorySummary
   comparisonLabel: string | null
 }) {
-  const figures: readonly { readonly label: string; readonly metric: ComparedMetric }[] =
-    [
-      { label: 'Active inventory', metric: inventory.activeUnits },
-      { label: 'Inventory investment', metric: inventory.investment },
-      { label: 'Average age', metric: inventory.averageAge },
-      { label: 'Aged units', metric: inventory.agedUnits },
-      { label: 'Aged investment', metric: inventory.agedInvestment },
-      { label: 'Aged percentage', metric: inventory.agedPercentage },
-      { label: 'Dealer days supply', metric: inventory.daysSupply },
-      { label: 'Inventory turn', metric: inventory.turn },
-    ]
+  const figures = figuresOf(inventory)
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* One sentence. The aged threshold moved onto the age stack, where the colour
-          ramp turns on it and a reader needs it; repeating it here was the same
-          caveat twice on one screen. The multi-threshold state has no home on the
-          stack, so it stays. */}
-      <Text size="sm" tone="muted" className="max-w-prose">
-        {inventory.snapshotDate === null
-          ? 'No inventory snapshot falls inside the selected period.'
-          : `Semi-additive: read at the ${formatIsoDate(inventory.snapshotDate)} snapshot, added across stores and condition groups at one date and never across dates.`}
-        {inventory.agedThresholdDays === null
-          ? ' The scope in view carries more than one aged threshold, so no single threshold is stated.'
-          : ''}
-      </Text>
-
-      <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="flex flex-col gap-4">
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-3 xl:grid-cols-4">
         {figures.map((figure) => (
-          <Card as="li" key={figure.label} padding="sm" className="flex flex-col gap-2">
-            <div className="flex flex-col gap-0.5">
-              <h3 className="text-sm font-semibold text-ink-secondary">{figure.label}</h3>
-              <p className="flex flex-wrap items-center gap-x-2 text-2xs text-ink-faint">
-                {figure.metric.selector.kpiId === null ? null : (
-                  <span className="font-mono">{figure.metric.selector.kpiId}</span>
-                )}
-                {valueCarriesUnit(figure.metric.selector) ? null : (
-                  <span>{unitLabel(figure.metric.selector)}</span>
-                )}
-              </p>
-            </div>
-            <MetricValue
-              selector={figure.metric.selector}
-              result={figure.metric.current}
-            />
-            {figure.metric.current.kind === 'value' ? (
-              <MetricDifference
-                metric={figure.metric}
-                comparisonLabel={comparisonLabel}
+          <div key={figure.label} className="flex min-w-0 flex-col gap-0.5">
+            <dt className="text-xs font-medium text-ink-secondary">{figure.label}</dt>
+            <dd>
+              <MetricValue
+                selector={figure.metric.selector}
+                result={figure.metric.current}
+                size="sub"
               />
-            ) : (
-              <MetricReason result={figure.metric.current} />
-            )}
-            <KpiMethodology
-              selector={figure.metric.selector}
-              definition={
-                figure.metric.selector.kpiId === null
-                  ? undefined
-                  : kpiDefinition(figure.metric.selector.kpiId)
-              }
-            />
-          </Card>
+            </dd>
+            <dd>
+              {figure.metric.current.kind === 'value' ? (
+                <MetricDifference
+                  metric={figure.metric}
+                  comparisonLabel={comparisonLabel}
+                />
+              ) : (
+                <Text size="xs" tone="faint">
+                  {stateLabel(figure.metric.current)}
+                </Text>
+              )}
+            </dd>
+          </div>
         ))}
-      </ul>
+      </dl>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <AgeDistribution inventory={inventory} />
+      <InventoryAgeStack
+        title="Age and capital exposure"
+        caption={
+          inventory.snapshotDate === null
+            ? 'No inventory snapshot falls inside the selected period.'
+            : `Units and the money standing in them, over the exported age bands, at the ${formatIsoDate(inventory.snapshotDate)} snapshot. A position read at one date and never summed across dates.`
+        }
+        segments={inventory.buckets.map((bucket) => ({
+          key: bucket.label,
+          label: bucket.label,
+          display: `${exactToString(bucket.units)} units`,
+          share: bucket.share,
+          capitalDisplay: formatCurrencyExact(bucket.investment, 0),
+          capitalShare: bucket.investmentShare,
+        }))}
+        snapshotNote={
+          inventory.snapshotDate === null
+            ? 'No inventory snapshot falls inside the selected period.'
+            : `Read at the ${formatIsoDate(inventory.snapshotDate)} snapshot, at one date and never summed across dates.`
+        }
+        thresholdDays={inventory.agedThresholdDays}
+        headingLevel={3}
+      />
+
+      {inventory.agedThresholdDays === null ? (
+        <Text size="xs" tone="faint" className="max-w-prose">
+          The scope in view carries more than one aged threshold, so no single threshold
+          is stated.
+        </Text>
+      ) : null}
+
+      <Disclosure label="Median inventory age, and how these figures are calculated">
         <MedianTable inventory={inventory} />
-      </div>
+        <div className="flex flex-col gap-6">
+          {figures.map((figure) => (
+            <div key={figure.label} className="flex flex-col gap-2">
+              <Heading level={4} size="h6" className="text-ink-secondary">
+                {figure.label}
+              </Heading>
+              <KpiDefinitionList
+                selector={figure.metric.selector}
+                definition={
+                  figure.metric.selector.kpiId === null
+                    ? undefined
+                    : kpiDefinition(figure.metric.selector.kpiId)
+                }
+              />
+            </div>
+          ))}
+        </div>
+      </Disclosure>
 
-      {/* A DRILL-THROUGH IS A LINK, NOT A PARAGRAPH ABOUT ONE. It described the
-          destination in thirty-two words a reader had to pass through to reach it;
-          the destination describes itself. */}
       <Text size="xs" tone="faint">
         <Link className="underline" href={ROUTES.dashboardInventory.href}>
           Open the units behind these figures
@@ -151,128 +181,22 @@ export function InventoryRisk({
 }
 
 /* -------------------------------------------------------------------------- */
-/* Age distribution                                                            */
-/* -------------------------------------------------------------------------- */
-
-/**
- * The aging profile, as one part-to-whole bar with its table underneath.
- *
- * WHAT CHANGED, AND WHY THE OLD BARS WERE WRONG. The first version drew one bar per
- * bucket at a width of that bucket over the LARGEST bucket. That is a comparison of
- * modes, not a distribution: it made the biggest band full-width at every scope, so the
- * picture looked identical whether the lot was evenly spread or entirely aged. The
- * `share` the view model publishes is the bucket over the POPULATION, which is the
- * denominator a distribution actually has, and `InventoryAgeStack` draws that.
- *
- * The table is retained verbatim below the stack. The geometry is decoration; the counts
- * and the shares are the data, and both are text in two places.
- */
-function AgeDistribution({ inventory }: { inventory: InventorySummary }) {
-  const snapshotNote =
-    inventory.snapshotDate === null
-      ? 'No inventory snapshot falls inside the selected period.'
-      : `Read at the ${formatIsoDate(inventory.snapshotDate)} snapshot, at one date and never summed across dates.`
-
-  return (
-    <section aria-labelledby="age-distribution" className="flex flex-col gap-4">
-      <InventoryAgeStack
-        title="Age distribution"
-        caption="Units on the lot by days in stock, on boundaries the exported aging view sets."
-        segments={inventory.buckets.map((bucket) => ({
-          key: bucket.label,
-          label: bucket.label,
-          display: `${exactToString(bucket.units)} units`,
-          share: bucket.share,
-        }))}
-        snapshotNote={snapshotNote}
-        thresholdDays={inventory.agedThresholdDays}
-        headingLevel={3}
-      />
-
-      {inventory.buckets.length === 0 ? (
-        <Text size="sm" tone="muted">
-          No inventory rows fall inside the selected period and scope.
-        </Text>
-      ) : (
-        <table className="w-full border-collapse text-left text-sm">
-          <caption className="sr-only">
-            Active inventory units by age bucket at the snapshot date
-          </caption>
-          <thead>
-            <tr>
-              <th
-                scope="col"
-                className="py-1.5 font-mono text-2xs tracking-wide text-ink-muted uppercase"
-              >
-                Days in stock
-              </th>
-              <th
-                scope="col"
-                className="py-1.5 text-right font-mono text-2xs tracking-wide text-ink-muted uppercase"
-              >
-                Units
-              </th>
-              <th
-                scope="col"
-                className="py-1.5 text-right font-mono text-2xs tracking-wide text-ink-muted uppercase"
-              >
-                Share
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {inventory.buckets.map((bucket) => (
-              <tr key={bucket.label} className="border-t border-line-subtle">
-                <th scope="row" className="py-2 text-left font-medium text-ink-secondary">
-                  {bucket.label}
-                </th>
-                <td className="numeric py-2 pr-3 text-right text-ink">
-                  {exactToString(bucket.units)}
-                </td>
-                <td className="numeric py-2 text-right text-ink-muted">
-                  {(bucket.share * 100).toFixed(1)}%
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </section>
-  )
-}
-
-/* -------------------------------------------------------------------------- */
 /* Governed medians                                                            */
 /* -------------------------------------------------------------------------- */
 
 function MedianTable({ inventory }: { inventory: InventorySummary }) {
   return (
     <section aria-labelledby="governed-medians" className="flex flex-col gap-3">
-      <Heading level={3} size="h6" id="governed-medians">
+      <Heading level={4} size="h6" id="governed-medians">
         Median inventory age, at the grain it is published
       </Heading>
-      {/*
-        THE CAVEAT IS VISIBLE, THE MECHANISM IS DISCLOSED.
-
-        The one sentence a reader would MISREAD the table without — a group median
-        is not the average of store medians — stays on the page. How the median is
-        computed, and by what, is methodology: it named the storage engine and the
-        aggregate function, in the eye path, on the console's flagship surface.
-      */}
       <Text size="xs" tone="muted" className="max-w-prose">
         A median is published per store, per condition group, per snapshot date, and it
-        cannot be combined upward: a group median is not the average of store medians. A
-        single median appears on a card only when the filter resolves to exactly one of
-        the rows below.
+        cannot be combined upward: a group median is not the average of store medians.
+        KPI-INV-004 is an order statistic, computed with PERCENTILE_CONT over the units
+        themselves in the reporting layer, at the finest grain at which the value is
+        defined.
       </Text>
-      <Methodology>
-        <MethodologyNote>
-          KPI-INV-004 is an order statistic. It is computed with PERCENTILE_CONT over the
-          units themselves in the reporting layer, at store, condition-group and
-          snapshot-date grain, which is the grain the export publishes and the finest one
-          at which the value is defined.
-        </MethodologyNote>
-      </Methodology>
       {inventory.governedMedians.length === 0 ? (
         <Text size="sm" tone="muted">
           No inventory rows fall inside the selected period and scope.
@@ -284,22 +208,13 @@ function MedianTable({ inventory }: { inventory: InventorySummary }) {
           </caption>
           <thead>
             <tr>
-              <th
-                scope="col"
-                className="py-1.5 font-mono text-2xs tracking-wide text-ink-muted uppercase"
-              >
+              <th scope="col" className={HEAD}>
                 Store
               </th>
-              <th
-                scope="col"
-                className="py-1.5 font-mono text-2xs tracking-wide text-ink-muted uppercase"
-              >
+              <th scope="col" className={HEAD}>
                 Condition
               </th>
-              <th
-                scope="col"
-                className="py-1.5 text-right font-mono text-2xs tracking-wide text-ink-muted uppercase"
-              >
+              <th scope="col" className={`${HEAD} text-right`}>
                 Median age
               </th>
             </tr>
@@ -314,7 +229,7 @@ function MedianTable({ inventory }: { inventory: InventorySummary }) {
                   {entry.store.shortName}
                 </th>
                 <td className="py-2 text-ink-muted">{entry.conditionGroup}</td>
-                <td className={cx('py-2 text-right')}>
+                <td className="py-2 text-right">
                   {entry.value.kind === 'value' ? (
                     <span className="numeric text-ink">
                       {exactToString(entry.value.value)} days
@@ -335,3 +250,5 @@ function MedianTable({ inventory }: { inventory: InventorySummary }) {
     </section>
   )
 }
+
+const HEAD = 'py-1.5 font-mono text-2xs tracking-wide text-ink-muted uppercase'

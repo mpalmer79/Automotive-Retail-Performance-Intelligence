@@ -86,8 +86,8 @@ export function TargetPaceSection({
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      {context.clock === null ? null : <SellingDayHeader clock={context.clock} />}
+    <div className="flex flex-col gap-3">
+      {context.clock === null ? null : <SellingDayClockLine clock={context.clock} />}
 
       {context.comparability.kind === 'totals-only' ? (
         <Text size="sm" tone="muted" className="max-w-prose">
@@ -95,7 +95,13 @@ export function TargetPaceSection({
         </Text>
       ) : null}
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      {/*
+        ONE COLUMN, NOT TWO. In the command-center grid this module is five of twelve
+        columns wide, and two bullet tracks side by side inside it are 120 px each — a
+        length that cannot carry a target marker and a selling-day marker distinguishably.
+        Stacked, each track is the width of the module and both markers are legible.
+      */}
+      <div className="flex flex-col gap-4">
         {context.measures.map((measure) => (
           <TargetCard
             key={measure.measure.id}
@@ -111,35 +117,30 @@ export function TargetPaceSection({
   )
 }
 
-/** The selling-day position, in the words a desk uses. */
-export function SellingDayHeader({ clock }: { readonly clock: SellingDayClock }) {
-  const dayPhrase =
-    clock.elapsed === 0
-      ? `No selling day has elapsed yet. ${String(clock.total)} in the month`
-      : `Day ${String(clock.elapsed)} of ${String(clock.total)} selling days`
+/**
+ * The selling-day position, compressed to the line a desk actually says.
+ *
+ * `SellingDayHeader` is the two-to-three sentence version and is still exported for the
+ * surfaces that lead with the clock. On the Executive workspace the clock is one fact among
+ * a dozen on the screen, and its long form was 40 words of prose above a bullet chart that
+ * already draws the elapsed marker. What survives is the count, the state and the date —
+ * everything the marker on the track cannot say.
+ */
+function SellingDayClockLine({ clock }: { readonly clock: SellingDayClock }) {
   return (
-    <Text size="sm" tone="secondary" className="max-w-prose">
-      <span className="font-medium text-ink">{dayPhrase}</span>
-      {clock.monthState === 'Complete' ? (
-        <>
-          {' · '}
-          <span>
-            Month complete: every selling day has elapsed, so attainment is final and the{' '}
-            {PACE_PROJECTION_LABEL.toLowerCase()} equals the month&rsquo;s actual rather
-            than looking forward.
-          </span>
-        </>
-      ) : (
-        <>
-          {' · '}
-          <span>
-            {String(clock.remaining)} selling {clock.remaining === 1 ? 'day' : 'days'}{' '}
-            remaining, as at {formatIsoDate(clock.effectiveAsOfDate)}.
-          </span>
-        </>
-      )}{' '}
+    <p className="flex flex-wrap items-baseline gap-x-2 text-xs text-ink-muted">
+      <span className="font-medium text-ink-secondary">
+        {clock.elapsed === 0
+          ? `No selling day elapsed of ${String(clock.total)}`
+          : `Selling day ${String(clock.elapsed)} of ${String(clock.total)}`}
+      </span>
+      <span>
+        {clock.monthState === 'Complete'
+          ? `Month complete, so attainment is final and the ${PACE_PROJECTION_LABEL.toLowerCase()} equals the actual.`
+          : `${String(clock.remaining)} remaining at ${formatIsoDate(clock.effectiveAsOfDate)}.`}
+      </span>
       <span className="font-mono text-2xs text-ink-faint">KPI-TGT-005 · KPI-TGT-006</span>
-    </Text>
+    </p>
   )
 }
 

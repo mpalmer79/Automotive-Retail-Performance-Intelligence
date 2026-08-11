@@ -236,18 +236,24 @@ test.describe('the console states what it is, in its own body', () => {
 /* -------------------------------------------------------------------------- */
 
 test.describe('the figures on the screen are the exported figures', () => {
-  test('renders the seven governed KPI cards with their identifiers', async ({
+  test('renders the eight governed KPI cards with their identifiers', async ({
     page,
   }) => {
+    /*
+     * `UX.2A` §6 rebuilt the rail: front PVR joined back PVR, and median inventory age
+     * (KPI-INV-004) left for the stock module, where its published grain can actually
+     * resolve it. The identifiers below are the eight the rail now names.
+     */
     await gotoRendered(page, ROUTE)
     const text = await mainText(page)
     for (const kpi of [
       'KPI-SLS-001',
       'KPI-GRS-003',
       'KPI-GRS-006',
+      'KPI-GRS-004',
       'KPI-GRS-005',
       'KPI-FUN-006',
-      'KPI-INV-004',
+      'KPI-INV-002',
       'KPI-INV-006',
     ]) {
       expect(text, kpi).toContain(kpi)
@@ -422,16 +428,16 @@ test.describe('changing the filter changes the geometry', () => {
      * values differ.
      */
     await gotoRendered(page, `${ROUTE}?store=GSA-001,GSA-002`)
-    const first = await drawnWidths(page, '#group-performance [style*="width"]')
+    const first = await drawnWidths(page, '#store-comparison [style*="width"]')
     await gotoRendered(page, `${ROUTE}?store=GSA-002,GSA-003`)
-    const second = await drawnWidths(page, '#group-performance [style*="width"]')
+    const second = await drawnWidths(page, '#store-comparison [style*="width"]')
     expect(first.length).toBeGreaterThan(0)
     expect(first).not.toEqual(second)
   })
 
   test('three stores produce three different bar lengths', async ({ page }) => {
     await gotoRendered(page, ROUTE)
-    const widths = await drawnWidths(page, '#group-performance [style*="width"]')
+    const widths = await drawnWidths(page, '#store-comparison [style*="width"]')
     expect(widths.length).toBeGreaterThanOrEqual(3)
     // Not all the same: the group view is the case a fixed-width bar would pass.
     expect(new Set(widths).size).toBeGreaterThan(1)
@@ -441,7 +447,7 @@ test.describe('changing the filter changes the geometry', () => {
     page,
   }) => {
     await gotoRendered(page, `${ROUTE}?store=GSA-001`)
-    const widths = await drawnWidths(page, '#group-performance [style*="width"]')
+    const widths = await drawnWidths(page, '#store-comparison [style*="width"]')
     expect(widths.every((width) => width === '100%')).toBe(true)
     expect(await mainText(page)).toContain('there is nothing to compare it against')
   })
@@ -461,9 +467,9 @@ test.describe('changing the filter changes the geometry', () => {
 
   test('a condition filter changes the inventory age segments', async ({ page }) => {
     await gotoRendered(page, `${ROUTE}?condition=New`)
-    const asNew = await drawnWidths(page, '#targets [style*="width"]')
+    const asNew = await drawnWidths(page, '#inventory-exposure [style*="width"]')
     await gotoRendered(page, `${ROUTE}?condition=Used`)
-    const used = await drawnWidths(page, '#targets [style*="width"]')
+    const used = await drawnWidths(page, '#inventory-exposure [style*="width"]')
     expect(asNew.length).toBeGreaterThan(0)
     expect(asNew).not.toEqual(used)
   })
@@ -510,10 +516,10 @@ test.describe('targets and selling-day pace', () => {
   }) => {
     await gotoRendered(page, ROUTE)
     const text = await mainText(page)
-    expect(text).toMatch(/targets and pace/i)
+    expect(text).toMatch(/plan and pace/i)
     expect(text).toMatch(/Target\s+[\d,$]/)
     expect(text).toMatch(/of target/)
-    expect(text).toMatch(/selling days/i)
+    expect(text).toMatch(/selling day \d+ of \d+/i)
     expect(text).toMatch(/per selling day/i)
   })
 
@@ -705,8 +711,14 @@ test.describe('the inventory summary', () => {
   test('shows the governed medians at the grain the export publishes them', async ({
     page,
   }) => {
+    /*
+     * `textContent`, because `UX.2A` moved the median table behind the stock module's
+     * disclosure. The claim worth testing is unchanged and is the same one the no-JS test
+     * makes: the table and its caveat are in the served document, at the grain the export
+     * publishes them, whether or not the disclosure has been opened.
+     */
     await gotoRendered(page, ROUTE)
-    const text = await mainText(page)
+    const text = await mainTextContent(page)
     expect(text).toContain('Median inventory age, at the grain it is published')
     expect(text).toContain('a group median is not the average of store medians')
   })
@@ -715,16 +727,32 @@ test.describe('the inventory summary', () => {
     page,
   }) => {
     await gotoRendered(page, ROUTE)
+    // The table is in the stack's own `<details>`, which is how every other chart on this
+    // console carries its values. Opening it is one click and costs the document nothing.
+    await page.getByText('Read age bucket as a table').click()
     const table = page.getByRole('table', { name: /age bucket/i })
     await expect(table).toBeVisible()
-    await expect(table.getByRole('columnheader', { name: /units/i })).toBeVisible()
+    await expect(
+      table.getByRole('columnheader', { name: /units/i }).first()
+    ).toBeVisible()
+    await expect(table.getByRole('columnheader', { name: /investment/i })).toBeVisible()
   })
 })
 
 test.describe('the lead funnel', () => {
   test('renders the five stages a dealership recognises', async ({ page }) => {
+    /*
+     * `UX.2A` made the funnel a nesting rather than a table, so the stages are read off
+     * the chart. Both presentations are asserted: the visible bars, and the table the
+     * chart carries in its disclosure.
+     */
     await gotoRendered(page, ROUTE)
-    const table = page.getByRole('table', { name: /lead funnel stage counts/i })
+    const funnel = page.locator('figure', { hasText: 'Lead funnel' }).first()
+    for (const stage of ['Leads', 'Contacted', 'Appointment set', 'Showed', 'Sold']) {
+      await expect(funnel.getByText(stage, { exact: true }).first()).toBeVisible()
+    }
+    await funnel.getByText('Read lead funnel as a table').click()
+    const table = page.getByRole('table', { name: /lead funnel/i })
     for (const stage of ['Leads', 'Contacted', 'Appointment set', 'Showed', 'Sold']) {
       await expect(
         table.getByRole('rowheader', { name: stage, exact: true })
@@ -765,12 +793,37 @@ test.describe('the lead funnel', () => {
 /* -------------------------------------------------------------------------- */
 
 test.describe('KPI methodology', () => {
-  test('every KPI card carries a "How is this calculated?" disclosure', async ({
+  test('the rail carries one methodology disclosure holding every card entry', async ({
     page,
   }) => {
+    /*
+     * `UX.2A` §17. Eight `How is this calculated?` summary lines became one, and the
+     * ANSWER did not shrink with the question: the single disclosure renders all eight
+     * catalogue entries, and the assertion below counts them by their headings.
+     */
     await gotoRendered(page, ROUTE)
-    const disclosures = page.getByText('How is this calculated?')
-    expect(await disclosures.count()).toBeGreaterThanOrEqual(7)
+    expect(await page.getByText('How is this calculated?').count()).toBe(0)
+    const summary = page.getByText('How every figure on this rail is calculated')
+    await expect(summary).toHaveCount(1)
+    await summary.click()
+    // Scoped to the rail's own disclosure: the stock module carries a disclosure of the
+    // same shape, and two of its four figures share a name with a rail card.
+    const rail = summary.locator('xpath=ancestor::details[1]')
+    for (const label of [
+      'Retail units',
+      'Total gross',
+      'Total gross per retail unit',
+      'Front gross per retail unit',
+      'Back gross per retail unit',
+      'Lead-to-sale conversion',
+      'Inventory investment',
+      'Aged inventory percentage',
+    ]) {
+      await expect(
+        rail.getByRole('heading', { level: 4, name: label, exact: true }),
+        label
+      ).toBeVisible()
+    }
   })
 
   test('the disclosure resolves to the governed catalogue definition', async ({
@@ -790,7 +843,7 @@ test.describe('KPI methodology', () => {
     page,
   }) => {
     await gotoRendered(page, ROUTE)
-    const summary = page.getByText('How is this calculated?').first()
+    const summary = page.getByText('How every figure on this rail is calculated').first()
     const details = summary.locator('xpath=ancestor::details[1]')
     await expect(details).not.toHaveAttribute('open', '')
     await summary.click()
@@ -941,7 +994,7 @@ test.describe('without JavaScript', () => {
     expect(text).toContain('Granite Pre-Owned')
     expect(text).toContain('Not applicable')
     // Inventory and funnel summaries.
-    expect(text).toContain('Age distribution')
+    expect(text).toContain('Age and capital exposure')
     expect(text).toContain('Appointment set')
     // Trust state and the disclosure.
     expect(text).toContain('Real-engine validation pending')
@@ -949,13 +1002,12 @@ test.describe('without JavaScript', () => {
     // Methodology, which is inside `<details>` and therefore in the document.
     expect(text).toContain('reporting.vw_sales_summary')
     // Targets and pace: every part of it, including the states and the disclosure.
-    expect(text).toMatch(/targets and pace/i)
+    expect(text).toMatch(/plan and pace/i)
     expect(text).toContain('Selling-day pace projection')
     expect(text).toContain('selling days')
     expect(text).toContain('per selling day')
     expect(text).toContain('of target')
     expect(text).toContain('synthetic internal operating goals')
-    expect(text).toContain('Pace against plan')
 
     /*
      * The nine visualisations, without scripting. Each one is a server component, so
@@ -1126,13 +1178,23 @@ test.describe('the console reads as an instrument rather than as a report', () =
     expect(words, `visible prose words: ${String(words)}`).toBeLessThan(PROSE_CEILING)
   })
 
-  test('groups the console into five regions rather than nine', async ({ page }) => {
+  test('groups the console into named modules rather than long bands', async ({
+    page,
+  }) => {
+    /*
+     * `UX.2A` replaced the five full-width bands with a grid of modules, and the module
+     * is now the unit a reader navigates by: one `h2` each, naming the question it holds.
+     * The ceiling is what stops the grid growing back into a list of sections — a
+     * workspace a manager can hold in their head is roughly a dozen panels, not thirty.
+     */
     await gotoRendered(page, ROUTE)
-    // One `h2` per region. The count is the structure a reader navigating by heading
-    // gets, which is the thing the consolidation was for.
-    const regions = await page.locator('main h2').count()
-    expect(regions).toBeLessThanOrEqual(5)
-    expect(regions).toBeGreaterThanOrEqual(4)
+    const headings = await page.locator('main h2').allInnerTexts()
+    expect(headings.length).toBeGreaterThanOrEqual(8)
+    expect(headings.length).toBeLessThanOrEqual(14)
+    for (const heading of headings) {
+      // A module is named by its subject, not by a sentence about the page.
+      expect(heading.split(/\s+/).length, heading).toBeLessThanOrEqual(9)
+    }
   })
 
   test('opens on figures, with no region that only explains the page', async ({
@@ -1202,7 +1264,7 @@ test.describe('colour is a second reading and never the only one', () => {
     page,
   }) => {
     await gotoRendered(page, ROUTE)
-    const stack = page.locator('figure', { hasText: 'Age distribution' }).first()
+    const stack = page.locator('figure', { hasText: 'Age and capital exposure' }).first()
     const fills = await stack.evaluate((node) =>
       [...node.querySelectorAll('[class*="bg-data-age-"]')].map((mark) =>
         [...mark.classList].find((name) => name.startsWith('bg-data-age-'))

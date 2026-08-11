@@ -1167,3 +1167,58 @@ someone adds one. `/dashboard/actions` was added in the same change that built i
 | ---------------------- | ----- | ---------- |
 | Root export            | 40    | 23,157,777 |
 | Generated console tree | 312   | 7,356,934  |
+
+## 9.12 The `UX.2A` Executive Command Center, measured
+
+Same harness as every section above: a production build, Chromium, compressed transfer summed per
+route. The before-column is the merge of `DASH.12`, recorded in
+[`UX-2-BASELINE.md`](../../docs/reviews/UX-2-BASELINE.md).
+
+### The route got lighter while the page got denser
+
+| Route                                                  |         HTML |   Script |     CSS |    Fonts |        Total |
+| ------------------------------------------------------ | -----------: | -------: | ------: | -------: | -----------: |
+| `/` before                                             |     135.6 kB | 171.2 kB | 15.5 kB | 114.3 kB | **437.9 kB** |
+| `/` after                                              | **122.9 kB** | 171.2 kB | 15.9 kB | 114.3 kB | **425.5 kB** |
+| `/?store=GSA-001&period=2025-11&condition=Used` before |     123.5 kB | 171.2 kB | 15.5 kB | 114.3 kB |     425.9 kB |
+| `/?store=GSA-001&period=2025-11&condition=Used` after  |     110.3 kB | 171.2 kB | 15.9 kB | 114.3 kB |     413.0 kB |
+
+That is the opposite of what a richer dashboard normally costs, and the three components of the
+change are worth separating because only one of them is a saving anybody planned:
+
+- **HTML fell 12.7 kB.** Twenty repeated `How is this calculated?` disclosures became two. Each one
+  carried a full catalogue entry — thirteen labelled fields — and eighteen of them were duplicates of
+  content the same page already served. Consolidating the SUMMARY LINES consolidated the markup with
+  them, and nothing was removed: every entry still renders, once.
+- **Script is byte-identical.** `UX.2A` added three primitives, two more trend series, a capital
+  track, a grouped comparison, a waterfall and a metric switch, for **zero bytes** of client
+  JavaScript. The switch is a radio group and CSS. The route's one client island is still the filter
+  bar.
+- **CSS rose 0.3 kB**, which is the peer-variant rules the switch needs and the grid's column spans.
+  It is a site-wide file, so this is paid once rather than per route.
+
+The additions were not free in markup — three new tables, three trend charts where there were two, a
+second stack track — they were simply smaller than the duplication they replaced. Both numbers are
+recorded so a future increment can tell the two apart.
+
+### `UX.2A` added no dependency
+
+`package.json` is unchanged. The chart-library evaluation was re-run rather than inherited and is
+recorded in [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md) §6.0c; the condition under which a future
+increment _should_ add one is stated there.
+
+### Document height, which is the figure a reader actually pays
+
+| Viewport   |                   Before |                       After |
+| ---------- | -----------------------: | --------------------------: |
+| 1440 × 900 |   8,161 px (9.1 screens) |  **4,955 px (5.5 screens)** |
+| 390 × 844  | 15,426 px (18.3 screens) | **9,026 px (10.7 screens)** |
+
+`executive-workspace.spec.ts` holds a ceiling of six screens at 1440 × 900 — above the measured
+height, and far enough below the 8,161 px it replaced that the route cannot drift back into being a
+document without failing first.
+
+### No budget is enforced from these numbers
+
+`DASH.13-02` sets the budgets, from measurements taken once `UX.2` is complete. Setting one here
+would fix a number for `/` while `UX.2B`–`UX.2D` are still changing the routes around it.

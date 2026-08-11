@@ -500,25 +500,25 @@ pending/stale/passed state from the same evidence files CI already checks.
 
 ## 18. Delivery increments
 
-Fourteen increments `DASH.0` – `DASH.13`, one productization increment `UX.1`, plus recorded optional
-items, each with purpose, dependencies, complexity, acceptance criteria, tests, documentation updates,
+Fourteen increments `DASH.0` – `DASH.13`, two experience increments `UX.1` and `UX.2`, plus recorded
+optional items, each with purpose, dependencies, complexity, acceptance criteria, tests, documentation updates,
 non-goals, and completion evidence, in [`DASHBOARD_BACKLOG.md`](DASHBOARD_BACKLOG.md). Sequencing is
 binding: an increment does not start until its data contract is resolved and its dependencies are
 Done, and every increment leaves the repository green.
 
-### 18.1 `UX.1` sits between `DASH.11` and `DASH.12`
+### 18.1 The two experience increments sit inside the delivery sequence
 
 The delivery sequence is:
 
 ```
-DASH.11  →  UX.1  →  DASH.12  →  DASH.13
+DASH.11  →  UX.1  →  DASH.12  →  UX.2  →  DASH.13
 ```
 
-**No `DASH` identifier was renumbered.** `DASH.11` is still employee performance, `DASH.12` is still
-the Management Action Center and change drivers, `DASH.13` is still hardening and release. `UX.1`
-carries its own identifier because it is a different kind of increment: it adds no warehouse entity,
-no reporting view, no export dataset and no KPI, and numbering it `DASH.11.5` would have implied it
-belongs to the data program.
+**No `DASH` identifier was renumbered, by either of them.** `DASH.11` is still employee performance,
+`DASH.12` is still the Management Action Center and change drivers, `DASH.13` is still hardening and
+release. `UX.1` and `UX.2` carry their own identifiers because they are a different kind of increment:
+neither adds a warehouse entity, a reporting view, an export dataset or a KPI, and numbering either of
+them `DASH.11.5` would have implied they belong to the data program.
 
 **Why `DASH.12` depends on completed `UX.1`, and this is a real dependency rather than a preference.**
 `DASH.12` is about management ATTENTION: a deterministic action queue, its severity ordering, its
@@ -540,6 +540,26 @@ itself — no action rule, no action dataset, no `/dashboard/actions` route and 
 one. `PLANNED_DASHBOARD_SECTIONS` names it as text in the rail, and `site.test.ts` fails if that text
 ever becomes a link before the route exists.
 
+### 18.2 `UX.2` sits between `DASH.12` and `DASH.13`
+
+`UX.1` fixed the product ARCHITECTURE — where things live, what the shell is, whether a filter
+survives a navigation. `DASH.12` completed the operating CAPABILITY. Neither addressed the VISUAL
+product, and the measurement in [`UX-2-BASELINE.md`](../reviews/UX-2-BASELINE.md) is what makes that a
+finding rather than an opinion: at 1440 × 900 the flagship operating surface opened with **zero**
+data-driven visual regions in the first viewport and put its first framed figure 1,389 px down an
+8,161 px document. Every number a general manager needed was present, correctly defined and correctly
+qualified, and none of it was visible without scrolling.
+
+`UX.2` is delivered in four sub-increments — `UX.2A` Executive Command Center, `UX.2B` Revenue and
+Vehicle Operations, `UX.2C` Demand, People and Controls, `UX.2D` Interaction, consistency and closeout
+— so that each merges green rather than as one change across nine routes.
+
+**Why `DASH.13` depends on a completed `UX.2`.** `DASH.13-01` sweeps a full route × viewport matrix and
+`DASH.13-02` sets payload budgets from measurements. Both produce artefacts whose whole value is that
+they describe the shipped product; running them against surfaces `UX.2B`–`UX.2D` are still rebuilding
+would produce a sweep and a set of budgets that expire on the next merge, and a budget nobody trusts is
+a budget that gets raised rather than investigated.
+
 ## 19. Dependencies
 
 - `DASH.1` depends on the implemented reporting layer (done) and on nothing Deferred.
@@ -554,11 +574,18 @@ ever becomes a link before the route exists.
   a fact, a dimension or a KPI identifier. The MVP baselines are unchanged.
 - `UX.1` depends on `DASH.11` — it productizes the nine operating surfaces, so it starts once the last
   of them exists. It promotes no entity, adds no reporting view and adds no export dataset.
-- `DASH.12` depends on every surface it links into AND on completed `UX.1`, for the reason in §18.1;
-  `DASH.13` closes the program.
+- `DASH.12` depends on every surface it links into AND on completed `UX.1`, for the reason in §18.1.
+- `UX.2` depends on completed `UX.1` and completed `DASH.12`: it is a visual rebuild of surfaces that
+  must first exist and be correct. It promotes no entity, adds no reporting view and adds no export
+  dataset. `UX.2A` is Implemented; `UX.2B`–`UX.2D` are Planned.
+- `DASH.13` depends on a completed `UX.2` as well as on every `DASH` increment, for the reason in
+  §18.2, and closes the program.
 - External: none. No new paid service, no live AI, no third-party data. A charting library is not
   assumed; visualization needs are met by extending the existing hand-built SVG/DOM primitives unless
-  a measured evaluation in `DASH.3` concludes otherwise.
+  a measured evaluation concludes otherwise. `DASH.3-02` made that evaluation and `UX.2A` re-made it
+  against Recharts, Visx, Chart.js and Observable Plot rather than inheriting it; both concluded
+  against a library, and both recorded why in
+  [`DESIGN_SYSTEM.md`](../../portfolio/docs/DESIGN_SYSTEM.md) §6.0.
 - **Gate 2 real-engine validation is an external manual dependency and does not block `DASH.9`–`DASH.13`.**
   [ADR-0014](../architecture-decisions/ADR-0014-gate-2-external-manual-validation-dependency.md) records the
   reclassification and defines the one case that would block: an increment that cannot be completed without a

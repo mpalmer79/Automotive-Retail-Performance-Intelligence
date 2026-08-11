@@ -581,6 +581,100 @@ primitive that needs a richer input than an existing view model provides is a re
 view model, never a reason to write a second one beside it. Two builders agree on the day they are
 written and nothing keeps them agreeing.
 
+### 6.0c `UX.2A`: the library question re-asked, and the three primitives that answered it
+
+`UX.2A` §19 required the chart decision to be **re-made rather than inherited**, on the grounds that
+this is the first increment large enough to justify a library. It was re-made in full, against four
+current options, and the outcome did not change. The reason is narrower than "we already decided", so
+it is worth recording as its own comparison:
+
+| Option                             | Accessibility                                                        | Responsive                                           | Keyboard / focus                              | Bundle                          | SSR                                                    | Interaction                        | Testability                               | Maintenance                                                       |
+| ---------------------------------- | -------------------------------------------------------------------- | ---------------------------------------------------- | --------------------------------------------- | ------------------------------- | ------------------------------------------------------ | ---------------------------------- | ----------------------------------------- | ----------------------------------------------------------------- |
+| **Custom HTML/CSS marks** (chosen) | values stay in the DOM as text; every chart carries a real `<table>` | container queries and two compositions per primitive | native controls only; nothing to re-implement | **0 bytes**                     | complete; every figure is in the served HTML           | CSS `:checked`, `<details>`, links | `textContent` assertions and DOM geometry | ours, in the token vocabulary                                     |
+| **Recharts**                       | SVG whose values live in `<path>` coordinates                        | needs a measured container                           | custom, per component                         | ~95 kB min+gzip before a chart  | needs a client component for the useful configurations | rich                               | requires a rendered client tree           | a second design system to reconcile                               |
+| **Visx**                           | primitives only; the accessible layer is still ours to write         | scales are ours to drive                             | ours                                          | ~15–40 kB depending on packages | possible for pure scales                               | ours                               | as ours                                   | it would supply scales and axes the three forms below do not need |
+| **Chart.js**                       | renders to `<canvas>`; the numbers leave the DOM entirely            | resize observer                                      | none native                                   | ~70 kB                          | no — canvas paints after hydration                     | rich                               | pixel assertions                          | a second design system                                            |
+| **Observable Plot**                | SVG, values in geometry                                              | ours                                                 | ours                                          | ~120 kB with d3 deps            | possible, awkward                                      | limited                            | as ours                                   | a second vocabulary                                               |
+
+**The bundle column is an order of magnitude, not a measurement.** Nothing in it was installed and
+weighed — installing four libraries to weigh them, in an increment that concluded against all four,
+is the expensive way to reach the same answer. Those are published sizes, and they are used only to
+establish the SCALE of the trade against the console's current zero, which is the only comparison
+they have to support. An increment that reaches the condition stated below should measure rather than
+reuse them.
+
+Two of the criteria decide it, and the bundle is not one of them. **Server rendering**: this route's
+contract is that every figure is in the served HTML, and three of the four cannot honour it without a
+client component. **Accessibility**:
+three of the four move the numbers out of the DOM, where a screen reader and a browser text search can
+currently both find them. Visx survives both — and would have supplied scales and axes the three forms
+`UX.2A` needed do not have. A share, a length and a nesting are one division each.
+
+**A library is not ruled out forever.** The condition is stated so a future increment can check it
+rather than re-litigate: the first primitive this console needs that requires a continuous scale, an
+axis with computed ticks, or a layout algorithm (force, treemap, sankey) is the point at which
+hand-building stops being cheaper than reconciling. None of the eleven primitives shipped to date is
+in that class.
+
+Three primitives arrive in `components/dashboard/exec-visuals.tsx`. Measured client-JavaScript delta:
+**zero bytes**.
+
+| Primitive          | What it encodes                                               | Alternate composition                       |
+| ------------------ | ------------------------------------------------------------- | ------------------------------------------- |
+| `MetricSwitch`     | which of several server-rendered panels is displayed          | none needed; every panel is in the document |
+| `StoreMeasureBars` | several governed measures across the stores in scope, grouped | none needed; rows stack                     |
+| `FunnelChart`      | five governed stages as a nesting, with their governed rates  | none needed; rows stack                     |
+
+Three rules bind them beyond §6.0a:
+
+**A grouped comparison scales each measure to its own maximum, and says so.** Units, dollars and
+dollars per unit share no axis; a common scale would draw retail units as a hairline beside total
+gross. The consequence — that no cross-group length comparison is available — is stated in the
+caption rather than left for a reader to discover.
+
+**A store's mark colour comes from its business code, never from its row position.** `storeMarkClass`
+already enforced this for `StoreComparisonBars` and `StoreMeasureBars` reuses it unchanged: a store
+filtered out of scope must not shift the colour of every store after it, or a reader who learned that
+the independent pre-owned centre is the violet one is reading a different store's figure one filter
+change later.
+
+**A presentation switch may change what is displayed and never what is computed.** `MetricSwitch` is
+a radio group and CSS. All of its panels are server-rendered from the same governed selectors, an
+unselected panel is `display: none` and therefore out of the accessibility tree, and the control works
+with scripting disabled because nothing in it was ever script. It carries no URL state, deliberately:
+`INFORMATION_ARCHITECTURE.md` §6 defines one filter grammar in which every parameter changes which
+rows a figure is computed from, and a presentation preference that survived a navigation to a route
+where it means nothing would be wearing that grammar's clothes.
+
+`InventoryAgeStack` also gained a second track in `UX.2A` — the capital standing in each age band,
+drawn over the same five governed bands as the unit counts. It required no export change:
+`inventory-aging` publishes `investment_in_bucket` at the same grain as `units_in_bucket`. The track
+is drawn only when **every** band in the stack carries a capital figure, because a partial capital
+bar beside a complete unit bar invites exactly the comparison it cannot support.
+
+### 6.0d The command-center grid (`UX.2A`)
+
+`UX.1` left `/` as five full-width horizontal bands, each opening with an eyebrow, an `h2` and usually
+a paragraph. That is the rhythm of an article: it reads top to bottom, one subject at a time. A
+dashboard reads outward from a focal point, and its unit is a **module** — a titled panel holding one
+question, sitting beside three others on the same screen.
+
+- **Twelve columns**, because the content needs 7/5, 6/3/3, 5/4/3 and 4/4/4 splits and twelve is the
+  smallest number that carries all of them without a fraction. Six at `md` (a tablet reads two modules
+  across), one below it.
+- **A module is a `<section>` with a real `<h2>`**, so a screen-reader user navigating by heading gets
+  the same structure a sighted reader gets from the panel boundary. The visually-hidden pane headings
+  this replaced gave a keyboard user a list of names with no relationship to the visible layout.
+- **A `zone-*` wash moved from the band to the module**, because the module is now the unit the eye
+  lands on. A wash still encodes nothing: the stock module is amber whether the lot is clean or ageing
+  badly, and no `zone-*` token is a `data-*` token.
+- **`data-visual-region`** marks the modules whose body is data-driven geometry. It is a test hook and
+  carries no styling: it is what lets the first-viewport contract be asserted by measurement rather
+  than by eye.
+- **A module note is the one sentence a reader would misread the module without**, and most modules
+  pass none. A note describing what a module contains is describing what its title and its labels
+  already say, and six of those on one screen is what made this route read as a document.
+
 ### 6.1 Why there is no headless component library
 
 `radix-ui` was a dependency, and `ui/overlays.tsx` wrapped it as `Tooltip`, `Popover`,

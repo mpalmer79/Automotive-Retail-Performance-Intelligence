@@ -157,6 +157,44 @@ Measured against the seven-row arrangement, at 1440×900 and 390×844:
 | Page height, desktop | 11,595 px | 8,731 px | −24.7% |
 | Page height, mobile | 23,762 px | 17,095 px | −28.1% |
 
+**As-built (`UX.2A`).** The five regions became **eleven modules on a twelve-column grid**, and the
+unit of the page changed with them: a band was a horizontal slice of the document, a module is a
+titled panel holding one question, several across on one screen. The reason is measured rather than
+argued — at 1440 × 900 the five-region arrangement put **zero** data-driven visual regions inside the
+first viewport and its first framed figure 1,389 px down. `docs/reviews/UX-2-BASELINE.md` records it;
+`docs/reviews/UX-2A-REVIEW.md` records what replaced it.
+
+| Row | Modules (`id`) | Question | Grid at ≥1280px | Ground |
+|---|---|---|---|---|
+| 1 | `#group-performance` | what are the numbers | 12 | `zone-performance` |
+| 2 | `#operating-trend` · `#store-comparison` · `#targets` | what shape, whose, and against what plan | 6 / 3 / 3 | `zone-performance` ×2, `zone-plan` |
+| 3 | `#inventory-exposure` · `#composition` · `#gross-composition` | what is standing on the lot, what produced the units, what the gross was made of | 5 / 4 / 3 | `zone-inventory`, `zone-funnel`, `zone-performance` |
+| 4 | `#change-drivers` · `#management-attention` | what the bridge attributes the change to, and what meets a review rule | 7 / 5 | none |
+| 5 | `#accounting-integrity` · `#detail` | does the ledger agree, and everything on demand (`#store-scoreboard`, `#not-built`) | 7 / 5 | none |
+
+Six columns at `md` — a tablet reads two modules across — and one below it. Every `id` the previous
+arrangement carried still resolves: `#group-performance`, `#targets`, `#composition`,
+`#accounting-integrity`, `#store-scoreboard`, `#not-built` and `#trust` are all present, and
+`dashboard.spec.ts` fails if one stops resolving.
+
+**Row 2 is where the first-viewport contract is met**, and the choice of its three modules is not
+arbitrary: trend, stores and pace are the shape, whose it is, and where the month sits against what
+was committed. Everything below row 2 is a follow-up question.
+
+Measured against the five-region arrangement, at 1440 × 900 and 390 × 844:
+
+| | Before | After | Change |
+|---|---|---|---|
+| Data regions inside the first viewport | 0 | 3 (plus the rail) | — |
+| First framed figure | 1,389 px | 768 px | −44.7% |
+| Visible prose words (repository definition) | 945 | 569 | −39.8% |
+| Visible summary lines reading "How is this calculated?" | 20 | 0 | — |
+| Page height, desktop | 8,161 px | 4,955 px | −39.3% |
+| Page height, mobile | 15,426 px | 9,026 px | −41.5% |
+
+The earlier figures in this section were measured against different arrangements and with a different
+collector, and are retained as the record of what each pass changed rather than as a series.
+
 Five things about this arrangement are load-bearing rather than aesthetic.
 
 - **The reading order is `SEE → COMPARE → INVESTIGATE → PROVE`.** The original order asked a reader
