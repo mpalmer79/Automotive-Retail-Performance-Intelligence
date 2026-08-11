@@ -666,7 +666,7 @@ viewport rather than a judgement.
 ### What did not change
 
 No existing assertion was weakened, and every edited one is recorded here rather than left in the
-diff. Seven were edited across five suites, and each falls into one of three kinds:
+diff. Eight were edited across five suites, and each falls into one of four kinds:
 
 **A locator that now resolves to two elements.** `UX.2B` added a second table to the Deal Explorer
 (the attribution disclosure) and to Inventory (the age stack's data table), so `main table tbody` and
@@ -685,6 +685,16 @@ assertion follows the CLAIM rather than the words: "targets and pace" became "pl
 nine `How is this calculated?` summary lines became one disclosure, so the test counts the nine
 catalogue ENTRIES inside it instead of counting summary lines; and the manager-sample assertion moved
 from `/minimum/i` to the more specific "Below 10 retail units a ratio is withheld".
+
+**A latent race that started firing.** `dashboard-deals.spec.ts` › *pagination* › *moves forward and
+back through real links* waited for the forward navigation and not for the backward one, so the final
+read could land on page two's document and fail with the position sentence it had just asserted. The
+race has always been in the test; it started firing under `UX.2B` for a reason that is about timing
+rather than correctness — the route carries a population summary now, `mainText` scrolls the whole
+document to settle it, and the previous-page link is that much further down, so the click lands later
+and the read lands closer to the navigation. The fix is one `waitForURL` before the read. It was
+caught by the full-suite run rather than by the file on its own, which is exactly the load condition
+that made it fire: the test passes six times out of six in isolation.
 
 The `DASH.11` fairness assertions, the export boundary guards, the exact-money boundary, the
 reconciliation suites and every seeded defect from earlier increments are untouched.

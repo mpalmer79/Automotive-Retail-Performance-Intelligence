@@ -181,6 +181,21 @@ test.describe('pagination', () => {
     await page.waitForURL(/page=2/)
     expect(await mainText(page)).toMatch(/Showing 26 to 50/)
     await page.locator('a[rel="prev"]').click()
+    /*
+     * WAIT FOR THE NAVIGATION BEFORE READING THE PAGE.
+     *
+     * The forward click waited; the back one did not, so the assertion below could read
+     * page two's document before page one's arrived and fail with the position sentence it
+     * had just asserted. That race has always been in this test and it started firing under
+     * `UX.2B`, for a reason that is about timing rather than correctness: the route carries
+     * a population summary now, `mainText` scrolls the whole document to settle it, and the
+     * previous-page link is that much further down — so the click lands later and the read
+     * lands closer to the navigation.
+     *
+     * Page one is the default state, so `listStateQuery` omits `page` entirely rather than
+     * writing `page=1`. The condition is therefore "no longer page two".
+     */
+    await page.waitForURL((url) => !url.search.includes('page=2'))
     expect(await mainText(page)).toMatch(/Showing 1 to 25/)
   })
 
