@@ -13,8 +13,14 @@ import {
   StaleBanner,
 } from '@/components/dashboard/notices'
 import { Canvas } from '@/components/shell/field'
+import {
+  AgePriceMap,
+  InventoryRail,
+  PriceMovement,
+} from '@/components/dashboard/inventory-workspace'
+import { InventoryAgeStack } from '@/components/dashboard/visuals'
+import { GridRow, Module, Workspace } from '@/components/dashboard/workspace-grid'
 import { Disclosure } from '@/components/ui/disclosure'
-import { Container, Section, SectionHeader } from '@/components/ui/layout'
 import { Text } from '@/components/ui/typography'
 import { accountingChunkFile } from '@/lib/dashboard/accounting-chunks'
 import { dashboardManifest, dashboardStores, decodeDataset } from '@/lib/dashboard/data'
@@ -39,12 +45,14 @@ import {
   type QueryInput,
 } from '@/lib/dashboard/filters'
 import {
+  formatCountExact,
   formatCurrencyDifference,
   formatCurrencyExact,
   formatIsoDate,
   formatIsoMonth,
   formatRateExact,
 } from '@/lib/dashboard/format'
+import { exactFromInteger } from '@/lib/dashboard/decimal'
 import { exportTrust, powerBiTrust, reconciliationFailed } from '@/lib/dashboard/trust'
 import { engines } from '@/lib/manifest'
 import { pageMetadata } from '@/lib/metadata'
@@ -142,6 +150,14 @@ export default async function InventoryPage({
   const unitNotFound = requestedUnit !== null && unit === null
   const accounting = unit === null ? null : accountingFor(unit)
 
+  /*
+   * The snapshot date in the reader's words, resolved once. Every figure on this route is a
+   * POSITION at it, and each visual states which date it is a position at rather than
+   * assuming the reader carried the control band's context down the page.
+   */
+  const snapshotLabel =
+    snapshotDate === null ? 'no snapshot in this period' : formatIsoDate(snapshotDate)
+
   const chips = activeFilterChips(parsed.filters, INVENTORY_SUPPORT)
   const exportState = exportTrust(dashboardManifest)
   const powerBi = powerBiTrust(engines)
@@ -211,7 +227,14 @@ export default async function InventoryPage({
           {/* Unit search and ordering, as a native GET form so the page works without
                 JavaScript. Both land in the URL, so a filtered view is copyable and the
                 browser's own history works. */}
-          <form action={ROUTE} method="get" className="flex flex-wrap items-end gap-3">
+          {/* Two controls across at every width rather than stacked below `sm`. Measured on
+              a 390 px phone: the stacked form put the control band's bottom edge at 985 px,
+              which is past the fold, and the first visual with it. */}
+          <form
+            action={ROUTE}
+            method="get"
+            className="grid grid-cols-2 items-end gap-2 sm:flex sm:flex-wrap sm:gap-3"
+          >
             {preservedFilterInputs(params)}
             <div className="flex flex-col gap-1">
               <label
@@ -228,9 +251,7 @@ export default async function InventoryPage({
                 placeholder="VEH-0000013, Chevrolet, Tahoe"
                 className="min-h-9 rounded border border-line bg-surface px-3 py-1.5 text-sm"
               />
-              <span className="text-xs text-ink-faint">
-                Searches {SEARCHABLE_FIELDS}.
-              </span>
+              <span className="text-2xs text-ink-faint">{SEARCHABLE_FIELDS}</span>
             </div>
             <div className="flex flex-col gap-1">
               <label
@@ -256,7 +277,7 @@ export default async function InventoryPage({
             </div>
             <button
               type="submit"
-              className="min-h-9 rounded border border-line bg-surface px-4 py-1.5 text-sm"
+              className="col-span-2 min-h-touch rounded border border-line bg-surface px-4 py-1.5 text-sm sm:col-span-1 sm:min-h-9"
             >
               Apply
             </button>
@@ -281,332 +302,348 @@ export default async function InventoryPage({
         </div>
       </OperatingPageHeader>
 
-      {/* ------------------------------------------------------------------ */}
-      {/* Summary                                                             */}
-      {/* ------------------------------------------------------------------ */}
-      <Section id="summary">
-        <Container width="full">
-          <SectionHeader
-            eyebrow="Position"
+      <Workspace>
+        {/* ---------------------------------------------------------------- */}
+        {/* ROW 1 — the position at this date                                 */}
+        {/* ---------------------------------------------------------------- */}
+        <GridRow>
+          <Module
+            id="summary"
             title="The lot at this date"
-            lede="Median age is the headline figure and the mean is beside it: inventory age is right-skewed, and the gap between them is the aged tail."
-          />
-          <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Stat label="Active units" value={String(summary.units)} />
-            <Stat
-              label="Inventory investment"
-              value={formatCurrencyExact(summary.investment)}
-              note="Acquisition plus reconditioning. Not the accounting book value."
-            />
-            <Stat
-              label="Median days in stock"
-              value={summary.medianAge === null ? '—' : String(summary.medianAge)}
-              note={
-                summary.meanAge === null
-                  ? undefined
-                  : `Mean ${summary.meanAge.toFixed(1)} days`
-              }
-            />
-            <Stat
-              label={`Aged over ${summary.agedThresholdDays ?? 60} days`}
-              value={String(summary.agedUnits)}
-              note={
-                summary.agedShare === null
-                  ? undefined
-                  : `${(summary.agedShare * 100).toFixed(1)}% of units · project default`
-              }
-            />
-          </dl>
-        </Container>
-      </Section>
-
-      {/* ------------------------------------------------------------------ */}
-      {/* Age distribution                                                    */}
-      {/* ------------------------------------------------------------------ */}
-      <Section id="age" tone="evidence">
-        <Container width="full">
-          <SectionHeader
-            eyebrow="Age"
-            title="Where the money is sitting"
-            lede="The five governed age buckets. Bucket boundaries and the aged threshold are different rules and a unit can be aged inside any bucket above the threshold."
-          />
-          <div
-            className="overflow-x-auto"
-            tabIndex={0}
-            role="region"
-            aria-label="Age distribution"
+            zone="inventory"
+            visual="kpi-rail"
+            meta={
+              snapshotDate === null
+                ? 'No snapshot in this period'
+                : formatIsoDate(snapshotDate)
+            }
           >
-            <table className="w-full min-w-[36rem] border-collapse text-sm">
-              <caption className="sr-only">Units and investment by age bucket</caption>
-              <thead>
-                <tr className="border-b border-line text-left">
-                  <th scope="col" className="py-2 pr-4 font-medium">
-                    Age bucket
-                  </th>
-                  <th scope="col" className="py-2 pr-4 text-right font-medium">
-                    Units
-                  </th>
-                  <th scope="col" className="py-2 pr-4 text-right font-medium">
-                    Share
-                  </th>
-                  <th scope="col" className="py-2 text-right font-medium">
-                    Investment
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {summary.buckets.map((bucket) => (
-                  <tr key={bucket.bucket} className="border-b border-line-subtle">
-                    <th scope="row" className="py-2 pr-4 text-left font-normal">
-                      {bucket.bucket}
-                    </th>
-                    <td className="py-2 pr-4 text-right font-mono">{bucket.units}</td>
-                    <td className="py-2 pr-4 text-right font-mono">
-                      {bucket.share === null
-                        ? '—'
-                        : `${(bucket.share * 100).toFixed(1)}%`}
-                    </td>
-                    <td className="py-2 text-right font-mono">
-                      {formatCurrencyExact(bucket.investment)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Container>
-      </Section>
+            <InventoryRail summary={summary} snapshotLabel={snapshotLabel} />
+          </Module>
+        </GridRow>
 
-      {/* ------------------------------------------------------------------ */}
-      {/* Unit detail                                                         */}
-      {/* ------------------------------------------------------------------ */}
-      {requestedUnit === null ? null : (
-        <Section id="unit">
-          <Container width="full">
-            <SectionHeader
-              eyebrow="Unit"
-              title={unit === null ? 'Unit not found' : `${unit.vehicleId}`}
-              lede={
-                unit === null
-                  ? 'No unit with that identifier is in stock at this snapshot date and store selection.'
-                  : `${unit.modelYear} ${unit.make} ${unit.modelName} ${unit.trimLevel} · ${unit.conditionType} · ${unit.dealershipId}`
-              }
+        {/* ---------------------------------------------------------------- */}
+        {/* ROW 2 — where the units are, and where the money is               */}
+        {/* ---------------------------------------------------------------- */}
+        {/*
+          `UX.2B` §27 asks for the five governed age bands as a strong visual and §28 asks
+          for capital beside them WHERE THE DATA SUPPORTS IT. It does: `summarizeInventory`
+          publishes units and investment over the same five bands from the same rows at the
+          same date, so the stack draws two tracks over one set of bands rather than
+          deriving a capital split from an unrelated total. Eleven per cent of the units and
+          twenty-six per cent of the money is the finding, and it is invisible unless the
+          two distributions are read against each other.
+        */}
+        <GridRow>
+          <Module
+            id="age"
+            title="Age, and the capital in it"
+            span={5}
+            zone="inventory"
+            visual="age-stack"
+          >
+            <InventoryAgeStack
+              title="Units and investment by age band"
+              segments={summary.buckets.map((bucket) => ({
+                key: bucket.bucket,
+                label: bucket.bucket,
+                display: formatCountExact(exactFromInteger(bucket.units)),
+                share: bucket.share ?? 0,
+                capitalDisplay: formatCurrencyExact(bucket.investment),
+                capitalShare: bucket.investmentShare ?? 0,
+              }))}
+              snapshotNote={`A position at ${snapshotLabel}, never a total across dates.`}
+              thresholdDays={summary.agedThresholdDays}
+              headingLevel={4}
             />
-            {unitNotFound ? (
-              <p className="text-sm text-ink-muted">
-                Check the identifier, or clear the store and period filters — a unit that
-                sold before this snapshot date is not on the lot and has no row here.{' '}
-                <a className="underline" href={ROUTE}>
-                  Show all units
-                </a>
-                .
-              </p>
-            ) : unit === null ? null : (
-              <div className="grid gap-6 lg:grid-cols-2">
-                <div>
-                  <h3 className="mb-3 text-sm font-medium text-ink">
-                    Operational position
-                  </h3>
-                  <dl className="flex flex-col gap-2 text-sm">
-                    <Row label="Snapshot date" value={formatIsoDate(unit.snapshotDate)} />
-                    <Row label="Days in stock" value={String(unit.daysInStock)} />
-                    <Row
-                      label="Age bucket"
-                      value={`${unit.ageBucket}${unit.isAged ? ` · aged over ${unit.agedThresholdDays} days` : ''}`}
-                    />
-                    <Row
-                      label="Odometer"
-                      value={`${unit.odometerReading.toLocaleString()} mi`}
-                    />
-                    <Row
-                      label="Asking price"
-                      value={formatCurrencyExact(unit.currentAskingPrice)}
-                    />
-                    <Row
-                      label="Original asking price"
-                      value={formatCurrencyExact(unit.originalAskingPrice)}
-                    />
-                    <Row
-                      label="Synthetic market estimate"
-                      value={
-                        unit.marketPriceEstimate === null
-                          ? 'No estimate for this unit'
-                          : `${formatCurrencyExact(unit.marketPriceEstimate)} · synthetic estimate`
-                      }
-                    />
-                    <Row
-                      label="Price to market"
-                      value={
-                        unit.priceToMarketRatio === null
-                          ? 'No ratio without an estimate'
-                          : ratioLabel(unit)
-                      }
-                    />
-                    <Row
-                      label="Since prior snapshot"
-                      value={
-                        unit.askingPriceChange === null
-                          ? 'First appearance — no prior observation'
-                          : `${formatCurrencyDifference(unit.askingPriceChange, 2)} since the prior month end`
-                      }
-                    />
-                    <Row
-                      label="Inventory investment"
-                      value={formatCurrencyExact(unit.inventoryInvestment)}
-                    />
-                  </dl>
-                </div>
-                <div>
-                  <h3 className="mb-3 text-sm font-medium text-ink">
-                    Accounting position
-                  </h3>
-                  {accounting === null ? (
-                    <p className="text-sm text-ink-muted">
-                      No accounting snapshot for this unit at this date. That is a missing
-                      row, not a book value of zero.
-                    </p>
-                  ) : (
+          </Module>
+          <Module
+            id="map"
+            title="Age against asking price"
+            span={7}
+            zone="inventory"
+            visual="age-price-map"
+          >
+            <AgePriceMap units={selected} snapshotLabel={snapshotLabel} />
+          </Module>
+        </GridRow>
+
+        {/* ---------------------------------------------------------------- */}
+        {/* ROW 3 — what happened to the advertised prices                    */}
+        {/* ---------------------------------------------------------------- */}
+        <GridRow>
+          <Module
+            id="price-movement"
+            title="Price movement"
+            span={12}
+            zone="inventory"
+            visual="price-movement"
+          >
+            <PriceMovement summary={summary} />
+          </Module>
+        </GridRow>
+
+        {/* ---------------------------------------------------------------- */}
+        {/* ROW 4 — one unit, when one was asked for                          */}
+        {/* ---------------------------------------------------------------- */}
+        {requestedUnit === null ? null : (
+          <GridRow>
+            <Module
+              id="unit"
+              title={unit === null ? 'Unit not found' : unit.vehicleId}
+              zone="inventory"
+              meta={
+                unit === null
+                  ? undefined
+                  : `${String(unit.modelYear)} ${unit.make} ${unit.modelName} ${unit.trimLevel} · ${unit.conditionType} · ${unit.dealershipId}`
+              }
+            >
+              {unitNotFound ? (
+                <p className="text-sm text-ink-muted">
+                  Check the identifier, or clear the store and period filters — a unit
+                  that sold before this snapshot date is not on the lot and has no row
+                  here.{' '}
+                  <a className="underline" href={ROUTE}>
+                    Show all units
+                  </a>
+                  .
+                </p>
+              ) : unit === null ? null : (
+                <div className="grid gap-6 lg:grid-cols-2">
+                  <div>
+                    <h3 className="mb-3 text-sm font-medium text-ink">
+                      Operational position
+                    </h3>
                     <dl className="flex flex-col gap-2 text-sm">
                       <Row
-                        label="Control account"
-                        value={`${accounting.glAccountNumber} · ${accounting.glAccountName}`}
+                        label="Snapshot date"
+                        value={formatIsoDate(unit.snapshotDate)}
                       />
-                      <Row label="Acquisition cost" value={accounting.acquisitionCost} />
-                      <Row label="Transportation" value={accounting.transportation} />
-                      <Row label="Reconditioning" value={accounting.reconditioning} />
-                      <Row label="Accessories" value={accounting.accessories} />
+                      <Row label="Days in stock" value={String(unit.daysInStock)} />
                       <Row
-                        label="Other capitalized"
-                        value={accounting.otherCapitalized}
+                        label="Age bucket"
+                        value={`${unit.ageBucket}${unit.isAged ? ` · aged over ${unit.agedThresholdDays} days` : ''}`}
                       />
-                      <Row label="Write-down" value={accounting.writeDown} />
-                      <Row label="Current book value" value={accounting.bookValue} />
                       <Row
-                        label="Floorplan principal"
-                        value={`${accounting.floorplan} · liability context`}
+                        label="Odometer"
+                        value={`${unit.odometerReading.toLocaleString()} mi`}
+                      />
+                      <Row
+                        label="Asking price"
+                        value={formatCurrencyExact(unit.currentAskingPrice)}
+                      />
+                      <Row
+                        label="Original asking price"
+                        value={formatCurrencyExact(unit.originalAskingPrice)}
+                      />
+                      <Row
+                        label="Synthetic market estimate"
+                        value={
+                          unit.marketPriceEstimate === null
+                            ? 'No estimate for this unit'
+                            : `${formatCurrencyExact(unit.marketPriceEstimate)} · synthetic estimate`
+                        }
+                      />
+                      <Row
+                        label="Price to market"
+                        value={
+                          unit.priceToMarketRatio === null
+                            ? 'No ratio without an estimate'
+                            : ratioLabel(unit)
+                        }
+                      />
+                      <Row
+                        label="Since prior snapshot"
+                        value={
+                          unit.askingPriceChange === null
+                            ? 'First appearance — no prior observation'
+                            : `${formatCurrencyDifference(unit.askingPriceChange, 2)} since the prior month end`
+                        }
+                      />
+                      <Row
+                        label="Inventory investment"
+                        value={formatCurrencyExact(unit.inventoryInvestment)}
                       />
                     </dl>
-                  )}
-                  <p className="mt-3 text-xs text-ink-faint">
-                    Floorplan principal is a liability carried alongside the unit. It is
-                    not part of book value and is never netted against it; ARPI publishes
-                    no net inventory position and models no floorplan interest,
-                    curtailment or carrying cost.
-                  </p>
+                  </div>
+                  <div>
+                    <h3 className="mb-3 text-sm font-medium text-ink">
+                      Accounting position
+                    </h3>
+                    {accounting === null ? (
+                      <p className="text-sm text-ink-muted">
+                        No accounting snapshot for this unit at this date. That is a
+                        missing row, not a book value of zero.
+                      </p>
+                    ) : (
+                      <dl className="flex flex-col gap-2 text-sm">
+                        <Row
+                          label="Control account"
+                          value={`${accounting.glAccountNumber} · ${accounting.glAccountName}`}
+                        />
+                        <Row
+                          label="Acquisition cost"
+                          value={accounting.acquisitionCost}
+                        />
+                        <Row label="Transportation" value={accounting.transportation} />
+                        <Row label="Reconditioning" value={accounting.reconditioning} />
+                        <Row label="Accessories" value={accounting.accessories} />
+                        <Row
+                          label="Other capitalized"
+                          value={accounting.otherCapitalized}
+                        />
+                        <Row label="Write-down" value={accounting.writeDown} />
+                        <Row label="Current book value" value={accounting.bookValue} />
+                        <Row
+                          label="Floorplan principal"
+                          value={`${accounting.floorplan} · liability context`}
+                        />
+                      </dl>
+                    )}
+                    <p className="mt-3 text-xs text-ink-faint">
+                      Floorplan principal is a liability carried alongside the unit. It is
+                      not part of book value and is never netted against it; ARPI
+                      publishes no net inventory position and models no floorplan
+                      interest, curtailment or carrying cost.
+                    </p>
+                  </div>
                 </div>
+              )}
+            </Module>
+          </GridRow>
+        )}
+
+        {/* ---------------------------------------------------------------- */}
+        {/* ROW 5 — every unit, exactly                                       */}
+        {/* ---------------------------------------------------------------- */}
+        {/*
+          THE TABLE STAYS A TABLE. `UX.2B` §32 and §60 both say so: charts answer summary,
+          comparison, distribution and composition questions, and a table answers "which
+          exact units". The row identity is a link into the detail module above, the money
+          columns are right-aligned exact decimals, and no surrogate key is exposed.
+        */}
+        <GridRow>
+          <Module
+            id="units"
+            title="Every unit on the lot"
+            zone="inventory"
+            meta={`${String(ordered.length)} unit${ordered.length === 1 ? '' : 's'} at this date`}
+          >
+            {ordered.length === 0 ? (
+              <p className="text-sm text-ink-muted">
+                {snapshotDate === null
+                  ? 'No snapshot date falls inside the selected period.'
+                  : 'No units match this search and filter selection.'}
+              </p>
+            ) : (
+              <div
+                className="overflow-x-auto"
+                tabIndex={0}
+                role="region"
+                aria-label="Unit population"
+              >
+                {/* `min-w` rose with the investment column `UX.2B` added. At 60rem the ten
+                  columns squeezed the vehicle name until every row wrapped to two lines,
+                  which added 5,300 px to the unfiltered route — a horizontal scroll region
+                  exists precisely so a wide table stays one line per row. */}
+                <table className="w-full min-w-[72rem] border-collapse text-sm">
+                  <caption className="sr-only">
+                    Inventory units at{' '}
+                    {snapshotDate === null ? 'no date' : formatIsoDate(snapshotDate)}
+                  </caption>
+                  <thead>
+                    <tr className="border-b border-line text-left">
+                      <th scope="col" className="py-2 pr-4 font-medium">
+                        Unit
+                      </th>
+                      <th scope="col" className="py-2 pr-4 font-medium">
+                        Store
+                      </th>
+                      <th scope="col" className="py-2 pr-4 font-medium">
+                        Vehicle
+                      </th>
+                      <th scope="col" className="py-2 pr-4 text-right font-medium">
+                        Days
+                      </th>
+                      <th scope="col" className="py-2 pr-4 font-medium">
+                        Bucket
+                      </th>
+                      <th scope="col" className="py-2 pr-4 text-right font-medium">
+                        Asking
+                      </th>
+                      <th scope="col" className="py-2 pr-4 text-right font-medium">
+                        Est. (synthetic)
+                      </th>
+                      <th scope="col" className="py-2 pr-4 text-right font-medium">
+                        Price to market
+                      </th>
+                      <th scope="col" className="py-2 pr-4 text-right font-medium">
+                        Since prior
+                      </th>
+                      {/* `UX.2B`. The capital in the unit, so the table carries every
+                        channel the age-and-price map draws — which is what lets that
+                        figure point here for its exact values rather than printing the
+                        same two hundred and fifty units a second time. */}
+                      <th scope="col" className="py-2 text-right font-medium">
+                        Investment
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ordered.map((row) => (
+                      <tr key={row.vehicleId} className="border-b border-line-subtle">
+                        <th scope="row" className="py-2 pr-4 text-left font-normal">
+                          <a
+                            className="underline"
+                            href={`${ROUTE}?unit=${row.vehicleId}`}
+                          >
+                            {row.vehicleId}
+                          </a>
+                        </th>
+                        <td className="py-2 pr-4">{row.dealershipId}</td>
+                        <td className="py-2 pr-4">
+                          {row.modelYear} {row.make} {row.modelName}
+                        </td>
+                        <td className="py-2 pr-4 text-right font-mono">
+                          {row.daysInStock}
+                        </td>
+                        <td className="py-2 pr-4">{row.ageBucket}</td>
+                        <td className="py-2 pr-4 text-right font-mono">
+                          {formatCurrencyExact(row.currentAskingPrice)}
+                        </td>
+                        <td className="py-2 pr-4 text-right font-mono">
+                          {row.marketPriceEstimate === null ? (
+                            <span className="text-ink-faint">No estimate</span>
+                          ) : (
+                            formatCurrencyExact(row.marketPriceEstimate)
+                          )}
+                        </td>
+                        <td className="py-2 pr-4 text-right font-mono">
+                          {row.priceToMarketRatio === null ? (
+                            <span className="text-ink-faint">—</span>
+                          ) : (
+                            ratioLabel(row)
+                          )}
+                        </td>
+                        <td className="py-2 pr-4 text-right font-mono">
+                          {row.askingPriceChange === null ? (
+                            <span className="text-ink-faint">First appearance</span>
+                          ) : (
+                            formatCurrencyDifference(row.askingPriceChange, 2)
+                          )}
+                        </td>
+                        <td className="py-2 text-right font-mono">
+                          {formatCurrencyExact(row.inventoryInvestment)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
-          </Container>
-        </Section>
-      )}
-
-      {/* ------------------------------------------------------------------ */}
-      {/* Unit table                                                          */}
-      {/* ------------------------------------------------------------------ */}
-      <Section id="units" tone="evidence">
-        <Container width="full">
-          <SectionHeader
-            eyebrow="Units"
-            title="Every unit on the lot"
-            lede={`${ordered.length} unit${ordered.length === 1 ? '' : 's'} at this date. Select a unit to see its accounting position.`}
-          />
-          {ordered.length === 0 ? (
-            <p className="text-sm text-ink-muted">
-              {snapshotDate === null
-                ? 'No snapshot date falls inside the selected period.'
-                : 'No units match this search and filter selection.'}
-            </p>
-          ) : (
-            <div
-              className="overflow-x-auto"
-              tabIndex={0}
-              role="region"
-              aria-label="Unit population"
-            >
-              <table className="w-full min-w-[60rem] border-collapse text-sm">
-                <caption className="sr-only">
-                  Inventory units at{' '}
-                  {snapshotDate === null ? 'no date' : formatIsoDate(snapshotDate)}
-                </caption>
-                <thead>
-                  <tr className="border-b border-line text-left">
-                    <th scope="col" className="py-2 pr-4 font-medium">
-                      Unit
-                    </th>
-                    <th scope="col" className="py-2 pr-4 font-medium">
-                      Store
-                    </th>
-                    <th scope="col" className="py-2 pr-4 font-medium">
-                      Vehicle
-                    </th>
-                    <th scope="col" className="py-2 pr-4 text-right font-medium">
-                      Days
-                    </th>
-                    <th scope="col" className="py-2 pr-4 font-medium">
-                      Bucket
-                    </th>
-                    <th scope="col" className="py-2 pr-4 text-right font-medium">
-                      Asking
-                    </th>
-                    <th scope="col" className="py-2 pr-4 text-right font-medium">
-                      Est. (synthetic)
-                    </th>
-                    <th scope="col" className="py-2 pr-4 text-right font-medium">
-                      Price to market
-                    </th>
-                    <th scope="col" className="py-2 text-right font-medium">
-                      Since prior
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {ordered.map((row) => (
-                    <tr key={row.vehicleId} className="border-b border-line-subtle">
-                      <th scope="row" className="py-2 pr-4 text-left font-normal">
-                        <a className="underline" href={`${ROUTE}?unit=${row.vehicleId}`}>
-                          {row.vehicleId}
-                        </a>
-                      </th>
-                      <td className="py-2 pr-4">{row.dealershipId}</td>
-                      <td className="py-2 pr-4">
-                        {row.modelYear} {row.make} {row.modelName}
-                      </td>
-                      <td className="py-2 pr-4 text-right font-mono">
-                        {row.daysInStock}
-                      </td>
-                      <td className="py-2 pr-4">{row.ageBucket}</td>
-                      <td className="py-2 pr-4 text-right font-mono">
-                        {formatCurrencyExact(row.currentAskingPrice)}
-                      </td>
-                      <td className="py-2 pr-4 text-right font-mono">
-                        {row.marketPriceEstimate === null ? (
-                          <span className="text-ink-faint">No estimate</span>
-                        ) : (
-                          formatCurrencyExact(row.marketPriceEstimate)
-                        )}
-                      </td>
-                      <td className="py-2 pr-4 text-right font-mono">
-                        {row.priceToMarketRatio === null ? (
-                          <span className="text-ink-faint">—</span>
-                        ) : (
-                          ratioLabel(row)
-                        )}
-                      </td>
-                      <td className="py-2 text-right font-mono">
-                        {row.askingPriceChange === null ? (
-                          <span className="text-ink-faint">First appearance</span>
-                        ) : (
-                          formatCurrencyDifference(row.askingPriceChange, 2)
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </Container>
-      </Section>
+          </Module>
+        </GridRow>
+      </Workspace>
     </Canvas>
   )
 }
@@ -753,16 +790,6 @@ function preservedFilterInputs(params: Record<string, string | string[] | undefi
       <input key={key} type="hidden" name={key} value={value} />
     )
   })
-}
-
-function Stat({ label, value, note }: { label: string; value: string; note?: string }) {
-  return (
-    <div className="flex flex-col gap-1 rounded-card border border-line p-4">
-      <dt className="text-xs uppercase tracking-wide text-ink-muted">{label}</dt>
-      <dd className="font-mono text-lg text-ink">{value}</dd>
-      {note === undefined ? null : <dd className="text-xs text-ink-faint">{note}</dd>}
-    </div>
-  )
 }
 
 function Row({ label, value }: { label: string; value: string }) {

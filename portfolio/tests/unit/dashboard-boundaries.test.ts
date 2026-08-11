@@ -933,7 +933,12 @@ describe('ADR-0013 condition 2: no frontend redefines a KPI', () => {
       geometryImporters,
       'a module converted an exact value to a float for something other than geometry'
     ).toEqual([
+      'components/dashboard/deal-headline.tsx',
       'components/dashboard/employees-sections.tsx',
+      // `UX.2B`. `AgePriceMap` turns a governed ratio and a governed investment into a
+      // coordinate and a mark diameter; `InventoryRail` never touches it. Every figure the
+      // module prints comes from a governed formatter over the exact value.
+      'components/dashboard/inventory-workspace.tsx',
       'components/dashboard/lead-funnel.tsx',
       'components/dashboard/leads-marketing-sections.tsx',
       'components/dashboard/visuals.tsx',
@@ -944,6 +949,11 @@ describe('ADR-0013 condition 2: no frontend redefines a KPI', () => {
       // and the two primitives that did convert moved into this file.
       'components/dashboard/workspace-visuals.tsx',
       'lib/dashboard/decimal.ts',
+      // `UX.2B`. `summarizeInventory` divides a bucket's exact investment by the exact
+      // population total to publish a SHARE for the capital track's bar width. The share is
+      // geometry: every amount the age stack prints comes from the exact `investment` beside
+      // it, and the module performs no other float arithmetic.
+      'lib/dashboard/inventory.ts',
     ])
   })
 
