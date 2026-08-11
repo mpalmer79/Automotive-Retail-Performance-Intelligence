@@ -554,9 +554,15 @@ qualified, and none of it was visible without scrolling.
 Vehicle Operations, `UX.2C` Demand, People and Controls, `UX.2D` Interaction, consistency and closeout
 — so that each merges green rather than as one change across nine routes.
 
+[`UX-2B-BASELINE.md`](../reviews/UX-2B-BASELINE.md) found the same shape on the five revenue and
+vehicle routes, and worse: **four of the five contained no framed figure at all**, and the fifth put
+its first one 2,752 px down. `/dashboard/inventory` — the densest domain in the project, publishing
+unit-grain age, capital, asking price, a synthetic market estimate and the ratio between them at one
+snapshot — was two tables and an 11,543 px document.
+
 **Why `DASH.13` depends on a completed `UX.2`.** `DASH.13-01` sweeps a full route × viewport matrix and
 `DASH.13-02` sets payload budgets from measurements. Both produce artefacts whose whole value is that
-they describe the shipped product; running them against surfaces `UX.2B`–`UX.2D` are still rebuilding
+they describe the shipped product; running them against surfaces `UX.2C`–`UX.2D` are still rebuilding
 would produce a sweep and a set of budgets that expire on the next merge, and a budget nobody trusts is
 a budget that gets raised rather than investigated.
 
@@ -577,14 +583,15 @@ a budget that gets raised rather than investigated.
 - `DASH.12` depends on every surface it links into AND on completed `UX.1`, for the reason in §18.1.
 - `UX.2` depends on completed `UX.1` and completed `DASH.12`: it is a visual rebuild of surfaces that
   must first exist and be correct. It promotes no entity, adds no reporting view and adds no export
-  dataset. `UX.2A` is Implemented; `UX.2B`–`UX.2D` are Planned.
+  dataset. `UX.2A` and `UX.2B` are Implemented; `UX.2C` and `UX.2D` are Planned.
 - `DASH.13` depends on a completed `UX.2` as well as on every `DASH` increment, for the reason in
   §18.2, and closes the program.
 - External: none. No new paid service, no live AI, no third-party data. A charting library is not
   assumed; visualization needs are met by extending the existing hand-built SVG/DOM primitives unless
   a measured evaluation concludes otherwise. `DASH.3-02` made that evaluation and `UX.2A` re-made it
-  against Recharts, Visx, Chart.js and Observable Plot rather than inheriting it; both concluded
-  against a library, and both recorded why in
+  against Recharts, Visx, Chart.js and Observable Plot rather than inheriting it; `UX.2B` re-made it a
+  third time against its own hardest case, a unit-grain scatter with a keyboard-reachable point set.
+  All three concluded against a library, and all three recorded why in
   [`DESIGN_SYSTEM.md`](../../portfolio/docs/DESIGN_SYSTEM.md) §6.0.
 - **Gate 2 real-engine validation is an external manual dependency and does not block `DASH.9`–`DASH.13`.**
   [ADR-0014](../architecture-decisions/ADR-0014-gate-2-external-manual-validation-dependency.md) records the

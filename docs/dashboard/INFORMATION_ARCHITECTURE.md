@@ -259,6 +259,82 @@ mean.
 3. Section order is fixed per page and documented in that page's increment item — summary first,
    analysis second, detail tables last.
 
+**As-built (`UX.2B`).** The same rebuild, on five more routes, for the same measured reason:
+`docs/reviews/UX-2B-BASELINE.md` found **four of the five carrying no framed figure at all**, and the
+fifth putting its first one 2,752 px down. `docs/reviews/UX-2B-REVIEW.md` records what replaced it.
+
+`/dashboard/sales-gross` — the general sales manager's workspace:
+
+| Row | Modules (`id`) | Question | Grid at ≥1280px | Ground |
+|---|---|---|---|---|
+| 1 | `#performance` | what are the numbers | 12 | `zone-performance` |
+| 2 | `#trend` · `#stores` · `#mix` | what shape, whose, and what it was made of | 6 / 3 / 3 | `zone-performance` ×3 |
+| 3 | `#bridge` · `#targets` | what the decomposition attributes the change to, and where the month sits against plan | 7 / 5 | none, `zone-plan` |
+| 4 | `#distribution` · `#contribution` · `#discounts` | the shape of the deal population, front against back, and what was given away | 5 / 4 / 3 | none, `zone-performance`, none |
+| 5 | `#detail` | units by sale type, and the drill-through into the transactions | 12 | none |
+
+Row 2 is where the first-viewport contract is met. The bridge moved from the FOOT of the page — where
+"below units, rate and mix" had come to mean 5,900 px down — to the second screen; it is still below
+all three, which was always the reason it was last.
+
+`/dashboard/deals` — the desk manager's investigation surface:
+
+| Row | Modules (`id`) | Question | Grid | Ground |
+|---|---|---|---|---|
+| 1 | `#population` | what did this filter actually select, and what is it worth | 12 | `zone-performance` |
+| 2 | `#deals` | the transactions themselves | 12 | none |
+
+No chart, deliberately. `UX.2B` §13 forbids replacing exact transaction inspection with pictures and
+§48 forbids enforcing a prose reduction on a route that is primarily a data grid. What was missing was
+the population's size and value, which is now stated above the table.
+
+`/dashboard/deals/[saleId]` — the deal-review record:
+
+| Row | Modules (`id`) | Question | Grid | Ground |
+|---|---|---|---|---|
+| 1 | `#headline` | what deal is this, and what did it make | 12 | `zone-performance` |
+| 2 | `#front-gross` · `#back-gross` | where each of the two grosses came from | 6 / 6 | none, `zone-finance` |
+| 3 | `#trade` · `#finance` · `#total-gross` | the trade outside the identity, the funding, the total | 4 / 4 / 4 | none, `zone-finance`, `zone-performance` |
+| 4 | `#products` · `#vehicle` | the contracts written, and the unit | 7 / 5 | `zone-finance`, `zone-inventory` |
+| 5 | `#identity` · `#staff` · `#timeline` | what kind of transaction, who worked it, how it arrived | 4 / 4 / 4 | none, none, `zone-funnel` |
+| 6 | `#checks` · `#lineage` | what was recomputed, and where the figures came from | 7 / 5 | none |
+
+Every `id` the band layout carried still resolves. `#identity` keeps its anchor although its module is
+now titled *Deal structure* — an anchor that stops resolving is a broken link even when the content is
+still on the page — and `#disclosure` moved into the control band, where the fictional-transaction
+sentence is the first thing under the title rather than a band of its own. The print recap asserts
+both, plus the new `#headline`.
+
+`/dashboard/inventory` — the used-vehicle manager's console:
+
+| Row | Modules (`id`) | Question | Grid | Ground |
+|---|---|---|---|---|
+| 1 | `#summary` | what is standing on the lot at this date | 12 | `zone-inventory` |
+| 2 | `#age` · `#map` | where the units and the money are, and where age meets asking price | 5 / 7 | `zone-inventory` ×2 |
+| 3 | `#price-movement` | what happened to the advertised prices | 12 | `zone-inventory` |
+| 4 | `#unit` | one unit, when one was asked for | 12 | `zone-inventory` |
+| 5 | `#units` | every unit, exactly | 12 | `zone-inventory` |
+
+`/dashboard/fi` — the finance director's workspace:
+
+| Row | Modules (`id`) | Question | Grid | Ground |
+|---|---|---|---|---|
+| 1 | `#production` | what the finance office produced | 12 | `zone-finance` |
+| 2 | `#composition` · `#structure` · `#bases` | what back gross is made of, how the deliveries were funded, which date a figure is on | 5 / 4 / 3 | `zone-finance` ×2, none |
+| 3 | `#penetration` · `#adjustments` | what was sold against what could have been, and what came back | 7 / 5 | `zone-finance`, none |
+| 4 | `#economics` | what each category earned | 12 | none |
+| 5 | `#managers` | the same measures by desk, with their context | 12 | none |
+| 6 | `#methodology` | how to read the page | 12 | none |
+
+`#bases` is a module rather than a paragraph because this route publishes figures on three different
+date bases and a reader who does not know which one a number is on can misread every figure below it.
+Every rail card and every figure caption on the route names its own basis; the module is the key.
+
+`zone-finance` is new and is an alias of the funnel tint. Two washes may share a value — the
+load-bearing rule is that no `zone-*` token shares a value with a `data-*` token — and a module that
+declares the business area it belongs to is better than one borrowing a token named after a different
+one. `tokens.test.ts` asserts the new ground against the same contrast floor as the other four.
+
 ## 4. Drill-through paths
 
 | From | To | Carries |
@@ -267,7 +343,10 @@ mean.
 | Executive inventory pane (row 4) | `/dashboard/inventory` | none — the destination resolves its own snapshot from the same governed calendar |
 | Executive accounting signal (row 6) | `/dashboard/accounting` | none — the destination resolves its own comparison date from the same governed rule |
 | Store scoreboard row | Same page filtered to the store | `store=GSA-00#` |
-| Sales/gross deal table row · deal index row | `/dashboard/deals/[saleId]` | none (deal id is the key) |
+| Sales/gross deal table row · deal index row · deal CARD | `/dashboard/deals/[saleId]` | none (deal id is the key). **`UX.2B` made the mobile card's deal id a link too**: the table's had been one since `DASH.4` and the card's was plain text, so a phone reader could see a deal and not open it. |
+| Sales & Gross distribution module · foot of route | `/dashboard/deals` | Period and store, through `operatingHref`, which reduces the state to what the Deal Explorer can act on. The comparison mode is dropped: an index lists the deals in one period and has no figure a comparison could change. |
+| Deal Explorer index module | `/dashboard/sales-gross` | Period, store and condition, through the same helper. The search term is NOT carried: it is the Deal Explorer's own parameter and means nothing on an aggregate surface, and `UX.2B` §46 forbids appending a parameter the destination ignores. |
+| Inventory age-and-price map | `#units` on the same route | none. The plot's accessible equivalent is the route's own unit table rather than a second copy of it — the reasoning, and the 68 kB it saves, are in `DESIGN_SYSTEM.md` §6.0e. |
 | Inventory unit row | Unit detail panel on `/dashboard/inventory` (`unit=` param) | Stock reference |
 | F&I manager row | `/dashboard/fi?employee=EMP-#####` | Manager filter. **As-built the parameter is `employee=`, not `manager=`**: the console has ONE filter grammar and one parameter for a person, and a route-specific spelling of the same concept would have been a second vocabulary for `filters.ts` to reconcile. Scopes both the numerator and the eligible denominator of every penetration figure. |
 | Employee row (Finance) | `/dashboard/fi?employee=EMP-#####` | **`DASH.11`, and the same parameter.** The F&I route declares `employee` `applied` and scopes both sides of every penetration figure by it, so the finance rows link there with the code. This is the reverse of the row above and deliberately reuses its parameter rather than introducing a second spelling. |

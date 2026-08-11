@@ -730,8 +730,13 @@ export function DateBasisKey({
     },
   ]
 
+  /*
+   * ONE COLUMN, ALWAYS. The key sits in a three-of-twelve module, so three columns of it
+   * gave each basis about 90 px and truncated `Adjustment period, December 2025` to
+   * `Adjust`. A date basis a reader cannot read is not a key.
+   */
   return (
-    <dl className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+    <dl className="flex flex-col gap-2">
       {bases.map((basis) => (
         <div
           key={basis.id}

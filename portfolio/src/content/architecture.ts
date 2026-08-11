@@ -17,12 +17,7 @@
 import type { StatusLevel } from '@/types/manifest'
 
 export type NodeLayer =
-  | 'configuration'
-  | 'generation'
-  | 'validation'
-  | 'database'
-  | 'semantic'
-  | 'presentation'
+  'configuration' | 'generation' | 'validation' | 'database' | 'semantic' | 'presentation'
 
 export interface ArchitectureNode {
   readonly id: string

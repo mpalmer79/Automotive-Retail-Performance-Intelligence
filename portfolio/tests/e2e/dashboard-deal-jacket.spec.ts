@@ -281,6 +281,9 @@ test.describe('the paper recap', () => {
 
     for (const section of [
       '#disclosure',
+      // `UX.2B` added the identity header that carries the five figures a reviewer reads
+      // first. Paper needs it more than the screen does.
+      '#headline',
       '#identity',
       '#vehicle',
       '#front-gross',

@@ -560,18 +560,16 @@ export function ChangeDriverBridge({
   }
 
   const bars: readonly BridgeBar[] = [
-    ...drivers.effects.map(
-      (effect): BridgeBar => ({
-        key: effect.code,
-        label:
-          effect.grouped && effect.absorbed.length > 0
-            ? `${effect.label} (${String(effect.absorbed.length)})`
-            : effect.label,
-        value: effect.amount,
-        display: effect.display,
-        kind: 'step',
-      })
-    ),
+    ...drivers.effects.map((effect): BridgeBar => ({
+      key: effect.code,
+      label:
+        effect.grouped && effect.absorbed.length > 0
+          ? `${effect.label} (${String(effect.absorbed.length)})`
+          : effect.label,
+      value: effect.amount,
+      display: effect.display,
+      kind: 'step',
+    })),
     {
       key: 'total-change',
       label: 'Total change',

@@ -563,15 +563,14 @@ describe('the response median is a true median over the exported population', ()
     expect(correct).not.toBeNull()
 
     const coalesced = medianResponseSeconds(
-      rows.map(
-        (row): DashboardRow =>
-          row.first_response_seconds === null
-            ? {
-                ...row,
-                first_response_seconds: 0,
-                responded_lead_count: row.unresponded_lead_count ?? 0,
-              }
-            : row
+      rows.map((row): DashboardRow =>
+        row.first_response_seconds === null
+          ? {
+              ...row,
+              first_response_seconds: 0,
+              responded_lead_count: row.unresponded_lead_count ?? 0,
+            }
+          : row
       )
     )
     expect(coalesced).not.toBeNull()

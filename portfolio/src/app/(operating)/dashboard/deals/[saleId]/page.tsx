@@ -142,7 +142,10 @@ export default async function DealJacketPage({
           sentence a reader of ONE TRANSACTION needs before they meet the deal, and it is not
           behind anything.
         */}
-        <p className="rounded-lg border border-line bg-surface-sunken/60 p-3 text-sm font-medium text-ink">
+        <p
+          id="disclosure"
+          className="rounded-lg border border-line bg-surface-sunken/60 p-3 text-sm font-medium text-ink"
+        >
           Fictional transaction from the synthetic Granite Auto Group dataset. Not a real
           sale, customer, or dealership record.
         </p>
@@ -239,7 +242,11 @@ export default async function DealJacketPage({
         {/* ROW 5 — the paper trail                                           */}
         {/* ---------------------------------------------------------------- */}
         <GridRow>
-          <Module id="structure" title="Deal structure" span={4}>
+          {/* THE ANCHOR IS `identity`, NOT `structure`. The module's TITLE changed and its
+              id did not: `#identity` was a region anchor before `UX.2B`, and an anchor that
+              stops resolving is a broken link even when the content is still on the page —
+              the rule the Executive's `page.tsx` records for its two disclosures. */}
+          <Module id="identity" title="Deal structure" span={4}>
             <IdentitySection jacket={jacket} />
           </Module>
           <Module id="staff" title="Who worked the transaction" span={4}>

@@ -144,8 +144,13 @@ function HeadlineFigure({
           value === null
             ? 'text-sm text-ink-muted'
             : cx(
+                // `text-xl`, not `text-2xl`. Five figures across a 1440 px workspace gives
+                // each about 200 px, and an exact sale price is eleven characters — at the
+                // larger step `$38,127.33` wrapped after the tenth and put a lone `3` on a
+                // second line. An exact figure that breaks mid-number is worse than a
+                // slightly smaller one.
                 'numeric font-semibold text-ink',
-                rank === 'lead' ? 'text-2xl' : 'text-lg'
+                rank === 'lead' ? 'text-xl' : 'text-lg'
               )
         )}
       >

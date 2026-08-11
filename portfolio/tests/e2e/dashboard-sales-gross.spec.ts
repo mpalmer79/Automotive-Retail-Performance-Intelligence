@@ -99,9 +99,28 @@ test.describe('the governed figures reach the screen', () => {
   test('carries a methodology disclosure for every governed measure', async ({
     page,
   }) => {
+    /*
+     * `UX.2B` CONSOLIDATED THE SUMMARY LINES AND NOT THE CONTENT. Nine cards each carried
+     * their own `How is this calculated?`, which put nine identical questions in the eye
+     * path of a reader looking for a number — the same finding `UX.2A` measured on the
+     * Executive rail, where twenty of them became one.
+     *
+     * The claim this test makes is unchanged: every governed measure on the rail has its
+     * catalogue entry on the page. What changed is where to look for it, so the assertion
+     * counts ENTRIES inside the one disclosure rather than counting summary lines.
+     */
     await gotoRendered(page, ROUTE)
-    const summaries = page.locator('summary', { hasText: 'How is this calculated?' })
-    expect(await summaries.count()).toBeGreaterThanOrEqual(9)
+    const disclosure = page
+      .locator('details', {
+        has: page.locator('summary', { hasText: 'How every figure' }),
+      })
+      .first()
+    await expect(disclosure).toHaveCount(1)
+    expect(await disclosure.locator('h4').count()).toBe(9)
+    // And the entries are real: the catalogue's own formula text is in the document.
+    const text = await mainTextContent(page)
+    expect(text).toContain('KPI-GRS-006')
+    expect(text).toContain('KPI-SLS-001')
   })
 })
 
@@ -271,10 +290,12 @@ test.describe('targets and pace on the sales and gross page', () => {
   }) => {
     await gotoRendered(page, ROUTE)
     const text = await mainText(page)
-    expect(text).toMatch(/targets and pace/i)
+    // `UX.2B` renamed the region to the module title `Plan and pace`, which is what a
+    // manager calls it. The figures it must carry are unchanged.
+    expect(text).toMatch(/plan and pace/i)
     expect(text).toMatch(/Target\s+[\d,$]/)
     expect(text).toMatch(/of target/)
-    expect(text).toMatch(/selling days/i)
+    expect(text).toMatch(/selling day/i)
     expect(text).toContain('Selling-day pace projection')
   })
 
@@ -290,7 +311,7 @@ test.describe('targets and pace on the sales and gross page', () => {
     await gotoRendered(page, ROUTE)
     const text = await mainText(page)
     expect(text).toMatch(/reference beside the totals/i)
-    expect(text).toMatch(/flat daily target line/i)
+    expect(text).toMatch(/flat line drawn onto the trend/i)
   })
 
   test('never calls the projection a forecast', async ({ page }) => {

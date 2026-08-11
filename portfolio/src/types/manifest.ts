@@ -41,12 +41,7 @@ export interface SourcedCount {
  *  not-started        Committed scope, no work done.
  */
 export type StatusLevel =
-  | 'complete'
-  | 'in-progress'
-  | 'pending-external'
-  | 'blocked'
-  | 'deferred'
-  | 'not-started'
+  'complete' | 'in-progress' | 'pending-external' | 'blocked' | 'deferred' | 'not-started'
 
 /** A real-engine validation path, per ADR-0008. */
 export interface EngineValidation {

@@ -69,6 +69,12 @@ test.describe('the index shows the deal, not the customer', () => {
      * stronger than the scan was: no COLUMN names a customer attribute, and no CELL
      * holds a value shaped like a contact detail.
      */
+    /*
+     * ACROSS EVERY TABLE ON THE ROUTE, not just the index. `UX.2B` moved the unit,
+     * lead-source and attribution columns into a second table behind a disclosure, and a
+     * disclosure is exactly where a contact detail would leak unnoticed — so the scan got
+     * wider rather than narrower.
+     */
     const headers = await page
       .locator('main table thead th')
       .evaluateAll((nodes) => nodes.map((node) => (node.textContent ?? '').toLowerCase()))
@@ -90,7 +96,7 @@ test.describe('the index shows the deal, not the customer', () => {
       ).toBe(false)
     }
 
-    const body = (await page.locator('main table tbody').textContent()) ?? ''
+    const body = (await page.locator('main table tbody').allTextContents()).join(' ')
     // An email address, a telephone number, and a US-style postal address line.
     expect(body, 'an email-shaped value reached the deal index').not.toMatch(
       /[\w.]+@[\w.]+\.[a-z]{2,}/i
@@ -257,8 +263,11 @@ test.describe('the drill-through goes somewhere real', () => {
    */
   test('links every deal id at its own jacket', async ({ page }) => {
     await gotoRendered(page, ROUTE)
+    // Scoped to the index table: `UX.2B`'s attribution disclosure links the same deal ids
+    // a second time, deliberately, so an unscoped locator counts each row twice.
     const hrefs = await page
-      .locator('main tbody th a')
+      .getByRole('table', { name: /Finalized transactions/i })
+      .locator('tbody th a')
       .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('href') ?? ''))
     expect(hrefs.length).toBe(25)
     for (const href of hrefs) {
@@ -270,7 +279,10 @@ test.describe('the drill-through goes somewhere real', () => {
 
   test('the first row link resolves to that deal jacket', async ({ page }) => {
     await gotoRendered(page, ROUTE)
-    const first = page.locator('main tbody th a').first()
+    const first = page
+      .getByRole('table', { name: /Finalized transactions/i })
+      .locator('tbody th a')
+      .first()
     const saleId = ((await first.textContent()) ?? '').trim()
     await first.click()
     await page.waitForURL(`**/dashboard/deals/${saleId}`)

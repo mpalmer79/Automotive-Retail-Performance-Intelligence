@@ -20,9 +20,25 @@
  *     about what a reader is shown;
  *   * the tables reflow rather than overflow at 320 px, which is a CSS fact.
  */
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 
 import { affirmativeSentences, gotoRendered, mainText, mainTextContent } from './helpers'
+
+/**
+ * The unit table, by its accessible name.
+ *
+ * `UX.2B` put the age-and-capital stack above it, and that figure carries its own data
+ * table inside a closed `<details>` — so a bare `main tbody` locator now resolves to two
+ * tables and picks the hidden one first. Every assertion in this file that says "a row"
+ * means a UNIT row, and this is what says so.
+ */
+function unitRows(page: Page) {
+  return page.getByRole('table', { name: /Inventory units at/i }).locator('tbody tr')
+}
+
+function unitLinks(page: Page) {
+  return page.getByRole('table', { name: /Inventory units at/i }).locator('tbody th a')
+}
 
 const ROUTE = '/dashboard/inventory'
 
@@ -144,7 +160,7 @@ test.describe('unit drill-through is a URL', () => {
   }) => {
     await gotoRendered(page, ROUTE)
 
-    const firstUnit = page.locator('main tbody th a').first()
+    const firstUnit = unitLinks(page).first()
     const unitId = (await firstUnit.textContent())?.trim() ?? ''
     expect(unitId).toMatch(/^VEH-\d{7}$/)
 
@@ -163,7 +179,7 @@ test.describe('unit drill-through is a URL', () => {
 
   test('returns to the index on Back and reopens on Forward', async ({ page }) => {
     await gotoRendered(page, ROUTE)
-    await page.locator('main tbody th a').first().click()
+    await unitLinks(page).first().click()
     await page.waitForURL(/[?&]unit=/)
 
     await page.goBack()
@@ -194,33 +210,38 @@ test.describe('unit drill-through is a URL', () => {
 test.describe('search, ordering and filters land in the URL', () => {
   test('narrows the table by search term', async ({ page }) => {
     await gotoRendered(page, ROUTE)
-    const before = await page.locator('main tbody tr').count()
+    const before = await unitRows(page).count()
 
     await page.fill('#q', 'VEH-0000005')
     await page.locator(`${searchForm} button[type="submit"]`).click()
     await page.waitForURL(/[?&]q=/)
 
-    const after = await page.locator('main tbody tr').count()
+    const after = await unitRows(page).count()
     expect(after).toBeLessThan(before)
     expect(after).toBeGreaterThan(0)
   })
 
   test('reorders without changing the population', async ({ page }) => {
     await gotoRendered(page, ROUTE)
-    const before = await page.locator('main tbody th a').allTextContents()
+    const before = await unitLinks(page).allTextContents()
 
     await page.selectOption('#sort', 'age-desc')
     await page.locator(`${searchForm} button[type="submit"]`).click()
     await page.waitForURL(/[?&]sort=age-desc/)
 
-    const after = await page.locator('main tbody th a').allTextContents()
+    const after = await unitLinks(page).allTextContents()
     expect(after.length).toBe(before.length)
     expect([...after].sort()).toEqual([...before].sort())
   })
 
   test('applies a store filter and says it applied it', async ({ page }) => {
     await gotoRendered(page, `${ROUTE}?store=GSA-001`)
-    const rows = page.locator('main tbody tr')
+    /*
+     * Scoped to the UNIT table. `UX.2B` added the age stack above it, whose data table sits
+     * inside a closed `<details>` — so the first `main tbody tr` in document order is now a
+     * legitimately hidden row of a different table.
+     */
+    const rows = unitRows(page)
     await expect(rows.first()).toBeVisible()
     const text = await mainText(page)
     expect(text).toContain('GSA-001')
@@ -242,7 +263,7 @@ test.describe('the page works without JavaScript', () => {
     expect(text).toContain('0-30')
     expect(text).toMatch(/Over 120/)
     expect(text).toMatch(/synthetic/i)
-    await expect(page.locator('main tbody tr').first()).toBeVisible()
+    await expect(unitRows(page).first()).toBeVisible()
   })
 
   test('renders the drill-through panel from the URL alone', async ({ page }) => {

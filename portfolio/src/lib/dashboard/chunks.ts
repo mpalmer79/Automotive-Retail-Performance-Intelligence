@@ -32,11 +32,7 @@ import type { DashboardDatasetFile } from '@/types/dashboard'
 
 /** The chunked datasets, as `DASHBOARD_DATASETS` marks them. */
 export type ChunkedDatasetName =
-  | 'inventory-health'
-  | 'inventory-aging'
-  | 'days-supply'
-  | 'lead-funnel'
-  | 'lead-response'
+  'inventory-health' | 'inventory-aging' | 'days-supply' | 'lead-funnel' | 'lead-response'
 
 /** One dataset's partitions, keyed `GSA-00#/YYYY-MM` exactly as the manifest keys them. */
 export type ChunkTable = Readonly<Record<string, unknown>>

@@ -1222,3 +1222,79 @@ document without failing first.
 
 `DASH.13-02` sets the budgets, from measurements taken once `UX.2` is complete. Setting one here
 would fix a number for `/` while `UX.2B`–`UX.2D` are still changing the routes around it.
+
+## 9.13 The `UX.2B` revenue and vehicle workspaces, measured
+
+Same harness as every section above: a production build, Chromium, compressed transfer summed per
+route. The before-column is the merge of `UX.2A`, recorded in
+[`UX-2B-BASELINE.md`](../../docs/reviews/UX-2B-BASELINE.md).
+
+### Route cost, per route
+
+| Route                                | HTML before |   HTML after |   Script |     CSS |    Fonts | Total before |  Total after |
+| ------------------------------------ | ----------: | -----------: | -------: | ------: | -------: | -----------: | -----------: |
+| `/dashboard/sales-gross`             |     65.8 kB |  **65.1 kB** | 192.5 kB | 16.4 kB | 117.1 kB |     428.8 kB | **426.3 kB** |
+| `/dashboard/deals`                   |     57.8 kB |      62.8 kB | 192.5 kB | 16.4 kB | 117.1 kB |     418.9 kB |     424.2 kB |
+| `/dashboard/deals/SLE-00000646`      |     46.5 kB |      49.7 kB | 189.7 kB | 16.4 kB | 117.1 kB |     405.4 kB |     408.9 kB |
+| `/dashboard/inventory`               |     73.8 kB | **114.0 kB** | 192.5 kB | 16.4 kB | 117.1 kB |     435.5 kB | **477.0 kB** |
+| `/dashboard/inventory?store=GSA-003` |     42.7 kB |      62.2 kB | 192.5 kB | 16.4 kB | 117.1 kB |     409.2 kB |     432.7 kB |
+| `/dashboard/fi`                      |     47.8 kB |      54.0 kB | 192.5 kB | 16.4 kB | 117.1 kB |     408.8 kB |     417.2 kB |
+
+### Script is byte-identical on every route
+
+Eight visuals, a scatter plot with 234 marks, a measure switch, two deal-economics figures and five
+figure rails, for **zero bytes** of client JavaScript. The switch is a radio group and CSS; sorting is
+anchors; paging is anchors; every filter is a native GET form. The one client island on the four
+filtered routes is still the filter bar, and the Deal Jacket still has none — its 189.7 kB is the same
+shell without it.
+
+`UX.2B` §45 explicitly permits client interaction where it materially improves operating usability.
+None was needed, and that is a finding rather than a rule: the four interactions the increment wanted
+— a measure switch, sortable columns, an expandable detail block and a focusable plot — are all
+expressible as radios, anchors, `<details>` and `tabIndex`.
+
+### Inventory costs 41.5 kB more HTML, and the number is not smoothed
+
+Roughly 30 kB of it is the age × price-to-market map: 234 absolutely-positioned marks, each carrying
+its own coordinate pair and diameter as inline style. Roughly 10 kB is the investment column the unit
+table gained.
+
+**The alternative was measured and was worse.** Giving the plot its own table disclosure — the
+chart-plus-table contract every other figure in this console uses — measured **+68 kB** on the
+unfiltered route, because it printed the same 250 units a second time. The plot points at the route's
+own unit table instead, which already carries every channel it draws, as exact text, plus the units it
+cannot place. That is the only figure in the console without its own table disclosure and the reason
+is written on the component.
+
+### Sales & Gross got lighter while the page got denser
+
+The only route in the increment to fall, and for the reason `UX.2A` recorded on the Executive: nine
+repeated `How is this calculated?` disclosures, each carrying a full catalogue entry, became one
+disclosure carrying all nine. Two trend charts became three and two grouped comparisons arrived, and
+the markup they added was still smaller than the duplication they replaced.
+
+### Document height, which is the figure a reader actually pays
+
+| Route                           | 1440 × 900 before |        after | 390 × 844 before |        after |
+| ------------------------------- | ----------------: | -----------: | ---------------: | -----------: |
+| `/dashboard/sales-gross`        |          7,228 px | **3,260 px** |        11,439 px | **7,100 px** |
+| `/dashboard/deals`              |          3,063 px | **2,561 px** |         8,583 px |     9,326 px |
+| `/dashboard/deals/SLE-00000646` |          5,806 px | **4,015 px** |         9,944 px | **8,250 px** |
+| `/dashboard/inventory`          |         11,543 px |    11,828 px |        12,218 px |    13,379 px |
+| `/dashboard/fi`                 |          6,614 px | **3,455 px** |         9,016 px | **5,999 px** |
+
+Inventory's 11,828 px is a 250-row unit table and always was: `?store=GSA-003` measures 5,063 px
+against a baseline of 4,778 px, which is the same +285 px on a route a third as long. The Deal
+Explorer's phone view grew by the height of the summary strip that was the reason for touching it.
+
+### `UX.2B` added no dependency
+
+`package.json` is unchanged. The chart-library evaluation was made a third time — against the scatter,
+which is the first form on this console needing two continuous positions at once — and is recorded in
+[`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md) §6.0e. The condition under which a future increment _should_
+add one is restated there, unchanged.
+
+### No budget is enforced from these numbers
+
+`DASH.13-02` sets the budgets, from measurements taken once `UX.2` is complete. Setting one here
+would fix a number for five routes while `UX.2C` and `UX.2D` are still changing the four around them.

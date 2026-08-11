@@ -53,7 +53,7 @@
 | `DASH.11` | Employee performance | Medium | **Implemented** |
 | `UX.1` | Executive productization and operating experience | Large | **Implemented** |
 | `DASH.12` | Management Action Center and change drivers | Large | **Implemented** |
-| `UX.2` | Executive visualization and decision workspace | Large | In progress — `UX.2A` **Implemented**, `UX.2B`–`UX.2D` Planned |
+| `UX.2` | Executive visualization and decision workspace | Large | In progress — `UX.2A` and `UX.2B` **Implemented**, `UX.2C`–`UX.2D` Planned |
 | `DASH.13` | Hardening and release | Large | Planned |
 | `DASH.O-*` | Optional enhancements | — | Deferred |
 
@@ -1102,7 +1102,7 @@ rather than about the rules; no threshold was moved to fill the queue.
 | **Estimated complexity** | Large, delivered as four sub-increments |
 | **Blocking gate** | None |
 | **Architecture references** | [ADR-0013](../architecture-decisions/ADR-0013-governed-web-operating-console.md); [ADR-0015](../architecture-decisions/ADR-0015-product-first-operating-experience.md); [`INFORMATION_ARCHITECTURE.md`](../dashboard/INFORMATION_ARCHITECTURE.md); [`DESIGN_SYSTEM.md`](../../portfolio/docs/DESIGN_SYSTEM.md) |
-| **Status** | **In progress.** `UX.2A` is Implemented; `UX.2B`, `UX.2C` and `UX.2D` are Planned. |
+| **Status** | **In progress.** `UX.2A` and `UX.2B` are Implemented; `UX.2C` and `UX.2D` are Planned. |
 
 **It is not a `DASH` increment, and the identifier says so** — the same reasoning `UX.1` records. It
 adds no warehouse fact, no dimension, no reporting view, no export dataset and no KPI identifier, and
@@ -1115,7 +1115,7 @@ where ADR-0013 put it.
 | Item | Title | Complexity | Status |
 |---|---|---|---|
 | `UX.2A` | Executive Command Center | Large | **Implemented** |
-| `UX.2B` | Revenue and Vehicle Operations | Large | Planned |
+| `UX.2B` | Revenue and Vehicle Operations | Large | **Implemented** |
 | `UX.2C` | Demand, People and Controls | Large | Planned |
 | `UX.2D` | Interaction, consistency and closeout | Medium | Planned |
 
@@ -1123,9 +1123,17 @@ where ADR-0013 put it.
 KPI rail, a metric-switched primary trend, a grouped store comparison, visual pace, an
 age-and-capital inventory stack, a visual funnel, a prominent change-driver waterfall, an integrated
 management-attention module and a concise accounting reading. `UX.2B` carries the same treatment to
-`/dashboard/sales-gross`, `/dashboard/inventory` and the Deal surfaces; `UX.2C` to
-`/dashboard/leads-marketing`, `/dashboard/employees`, `/dashboard/fi` and `/dashboard/accounting`;
-`UX.2D` closes interaction consistency, the cross-route visual vocabulary and the increment audit.
+`/dashboard/sales-gross`, `/dashboard/deals`, `/dashboard/deals/[saleId]`, `/dashboard/inventory` and
+`/dashboard/fi`; `UX.2C` to `/dashboard/leads-marketing`, `/dashboard/employees` and
+`/dashboard/accounting`; `UX.2D` closes interaction consistency, the cross-route visual vocabulary and
+the increment audit.
+
+**`/dashboard/fi` moved from the `UX.2C` list into `UX.2B`, and the split above says so rather than
+leaving the old sentence standing.** The `UX.2B` brief scopes the increment as the dealership's
+*revenue and vehicle operating surfaces* and names F&I as the fifth of them, which is the right
+grouping on the merits: back-end gross is half of the gross the Sales & Gross rail reports, and the
+Deal Jacket's back-gross reconciliation is the same identity F&I publishes at scale. `UX.2C` is
+correspondingly narrower — demand, people and controls — and is unchanged in every other respect.
 
 ### `UX.2A` as-built notes
 
@@ -1158,6 +1166,56 @@ new KPI family. No store score, no composite, no ranking. No repricing recommend
 affordance on the attention module: no done, no assign, no snooze, no due date and no owner person.
 
 Power BI real-engine validation remains externally pending; `UX.2A` does not modify the semantic model.
+
+### `UX.2B` as-built notes
+
+Evidence: [`UX-2B-BASELINE.md`](../reviews/UX-2B-BASELINE.md) measures the five routes before the
+increment and [`UX-2B-REVIEW.md`](../reviews/UX-2B-REVIEW.md) records what it produced, measured the
+same way, on the same harness, at the same two viewports.
+
+The number that drove the increment: **four of the five routes contained no data visualization of any
+kind**, and the fifth put its first one 2,752 px down a 7,228 px document. After: every one of the five
+opens with a ranked figure rail, and four of them carry at least two data-driven visual regions inside
+a 1440 × 900 first viewport.
+
+Six things are worth recording here because they are decisions rather than work:
+
+1. **The inventory age × price-to-market map was built, and its bubble measure was refused.** `UX.2B`
+   §29 names `current_book_value` first; that column lives in `inventory-accounting`, a partition set
+   this route opens one unit at a time for the detail panel. Sizing 250 marks from it would pull
+   360 kB of per-unit book values into a route that does not otherwise need them, to plot a measure
+   `inventory_investment` already answers from a column in hand at the same grain and the same
+   snapshot. All four channels — ratio, days in stock, investment, exported age band — come off one
+   row at one date.
+2. **The map's accessible equivalent is the route's own unit table, not a second copy of it.** A
+   disclosure repeating those rows measured **+68 kB of HTML** on the unfiltered route to give a
+   screen-reader user a second reading of a table they already meet. The unit table gained an
+   investment column so it carries every channel the map draws.
+3. **`MetricSwitch` and the grouped comparison moved out of `exec-visuals.tsx`.** That file's own
+   docstring said what would happen when a second route rendered them, and four now do. They are in
+   `workspace-visuals.tsx` with a stated membership rule; `exec-grid.tsx` became `workspace-grid.tsx`
+   for the same reason. No prop, no span, no zone and no markup moved with either rename.
+4. **One view-model addition, and it is not a KPI.** `MixRow` gained a per-segment gross per retail
+   unit, which is `KPI-GRS-006` — the identity the rail already publishes for the whole scope, and the
+   store scoreboard on `/` has published per store since `DASH.2` — evaluated over a narrower row set.
+   `DealsView` gained front and back gross over the population it already summed total gross over.
+   `BucketProfile` gained an investment share, an asking-price pair and a repricing count from columns
+   the unit rows already carry. No KPI identifier, denominator, date basis or formula changed.
+5. **No chart library was added, and the question was asked a third time.** `UX.2B` §44 names the
+   scatter as the first serious candidate. The evaluation is recorded in
+   [`DESIGN_SYSTEM.md`](../../portfolio/docs/DESIGN_SYSTEM.md) §6.0e and the outcome is unchanged: the
+   plot is positioned marks inside a focusable labelled region, it renders on the server, and it ships
+   zero bytes of client JavaScript.
+6. **Client JavaScript owned by the five routes is still zero bytes.** `UX.2B` §45 permits client
+   interaction where it materially improves usability; none was needed. The measure switch is a radio
+   group and CSS, sorting is anchors, paging is anchors, and every filter is a native GET form.
+
+**Non-goals held.** No `UX.2C` or `UX.2D` work — `/dashboard/leads-marketing`, `/dashboard/employees`
+and `/dashboard/accounting` are untouched. No `DASH.13` work. No warehouse fact, dimension, reporting
+view or export dataset. No KPI identifier. No ranking of a store, a category or a finance manager. No
+repricing recommendation and no suggested price. No benchmark.
+
+Power BI real-engine validation remains externally pending; `UX.2B` does not modify the semantic model.
 
 ---
 

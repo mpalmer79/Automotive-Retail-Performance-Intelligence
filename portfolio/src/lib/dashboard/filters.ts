@@ -211,8 +211,7 @@ export interface ParseOptions {
 
 /** How the query string arrives. `URLSearchParams` and Next's `searchParams` both fit. */
 export type QueryInput =
-  | URLSearchParams
-  | Readonly<Record<string, string | readonly string[] | undefined>>
+  URLSearchParams | Readonly<Record<string, string | readonly string[] | undefined>>
 
 function readParam(query: QueryInput, key: string): string | undefined {
   if (query instanceof URLSearchParams) {

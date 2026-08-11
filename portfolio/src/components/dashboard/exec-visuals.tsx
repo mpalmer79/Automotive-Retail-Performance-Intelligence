@@ -20,7 +20,7 @@
  * against Recharts, Visx, Chart.js and Observable Plot; the record is in
  * `portfolio/docs/DESIGN_SYSTEM.md` §6.0c. `UX.2B` §44 required it to be re-made a third time
  * against a genuinely harder case — a scatter plot with a keyboard-reachable point set — and
- * the record of THAT is §6.0d. The outcome is unchanged both times and the reason is narrower
+ * the record of THAT is §6.0e. The outcome is unchanged both times and the reason is narrower
  * than "we already decided": three of the four cannot render on the server without a measured
  * container, and this console's contract is that every figure is in the served HTML.
  *

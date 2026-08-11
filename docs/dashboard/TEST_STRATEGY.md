@@ -581,3 +581,110 @@ enters the payload, and an assertion that the committed queue equals the re-deri
 **The cross-language drill-through check** is not a regex over a string: the generator resolves every
 destination against the console's route registry and the destination's own filter-support matrix, and
 the E2E suite fetches a sample of them.
+
+---
+
+## `UX.2B` — the revenue and vehicle workspaces
+
+Two files, and they answer two different questions.
+
+### 1. Geometry that moves — `tests/unit/ux2b-revenue-workspaces.test.tsx`
+
+`UX.2B` §57 states the rule: for each major visual, render at least two materially different data or
+filter states and assert that a width, a length, a position or a composition CHANGES. A fixed pretty
+chart must fail. Every assertion is written so a primitive which ignored its input — a full-width bar,
+an evenly-stepped ladder, a fixed five-segment stack, a scatter with one radius — is caught by the
+property that makes it decorative, rather than by a rendered string.
+
+The states are real filter states the routes accept, resolved through `buildSalesGross`, `buildFi`,
+`buildDealJacket` and `summarizeInventory` exactly as the pages resolve them. Nothing constructs a
+fixture the console could not produce, and the four fixture deal identifiers are RESOLVED FROM THE
+EXPORT by the property each test needs — two that differ, one whose product gross was adjusted after
+the deal date, one carrying a trade — rather than typed as literals that stop describing anything the
+day the dataset is regenerated.
+
+Four assertions are worth naming because they catch a specific way a chart lies:
+
+- **Each measure is scaled to its own maximum.** A common scale across units, dollars and dollars per
+  unit draws retail units as a hairline beside total gross. Each group therefore carries at least one
+  full-width bar, and a shared scale is excluded by asserting that not all of them do.
+- **No penetration bar reaches 100%.** Every bar runs from zero to full eligibility rather than to the
+  largest category, and no category in the fixture reaches full attachment — so a maximum-scaled chart
+  would draw exactly one full bar and the assertion fails.
+- **The capital track differs from the unit track.** If the age stack's second track simply repeated
+  the first, it would be decoration, and the eleven-per-cent-of-units, twenty-six-per-cent-of-the-money
+  finding the two tracks exist for would be invisible.
+- **The scatter draws more than three distinct mark sizes.** A fixed-radius plot collapses to one.
+
+### 2. Seeded defects — same file, second half
+
+`UX.2B` §58 lists ten. Each perturbs the INPUT a component is given, exactly as a mistaken selector
+would, and asserts the rendering differs — which is the only formulation that proves the assertion
+could have caught it. A test that checks only the correct rendering proves that the correct rendering
+is correct, and nothing about whether an error would be noticed.
+
+| Seeded defect | What fails |
+|---|---|
+| A bridge step's sign is reversed | The printed component set differs, and the sign is text rather than colour |
+| An empty age bucket is dropped before rendering | The ramp is keyed on exported bucket ORDER; the drawn marks are asserted identical whether the caller prunes or not |
+| Certified escapes Used | The condition split is asserted to have exactly two rows, and `condition=Certified` is asserted not to change the Used gross |
+| Penetration counts contracts | Every category's `penetration.numerator` is asserted to BE the attached-deal count, and a category where contracts genuinely exceed attached deals is found in the window so the first assertion is a constraint rather than a tautology |
+| Category denominators are averaged | The set of eligible denominators is asserted to hold more than one distinct value |
+| The back-gross bar is drawn from net product gross | An adjusted deal is found where original and retained differ, and the identity is asserted to hold on the original |
+| The scatter mixes snapshots between its axes | The plotted rows are asserted to span exactly one snapshot date, and the mark count changes with the store |
+| The market estimate is rendered as a real market value | The rendered text must contain "synthetic" and must not contain market value, book value, auction, KBB, Black Book or NADA |
+| Trade variance is folded into the front gross | The ladder's lines are asserted not to contain it, the rendering is asserted not to print it, and the identity is asserted to still hold without it |
+| Adjustment-period amounts are presented as deal-date production | The rendered text must carry "Adjustment-period basis" and "not deal-date production" |
+
+### 3. Geometry a reader can see — `tests/e2e/ux2b-workspaces.spec.ts`
+
+The per-route suites ask whether the figures are the exported figures. This one asks whether the
+manager who opened the route can SEE them, and every assertion is an element offset against a stated
+viewport rather than a judgement.
+
+- **The first-viewport contracts (`UX.2B` §49)**, one per route, at 1440 × 900, read off
+  `data-visual-region` and `data-deal-figure` offsets. Sales & Gross is additionally re-checked under
+  three filter states, because a layout that meets its contract only on the default query meets it by
+  coincidence.
+- **Mobile priority (§50)** at 390 × 844: the lead rail figures are asserted to be the right three, in
+  the right order, and no route's methodology region may sit above its first visual region.
+- **The responsive matrix (§61)**: 320, 375, 390, 768, 1024, 1280, 1440 and 1920 on all five routes,
+  asserting no horizontal overflow, with the same one-pixel tolerance every responsive suite in this
+  repository carries and for the same reason.
+- **One representation in the accessibility tree**: the Deal Explorer's table and its cards are
+  asserted never to be visible together, at 390, 1024 and 1440.
+- **Without JavaScript (§52)**: every rail figure, both jacket economics, the age bands, the unit
+  table, the structure mix and every `ELIG-*` denominator are asserted present with scripting
+  disabled, and the measure switch is asserted to be three real radios in the document.
+- **Drill-through (§46, §47)**: each generated href is asserted to carry what the destination can act
+  on, NOT to carry what it cannot — the Deal Explorer's search term is asserted absent from the
+  Sales & Gross link — and each destination is then FETCHED, because an href that resolves to a 404 is
+  a false drill-through and a string assertion cannot tell.
+- **Keyboard reach (§30, §51)**: the measure switch is walked with arrow keys; the scatter is asserted
+  focusable, `role="img"`, and carrying its plotted count and both axes in its accessible name.
+
+### What did not change
+
+No existing assertion was weakened, and every edited one is recorded here rather than left in the
+diff. Seven were edited across five suites, and each falls into one of three kinds:
+
+**A locator that now resolves to two elements.** `UX.2B` added a second table to the Deal Explorer
+(the attribution disclosure) and to Inventory (the age stack's data table), so `main table tbody` and
+`main tbody tr` stopped being unambiguous. Both suites scope to the table they always meant, by its
+accessible name. The Deal Explorer's contact-shaped-value scan went the OTHER way and now reads every
+table on the route, because a disclosure is exactly where a contact detail would leak unnoticed.
+
+**Content that moved into a disclosure.** The F&I penetration columns and the adjustment event table
+are now inside their figures' own table disclosures. The assertions were split: the visible half reads
+`innerText` and asserts the stronger property `UX.2B` created — both sides of every ratio are printed
+beside the bar as "37 of 92", which the two columns never were — and the second half reads
+`textContent` and asserts the columns are still in the document.
+
+**Copy that changed with the layout.** Four region titles and three sentences. In each case the
+assertion follows the CLAIM rather than the words: "targets and pace" became "plan and pace"; the
+nine `How is this calculated?` summary lines became one disclosure, so the test counts the nine
+catalogue ENTRIES inside it instead of counting summary lines; and the manager-sample assertion moved
+from `/minimum/i` to the more specific "Below 10 retail units a ratio is withheld".
+
+The `DASH.11` fairness assertions, the export boundary guards, the exact-money boundary, the
+reconciliation suites and every seeded defect from earlier increments are untouched.

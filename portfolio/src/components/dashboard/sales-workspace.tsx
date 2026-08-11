@@ -295,45 +295,39 @@ export function SalesTrend({
       label: 'Retail units',
       valueHeading: 'Units',
       caption,
-      points: series.points.map(
-        (point): TrendPoint => ({
-          key: point.key,
-          label: point.label,
-          value: point.retailUnits,
-          display: formatCountExact(point.retailUnits),
-        })
-      ),
+      points: series.points.map((point): TrendPoint => ({
+        key: point.key,
+        label: point.label,
+        value: point.retailUnits,
+        display: formatCountExact(point.retailUnits),
+      })),
     },
     {
       id: 'gross',
       label: 'Total gross',
       valueHeading: 'Total gross',
       caption,
-      points: series.points.map(
-        (point): TrendPoint => ({
-          key: point.key,
-          label: point.label,
-          value: point.totalGross,
-          display: formatCurrencyExact(point.totalGross),
-        })
-      ),
+      points: series.points.map((point): TrendPoint => ({
+        key: point.key,
+        label: point.label,
+        value: point.totalGross,
+        display: formatCurrencyExact(point.totalGross),
+      })),
     },
     {
       id: 'gpru',
       label: 'Total GPRU',
       valueHeading: 'Total gross per retail unit',
       caption: `${caption} A period with no retail unit has no per-unit gross and is drawn as a gap, never as zero.`,
-      points: series.points.map(
-        (point): TrendPoint => ({
-          key: point.key,
-          label: point.label,
-          value: point.totalPvr,
-          display:
-            point.totalPvr === null
-              ? 'No eligible denominator'
-              : formatCurrencyExact(point.totalPvr),
-        })
-      ),
+      points: series.points.map((point): TrendPoint => ({
+        key: point.key,
+        label: point.label,
+        value: point.totalPvr,
+        display:
+          point.totalPvr === null
+            ? 'No eligible denominator'
+            : formatCurrencyExact(point.totalPvr),
+      })),
     },
   ]
 
@@ -405,7 +399,9 @@ const CONDITION_MARK_FALLBACK = 'bg-data-tertiary'
 export function ConditionSplit({ mix }: { readonly mix: MixBreakdown }) {
   return (
     <GroupedMeasureBars
-      title="New and used"
+      // The MODULE is titled "New and used"; the figure inside it says what is compared, so
+      // the two headings do not print the same three words one above the other.
+      title="Condition contribution"
       caption="Each measure is scaled to its own larger side. Lengths compare within a measure and never across two."
       identityHeading="Condition"
       groups={[

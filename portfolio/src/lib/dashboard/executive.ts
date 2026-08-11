@@ -1254,20 +1254,18 @@ export function buildAccountingSignal(
     variancePositions: summary.variancePositions,
     notComparablePositions:
       summary.missingGlPositions + summary.missingSubledgerPositions,
-    accounts: selected.map(
-      (row): ScaleAccountView => ({
-        key: `${row.dealershipId}-${row.glAccountNumber}`,
-        dealershipId: row.dealershipId,
-        label: `${row.glAccountName} · ${row.glAccountNumber}`,
-        variance: row.varianceAmount,
-        display:
-          row.varianceAmount === null
-            ? 'No variance: one side absent'
-            : formatCurrencyDifference(row.varianceAmount, 2),
-        state: row.comparisonState,
-        isComparable: row.isComparable,
-      })
-    ),
+    accounts: selected.map((row): ScaleAccountView => ({
+      key: `${row.dealershipId}-${row.glAccountNumber}`,
+      dealershipId: row.dealershipId,
+      label: `${row.glAccountName} · ${row.glAccountNumber}`,
+      variance: row.varianceAmount,
+      display:
+        row.varianceAmount === null
+          ? 'No variance: one side absent'
+          : formatCurrencyDifference(row.varianceAmount, 2),
+      state: row.comparisonState,
+      isComparable: row.isComparable,
+    })),
     exceptionCount,
     scenarioNote: CONTROLLED_SCENARIO_NOTE,
   }
