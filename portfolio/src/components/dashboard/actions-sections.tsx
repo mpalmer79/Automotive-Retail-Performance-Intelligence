@@ -59,6 +59,8 @@ import {
 import type { ActionSeverity, ManagementAction } from '@/types/dashboard'
 import { cx } from '@/lib/utils'
 
+import { BridgeChart, type BridgeBar } from './visuals'
+
 /**
  * Severity to badge tone.
  *
@@ -501,8 +503,188 @@ export function ChangeDriverPanel({
 }
 
 /* -------------------------------------------------------------------------- */
+/* Region 4b — the executive change-driver bridge                              */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The gross change-driver decomposition, drawn as the waterfall it is.
+ *
+ * WHY THIS IS A CHART NOW AND WAS A DEFINITION LIST BEFORE. The bridge is the strongest
+ * analytical object this project has: it takes one number a general manager already
+ * believes — total gross moved by this much — and attributes the movement, exactly, to
+ * three components that sum back to it. A definition list states that; a waterfall SHOWS
+ * it, and the thing being shown is precisely that the parts close the gap between the
+ * anchors. `UX.2A` §14 asks for the prominence, and the geometry is what the prominence
+ * is for.
+ *
+ * ONE AUTHORITY, AND THIS IS NOT IT. `vw_gross_change_bridge` owns the decomposition;
+ * `buildBridge` verifies the exported identity and divides for display; `buildChangeDrivers`
+ * applies the materiality policy. This component receives the finished `ChangeDriverState`
+ * and places it. There is no second formula, and this file performs no arithmetic on an
+ * exact value — the totals it draws are the ones the module already computed.
+ *
+ * COLOUR BY SIGN IS PERMITTED HERE AND ALMOST NOWHERE ELSE ON THIS CONSOLE. A waterfall
+ * step IS a signed contribution to a total: it added or it subtracted, which is a fact
+ * about the arithmetic rather than a judgement about the business. The closing anchor takes
+ * the neutral reference fill, because a level is not a direction. Every amount is printed
+ * with its sign beside its label, so nothing is encoded in hue alone.
+ *
+ * ATTRIBUTION, NEVER CAUSE. "The bridge attributes", "this decomposition explains". Never
+ * "caused" or "drove" — a sequential decomposition apportions an observed change between
+ * components in a documented order, and a different order would apportion it differently.
+ * The vocabulary is asserted by test.
+ */
+export function ChangeDriverBridge({
+  drivers,
+  authority,
+}: {
+  readonly drivers: ChangeDriverState
+  readonly authority: string
+}) {
+  if (drivers.kind === 'unavailable') {
+    return (
+      <div className="flex flex-col gap-2">
+        <Text size="sm" tone="muted">
+          {drivers.reason}
+        </Text>
+        {/*
+          The CHANGE is shown even when its decomposition is not, because the two are
+          different facts. Rendering $0 for an unavailable decomposition would state that
+          nothing moved, which is a different and false claim.
+        */}
+        {drivers.changeDisplay === null ? null : (
+          <Text size="sm">The period change itself is {drivers.changeDisplay}.</Text>
+        )}
+      </div>
+    )
+  }
+
+  const bars: readonly BridgeBar[] = [
+    ...drivers.effects.map((effect): BridgeBar => ({
+      key: effect.code,
+      label:
+        effect.grouped && effect.absorbed.length > 0
+          ? `${effect.label} (${String(effect.absorbed.length)})`
+          : effect.label,
+      value: effect.amount,
+      display: effect.display,
+      kind: 'step',
+    })),
+    {
+      key: 'total-change',
+      label: 'Total change',
+      value: drivers.change,
+      display: drivers.changeDisplay,
+      kind: 'anchor',
+    },
+  ]
+
+  return (
+    <div className="flex flex-col gap-3">
+      <BridgeChart
+        title={`Total gross change, ${drivers.monthLabel}`}
+        bars={bars}
+        summary={drivers.statement}
+        headingLevel={3}
+      />
+      <Disclosure label="How this decomposition works">
+        <Text size="sm" tone="muted">
+          The bridge is computed in SQL by {authority} and carried through the export. It
+          is a SEQUENTIAL decomposition: each effect is measured with the earlier ones
+          already applied, so the order is part of the method and a different order would
+          apportion the same change differently. The bridge attributes; it does not
+          establish cause.
+        </Text>
+        <Text size="sm" tone="muted">
+          Effects smaller than {drivers.materiality.display} are grouped into a single
+          remainder rather than listed — {drivers.materiality.label.toLowerCase()}.
+          Grouped, never dropped: the listed effects and the remainder sum to the period
+          change exactly
+          {drivers.reconciles ? '' : ', and this comparison currently does not reconcile'}
+          .
+        </Text>
+        {drivers.verified ? null : (
+          <Text size="sm" tone="muted">
+            The exported numerators did not satisfy the view&rsquo;s own identity for this
+            scope, so the decomposition above is reported as unverified.
+          </Text>
+        )}
+      </Disclosure>
+    </div>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
 /* The Executive Overview's compact block                                      */
 /* -------------------------------------------------------------------------- */
+
+/**
+ * The queue's shape, before any of its rows.
+ *
+ * `UX.2A` §13 asks the Executive to carry a compact count by severity and by domain. Both
+ * come from `buildActionQueue`, the same function `/dashboard/actions` calls, over the same
+ * rows — so the counts here and the counts there cannot disagree. Each is a LINK to the
+ * facet it names, which makes the summary a way into the queue rather than a decoration
+ * beside it, and keeps the whole control surface working with scripting off.
+ *
+ * IT IS STILL NOT A TASK MANAGER. No `Done`, no `Assign`, no `Snooze`, no due date and no
+ * owner person. A count of open review prompts is a property of the dataset version being
+ * served, and `owner_role` remains the role best placed to LOOK at the evidence.
+ */
+export function AttentionSummary({
+  view,
+  facets,
+}: {
+  readonly view: ActionQueueView
+  /**
+   * The facet state the counts were computed under.
+   *
+   * The Executive passes the reader's STORE filter and nothing else, so the summary counts
+   * what the rest of the screen is scoped to, and every chip below carries that scope
+   * through to the queue rather than silently widening it.
+   */
+  readonly facets: ActionFacets
+}) {
+  const chip = cx(
+    'inline-flex min-h-6 items-center gap-1.5 rounded-pill border px-2 py-0.5 text-2xs',
+    'border-line-subtle bg-surface text-ink-muted',
+    'transition-colors duration-(--arpi-motion-fast) hover:border-line-strong hover:text-accent'
+  )
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="flex items-baseline gap-2">
+        <span className="numeric text-2xl font-semibold text-ink">{view.total}</span>
+        <span className="text-xs text-ink-muted">
+          open review {view.total === 1 ? 'prompt' : 'prompts'} in scope
+        </span>
+      </p>
+      <ul className="flex flex-wrap gap-1.5">
+        {view.severities.map((option) => (
+          <li key={`severity-${option.value}`}>
+            <Link
+              href={actionsHref({ ...facets, severity: option.value })}
+              className={chip}
+            >
+              <span>{option.label}</span>
+              <span className="numeric font-semibold text-ink">{option.count}</span>
+            </Link>
+          </li>
+        ))}
+        {view.domains.map((option) => (
+          <li key={`domain-${option.value}`}>
+            <Link
+              href={actionsHref({ ...facets, domain: option.value })}
+              className={chip}
+            >
+              <span>{option.label}</span>
+              <span className="numeric font-semibold text-ink">{option.count}</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
 
 export function TopActions({
   actions,
@@ -526,7 +708,7 @@ export function TopActions({
         {actions.map((action) => {
           const [lead] = action.evidence
           return (
-            <li key={action.actionId} className="py-2.5 first:pt-0">
+            <li key={action.actionId} className="py-2 first:pt-0">
               <Cluster className="items-baseline gap-2">
                 <Badge tone={SEVERITY_TONE[action.severity]}>
                   {SEVERITY_LABELS[action.severity]}
@@ -538,18 +720,18 @@ export function TopActions({
                   {action.title}
                 </Link>
               </Cluster>
-              <Text size="sm" tone="muted" className="mt-1">
+              <p className="mt-0.5 text-xs text-ink-muted">
                 {DOMAIN_LABELS[action.domain]}
                 {action.store === null ? '' : ` · ${action.store}`}
                 {lead === undefined
                   ? ''
                   : ` · ${evidenceDisplay(lead)} ${evidenceLabel(lead.name).toLowerCase()}`}
-              </Text>
+              </p>
             </li>
           )
         })}
       </ul>
-      <Text size="sm" className="mt-3">
+      <Text size="xs" className="mt-2">
         <Link href={href} className="underline underline-offset-4">
           View all {total} review {total === 1 ? 'prompt' : 'prompts'}
         </Link>

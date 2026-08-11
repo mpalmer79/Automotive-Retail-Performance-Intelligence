@@ -703,6 +703,16 @@ export interface ExecutiveMicroTrendProps {
   readonly points: readonly MicroTrendPoint[]
   /** `lead` cards carry a taller strip than the four that qualify them. */
   readonly size?: 'lead' | 'supporting'
+  /**
+   * Whether the first and last period labels are drawn under the columns.
+   *
+   * The KPI rail turns them OFF and prints the same range on the card's own metadata line,
+   * beside the catalogue identifier. That is one rendered row rather than two for the same
+   * two words, and on a rail of three cards inside a first-viewport contract it is 18 px
+   * that a chart gets instead. The `sr-only` list carrying every month and every value is
+   * unaffected either way: it is what a screen-reader user reads, and it is complete.
+   */
+  readonly axisLabels?: boolean
   readonly className?: string
 }
 
@@ -731,6 +741,7 @@ export function ExecutiveMicroTrend({
   measure,
   points,
   size = 'supporting',
+  axisLabels = true,
   className,
 }: ExecutiveMicroTrendProps) {
   const present = points.filter((point) => point.value !== null)
@@ -780,7 +791,7 @@ export function ExecutiveMicroTrend({
         aria-hidden="true"
         className={cx(
           'relative flex items-end gap-0.5 border-b border-line-subtle',
-          size === 'lead' ? 'h-10' : 'h-6'
+          size === 'lead' ? 'h-8' : 'h-5'
         )}
       >
         {minimum < 0 ? (
@@ -827,12 +838,24 @@ export function ExecutiveMicroTrend({
           )
         })}
       </div>
-      <p aria-hidden="true" className="flex justify-between text-2xs text-ink-faint">
-        <span>{points[0]?.label.replace(/ \d{4}$/, '')}</span>
-        <span>{points[points.length - 1]?.label.replace(/ \d{4}$/, '')}</span>
-      </p>
+      {axisLabels ? (
+        <p aria-hidden="true" className="flex justify-between text-2xs text-ink-faint">
+          <span>{microTrendAxisStart(points)}</span>
+          <span>{microTrendAxisEnd(points)}</span>
+        </p>
+      ) : null}
     </div>
   )
+}
+
+/** The first period label, without its year. Exported so a caller can print the axis. */
+export function microTrendAxisStart(points: readonly MicroTrendPoint[]): string {
+  return points[0]?.label.replace(/ \d{4}$/, '') ?? ''
+}
+
+/** The last period label, without its year. */
+export function microTrendAxisEnd(points: readonly MicroTrendPoint[]): string {
+  return points[points.length - 1]?.label.replace(/ \d{4}$/, '') ?? ''
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1054,6 +1077,24 @@ export interface AgeStackSegment {
    * replaced were drawn that way.
    */
   readonly share: number
+  /**
+   * The bucket's capital, already formatted, and its share of the total investment.
+   *
+   * OPTIONAL, AND PRESENT ONLY BECAUSE THE EXPORT ALREADY PUBLISHES IT.
+   * `inventory-aging` carries `investment_in_bucket` at the same grain as
+   * `units_in_bucket` — one row per store per snapshot date per condition group per age
+   * bucket — so the capital track is the same selection over the same rows and needs no
+   * export change, no new grain and no inference. Where a caller has no capital to hand,
+   * both fields are absent and the track is not drawn at all rather than drawn from an
+   * estimate.
+   *
+   * WHY IT IS A SECOND TRACK AND NOT A SECOND CHART. Units and dollars over the same five
+   * bands is the comparison a used-car manager actually makes: eleven per cent of the
+   * units and twenty-six per cent of the money is the finding, and it is invisible unless
+   * the two distributions are read against each other on one set of bands.
+   */
+  readonly capitalDisplay?: string
+  readonly capitalShare?: number
 }
 
 export interface InventoryAgeStackProps {
@@ -1161,6 +1202,15 @@ export function InventoryAgeStack({
     )
   }
 
+  /*
+   * The capital track is drawn only when EVERY drawn band carries one. A stack missing a
+   * band is not a distribution, and a partial capital bar beside a complete unit bar
+   * would invite exactly the comparison it cannot support.
+   */
+  const capital = drawable.every((entry) => entry.segment.capitalShare !== undefined)
+    ? drawable
+    : []
+
   return (
     <ChartFrame
       title={title}
@@ -1170,24 +1220,20 @@ export function InventoryAgeStack({
       headingLevel={headingLevel}
       className={className}
     >
-      {/* Horizontal, at `sm` and above. */}
-      <div
-        aria-hidden="true"
-        className="hidden h-4 w-full overflow-hidden rounded-pill bg-surface-sunken sm:flex"
-      >
-        {drawable.map((entry, position) => (
-          <div
-            key={entry.segment.key}
-            className={`h-full ${ageRampClass(entry.index)}`}
-            style={{
-              width: percent(entry.segment.share),
-              // A 2px surface gap rather than a stroke: a stroked boundary reads as
-              // data-weight ink that is not data. Only between segments. It is also
-              // what holds two adjacent ramp steps apart when their contrast does not.
-              marginRight: position < drawable.length - 1 ? '2px' : undefined,
-            }}
+      {/* Horizontal, at `sm` and above. Units, then capital over the same bands. */}
+      <div className="hidden flex-col gap-2 sm:flex">
+        <StackTrack
+          label={capital.length === 0 ? null : 'Units'}
+          entries={drawable}
+          shareOf={(segment) => segment.share}
+        />
+        {capital.length === 0 ? null : (
+          <StackTrack
+            label="Investment"
+            entries={capital}
+            shareOf={(segment) => segment.capitalShare ?? 0}
           />
-        ))}
+        )}
       </div>
 
       {/* Vertical, below `sm`. The same geometry read down the page. */}
@@ -1198,6 +1244,9 @@ export function InventoryAgeStack({
               <span className="text-xs text-ink-secondary">{segment.label}</span>
               <span className="numeric text-xs font-semibold text-ink">
                 {segment.display}
+                {segment.capitalDisplay === undefined
+                  ? ''
+                  : ` · ${segment.capitalDisplay}`}
               </span>
             </div>
             <div className="h-2 w-full overflow-hidden rounded-pill bg-surface-sunken">
@@ -1223,9 +1272,61 @@ export function InventoryAgeStack({
             />
             <span>{segment.label}</span>
             <span className="numeric font-semibold text-ink">{segment.display}</span>
+            {segment.capitalDisplay === undefined ? null : (
+              <span className="numeric text-ink-muted">{segment.capitalDisplay}</span>
+            )}
           </li>
         ))}
       </ul>
+
+      <TableDisclosure title="age bucket">
+        <table className="w-full border-collapse text-sm">
+          <caption className="sr-only">
+            Active inventory units by age bucket at the snapshot date
+          </caption>
+          <thead>
+            <tr className="border-b border-line-subtle text-left">
+              <th scope="col" className="py-2 pr-3 font-medium text-ink-muted">
+                Days in stock
+              </th>
+              <th scope="col" className="py-2 pr-3 text-right font-medium text-ink-muted">
+                Units
+              </th>
+              <th scope="col" className="py-2 pr-3 text-right font-medium text-ink-muted">
+                Share of units
+              </th>
+              {capital.length === 0 ? null : (
+                <th scope="col" className="py-2 text-right font-medium text-ink-muted">
+                  Investment
+                </th>
+              )}
+            </tr>
+          </thead>
+          <tbody>
+            {segments.map((segment) => (
+              <tr
+                key={segment.key}
+                className="border-b border-line-subtle/60 last:border-0"
+              >
+                <th scope="row" className="py-1.5 pr-3 font-normal text-ink-secondary">
+                  {segment.label}
+                </th>
+                <td className="numeric py-1.5 pr-3 text-right text-ink">
+                  {segment.display}
+                </td>
+                <td className="numeric py-1.5 pr-3 text-right text-ink-muted">
+                  {`${(segment.share * 100).toFixed(1)}%`}
+                </td>
+                {capital.length === 0 ? null : (
+                  <td className="numeric py-1.5 text-right text-ink">
+                    {segment.capitalDisplay ?? 'No value'}
+                  </td>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </TableDisclosure>
 
       {/* The threshold the ramp turns on, named as the project default it is. */}
       {thresholdDays === null ? null : (
@@ -1239,6 +1340,57 @@ export function InventoryAgeStack({
         </p>
       )}
     </ChartFrame>
+  )
+}
+
+/**
+ * One part-to-whole track of the age stack, with an optional track name beside it.
+ *
+ * Extracted because the stack draws the same geometry twice — once over units and once
+ * over capital — and two copies of a part-to-whole bar would eventually disagree about
+ * the surface gap that holds two adjacent ramp steps apart when their contrast does not.
+ * The track name appears ONLY when there are two tracks: a single unlabelled bar under a
+ * heading that already says what it is does not need a second label.
+ */
+function StackTrack({
+  label,
+  entries,
+  shareOf,
+}: {
+  readonly label: string | null
+  readonly entries: readonly {
+    readonly segment: AgeStackSegment
+    readonly index: number
+  }[]
+  readonly shareOf: (segment: AgeStackSegment) => number
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      {label === null ? null : (
+        <span className="w-20 shrink-0 font-mono text-2xs tracking-wide text-ink-muted uppercase">
+          {label}
+        </span>
+      )}
+      <div
+        aria-hidden="true"
+        data-stack-track={label === null ? 'units' : label.toLowerCase()}
+        className="flex h-4 w-full overflow-hidden rounded-pill bg-surface-sunken"
+      >
+        {entries.map((entry, position) => (
+          <div
+            key={entry.segment.key}
+            className={`h-full ${ageRampClass(entry.index)}`}
+            style={{
+              width: percent(shareOf(entry.segment)),
+              // A 2px surface gap rather than a stroke: a stroked boundary reads as
+              // data-weight ink that is not data. Only between segments. It is also
+              // what holds two adjacent ramp steps apart when their contrast does not.
+              marginRight: position < entries.length - 1 ? '2px' : undefined,
+            }}
+          />
+        ))}
+      </div>
+    </div>
   )
 }
 

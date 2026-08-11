@@ -53,6 +53,7 @@
 | `DASH.11` | Employee performance | Medium | **Implemented** |
 | `UX.1` | Executive productization and operating experience | Large | **Implemented** |
 | `DASH.12` | Management Action Center and change drivers | Large | **Implemented** |
+| `UX.2` | Executive visualization and decision workspace | Large | In progress — `UX.2A` **Implemented**, `UX.2B`–`UX.2D` Planned |
 | `DASH.13` | Hardening and release | Large | Planned |
 | `DASH.O-*` | Optional enhancements | — | Deferred |
 
@@ -1092,12 +1093,80 @@ rather than about the rules; no threshold was moved to fill the queue.
 
 ---
 
+## `UX.2` — Executive visualization and decision workspace
+
+| Field | Value |
+|---|---|
+| **Purpose** | Make the operating console *look and behave* like dealership management software: a dense, interactive, decision-shaped workspace in which the data is the content and text supports interpretation rather than carrying it. |
+| **Dependencies** | `UX.1` fixed the product architecture; `DASH.12` completed the operating capability. `UX.2` starts once both are Implemented, and both are. |
+| **Estimated complexity** | Large, delivered as four sub-increments |
+| **Blocking gate** | None |
+| **Architecture references** | [ADR-0013](../architecture-decisions/ADR-0013-governed-web-operating-console.md); [ADR-0015](../architecture-decisions/ADR-0015-product-first-operating-experience.md); [`INFORMATION_ARCHITECTURE.md`](../dashboard/INFORMATION_ARCHITECTURE.md); [`DESIGN_SYSTEM.md`](../../portfolio/docs/DESIGN_SYSTEM.md) |
+| **Status** | **In progress.** `UX.2A` is Implemented; `UX.2B`, `UX.2C` and `UX.2D` are Planned. |
+
+**It is not a `DASH` increment, and the identifier says so** — the same reasoning `UX.1` records. It
+adds no warehouse fact, no dimension, no reporting view, no export dataset and no KPI identifier, and
+it changes no file under `powerbi/`. The MVP baselines are unchanged: 8 dimensions, 5 facts, 28
+reporting views, 29 KPIs. What it changes is presentation, and the calculation authority stays exactly
+where ADR-0013 put it.
+
+### Sub-increments
+
+| Item | Title | Complexity | Status |
+|---|---|---|---|
+| `UX.2A` | Executive Command Center | Large | **Implemented** |
+| `UX.2B` | Revenue and Vehicle Operations | Large | Planned |
+| `UX.2C` | Demand, People and Controls | Large | Planned |
+| `UX.2D` | Interaction, consistency and closeout | Medium | Planned |
+
+`UX.2A` rebuilds `/` as a twelve-column grid of modules with a compact control band, an eight-figure
+KPI rail, a metric-switched primary trend, a grouped store comparison, visual pace, an
+age-and-capital inventory stack, a visual funnel, a prominent change-driver waterfall, an integrated
+management-attention module and a concise accounting reading. `UX.2B` carries the same treatment to
+`/dashboard/sales-gross`, `/dashboard/inventory` and the Deal surfaces; `UX.2C` to
+`/dashboard/leads-marketing`, `/dashboard/employees`, `/dashboard/fi` and `/dashboard/accounting`;
+`UX.2D` closes interaction consistency, the cross-route visual vocabulary and the increment audit.
+
+### `UX.2A` as-built notes
+
+Evidence: [`UX-2-BASELINE.md`](../reviews/UX-2-BASELINE.md) measures the state before the increment
+and [`UX-2A-REVIEW.md`](../reviews/UX-2A-REVIEW.md) records what it produced, measured the same way.
+
+Four things are worth recording here because they are decisions rather than work:
+
+1. **The KPI rail is eight figures, not the nine the brief offered.** Front PVR joined back PVR
+   because back PVR without it is the one arrangement that misleads. Median inventory age left the
+   rail for the stock module: it is an order statistic published per store per condition group per
+   snapshot date, so at group scope it correctly renders "Not derivable at this scope" — which is a
+   poor use of the most prominent card on the console. Accounting variance is deliberately not a
+   card: a signed variance in a rank of performance figures acquires a favourable direction by
+   position alone, and this project has no governed one.
+2. **The trend's metric switch ships zero bytes of JavaScript.** It is a radio group and CSS. All
+   three series are server-rendered in the document and the control chooses which is displayed, so it
+   cannot recalculate anything. It carries no URL state because it changes neither the population nor
+   the arithmetic — the reasoning is recorded in full on `MetricSwitch`.
+3. **The capital track on the age stack needed no export change.** `inventory-aging` already
+   publishes `investment_in_bucket` at the same grain as `units_in_bucket`, in a dataset this route
+   already opens.
+4. **No chart library was added.** The `DASH.3-02` evaluation was re-run against Recharts, Visx,
+   Chart.js and Observable Plot rather than inherited, and the outcome is recorded in
+   [`DESIGN_SYSTEM.md`](../../portfolio/docs/DESIGN_SYSTEM.md) §6.0c.
+
+**Non-goals held.** No `UX.2B`, `UX.2C` or `UX.2D` work — no other operating route's layout changed,
+and the shared control-band and filter-bar edits are compaction, not redesign. No `DASH.13` work. No
+new KPI family. No store score, no composite, no ranking. No repricing recommendation. No task-manager
+affordance on the attention module: no done, no assign, no snooze, no due date and no owner person.
+
+Power BI real-engine validation remains externally pending; `UX.2A` does not modify the semantic model.
+
+---
+
 ## `DASH.13` — Hardening and release
 
 | Field | Value |
 |---|---|
 | **Purpose** | Close the program honestly: sweeps, budgets from measurements, scans, docs, captures, deployment validation, and a gate assessment that invents nothing. |
-| **Dependencies** | All non-optional increments |
+| **Dependencies** | All non-optional increments, **including a completed `UX.2`**. `DASH.13-01` sweeps a route × viewport matrix and `DASH.13-02` sets payload budgets from measurements; running either against surfaces `UX.2B`–`UX.2D` are still rebuilding would produce a sweep and a set of budgets that expire on the next merge. |
 | **Estimated complexity** | Large |
 | **Blocking gate** | None; explicitly may not alter Gate 2 without genuine evidence |
 | **Architecture references** | Program §21; ADR-0013 Consequences |

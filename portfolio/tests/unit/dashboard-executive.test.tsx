@@ -507,22 +507,28 @@ describe('the independent store is not penalized for a business it is not in', (
 
 describe('an order statistic is never combined upward', () => {
   it('declines a group median and names the scope that would resolve it', () => {
+    /*
+     * `UX.2A` moved median inventory age OFF the KPI rail and into the stock module, for
+     * the reason this test demonstrates: at group scope it is `not-derivable`, and a
+     * correct refusal is a poor use of the most prominent card on the console. The measure
+     * and its refusal are unchanged and are read here where they now live.
+     */
     const overview = overviewFor('')
-    const card = overview.cards.find((entry) => entry.id === 'medianInventoryAge')
-    expect(card?.metric.current.kind).toBe('not-derivable')
-    if (card?.metric.current.kind !== 'not-derivable') return
-    expect(card.metric.current.reason).toContain('order statistic')
-    expect(card.metric.current.reason).toContain('not the average of subgroup medians')
-    expect(card.metric.current.resolveBy).toBe('one store and one condition group')
+    const median = overview.inventory.medianAge
+    expect(median.current.kind).toBe('not-derivable')
+    if (median.current.kind !== 'not-derivable') return
+    expect(median.current.reason).toContain('order statistic')
+    expect(median.current.reason).toContain('not the average of subgroup medians')
+    expect(median.current.resolveBy).toBe('one store and one condition group')
   })
 
   it('resolves the exported median once the filter reaches the published grain', () => {
     const overview = overviewFor('store=GSA-001&condition=Used')
-    const card = overview.cards.find((entry) => entry.id === 'medianInventoryAge')
-    expect(card?.metric.current.kind).toBe('value')
-    if (card?.metric.current.kind !== 'value') return
+    const median = overview.inventory.medianAge
+    expect(median.current.kind).toBe('value')
+    if (median.current.kind !== 'value') return
     // The exported value for GSA-001 / Used at the 2025-12-31 snapshot.
-    expect(exactToString(card.metric.current.value)).toBe('37')
+    expect(exactToString(median.current.value)).toBe('37')
   })
 
   it('declines a group median response time, whose grain includes source and day', () => {
@@ -556,10 +562,9 @@ describe('an order statistic is never combined upward', () => {
       (entry) => entry.value.kind === 'value'
     )
     expect(medians.length).toBeGreaterThan(1)
-    const card = overview.cards.find((entry) => entry.id === 'medianInventoryAge')
-    // The group card is unresolved precisely because the mean of these exists and
+    // The group figure is unresolved precisely because the mean of these exists and
     // is not the answer.
-    expect(card?.metric.current.kind).toBe('not-derivable')
+    expect(overview.inventory.medianAge.current.kind).toBe('not-derivable')
   })
 })
 
@@ -639,8 +644,22 @@ describe('KPI methodology disclosure', () => {
         comparisonUnavailable={null}
       />
     )
-    const strip = screen.getAllByText('How is this calculated?')
-    expect(strip.length).toBe(overview.cards.length)
+    /*
+     * ONE SUMMARY LINE, EIGHT ENTRIES. `UX.2A` collapsed the rail's eight
+     * `How is this calculated?` disclosures into one, and the assertion below is the guard
+     * that the ANSWER did not collapse with the question: every catalogue field still
+     * renders, once per card, from the catalogue.
+     */
+    expect(
+      screen.getAllByText('How every figure on this rail is calculated')
+    ).toHaveLength(1)
+    expect(screen.queryByText('How is this calculated?')).toBeNull()
+    for (const card of overview.cards) {
+      expect(
+        screen.getAllByRole('heading', { level: 4, name: card.label }).length,
+        card.label
+      ).toBe(1)
+    }
 
     for (const term of [
       'Governed KPI',
@@ -747,14 +766,22 @@ describe('KPI methodology disclosure', () => {
 describe('the rendered KPI strip', () => {
   const overview = overviewFor('')
 
-  it('shows the seven governed cards the increment committed to, and no others', () => {
+  it('shows the eight governed cards the rail commits to, and no others', () => {
+    /*
+     * `UX.2A` §6. Three primary — volume, money, money per unit — then five that qualify
+     * them. Front PVR arrived because back PVR without it is the one arrangement that
+     * misleads; inventory investment took median inventory age's slot because the median
+     * is an order statistic that a group-scoped rail cannot resolve, and it is now in the
+     * stock module at the grain that does.
+     */
     expect(overview.cards.map((card) => card.kpiId)).toEqual([
       'KPI-SLS-001',
       'KPI-GRS-003',
       'KPI-GRS-006',
+      'KPI-GRS-004',
       'KPI-GRS-005',
       'KPI-FUN-006',
-      'KPI-INV-004',
+      'KPI-INV-002',
       'KPI-INV-006',
     ])
   })
@@ -811,7 +838,10 @@ describe('the rendered KPI strip', () => {
     expect(card?.metric.current.kind).toBe('value')
     if (card?.metric.current.kind !== 'value') return
     const exact = exactToString(card.metric.current.value)
-    const heading = screen.getByRole('heading', { name: 'Retail units' })
+    // Level 3 is the card's own heading; level 4 is the same label inside the rail's
+    // consolidated methodology disclosure, which carries a catalogue entry rather than a
+    // figure.
+    const heading = screen.getByRole('heading', { level: 3, name: 'Retail units' })
     const cardElement = heading.closest('li')
     expect(cardElement).not.toBeNull()
     expect(within(cardElement!).getByText(exact)).toBeTruthy()
@@ -1135,27 +1165,28 @@ describe('every KPI card carries its own shape', () => {
 
   it('leaves a month the selector declined as an unresolved sample, never as a zero', () => {
     /*
-     * The median card is the one that can decline: an order statistic above its
-     * published grain is `not-derivable`, and a microtrend that rendered it as zero
-     * would draw a lot whose cars are all brand new.
+     * A month a selector declines must stay declined. Whichever rail card produces an
+     * unresolved sample, the sample may be `not-derivable`, `null-ratio` or
+     * `not-applicable` — never `no-rows` dressed as a zero, which on the aged-percentage
+     * card would draw a lot whose cars are all brand new.
      */
-    const card = overviewFor('').cards.find((entry) => entry.id === 'medianInventoryAge')
-    expect(card).toBeDefined()
-    for (const sample of card?.microTrend ?? []) {
-      if (sample.result.kind === 'value') continue
-      expect(sample.result.kind).not.toBe('no-rows')
-      expect(['not-derivable', 'null-ratio', 'not-applicable']).toContain(
-        sample.result.kind
-      )
+    for (const card of overviewFor('').cards) {
+      for (const sample of card.microTrend) {
+        if (sample.result.kind === 'value') continue
+        expect(['not-derivable', 'null-ratio', 'not-applicable'], card.id).toContain(
+          sample.result.kind
+        )
+      }
     }
   })
 })
 
 describe('the store comparison', () => {
-  it('compares two governed measures and names both KPI identifiers', () => {
+  it('compares three governed measures and names every KPI identifier', () => {
     const overview = overviewFor('')
     expect(overview.comparisons.map((entry) => entry.id)).toEqual([
       'retailUnits',
+      'totalGross',
       'totalPvr',
     ])
     for (const comparison of overview.comparisons) {

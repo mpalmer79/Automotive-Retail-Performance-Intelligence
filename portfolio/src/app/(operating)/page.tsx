@@ -2,8 +2,13 @@ import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 
 import { Canvas } from '@/components/shell/field'
-import { ChangeDriverPanel, TopActions } from '@/components/dashboard/actions-sections'
+import {
+  AttentionSummary,
+  ChangeDriverBridge,
+  TopActions,
+} from '@/components/dashboard/actions-sections'
 import { ActiveFilters, ContextProvenance } from '@/components/dashboard/context-rail'
+import { GridRow, Module, Workspace } from '@/components/dashboard/exec-grid'
 import { FilterBar, type FilterOption } from '@/components/dashboard/filter-bar'
 import { InventoryRisk } from '@/components/dashboard/inventory-risk'
 import { KpiStrip } from '@/components/dashboard/kpi-strip'
@@ -26,8 +31,8 @@ import {
 import { StoreScoreboard } from '@/components/dashboard/store-scoreboard'
 import { TargetPaceSection } from '@/components/dashboard/target-context'
 import { TrustPanel } from '@/components/dashboard/trust-panel'
-import { Container, Section, SectionHeader } from '@/components/ui/layout'
-import { Heading, Text } from '@/components/ui/typography'
+import { Container, Section } from '@/components/ui/layout'
+import { Text } from '@/components/ui/typography'
 import {
   calendarMonths,
   dashboardConditionGroups,
@@ -41,7 +46,13 @@ import {
   buildExecutiveOverview,
   type ExecutiveOverview,
 } from '@/lib/dashboard/executive'
-import { topActions } from '@/lib/dashboard/actions'
+import { DOMAIN_LABELS, SEVERITY_LABELS } from '@/lib/dashboard/action-contract'
+import {
+  NO_FACETS,
+  buildActionQueue,
+  selectActions,
+  topActions,
+} from '@/lib/dashboard/actions'
 import { managementActions } from '@/lib/dashboard/actions-data'
 import { buildBridge, buildChangeDrivers } from '@/lib/dashboard/change-drivers'
 import { grossChangeBridgeRows } from '@/lib/dashboard/change-drivers-data'
@@ -57,67 +68,62 @@ export const metadata: Metadata = pageMetadata('home')
 const ROUTE = ROUTES.home.href
 
 /**
- * The ARPI Dealer Operations Command Center — the executive overview.
+ * The ARPI Executive Command Center.
  *
- * A SERVER COMPONENT, AND ALMOST ALL OF IT STAYS ONE
- * --------------------------------------------------
- * Every figure, table, funnel, chart and disclosure on this page is rendered on the
- * server from a build-packaged export. One client island exists — the filter
- * controls — and it receives five option lists and no data. That is what makes the
- * no-JavaScript guarantee real rather than aspirational: with scripting disabled
- * the KPI row and its microtrends, the operating trend, the store comparison, the
- * scoreboard, the inventory stack, the funnel, the reconciliation scale, the trust
- * panel and the synthetic disclosure are all present, and the filter form degrades to
- * a native GET submission because that is what it already is.
+ * A WORKSPACE, NOT A DOCUMENT WITH CHARTS IN IT
+ * ---------------------------------------------
+ * `UX.1` fixed the product architecture and left the visual product as five stacked
+ * full-width bands. Measured on the merge of `DASH.12`, at 1440 × 900: the first framed
+ * visualization began 1,389 px down, and the first viewport contained ZERO data-driven
+ * visual regions — a control band, a notice stack, a filter form and the top edge of the
+ * KPI cards. Every figure was present and the reader had to scroll to meet any of them.
+ * The numbers are in `docs/reviews/UX-2-BASELINE.md`.
  *
- * The nine visualisations added by the visual overhaul contribute **zero bytes of
- * client JavaScript**, which is the measured result recorded in `DESIGN_SYSTEM.md`
- * §6.0b and `PERFORMANCE.md` §9.8, and the reason there is still no chart library here.
+ * `UX.2A` rebuilds the surface as a twelve-column grid of MODULES: titled panels, several
+ * across, each holding one question. The region eyebrows, the region `h2`s and most of the
+ * region ledes are gone, because a module's own title says what it holds and
+ * `Group performance` above four modules that each say so was the page talking to itself.
  *
- * WHY IT READS `searchParams`
- * ---------------------------
- * Filter state lives in the URL and nowhere else, so this route is rendered per
- * request. There is no database behind that request: the data was packaged at
- * build time and the "query" is an array pass over it.
+ * THE FIRST VIEWPORT CONTRACT (`UX.2A` §4)
+ * ----------------------------------------
+ * At 1440 × 900, before any scrolling, a general manager meets: the control band; the
+ * eight-card KPI rail, whole; and three modules of data-driven geometry — the primary
+ * operating trend, the store comparison and the plan/pace bullets. Every module whose body
+ * is geometry carries `data-visual-region`, so the contract is asserted by MEASUREMENT
+ * rather than by eye: `tests/e2e/executive-workspace.spec.ts` reads their offsets against
+ * the viewport, and re-reads them under three different filter states so the layout cannot
+ * meet its contract by coincidence on the default query.
  *
- * FIVE REGIONS, NOT NINE SECTIONS
- * -------------------------------
- * The console once ran as nine independently-padded page sections, each opening with a
- * paragraph. That is the rhythm of a documentation route, and this is not one: a reader
- * arrived at roughly a thousand words of prose before the first comparison they could
- * make by eye. It then ran as seven rows, which was better and still one region per
- * component rather than one region per question. It now runs as FIVE, and each is a
- * question a general manager actually asks:
+ * WHAT DID NOT CHANGE, AND THIS IS THE LOAD-BEARING SENTENCE
+ * ----------------------------------------------------------
+ * No KPI definition, no denominator, no date basis, no structural-absence rule, no
+ * accounting semantic, no bridge arithmetic and no action rule. Every figure on this page
+ * comes from the same governed selector it came from before, through
+ * `buildExecutiveOverview()`, evaluated on the server. `UX.2A` is a presentation increment
+ * and the calculation authority is exactly where it was.
  *
- *   CONTROL      what am I looking at, and how do I change it
- *   PERFORMANCE  how did the group do, over what shape, and which store is different
- *   PLAN & STOCK where is the month against plan, and what is standing on the lot
- *   DEMAND       what produced the units, and what the gross was made of
- *   INTEGRITY    whether the ledger agrees, and everything the console can prove
+ * STILL A SERVER COMPONENT, AND STILL ONE CLIENT ISLAND
+ * ----------------------------------------------------
+ * Every figure, table, funnel, chart and disclosure is rendered on the server from a
+ * build-packaged export. One client island exists — the filter controls — and it receives
+ * five option lists and no data. The trend's metric switch, which `UX.2A` §7 asks for, is a
+ * radio group and CSS: it ships no JavaScript, it works with scripting off, and it cannot
+ * recalculate anything because there is no code in it. With scripting disabled the rail and
+ * its microtrends, the trend, the store comparison, the pace bullets, the age-and-capital
+ * stack, the funnel, the gross compositions, the attention queue, the change bridge, the
+ * reconciliation scale and every disclosure are all present, and the filter form degrades to
+ * the native GET submission it already is.
  *
- * Every figure that was on the page is still on the page. What moved is prose, and
- * where it moved to is stated at each call site. Three bodies of detail -- the ten-column
- * scoreboard, the trust evidence, and the list of what is not built -- are now behind
- * disclosures. `<details>` keeps them in the document, in the accessibility tree and in
- * a browser text search, so nothing was removed from the page; it stopped being the
- * first thing on it.
+ * WHY IT READS `searchParams` — filter state lives in the URL and nowhere else, so this
+ * route is rendered per request. There is no database behind that request: the data was
+ * packaged at build time and the "query" is an array pass over it.
  *
- * A REGION IS TINTED BY BUSINESS AREA, NEVER BY STATE
- * --------------------------------------------------
- * Each data region carries a restrained `zone-*` wash so the eye can find an area on a
- * long page. A wash encodes nothing: the stock region is amber whether the lot is clean
- * or ageing badly. No `zone-*` token is a `data-*` token, so a tint cannot be read as a
- * value.
- *
- * WHY THE DETAIL REGIONS STAY SUMMARIES
- * -------------------------------------
- * `DASH.9` built `/dashboard/inventory` and `/dashboard/accounting`, which own the
- * unit-level and account-level detail. The stock and integrity regions link to them
- * rather than reproduce them, and that is a payload decision as much as an editorial
- * one: the two detail routes read 356 kB and 360 kB of per-unit chunks that this route
- * is forbidden to open, and `dashboard-boundaries.test.ts` fails the build if it ever
- * does. A summary with a link costs one anchor; a summary that copies its destination
- * costs the destination's data.
+ * WHY THE DETAIL MODULES STAY SUMMARIES — `/dashboard/inventory` and
+ * `/dashboard/accounting` own the unit-level and account-level detail. The stock and
+ * integrity modules link to them rather than reproduce them, and that is a payload decision
+ * as much as an editorial one: the two detail routes read 356 kB and 360 kB of per-unit
+ * chunks that this route is forbidden to open, and `dashboard-boundaries.test.ts` fails the
+ * build if it ever does.
  */
 export default async function DashboardPage({
   searchParams,
@@ -140,12 +146,44 @@ export default async function DashboardPage({
   const comparisonLabel = overview.periodContext.comparison?.label ?? null
 
   /*
-   * The change-driver summary, built from the SAME bridge module `/dashboard/sales-gross`
-   * and `/dashboard/actions` use. One authority, three presentations: this one groups
-   * effects below the configured materiality into a labelled remainder, which the detail
-   * page deliberately does not, because a page devoted to the bridge should show all of it.
+   * The attention queue, scoped to the reader's STORE filter and to nothing else.
    *
-   * The store scope follows the reader's filter so the panel agrees with the KPI row above
+   * `UX.2A` §13 asks the Executive to carry the queue's shape as well as its first rows,
+   * and a count that ignored the store filter would disagree with every other figure on the
+   * screen. The store facet is the only one of the four that the console-wide filter
+   * grammar can express; severity, domain and review role are the Action Center's own
+   * parameters and stay there. `buildActionQueue` is the same function `/dashboard/actions`
+   * calls, over the same rows, so the two surfaces cannot report different counts.
+   */
+  const attentionFacets = { ...NO_FACETS, store: parsed.filters.store }
+  /*
+   * The queue is NARROWED FIRST and then tallied, rather than tallied and then narrowed.
+   *
+   * `buildActionQueue` deliberately computes its facet counts over the whole queue, because
+   * on `/dashboard/actions` a count that fell to zero the moment its own facet was selected
+   * would tell a reader nothing about what selecting a different value would show them.
+   * Here the question is the opposite one — how many prompts exist IN THE SCOPE the rest of
+   * the screen is showing — so the store filter is applied to the rows and the tally is
+   * taken over what is left. The first version passed the store facet into the tally
+   * instead, which left `total` counting the whole group under a label that said "in
+   * scope": correct arithmetic, wrong population, and wrong in the direction that flatters.
+   */
+  const attentionQueue = buildActionQueue(
+    selectActions(managementActions(), attentionFacets),
+    NO_FACETS,
+    Object.fromEntries(dashboardStores.map((store) => [store.id, store.shortName])),
+    DOMAIN_LABELS,
+    SEVERITY_LABELS
+  )
+
+  /*
+   * The change-driver decomposition, built from the SAME bridge module
+   * `/dashboard/sales-gross` and `/dashboard/actions` use. One authority, three
+   * presentations: this one groups effects below the configured materiality into a labelled
+   * remainder, which the detail page deliberately does not, because a page devoted to the
+   * bridge should show all of it.
+   *
+   * The store scope follows the reader's filter so the bridge agrees with the KPI rail above
    * it; the month is the export's as-of month, because a bridge compares one whole month
    * with the one before it and the filter's period may be neither.
    */
@@ -222,222 +260,178 @@ export default async function DashboardPage({
           </Container>
         </Section>
       ) : (
-        <>
-          {/* -------------------------------------------------------------- */}
-          {/* REGION 2 — Performance                                          */}
-          {/* -------------------------------------------------------------- */}
+        <Workspace>
+          {/* ---------------------------------------------------------------- */}
+          {/* ROW 1 — the rail                                                  */}
+          {/* ---------------------------------------------------------------- */}
           {/*
-            The KPI row, the trailing trend and the three stores were three regions,
-            each with its own heading, eyebrow and paragraph. They are one question --
-            how did the group do -- read at three grains: the figure, its shape, and
-            whose it is. Merging them removes two headings and two paragraphs and puts
-            the store comparison inside the same eyeline as the figure it decomposes.
-
-            The one surviving sentence is the COLOUR LEGEND, and it earns its place
-            precisely because this pass added colour. A reader who sees green on the
-            pace bar is owed the rule that produced it, once, before the figures.
+            The rail is a module like any other, and its title is the one region name that
+            survived: eight figures in two ranks need a name, and "Group result" is what a
+            manager calls them. The colour rule is one line, and it earns its place because
+            this surface uses colour — a reader who sees green on a pace bullet is owed the
+            rule that produced it, once, before the figures.
           */}
-          <ConsoleRow
-            id="group-performance"
-            zone="performance"
-            eyebrow="Group performance"
-            title="Result, shape and store contribution"
-            lede="No measure here has a governed favourable direction. Colour marks three things only: which side of zero a value falls, whether an explicit target was met, and how old a unit is."
-          >
-            <div className="flex flex-col gap-12">
+          <GridRow>
+            <Module
+              id="group-performance"
+              title="Group result"
+              zone="performance"
+              visual="kpi-rail"
+              note="Colour marks sign, a met target and unit age. Nothing else."
+              meta={overview.periodContext.period.label}
+            >
               <KpiStrip
                 cards={overview.cards}
                 comparisonLabel={comparisonLabel}
                 comparisonUnavailable={overview.periodContext.comparisonUnavailable}
               />
-              <div className="grid gap-x-10 gap-y-12 xl:grid-cols-12">
-                <div className="xl:col-span-7">
-                  <Pane title="Trend">
-                    <OperatingTrend trend={overview.trend} />
-                  </Pane>
-                </div>
-                <div className="xl:col-span-5">
-                  <Pane title="Stores">
-                    <StoreComparisonSection overview={overview} />
-                  </Pane>
-                </div>
-              </div>
-            </div>
-          </ConsoleRow>
+            </Module>
+          </GridRow>
 
-          {/* -------------------------------------------------------------- */}
-          {/* REGION 3 — Plan and stock                                       */}
-          {/* -------------------------------------------------------------- */}
+          {/* ---------------------------------------------------------------- */}
+          {/* ROW 2 — the three modules the viewport contract is measured on    */}
+          {/* ---------------------------------------------------------------- */}
           {/*
-            Pace is secondary to the figures above it, and deliberately so: the actual is
-            the business result and the plan is the management context beside it. Nothing
-            here is a forecast — the projected figure is arithmetic over the governed
-            selling-day calendar and carries that name wherever it appears.
-
-            The lede kept only the two claims a reader would MISREAD the figures without.
-            The aged threshold sentence left it because the age stack now prints the
-            threshold on itself, where the colour ramp turns on it.
+            THIS ROW IS WHY THE CONTRACT HOLDS. `UX.2A` §4 asks for at least three
+            data-driven visual regions inside 1440 × 900, and the rail above is separately
+            required, so the three have to be here. Trend, stores and pace are also the
+            right three on the merits: the shape, whose it is, and where the month sits
+            against what was committed. Everything below this row is a follow-up question.
           */}
-          <ConsoleRow
-            id="targets"
-            zone="plan"
-            eyebrow="Plan and stock"
-            title="Pace against plan, and what is on the lot"
-            lede="The projection is arithmetic over the selling-day calendar rather than a forecast, and the targets are synthetic operating goals rather than benchmarks."
-          >
-            <div className="grid gap-x-10 gap-y-12 xl:grid-cols-12">
-              <div className="xl:col-span-5">
-                <Pane title="Targets and pace">
-                  <TargetPaceSection context={overview.targets} />
-                </Pane>
-              </div>
-              {/* The stock area carries its own tint inside the plan region: two
-                  business areas share this row, and the boundary between them is
-                  otherwise carried only by a column gap that closes below `xl`. */}
-              <div className="rounded-2xl bg-zone-inventory p-5 xl:col-span-7">
-                <Pane title="Inventory">
-                  <InventoryRisk
-                    inventory={overview.inventory}
-                    comparisonLabel={comparisonLabel}
-                  />
-                </Pane>
-              </div>
-            </div>
-          </ConsoleRow>
+          <GridRow>
+            <Module
+              id="operating-trend"
+              title="Operating trend"
+              span={6}
+              zone="performance"
+              visual="trend"
+              meta="Trailing months, anchored on the selection"
+            >
+              <OperatingTrend trend={overview.trend} />
+            </Module>
+            <Module
+              id="store-comparison"
+              title="Stores"
+              span={3}
+              zone="performance"
+              visual="store-comparison"
+            >
+              <StoreComparisonSection overview={overview} />
+            </Module>
+            <Module
+              id="targets"
+              title="Plan and pace"
+              span={3}
+              zone="plan"
+              visual="pace"
+              note="The projection is selling-day arithmetic, not a forecast. Targets are synthetic operating goals, not benchmarks."
+            >
+              <TargetPaceSection context={overview.targets} headingLevel="h4" />
+            </Module>
+          </GridRow>
 
-          {/* -------------------------------------------------------------- */}
-          {/* REGION 4 — Demand and gross                                     */}
-          {/* -------------------------------------------------------------- */}
+          {/* ---------------------------------------------------------------- */}
+          {/* ROW 3 — stock, demand, gross                                      */}
+          {/* ---------------------------------------------------------------- */}
+          <GridRow>
+            <Module
+              id="inventory-exposure"
+              title="Inventory exposure"
+              span={5}
+              zone="inventory"
+              visual="inventory"
+            >
+              <InventoryRisk
+                inventory={overview.inventory}
+                comparisonLabel={comparisonLabel}
+              />
+            </Module>
+            <Module
+              id="composition"
+              title="Lead funnel"
+              span={4}
+              zone="funnel"
+              visual="funnel"
+            >
+              <LeadFunnel
+                funnel={overview.funnel}
+                comparisonLabel={comparisonLabel}
+                filters={parsed.filters}
+              />
+            </Module>
+            <Module
+              id="gross-composition"
+              title="Gross composition"
+              span={3}
+              zone="performance"
+              visual="gross"
+            >
+              <SalesAndGross salesGross={overview.salesGross} />
+            </Module>
+          </GridRow>
+
+          {/* ---------------------------------------------------------------- */}
+          {/* ROW 4 — attribution and attention                                 */}
+          {/* ---------------------------------------------------------------- */}
+          <GridRow>
+            <Module
+              id="change-drivers"
+              title="What the bridge attributes the change to"
+              span={7}
+              visual="change-drivers"
+            >
+              <ChangeDriverBridge
+                drivers={executiveDrivers}
+                authority={dashboardManifest.actions.changeDrivers.authority}
+              />
+            </Module>
+            <Module
+              id="management-attention"
+              title="Management attention"
+              span={5}
+              visual="attention"
+              note="Deterministic prompts from rules written down in advance. A reason to look, not a finding, a recommendation or a claim about cause."
+            >
+              <AttentionSummary view={attentionQueue} facets={attentionFacets} />
+              <TopActions
+                actions={topActions(attentionQueue.actions, 4)}
+                total={attentionQueue.total}
+                href={ROUTES.dashboardActions.href}
+              />
+            </Module>
+          </GridRow>
+
+          {/* ---------------------------------------------------------------- */}
+          {/* ROW 5 — integrity, and the detail on demand                       */}
+          {/* ---------------------------------------------------------------- */}
           {/*
-            No lede. The old one described what the two panes contain, which their own
-            headings already do, and then pointed at `/dashboard/leads-marketing` --
-            which is a link, and is now rendered as one.
+            `DASH.9` landed the reconciliation view model, its tests and the narrow data
+            door, and recorded in `accounting-data.ts` that the 43-row comparison set "IS
+            the Executive summary" for this route. This module is that summary. It reads the
+            comparison set and nothing else: the 360 kB of per-unit book values in
+            `accounting-chunks.ts` belong to `/dashboard/accounting`, and a reader who wants
+            them follows the drill-through rather than paying for them here.
           */}
-          <ConsoleRow
-            id="composition"
-            zone="funnel"
-            eyebrow="Demand and gross"
-            title="What produced the units, and what the gross was made of"
-          >
-            <div className="grid gap-x-10 gap-y-12 xl:grid-cols-12">
-              <div className="xl:col-span-7">
-                <Pane title="Sales and gross">
-                  <SalesAndGross
-                    salesGross={overview.salesGross}
-                    comparisonLabel={comparisonLabel}
-                  />
-                </Pane>
-              </div>
-              <div className="xl:col-span-5">
-                <Pane title="Lead funnel">
-                  <LeadFunnel
-                    funnel={overview.funnel}
-                    comparisonLabel={comparisonLabel}
-                    filters={parsed.filters}
-                  />
-                </Pane>
-              </div>
-            </div>
-          </ConsoleRow>
-
-          {/* -------------------------------------------------------------- */}
-          {/* REGION 4b — Management attention (`DASH.12`)                    */}
-          {/* -------------------------------------------------------------- */}
-          {/*
-            PLACED AFTER THE BUSINESS STATUS, DELIBERATELY. The Executive Overview's job
-            is to say how the group is performing; the action queue says what a manager
-            might look at next, which is a question that only makes sense once the first
-            one is answered. On a phone this is four regions down, and that is the right
-            distance: management attention follows core business status rather than
-            displacing it.
-
-            FIVE PROMPTS, AND THEY ARE THE FIRST FIVE. The queue already runs most severe
-            first under a total order, so this is a prefix of it — no second ranking, no
-            rotation, no sampling and no personalisation. "View all" lands on the same
-            rows in the same sequence.
-          */}
-          <ConsoleRow
-            id="management-attention"
-            eyebrow="Management attention"
-            title="What meets a review rule right now"
-            lede="Deterministic prompts from rules written down in advance. A reason to look, not a finding, a recommendation or a claim about cause."
-          >
-            <div className="grid gap-x-10 gap-y-12 xl:grid-cols-12">
-              <div className="xl:col-span-7">
-                <Pane title="Review queue">
-                  <TopActions
-                    actions={topActions(managementActions(), 5)}
-                    total={dashboardManifest.actions.rowCount}
-                    href={ROUTES.dashboardActions.href}
-                  />
-                </Pane>
-              </div>
-              <div className="xl:col-span-5">
-                <Pane title="Why total gross changed">
-                  <ChangeDriverPanel
-                    drivers={executiveDrivers}
-                    authority={dashboardManifest.actions.changeDrivers.authority}
-                  />
-                </Pane>
-              </div>
-            </div>
-          </ConsoleRow>
-        </>
-      )}
-
-      {/* ------------------------------------------------------------------ */}
-      {/* REGION 5 — Integrity and evidence                                   */}
-      {/* ------------------------------------------------------------------ */}
-      {/*
-        `DASH.9` landed the reconciliation view model, its tests and the narrow data
-        door, and recorded in `accounting-data.ts` that the 43-row comparison set "IS
-        the Executive summary" for this route. This region is that summary. It reads the
-        comparison set and nothing else: the 360 kB of per-unit book values in
-        `accounting-chunks.ts` belong to `/dashboard/accounting`, and a reader who wants
-        them follows the drill-through this section carries rather than paying for them
-        here. The figure comes from `buildAccountingSignal()`, which is the only function
-        in the console that resolves a comparison date, applies the store filter and
-        totals a signed variance. Neither this pass nor the one before it replaced,
-        re-implemented or reinterpreted any accounting semantics underneath it.
-
-        THE SCOREBOARD, THE EVIDENCE AND THE BACKLOG ARE NOW DISCLOSURES, and each one
-        is still in the document. `<details>` collapses a region visually while leaving
-        it in the accessibility tree's reading order and in a browser text search, which
-        is the same technique every chart on this page uses for its data table. The
-        scoreboard was ten columns of table opening a region; the trust panel and the
-        synthetic statement were a full region of provenance; the backlog was a region
-        headed "What this console does not do yet". All three are things a reader goes
-        looking for, and none of them is what an operating console opens with.
-      */}
-      {/*
-        THE REGION RENDERS WHEN THE FILTER MATCHES NOTHING, and the two disclosures that
-        can still answer keep answering. A reader whose filter returned no rows is the
-        reader most likely to be asking what the data is and how far it has been proved.
-        Only the two parts that need matching rows -- the reconciliation and the
-        scoreboard -- stand down.
-      */}
-      <ConsoleRow
-        id="accounting-integrity"
-        tone="evidence"
-        eyebrow="Integrity"
-        title="Whether the books agree"
-        lede={
-          overview.empty
-            ? undefined
-            : 'A variance between the stock schedule and the general ledger is a finding to investigate, not a broken record, and both sides are valid data.'
-        }
-      >
-        <div className="flex flex-col gap-8">
-          {overview.empty ? null : <ReconciliationSection signal={accountingSignal} />}
-
-          <div
-            className={
-              overview.empty
-                ? 'flex flex-col gap-3'
-                : 'flex flex-col gap-3 border-t border-line pt-8'
-            }
-          >
-            {overview.empty ? null : (
+          <GridRow>
+            <Module
+              id="accounting-integrity"
+              title="Whether the books agree"
+              span={7}
+              visual="accounting"
+              note="A variance between the stock schedule and the general ledger is a finding to investigate, not a broken record, and both sides are valid data."
+            >
+              <ReconciliationSection signal={accountingSignal} />
+            </Module>
+            <Module id="detail" title="Detail, on demand" span={5}>
+              {/*
+                THE SCOREBOARD AND THE BACKLOG ARE DISCLOSURES, and both are still in the
+                document. `<details>` collapses a body of detail visually while leaving it
+                in the accessibility tree's reading order and in a browser text search,
+                which is the same technique every chart on this page uses for its data
+                table. The scoreboard is ten columns of table; the backlog is the list of
+                what is not built. Both are things a reader goes looking for, and neither is
+                what an operating console opens with.
+              */}
               <ConsoleDisclosure
                 id="store-scoreboard"
                 summary="Every governed column, for every store in scope"
@@ -449,125 +443,55 @@ export default async function DashboardPage({
                   caption={`Store scoreboard for ${overview.periodContext.period.label}`}
                 />
               </ConsoleDisclosure>
-            )}
 
-            {/*
-              THE TRUST DISCLOSURE MOVED UP, NOT AWAY. It is the control band's
-              `methodology` panel now — same `<details>`, same `<TrustPanel>`, same
-              full synthetic statement, one screen higher and beside the filters
-              rather than at the foot of a five-region page. What is gone is the
-              SECOND copy: it was rendered here and in the page header's trust line,
-              and a disclosure stated twice on one document is not twice as honest.
-            */}
-            <ConsoleDisclosure id="not-built" summary="What is not built yet">
-              <PlannedSections sections={PLANNED_DASHBOARD_SECTIONS} />
-            </ConsoleDisclosure>
-          </div>
-        </div>
-      </ConsoleRow>
+              {/*
+                THE TRUST DISCLOSURE IS NOT HERE AND HAS NOT MOVED SINCE `UX.1`. It is the
+                control band's `methodology` panel — same `<details>`, same `<TrustPanel>`,
+                same full synthetic statement, beside the filters rather than at the foot of
+                the page. What is gone is the SECOND copy: a disclosure stated twice on one
+                document is not twice as honest.
+              */}
+              <ConsoleDisclosure id="not-built" summary="What is not built yet">
+                <PlannedSections sections={PLANNED_DASHBOARD_SECTIONS} />
+              </ConsoleDisclosure>
+            </Module>
+          </GridRow>
+        </Workspace>
+      )}
+
+      {/*
+        THE EVIDENCE MODULES RENDER WHEN THE FILTER MATCHES NOTHING, and the two disclosures
+        that can still answer keep answering. A reader whose filter returned no rows is the
+        reader most likely to be asking what the data is and how far it has been proved.
+        Only the parts that need matching rows stand down.
+      */}
+      {overview.empty ? (
+        <Workspace>
+          <GridRow>
+            <Module id="detail" title="Detail, on demand" span={12}>
+              <ConsoleDisclosure id="not-built" summary="What is not built yet">
+                <PlannedSections sections={PLANNED_DASHBOARD_SECTIONS} />
+              </ConsoleDisclosure>
+            </Module>
+          </GridRow>
+        </Workspace>
+      ) : null}
     </Canvas>
   )
 }
 
 /* -------------------------------------------------------------------------- */
-/* The console grid                                                            */
+/* Disclosures                                                                 */
 /* -------------------------------------------------------------------------- */
-
-/**
- * One row of the operating console.
- *
- * `rhythm="tight"` rather than `default`, and that is the whole change to the page's
- * vertical rhythm. The default section rhythm is fluid to a large ceiling because it was
- * designed for documentation routes, where a section break is a change of subject and
- * wants the air. On a console every row is the same subject looked at from a different
- * angle, and nine default-rhythm sections produced most of a viewport height of empty
- * space between the figures a reader was trying to compare.
- *
- * `layout="wide"` on the header puts the one-line lede beside the heading instead of
- * under it, which is the other half of the same saving.
- *
- * THE LEDE IS OPTIONAL, AND ON THIS PAGE IT IS USUALLY ABSENT.
- * It was required, and requiring it is what made the console read like a report: every
- * region opened with a paragraph explaining what the reader was about to look at, and a
- * reader who has to be told what a chart shows before seeing it is looking at the wrong
- * chart. A lede now survives in exactly one place -- where a figure would be MISREAD
- * without it, such as the project-default aged threshold or the cohort basis of the
- * funnel. Everything else moved into the disclosure at the foot of the page or onto the
- * drill-through that owns the subject.
- */
-function ConsoleRow({
-  id,
-  eyebrow,
-  title,
-  lede,
-  tone = 'canvas',
-  zone,
-  children,
-}: {
-  readonly id: string
-  readonly eyebrow: string
-  readonly title: string
-  /** Omit unless the figures below would be misread without it. */
-  readonly lede?: string
-  readonly tone?: 'canvas' | 'evidence'
-  /**
-   * A restrained domain tint behind the row.
-   *
-   * It helps the eye find a business area on a long page and encodes NO state: the
-   * inventory zone is amber whether the lot is clean or ageing badly. Every wash is a
-   * `zone-*` token, and none of them is a `data-*` token, so a tint can never be
-   * mistaken for a value.
-   */
-  readonly zone?: 'performance' | 'plan' | 'inventory' | 'funnel'
-  readonly children: ReactNode
-}) {
-  return (
-    <Section
-      rhythm="tight"
-      tone={tone}
-      id={id}
-      className={zone === undefined ? undefined : ZONE_WASH[zone]}
-    >
-      <Container width="full">
-        <SectionHeader eyebrow={eyebrow} title={title} lede={lede} layout="wide" />
-        <div className={lede === undefined ? 'pt-6' : 'pt-8'}>{children}</div>
-      </Container>
-    </Section>
-  )
-}
-
-/**
- * The domain tints, as class names rather than inline style.
- *
- * Written out in full because Tailwind scans source text for class names: a template
- * literal like `bg-zone-${zone}` produces no CSS at all, which is the kind of bug that
- * looks like a design decision.
- */
-const ZONE_WASH: Readonly<
-  Record<'performance' | 'plan' | 'inventory' | 'funnel', string>
-> = {
-  performance: 'bg-zone-performance',
-  plan: 'bg-zone-plan',
-  inventory: 'bg-zone-inventory',
-  funnel: 'bg-zone-funnel',
-}
 
 /**
  * A body of detail, collapsed but not removed.
  *
- * WHY `<details>` AND NOT A LINK OR A TAB. The scoreboard, the trust evidence and the
- * backlog stay in the document: in the accessibility tree's reading order, in a browser
- * text search, in the printed page and in the no-JavaScript rendering. Collapsing them
- * costs a reader one click and costs the page nothing, which is the trade a tab panel
- * and a second route both fail. It is the same technique every chart on this console
- * already uses for its data table.
+ * THE `id` STAYS ON THE ELEMENT. Both of these were page regions with anchors that in-page
+ * navigation and external links point at, and an anchor that stops resolving is a broken
+ * link even when the content is still on the page.
  *
- * THE `id` STAYS ON THE ELEMENT. Three of these were regions with anchors that the
- * in-page navigation and external links point at, and an anchor that stops resolving is
- * a broken link even when the content is still on the page.
- *
- * `note` is the one sentence a reader needs BEFORE deciding to open it -- the
- * scoreboard's not-applicable rule, the two independent trust lanes. Where opening is
+ * `note` is the one sentence a reader needs BEFORE deciding to open it. Where opening is
  * self-explanatory there is no note.
  */
 function ConsoleDisclosure({
@@ -586,10 +510,10 @@ function ConsoleDisclosure({
       id={id}
       className="rounded-xl border border-line-subtle bg-surface-sunken/40"
     >
-      <summary className="flex min-h-touch cursor-pointer items-center px-4 text-sm font-medium text-ink-secondary transition-colors duration-(--arpi-motion-fast) hover:text-accent">
+      <summary className="flex min-h-touch cursor-pointer items-center px-3 text-sm font-medium text-ink-secondary transition-colors duration-(--arpi-motion-fast) hover:text-accent">
         {summary}
       </summary>
-      <div className="flex flex-col gap-4 px-4 pb-5">
+      <div className="flex flex-col gap-4 px-3 pb-4">
         {note === undefined ? null : (
           <Text size="xs" tone="faint" className="max-w-prose">
             {note}
@@ -601,36 +525,6 @@ function ConsoleDisclosure({
   )
 }
 
-/**
- * A named pane inside a row.
- *
- * The heading is visually hidden. It exists so that two panes sharing a row are two
- * named regions in the accessibility tree rather than one undifferentiated run of
- * content — a screen-reader user moving by heading gets the same structure a sighted
- * reader gets from the column boundary, which is otherwise carried only by layout.
- */
-function Pane({
-  title,
-  children,
-}: {
-  readonly title: string
-  readonly children: ReactNode
-}) {
-  return (
-    <section aria-labelledby={`pane-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}>
-      <Heading
-        level={3}
-        size="h6"
-        id={`pane-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
-        className="sr-only"
-      >
-        {title}
-      </Heading>
-      {children}
-    </section>
-  )
-}
-
 /* -------------------------------------------------------------------------- */
 /* Control options                                                             */
 /* -------------------------------------------------------------------------- */
@@ -638,9 +532,9 @@ function Pane({
 /**
  * The condition control's options, read from the export's declared enumeration.
  *
- * The URL grammar accepts `Certified` because `INFORMATION_ARCHITECTURE.md` §6 makes
- * it part of the console-wide vocabulary. The warehouse models New and Used only, so
- * the control does not offer a third value that cannot match a row.
+ * The URL grammar accepts `Certified` because `INFORMATION_ARCHITECTURE.md` §6 makes it
+ * part of the console-wide vocabulary. The warehouse models New and Used only, so the
+ * control does not offer a third value that cannot match a row.
  */
 function conditionOptions(): readonly FilterOption[] {
   return dashboardConditionGroups.map((group) => ({ value: group, label: group }))
@@ -649,8 +543,8 @@ function conditionOptions(): readonly FilterOption[] {
 /**
  * The period presets, laid out on the server.
  *
- * Built here rather than inside the client island, so the island imports no
- * formatter and no calendar: these are eight strings that were known at build time.
+ * Built here rather than inside the client island, so the island imports no formatter and
+ * no calendar: these are eight strings that were known at build time.
  */
 function periodOptions(overview: ExecutiveOverview): readonly FilterOption[] {
   const options: FilterOption[] = [

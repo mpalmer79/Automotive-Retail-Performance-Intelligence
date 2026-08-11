@@ -395,6 +395,20 @@ export interface AgeBucket {
   readonly sortOrder: number
   readonly units: Exact
   readonly share: number
+  /**
+   * The capital standing in the bucket, and its share of the whole investment.
+   *
+   * `investment_in_bucket` is a published column of `inventory-aging`, at exactly the
+   * grain the unit count is published at, so this is the same selection over the same
+   * rows and involves no new grain, no allocation and no inference. `UX.2A` §10 permits
+   * a capital reading only where the current export supports it; it does, so the
+   * Executive shows it rather than leaving capital at the total level.
+   *
+   * `share` and `investmentShare` are geometry. The exact values are `units` and
+   * `investment`, and both are formatted by the governed formatters before display.
+   */
+  readonly investment: Exact
+  readonly investmentShare: number
 }
 
 export interface GovernedMedian {
@@ -449,13 +463,23 @@ export interface FunnelSummary {
 /* The operating trend                                                         */
 /* -------------------------------------------------------------------------- */
 
-/** One month of the operating trend. */
+/**
+ * One month of the operating trend.
+ *
+ * THREE MEASURES, EVALUATED THE SAME WAY. `totalPvr` joined the pair in `UX.2A` so the
+ * primary trend can be read on the measure the reader chooses. It is the SAME governed
+ * selector the rail's third card uses, evaluated over the month's own resolved period —
+ * not a quotient of the two series beside it, which would be a second implementation of a
+ * ratio the reporting layer already owns, and would silently differ wherever a month has
+ * gross and no retail units.
+ */
 export interface TrendBucket {
   readonly key: string
   readonly label: string
   readonly isCurrent: boolean
   readonly retailUnits: MetricResult
   readonly totalGross: MetricResult
+  readonly totalPvr: MetricResult
 }
 
 /* -------------------------------------------------------------------------- */
@@ -657,10 +681,17 @@ export function buildExecutiveOverview(
     compareMetric(selector, context, priorContext)
 
   const snapshotDate = snapshotDateFor(SELECTORS.activeInventory, context)
-  const snapshotNote =
-    snapshotDate === null
-      ? null
-      : `At the ${snapshotDate} inventory snapshot. A semi-additive measure read at one date, never summed across dates.`
+  /*
+   * THE SCOPE NOTE IS THE DATE, AND THE RULE IS IN THE METHODOLOGY.
+   *
+   * It read "At the 2025-12-31 inventory snapshot. A semi-additive measure read at one
+   * date, never summed across dates." — 17 words, on two KPI cards, in the densest 300
+   * vertical pixels of the console. What a reader needs ON THE CARD is that the figure is
+   * a position at a date, which the date says; the semi-additive RULE is in the rail's
+   * methodology disclosure, in the catalogue entry's own `Grain` and `Date basis` rows,
+   * and it is stated in full on the stock module that owns the measure.
+   */
+  const snapshotNote = snapshotDate === null ? null : `Position at ${snapshotDate}`
   const conditionNote =
     filters.condition === null
       ? null
@@ -682,6 +713,35 @@ export function buildExecutiveOverview(
       isCurrent: month.isCurrent,
     }))
 
+  /*
+   * THE EXECUTIVE KPI RAIL, AND WHY THESE EIGHT.
+   *
+   * Three primary — volume, money, and money per unit — are the sentence an operating
+   * meeting opens with, and they are the three a general manager reads before anything
+   * else on the screen. Five secondary qualify them: where the gross came from (front and
+   * back PVR), what produced the volume (lead-to-sale), and what the money is standing in
+   * (inventory investment, aged percentage).
+   *
+   * TWO CHANGES FROM THE SEVEN THIS REPLACED, BOTH DELIBERATE.
+   *
+   * FRONT PVR ARRIVED. Back PVR was on the rail without it, which is the one arrangement
+   * that misleads: a reader watching back PVR alone cannot tell a finance office that is
+   * performing from a front end that has collapsed underneath it, and those are opposite
+   * findings. The pair is the smallest honest unit.
+   *
+   * MEDIAN INVENTORY AGE LEFT, AND DID NOT LEAVE THE PAGE. It is an order statistic
+   * published per store per condition group per snapshot date, so on a group-scoped rail
+   * it usually renders "Not derivable at this scope" — a correct answer, in the most
+   * prominent position on the console, to a question nobody asked there. It is in the
+   * stock module, in the governed-median table, at the grain that actually resolves it.
+   * Inventory investment took the slot: it is exact at every scope, and it is the figure
+   * the aged percentage beside it is a percentage OF.
+   *
+   * Accounting variance is deliberately NOT a card. `UX.2A` §6 offers it and §15 requires
+   * the accounting reading to stay neutral: a signed variance in a rank of performance
+   * figures acquires a favourable direction by position alone, and this console has no
+   * governed one. It keeps its own module, with its direction in words.
+   */
   const cards: readonly KpiCard[] = [
     buildCard(
       'retailUnits',
@@ -696,6 +756,14 @@ export function buildExecutiveOverview(
       'totalPvr',
       'Total gross per retail unit',
       SELECTORS.totalPvr,
+      compare,
+      null,
+      sample
+    ),
+    buildCard(
+      'frontPvr',
+      'Front gross per retail unit',
+      SELECTORS.frontPvr,
       compare,
       null,
       sample
@@ -717,9 +785,9 @@ export function buildExecutiveOverview(
       sample
     ),
     buildCard(
-      'medianInventoryAge',
-      'Median inventory age',
-      SELECTORS.medianInventoryAge,
+      'inventoryInvestment',
+      'Inventory investment',
+      SELECTORS.inventoryInvestment,
       compare,
       joinNotes(snapshotNote, conditionNote),
       sample
@@ -785,6 +853,7 @@ export function buildExecutiveOverview(
       isCurrent: month.isCurrent,
       retailUnits: evaluate(SELECTORS.retailUnits, monthContext),
       totalGross: evaluate(SELECTORS.totalGross, monthContext),
+      totalPvr: evaluate(SELECTORS.totalPvr, monthContext),
     }
   })
 
@@ -867,12 +936,20 @@ function buildCard(
 /* -------------------------------------------------------------------------- */
 
 /**
- * The two measures three stores are compared on, side by side.
+ * The three measures the stores are compared on, side by side.
  *
- * Volume and gross per retail unit: one says how big a store is and the other says how
- * well it converts that size into money, and between them they separate "smaller" from
- * "worse" — which is the distinction a scoreboard row cannot make at a glance. Both are
- * governed KPIs with reconciliation keys. Everything else is the table below.
+ * Volume, money and money per unit. Volume says how big a store is; total gross says what
+ * that size was worth; gross per retail unit says how well the size converted — and
+ * between them they separate "smaller" from "worse", which is the distinction a scoreboard
+ * row cannot make at a glance. All three are governed KPIs with reconciliation keys, and
+ * all three are already on the rail above, so nothing new is computed to draw them.
+ *
+ * TOTAL GROSS JOINED THE PAIR IN `UX.2A`. Units and gross per unit alone leave a reader to
+ * multiply: a store with a third of the volume and the highest per-unit gross contributes
+ * an amount neither bar states. The middle bar states it.
+ *
+ * Everything else is the scoreboard, which is what a table is for. There is no composite,
+ * no ranking and no store score — see `StoreMeasureBars`.
  */
 const COMPARISON_MEASURES: readonly {
   readonly id: string
@@ -880,6 +957,7 @@ const COMPARISON_MEASURES: readonly {
   readonly selector: Selector
 }[] = [
   { id: 'retailUnits', label: 'Retail units', selector: SELECTORS.retailUnits },
+  { id: 'totalGross', label: 'Total gross', selector: SELECTORS.totalGross },
   { id: 'totalPvr', label: 'Total gross per retail unit', selector: SELECTORS.totalPvr },
 ]
 
@@ -961,26 +1039,49 @@ function buildInventory(
     dateColumn: 'snapshot_date',
     ...(snapshotDate === null ? {} : { start: snapshotDate, end: snapshotDate }),
   })
-  const bucketTotals = new Map<string, { sortOrder: number; units: Exact }>()
+  const bucketTotals = new Map<
+    string,
+    { sortOrder: number; units: Exact; investment: Exact }
+  >()
   for (const row of agingScoped) {
     const label = textCell(row, 'age_bucket')
     const sortOrder = Number(numericCell(row, 'age_bucket_sort_order') ?? 0)
     const units = cellToExact(numericCell(row, 'units_in_bucket')) ?? exactZero(0)
+    const investment =
+      cellToExact(numericCell(row, 'investment_in_bucket')) ?? exactZero(2)
     const existing = bucketTotals.get(label)
     bucketTotals.set(label, {
       sortOrder,
       units: existing === undefined ? units : addExact(existing.units, units),
+      investment:
+        existing === undefined ? investment : addExact(existing.investment, investment),
     })
   }
+  /*
+   * Both grand totals are summed as the exact values' own integer `units`, never through
+   * `exactToApproxNumber`. Every investment in the map carries the same scale, so a ratio
+   * of the scaled integers IS the ratio of the amounts — and the module stays outside the
+   * geometry allowlist `dashboard-boundaries.test.ts` maintains, which is a list worth not
+   * growing.
+   */
   let bucketGrandTotal = 0
-  for (const entry of bucketTotals.values()) bucketGrandTotal += Number(entry.units.units)
+  let investmentGrandTotal = 0
+  for (const entry of bucketTotals.values()) {
+    bucketGrandTotal += Number(entry.units.units)
+    investmentGrandTotal += Number(entry.investment.units)
+  }
   const buckets: AgeBucket[] = [...bucketTotals.entries()]
     .map(([label, entry]) => ({
       label,
       sortOrder: entry.sortOrder,
       units: entry.units,
-      // Geometry only. The unit counts beside each bar are the exact values.
+      investment: entry.investment,
+      // Geometry only. The counts and amounts beside each bar are the exact values.
       share: bucketGrandTotal === 0 ? 0 : Number(entry.units.units) / bucketGrandTotal,
+      investmentShare:
+        investmentGrandTotal === 0
+          ? 0
+          : Number(entry.investment.units) / investmentGrandTotal,
     }))
     .sort((a, b) => a.sortOrder - b.sortOrder)
 

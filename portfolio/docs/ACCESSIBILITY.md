@@ -698,3 +698,53 @@ facets filter because they are anchors. Asserted with `javaScriptEnabled: false`
 
 **Deterministic order.** The card order is a property of the data, so a screen-reader user and
 a sighted user traverse the same sequence, and it does not change between reads.
+
+## The Executive Command Center (`UX.2A`)
+
+The rebuild replaced five stacked bands with a grid of modules, added a presentation switch and
+turned three text blocks into charts. Each of those is a place accessibility is usually lost, so each
+is recorded with what was done instead.
+
+**A module is a `<section>` with a real `<h2>`.** The layout this replaced carried visually-hidden
+pane headings inside undifferentiated regions, which gave a keyboard user a list of names with no
+relationship to what a sighted reader could see. Eleven modules, eleven headings, each naming the
+question the module holds — so navigating by heading and looking at the screen produce the same map.
+
+**The metric switch is a radio group, not a tablist.** A `<fieldset>` with a `<legend>` is the group
+and the options are real `<input type="radio">`s, so arrow keys move and select, `Tab` enters and
+leaves the group once, and the selected state is announced by the platform rather than by an ARIA
+attribute the component would have to keep true. Three consequences worth naming:
+
+- **An unselected panel is `display: none`**, and therefore out of the accessibility tree. A screen
+  reader reads one chart, not three — which is why the panels are hidden rather than merely moved
+  off-screen.
+- **The inputs are `sr-only` and the focus ring is drawn on the label** through `peer-focus-visible`,
+  so the indicator appears where the eye is. `executive-workspace.spec.ts` reads the computed outline
+  width off the label of the focused control rather than judging it by eye.
+- **Selection is never colour alone.** Border, weight and ground all change with it.
+
+**It works with scripting disabled**, because nothing in it was ever script. The no-JS test selects a
+different measure and asserts the drawn series changed.
+
+**Every new chart keeps the values in the DOM.** `StoreMeasureBars` and `FunnelChart` follow the rule
+§6.0a of the design system sets: bars are `aria-hidden` decoration, every encoded value is printed as
+text beside its label, and a real `<table>` sits inside a `<details>` — present in the document, in
+reading order and in a browser text search whether or not it is opened. Visible tables on the route
+went from six to nine.
+
+**The age stack's second track did not double what is announced.** Units and capital are two
+distributions over one set of bands; the legend prints both figures per band, the table carries both
+columns, and the accessible summary is one sentence rather than two charts' worth.
+
+**Consolidating twenty methodology disclosures into two removed no content.** Every field
+`KPI_CATALOG.md` owns still renders, once per figure, through the same component, inside a native
+`<details>` — so it stays in reading order and in a text search. What changed is that the QUESTION is
+asked twice instead of twenty times.
+
+**A refusal keeps its reason.** Median response time and median inventory age are order statistics
+above their published grain at group scope. Both render the governed state words _and_ the sentence
+naming the scope that would resolve them; a state label alone reads as a broken console.
+
+**Measured.** axe reports 0 violations with no suppressed rules across the swept routes. No
+horizontal overflow at 320, 375, 390, 768, 1024, 1280, 1440 or 1920. Nothing in the increment
+animates, so there is nothing for the reduced-motion preference to suppress.

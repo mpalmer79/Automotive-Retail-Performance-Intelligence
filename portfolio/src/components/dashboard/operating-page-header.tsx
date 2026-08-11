@@ -131,10 +131,14 @@ export function OperatingPageHeader({
     <Section
       rhythm="none"
       tone="evidence"
-      className={cx('border-b border-line py-5', className)}
+      className={cx('border-b border-line py-4', className)}
     >
       <Container width="full">
-        <div className="flex flex-col gap-4">
+        {/* `gap-3`, not `gap-4`. The control band is four stacked things on every
+            operating route, and `UX.2A` §4 asks for it to be compact: sixteen pixels
+            between each of them cost fifty vertical pixels that the first viewport
+            contract needs for a chart. */}
+        <div className="flex flex-col gap-3">
           {backLink === undefined ? null : (
             <Link
               href={backLink.href}

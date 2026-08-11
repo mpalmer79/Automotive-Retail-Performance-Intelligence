@@ -37,6 +37,18 @@
  * would be the one part of this page that breaks when the rest does not. Both are
  * documented, with copyable examples, in the filter-grammar disclosure beside this
  * bar.
+ *
+ * WHICH CONTROLS CARRY A HINT, AFTER `UX.2A`
+ * ------------------------------------------
+ * Only the ones whose effect is NARROWER THAN THEIR LABEL. Condition and lead source are
+ * declared `partial` on most console routes — they scope some measure families and not
+ * others — and a reader who filters to `New` and watches total gross stay put needs that
+ * sentence or they will conclude the control is broken. Period, comparison and store are
+ * declared `applied`: they do exactly what their labels say, to every figure, and the
+ * three sentences that said so were 21 words of prose in the top 300 px of every operating
+ * route. `UX.2A` §4 asks the control band to be compact, and an explanation that explains
+ * nothing is the first place to get it — the active-filter chips below the bar still label
+ * every parameter's support level on every route.
  */
 import { useCallback, useState, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
@@ -135,8 +147,8 @@ export function FilterBar({
   conditions,
   leadSources,
   campaigns,
-  conditionHint = 'Selects inventory measures only.',
-  leadSourceHint = 'Selects funnel measures only.',
+  conditionHint = 'Inventory measures only.',
+  leadSourceHint = 'Funnel measures only.',
   campaignHint = 'Selects funnel and marketing measures.',
 }: FilterBarProps) {
   const router = useRouter()
@@ -166,15 +178,10 @@ export function FilterBar({
       action={action}
       onSubmit={onSubmit}
       aria-label="Dashboard filters"
-      className="flex flex-col gap-4"
+      className="flex flex-col gap-3"
     >
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <Field
-          id="filter-period"
-          label="Period"
-          active={draft.period.kind !== 'default'}
-          hint="Resolved against the exported calendar, not the clock."
-        >
+      <div className="grid grid-cols-2 gap-x-3 gap-y-3 sm:gap-x-4 md:grid-cols-3 xl:grid-cols-6">
+        <Field id="filter-period" label="Period" active={draft.period.kind !== 'default'}>
           <SelectControl
             id="filter-period"
             name="period"
@@ -200,7 +207,6 @@ export function FilterBar({
           id="filter-compare"
           label="Comparison"
           active={draft.compare !== DEFAULT_FILTERS.compare}
-          hint="Withheld when the window falls outside the export."
         >
           <SelectControl
             id="filter-compare"
@@ -219,12 +225,7 @@ export function FilterBar({
           </SelectControl>
         </Field>
 
-        <Field
-          id="filter-store"
-          label="Store"
-          active={draft.store.length > 0}
-          hint="Absent selects the whole group."
-        >
+        <Field id="filter-store" label="Store" active={draft.store.length > 0}>
           <SelectControl
             id="filter-store"
             name="store"
@@ -331,19 +332,25 @@ export function FilterBar({
             </SelectControl>
           </Field>
         )}
-      </div>
 
-      {/*
-        The submit control is the no-JavaScript path and stays visible with
-        scripting on, where it is simply redundant with the change handlers. A
-        control that disappears when a script loads is a control a reader cannot
-        rely on, and hiding it would also remove the only way to apply a change
-        made with the keyboard on a browser that does not fire `change` until blur.
-      */}
-      <div className="flex flex-wrap items-center gap-3">
-        <Button type="submit" variant="secondary" size="sm">
-          Apply filters
-        </Button>
+        {/*
+          The submit control is the no-JavaScript path and stays visible with
+          scripting on, where it is simply redundant with the change handlers. A
+          control that disappears when a script loads is a control a reader cannot
+          rely on, and hiding it would also remove the only way to apply a change
+          made with the keyboard on a browser that does not fire `change` until blur.
+
+          IT IS A GRID CELL NOW, not a row of its own. `UX.2A` §4 asks the control band to
+          be compact, and a full-width row holding one small button cost 48 vertical pixels
+          on every operating route. `self-end` lands it on the baseline of the selects
+          beside it rather than under their hints, so the band reads as one row of controls
+          with its action at the end.
+        */}
+        <div className="flex items-end pb-0.5">
+          <Button type="submit" variant="secondary" size="sm">
+            Apply filters
+          </Button>
+        </div>
       </div>
     </form>
   )

@@ -185,11 +185,19 @@ export function MetricValue({
   className,
 }: MetricValueProps) {
   const formatted = formatMetric(selector, result)
+  /*
+   * `leading-none` ON THE TWO DISPLAY SIZES, AND IT IS A LAYOUT FIX WITH A MEASUREMENT
+   * BEHIND IT. The display face carries a generous line box built for headings, so a
+   * `text-3xl` figure occupied 68 px of vertical space to draw 30 px of digits. On a
+   * documentation route that is correct typography; on a KPI rail it is 38 px of nothing,
+   * eight times over, in the part of the page the first-viewport contract is fighting for.
+   * A single-line figure has nothing to lead against.
+   */
   const sizeClass =
     size === 'lead'
-      ? 'font-display text-3xl font-semibold tracking-tight'
+      ? 'font-display text-3xl leading-none font-semibold tracking-tight'
       : size === 'sub'
-        ? 'font-display text-xl font-semibold tracking-tight'
+        ? 'font-display text-xl leading-none font-semibold tracking-tight'
         : size === 'cell'
           ? 'text-sm font-medium'
           : 'text-sm'
@@ -320,47 +328,68 @@ export function KpiMethodology({
   definition: KpiEntry | undefined
   defaultOpen?: boolean
 }) {
+  return (
+    <Disclosure label="How is this calculated?" defaultOpen={defaultOpen}>
+      <KpiDefinitionList selector={selector} definition={definition} />
+    </Disclosure>
+  )
+}
+
+/**
+ * The catalogue entry itself, with no disclosure around it.
+ *
+ * SPLIT OUT IN `UX.2A`, AND THE SPLIT IS THE WHOLE POINT. The Executive KPI rail collapsed
+ * eight `How is this calculated?` summary lines into one, which is a change to how many
+ * times the QUESTION is asked and not to how much of the ANSWER is available: the rail's
+ * single disclosure renders this component eight times, with every field, every link and
+ * every caution intact. A surface that shows one figure — a response card, a scoreboard
+ * cell — still renders `KpiMethodology` and gets its own summary, because there is nothing
+ * to consolidate it with.
+ */
+export function KpiDefinitionList({
+  selector,
+  definition,
+}: {
+  selector: Selector
+  definition: KpiEntry | undefined
+}) {
   if (definition === undefined) {
     return (
-      <Disclosure label="How is this calculated?" defaultOpen={defaultOpen}>
-        <Text size="sm" tone="muted">
-          This figure is an exported column rather than a governed KPI.{' '}
-          {selector.derivation}
-        </Text>
-      </Disclosure>
+      <Text size="sm" tone="muted">
+        This figure is an exported column rather than a governed KPI.{' '}
+        {selector.derivation}
+      </Text>
     )
   }
 
   return (
-    <Disclosure label="How is this calculated?" defaultOpen={defaultOpen}>
-      <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-[minmax(9rem,auto)_1fr]">
-        <Row term="Governed KPI">
-          <a
-            href={kpiDefinitionHref(definition.id)}
-            className="font-mono text-xs underline decoration-dotted underline-offset-4 hover:text-accent"
-          >
-            {definition.id}
-          </a>{' '}
-          <span className="text-ink-muted">{definition.name}</span>
-        </Row>
-        <Row term="Plain English">{definition.purpose}</Row>
-        <Row term="Inclusions and exclusions">{definition.definition}</Row>
-        <Row term="Formula">
-          <code className="font-mono text-xs">{definition.formula}</code>
-        </Row>
-        <Row term="Numerator">{definition.numerator}</Row>
-        <Row term="Denominator">{definition.denominator}</Row>
-        <Row term="Grain">{definition.grain}</Row>
-        <Row term="Date basis">{definition.dateBasis}</Row>
-        <Row term="Unit">{definition.unit}</Row>
-        <Row term="Null behaviour">{definition.nullBehaviour}</Row>
-        <Row term="Source reporting view">
-          <code className="font-mono text-xs">{definition.sourceView}</code>
-        </Row>
-        <Row term="Known limitations">{definition.caution}</Row>
-        <Row term="What this page selected">{selector.derivation}</Row>
-      </dl>
-    </Disclosure>
+    <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-[minmax(9rem,auto)_1fr]">
+      <Row term="Governed KPI">
+        <a
+          href={kpiDefinitionHref(definition.id)}
+          className="font-mono text-xs underline decoration-dotted underline-offset-4 hover:text-accent"
+        >
+          {definition.id}
+        </a>{' '}
+        <span className="text-ink-muted">{definition.name}</span>
+      </Row>
+      <Row term="Plain English">{definition.purpose}</Row>
+      <Row term="Inclusions and exclusions">{definition.definition}</Row>
+      <Row term="Formula">
+        <code className="font-mono text-xs">{definition.formula}</code>
+      </Row>
+      <Row term="Numerator">{definition.numerator}</Row>
+      <Row term="Denominator">{definition.denominator}</Row>
+      <Row term="Grain">{definition.grain}</Row>
+      <Row term="Date basis">{definition.dateBasis}</Row>
+      <Row term="Unit">{definition.unit}</Row>
+      <Row term="Null behaviour">{definition.nullBehaviour}</Row>
+      <Row term="Source reporting view">
+        <code className="font-mono text-xs">{definition.sourceView}</code>
+      </Row>
+      <Row term="Known limitations">{definition.caution}</Row>
+      <Row term="What this page selected">{selector.derivation}</Row>
+    </dl>
   )
 }
 
