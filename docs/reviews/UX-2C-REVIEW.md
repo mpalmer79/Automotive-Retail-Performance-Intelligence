@@ -423,7 +423,7 @@ not change.
 | `uv run ruff format --check .` | 319 files already formatted |
 | `uv run ruff check .` | All checks passed |
 | `uv run mypy src tests` | no issues in 172 source files |
-| `uv run pytest -q -m "not integration" --cov=arpi` | green |
+| `uv run pytest -q -m "not integration" --cov=arpi` | **3,667 passed**, 1,229 deselected, 88.94% coverage |
 | `check_naming.py` | OK — 2,427 files read |
 | `check_docs_links.py` | OK |
 | `check_reference_data.py` | every rule passed |
@@ -431,12 +431,12 @@ not change.
 | `check_project_capabilities.py` | OK |
 | `generate_project_capabilities.py --check` | OK |
 | `check_powerbi_model.py` | OK — 49 measures, 9,452 assertions |
-| `simulate_semantic_model.py --check` | SIMULATED SEMANTIC-MODEL VALIDATION passed |
+| `simulate_semantic_model.py --check` | SIMULATED SEMANTIC-MODEL VALIDATION — 1,271 checks, 49/49 measures, 0 findings |
 | `check_simulation_labels.py` | passed |
 | `npm run format:check` / `lint` / `typecheck` | clean |
 | `npm run manifest:check` / `inventory:check` / `dashboard:check` | up to date |
 | `npx vitest run` | **1,455 passed**, 36 files |
-| `npx playwright test --project=chromium` | full suite green |
+| `npx playwright test --project=chromium` | **903 passed**, 0 failed, 0 flaky |
 
 **Integration tests were not run locally and no claim is made that they were.** They need a
 populated PostgreSQL database; GitHub CI exercises its canonical integration lane. No data-layer
