@@ -843,16 +843,26 @@ test.describe('KPI methodology', () => {
     }
   })
 
-  test('names the unbuilt sections as text, with the increment that delivers each', async ({
+  test('reports the backlog honestly, whether or not anything is outstanding', async ({
     page,
   }) => {
+    /*
+     * THIS ASSERTION CHANGED WITH `DASH.12`, AND THAT IS THE MECHANISM WORKING.
+     *
+     * It read "names the unbuilt sections as text, with the increment that delivers each"
+     * and pinned `Management actions` and `DASH.12`, because that was the one section the
+     * console had not built. `DASH.12` built it, so the planned list is empty and the
+     * region reports completion instead of listing an entry.
+     *
+     * What is guarded is unchanged and is the part that always mattered: the region exists,
+     * it is honest about what is outstanding, and it invents no action, alert or
+     * recommendation. An entry that outlived its increment fails in `site.test.ts`.
+     */
     await gotoRendered(page, ROUTE)
-    expect(await mainTextContent(page)).toContain('Management actions')
     await openDetailRegions(page, ['not-built'])
     const text = await mainText(page)
     expect(text).toContain('What is not built yet')
-    expect(text).toContain('DASH.12')
-    expect(text).toContain('Management actions')
+    expect(text).toContain('Nothing is outstanding')
     // Named, not mocked: no invented action, alert or recommendation.
     expect(text).not.toMatch(/\b\d+ actions? require\b/i)
     expect(text).not.toMatch(/\brecommended action\b/i)
@@ -1148,12 +1158,12 @@ test.describe('the console reads as an instrument rather than as a report', () =
       'Franchise New and Used',
       'Every warehouse record in this project is synthetic',
       'Gate 2 remains CLOSED',
-      // The one console section that is still unbuilt, and the increment that owns it.
-      // This read `Employee performance` and `DASH.11` until that route shipped: an entry
-      // leaves the planned list in the same commit its destination becomes reachable, so
-      // this assertion moving is the mechanism working rather than a guard being relaxed.
-      'Management actions',
-      'DASH.12',
+      // The backlog region's own words. This read `Employee performance` and `DASH.11`,
+      // then `Management actions` and `DASH.12`: an entry leaves the planned list in the
+      // same commit its destination becomes reachable, and `DASH.12` was the last one. The
+      // region now reports completion, and its text is served whether the region is shut or
+      // open, which is the property this test exists for.
+      'Nothing is outstanding',
     ]) {
       expect(served, claim).toContain(claim)
     }

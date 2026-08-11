@@ -125,3 +125,42 @@ fails if they ever diverge.
 The contract is described in full in
 [`../data/reference/README.md`](../data/reference/README.md) and decided in
 [ADR-0011](../docs/architecture-decisions/ADR-0011-sanitized-public-inventory-reference-data.md).
+
+---
+
+## `dashboard/action_rules.yaml` — the `DASH.12` review policy
+
+The permanent register of management-action rules, and the display policy for the gross-change
+bridge. It is **policy**, held apart from the data on purpose: SQL publishes what is true, and this
+file says which of those truths deserve a manager's attention.
+
+**It is an INPUT to published data.** Editing a review threshold changes
+`data/dashboard/management-actions.json` even though no business fact moved, so
+`scripts/export_dashboard_dataset.py --check` re-derives the whole queue from this file and the
+committed datasets and fails on any difference. The export manifest records this file's SHA-256, so
+a committed queue can always be traced to the ruleset that produced it.
+
+**It contains no executable code.** Predicates are strings in a deliberately small grammar —
+comparisons, `and`/`or`/`not`, `is null`, a column reference and a `@threshold` reference — parsed by
+`arpi/dashboard/action_predicate.py`. There is no `eval`, no function call production, no attribute
+access and no indexing, and an expression naming a column the rule's dataset does not export is
+refused before any row is read.
+
+**Three rules about thresholds, enforced by the loader:**
+
+1. A threshold the warehouse already governs is **not restated**. `ACT-INV-001` does not say
+   "60 days"; it reads the governed boolean and discloses the row's own `aged_threshold_days`.
+2. A minimum-sample floor comes from `arpi.constants.MINIMUM_SAMPLE_ELIGIBLE_DEALS`, the same
+   authority `fn_minimum_sample_floor` publishes. The file may only reference it, never restate it.
+3. A threshold this file owns must be **labelled a project default**. The loader refuses one that is
+   not, because nothing here is an industry benchmark, an OEM standard or a compliance requirement.
+
+**A disabled rule is never deleted and never renumbered.** Eighteen of the thirty permanent
+identifiers are switched off, each carrying the audited reason the project cannot evaluate it
+honestly — the evidence is absent, it exists only at a different grain, or the condition is one an
+earlier data-quality gate already prevents. "We looked and could not do this honestly" is a more
+useful record than an absence.
+
+The schema is specified in
+[`../docs/dashboard/ACTION_ENGINE_SPEC.md`](../docs/dashboard/ACTION_ENGINE_SPEC.md) and the register
+audit is in [`../docs/reviews/DASH-12-REVIEW.md`](../docs/reviews/DASH-12-REVIEW.md).

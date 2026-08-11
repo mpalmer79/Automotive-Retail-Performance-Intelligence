@@ -665,3 +665,36 @@ its content: _Granite Auto Group is fictional. Operating figures are synthetic._
 is absent from the visible copy, and that the provenance is present once the
 disclosures are opened. A guard that only checked the first half could be satisfied
 by deleting the evidence.
+
+---
+
+## The Management Actions route (`DASH.12`)
+
+**Two axe findings, both mine, both fixed rather than suppressed.** They are recorded because
+each is a mistake worth not repeating, and because "axe clean" means more when the failures it
+caught are visible.
+
+**`aria-pressed` on a facet — critical.** The facets are LINKS on purpose: each navigates to a
+URL a reader can copy, share and reach with Back. `aria-pressed` belongs to buttons, and axe
+reports it on an anchor as a critical `aria-allowed-attr` violation. The right attribute for
+"this is the one currently in effect" on a link is **`aria-current`**, which is what the
+operating rail already uses to mark the current route.
+
+**An `opacity-70` on a facet count — serious.** `ink-muted` is a measured token, correct on
+its own ground. Blending it to 70% over the card produced `#7d878e` at **3.49:1** against
+`#f7fafc` at 12px, below the 4.5:1 floor — re-opening precisely the failure `tokens.css`
+documents correcting. The opacity is gone; the token was never the problem.
+
+**Severity is never colour alone.** Every action carries its severity as a word beside the
+badge, and the change-driver panel carries the sign in the number as well as in the hue.
+
+**Structure.** Semantic headings; the queue is a list of `<article>` cards; evidence is a
+definition list; each facet group is a labelled list inside a `<nav aria-label="Filter the
+review queue">`; secondary evidence is a native `<details>`.
+
+**No JavaScript required.** The queue, its evidence, its thresholds, the review text, the
+drill-throughs, the change drivers and the methodology all render on the server, and the
+facets filter because they are anchors. Asserted with `javaScriptEnabled: false`.
+
+**Deterministic order.** The card order is a property of the data, so a screen-reader user and
+a sighted user traverse the same sequence, and it does not change between reads.

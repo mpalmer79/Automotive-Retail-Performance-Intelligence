@@ -55,6 +55,7 @@ from pathlib import Path
 from typing import Any, Final
 
 from arpi.constants import FICTIONAL_DEALER_GROUP, SYNTHETIC_DATA_NOTICE
+from arpi.dashboard import action_export, actions
 from arpi.dashboard import contract as spec
 from arpi.dashboard.serialization import (
     canonical_json_bytes,
@@ -83,6 +84,12 @@ __all__ = [
 ]
 
 _LOGGER = get_logger(__name__)
+
+#: The repository root, inferred from this module's location.
+#:
+#: The action rule file lives in the repository, not in the export directory, so a caller
+#: that only knows where the artifacts go can still be told where the policy comes from.
+_PACKAGE_REPO_ROOT: Final = Path(__file__).resolve().parents[3]
 
 #: Where the committed export lives, relative to the repository root.
 DEFAULT_EXPORT_DIR: Final = Path("data") / "dashboard"
@@ -196,8 +203,22 @@ def known_limitations() -> tuple[str, ...]:
         f"{FICTIONAL_DEALER_GROUP} is a fictional dealer group. Every store, employee role and "
         "transaction in this export is machine generated.",
         "The export carries the governed KPIs implemented to date. Lead-source quality, "
-        "campaign cost, employee performance and a management action queue are not modelled "
-        "yet and no dataset here stands in for them.",
+        "campaign cost and employee performance are modelled; no dataset here stands in for "
+        "anything that is not.",
+        "management-actions is a DERIVED artifact. It reads no view: it is produced by "
+        "evaluating config/dashboard/action_rules.yaml against the datasets in this same "
+        "export, so every action can be recomputed by hand from files in the repository. Its "
+        "rows are review prompts, not findings, recommendations of business action, or "
+        "evidence of real-world conditions, and the queue is stateless -- regenerated with "
+        "each dataset version, holding no history, acknowledgement, assignment or "
+        "completion. No language model, learned model or scoring heuristic takes any part in "
+        "producing it, and every threshold the rule file owns is a project default for a "
+        "fictional dealer group.",
+        "The action register retains every proposed rule identifier, including those that do "
+        "not fire. A disabled identifier carries the audited reason it is disabled: the "
+        "project holds no such evidence, the evidence exists at a different grain, or the "
+        "condition cannot survive into a valid export and belongs to the validation layer "
+        "rather than to a management queue.",
         "The GL control accounts are SYNTHETIC and there are three of them. They are a "
         "selected inventory control catalogue, not a chart of accounts, and no real dealer "
         "group's account numbering was consulted. ARPI models no journal entry, journal "
@@ -849,6 +870,7 @@ def _build_manifest(
     dataset_version: int,
     source_commit: str,
     as_of_date: str,
+    action_block: dict[str, Any],
 ) -> dict[str, Any]:
     """Assemble the manifest.
 
@@ -859,6 +881,8 @@ def _build_manifest(
         dataset_version: The monotonic dataset version.
         source_commit: The git sha the export was taken at.
         as_of_date: The latest fact date in the export.
+        action_block: The `DASH.12` management-action block, including the hash of the rule
+            file that produced the queue.
 
     Returns:
         The manifest structure, ready for canonical serialisation.
@@ -909,6 +933,10 @@ def _build_manifest(
             f"{spec.ALLOWED_SOURCE_SCHEMA}.{view}" for view in spec.SOURCE_VIEW_ALLOWLIST
         ],
         "datasets": datasets,
+        # A DERIVED artifact, held apart from `datasets` on purpose: everything in that
+        # list is read from an allowlisted reporting view, and the action queue is read from
+        # the list itself. Mixing them would make "every dataset has a source view" false.
+        action_export.ACTIONS_MANIFEST_KEY: action_block,
         "reconciliation": {
             "status": "passed",
             "method": (
@@ -975,6 +1003,7 @@ def generate_export(
     repo_root: Path,
     generated_at: str | None = None,
     write: bool = True,
+    rules_root: Path | None = None,
 ) -> ExportResult:
     """Export every contracted dataset and its manifest.
 
@@ -986,6 +1015,9 @@ def generate_export(
         generated_at: Override the generation timestamp. Supplied by tests so a double
             export is byte-identical; production leaves it unset.
         write: When false, everything is computed and validated but nothing is written.
+        rules_root: Repository root for the action rule file. Defaults to ``repo_root``,
+            and is named separately only because one caller passes the export directory as
+            ``repo_root`` to look up a commit.
 
     Returns:
         The export result, including the manifest and every file's size.
@@ -1002,22 +1034,39 @@ def generate_export(
 
     result = ExportResult()
     previous = _read_committed_manifest(output_dir)
+    dataset_version = _next_dataset_version(previous, outputs)
+
+    # The action stage reads the records this export is about to publish -- never the
+    # database, and never anything the export does not carry.
+    stage = action_export.build_action_stage(
+        {output.entry.name: output.records for output in outputs},
+        as_of_date=as_of_date,
+        dataset_version=dataset_version,
+        repo_root=rules_root or repo_root,
+    )
+
     manifest = _build_manifest(
         outputs=outputs,
         run=run,
         generated_at=generated_at or datetime.now(UTC).replace(microsecond=0).isoformat(),
-        dataset_version=_next_dataset_version(previous, outputs),
+        dataset_version=dataset_version,
         source_commit=_git_commit(repo_root),
         as_of_date=as_of_date,
+        action_block=stage.manifest_block,
     )
     manifest_bytes = canonical_json_bytes(manifest)
 
     for output in outputs:
         result.files[output.entry.file_name] = len(output.payload)
+    result.files[actions.ACTIONS_FILE_NAME] = len(stage.payload)
     result.files[spec.MANIFEST_FILE_NAME] = len(manifest_bytes)
     result.manifest = manifest
     result.problems.extend(_size_problems(result.files))
-    result.problems.extend(_secret_problems(outputs, manifest_bytes))
+    result.problems.extend(
+        _secret_problems(
+            outputs, manifest_bytes, extra=((actions.ACTIONS_FILE_NAME, stage.payload),)
+        )
+    )
 
     if result.problems or not write:
         return result
@@ -1028,6 +1077,8 @@ def generate_export(
     for output in outputs:
         _write_bytes(output_dir / output.entry.file_name, output.payload)
         result.wrote.append(output.entry.file_name)
+    _write_bytes(output_dir / actions.ACTIONS_FILE_NAME, stage.payload)
+    result.wrote.append(actions.ACTIONS_FILE_NAME)
     _remove_unexpected_files(output_dir, result)
     return result
 
@@ -1187,7 +1238,12 @@ _FORBIDDEN_IN_OUTPUT: Final[tuple[tuple[str, str], ...]] = (
 )
 
 
-def _secret_problems(outputs: Sequence[DatasetOutput], manifest_bytes: bytes) -> list[str]:
+def _secret_problems(
+    outputs: Sequence[DatasetOutput],
+    manifest_bytes: bytes,
+    *,
+    extra: Sequence[tuple[str, bytes]] = (),
+) -> list[str]:
     """Return a problem for any connection detail or internal path in the output.
 
     ``raw.``/``staging.``/``warehouse.``/``audit.`` are included because the generated
@@ -1198,6 +1254,8 @@ def _secret_problems(outputs: Sequence[DatasetOutput], manifest_bytes: bytes) ->
     Args:
         outputs: The serialised datasets.
         manifest_bytes: The manifest's exact bytes.
+        extra: Any further named payloads the export writes, such as the derived action
+            queue, so a derived artifact is scanned exactly as a dataset is.
 
     Returns:
         Problem messages.
@@ -1205,6 +1263,7 @@ def _secret_problems(outputs: Sequence[DatasetOutput], manifest_bytes: bytes) ->
     problems: list[str] = []
     payloads = [(output.entry.file_name, output.payload) for output in outputs]
     payloads.append((spec.MANIFEST_FILE_NAME, manifest_bytes))
+    payloads.extend(extra)
     for name, payload in payloads:
         text = payload.decode("utf-8")
         for needle, what in _FORBIDDEN_IN_OUTPUT:
@@ -1227,6 +1286,7 @@ def check_export(
     *,
     output_dir: Path,
     connection: Any | None = None,
+    repo_root: Path | None = None,
 ) -> ExportResult:
     """Verify the committed export without needing a database.
 
@@ -1244,6 +1304,8 @@ def check_export(
     Args:
         output_dir: The export directory to verify.
         connection: An open connection, to additionally byte-compare against a fresh export.
+        repo_root: Repository root, for the action rule file. Defaults to the root this
+            package was installed from.
 
     Returns:
         The result. ``problems`` is empty exactly when the tree is current.
@@ -1272,14 +1334,28 @@ def check_export(
     result.problems.extend(_check_manifest_envelope(manifest))
     result.problems.extend(_check_file_set(output_dir, manifest))
 
+    root = repo_root or _PACKAGE_REPO_ROOT
+    actions_path = output_dir / actions.ACTIONS_FILE_NAME
+    if actions_path.is_file():
+        result.files[actions.ACTIONS_FILE_NAME] = actions_path.stat().st_size
+
     outputs = _reload_outputs(output_dir, manifest, result)
     if outputs is not None:
         result.problems.extend(_check_totals(manifest, outputs))
-        result.problems.extend(_secret_problems(outputs, manifest_bytes))
+        extra: tuple[tuple[str, bytes], ...] = (
+            ((actions.ACTIONS_FILE_NAME, actions_path.read_bytes()),)
+            if actions_path.is_file()
+            else ()
+        )
+        result.problems.extend(_secret_problems(outputs, manifest_bytes, extra=extra))
+    # The rule file is an INPUT to the published data. Re-deriving the queue here is what
+    # makes a threshold edit stale the export instead of silently leaving an old queue
+    # committed against a rule nothing now produces.
+    result.problems.extend(action_export.check_action_stage(output_dir, manifest, repo_root=root))
     result.problems.extend(_size_problems(result.files))
 
     if connection is not None:
-        result.problems.extend(_check_against_database(connection, output_dir, manifest))
+        result.problems.extend(_check_against_database(connection, output_dir, manifest, root))
     return result
 
 
@@ -1399,7 +1475,11 @@ def _check_file_set(output_dir: Path, manifest: Mapping[str, Any]) -> list[str]:
         Problem messages.
     """
     problems: list[str] = []
-    declared = {entry.file_name for entry in spec.DATASETS} | {spec.MANIFEST_FILE_NAME}
+    declared = (
+        {entry.file_name for entry in spec.DATASETS}
+        | {spec.MANIFEST_FILE_NAME}
+        | {actions.ACTIONS_FILE_NAME}
+    )
     present = {path.name for path in output_dir.glob("*.json")}
 
     for name in sorted(declared - present):
@@ -1725,7 +1805,7 @@ def _check_totals(manifest: Mapping[str, Any], outputs: Sequence[DatasetOutput])
 
 
 def _check_against_database(
-    connection: Any, output_dir: Path, manifest: Mapping[str, Any]
+    connection: Any, output_dir: Path, manifest: Mapping[str, Any], repo_root: Path
 ) -> list[str]:
     """Re-export and byte-compare against the committed tree.
 
@@ -1737,6 +1817,7 @@ def _check_against_database(
         connection: An open connection.
         output_dir: The committed export directory.
         manifest: The committed manifest.
+        repo_root: Repository root, for the action rule file.
 
     Returns:
         Problem messages.
@@ -1747,6 +1828,7 @@ def _check_against_database(
         repo_root=output_dir,
         generated_at=str(manifest.get("generated_at")),
         write=False,
+        rules_root=repo_root,
     )
     if fresh.problems:
         return [f"a fresh export would fail: {problem}" for problem in fresh.problems]

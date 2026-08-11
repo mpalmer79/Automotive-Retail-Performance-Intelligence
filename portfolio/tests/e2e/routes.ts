@@ -103,8 +103,9 @@ export const HEADER_NAV: readonly HeaderNavItem[] = [
 /**
  * The operating application's rail.
  *
- * Eight destinations, in the order a manager works. `Actions` is deliberately
- * absent: `DASH.12` has not been built, and `dashboard.spec.ts` asserts no anchor
+ * Nine destinations, in the order a manager works. `Actions` joined the rail with
+ * `DASH.12` and sits last on purpose: management attention follows business status.
+ * It was deliberately absent before, and `dashboard.spec.ts` asserted no anchor
  * anywhere points at `/dashboard/actions`.
  */
 export const OPERATING_NAV_ROUTES: readonly { label: string; path: string }[] = [
@@ -116,6 +117,7 @@ export const OPERATING_NAV_ROUTES: readonly { label: string; path: string }[] = 
   { label: 'Leads & Marketing', path: '/dashboard/leads-marketing' },
   { label: 'Employees', path: '/dashboard/employees' },
   { label: 'Accounting', path: '/dashboard/accounting' },
+  { label: 'Actions', path: '/dashboard/actions' },
 ]
 
 /**
@@ -147,6 +149,7 @@ export const DASHBOARD_ROUTES: readonly string[] = [
   '/dashboard/leads-marketing',
   '/dashboard/employees',
   '/dashboard/accounting',
+  '/dashboard/actions',
   DEAL_JACKET_ROUTE,
 ]
 
@@ -155,8 +158,13 @@ export const DASHBOARD_ROUTES: readonly string[] = [
  *
  * Asserted as a negative in `dashboard.spec.ts`: no anchor on any operating route
  * points at one of these, and each 404s if fetched directly.
+ *
+ * EMPTY SINCE `DASH.12`. It held `/dashboard/actions` from the increment that named
+ * the section until the increment that built it, and the negative assertion is what
+ * stopped a navigation item arriving first. The export stays so the next planned
+ * section has a guard waiting for it.
  */
-export const UNBUILT_DASHBOARD_ROUTES: readonly string[] = ['/dashboard/actions']
+export const UNBUILT_DASHBOARD_ROUTES: readonly string[] = []
 
 /**
  * The widths the console's responsive assertions run at.
@@ -225,6 +233,7 @@ export const ALL_TESTED_ROUTES: readonly string[] = [
   '/dashboard/leads-marketing',
   '/dashboard/employees',
   '/dashboard/accounting',
+  '/dashboard/actions',
   '/ui-lab',
 ]
 

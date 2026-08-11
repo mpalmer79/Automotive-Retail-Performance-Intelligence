@@ -1614,3 +1614,53 @@ Carried forward from `DASH.10`: no generated customer arrives on a day other tha
 booked for, so the scheduled-date and show-date populations coincide. The bases are structurally
 distinct, separately columned and independently reconciled; the committed data does not exercise the
 difference.
+
+---
+
+## 18. What the management action queue cannot support (ADR-0013, `DASH.12`)
+
+The Action Center produces deterministic review prompts. Everything below is a limit of what it
+produces, not a feature awaiting polish.
+
+**An action is not a finding.** It says a condition written down in advance holds in this dataset
+version, and shows the exported values that made it hold. It does not establish that anything is
+wrong, that the condition matters, or that anyone should act.
+
+**An action is not a recommendation of business action.** The console labels the field "Review next"
+and the vocabulary is restricted by test to review verbs. Nothing tells a manager to reprice a unit,
+approve a deal, change a price or spend differently, and the loader refuses a rule template that
+tries.
+
+**An action never states a cause.** Causal constructions are refused at load time and asserted absent
+in the published queue. A rule states that a condition holds; why it holds is what the drill-through
+is for.
+
+**The queue holds no history and no workflow state.** It is regenerated from the data every time the
+export is regenerated. There is no acknowledgement, assignment, completion, due date or audit trail
+of who looked at what, because nothing persists between dataset versions. "Open" means "present in
+this dataset version" and nothing else.
+
+**Twelve of thirty proposed rules are enabled.** The eighteen disabled identifiers are not a backlog:
+seven describe conditions an earlier data-quality gate already prevents, seven need a grain nothing
+publishes, and four need evidence the project does not hold. `docs/product/PRODUCT_GAPS.md` records
+the four data gaps and the one a reporting view could close.
+
+**An empty queue is not a clean bill of health.** It means no rule this project can evaluate honestly
+matched. Over a register where most identifiers are switched off, that is a much weaker statement
+than "nothing needs attention", and the console says so where the empty state renders.
+
+**Every threshold the rule file owns is a project default for a fictional dealer group.** None is an
+industry benchmark, an OEM standard, a best practice or a compliance requirement. The 60-day aged
+threshold and the minimum-sample floor of ten are governed elsewhere and read rather than restated.
+
+**`price_to_market_ratio` rests on a synthetic estimate.** `ACT-INV-003` compares an asking price
+with a market price this project generated. It is not a guidebook value, an auction result, an
+appraisal or a valuation, and no action drawing on it says a price is right or wrong.
+
+**A bridge contribution is not a cause.** The change-driver panel apportions an observed
+period-over-period difference between components in a documented sequential order. A different order
+would apportion the same change differently, which is precisely why the narrative says "attributes"
+and never "caused".
+
+**No action is about a person.** There is no employee rule family, no employee domain and no
+employee entity type. `DASH.11`'s fairness contract is a boundary rather than a gap.

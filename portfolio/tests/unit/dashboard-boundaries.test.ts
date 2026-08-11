@@ -302,8 +302,9 @@ describe('the console ships exactly the routes its increments have delivered', (
    * navigation entry" - written that way deliberately, so that the first route would
    * arrive in the same diff as the expectation change and a reviewer would see both.
    * `DASH.2` re-aimed them at one route; `DASH.3` re-aimed them at three; `DASH.7`
-   * adds `fi`; `DASH.11` adds `employees`, which leaves `actions` (`DASH.12`) as the one
-   * console section that still does not exist.
+   * adds `fi`; `DASH.11` adds `employees`; `DASH.12` adds `actions`, which is the last
+   * console section `INFORMATION_ARCHITECTURE.md` §1 names. The list is now complete, so
+   * the next change to it is a route nobody specified.
    *
    * What is guarded is unchanged: the console has EXACTLY the routes its increments
    * have delivered, and the others in `INFORMATION_ARCHITECTURE.md` §1 do not
@@ -320,8 +321,12 @@ describe('the console ships exactly the routes its increments have delivered', (
       .filter((entry) => entry.isDirectory())
       .map((entry) => entry.name)
       .sort()
-    expect(nested, 'DASH.12 owns the one console route that is left').toEqual([
+    expect(
+      nested,
+      'every console section the information architecture names, and no other'
+    ).toEqual([
       'accounting',
+      'actions',
       'deals',
       'employees',
       'fi',
@@ -484,16 +489,25 @@ describe('the generated dashboard data stays out of the existing route bundles',
      *                                       it a second number
      *
      * Folding any of the last thirteen into `data.ts` would have put deal-level records
-     * and a 95 kB trend into `/dashboard`'s graph, which has no use for either. Fifteen
-     * narrow doors is a stronger boundary than two wide ones, and the list is
-     * exhaustive: a sixteenth importer fails here.
+     * and a 95 kB trend into `/dashboard`'s graph, which has no use for either.
+     *
+     * `DASH.12` added two. `actions-data.ts` carries the 88 kB action queue, which two
+     * routes render and seven do not. `change-drivers-data.ts` carries the 15 kB gross
+     * bridge, which USED to sit behind `sales-gross-data.ts` beside a 95 kB trend -- and
+     * once the Executive Overview and the Action Center both needed the bridge, keeping
+     * them together would have put the trend into two more server graphs to serve neither.
+     *
+     * Seventeen narrow doors is a stronger boundary than two wide ones, and the list is
+     * exhaustive: an eighteenth importer fails here.
      */
     expect(
       importers.map((file) => file.relative).sort(),
-      'the generated dashboard data has exactly fifteen declared doors'
+      'the generated dashboard data has exactly seventeen declared doors'
     ).toEqual([
       'lib/dashboard/accounting-chunks.ts',
       'lib/dashboard/accounting-data.ts',
+      'lib/dashboard/actions-data.ts',
+      'lib/dashboard/change-drivers-data.ts',
       'lib/dashboard/chunks.ts',
       'lib/dashboard/data.ts',
       'lib/dashboard/deal-chunks.ts',
@@ -752,6 +766,22 @@ describe('ADR-0013 condition 2: no frontend redefines a KPI', () => {
      * it against PostgreSQL's own `percentile_cont` and seeds the average-of-medians defect
      * to prove the difference is caught.
      *
+     * `change-drivers.ts` (`DASH.12`) is the tenth, and it is not new arithmetic. It is
+     * `sales-gross.ts`'s `DASH.3` bridge, moved out of that module unchanged so that the
+     * Executive Overview and the Action Center could render the same decomposition without
+     * acquiring a 95 kB trend dataset to do it. It defines no measure: SQL owns which
+     * components exist, the sequential order they are applied in and the numerator each
+     * produces, and this module VERIFIES the identity the view guarantees -- the numerators
+     * sum to denominator x change, exactly -- before dividing for display.
+     *
+     * `DASH.12` added one operation to it and no formula: grouping effects below the
+     * configured materiality into a labelled remainder. The remainder is derived by
+     * SUBTRACTION from the period change rather than by adding the grouped parts, which is
+     * what makes the reconciliation exact by construction instead of exact by luck, and
+     * `dashboard-change-drivers.test.ts` asserts it on every fixture including the ones
+     * where every effect is immaterial. The threshold is read from the export manifest;
+     * there is no numeric literal for it in TypeScript.
+     *
      * `visuals.tsx` and `pace-bar.tsx` are NOT on this list and must not be: a chart or
      * bar primitive receives resolved values and turns them into geometry.
      */
@@ -760,6 +790,7 @@ describe('ADR-0013 condition 2: no frontend redefines a KPI', () => {
       'exact arithmetic outside decimal.ts, the selector registry and the declared view models'
     ).toEqual([
       'lib/dashboard/accounting.ts',
+      'lib/dashboard/change-drivers.ts',
       'lib/dashboard/deal-jacket.ts',
       'lib/dashboard/deals.ts',
       'lib/dashboard/employees.ts',

@@ -223,6 +223,18 @@ export function GovernanceView() {
               />
               <LimitCard
                 icon={<Scale />}
+                title="The action queue is deterministic, and there is no model in it"
+                body="Management actions are produced by evaluating a versioned YAML rule file against the datasets the export already publishes. No language model, no learned model, no scoring heuristic: every word comes from a rule template and every number from an exported column, so any action can be recomputed by hand from files in the repository. The rules are evaluated once at export time and the console only selects from the result, so the queue is identical for every visitor of a dataset version. It is also stateless - nothing is assigned, acknowledged or completed, because no such state exists. Twelve of thirty permanent rules are enabled; the other eighteen are retained and switched off, each with the audited reason the project cannot evaluate it honestly."
+                artefact="config/dashboard/action_rules.yaml"
+              />
+              <LimitCard
+                icon={<Scale />}
+                title="A rule change is a data change"
+                body="The rule file is an input to published data: editing a review threshold changes the queue even though no business fact moved. The export manifest therefore records the ruleset's hash, and the offline export check re-derives the whole queue from the current rule file and fails if the committed one differs. Every threshold the rule file owns is labelled a project default for a fictional dealer group - none is an industry benchmark, an OEM standard or a compliance requirement - and thresholds the warehouse already governs, such as the 60-day aged default, are read from the exported row rather than restated."
+                artefact="scripts/export_dashboard_dataset.py --check"
+              />
+              <LimitCard
+                icon={<Scale />}
                 title="Deferred domains produce no conclusions"
                 body="F&I penetration, customer retention, service-to-sales opportunity and target attainment all depend on facts that have not been built. No result requiring a deferred fact may be published, which rules those four subjects out of any finding until the facts exist."
                 artefact="KPI_CATALOG.md section 35"

@@ -225,6 +225,16 @@ export const ROUTES = {
     indexable: true,
     priority: 0.9,
   },
+  dashboardActions: {
+    href: '/dashboard/actions',
+    navLabel: 'Actions',
+    title: 'Management Actions',
+    description:
+      'The deterministic management review queue: conditions meeting a rule written down in advance, the exported evidence that made each one meet it, the project-default threshold that fired, and where to look next. Rules are data, evaluated once at export time. No model, no scoring, no workflow state.',
+    inPrimaryNav: true,
+    indexable: true,
+    priority: 0.9,
+  },
   /*
    * THE ONE TECHNICAL DESTINATION.
    *
@@ -452,6 +462,12 @@ export const OPERATING_NAV: readonly NavItem[] = [
     matches: [ROUTES.dashboardAccounting.href],
     purpose: 'The subledger against GL controls, and the variances between them',
   },
+  {
+    href: ROUTES.dashboardActions.href,
+    label: 'Actions',
+    matches: [ROUTES.dashboardActions.href],
+    purpose: 'Conditions that meet a review rule, with the evidence that made them',
+  },
 ]
 
 /**
@@ -559,19 +575,19 @@ export interface PlannedDashboardSection {
 /**
  * The console sections that are not built.
  *
- * Rendered as text, never as links. Each names its increment so a reader can check
- * the claim against `docs/requirements/DASHBOARD_BACKLOG.md` rather than take
- * "coming soon" on trust — and so that this list cannot quietly outlive the work it
- * describes. `site.test.ts` fails if a planned label names a route the application
- * can already navigate to.
+ * EMPTY SINCE `DASH.12`, and the emptiness is the point. This list held one entry —
+ * "Management actions, DASH.12, a deterministic action queue with evidence and
+ * drill-through" — from the increment that introduced it until the increment that
+ * delivered it. The docstring said the list "cannot quietly outlive the work it
+ * describes", and `site.test.ts` enforced that by failing if a planned label named a
+ * route the application could already navigate to. It is empty because the work is
+ * done, not because the promise was withdrawn.
+ *
+ * The type and the export stay. A future increment that plans a section before
+ * building it has somewhere honest to say so, and the guard that stops a navigation
+ * item arriving before its route still has something to guard.
  */
-export const PLANNED_DASHBOARD_SECTIONS: readonly PlannedDashboardSection[] = [
-  {
-    label: 'Management actions',
-    increment: 'DASH.12',
-    purpose: 'A deterministic action queue with evidence and drill-through',
-  },
-]
+export const PLANNED_DASHBOARD_SECTIONS: readonly PlannedDashboardSection[] = []
 
 /**
  * The operating application's pathnames, derived from the rail rather than typed.

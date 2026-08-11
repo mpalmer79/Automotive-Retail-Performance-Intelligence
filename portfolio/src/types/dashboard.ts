@@ -659,6 +659,14 @@ export interface DashboardClientManifest {
   readonly limitations: readonly string[]
   readonly datasets: readonly DashboardClientDataset[]
   readonly sizes: DashboardSizeReport
+  /**
+   * `DASH.12`'s management-action queue.
+   *
+   * Held apart from `datasets` for the same reason the root manifest holds it apart: every
+   * entry in that list is read from an allowlisted reporting view, and the queue is DERIVED
+   * from the list itself by evaluating the rule file against it.
+   */
+  readonly actions: DashboardActionManifest
 }
 
 /** One dataset as the client-safe manifest describes it. */
@@ -732,4 +740,151 @@ export interface DashboardDatasetFile {
   readonly rowCount: number
   readonly columns: readonly string[]
   readonly rows: readonly (readonly DashboardCell[])[]
+}
+
+/* -------------------------------------------------------------------------- */
+/* DASH.12 — the management action queue                                       */
+/* -------------------------------------------------------------------------- */
+
+/** The action file's schema identifier. */
+export const DASHBOARD_ACTIONS_SCHEMA = 'arpi.management_actions/1' as const
+
+/**
+ * The three severity levels, MOST SEVERE FIRST.
+ *
+ * Severity is the rule's own classification of a matched condition. It is not a
+ * probability, a confidence, a financial materiality score or a priority ranking, and
+ * nothing in the console may present it as one.
+ */
+export const ACTION_SEVERITIES = ['high', 'medium', 'low'] as const
+export type ActionSeverity = (typeof ACTION_SEVERITIES)[number]
+
+/** The stable domain vocabulary, in console order. There is no `other`. */
+export const ACTION_DOMAINS = [
+  'inventory',
+  'sales-gross',
+  'fi',
+  'leads',
+  'accounting',
+] as const
+export type ActionDomain = (typeof ACTION_DOMAINS)[number]
+
+/**
+ * The governed role vocabulary.
+ *
+ * A REVIEW role: the role best placed to look at the evidence. Never an assignment, a
+ * responsibility, an accountability or a statement of fault.
+ */
+export const ACTION_OWNER_ROLES = [
+  'Dealer principal',
+  'General manager',
+  'General sales manager',
+  'Used-car manager',
+  'F&I manager',
+  'BDC manager',
+  'Controller',
+] as const
+export type ActionOwnerRole = (typeof ACTION_OWNER_ROLES)[number]
+
+/** One evidence value, copied verbatim from the exported column that produced it. */
+export interface ActionEvidence {
+  readonly name: string
+  /** Exactly what the export carried, including `null`, which never becomes zero. */
+  readonly value: DashboardCell
+  readonly type: DashboardColumnType
+  readonly unit: string | null
+  readonly displayPrecision: number | null
+}
+
+/**
+ * One threshold that decided an action, and where its value is governed.
+ *
+ * `governed` means the number was read from the row or from an existing project authority,
+ * so the console shows what the export carried. `project-default-review-threshold` means
+ * the rule file owns it — and it is a project default for a fictional dealer group, never
+ * an industry benchmark, an OEM standard or a compliance requirement.
+ */
+export interface ActionThreshold {
+  readonly name: string
+  readonly label: string
+  readonly value: string | null
+  readonly units: string
+  readonly source: 'governed' | 'project-default-review-threshold'
+  readonly authority: string
+}
+
+/** One review prompt. */
+export interface ManagementAction {
+  readonly actionId: string
+  readonly ruleId: string
+  readonly domain: ActionDomain
+  readonly asOfDate: IsoDateString
+  readonly store: string | null
+  readonly entityType: string
+  readonly entityId: string
+  readonly severity: ActionSeverity
+  readonly title: string
+  readonly ownerRole: ActionOwnerRole
+  readonly recommendedReview: string
+  readonly limitations: string
+  readonly dateBasis: string | null
+  readonly observedDate: IsoDateString | null
+  readonly drillThrough: string
+  readonly evidence: readonly ActionEvidence[]
+  readonly thresholdsUsed: readonly ActionThreshold[]
+}
+
+/** The change-driver DISPLAY policy. The bridge's arithmetic is owned by SQL. */
+export interface ActionChangeDriverPolicy {
+  readonly authority: string
+  readonly dataset: DashboardDatasetName
+  readonly decompositionOrder: readonly string[]
+  readonly materiality: {
+    readonly value: ExactDecimalString
+    readonly units: string
+    readonly label: string
+    readonly rationale: string
+  }
+}
+
+/** What produced the queue, so it can always be traced to one ruleset. */
+export interface ActionRulesetIdentity {
+  readonly schema: string
+  readonly rulesetVersion: number
+  readonly file: string
+  readonly fileSha256: Sha256
+  readonly expiry: 'dataset'
+  readonly ruleCount: number
+  readonly enabledRuleIds: readonly string[]
+  readonly disabledRuleIds: readonly string[]
+}
+
+/** Presentation counts derived from the queue itself. Not KPIs. */
+export interface ActionQueueCounts {
+  readonly bySeverity: Readonly<Record<string, number>>
+  readonly byDomain: Readonly<Record<string, number>>
+  readonly byStore: Readonly<Record<string, number>>
+  readonly byOwnerRole: Readonly<Record<string, number>>
+  readonly byRule: Readonly<Record<string, number>>
+}
+
+/** Everything the client manifest carries about the queue. */
+export interface DashboardActionManifest {
+  readonly schema: typeof DASHBOARD_ACTIONS_SCHEMA
+  readonly rowCount: number
+  readonly asOfDate: IsoDateString
+  readonly fileSha256: Sha256
+  readonly rootExportBytes: number
+  readonly ruleset: ActionRulesetIdentity
+  readonly sourceDatasets: readonly DashboardDatasetName[]
+  readonly counts: ActionQueueCounts
+  readonly changeDrivers: ActionChangeDriverPolicy
+  readonly boundaries: readonly string[]
+}
+
+/** The generated action file. */
+export interface DashboardActionFile {
+  readonly schema: typeof DASHBOARD_ACTIONS_SCHEMA
+  readonly rowCount: number
+  readonly actions: readonly ManagementAction[]
 }

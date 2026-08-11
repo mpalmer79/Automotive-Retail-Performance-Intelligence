@@ -1,0 +1,1192 @@
+# =============================================================================
+# ARPI management action rules — the DASH.12 review policy
+# =============================================================================
+#
+# WHAT THIS FILE IS
+# -----------------
+# The complete, permanent register of management-action rules, and the display
+# policy for the gross-change bridge. It is POLICY. The data is evidence, and
+# the two are kept apart on purpose: SQL publishes what is true, this file says
+# which of those truths deserve a manager's attention.
+#
+# Every rule here is evaluated at EXPORT TIME against the datasets the dashboard
+# export already publishes, by a generic engine that contains no rule-specific
+# code. Same data + same rules + same as-of date -> byte-identical queue.
+#
+# WHAT AN ACTION IS NOT
+# ---------------------
+# Not a finding. Not a recommendation of business action. Not a claim about
+# cause. Not an assignment, a task or a ticket. An action says "this condition
+# holds, here is the evidence that made it hold, here is where to look next".
+#
+# THE FOUR STATES A PERMANENT IDENTIFIER MAY BE IN
+# ------------------------------------------------
+#   supported                     the governed data supports the rule honestly
+#   blocked-by-missing-data       the project holds no such evidence
+#   blocked-by-grain              the evidence exists, but not at the rule's grain
+#   duplicates-data-quality-gate  the condition cannot survive into a valid export
+#
+# A disabled identifier is NEVER deleted and NEVER renumbered. It keeps its
+# audited reason, because "we looked and could not do this honestly" is a more
+# useful record than an absence.
+#
+# THRESHOLDS
+# ----------
+# A threshold the warehouse governs is not restated here. `ACT-INV-001` does not
+# say "60 days"; it reads the governed boolean `is_aged_over_default_threshold`
+# and discloses the row's own `aged_threshold_days`, so the console shows the
+# number the export carried. The planning document's 90-day aged example predates
+# the implemented 60-day project default and is NOT reinstated by this file.
+#
+# A threshold that exists only to decide when a review prompt surfaces is
+# declared on its rule, labelled a project default, and rendered with the action.
+# None of them is an industry benchmark, an OEM standard, a best practice or a
+# compliance requirement, and none was chosen to make the queue a nicer size.
+#
+# See docs/dashboard/ACTION_ENGINE_SPEC.md for the as-built specification and
+# docs/reviews/DASH-12-REVIEW.md for the full register audit.
+# =============================================================================
+
+schema: arpi.action_rules/1
+ruleset_version: 1
+
+defaults:
+  # The only expiry model there is. An action lives exactly as long as the
+  # dataset version that produced it; nothing persists between versions.
+  expiry: dataset
+
+# -----------------------------------------------------------------------------
+# The "why did this change?" display policy
+# -----------------------------------------------------------------------------
+# reporting.vw_gross_change_bridge owns the decomposition, its sequential order
+# and its arithmetic. This block adds only a DISPLAY rule: effects smaller than
+# the materiality threshold are grouped into one labelled remainder instead of
+# listed separately. Grouped, never dropped — the components plus the remainder
+# still reconcile to the period change exactly.
+change_drivers:
+  authority: reporting.vw_gross_change_bridge
+  dataset: gross-change-bridge
+  # Validated against the dataset's own component enumeration, so no mix effect
+  # can be named here that SQL does not compute.
+  decomposition_order:
+    - volume
+    - front_pvr
+    - back_pvr
+  materiality:
+    value: 500
+    units: USD
+    label: Display materiality — project default
+    rationale: >
+      A contribution smaller than five hundred dollars against a store month
+      measured in six figures is below the resolution at which a manager would
+      act on it, so it is grouped rather than listed. A round number chosen for
+      legibility, not an accounting materiality standard and not an industry
+      benchmark. The remainder keeps the bridge reconciling exactly, so nothing
+      is lost by grouping it.
+
+rules:
+  # ===========================================================================
+  # INVENTORY
+  # ===========================================================================
+
+  - rule_id: ACT-INV-001
+    enabled: true
+    domain: inventory
+    entity_type: inventory_unit
+    owner_role: Used-car manager
+    title: Aged unit with no markdown since the prior snapshot
+    description: >
+      A unit past the governed aged threshold whose asking price did not move
+      between the prior month-end snapshot and this one.
+    state_reason: >
+      inventory-units publishes is_price_reduced_since_prior at unit grain, which
+      is a real markdown-recency relationship over the published monthly snapshot
+      series rather than an inferred one. The cumulative markdown_count_to_date
+      alone would not have established recency and is carried as context only.
+    source_dataset: inventory-units
+    date_basis: snapshot date
+    scope:
+      as_of: snapshot_date
+    entity_key: [dealership_id, vehicle_id]
+    store_field: dealership_id
+    date_field: snapshot_date
+    thresholds:
+      high_severity_days:
+        value: 120
+        units: days
+        label: High-severity review threshold — project default
+        rationale: >
+          Twice the governed aged threshold. This is a SEVERITY threshold and not
+          a redefinition of "aged": the aged threshold remains the governed 60-day
+          project default published on every row as aged_threshold_days.
+    disclosed_columns:
+      - column: aged_threshold_days
+        label: Aged threshold
+        units: days
+        authority: governed inventory aged-threshold project default, published per row
+    # is_price_reduced_since_prior is NULL on a unit with no prior snapshot. NULL
+    # is UNKNOWN, so a newly arrived unit suppresses rather than firing.
+    predicate: >
+      is_aged_over_default_threshold == true and is_price_reduced_since_prior == false
+    severity:
+      - level: high
+        predicate: days_in_stock >= @high_severity_days
+      - level: medium
+    evidence:
+      - days_in_stock
+      - aged_threshold_days
+      - current_asking_price
+      - original_asking_price
+      - asking_price_change
+      - markdown_count_to_date
+      - price_to_market_ratio
+      - condition_group
+      - model_name
+    recommended_review: >
+      Review this unit's price movement against its age and the store's aged-unit
+      pattern.
+    limitations: >
+      price_to_market_ratio is computed from a synthetic market price estimate. It
+      is not a guidebook value, an auction result, an appraisal or a valuation.
+    suppression:
+      - Unit not present in the as-of snapshot.
+      - No prior snapshot, so markdown recency is unknown rather than absent.
+      - Unit not past the governed aged threshold.
+    drill_through:
+      route: /dashboard/inventory
+      params:
+        store: "{dealership_id}"
+        unit: "{vehicle_id}"
+
+  - rule_id: ACT-INV-002
+    enabled: false
+    state: blocked-by-missing-data
+    domain: inventory
+    entity_type: inventory_unit
+    owner_role: Used-car manager
+    title: High age with low lead activity
+    description: >
+      An aged unit that is attracting little shopper interest.
+    state_reason: >
+      ARPI models lead activity at store, source and campaign grain and never at
+      vehicle grain. inventory-units carries no lead column, and deal-jacket
+      carries lead attribution only for units that already SOLD. Inferring a
+      unit's lead activity from store-level lead volume would fabricate a
+      relationship the warehouse does not hold.
+    limitations: >
+      Recorded as a product gap in docs/product/PRODUCT_GAPS.md rather than
+      approximated.
+    suppression: []
+
+  - rule_id: ACT-INV-003
+    enabled: true
+    domain: inventory
+    entity_type: inventory_unit
+    owner_role: Used-car manager
+    title: Asking price above the synthetic market estimate on an aged unit
+    description: >
+      A unit past the governed aged threshold whose asking price sits above the
+      synthetic market price estimate.
+    state_reason: >
+      Both price_to_market_ratio and the governed aged flag are published at unit
+      grain on inventory-units, so the condition is evaluated exactly where it is
+      measured.
+    source_dataset: inventory-units
+    date_basis: snapshot date
+    scope:
+      as_of: snapshot_date
+    entity_key: [dealership_id, vehicle_id]
+    store_field: dealership_id
+    date_field: snapshot_date
+    thresholds:
+      price_to_market_review:
+        value: "1.05"
+        units: ratio
+        label: Price-to-market review threshold — project default
+        rationale: >
+          Five per cent above the synthetic market estimate. A round figure chosen
+          to sit clearly outside ordinary estimate noise on a fictional dataset.
+          Because the denominator is synthetic, this threshold describes a
+          relationship inside this project's data and nothing about a real market.
+      price_to_market_high:
+        value: "1.10"
+        units: ratio
+        label: High-severity price-to-market threshold — project default
+        rationale: Ten per cent above the synthetic estimate; twice the review distance.
+    disclosed_columns:
+      - column: aged_threshold_days
+        label: Aged threshold
+        units: days
+        authority: governed inventory aged-threshold project default, published per row
+    # A unit with no market estimate has a NULL ratio, which is UNKNOWN and
+    # therefore suppresses. It never compares as though the estimate were zero.
+    predicate: >
+      is_aged_over_default_threshold == true and price_to_market_ratio >= @price_to_market_review
+    severity:
+      - level: high
+        predicate: price_to_market_ratio >= @price_to_market_high
+      - level: medium
+    evidence:
+      - price_to_market_ratio
+      - current_asking_price
+      - market_price_estimate
+      - days_in_stock
+      - aged_threshold_days
+      - markdown_count_to_date
+      - condition_group
+      - model_name
+    recommended_review: >
+      Compare this unit's asking price with its age, its markdown history and the
+      synthetic market context the ratio was built from.
+    limitations: >
+      market_price_estimate is synthetic and generated by this project. The ratio
+      is not a real market valuation, a guidebook value, an auction result, an
+      appraisal or a pricing recommendation.
+    suppression:
+      - Unit not present in the as-of snapshot.
+      - No market price estimate, so the ratio is unknown rather than favourable.
+      - Unit not past the governed aged threshold.
+    drill_through:
+      route: /dashboard/inventory
+      params:
+        store: "{dealership_id}"
+        unit: "{vehicle_id}"
+
+  - rule_id: ACT-INV-004
+    enabled: false
+    state: blocked-by-missing-data
+    domain: inventory
+    entity_type: inventory_unit
+    owner_role: Used-car manager
+    title: Long-aged unit with no appointment activity
+    description: >
+      An aged unit that no shopper has come in to see.
+    state_reason: >
+      Appointments are modelled at store, source and campaign grain. No fact links
+      an appointment to a specific vehicle in stock, and deal-jacket's appointment
+      columns exist only on deals that closed. A unit-to-appointment relationship
+      would have to be invented.
+    limitations: >
+      Recorded as a product gap in docs/product/PRODUCT_GAPS.md rather than
+      approximated.
+    suppression: []
+
+  - rule_id: ACT-INV-005
+    enabled: false
+    state: blocked-by-grain
+    domain: inventory
+    entity_type: inventory_unit
+    owner_role: Controller
+    title: Book value against general-ledger variance on the unit's account
+    description: >
+      A unit whose carrying value disagrees with the control account it sits in.
+    state_reason: >
+      inventory-gl-reconciliation compares a control ACCOUNT's balance with the
+      stock schedule that supports it, at store x account x comparison-date grain.
+      The variance is a property of the account, not of any one vehicle in it.
+      Dividing an account-level variance across the units in the account would
+      manufacture a per-unit figure the accounting model does not hold.
+      ACT-ACC-001 surfaces the same evidence at the grain it is measured at.
+    limitations: >
+      The account-level condition is live under ACT-ACC-001.
+    suppression: []
+
+  - rule_id: ACT-INV-006
+    enabled: false
+    state: duplicates-data-quality-gate
+    domain: inventory
+    entity_type: inventory_unit
+    owner_role: Controller
+    title: Stock unit with no accounting record
+    description: >
+      A vehicle in stock that never reached the accounting schedule.
+    state_reason: >
+      Every unit in the as-of inventory snapshot has a matching inventory-accounting
+      row, both ways, by construction. sql/08_validation asserts the stock-schedule
+      relationship and the exporter's own grain and business-key assertions would
+      fail before an orphaned unit could be published. A condition that cannot
+      survive into a valid export is a pipeline integrity failure, not something a
+      manager encounters in a valid dashboard.
+    limitations: >
+      Owned by the validation and reconciliation layer, not by the action queue.
+    suppression: []
+
+  - rule_id: ACT-INV-007
+    enabled: false
+    state: blocked-by-grain
+    domain: inventory
+    entity_type: store
+    owner_role: Used-car manager
+    title: Model concentration above the project default
+    description: >
+      A store holding an unusually large share of its stock in one model.
+    state_reason: >
+      No governed dataset publishes a model-concentration share. Computing one
+      would require the engine to group inventory-units by store and model and
+      divide, which is a new KPI with no SQL owner, no reconciliation and no
+      second implementation. The engine evaluates row conditions and performs no
+      aggregation of its own.
+    limitations: >
+      Would need a governed reporting view before it could be enabled honestly.
+    suppression: []
+
+  # ===========================================================================
+  # SALES AND GROSS
+  # ===========================================================================
+
+  - rule_id: ACT-SLS-001
+    enabled: true
+    domain: sales-gross
+    entity_type: deal
+    owner_role: General sales manager
+    title: Negative front gross on a retail delivery
+    description: >
+      A finalized retail transaction whose front-end gross is below zero.
+    state_reason: >
+      deal-explorer publishes is_negative_front_gross and the signed gross at deal
+      grain. The condition is a signed financial fact about a transaction.
+    source_dataset: deal-explorer
+    date_basis: sale date
+    scope:
+      as_of_month: sale_date
+      filter: is_retail == true
+    entity_key: [sale_id]
+    store_field: dealership_id
+    date_field: sale_date
+    thresholds:
+      high_severity_front_gross:
+        value: -1500
+        units: USD
+        label: High-severity front-gross threshold — project default
+        rationale: >
+          A round figure marking a loss large enough to be worth reviewing ahead of
+          the others. It is a queue-ordering threshold and says nothing about
+          whether any individual deal was a good decision.
+    predicate: is_negative_front_gross == true
+    severity:
+      - level: high
+        predicate: front_end_gross <= @high_severity_front_gross
+      - level: medium
+    evidence:
+      - front_end_gross
+      - back_end_gross
+      - total_gross
+      - sale_price
+      - vehicle_display
+      - condition_group
+      - sale_type
+      - days_in_inventory_at_sale
+    recommended_review: >
+      Review the deal structure and the gross components behind this delivery.
+    limitations: >
+      A negative front gross is a signed accounting outcome. It is not evidence of
+      an error, a poor decision or anyone's performance, and this action attributes
+      it to nobody.
+    suppression:
+      - Transaction outside the as-of month.
+      - Non-retail transaction (wholesale, dealer trade).
+    drill_through:
+      route: /dashboard/deals/{sale_id}
+      params: {}
+
+  - rule_id: ACT-SLS-002
+    enabled: true
+    domain: sales-gross
+    entity_type: deal
+    owner_role: General sales manager
+    title: Negative total gross on a retail delivery
+    description: >
+      A finalized retail transaction whose front and back gross together are below
+      zero.
+    state_reason: >
+      deal-explorer publishes the signed total gross at deal grain. Distinct from
+      ACT-SLS-001: a deal can carry a negative front and a positive total, and the
+      two conditions are reviewed differently.
+    source_dataset: deal-explorer
+    date_basis: sale date
+    scope:
+      as_of_month: sale_date
+      filter: is_retail == true
+    entity_key: [sale_id]
+    store_field: dealership_id
+    date_field: sale_date
+    thresholds:
+      high_severity_total_gross:
+        value: -1000
+        units: USD
+        label: High-severity total-gross threshold — project default
+        rationale: >
+          A round figure marking a total-gross loss worth reviewing ahead of the
+          others. A queue-ordering threshold, not a judgement about the deal.
+    predicate: total_gross < 0
+    severity:
+      - level: high
+        predicate: total_gross <= @high_severity_total_gross
+      - level: medium
+    evidence:
+      - total_gross
+      - front_end_gross
+      - back_end_gross
+      - sale_price
+      - vehicle_display
+      - condition_group
+      - sale_type
+      - days_in_inventory_at_sale
+    recommended_review: >
+      Review the front and back components of this delivery together.
+    limitations: >
+      A signed accounting outcome, attributed to nobody.
+    suppression:
+      - Transaction outside the as-of month.
+      - Non-retail transaction.
+    drill_through:
+      route: /dashboard/deals/{sale_id}
+      params: {}
+
+  - rule_id: ACT-SLS-003
+    enabled: true
+    domain: sales-gross
+    entity_type: store_month
+    owner_role: General manager
+    title: Front-PVR effect materially reduced total gross this month
+    description: >
+      The governed gross-change bridge attributes a material negative contribution
+      to front gross per retail unit.
+    state_reason: >
+      reporting.vw_gross_change_bridge already computes the sequential
+      decomposition and publishes effect_amount per component. The rule reads that
+      governed comparison output and computes no period figure of its own.
+    source_dataset: gross-change-bridge
+    date_basis: sale date, aggregated to calendar month
+    scope:
+      as_of_month: month_start_date
+      filter: component_code == "front_pvr" and is_comparable == true
+    entity_key: [dealership_id, month_start_date, component_code]
+    store_field: dealership_id
+    date_field: month_start_date
+    thresholds:
+      pvr_effect_review:
+        value: -5000
+        units: USD
+        label: Bridge-effect review threshold — project default
+        rationale: >
+          A round contribution size worth a manager's attention on a store month of
+          this scale. It describes when a decomposition component is surfaced for
+          review; it is not a target, a variance limit or a benchmark.
+      pvr_effect_high:
+        value: -12000
+        units: USD
+        label: High-severity bridge-effect threshold — project default
+        rationale: A larger round contribution, reviewed ahead of the others.
+    predicate: effect_amount <= @pvr_effect_review
+    severity:
+      - level: high
+        predicate: effect_amount <= @pvr_effect_high
+      - level: medium
+    evidence:
+      - effect_amount
+      - component_label
+      - total_gross_change
+      - total_gross
+      - comparison_total_gross
+      - front_end_gross
+      - comparison_front_end_gross
+      - retail_units_sold
+      - comparison_retail_units_sold
+    recommended_review: >
+      Compare the front-gross components of this month's deliveries with the
+      comparison month under the documented sequential bridge.
+    limitations: >
+      A bridge contribution is an arithmetic attribution under a documented
+      sequential decomposition. It is not a cause, and the decomposition order
+      determines how a change is apportioned between components.
+    suppression:
+      - Comparison month outside the reporting window.
+      - Comparison month sold no retail units, so no baseline per-unit gross exists.
+    drill_through:
+      route: /dashboard/sales-gross
+      params:
+        store: "{dealership_id}"
+
+  - rule_id: ACT-SLS-004
+    enabled: true
+    domain: sales-gross
+    entity_type: store_month
+    owner_role: F&I manager
+    title: Back-PVR effect materially reduced total gross this month
+    description: >
+      The governed gross-change bridge attributes a material negative contribution
+      to back gross per retail unit.
+    state_reason: >
+      Same governed comparison output as ACT-SLS-003, read at the component the
+      rule names.
+    source_dataset: gross-change-bridge
+    date_basis: sale date, aggregated to calendar month
+    scope:
+      as_of_month: month_start_date
+      filter: component_code == "back_pvr" and is_comparable == true
+    entity_key: [dealership_id, month_start_date, component_code]
+    store_field: dealership_id
+    date_field: month_start_date
+    thresholds:
+      back_pvr_effect_review:
+        value: -3000
+        units: USD
+        label: Bridge-effect review threshold — project default
+        rationale: >
+          A round contribution size worth attention, set below the front-gross
+          threshold because back gross per unit is a smaller quantity. Not a
+          target, a variance limit or a benchmark.
+      back_pvr_effect_high:
+        value: -8000
+        units: USD
+        label: High-severity bridge-effect threshold — project default
+        rationale: A larger round contribution, reviewed ahead of the others.
+    predicate: effect_amount <= @back_pvr_effect_review
+    severity:
+      - level: high
+        predicate: effect_amount <= @back_pvr_effect_high
+      - level: medium
+    evidence:
+      - effect_amount
+      - component_label
+      - total_gross_change
+      - total_gross
+      - comparison_total_gross
+      - back_end_gross
+      - comparison_back_end_gross
+      - retail_units_sold
+      - comparison_retail_units_sold
+    recommended_review: >
+      Compare this month's back-gross production with the comparison month under
+      the documented sequential bridge.
+    limitations: >
+      A bridge contribution is an arithmetic attribution, not a cause.
+    suppression:
+      - Comparison month outside the reporting window.
+      - Comparison month sold no retail units.
+    drill_through:
+      route: /dashboard/fi
+      params:
+        store: "{dealership_id}"
+
+  - rule_id: ACT-SLS-005
+    enabled: true
+    domain: sales-gross
+    entity_type: deal
+    owner_role: General sales manager
+    title: Large discount from the original asking price on a fast-turning unit
+    description: >
+      A retail delivery that took a large discount off the original asking price
+      on a unit that had been in stock only a short time.
+    state_reason: >
+      deal-jacket publishes discount_from_original and days_in_inventory_at_sale on
+      the same deal row, so both sides of the condition are read at deal grain with
+      no arithmetic in the engine.
+    source_dataset: deal-jacket
+    date_basis: sale date
+    scope:
+      as_of_month: sale_date
+      filter: is_retail == true
+    entity_key: [sale_id]
+    store_field: dealership_id
+    date_field: sale_date
+    thresholds:
+      discount_review:
+        value: 2000
+        units: USD
+        label: Discount review threshold — project default
+        rationale: >
+          A round discount size worth reviewing alongside the unit's age. It says
+          nothing about whether a discount was correct.
+      low_age_days:
+        value: 30
+        units: days
+        label: Fast-turn review threshold — project default
+        rationale: >
+          A round age below which a unit had not yet begun to accumulate the
+          carrying cost that ordinarily justifies a large discount. Well inside the
+          governed 60-day aged threshold, and deliberately not a redefinition of it.
+      discount_high:
+        value: 4000
+        units: USD
+        label: High-severity discount threshold — project default
+        rationale: A larger round discount, reviewed ahead of the others.
+    predicate: >
+      discount_from_original >= @discount_review and days_in_inventory_at_sale <= @low_age_days
+    severity:
+      - level: high
+        predicate: discount_from_original >= @discount_high
+      - level: medium
+    evidence:
+      - discount_from_original
+      - days_in_inventory_at_sale
+      - original_asking_price
+      - final_asking_price
+      - sale_price
+      - front_end_gross
+      - total_gross
+      - vehicle_display
+      - condition_group
+    recommended_review: >
+      Review the price movement on this unit against the time it spent in stock.
+    limitations: >
+      A discount is a signed difference between two published prices. It is not
+      evidence of an error and is attributed to nobody.
+    suppression:
+      - Transaction outside the as-of month.
+      - Non-retail transaction.
+      - No original asking price recorded, so the discount is unknown.
+    drill_through:
+      route: /dashboard/deals/{sale_id}
+      params: {}
+
+  - rule_id: ACT-SLS-006
+    enabled: false
+    state: duplicates-data-quality-gate
+    domain: sales-gross
+    entity_type: deal
+    owner_role: Controller
+    title: Deal gross identity failure
+    description: >
+      A deal whose front and back gross do not sum to its total gross.
+    state_reason: >
+      The identity holds on every one of the 650 exported deals, and it holds
+      because the warehouse enforces it: sql/08_validation reconciles deal gross
+      components against the total, and a failure is a critical reconciliation that
+      fails the pipeline. A broken identity cannot reach a valid export, so
+      surfacing it as an ordinary review item would misrepresent a pipeline
+      integrity failure as something a manager could encounter.
+    limitations: >
+      Owned by the validation and reconciliation layer.
+    suppression: []
+
+  # ===========================================================================
+  # F&I
+  # ===========================================================================
+
+  - rule_id: ACT-FNI-001
+    enabled: false
+    state: duplicates-data-quality-gate
+    domain: fi
+    entity_type: deal
+    owner_role: Controller
+    title: Back-gross reconciliation failure
+    description: >
+      A deal whose back-end gross disagrees with its reserve and product
+      components.
+    state_reason: >
+      reconciliation-status publishes 121 checks and every one passes; a failing
+      critical reconciliation fails the pipeline run before an export is taken.
+      The condition cannot exist in a valid exported dataset.
+    limitations: >
+      Owned by the reconciliation layer, whose status the console already renders.
+    suppression: []
+
+  - rule_id: ACT-FNI-002
+    enabled: false
+    state: duplicates-data-quality-gate
+    domain: fi
+    entity_type: deal
+    owner_role: F&I manager
+    title: Product sold on an ineligible deal
+    description: >
+      An F&I product contract attached to a deal its eligibility rule excludes.
+    state_reason: >
+      Eligibility is governed by config/reference/fi_product_eligibility.yaml and
+      enforced in the warehouse; fi-product-penetration publishes an
+      eligibility_rule_id per row and the denominator is built from eligible deals
+      only. An ineligible attachment is rejected before publication.
+    limitations: >
+      Owned by the eligibility contract and the validation layer.
+    suppression: []
+
+  - rule_id: ACT-FNI-003
+    enabled: false
+    state: blocked-by-grain
+    domain: fi
+    entity_type: store
+    owner_role: F&I manager
+    title: Chargeback concentration
+    description: >
+      An unusual share of adjustments concentrated on one manager, provider or
+      product category.
+    state_reason: >
+      fi-adjustment-summary is published per store per ADJUSTMENT date per manager
+      per category per type. A concentration is a share over a period, and no
+      governed dataset publishes one. Computing it would require the engine to
+      aggregate and divide, which is a new KPI with no SQL owner.
+    limitations: >
+      Would need a governed reporting view before it could be enabled honestly.
+    suppression: []
+
+  - rule_id: ACT-FNI-004
+    enabled: false
+    state: duplicates-data-quality-gate
+    domain: fi
+    entity_type: deal
+    owner_role: Controller
+    title: Adjustment exceeding the original product gross
+    description: >
+      A cumulative adjustment larger than the gross it is adjusting.
+    state_reason: >
+      No exported deal carries a cumulative adjustment exceeding its original
+      product gross, and none can: net_product_gross_as_of is non-negative on every
+      one of the 650 deals, and the adjustment model is reconciled in
+      sql/08_validation. The condition is a data-integrity failure, not a
+      management exception.
+    limitations: >
+      Owned by the F&I adjustment reconciliation.
+    suppression: []
+
+  - rule_id: ACT-FNI-005
+    enabled: false
+    state: duplicates-data-quality-gate
+    domain: fi
+    entity_type: deal
+    owner_role: F&I manager
+    title: Financed deal without a lender
+    description: >
+      A retail finance or lease deal carrying no lender.
+    state_reason: >
+      Every deal whose finance_structure is a financed structure carries a lender;
+      the 208 deals with a null lender are all Cash, Wholesale or Dealer Trade,
+      where a lender is correctly absent rather than missing. The finance-structure
+      model makes the combination impossible, and treating a NULL lender on a cash
+      deal as an exception would misread a modelled state as an error.
+    limitations: >
+      Owned by the finance-structure contract.
+    suppression: []
+
+  - rule_id: ACT-FNI-006
+    enabled: true
+    domain: fi
+    entity_type: deal
+    owner_role: F&I manager
+    title: Retail delivery with no finance-manager attribution
+    description: >
+      A retail delivery that carries no finance-manager credit — the modelled
+      "nobody on the F&I desk" state.
+    state_reason: >
+      deal-jacket publishes finance_manager_code as a nullable attribution at deal
+      grain, and DASH.6 deliberately models the unattributed group as a valid,
+      distinct state rather than an error. It is a coverage condition a department
+      head reviews, and it is read exactly where it is published.
+    source_dataset: deal-jacket
+    date_basis: sale date
+    scope:
+      as_of_month: sale_date
+      filter: is_retail == true
+    entity_key: [sale_id]
+    store_field: dealership_id
+    date_field: sale_date
+    # The only rule in the register whose condition IS a null test. It is written
+    # explicitly, because a NULL never satisfies a comparison by coercion.
+    predicate: finance_manager_code is null
+    severity:
+      - level: medium
+    evidence:
+      - finance_structure
+      - back_end_gross
+      - finance_reserve_gross
+      - product_contract_count
+      - original_product_gross
+      - total_gross
+      - vehicle_display
+      - sale_type
+    recommended_review: >
+      Confirm how this delivery was desked and whether the F&I desk was involved.
+    limitations: >
+      An unattributed delivery is a modelled state in this project's data, not
+      necessarily an omission. This action makes no statement about any employee
+      and is not a performance measure.
+    suppression:
+      - Transaction outside the as-of month.
+      - Non-retail transaction.
+      - A finance manager is attributed.
+    drill_through:
+      route: /dashboard/deals/{sale_id}
+      params: {}
+
+  - rule_id: ACT-FNI-007
+    enabled: false
+    state: blocked-by-grain
+    domain: fi
+    entity_type: store
+    owner_role: F&I manager
+    title: Product penetration change on a sufficient sample
+    description: >
+      A material change in product penetration against a comparison period.
+    state_reason: >
+      fi-product-penetration is published per store per SALE DATE per manager per
+      category. Every one of its rows, and every row of fi-summary, reports
+      meets_minimum_sample = false, because a single manager-day never reaches the
+      governed floor of ten eligible deals. No governed dataset publishes a
+      period-level penetration or a penetration comparison, so there is no grain at
+      which this rule could fire without the engine aggregating and dividing.
+    limitations: >
+      Would need a governed period-level penetration view. Recorded as a product
+      gap.
+    suppression: []
+
+  # ===========================================================================
+  # LEADS
+  # ===========================================================================
+
+  - rule_id: ACT-LED-001
+    enabled: true
+    domain: leads
+    entity_type: store_source_day
+    owner_role: BDC manager
+    title: Valid leads with no first response
+    description: >
+      A store, lead source and lead-creation date on which several valid leads
+      never received a first response.
+    state_reason: >
+      lead-response publishes unresponded_leads as a first-class count at store x
+      source x lead-creation-date grain, held distinct from a fast response. The
+      entity is an aggregate row, never an individual lead: the public product
+      carries no customer records and this rule does not introduce any.
+    source_dataset: lead-response
+    date_basis: lead creation date
+    scope:
+      as_of_month: lead_created_date
+    entity_key: [dealership_id, lead_source_code, lead_created_date]
+    store_field: dealership_id
+    date_field: lead_created_date
+    thresholds:
+      unresponded_review:
+        value: 3
+        units: leads
+        label: Unresponded-lead review threshold — project default
+        rationale: >
+          One unanswered lead in a day at one source is noise; three is a pattern
+          worth a look. A round, deliberately conservative figure chosen on that
+          reasoning, and left unchanged after the queue it produces was measured.
+      unresponded_high:
+        value: 5
+        units: leads
+        label: High-severity unresponded-lead threshold — project default
+        rationale: A larger round count, reviewed ahead of the others.
+    predicate: unresponded_leads >= @unresponded_review
+    severity:
+      - level: high
+        predicate: unresponded_leads >= @unresponded_high
+      - level: medium
+    evidence:
+      - unresponded_leads
+      - valid_leads
+      - responded_leads
+      - response_coverage_rate
+      - median_response_minutes
+      - lead_source_code
+    recommended_review: >
+      Review the response coverage for this source and day against its lead volume.
+    limitations: >
+      A lead that never received a response is held distinct from one that received
+      a fast response; it is never counted as a zero-second response. Response is
+      measured on the lead-creation date basis. No customer information of any kind
+      is carried.
+    suppression:
+      - Lead-creation date outside the as-of month.
+      - Fewer unanswered leads than the review threshold.
+    drill_through:
+      route: /dashboard/leads-marketing
+      params:
+        source: "{lead_source_code}"
+        store: "{dealership_id}"
+
+  - rule_id: ACT-LED-002
+    enabled: false
+    state: blocked-by-grain
+    domain: leads
+    entity_type: store_source_day
+    owner_role: BDC manager
+    title: Response time above the project default
+    description: >
+      A source whose first-response time runs longer than the review threshold.
+    state_reason: >
+      lead-response publishes response times at store x source x lead-creation-date
+      grain, where the denominator valid_leads never exceeds seven — below the
+      governed minimum-sample floor of ten on every one of its 4,099 rows. A
+      response-time rule could therefore never fire without breaching the sample
+      discipline, and no governed dataset publishes a period-level response time.
+    limitations: >
+      Would need a governed period-level response view. There is in any case no
+      industry response benchmark in this repository, and any threshold would be a
+      project-default review threshold only.
+    suppression: []
+
+  - rule_id: ACT-LED-003
+    enabled: false
+    state: blocked-by-grain
+    domain: leads
+    entity_type: store_source_day
+    owner_role: BDC manager
+    title: High lead volume with a low contact rate
+    description: >
+      A source delivering many leads that are not being contacted.
+    state_reason: >
+      lead-funnel publishes contact_rate at store x source x campaign x
+      lead-creation-date grain, where leads_received never exceeds seven. The
+      denominator is below the governed floor of ten on every row, and "high
+      volume" is not a condition seven leads can satisfy.
+    limitations: >
+      Would need a governed period-level funnel view.
+    suppression: []
+
+  - rule_id: ACT-LED-004
+    enabled: true
+    domain: leads
+    entity_type: store_day
+    owner_role: BDC manager
+    title: Show rate below the review threshold on a day meeting the sample floor
+    description: >
+      A store day whose scheduled appointments met the governed sample floor and
+      whose show rate fell below the review threshold.
+    state_reason: >
+      appointment-funnel publishes show_rate with its own denominator,
+      eligible_appointments, at store x appointment-date grain, on the scheduled
+      date basis. Unlike show-to-sale, a show is resolved on the appointment date
+      itself, so the as-of date's rows are complete rather than immature.
+    source_dataset: appointment-funnel
+    date_basis: appointment scheduled date
+    scope:
+      as_of_month: appointment_date
+    entity_key: [dealership_id, appointment_date]
+    store_field: dealership_id
+    date_field: appointment_date
+    thresholds:
+      show_rate_review:
+        value: "0.70"
+        units: ratio
+        label: Show-rate review threshold — project default
+        rationale: >
+          A round seven-in-ten. Chosen as a legible round figure before the queue
+          was counted, and left unchanged afterwards. There is no industry show-rate
+          benchmark in this repository and this is not one.
+      show_rate_high:
+        value: "0.60"
+        units: ratio
+        label: High-severity show-rate threshold — project default
+        rationale: A round six-in-ten, reviewed ahead of the others.
+    # The floor is applied to THIS metric's own denominator — eligible
+    # appointments — and not to a generic row count.
+    minimum_sample:
+      denominator: eligible_appointments
+      floor:
+        authority: governed_minimum_sample
+      disclosure: eligible appointments on the scheduled date
+    predicate: show_rate < @show_rate_review
+    severity:
+      - level: high
+        predicate: show_rate < @show_rate_high
+      - level: medium
+    evidence:
+      - show_rate
+      - eligible_appointments
+      - scheduled_appointments
+      - shown_appointments
+      - cancelled_in_advance_appointments
+      - confirmed_appointments
+      - cancellation_rate
+    recommended_review: >
+      Review the appointment population for this day against how many of them were
+      confirmed and how many were cancelled in advance.
+    limitations: >
+      Show rate is measured on the scheduled date basis with eligible appointments
+      as its denominator. The threshold is a project default for a fictional group
+      and not an industry standard.
+    suppression:
+      - Appointment date outside the as-of month.
+      - Eligible appointments below the governed minimum-sample floor.
+      - No eligible appointments recorded, so the rate is unknown.
+    drill_through:
+      route: /dashboard/leads-marketing
+      params:
+        store: "{dealership_id}"
+
+  - rule_id: ACT-LED-005
+    enabled: false
+    state: blocked-by-grain
+    domain: leads
+    entity_type: store_day
+    owner_role: BDC manager
+    title: Show-to-sale conversion below the review threshold
+    description: >
+      A store day whose shown appointments converted poorly.
+    state_reason: >
+      show_to_sale_conversion is measured on the SHOW date with shown appointments
+      as its denominator, and a sale may follow the show date. Only two published
+      rows reach the governed floor of ten shown appointments, and both fall on the
+      as-of date, where the cohort is immature by construction — both report zero
+      conversion while ordinary days with five or more shows convert between 20 and
+      60 per cent. Firing here would report a window edge as a management condition.
+    limitations: >
+      Would need a matured cohort, which the reporting window's final day cannot
+      provide.
+    suppression: []
+
+  # ===========================================================================
+  # ACCOUNTING
+  # ===========================================================================
+
+  - rule_id: ACT-ACC-001
+    enabled: true
+    domain: accounting
+    entity_type: accounting_exception
+    owner_role: Controller
+    title: General-ledger control variance against the stock schedule
+    description: >
+      A published control-account exception where the general ledger and the stock
+      schedule are both valid and disagree.
+    state_reason: >
+      accounting-exceptions is the governed exception register: a row exists
+      because a control comparison produced a finding, and it stays until the
+      finding stops being produced. Reading the register rather than the
+      comparison dataset is what keeps "open" meaning "currently published as an
+      exception" rather than "happened at some point in the window".
+    source_dataset: accounting-exceptions
+    date_basis: exception date
+    scope:
+      all: true
+      filter: exception_code == "ACC-GL-VARIANCE"
+    entity_key: [exception_id]
+    store_field: dealership_id
+    date_field: exception_date
+    thresholds:
+      variance_high:
+        value: 1000
+        units: USD
+        label: High-severity variance threshold — project default
+        rationale: >
+          A round absolute size above which a control variance is reviewed ahead of
+          the others. Severity uses ABSOLUTE magnitude: a positive variance means
+          the control account carries more than the schedule supports and a
+          negative one means the reverse, and neither direction is the good one.
+    # Severity is symmetric about zero, so the signed amount is never read as
+    # good or bad — only its size decides the band.
+    predicate: exception_amount is not null
+    severity:
+      - level: high
+        predicate: exception_amount >= @variance_high or exception_amount <= -@variance_high
+      - level: medium
+    evidence:
+      - exception_amount
+      - exception_date
+      - exception_code
+      - exception_detail
+    recommended_review: >
+      Reconcile the general-ledger balance and the stock schedule behind this
+      control account.
+    limitations: >
+      Both sides of the comparison are valid data. The sign states which side
+      carries more, not which side is wrong, and a variance is a finding to
+      investigate rather than an error.
+    suppression:
+      - Exception carries no amount, which is the missing-side state ACT-ACC-002 owns.
+    drill_through:
+      route: /dashboard/accounting
+      params:
+        store: "{dealership_id}"
+
+  - rule_id: ACT-ACC-002
+    enabled: true
+    domain: accounting
+    entity_type: accounting_exception
+    owner_role: Controller
+    title: Control account with one side of the comparison absent
+    description: >
+      A published control-account exception where either the general-ledger
+      balance or the stock schedule is missing entirely.
+    state_reason: >
+      The accounting model holds "missing GL balance" and "missing subledger
+      balance" as distinct, structurally meaningful states rather than as zero, and
+      publishes each as its own exception code. A missing side is a control
+      position a controller reviews.
+    source_dataset: accounting-exceptions
+    date_basis: exception date
+    scope:
+      all: true
+      filter: >
+        exception_code == "ACC-MISSING-GL-BALANCE"
+        or exception_code == "ACC-MISSING-SUBLEDGER-BALANCE"
+    entity_key: [exception_id]
+    store_field: dealership_id
+    date_field: exception_date
+    predicate: exception_amount is null
+    severity:
+      - level: high
+    evidence:
+      - exception_code
+      - exception_date
+      - exception_amount
+      - exception_detail
+    recommended_review: >
+      Confirm which side of this control comparison is absent and reconcile it.
+    limitations: >
+      A missing side is not a zero balance. The absent amount is carried as null
+      and is never coalesced: "no balance was recorded" and "the balance was zero"
+      are different control positions.
+    suppression:
+      - Exception carries an amount, which is the variance state ACT-ACC-001 owns.
+    drill_through:
+      route: /dashboard/accounting
+      params:
+        store: "{dealership_id}"
+
+  - rule_id: ACT-ACC-003
+    enabled: false
+    state: blocked-by-missing-data
+    domain: accounting
+    entity_type: accounting_exception
+    owner_role: Controller
+    title: Orphaned adjustment
+    description: >
+      An adjustment with no parent record.
+    state_reason: >
+      The exception register publishes three codes, all of them control-account
+      comparisons; no orphaned-adjustment exception exists. The adjustment model
+      keys every event to its parent contract, so an orphan would fail the
+      warehouse's referential constraints before reaching staging — and nothing
+      publishes it as a controlled exception either.
+    limitations: >
+      Owned by the warehouse's referential integrity, not by the action queue.
+    suppression: []
+
+  - rule_id: ACT-ACC-004
+    enabled: false
+    state: duplicates-data-quality-gate
+    domain: accounting
+    entity_type: accounting_exception
+    owner_role: Controller
+    title: Duplicate accounting record
+    description: >
+      The same accounting position recorded twice.
+    state_reason: >
+      Every exported dataset declares a business key and the exporter asserts its
+      uniqueness before writing; a duplicate fails the export outright. The
+      condition cannot exist in a valid exported dataset.
+    limitations: >
+      Owned by the exporter's business-key assertion.
+    suppression: []
+
+  - rule_id: ACT-ACC-005
+    enabled: false
+    state: blocked-by-missing-data
+    domain: accounting
+    entity_type: accounting_exception
+    owner_role: Controller
+    title: Posting-date lag above the project default
+    description: >
+      A unit whose accounting entry was posted well after the business event.
+    state_reason: >
+      ARPI holds no journal posting timestamp. inventory-accounting.posting_lag_days
+      looks like the required measure and is not: its own column comment states it
+      is accounting_date minus acquisition_date — exactly days_in_stock under
+      another name — and explicitly NOT a journal posting delay. Enabling this rule
+      would require inventing the second date, which would manufacture an
+      operational fact the data does not contain.
+    limitations: >
+      Recorded as a product gap in docs/product/PRODUCT_GAPS.md.
+    suppression: []

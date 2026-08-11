@@ -936,6 +936,90 @@ export const ACCOUNTING_SUPPORT: RouteFilterSupport = {
 }
 
 /**
+ * `/dashboard/actions` (`DASH.12`).
+ *
+ * The Action Center is the one operating surface whose rows are not measurements. The queue
+ * is generated at export time and the page SELECTS from it; nothing here re-runs a rule,
+ * re-evaluates a severity or re-reads a threshold, so a filter can only ever narrow a set
+ * that already exists.
+ *
+ * `store` is the only global parameter that survives, and it survives because every action
+ * carries the store it is about. `period` does NOT: an action exists because a condition
+ * holds in the dataset version being served, and each rule declares its own as-of scope —
+ * the inventory rules read the as-of snapshot, the deal rules the as-of month, the
+ * accounting rules the published exception register. A period control over rows selected on
+ * three different bases would offer a reader a selection that means something different in
+ * each domain, which is worse than not offering one.
+ *
+ * The route also reads three parameters that are NOT in the global grammar — `severity`,
+ * `domain` and `owner` — because each means something only here. They are deliberately
+ * absent from this matrix, which describes the shared vocabulary.
+ */
+export const ACTIONS_SUPPORT: RouteFilterSupport = {
+  period: {
+    support: 'not-applicable',
+    label: 'Period',
+    note: 'Each rule declares its own as-of scope, and they differ by domain: a snapshot date for inventory, the as-of month for deliveries and leads, the published exception register for accounting. One period control across all three would mean three different things at once.',
+  },
+  compare: {
+    support: 'not-applicable',
+    label: 'Comparison',
+    note: 'The queue is a set of conditions holding now. It holds no history and compares nothing against a prior version, so there is no baseline to select.',
+  },
+  store: { support: 'applied', label: 'Store' },
+  scope: {
+    support: 'not-applicable',
+    label: 'Sale-type scope',
+    note: 'Actions span inventory positions, deliveries, appointments and control accounts. A sale-type scope selects nothing on most of them.',
+  },
+  condition: {
+    support: 'not-applicable',
+    label: 'Condition',
+    note: 'Vehicle condition travels as evidence on the inventory actions and is not a property of the queue.',
+  },
+  dept: {
+    support: 'not-applicable',
+    label: 'Department',
+    note: 'The review role is the closest thing the queue carries, and it is a separate control on this page.',
+  },
+  employee: {
+    support: 'not-applicable',
+    label: 'Employee',
+    note: 'No action is about an employee. The register contains no employee rule family, and the DASH.11 fairness contract is why.',
+  },
+  source: {
+    support: 'not-applicable',
+    label: 'Lead source',
+    note: 'Lead source travels as evidence on the lead actions and is not a property of the queue.',
+  },
+  campaign: {
+    support: 'not-applicable',
+    label: 'Campaign',
+    note: 'No rule reads a campaign attribute.',
+  },
+  make: {
+    support: 'not-applicable',
+    label: 'Make',
+    note: 'Vehicle attributes travel as evidence and are not properties of the queue.',
+  },
+  model: {
+    support: 'not-applicable',
+    label: 'Model',
+    note: 'Vehicle attributes travel as evidence and are not properties of the queue.',
+  },
+  structure: {
+    support: 'not-applicable',
+    label: 'Finance structure',
+    note: 'Finance structure travels as evidence on the F&I actions and is not a property of the queue.',
+  },
+  product: {
+    support: 'not-applicable',
+    label: 'F&I product category',
+    note: 'No rule reads a product category.',
+  },
+}
+
+/**
  * `/dashboard/inventory` (`DASH.9`).
  *
  * `period` is `partial` for the same reason it is on the accounting route, and the reason is

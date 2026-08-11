@@ -206,3 +206,29 @@ Ordered by the size of the gap between what a dealer group needs and what the mo
 ---
 
 Power BI real-engine validation remains externally pending; this document does not alter that state.
+
+---
+
+## `DASH.12` — gaps the action-rule audit found
+
+Auditing thirty proposed management-action rules against the governed export produced four data-domain
+gaps. Each was found by trying to enable a rule and discovering the evidence was not there; each is
+recorded here rather than approximated, and the rule identifier is retained and switched off.
+
+| Gap | Class | Rules blocked | What is missing, and what was NOT done |
+|---|---|---|---|
+| **Unit-level lead activity** | **E** | `ACT-INV-002` | ARPI models leads at store, source and campaign grain. `deal-jacket` carries lead attribution only for units that already SOLD, and `inventory-units` carries no lead column at all. Inferring a unit's shopper interest from store-level lead volume would fabricate a relationship the warehouse does not hold. |
+| **Unit-level appointment activity** | **E** | `ACT-INV-004` | The same shape. No fact links an appointment to a specific vehicle in stock. |
+| **A real journal posting timestamp** | **E** | `ACT-ACC-005` | `inventory-accounting.posting_lag_days` looks like the measure and is not: its own column comment states it is `accounting_date − acquisition_date`, which is `days_in_stock` under another name, and that ARPI holds no posting timestamp. A posting-lag rule would require inventing the second date. |
+| **Period-level F&I and lead aggregates** | **D** | `ACT-FNI-003`, `ACT-FNI-007`, `ACT-LED-002`, `ACT-LED-003`, `ACT-LED-005` | The published F&I grain is per store per manager per SALE DATE, and the published lead grain is per store per source per DAY. Every F&I row reports `meets_minimum_sample = false`, and `valid_leads` never exceeds seven against a governed floor of ten. A rate or comparison rule at those grains could never fire without breaching the sample discipline, and no governed period-level aggregate exists. This is the one gap a reporting view could close. |
+
+**Two grain findings that are not gaps.** `ACT-INV-005` asks for a book-versus-GL variance on a unit;
+the variance is a property of the control ACCOUNT and dividing it across the units inside would
+manufacture a per-unit figure the accounting model does not hold — `ACT-ACC-001` surfaces the same
+evidence where it is measured. `ACT-INV-007` asks for model concentration, which no governed dataset
+publishes and which the engine may not compute, since it performs no aggregation of its own.
+
+**Seven identifiers are not gaps at all.** `ACT-INV-006`, `ACT-SLS-006`, `ACT-FNI-001`, `ACT-FNI-002`,
+`ACT-FNI-004`, `ACT-FNI-005` and `ACT-ACC-004` describe conditions that cannot survive into a valid
+export, because a constraint, a data-quality check or a reconciliation fails the pipeline first.
+Surfacing a pipeline integrity failure as an ordinary management review item would misrepresent it.

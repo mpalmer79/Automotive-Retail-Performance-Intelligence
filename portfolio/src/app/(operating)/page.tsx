@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 
 import { Canvas } from '@/components/shell/field'
+import { ChangeDriverPanel, TopActions } from '@/components/dashboard/actions-sections'
 import { ActiveFilters, ContextProvenance } from '@/components/dashboard/context-rail'
 import { FilterBar, type FilterOption } from '@/components/dashboard/filter-bar'
 import { InventoryRisk } from '@/components/dashboard/inventory-risk'
@@ -40,6 +41,10 @@ import {
   buildExecutiveOverview,
   type ExecutiveOverview,
 } from '@/lib/dashboard/executive'
+import { topActions } from '@/lib/dashboard/actions'
+import { managementActions } from '@/lib/dashboard/actions-data'
+import { buildBridge, buildChangeDrivers } from '@/lib/dashboard/change-drivers'
+import { grossChangeBridgeRows } from '@/lib/dashboard/change-drivers-data'
 import { parseFilters, type QueryInput } from '@/lib/dashboard/filters'
 import { formatIsoDate, formatIsoMonth } from '@/lib/dashboard/format'
 import { exportTrust, powerBiTrust, reconciliationFailed } from '@/lib/dashboard/trust'
@@ -133,6 +138,30 @@ export default async function DashboardPage({
   const failedReconciliation = reconciliationFailed(dashboardManifest)
 
   const comparisonLabel = overview.periodContext.comparison?.label ?? null
+
+  /*
+   * The change-driver summary, built from the SAME bridge module `/dashboard/sales-gross`
+   * and `/dashboard/actions` use. One authority, three presentations: this one groups
+   * effects below the configured materiality into a labelled remainder, which the detail
+   * page deliberately does not, because a page devoted to the bridge should show all of it.
+   *
+   * The store scope follows the reader's filter so the panel agrees with the KPI row above
+   * it; the month is the export's as-of month, because a bridge compares one whole month
+   * with the one before it and the filter's period may be neither.
+   */
+  const executiveDrivers = buildChangeDrivers(
+    buildBridge(
+      grossChangeBridgeRows(),
+      parsed.filters.store.length > 0
+        ? parsed.filters.store
+        : dashboardStores.map((store) => store.id),
+      dashboardManifest.asOfDate.slice(0, 7)
+    ),
+    {
+      value: dashboardManifest.actions.changeDrivers.materiality.value,
+      label: dashboardManifest.actions.changeDrivers.materiality.label,
+    }
+  )
 
   return (
     <Canvas>
@@ -305,6 +334,49 @@ export default async function DashboardPage({
                     funnel={overview.funnel}
                     comparisonLabel={comparisonLabel}
                     filters={parsed.filters}
+                  />
+                </Pane>
+              </div>
+            </div>
+          </ConsoleRow>
+
+          {/* -------------------------------------------------------------- */}
+          {/* REGION 4b — Management attention (`DASH.12`)                    */}
+          {/* -------------------------------------------------------------- */}
+          {/*
+            PLACED AFTER THE BUSINESS STATUS, DELIBERATELY. The Executive Overview's job
+            is to say how the group is performing; the action queue says what a manager
+            might look at next, which is a question that only makes sense once the first
+            one is answered. On a phone this is four regions down, and that is the right
+            distance: management attention follows core business status rather than
+            displacing it.
+
+            FIVE PROMPTS, AND THEY ARE THE FIRST FIVE. The queue already runs most severe
+            first under a total order, so this is a prefix of it — no second ranking, no
+            rotation, no sampling and no personalisation. "View all" lands on the same
+            rows in the same sequence.
+          */}
+          <ConsoleRow
+            id="management-attention"
+            eyebrow="Management attention"
+            title="What meets a review rule right now"
+            lede="Deterministic prompts from rules written down in advance. A reason to look, not a finding, a recommendation or a claim about cause."
+          >
+            <div className="grid gap-x-10 gap-y-12 xl:grid-cols-12">
+              <div className="xl:col-span-7">
+                <Pane title="Review queue">
+                  <TopActions
+                    actions={topActions(managementActions(), 5)}
+                    total={dashboardManifest.actions.rowCount}
+                    href={ROUTES.dashboardActions.href}
+                  />
+                </Pane>
+              </div>
+              <div className="xl:col-span-5">
+                <Pane title="Why total gross changed">
+                  <ChangeDriverPanel
+                    drivers={executiveDrivers}
+                    authority={dashboardManifest.actions.changeDrivers.authority}
                   />
                 </Pane>
               </div>

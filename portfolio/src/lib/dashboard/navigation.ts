@@ -40,6 +40,7 @@
  */
 import {
   ACCOUNTING_SUPPORT,
+  ACTIONS_SUPPORT,
   DEAL_EXPLORER_SUPPORT,
   EMPLOYEES_SUPPORT,
   EXECUTIVE_OVERVIEW_SUPPORT,
@@ -72,6 +73,7 @@ const ROUTE_SUPPORT: Readonly<Record<string, RouteFilterSupport>> = {
   '/dashboard/leads-marketing': LEADS_MARKETING_SUPPORT,
   '/dashboard/employees': EMPLOYEES_SUPPORT,
   '/dashboard/accounting': ACCOUNTING_SUPPORT,
+  '/dashboard/actions': ACTIONS_SUPPORT,
 }
 
 /**

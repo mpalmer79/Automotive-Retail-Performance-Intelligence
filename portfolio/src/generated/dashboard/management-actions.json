@@ -1,0 +1,4024 @@
+{
+  "schema": "arpi.management_actions/1",
+  "rowCount": 47,
+  "actions": [
+    {
+      "actionId": "ACT-INV-001:GSA-001|VEH-0000103:17",
+      "ruleId": "ACT-INV-001",
+      "domain": "inventory",
+      "asOfDate": "2025-12-31",
+      "store": "GSA-001",
+      "entityType": "inventory_unit",
+      "entityId": "GSA-001|VEH-0000103",
+      "severity": "high",
+      "title": "Aged unit with no markdown since the prior snapshot",
+      "ownerRole": "Used-car manager",
+      "recommendedReview": "Review this unit's price movement against its age and the store's aged-unit pattern.",
+      "limitations": "price_to_market_ratio is computed from a synthetic market price estimate. It is not a guidebook value, an auction result, an appraisal or a valuation.",
+      "dateBasis": "snapshot date",
+      "observedDate": "2025-12-31",
+      "drillThrough": "/dashboard/inventory?store=GSA-001&unit=VEH-0000103",
+      "evidence": [
+        {
+          "name": "days_in_stock",
+          "value": 212,
+          "type": "integer",
+          "unit": "days",
+          "displayPrecision": null
+        },
+        {
+          "name": "aged_threshold_days",
+          "value": 60,
+          "type": "integer",
+          "unit": "days",
+          "displayPrecision": null
+        },
+        {
+          "name": "current_asking_price",
+          "value": "10072.26",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "original_asking_price",
+          "value": "11216.32",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "asking_price_change",
+          "value": "0.00",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "markdown_count_to_date",
+          "value": 6,
+          "type": "integer",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "price_to_market_ratio",
+          "value": "0.9334",
+          "type": "exact",
+          "unit": "ratio",
+          "displayPrecision": 4
+        },
+        {
+          "name": "condition_group",
+          "value": "Used",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "model_name",
+          "value": "Equinox",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        }
+      ],
+      "thresholdsUsed": [
+        {
+          "name": "aged_threshold_days",
+          "label": "Aged threshold",
+          "value": "60",
+          "units": "days",
+          "source": "governed",
+          "authority": "governed inventory aged-threshold project default, published per row"
+        },
+        {
+          "name": "high_severity_days",
+          "label": "High-severity review threshold — project default",
+          "value": "120",
+          "units": "days",
+          "source": "project-default-review-threshold",
+          "authority": "ACT-INV-001"
+        }
+      ]
+    },
+    {
+      "actionId": "ACT-INV-001:GSA-001|VEH-0000503:17",
+      "ruleId": "ACT-INV-001",
+      "domain": "inventory",
+      "asOfDate": "2025-12-31",
+      "store": "GSA-001",
+      "entityType": "inventory_unit",
+      "entityId": "GSA-001|VEH-0000503",
+      "severity": "high",
+      "title": "Aged unit with no markdown since the prior snapshot",
+      "ownerRole": "Used-car manager",
+      "recommendedReview": "Review this unit's price movement against its age and the store's aged-unit pattern.",
+      "limitations": "price_to_market_ratio is computed from a synthetic market price estimate. It is not a guidebook value, an auction result, an appraisal or a valuation.",
+      "dateBasis": "snapshot date",
+      "observedDate": "2025-12-31",
+      "drillThrough": "/dashboard/inventory?store=GSA-001&unit=VEH-0000503",
+      "evidence": [
+        {
+          "name": "days_in_stock",
+          "value": 294,
+          "type": "integer",
+          "unit": "days",
+          "displayPrecision": null
+        },
+        {
+          "name": "aged_threshold_days",
+          "value": 60,
+          "type": "integer",
+          "unit": "days",
+          "displayPrecision": null
+        },
+        {
+          "name": "current_asking_price",
+          "value": "38829.02",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "original_asking_price",
+          "value": "43239.44",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "asking_price_change",
+          "value": "0.00",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "markdown_count_to_date",
+          "value": 6,
+          "type": "integer",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "price_to_market_ratio",
+          "value": "0.9162",
+          "type": "exact",
+          "unit": "ratio",
+          "displayPrecision": 4
+        },
+        {
+          "name": "condition_group",
+          "value": "Used",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "model_name",
+          "value": "Tahoe",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        }
+      ],
+      "thresholdsUsed": [
+        {
+          "name": "aged_threshold_days",
+          "label": "Aged threshold",
+          "value": "60",
+          "units": "days",
+          "source": "governed",
+          "authority": "governed inventory aged-threshold project default, published per row"
+        },
+        {
+          "name": "high_severity_days",
+          "label": "High-severity review threshold — project default",
+          "value": "120",
+          "units": "days",
+          "source": "project-default-review-threshold",
+          "authority": "ACT-INV-001"
+        }
+      ]
+    },
+    {
+      "actionId": "ACT-INV-001:GSA-001|VEH-0000660:17",
+      "ruleId": "ACT-INV-001",
+      "domain": "inventory",
+      "asOfDate": "2025-12-31",
+      "store": "GSA-001",
+      "entityType": "inventory_unit",
+      "entityId": "GSA-001|VEH-0000660",
+      "severity": "high",
+      "title": "Aged unit with no markdown since the prior snapshot",
+      "ownerRole": "Used-car manager",
+      "recommendedReview": "Review this unit's price movement against its age and the store's aged-unit pattern.",
+      "limitations": "price_to_market_ratio is computed from a synthetic market price estimate. It is not a guidebook value, an auction result, an appraisal or a valuation.",
+      "dateBasis": "snapshot date",
+      "observedDate": "2025-12-31",
+      "drillThrough": "/dashboard/inventory?store=GSA-001&unit=VEH-0000660",
+      "evidence": [
+        {
+          "name": "days_in_stock",
+          "value": 320,
+          "type": "integer",
+          "unit": "days",
+          "displayPrecision": null
+        },
+        {
+          "name": "aged_threshold_days",
+          "value": 60,
+          "type": "integer",
+          "unit": "days",
+          "displayPrecision": null
+        },
+        {
+          "name": "current_asking_price",
+          "value": "37260.72",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "original_asking_price",
+          "value": "41493.01",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "asking_price_change",
+          "value": "0.00",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "markdown_count_to_date",
+          "value": 6,
+          "type": "integer",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "price_to_market_ratio",
+          "value": "0.9900",
+          "type": "exact",
+          "unit": "ratio",
+          "displayPrecision": 4
+        },
+        {
+          "name": "condition_group",
+          "value": "Used",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "model_name",
+          "value": "Tahoe",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        }
+      ],
+      "thresholdsUsed": [
+        {
+          "name": "aged_threshold_days",
+          "label": "Aged threshold",
+          "value": "60",
+          "units": "days",
+          "source": "governed",
+          "authority": "governed inventory aged-threshold project default, published per row"
+        },
+        {
+          "name": "high_severity_days",
+          "label": "High-severity review threshold — project default",
+          "value": "120",
+          "units": "days",
+          "source": "project-default-review-threshold",
+          "authority": "ACT-INV-001"
+        }
+      ]
+    },
+    {
+      "actionId": "ACT-INV-001:GSA-002|VEH-0000079:17",
+      "ruleId": "ACT-INV-001",
+      "domain": "inventory",
+      "asOfDate": "2025-12-31",
+      "store": "GSA-002",
+      "entityType": "inventory_unit",
+      "entityId": "GSA-002|VEH-0000079",
+      "severity": "high",
+      "title": "Aged unit with no markdown since the prior snapshot",
+      "ownerRole": "Used-car manager",
+      "recommendedReview": "Review this unit's price movement against its age and the store's aged-unit pattern.",
+      "limitations": "price_to_market_ratio is computed from a synthetic market price estimate. It is not a guidebook value, an auction result, an appraisal or a valuation.",
+      "dateBasis": "snapshot date",
+      "observedDate": "2025-12-31",
+      "drillThrough": "/dashboard/inventory?store=GSA-002&unit=VEH-0000079",
+      "evidence": [
+        {
+          "name": "days_in_stock",
+          "value": 302,
+          "type": "integer",
+          "unit": "days",
+          "displayPrecision": null
+        },
+        {
+          "name": "aged_threshold_days",
+          "value": 60,
+          "type": "integer",
+          "unit": "days",
+          "displayPrecision": null
+        },
+        {
+          "name": "current_asking_price",
+          "value": "19011.49",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "original_asking_price",
+          "value": "21170.92",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "asking_price_change",
+          "value": "0.00",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "markdown_count_to_date",
+          "value": 6,
+          "type": "integer",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "price_to_market_ratio",
+          "value": null,
+          "type": "exact",
+          "unit": "ratio",
+          "displayPrecision": 4
+        },
+        {
+          "name": "condition_group",
+          "value": "Used",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "model_name",
+          "value": "Ascent",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        }
+      ],
+      "thresholdsUsed": [
+        {
+          "name": "aged_threshold_days",
+          "label": "Aged threshold",
+          "value": "60",
+          "units": "days",
+          "source": "governed",
+          "authority": "governed inventory aged-threshold project default, published per row"
+        },
+        {
+          "name": "high_severity_days",
+          "label": "High-severity review threshold — project default",
+          "value": "120",
+          "units": "days",
+          "source": "project-default-review-threshold",
+          "authority": "ACT-INV-001"
+        }
+      ]
+    },
+    {
+      "actionId": "ACT-INV-001:GSA-002|VEH-0000247:17",
+      "ruleId": "ACT-INV-001",
+      "domain": "inventory",
+      "asOfDate": "2025-12-31",
+      "store": "GSA-002",
+      "entityType": "inventory_unit",
+      "entityId": "GSA-002|VEH-0000247",
+      "severity": "high",
+      "title": "Aged unit with no markdown since the prior snapshot",
+      "ownerRole": "Used-car manager",
+      "recommendedReview": "Review this unit's price movement against its age and the store's aged-unit pattern.",
+      "limitations": "price_to_market_ratio is computed from a synthetic market price estimate. It is not a guidebook value, an auction result, an appraisal or a valuation.",
+      "dateBasis": "snapshot date",
+      "observedDate": "2025-12-31",
+      "drillThrough": "/dashboard/inventory?store=GSA-002&unit=VEH-0000247",
+      "evidence": [
+        {
+          "name": "days_in_stock",
+          "value": 282,
+          "type": "integer",
+          "unit": "days",
+          "displayPrecision": null
+        },
+        {
+          "name": "aged_threshold_days",
+          "value": 60,
+          "type": "integer",
+          "unit": "days",
+          "displayPrecision": null
+        },
+        {
+          "name": "current_asking_price",
+          "value": "11734.92",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "original_asking_price",
+          "value": "13067.84",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "asking_price_change",
+          "value": "0.00",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "markdown_count_to_date",
+          "value": 6,
+          "type": "integer",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "price_to_market_ratio",
+          "value": "0.9204",
+          "type": "exact",
+          "unit": "ratio",
+          "displayPrecision": 4
+        },
+        {
+          "name": "condition_group",
+          "value": "Used",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "model_name",
+          "value": "Crosstrek",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        }
+      ],
+      "thresholdsUsed": [
+        {
+          "name": "aged_threshold_days",
+          "label": "Aged threshold",
+          "value": "60",
+          "units": "days",
+          "source": "governed",
+          "authority": "governed inventory aged-threshold project default, published per row"
+        },
+        {
+          "name": "high_severity_days",
+          "label": "High-severity review threshold — project default",
+          "value": "120",
+          "units": "days",
+          "source": "project-default-review-threshold",
+          "authority": "ACT-INV-001"
+        }
+      ]
+    },
+    {
+      "actionId": "ACT-INV-001:GSA-002|VEH-0000388:17",
+      "ruleId": "ACT-INV-001",
+      "domain": "inventory",
+      "asOfDate": "2025-12-31",
+      "store": "GSA-002",
+      "entityType": "inventory_unit",
+      "entityId": "GSA-002|VEH-0000388",
+      "severity": "high",
+      "title": "Aged unit with no markdown since the prior snapshot",
+      "ownerRole": "Used-car manager",
+      "recommendedReview": "Review this unit's price movement against its age and the store's aged-unit pattern.",
+      "limitations": "price_to_market_ratio is computed from a synthetic market price estimate. It is not a guidebook value, an auction result, an appraisal or a valuation.",
+      "dateBasis": "snapshot date",
+      "observedDate": "2025-12-31",
+      "drillThrough": "/dashboard/inventory?store=GSA-002&unit=VEH-0000388",
+      "evidence": [
+        {
+          "name": "days_in_stock",
+          "value": 213,
+          "type": "integer",
+          "unit": "days",
+          "displayPrecision": null
+        },
+        {
+          "name": "aged_threshold_days",
+          "value": 60,
+          "type": "integer",
+          "unit": "days",
+          "displayPrecision": null
+        },
+        {
+          "name": "current_asking_price",
+          "value": "21262.04",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "original_asking_price",
+          "value": "23677.11",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "asking_price_change",
+          "value": "0.00",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "markdown_count_to_date",
+          "value": 6,
+          "type": "integer",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "price_to_market_ratio",
+          "value": "0.9671",
+          "type": "exact",
+          "unit": "ratio",
+          "displayPrecision": 4
+        },
+        {
+          "name": "condition_group",
+          "value": "Used",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "model_name",
+          "value": "Impreza",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        }
+      ],
+      "thresholdsUsed": [
+        {
+          "name": "aged_threshold_days",
+          "label": "Aged threshold",
+          "value": "60",
+          "units": "days",
+          "source": "governed",
+          "authority": "governed inventory aged-threshold project default, published per row"
+        },
+        {
+          "name": "high_severity_days",
+          "label": "High-severity review threshold — project default",
+          "value": "120",
+          "units": "days",
+          "source": "project-default-review-threshold",
+          "authority": "ACT-INV-001"
+        }
+      ]
+    },
+    {
+      "actionId": "ACT-INV-001:GSA-002|VEH-0000576:17",
+      "ruleId": "ACT-INV-001",
+      "domain": "inventory",
+      "asOfDate": "2025-12-31",
+      "store": "GSA-002",
+      "entityType": "inventory_unit",
+      "entityId": "GSA-002|VEH-0000576",
+      "severity": "high",
+      "title": "Aged unit with no markdown since the prior snapshot",
+      "ownerRole": "Used-car manager",
+      "recommendedReview": "Review this unit's price movement against its age and the store's aged-unit pattern.",
+      "limitations": "price_to_market_ratio is computed from a synthetic market price estimate. It is not a guidebook value, an auction result, an appraisal or a valuation.",
+      "dateBasis": "snapshot date",
+      "observedDate": "2025-12-31",
+      "drillThrough": "/dashboard/inventory?store=GSA-002&unit=VEH-0000576",
+      "evidence": [
+        {
+          "name": "days_in_stock",
+          "value": 334,
+          "type": "integer",
+          "unit": "days",
+          "displayPrecision": null
+        },
+        {
+          "name": "aged_threshold_days",
+          "value": 60,
+          "type": "integer",
+          "unit": "days",
+          "displayPrecision": null
+        },
+        {
+          "name": "current_asking_price",
+          "value": "38412.84",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "original_asking_price",
+          "value": "40605.54",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "asking_price_change",
+          "value": "0.00",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "markdown_count_to_date",
+          "value": 6,
+          "type": "integer",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "price_to_market_ratio",
+          "value": "0.8959",
+          "type": "exact",
+          "unit": "ratio",
+          "displayPrecision": 4
+        },
+        {
+          "name": "condition_group",
+          "value": "New",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "model_name",
+          "value": "Ascent",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        }
+      ],
+      "thresholdsUsed": [
+        {
+          "name": "aged_threshold_days",
+          "label": "Aged threshold",
+          "value": "60",
+          "units": "days",
+          "source": "governed",
+          "authority": "governed inventory aged-threshold project default, published per row"
+        },
+        {
+          "name": "high_severity_days",
+          "label": "High-severity review threshold — project default",
+          "value": "120",
+          "units": "days",
+          "source": "project-default-review-threshold",
+          "authority": "ACT-INV-001"
+        }
+      ]
+    },
+    {
+      "actionId": "ACT-INV-001:GSA-002|VEH-0000808:17",
+      "ruleId": "ACT-INV-001",
+      "domain": "inventory",
+      "asOfDate": "2025-12-31",
+      "store": "GSA-002",
+      "entityType": "inventory_unit",
+      "entityId": "GSA-002|VEH-0000808",
+      "severity": "high",
+      "title": "Aged unit with no markdown since the prior snapshot",
+      "ownerRole": "Used-car manager",
+      "recommendedReview": "Review this unit's price movement against its age and the store's aged-unit pattern.",
+      "limitations": "price_to_market_ratio is computed from a synthetic market price estimate. It is not a guidebook value, an auction result, an appraisal or a valuation.",
+      "dateBasis": "snapshot date",
+      "observedDate": "2025-12-31",
+      "drillThrough": "/dashboard/inventory?store=GSA-002&unit=VEH-0000808",
+      "evidence": [
+        {
+          "name": "days_in_stock",
+          "value": 234,
+          "type": "integer",
+          "unit": "days",
+          "displayPrecision": null
+        },
+        {
+          "name": "aged_threshold_days",
+          "value": 60,
+          "type": "integer",
+          "unit": "days",
+          "displayPrecision": null
+        },
+        {
+          "name": "current_asking_price",
+          "value": "35856.73",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "original_asking_price",
+          "value": "37903.52",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "asking_price_change",
+          "value": "0.00",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "markdown_count_to_date",
+          "value": 6,
+          "type": "integer",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "price_to_market_ratio",
+          "value": "0.9985",
+          "type": "exact",
+          "unit": "ratio",
+          "displayPrecision": 4
+        },
+        {
+          "name": "condition_group",
+          "value": "New",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "model_name",
+          "value": "Forester",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        }
+      ],
+      "thresholdsUsed": [
+        {
+          "name": "aged_threshold_days",
+          "label": "Aged threshold",
+          "value": "60",
+          "units": "days",
+          "source": "governed",
+          "authority": "governed inventory aged-threshold project default, published per row"
+        },
+        {
+          "name": "high_severity_days",
+          "label": "High-severity review threshold — project default",
+          "value": "120",
+          "units": "days",
+          "source": "project-default-review-threshold",
+          "authority": "ACT-INV-001"
+        }
+      ]
+    },
+    {
+      "actionId": "ACT-INV-001:GSA-003|VEH-0000002:17",
+      "ruleId": "ACT-INV-001",
+      "domain": "inventory",
+      "asOfDate": "2025-12-31",
+      "store": "GSA-003",
+      "entityType": "inventory_unit",
+      "entityId": "GSA-003|VEH-0000002",
+      "severity": "high",
+      "title": "Aged unit with no markdown since the prior snapshot",
+      "ownerRole": "Used-car manager",
+      "recommendedReview": "Review this unit's price movement against its age and the store's aged-unit pattern.",
+      "limitations": "price_to_market_ratio is computed from a synthetic market price estimate. It is not a guidebook value, an auction result, an appraisal or a valuation.",
+      "dateBasis": "snapshot date",
+      "observedDate": "2025-12-31",
+      "drillThrough": "/dashboard/inventory?store=GSA-003&unit=VEH-0000002",
+      "evidence": [
+        {
+          "name": "days_in_stock",
+          "value": 222,
+          "type": "integer",
+          "unit": "days",
+          "displayPrecision": null
+        },
+        {
+          "name": "aged_threshold_days",
+          "value": 60,
+          "type": "integer",
+          "unit": "days",
+          "displayPrecision": null
+        },
+        {
+          "name": "current_asking_price",
+          "value": "18963.60",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "original_asking_price",
+          "value": "21117.60",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "asking_price_change",
+          "value": "0.00",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "markdown_count_to_date",
+          "value": 6,
+          "type": "integer",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "price_to_market_ratio",
+          "value": "1.0075",
+          "type": "exact",
+          "unit": "ratio",
+          "displayPrecision": 4
+        },
+        {
+          "name": "condition_group",
+          "value": "Used",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "model_name",
+          "value": "1500",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        }
+      ],
+      "thresholdsUsed": [
+        {
+          "name": "aged_threshold_days",
+          "label": "Aged threshold",
+          "value": "60",
+          "units": "days",
+          "source": "governed",
+          "authority": "governed inventory aged-threshold project default, published per row"
+        },
+        {
+          "name": "high_severity_days",
+          "label": "High-severity review threshold — project default",
+          "value": "120",
+          "units": "days",
+          "source": "project-default-review-threshold",
+          "authority": "ACT-INV-001"
+        }
+      ]
+    },
+    {
+      "actionId": "ACT-INV-001:GSA-003|VEH-0000757:17",
+      "ruleId": "ACT-INV-001",
+      "domain": "inventory",
+      "asOfDate": "2025-12-31",
+      "store": "GSA-003",
+      "entityType": "inventory_unit",
+      "entityId": "GSA-003|VEH-0000757",
+      "severity": "high",
+      "title": "Aged unit with no markdown since the prior snapshot",
+      "ownerRole": "Used-car manager",
+      "recommendedReview": "Review this unit's price movement against its age and the store's aged-unit pattern.",
+      "limitations": "price_to_market_ratio is computed from a synthetic market price estimate. It is not a guidebook value, an auction result, an appraisal or a valuation.",
+      "dateBasis": "snapshot date",
+      "observedDate": "2025-12-31",
+      "drillThrough": "/dashboard/inventory?store=GSA-003&unit=VEH-0000757",
+      "evidence": [
+        {
+          "name": "days_in_stock",
+          "value": 265,
+          "type": "integer",
+          "unit": "days",
+          "displayPrecision": null
+        },
+        {
+          "name": "aged_threshold_days",
+          "value": 60,
+          "type": "integer",
+          "unit": "days",
+          "displayPrecision": null
+        },
+        {
+          "name": "current_asking_price",
+          "value": "33799.13",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "original_asking_price",
+          "value": "37638.23",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "asking_price_change",
+          "value": "0.00",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "markdown_count_to_date",
+          "value": 6,
+          "type": "integer",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "price_to_market_ratio",
+          "value": "0.8571",
+          "type": "exact",
+          "unit": "ratio",
+          "displayPrecision": 4
+        },
+        {
+          "name": "condition_group",
+          "value": "Used",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "model_name",
+          "value": "Camaro",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        }
+      ],
+      "thresholdsUsed": [
+        {
+          "name": "aged_threshold_days",
+          "label": "Aged threshold",
+          "value": "60",
+          "units": "days",
+          "source": "governed",
+          "authority": "governed inventory aged-threshold project default, published per row"
+        },
+        {
+          "name": "high_severity_days",
+          "label": "High-severity review threshold — project default",
+          "value": "120",
+          "units": "days",
+          "source": "project-default-review-threshold",
+          "authority": "ACT-INV-001"
+        }
+      ]
+    },
+    {
+      "actionId": "ACT-INV-001:GSA-003|VEH-0000869:17",
+      "ruleId": "ACT-INV-001",
+      "domain": "inventory",
+      "asOfDate": "2025-12-31",
+      "store": "GSA-003",
+      "entityType": "inventory_unit",
+      "entityId": "GSA-003|VEH-0000869",
+      "severity": "high",
+      "title": "Aged unit with no markdown since the prior snapshot",
+      "ownerRole": "Used-car manager",
+      "recommendedReview": "Review this unit's price movement against its age and the store's aged-unit pattern.",
+      "limitations": "price_to_market_ratio is computed from a synthetic market price estimate. It is not a guidebook value, an auction result, an appraisal or a valuation.",
+      "dateBasis": "snapshot date",
+      "observedDate": "2025-12-31",
+      "drillThrough": "/dashboard/inventory?store=GSA-003&unit=VEH-0000869",
+      "evidence": [
+        {
+          "name": "days_in_stock",
+          "value": 231,
+          "type": "integer",
+          "unit": "days",
+          "displayPrecision": null
+        },
+        {
+          "name": "aged_threshold_days",
+          "value": 60,
+          "type": "integer",
+          "unit": "days",
+          "displayPrecision": null
+        },
+        {
+          "name": "current_asking_price",
+          "value": "40520.80",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "original_asking_price",
+          "value": "45123.38",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "asking_price_change",
+          "value": "0.00",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "markdown_count_to_date",
+          "value": 6,
+          "type": "integer",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "price_to_market_ratio",
+          "value": "0.9076",
+          "type": "exact",
+          "unit": "ratio",
+          "displayPrecision": 4
+        },
+        {
+          "name": "condition_group",
+          "value": "Used",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "model_name",
+          "value": "Colorado",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        }
+      ],
+      "thresholdsUsed": [
+        {
+          "name": "aged_threshold_days",
+          "label": "Aged threshold",
+          "value": "60",
+          "units": "days",
+          "source": "governed",
+          "authority": "governed inventory aged-threshold project default, published per row"
+        },
+        {
+          "name": "high_severity_days",
+          "label": "High-severity review threshold — project default",
+          "value": "120",
+          "units": "days",
+          "source": "project-default-review-threshold",
+          "authority": "ACT-INV-001"
+        }
+      ]
+    },
+    {
+      "actionId": "ACT-SLS-001:SLE-00000583:17",
+      "ruleId": "ACT-SLS-001",
+      "domain": "sales-gross",
+      "asOfDate": "2025-12-31",
+      "store": "GSA-001",
+      "entityType": "deal",
+      "entityId": "SLE-00000583",
+      "severity": "high",
+      "title": "Negative front gross on a retail delivery",
+      "ownerRole": "General sales manager",
+      "recommendedReview": "Review the deal structure and the gross components behind this delivery.",
+      "limitations": "A negative front gross is a signed accounting outcome. It is not evidence of an error, a poor decision or anyone's performance, and this action attributes it to nobody.",
+      "dateBasis": "sale date",
+      "observedDate": "2025-12-12",
+      "drillThrough": "/dashboard/deals/SLE-00000583",
+      "evidence": [
+        {
+          "name": "front_end_gross",
+          "value": "-1807.91",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "back_end_gross",
+          "value": "2195.17",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "total_gross",
+          "value": "387.26",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "sale_price",
+          "value": "35976.57",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "vehicle_display",
+          "value": "2025 Chevrolet Blazer EV LT",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "condition_group",
+          "value": "New",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "sale_type",
+          "value": "New Retail",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "days_in_inventory_at_sale",
+          "value": 51,
+          "type": "integer",
+          "unit": "days",
+          "displayPrecision": null
+        }
+      ],
+      "thresholdsUsed": [
+        {
+          "name": "high_severity_front_gross",
+          "label": "High-severity front-gross threshold — project default",
+          "value": "-1500",
+          "units": "USD",
+          "source": "project-default-review-threshold",
+          "authority": "ACT-SLS-001"
+        }
+      ]
+    },
+    {
+      "actionId": "ACT-SLS-003:GSA-001|2025-12-01|front_pvr:17",
+      "ruleId": "ACT-SLS-003",
+      "domain": "sales-gross",
+      "asOfDate": "2025-12-31",
+      "store": "GSA-001",
+      "entityType": "store_month",
+      "entityId": "GSA-001|2025-12-01|front_pvr",
+      "severity": "high",
+      "title": "Front-PVR effect materially reduced total gross this month",
+      "ownerRole": "General manager",
+      "recommendedReview": "Compare the front-gross components of this month's deliveries with the comparison month under the documented sequential bridge.",
+      "limitations": "A bridge contribution is an arithmetic attribution under a documented sequential decomposition. It is not a cause, and the decomposition order determines how a change is apportioned between components.",
+      "dateBasis": "sale date, aggregated to calendar month",
+      "observedDate": "2025-12-01",
+      "drillThrough": "/dashboard/sales-gross?store=GSA-001",
+      "evidence": [
+        {
+          "name": "effect_amount",
+          "value": "-14067.506129032258",
+          "type": "exact",
+          "unit": "USD",
+          "displayPrecision": 2
+        },
+        {
+          "name": "component_label",
+          "value": "Front PVR effect",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "total_gross_change",
+          "value": "1389.40",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "total_gross",
+          "value": "128978.60",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "comparison_total_gross",
+          "value": "127589.20",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "front_end_gross",
+          "value": "82092.51",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "comparison_front_end_gross",
+          "value": "85170.30",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "retail_units_sold",
+          "value": 35,
+          "type": "integer",
+          "unit": "units",
+          "displayPrecision": null
+        },
+        {
+          "name": "comparison_retail_units_sold",
+          "value": 31,
+          "type": "integer",
+          "unit": "units",
+          "displayPrecision": null
+        }
+      ],
+      "thresholdsUsed": [
+        {
+          "name": "pvr_effect_high",
+          "label": "High-severity bridge-effect threshold — project default",
+          "value": "-12000",
+          "units": "USD",
+          "source": "project-default-review-threshold",
+          "authority": "ACT-SLS-003"
+        },
+        {
+          "name": "pvr_effect_review",
+          "label": "Bridge-effect review threshold — project default",
+          "value": "-5000",
+          "units": "USD",
+          "source": "project-default-review-threshold",
+          "authority": "ACT-SLS-003"
+        }
+      ]
+    },
+    {
+      "actionId": "ACT-SLS-005:SLE-00000595:17",
+      "ruleId": "ACT-SLS-005",
+      "domain": "sales-gross",
+      "asOfDate": "2025-12-31",
+      "store": "GSA-001",
+      "entityType": "deal",
+      "entityId": "SLE-00000595",
+      "severity": "high",
+      "title": "Large discount from the original asking price on a fast-turning unit",
+      "ownerRole": "General sales manager",
+      "recommendedReview": "Review the price movement on this unit against the time it spent in stock.",
+      "limitations": "A discount is a signed difference between two published prices. It is not evidence of an error and is attributed to nobody.",
+      "dateBasis": "sale date",
+      "observedDate": "2025-12-16",
+      "drillThrough": "/dashboard/deals/SLE-00000595",
+      "evidence": [
+        {
+          "name": "discount_from_original",
+          "value": "4395.02",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "days_in_inventory_at_sale",
+          "value": 22,
+          "type": "integer",
+          "unit": "days",
+          "displayPrecision": null
+        },
+        {
+          "name": "original_asking_price",
+          "value": "51637.96",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "final_asking_price",
+          "value": "51637.96",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "sale_price",
+          "value": "47242.94",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "front_end_gross",
+          "value": "6482.43",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "total_gross",
+          "value": "7508.96",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "vehicle_display",
+          "value": "2026 Chevrolet Colorado Z71",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "condition_group",
+          "value": "Used",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        }
+      ],
+      "thresholdsUsed": [
+        {
+          "name": "discount_high",
+          "label": "High-severity discount threshold — project default",
+          "value": "4000",
+          "units": "USD",
+          "source": "project-default-review-threshold",
+          "authority": "ACT-SLS-005"
+        },
+        {
+          "name": "discount_review",
+          "label": "Discount review threshold — project default",
+          "value": "2000",
+          "units": "USD",
+          "source": "project-default-review-threshold",
+          "authority": "ACT-SLS-005"
+        },
+        {
+          "name": "low_age_days",
+          "label": "Fast-turn review threshold — project default",
+          "value": "30",
+          "units": "days",
+          "source": "project-default-review-threshold",
+          "authority": "ACT-SLS-005"
+        }
+      ]
+    },
+    {
+      "actionId": "ACT-SLS-003:GSA-003|2025-12-01|front_pvr:17",
+      "ruleId": "ACT-SLS-003",
+      "domain": "sales-gross",
+      "asOfDate": "2025-12-31",
+      "store": "GSA-003",
+      "entityType": "store_month",
+      "entityId": "GSA-003|2025-12-01|front_pvr",
+      "severity": "high",
+      "title": "Front-PVR effect materially reduced total gross this month",
+      "ownerRole": "General manager",
+      "recommendedReview": "Compare the front-gross components of this month's deliveries with the comparison month under the documented sequential bridge.",
+      "limitations": "A bridge contribution is an arithmetic attribution under a documented sequential decomposition. It is not a cause, and the decomposition order determines how a change is apportioned between components.",
+      "dateBasis": "sale date, aggregated to calendar month",
+      "observedDate": "2025-12-01",
+      "drillThrough": "/dashboard/sales-gross?store=GSA-003",
+      "evidence": [
+        {
+          "name": "effect_amount",
+          "value": "-15822.367500000000",
+          "type": "exact",
+          "unit": "USD",
+          "displayPrecision": 2
+        },
+        {
+          "name": "component_label",
+          "value": "Front PVR effect",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "total_gross_change",
+          "value": "16018.51",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "total_gross",
+          "value": "90650.97",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "comparison_total_gross",
+          "value": "74632.46",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "front_end_gross",
+          "value": "66718.58",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "comparison_front_end_gross",
+          "value": "60029.78",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "retail_units_sold",
+          "value": 22,
+          "type": "integer",
+          "unit": "units",
+          "displayPrecision": null
+        },
+        {
+          "name": "comparison_retail_units_sold",
+          "value": 16,
+          "type": "integer",
+          "unit": "units",
+          "displayPrecision": null
+        }
+      ],
+      "thresholdsUsed": [
+        {
+          "name": "pvr_effect_high",
+          "label": "High-severity bridge-effect threshold — project default",
+          "value": "-12000",
+          "units": "USD",
+          "source": "project-default-review-threshold",
+          "authority": "ACT-SLS-003"
+        },
+        {
+          "name": "pvr_effect_review",
+          "label": "Bridge-effect review threshold — project default",
+          "value": "-5000",
+          "units": "USD",
+          "source": "project-default-review-threshold",
+          "authority": "ACT-SLS-003"
+        }
+      ]
+    },
+    {
+      "actionId": "ACT-ACC-001:ACC-GL-VARIANCE:gl_reconciliation:20250930-1-2:17",
+      "ruleId": "ACT-ACC-001",
+      "domain": "accounting",
+      "asOfDate": "2025-12-31",
+      "store": "GSA-001",
+      "entityType": "accounting_exception",
+      "entityId": "ACC-GL-VARIANCE:gl_reconciliation:20250930-1-2",
+      "severity": "high",
+      "title": "General-ledger control variance against the stock schedule",
+      "ownerRole": "Controller",
+      "recommendedReview": "Reconcile the general-ledger balance and the stock schedule behind this control account.",
+      "limitations": "Both sides of the comparison are valid data. The sign states which side carries more, not which side is wrong, and a variance is a finding to investigate rather than an error.",
+      "dateBasis": "exception date",
+      "observedDate": "2025-09-30",
+      "drillThrough": "/dashboard/accounting?store=GSA-001",
+      "evidence": [
+        {
+          "name": "exception_amount",
+          "value": "1250.00",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "exception_date",
+          "value": "2025-09-30",
+          "type": "date",
+          "unit": "exception date",
+          "displayPrecision": null
+        },
+        {
+          "name": "exception_code",
+          "value": "ACC-GL-VARIANCE",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "exception_detail",
+          "value": "Used Vehicle Inventory at Granite Chevrolet of Nashua on date key 20250930: GL balance 758234.03 against subledger balance 756984.03, signed variance 1250.00. BOTH SIDES ARE VALID DATA. Positive means the control account carries more than the stock schedule supports; negative means the schedule carries more than the account. This is a reconciliation finding to investigate, not a broken record.",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        }
+      ],
+      "thresholdsUsed": [
+        {
+          "name": "variance_high",
+          "label": "High-severity variance threshold — project default",
+          "value": "1000",
+          "units": "USD",
+          "source": "project-default-review-threshold",
+          "authority": "ACT-ACC-001"
+        }
+      ]
+    },
+    {
+      "actionId": "ACT-ACC-002:ACC-MISSING-GL-BALANCE:gl_reconciliation:20250831-2-3:17",
+      "ruleId": "ACT-ACC-002",
+      "domain": "accounting",
+      "asOfDate": "2025-12-31",
+      "store": "GSA-002",
+      "entityType": "accounting_exception",
+      "entityId": "ACC-MISSING-GL-BALANCE:gl_reconciliation:20250831-2-3",
+      "severity": "high",
+      "title": "Control account with one side of the comparison absent",
+      "ownerRole": "Controller",
+      "recommendedReview": "Confirm which side of this control comparison is absent and reconcile it.",
+      "limitations": "A missing side is not a zero balance. The absent amount is carried as null and is never coalesced: \"no balance was recorded\" and \"the balance was zero\" are different control positions.",
+      "dateBasis": "exception date",
+      "observedDate": "2025-08-31",
+      "drillThrough": "/dashboard/accounting?store=GSA-002",
+      "evidence": [
+        {
+          "name": "exception_code",
+          "value": "ACC-MISSING-GL-BALANCE",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "exception_date",
+          "value": "2025-08-31",
+          "type": "date",
+          "unit": "exception date",
+          "displayPrecision": null
+        },
+        {
+          "name": "exception_amount",
+          "value": null,
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "exception_detail",
+          "value": "Certified Vehicle Inventory at Granite Subaru of Manchester on date key 20250831: the stock schedule carries 309189.63 over 20 unit(s) and NO control account balance exists to compare it against. The variance is NULL, not the full subledger balance: a missing balance is not a zeroed account.",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        }
+      ],
+      "thresholdsUsed": []
+    },
+    {
+      "actionId": "ACT-ACC-002:ACC-MISSING-SUBLEDGER-BALANCE:gl_reconciliation:20251231-3-1:17",
+      "ruleId": "ACT-ACC-002",
+      "domain": "accounting",
+      "asOfDate": "2025-12-31",
+      "store": "GSA-003",
+      "entityType": "accounting_exception",
+      "entityId": "ACC-MISSING-SUBLEDGER-BALANCE:gl_reconciliation:20251231-3-1",
+      "severity": "high",
+      "title": "Control account with one side of the comparison absent",
+      "ownerRole": "Controller",
+      "recommendedReview": "Confirm which side of this control comparison is absent and reconcile it.",
+      "limitations": "A missing side is not a zero balance. The absent amount is carried as null and is never coalesced: \"no balance was recorded\" and \"the balance was zero\" are different control positions.",
+      "dateBasis": "exception date",
+      "observedDate": "2025-12-31",
+      "drillThrough": "/dashboard/accounting?store=GSA-003",
+      "evidence": [
+        {
+          "name": "exception_code",
+          "value": "ACC-MISSING-SUBLEDGER-BALANCE",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "exception_date",
+          "value": "2025-12-31",
+          "type": "date",
+          "unit": "exception date",
+          "displayPrecision": null
+        },
+        {
+          "name": "exception_amount",
+          "value": null,
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "exception_detail",
+          "value": "New Vehicle Inventory at Granite Pre-Owned Center of Merrimack on date key 20251231: the control account carries 18400.00 and NO stock schedule exists to support it. The variance is NULL, not the full control balance: an absent schedule is not an empty one.",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        }
+      ],
+      "thresholdsUsed": []
+    },
+    {
+      "actionId": "ACT-INV-003:GSA-001|VEH-0000390:17",
+      "ruleId": "ACT-INV-003",
+      "domain": "inventory",
+      "asOfDate": "2025-12-31",
+      "store": "GSA-001",
+      "entityType": "inventory_unit",
+      "entityId": "GSA-001|VEH-0000390",
+      "severity": "medium",
+      "title": "Asking price above the synthetic market estimate on an aged unit",
+      "ownerRole": "Used-car manager",
+      "recommendedReview": "Compare this unit's asking price with its age, its markdown history and the synthetic market context the ratio was built from.",
+      "limitations": "market_price_estimate is synthetic and generated by this project. The ratio is not a real market valuation, a guidebook value, an auction result, an appraisal or a pricing recommendation.",
+      "dateBasis": "snapshot date",
+      "observedDate": "2025-12-31",
+      "drillThrough": "/dashboard/inventory?store=GSA-001&unit=VEH-0000390",
+      "evidence": [
+        {
+          "name": "price_to_market_ratio",
+          "value": "1.0689",
+          "type": "exact",
+          "unit": "ratio",
+          "displayPrecision": 4
+        },
+        {
+          "name": "current_asking_price",
+          "value": "47450.24",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "market_price_estimate",
+          "value": "44390.12",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "days_in_stock",
+          "value": 106,
+          "type": "integer",
+          "unit": "days",
+          "displayPrecision": null
+        },
+        {
+          "name": "aged_threshold_days",
+          "value": 60,
+          "type": "integer",
+          "unit": "days",
+          "displayPrecision": null
+        },
+        {
+          "name": "markdown_count_to_date",
+          "value": 3,
+          "type": "integer",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "condition_group",
+          "value": "New",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "model_name",
+          "value": "Colorado",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        }
+      ],
+      "thresholdsUsed": [
+        {
+          "name": "aged_threshold_days",
+          "label": "Aged threshold",
+          "value": "60",
+          "units": "days",
+          "source": "governed",
+          "authority": "governed inventory aged-threshold project default, published per row"
+        },
+        {
+          "name": "price_to_market_review",
+          "label": "Price-to-market review threshold — project default",
+          "value": "1.05",
+          "units": "ratio",
+          "source": "project-default-review-threshold",
+          "authority": "ACT-INV-003"
+        }
+      ]
+    },
+    {
+      "actionId": "ACT-INV-003:GSA-002|VEH-0000325:17",
+      "ruleId": "ACT-INV-003",
+      "domain": "inventory",
+      "asOfDate": "2025-12-31",
+      "store": "GSA-002",
+      "entityType": "inventory_unit",
+      "entityId": "GSA-002|VEH-0000325",
+      "severity": "medium",
+      "title": "Asking price above the synthetic market estimate on an aged unit",
+      "ownerRole": "Used-car manager",
+      "recommendedReview": "Compare this unit's asking price with its age, its markdown history and the synthetic market context the ratio was built from.",
+      "limitations": "market_price_estimate is synthetic and generated by this project. The ratio is not a real market valuation, a guidebook value, an auction result, an appraisal or a pricing recommendation.",
+      "dateBasis": "snapshot date",
+      "observedDate": "2025-12-31",
+      "drillThrough": "/dashboard/inventory?store=GSA-002&unit=VEH-0000325",
+      "evidence": [
+        {
+          "name": "price_to_market_ratio",
+          "value": "1.0713",
+          "type": "exact",
+          "unit": "ratio",
+          "displayPrecision": 4
+        },
+        {
+          "name": "current_asking_price",
+          "value": "24283.83",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "market_price_estimate",
+          "value": "22668.15",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "days_in_stock",
+          "value": 154,
+          "type": "integer",
+          "unit": "days",
+          "displayPrecision": null
+        },
+        {
+          "name": "aged_threshold_days",
+          "value": 60,
+          "type": "integer",
+          "unit": "days",
+          "displayPrecision": null
+        },
+        {
+          "name": "markdown_count_to_date",
+          "value": 5,
+          "type": "integer",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "condition_group",
+          "value": "New",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "model_name",
+          "value": "Impreza",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        }
+      ],
+      "thresholdsUsed": [
+        {
+          "name": "aged_threshold_days",
+          "label": "Aged threshold",
+          "value": "60",
+          "units": "days",
+          "source": "governed",
+          "authority": "governed inventory aged-threshold project default, published per row"
+        },
+        {
+          "name": "price_to_market_review",
+          "label": "Price-to-market review threshold — project default",
+          "value": "1.05",
+          "units": "ratio",
+          "source": "project-default-review-threshold",
+          "authority": "ACT-INV-003"
+        }
+      ]
+    },
+    {
+      "actionId": "ACT-INV-003:GSA-002|VEH-0000333:17",
+      "ruleId": "ACT-INV-003",
+      "domain": "inventory",
+      "asOfDate": "2025-12-31",
+      "store": "GSA-002",
+      "entityType": "inventory_unit",
+      "entityId": "GSA-002|VEH-0000333",
+      "severity": "medium",
+      "title": "Asking price above the synthetic market estimate on an aged unit",
+      "ownerRole": "Used-car manager",
+      "recommendedReview": "Compare this unit's asking price with its age, its markdown history and the synthetic market context the ratio was built from.",
+      "limitations": "market_price_estimate is synthetic and generated by this project. The ratio is not a real market valuation, a guidebook value, an auction result, an appraisal or a pricing recommendation.",
+      "dateBasis": "snapshot date",
+      "observedDate": "2025-12-31",
+      "drillThrough": "/dashboard/inventory?store=GSA-002&unit=VEH-0000333",
+      "evidence": [
+        {
+          "name": "price_to_market_ratio",
+          "value": "1.0582",
+          "type": "exact",
+          "unit": "ratio",
+          "displayPrecision": 4
+        },
+        {
+          "name": "current_asking_price",
+          "value": "38282.17",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "market_price_estimate",
+          "value": "36176.69",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "days_in_stock",
+          "value": 71,
+          "type": "integer",
+          "unit": "days",
+          "displayPrecision": null
+        },
+        {
+          "name": "aged_threshold_days",
+          "value": 60,
+          "type": "integer",
+          "unit": "days",
+          "displayPrecision": null
+        },
+        {
+          "name": "markdown_count_to_date",
+          "value": 2,
+          "type": "integer",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "condition_group",
+          "value": "New",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "model_name",
+          "value": "Ascent",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        }
+      ],
+      "thresholdsUsed": [
+        {
+          "name": "aged_threshold_days",
+          "label": "Aged threshold",
+          "value": "60",
+          "units": "days",
+          "source": "governed",
+          "authority": "governed inventory aged-threshold project default, published per row"
+        },
+        {
+          "name": "price_to_market_review",
+          "label": "Price-to-market review threshold — project default",
+          "value": "1.05",
+          "units": "ratio",
+          "source": "project-default-review-threshold",
+          "authority": "ACT-INV-003"
+        }
+      ]
+    },
+    {
+      "actionId": "ACT-INV-003:GSA-002|VEH-0000741:17",
+      "ruleId": "ACT-INV-003",
+      "domain": "inventory",
+      "asOfDate": "2025-12-31",
+      "store": "GSA-002",
+      "entityType": "inventory_unit",
+      "entityId": "GSA-002|VEH-0000741",
+      "severity": "medium",
+      "title": "Asking price above the synthetic market estimate on an aged unit",
+      "ownerRole": "Used-car manager",
+      "recommendedReview": "Compare this unit's asking price with its age, its markdown history and the synthetic market context the ratio was built from.",
+      "limitations": "market_price_estimate is synthetic and generated by this project. The ratio is not a real market valuation, a guidebook value, an auction result, an appraisal or a pricing recommendation.",
+      "dateBasis": "snapshot date",
+      "observedDate": "2025-12-31",
+      "drillThrough": "/dashboard/inventory?store=GSA-002&unit=VEH-0000741",
+      "evidence": [
+        {
+          "name": "price_to_market_ratio",
+          "value": "1.0524",
+          "type": "exact",
+          "unit": "ratio",
+          "displayPrecision": 4
+        },
+        {
+          "name": "current_asking_price",
+          "value": "4172.86",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "market_price_estimate",
+          "value": "3964.96",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "days_in_stock",
+          "value": 76,
+          "type": "integer",
+          "unit": "days",
+          "displayPrecision": null
+        },
+        {
+          "name": "aged_threshold_days",
+          "value": 60,
+          "type": "integer",
+          "unit": "days",
+          "displayPrecision": null
+        },
+        {
+          "name": "markdown_count_to_date",
+          "value": 2,
+          "type": "integer",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "condition_group",
+          "value": "Used",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "model_name",
+          "value": "Legacy",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        }
+      ],
+      "thresholdsUsed": [
+        {
+          "name": "aged_threshold_days",
+          "label": "Aged threshold",
+          "value": "60",
+          "units": "days",
+          "source": "governed",
+          "authority": "governed inventory aged-threshold project default, published per row"
+        },
+        {
+          "name": "price_to_market_review",
+          "label": "Price-to-market review threshold — project default",
+          "value": "1.05",
+          "units": "ratio",
+          "source": "project-default-review-threshold",
+          "authority": "ACT-INV-003"
+        }
+      ]
+    },
+    {
+      "actionId": "ACT-INV-003:GSA-003|VEH-0000245:17",
+      "ruleId": "ACT-INV-003",
+      "domain": "inventory",
+      "asOfDate": "2025-12-31",
+      "store": "GSA-003",
+      "entityType": "inventory_unit",
+      "entityId": "GSA-003|VEH-0000245",
+      "severity": "medium",
+      "title": "Asking price above the synthetic market estimate on an aged unit",
+      "ownerRole": "Used-car manager",
+      "recommendedReview": "Compare this unit's asking price with its age, its markdown history and the synthetic market context the ratio was built from.",
+      "limitations": "market_price_estimate is synthetic and generated by this project. The ratio is not a real market valuation, a guidebook value, an auction result, an appraisal or a pricing recommendation.",
+      "dateBasis": "snapshot date",
+      "observedDate": "2025-12-31",
+      "drillThrough": "/dashboard/inventory?store=GSA-003&unit=VEH-0000245",
+      "evidence": [
+        {
+          "name": "price_to_market_ratio",
+          "value": "1.0747",
+          "type": "exact",
+          "unit": "ratio",
+          "displayPrecision": 4
+        },
+        {
+          "name": "current_asking_price",
+          "value": "4847.30",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "market_price_estimate",
+          "value": "4510.36",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "days_in_stock",
+          "value": 83,
+          "type": "integer",
+          "unit": "days",
+          "displayPrecision": null
+        },
+        {
+          "name": "aged_threshold_days",
+          "value": 60,
+          "type": "integer",
+          "unit": "days",
+          "displayPrecision": null
+        },
+        {
+          "name": "markdown_count_to_date",
+          "value": 2,
+          "type": "integer",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "condition_group",
+          "value": "Used",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "model_name",
+          "value": "Tucson",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        }
+      ],
+      "thresholdsUsed": [
+        {
+          "name": "aged_threshold_days",
+          "label": "Aged threshold",
+          "value": "60",
+          "units": "days",
+          "source": "governed",
+          "authority": "governed inventory aged-threshold project default, published per row"
+        },
+        {
+          "name": "price_to_market_review",
+          "label": "Price-to-market review threshold — project default",
+          "value": "1.05",
+          "units": "ratio",
+          "source": "project-default-review-threshold",
+          "authority": "ACT-INV-003"
+        }
+      ]
+    },
+    {
+      "actionId": "ACT-INV-003:GSA-003|VEH-0000440:17",
+      "ruleId": "ACT-INV-003",
+      "domain": "inventory",
+      "asOfDate": "2025-12-31",
+      "store": "GSA-003",
+      "entityType": "inventory_unit",
+      "entityId": "GSA-003|VEH-0000440",
+      "severity": "medium",
+      "title": "Asking price above the synthetic market estimate on an aged unit",
+      "ownerRole": "Used-car manager",
+      "recommendedReview": "Compare this unit's asking price with its age, its markdown history and the synthetic market context the ratio was built from.",
+      "limitations": "market_price_estimate is synthetic and generated by this project. The ratio is not a real market valuation, a guidebook value, an auction result, an appraisal or a pricing recommendation.",
+      "dateBasis": "snapshot date",
+      "observedDate": "2025-12-31",
+      "drillThrough": "/dashboard/inventory?store=GSA-003&unit=VEH-0000440",
+      "evidence": [
+        {
+          "name": "price_to_market_ratio",
+          "value": "1.0672",
+          "type": "exact",
+          "unit": "ratio",
+          "displayPrecision": 4
+        },
+        {
+          "name": "current_asking_price",
+          "value": "12697.66",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "market_price_estimate",
+          "value": "11897.75",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "days_in_stock",
+          "value": 71,
+          "type": "integer",
+          "unit": "days",
+          "displayPrecision": null
+        },
+        {
+          "name": "aged_threshold_days",
+          "value": 60,
+          "type": "integer",
+          "unit": "days",
+          "displayPrecision": null
+        },
+        {
+          "name": "markdown_count_to_date",
+          "value": 2,
+          "type": "integer",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "condition_group",
+          "value": "Used",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "model_name",
+          "value": "Telluride",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        }
+      ],
+      "thresholdsUsed": [
+        {
+          "name": "aged_threshold_days",
+          "label": "Aged threshold",
+          "value": "60",
+          "units": "days",
+          "source": "governed",
+          "authority": "governed inventory aged-threshold project default, published per row"
+        },
+        {
+          "name": "price_to_market_review",
+          "label": "Price-to-market review threshold — project default",
+          "value": "1.05",
+          "units": "ratio",
+          "source": "project-default-review-threshold",
+          "authority": "ACT-INV-003"
+        }
+      ]
+    },
+    {
+      "actionId": "ACT-SLS-001:SLE-00000546:17",
+      "ruleId": "ACT-SLS-001",
+      "domain": "sales-gross",
+      "asOfDate": "2025-12-31",
+      "store": "GSA-001",
+      "entityType": "deal",
+      "entityId": "SLE-00000546",
+      "severity": "medium",
+      "title": "Negative front gross on a retail delivery",
+      "ownerRole": "General sales manager",
+      "recommendedReview": "Review the deal structure and the gross components behind this delivery.",
+      "limitations": "A negative front gross is a signed accounting outcome. It is not evidence of an error, a poor decision or anyone's performance, and this action attributes it to nobody.",
+      "dateBasis": "sale date",
+      "observedDate": "2025-12-01",
+      "drillThrough": "/dashboard/deals/SLE-00000546",
+      "evidence": [
+        {
+          "name": "front_end_gross",
+          "value": "-716.10",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "back_end_gross",
+          "value": "1870.89",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "total_gross",
+          "value": "1154.79",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "sale_price",
+          "value": "34600.13",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "vehicle_display",
+          "value": "2024 Chevrolet Traverse LT",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "condition_group",
+          "value": "New",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "sale_type",
+          "value": "New Retail",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "days_in_inventory_at_sale",
+          "value": 97,
+          "type": "integer",
+          "unit": "days",
+          "displayPrecision": null
+        }
+      ],
+      "thresholdsUsed": []
+    },
+    {
+      "actionId": "ACT-SLS-001:SLE-00000642:17",
+      "ruleId": "ACT-SLS-001",
+      "domain": "sales-gross",
+      "asOfDate": "2025-12-31",
+      "store": "GSA-001",
+      "entityType": "deal",
+      "entityId": "SLE-00000642",
+      "severity": "medium",
+      "title": "Negative front gross on a retail delivery",
+      "ownerRole": "General sales manager",
+      "recommendedReview": "Review the deal structure and the gross components behind this delivery.",
+      "limitations": "A negative front gross is a signed accounting outcome. It is not evidence of an error, a poor decision or anyone's performance, and this action attributes it to nobody.",
+      "dateBasis": "sale date",
+      "observedDate": "2025-12-30",
+      "drillThrough": "/dashboard/deals/SLE-00000642",
+      "evidence": [
+        {
+          "name": "front_end_gross",
+          "value": "-306.28",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "back_end_gross",
+          "value": "808.00",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "total_gross",
+          "value": "501.72",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "sale_price",
+          "value": "3239.80",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "vehicle_display",
+          "value": "2016 Chevrolet Malibu LS",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "condition_group",
+          "value": "Used",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "sale_type",
+          "value": "Used Retail",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "days_in_inventory_at_sale",
+          "value": 21,
+          "type": "integer",
+          "unit": "days",
+          "displayPrecision": null
+        }
+      ],
+      "thresholdsUsed": []
+    },
+    {
+      "actionId": "ACT-SLS-005:SLE-00000644:17",
+      "ruleId": "ACT-SLS-005",
+      "domain": "sales-gross",
+      "asOfDate": "2025-12-31",
+      "store": "GSA-001",
+      "entityType": "deal",
+      "entityId": "SLE-00000644",
+      "severity": "medium",
+      "title": "Large discount from the original asking price on a fast-turning unit",
+      "ownerRole": "General sales manager",
+      "recommendedReview": "Review the price movement on this unit against the time it spent in stock.",
+      "limitations": "A discount is a signed difference between two published prices. It is not evidence of an error and is attributed to nobody.",
+      "dateBasis": "sale date",
+      "observedDate": "2025-12-30",
+      "drillThrough": "/dashboard/deals/SLE-00000644",
+      "evidence": [
+        {
+          "name": "discount_from_original",
+          "value": "3224.38",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "days_in_inventory_at_sale",
+          "value": 29,
+          "type": "integer",
+          "unit": "days",
+          "displayPrecision": null
+        },
+        {
+          "name": "original_asking_price",
+          "value": "39489.25",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "final_asking_price",
+          "value": "39489.25",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "sale_price",
+          "value": "36264.87",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "front_end_gross",
+          "value": "7436.77",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "total_gross",
+          "value": "8705.54",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "vehicle_display",
+          "value": "2024 Chevrolet Camaro 1LT",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "condition_group",
+          "value": "Used",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        }
+      ],
+      "thresholdsUsed": [
+        {
+          "name": "discount_review",
+          "label": "Discount review threshold — project default",
+          "value": "2000",
+          "units": "USD",
+          "source": "project-default-review-threshold",
+          "authority": "ACT-SLS-005"
+        },
+        {
+          "name": "low_age_days",
+          "label": "Fast-turn review threshold — project default",
+          "value": "30",
+          "units": "days",
+          "source": "project-default-review-threshold",
+          "authority": "ACT-SLS-005"
+        }
+      ]
+    },
+    {
+      "actionId": "ACT-SLS-001:SLE-00000565:17",
+      "ruleId": "ACT-SLS-001",
+      "domain": "sales-gross",
+      "asOfDate": "2025-12-31",
+      "store": "GSA-002",
+      "entityType": "deal",
+      "entityId": "SLE-00000565",
+      "severity": "medium",
+      "title": "Negative front gross on a retail delivery",
+      "ownerRole": "General sales manager",
+      "recommendedReview": "Review the deal structure and the gross components behind this delivery.",
+      "limitations": "A negative front gross is a signed accounting outcome. It is not evidence of an error, a poor decision or anyone's performance, and this action attributes it to nobody.",
+      "dateBasis": "sale date",
+      "observedDate": "2025-12-05",
+      "drillThrough": "/dashboard/deals/SLE-00000565",
+      "evidence": [
+        {
+          "name": "front_end_gross",
+          "value": "-458.85",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "back_end_gross",
+          "value": "708.00",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "total_gross",
+          "value": "249.15",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "sale_price",
+          "value": "2925.18",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "vehicle_display",
+          "value": "2017 Subaru Impreza Sport",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "condition_group",
+          "value": "Used",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "sale_type",
+          "value": "Used Retail",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "days_in_inventory_at_sale",
+          "value": 105,
+          "type": "integer",
+          "unit": "days",
+          "displayPrecision": null
+        }
+      ],
+      "thresholdsUsed": []
+    },
+    {
+      "actionId": "ACT-SLS-001:SLE-00000587:17",
+      "ruleId": "ACT-SLS-001",
+      "domain": "sales-gross",
+      "asOfDate": "2025-12-31",
+      "store": "GSA-002",
+      "entityType": "deal",
+      "entityId": "SLE-00000587",
+      "severity": "medium",
+      "title": "Negative front gross on a retail delivery",
+      "ownerRole": "General sales manager",
+      "recommendedReview": "Review the deal structure and the gross components behind this delivery.",
+      "limitations": "A negative front gross is a signed accounting outcome. It is not evidence of an error, a poor decision or anyone's performance, and this action attributes it to nobody.",
+      "dateBasis": "sale date",
+      "observedDate": "2025-12-13",
+      "drillThrough": "/dashboard/deals/SLE-00000587",
+      "evidence": [
+        {
+          "name": "front_end_gross",
+          "value": "-47.03",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "back_end_gross",
+          "value": "1548.28",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "total_gross",
+          "value": "1501.25",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "sale_price",
+          "value": "5363.15",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "vehicle_display",
+          "value": "2018 Subaru Crosstrek Base",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "condition_group",
+          "value": "Used",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "sale_type",
+          "value": "Certified Retail",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "days_in_inventory_at_sale",
+          "value": 120,
+          "type": "integer",
+          "unit": "days",
+          "displayPrecision": null
+        }
+      ],
+      "thresholdsUsed": []
+    },
+    {
+      "actionId": "ACT-SLS-001:SLE-00000608:17",
+      "ruleId": "ACT-SLS-001",
+      "domain": "sales-gross",
+      "asOfDate": "2025-12-31",
+      "store": "GSA-002",
+      "entityType": "deal",
+      "entityId": "SLE-00000608",
+      "severity": "medium",
+      "title": "Negative front gross on a retail delivery",
+      "ownerRole": "General sales manager",
+      "recommendedReview": "Review the deal structure and the gross components behind this delivery.",
+      "limitations": "A negative front gross is a signed accounting outcome. It is not evidence of an error, a poor decision or anyone's performance, and this action attributes it to nobody.",
+      "dateBasis": "sale date",
+      "observedDate": "2025-12-19",
+      "drillThrough": "/dashboard/deals/SLE-00000608",
+      "evidence": [
+        {
+          "name": "front_end_gross",
+          "value": "-902.83",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "back_end_gross",
+          "value": "2204.66",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "total_gross",
+          "value": "1301.83",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "sale_price",
+          "value": "23177.67",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "vehicle_display",
+          "value": "2025 Subaru Impreza Base",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "condition_group",
+          "value": "New",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "sale_type",
+          "value": "New Retail",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "days_in_inventory_at_sale",
+          "value": 69,
+          "type": "integer",
+          "unit": "days",
+          "displayPrecision": null
+        }
+      ],
+      "thresholdsUsed": []
+    },
+    {
+      "actionId": "ACT-SLS-001:SLE-00000612:17",
+      "ruleId": "ACT-SLS-001",
+      "domain": "sales-gross",
+      "asOfDate": "2025-12-31",
+      "store": "GSA-002",
+      "entityType": "deal",
+      "entityId": "SLE-00000612",
+      "severity": "medium",
+      "title": "Negative front gross on a retail delivery",
+      "ownerRole": "General sales manager",
+      "recommendedReview": "Review the deal structure and the gross components behind this delivery.",
+      "limitations": "A negative front gross is a signed accounting outcome. It is not evidence of an error, a poor decision or anyone's performance, and this action attributes it to nobody.",
+      "dateBasis": "sale date",
+      "observedDate": "2025-12-20",
+      "drillThrough": "/dashboard/deals/SLE-00000612",
+      "evidence": [
+        {
+          "name": "front_end_gross",
+          "value": "-194.95",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "back_end_gross",
+          "value": "1038.58",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "total_gross",
+          "value": "843.63",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "sale_price",
+          "value": "22179.00",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "vehicle_display",
+          "value": "2024 Subaru Impreza RS",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "condition_group",
+          "value": "New",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "sale_type",
+          "value": "New Retail",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "days_in_inventory_at_sale",
+          "value": 66,
+          "type": "integer",
+          "unit": "days",
+          "displayPrecision": null
+        }
+      ],
+      "thresholdsUsed": []
+    },
+    {
+      "actionId": "ACT-SLS-001:SLE-00000628:17",
+      "ruleId": "ACT-SLS-001",
+      "domain": "sales-gross",
+      "asOfDate": "2025-12-31",
+      "store": "GSA-002",
+      "entityType": "deal",
+      "entityId": "SLE-00000628",
+      "severity": "medium",
+      "title": "Negative front gross on a retail delivery",
+      "ownerRole": "General sales manager",
+      "recommendedReview": "Review the deal structure and the gross components behind this delivery.",
+      "limitations": "A negative front gross is a signed accounting outcome. It is not evidence of an error, a poor decision or anyone's performance, and this action attributes it to nobody.",
+      "dateBasis": "sale date",
+      "observedDate": "2025-12-26",
+      "drillThrough": "/dashboard/deals/SLE-00000628",
+      "evidence": [
+        {
+          "name": "front_end_gross",
+          "value": "-43.08",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "back_end_gross",
+          "value": "233.58",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "total_gross",
+          "value": "190.50",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "sale_price",
+          "value": "23393.07",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "vehicle_display",
+          "value": "2025 Subaru Impreza Base",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "condition_group",
+          "value": "New",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "sale_type",
+          "value": "New Retail",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "days_in_inventory_at_sale",
+          "value": 42,
+          "type": "integer",
+          "unit": "days",
+          "displayPrecision": null
+        }
+      ],
+      "thresholdsUsed": []
+    },
+    {
+      "actionId": "ACT-SLS-001:SLE-00000630:17",
+      "ruleId": "ACT-SLS-001",
+      "domain": "sales-gross",
+      "asOfDate": "2025-12-31",
+      "store": "GSA-002",
+      "entityType": "deal",
+      "entityId": "SLE-00000630",
+      "severity": "medium",
+      "title": "Negative front gross on a retail delivery",
+      "ownerRole": "General sales manager",
+      "recommendedReview": "Review the deal structure and the gross components behind this delivery.",
+      "limitations": "A negative front gross is a signed accounting outcome. It is not evidence of an error, a poor decision or anyone's performance, and this action attributes it to nobody.",
+      "dateBasis": "sale date",
+      "observedDate": "2025-12-27",
+      "drillThrough": "/dashboard/deals/SLE-00000630",
+      "evidence": [
+        {
+          "name": "front_end_gross",
+          "value": "-181.04",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "back_end_gross",
+          "value": "1576.77",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "total_gross",
+          "value": "1395.73",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "sale_price",
+          "value": "23933.31",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "vehicle_display",
+          "value": "2025 Subaru Impreza Base",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "condition_group",
+          "value": "New",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "sale_type",
+          "value": "New Retail",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "days_in_inventory_at_sale",
+          "value": 53,
+          "type": "integer",
+          "unit": "days",
+          "displayPrecision": null
+        }
+      ],
+      "thresholdsUsed": []
+    },
+    {
+      "actionId": "ACT-SLS-001:SLE-00000648:17",
+      "ruleId": "ACT-SLS-001",
+      "domain": "sales-gross",
+      "asOfDate": "2025-12-31",
+      "store": "GSA-002",
+      "entityType": "deal",
+      "entityId": "SLE-00000648",
+      "severity": "medium",
+      "title": "Negative front gross on a retail delivery",
+      "ownerRole": "General sales manager",
+      "recommendedReview": "Review the deal structure and the gross components behind this delivery.",
+      "limitations": "A negative front gross is a signed accounting outcome. It is not evidence of an error, a poor decision or anyone's performance, and this action attributes it to nobody.",
+      "dateBasis": "sale date",
+      "observedDate": "2025-12-31",
+      "drillThrough": "/dashboard/deals/SLE-00000648",
+      "evidence": [
+        {
+          "name": "front_end_gross",
+          "value": "-418.27",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "back_end_gross",
+          "value": "500.10",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "total_gross",
+          "value": "81.83",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "sale_price",
+          "value": "35400.97",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "vehicle_display",
+          "value": "2025 Subaru Ascent Touring",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "condition_group",
+          "value": "New",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "sale_type",
+          "value": "Lease",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "days_in_inventory_at_sale",
+          "value": 77,
+          "type": "integer",
+          "unit": "days",
+          "displayPrecision": null
+        }
+      ],
+      "thresholdsUsed": []
+    },
+    {
+      "actionId": "ACT-SLS-004:GSA-002|2025-12-01|back_pvr:17",
+      "ruleId": "ACT-SLS-004",
+      "domain": "sales-gross",
+      "asOfDate": "2025-12-31",
+      "store": "GSA-002",
+      "entityType": "store_month",
+      "entityId": "GSA-002|2025-12-01|back_pvr",
+      "severity": "medium",
+      "title": "Back-PVR effect materially reduced total gross this month",
+      "ownerRole": "F&I manager",
+      "recommendedReview": "Compare this month's back-gross production with the comparison month under the documented sequential bridge.",
+      "limitations": "A bridge contribution is an arithmetic attribution, not a cause.",
+      "dateBasis": "sale date, aggregated to calendar month",
+      "observedDate": "2025-12-01",
+      "drillThrough": "/dashboard/fi?store=GSA-002",
+      "evidence": [
+        {
+          "name": "effect_amount",
+          "value": "-4023.6312500000000000",
+          "type": "exact",
+          "unit": "USD",
+          "displayPrecision": 2
+        },
+        {
+          "name": "component_label",
+          "value": "Back PVR effect",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "total_gross_change",
+          "value": "15136.97",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "total_gross",
+          "value": "102304.93",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "comparison_total_gross",
+          "value": "87167.96",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "back_end_gross",
+          "value": "37458.85",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "comparison_back_end_gross",
+          "value": "37926.84",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "retail_units_sold",
+          "value": 35,
+          "type": "integer",
+          "unit": "units",
+          "displayPrecision": null
+        },
+        {
+          "name": "comparison_retail_units_sold",
+          "value": 32,
+          "type": "integer",
+          "unit": "units",
+          "displayPrecision": null
+        }
+      ],
+      "thresholdsUsed": [
+        {
+          "name": "back_pvr_effect_review",
+          "label": "Bridge-effect review threshold — project default",
+          "value": "-3000",
+          "units": "USD",
+          "source": "project-default-review-threshold",
+          "authority": "ACT-SLS-004"
+        }
+      ]
+    },
+    {
+      "actionId": "ACT-SLS-005:SLE-00000623:17",
+      "ruleId": "ACT-SLS-005",
+      "domain": "sales-gross",
+      "asOfDate": "2025-12-31",
+      "store": "GSA-002",
+      "entityType": "deal",
+      "entityId": "SLE-00000623",
+      "severity": "medium",
+      "title": "Large discount from the original asking price on a fast-turning unit",
+      "ownerRole": "General sales manager",
+      "recommendedReview": "Review the price movement on this unit against the time it spent in stock.",
+      "limitations": "A discount is a signed difference between two published prices. It is not evidence of an error and is attributed to nobody.",
+      "dateBasis": "sale date",
+      "observedDate": "2025-12-25",
+      "drillThrough": "/dashboard/deals/SLE-00000623",
+      "evidence": [
+        {
+          "name": "discount_from_original",
+          "value": "2761.14",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "days_in_inventory_at_sale",
+          "value": 8,
+          "type": "integer",
+          "unit": "days",
+          "displayPrecision": null
+        },
+        {
+          "name": "original_asking_price",
+          "value": "48470.48",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "final_asking_price",
+          "value": "48470.48",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "sale_price",
+          "value": "45709.34",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "front_end_gross",
+          "value": "11097.29",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "total_gross",
+          "value": "12326.68",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "vehicle_display",
+          "value": "2025 Subaru Forester Base",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "condition_group",
+          "value": "Used",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        }
+      ],
+      "thresholdsUsed": [
+        {
+          "name": "discount_review",
+          "label": "Discount review threshold — project default",
+          "value": "2000",
+          "units": "USD",
+          "source": "project-default-review-threshold",
+          "authority": "ACT-SLS-005"
+        },
+        {
+          "name": "low_age_days",
+          "label": "Fast-turn review threshold — project default",
+          "value": "30",
+          "units": "days",
+          "source": "project-default-review-threshold",
+          "authority": "ACT-SLS-005"
+        }
+      ]
+    },
+    {
+      "actionId": "ACT-FNI-006:SLE-00000635:17",
+      "ruleId": "ACT-FNI-006",
+      "domain": "fi",
+      "asOfDate": "2025-12-31",
+      "store": "GSA-001",
+      "entityType": "deal",
+      "entityId": "SLE-00000635",
+      "severity": "medium",
+      "title": "Retail delivery with no finance-manager attribution",
+      "ownerRole": "F&I manager",
+      "recommendedReview": "Confirm how this delivery was desked and whether the F&I desk was involved.",
+      "limitations": "An unattributed delivery is a modelled state in this project's data, not necessarily an omission. This action makes no statement about any employee and is not a performance measure.",
+      "dateBasis": "sale date",
+      "observedDate": "2025-12-29",
+      "drillThrough": "/dashboard/deals/SLE-00000635",
+      "evidence": [
+        {
+          "name": "finance_structure",
+          "value": "Lease",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "back_end_gross",
+          "value": "586.46",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "finance_reserve_gross",
+          "value": "0.00",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "product_contract_count",
+          "value": 1,
+          "type": "integer",
+          "unit": "contracts",
+          "displayPrecision": null
+        },
+        {
+          "name": "original_product_gross",
+          "value": "586.46",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "total_gross",
+          "value": "3370.43",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "vehicle_display",
+          "value": "2025 Chevrolet Tahoe LS",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "sale_type",
+          "value": "Lease",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        }
+      ],
+      "thresholdsUsed": []
+    },
+    {
+      "actionId": "ACT-FNI-006:SLE-00000642:17",
+      "ruleId": "ACT-FNI-006",
+      "domain": "fi",
+      "asOfDate": "2025-12-31",
+      "store": "GSA-001",
+      "entityType": "deal",
+      "entityId": "SLE-00000642",
+      "severity": "medium",
+      "title": "Retail delivery with no finance-manager attribution",
+      "ownerRole": "F&I manager",
+      "recommendedReview": "Confirm how this delivery was desked and whether the F&I desk was involved.",
+      "limitations": "An unattributed delivery is a modelled state in this project's data, not necessarily an omission. This action makes no statement about any employee and is not a performance measure.",
+      "dateBasis": "sale date",
+      "observedDate": "2025-12-30",
+      "drillThrough": "/dashboard/deals/SLE-00000642",
+      "evidence": [
+        {
+          "name": "finance_structure",
+          "value": "Retail Finance",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "back_end_gross",
+          "value": "808.00",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "finance_reserve_gross",
+          "value": "808.00",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "product_contract_count",
+          "value": 0,
+          "type": "integer",
+          "unit": "contracts",
+          "displayPrecision": null
+        },
+        {
+          "name": "original_product_gross",
+          "value": "0.00",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "total_gross",
+          "value": "501.72",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "vehicle_display",
+          "value": "2016 Chevrolet Malibu LS",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "sale_type",
+          "value": "Used Retail",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        }
+      ],
+      "thresholdsUsed": []
+    },
+    {
+      "actionId": "ACT-FNI-006:SLE-00000552:17",
+      "ruleId": "ACT-FNI-006",
+      "domain": "fi",
+      "asOfDate": "2025-12-31",
+      "store": "GSA-002",
+      "entityType": "deal",
+      "entityId": "SLE-00000552",
+      "severity": "medium",
+      "title": "Retail delivery with no finance-manager attribution",
+      "ownerRole": "F&I manager",
+      "recommendedReview": "Confirm how this delivery was desked and whether the F&I desk was involved.",
+      "limitations": "An unattributed delivery is a modelled state in this project's data, not necessarily an omission. This action makes no statement about any employee and is not a performance measure.",
+      "dateBasis": "sale date",
+      "observedDate": "2025-12-03",
+      "drillThrough": "/dashboard/deals/SLE-00000552",
+      "evidence": [
+        {
+          "name": "finance_structure",
+          "value": "Cash",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "back_end_gross",
+          "value": "289.13",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "finance_reserve_gross",
+          "value": "0.00",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "product_contract_count",
+          "value": 1,
+          "type": "integer",
+          "unit": "contracts",
+          "displayPrecision": null
+        },
+        {
+          "name": "original_product_gross",
+          "value": "289.13",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "total_gross",
+          "value": "2420.08",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "vehicle_display",
+          "value": "2020 Ford F-150 XLT",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "sale_type",
+          "value": "Used Retail",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        }
+      ],
+      "thresholdsUsed": []
+    },
+    {
+      "actionId": "ACT-FNI-006:SLE-00000599:17",
+      "ruleId": "ACT-FNI-006",
+      "domain": "fi",
+      "asOfDate": "2025-12-31",
+      "store": "GSA-002",
+      "entityType": "deal",
+      "entityId": "SLE-00000599",
+      "severity": "medium",
+      "title": "Retail delivery with no finance-manager attribution",
+      "ownerRole": "F&I manager",
+      "recommendedReview": "Confirm how this delivery was desked and whether the F&I desk was involved.",
+      "limitations": "An unattributed delivery is a modelled state in this project's data, not necessarily an omission. This action makes no statement about any employee and is not a performance measure.",
+      "dateBasis": "sale date",
+      "observedDate": "2025-12-18",
+      "drillThrough": "/dashboard/deals/SLE-00000599",
+      "evidence": [
+        {
+          "name": "finance_structure",
+          "value": "Retail Finance",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "back_end_gross",
+          "value": "797.42",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "finance_reserve_gross",
+          "value": "797.42",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "product_contract_count",
+          "value": 0,
+          "type": "integer",
+          "unit": "contracts",
+          "displayPrecision": null
+        },
+        {
+          "name": "original_product_gross",
+          "value": "0.00",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "total_gross",
+          "value": "8764.27",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "vehicle_display",
+          "value": "2024 Chevrolet Silverado EV RST",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "sale_type",
+          "value": "Used Retail",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        }
+      ],
+      "thresholdsUsed": []
+    },
+    {
+      "actionId": "ACT-FNI-006:SLE-00000623:17",
+      "ruleId": "ACT-FNI-006",
+      "domain": "fi",
+      "asOfDate": "2025-12-31",
+      "store": "GSA-002",
+      "entityType": "deal",
+      "entityId": "SLE-00000623",
+      "severity": "medium",
+      "title": "Retail delivery with no finance-manager attribution",
+      "ownerRole": "F&I manager",
+      "recommendedReview": "Confirm how this delivery was desked and whether the F&I desk was involved.",
+      "limitations": "An unattributed delivery is a modelled state in this project's data, not necessarily an omission. This action makes no statement about any employee and is not a performance measure.",
+      "dateBasis": "sale date",
+      "observedDate": "2025-12-25",
+      "drillThrough": "/dashboard/deals/SLE-00000623",
+      "evidence": [
+        {
+          "name": "finance_structure",
+          "value": "Retail Finance",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "back_end_gross",
+          "value": "1229.39",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "finance_reserve_gross",
+          "value": "0.00",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "product_contract_count",
+          "value": 1,
+          "type": "integer",
+          "unit": "contracts",
+          "displayPrecision": null
+        },
+        {
+          "name": "original_product_gross",
+          "value": "1229.39",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "total_gross",
+          "value": "12326.68",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "vehicle_display",
+          "value": "2025 Subaru Forester Base",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "sale_type",
+          "value": "Used Retail",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        }
+      ],
+      "thresholdsUsed": []
+    },
+    {
+      "actionId": "ACT-FNI-006:SLE-00000634:17",
+      "ruleId": "ACT-FNI-006",
+      "domain": "fi",
+      "asOfDate": "2025-12-31",
+      "store": "GSA-002",
+      "entityType": "deal",
+      "entityId": "SLE-00000634",
+      "severity": "medium",
+      "title": "Retail delivery with no finance-manager attribution",
+      "ownerRole": "F&I manager",
+      "recommendedReview": "Confirm how this delivery was desked and whether the F&I desk was involved.",
+      "limitations": "An unattributed delivery is a modelled state in this project's data, not necessarily an omission. This action makes no statement about any employee and is not a performance measure.",
+      "dateBasis": "sale date",
+      "observedDate": "2025-12-27",
+      "drillThrough": "/dashboard/deals/SLE-00000634",
+      "evidence": [
+        {
+          "name": "finance_structure",
+          "value": "Retail Finance",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "back_end_gross",
+          "value": "738.56",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "finance_reserve_gross",
+          "value": "738.56",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "product_contract_count",
+          "value": 0,
+          "type": "integer",
+          "unit": "contracts",
+          "displayPrecision": null
+        },
+        {
+          "name": "original_product_gross",
+          "value": "0.00",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "total_gross",
+          "value": "2725.00",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "vehicle_display",
+          "value": "2026 Subaru Ascent Onyx Edition",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "sale_type",
+          "value": "New Retail",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        }
+      ],
+      "thresholdsUsed": []
+    },
+    {
+      "actionId": "ACT-FNI-006:SLE-00000607:17",
+      "ruleId": "ACT-FNI-006",
+      "domain": "fi",
+      "asOfDate": "2025-12-31",
+      "store": "GSA-003",
+      "entityType": "deal",
+      "entityId": "SLE-00000607",
+      "severity": "medium",
+      "title": "Retail delivery with no finance-manager attribution",
+      "ownerRole": "F&I manager",
+      "recommendedReview": "Confirm how this delivery was desked and whether the F&I desk was involved.",
+      "limitations": "An unattributed delivery is a modelled state in this project's data, not necessarily an omission. This action makes no statement about any employee and is not a performance measure.",
+      "dateBasis": "sale date",
+      "observedDate": "2025-12-19",
+      "drillThrough": "/dashboard/deals/SLE-00000607",
+      "evidence": [
+        {
+          "name": "finance_structure",
+          "value": "Cash",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "back_end_gross",
+          "value": "535.16",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "finance_reserve_gross",
+          "value": "0.00",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "product_contract_count",
+          "value": 1,
+          "type": "integer",
+          "unit": "contracts",
+          "displayPrecision": null
+        },
+        {
+          "name": "original_product_gross",
+          "value": "535.16",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "total_gross",
+          "value": "5676.53",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "vehicle_display",
+          "value": "2023 Chevrolet Equinox Premier",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "sale_type",
+          "value": "Used Retail",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        }
+      ],
+      "thresholdsUsed": []
+    },
+    {
+      "actionId": "ACT-LED-004:GSA-001|2025-12-03:17",
+      "ruleId": "ACT-LED-004",
+      "domain": "leads",
+      "asOfDate": "2025-12-31",
+      "store": "GSA-001",
+      "entityType": "store_day",
+      "entityId": "GSA-001|2025-12-03",
+      "severity": "medium",
+      "title": "Show rate below the review threshold on a day meeting the sample floor",
+      "ownerRole": "BDC manager",
+      "recommendedReview": "Review the appointment population for this day against how many of them were confirmed and how many were cancelled in advance.",
+      "limitations": "Show rate is measured on the scheduled date basis with eligible appointments as its denominator. The threshold is a project default for a fictional group and not an industry standard.",
+      "dateBasis": "appointment scheduled date",
+      "observedDate": "2025-12-03",
+      "drillThrough": "/dashboard/leads-marketing?store=GSA-001",
+      "evidence": [
+        {
+          "name": "show_rate",
+          "value": "0.69230769230769230769",
+          "type": "exact",
+          "unit": "ratio",
+          "displayPrecision": 3
+        },
+        {
+          "name": "eligible_appointments",
+          "value": 13,
+          "type": "integer",
+          "unit": "appointments",
+          "displayPrecision": null
+        },
+        {
+          "name": "scheduled_appointments",
+          "value": 13,
+          "type": "integer",
+          "unit": "appointments",
+          "displayPrecision": null
+        },
+        {
+          "name": "shown_appointments",
+          "value": 9,
+          "type": "integer",
+          "unit": "appointments",
+          "displayPrecision": null
+        },
+        {
+          "name": "cancelled_in_advance_appointments",
+          "value": 0,
+          "type": "integer",
+          "unit": "appointments",
+          "displayPrecision": null
+        },
+        {
+          "name": "confirmed_appointments",
+          "value": 11,
+          "type": "integer",
+          "unit": "appointments",
+          "displayPrecision": null
+        },
+        {
+          "name": "cancellation_rate",
+          "value": "0.00000000000000000000",
+          "type": "exact",
+          "unit": "ratio",
+          "displayPrecision": 3
+        }
+      ],
+      "thresholdsUsed": [
+        {
+          "name": "show_rate_review",
+          "label": "Show-rate review threshold — project default",
+          "value": "0.70",
+          "units": "ratio",
+          "source": "project-default-review-threshold",
+          "authority": "ACT-LED-004"
+        },
+        {
+          "name": "minimum_sample_floor",
+          "label": "Minimum sample",
+          "value": "10",
+          "units": "eligible appointments on the scheduled date",
+          "source": "governed",
+          "authority": "governed minimum-sample project default (fn_minimum_sample_floor)"
+        }
+      ]
+    },
+    {
+      "actionId": "ACT-LED-004:GSA-001|2025-12-31:17",
+      "ruleId": "ACT-LED-004",
+      "domain": "leads",
+      "asOfDate": "2025-12-31",
+      "store": "GSA-001",
+      "entityType": "store_day",
+      "entityId": "GSA-001|2025-12-31",
+      "severity": "medium",
+      "title": "Show rate below the review threshold on a day meeting the sample floor",
+      "ownerRole": "BDC manager",
+      "recommendedReview": "Review the appointment population for this day against how many of them were confirmed and how many were cancelled in advance.",
+      "limitations": "Show rate is measured on the scheduled date basis with eligible appointments as its denominator. The threshold is a project default for a fictional group and not an industry standard.",
+      "dateBasis": "appointment scheduled date",
+      "observedDate": "2025-12-31",
+      "drillThrough": "/dashboard/leads-marketing?store=GSA-001",
+      "evidence": [
+        {
+          "name": "show_rate",
+          "value": "0.69230769230769230769",
+          "type": "exact",
+          "unit": "ratio",
+          "displayPrecision": 3
+        },
+        {
+          "name": "eligible_appointments",
+          "value": 13,
+          "type": "integer",
+          "unit": "appointments",
+          "displayPrecision": null
+        },
+        {
+          "name": "scheduled_appointments",
+          "value": 14,
+          "type": "integer",
+          "unit": "appointments",
+          "displayPrecision": null
+        },
+        {
+          "name": "shown_appointments",
+          "value": 9,
+          "type": "integer",
+          "unit": "appointments",
+          "displayPrecision": null
+        },
+        {
+          "name": "cancelled_in_advance_appointments",
+          "value": 1,
+          "type": "integer",
+          "unit": "appointments",
+          "displayPrecision": null
+        },
+        {
+          "name": "confirmed_appointments",
+          "value": 11,
+          "type": "integer",
+          "unit": "appointments",
+          "displayPrecision": null
+        },
+        {
+          "name": "cancellation_rate",
+          "value": "0.07142857142857142857",
+          "type": "exact",
+          "unit": "ratio",
+          "displayPrecision": 3
+        }
+      ],
+      "thresholdsUsed": [
+        {
+          "name": "show_rate_review",
+          "label": "Show-rate review threshold — project default",
+          "value": "0.70",
+          "units": "ratio",
+          "source": "project-default-review-threshold",
+          "authority": "ACT-LED-004"
+        },
+        {
+          "name": "minimum_sample_floor",
+          "label": "Minimum sample",
+          "value": "10",
+          "units": "eligible appointments on the scheduled date",
+          "source": "governed",
+          "authority": "governed minimum-sample project default (fn_minimum_sample_floor)"
+        }
+      ]
+    },
+    {
+      "actionId": "ACT-LED-004:GSA-002|2025-12-31:17",
+      "ruleId": "ACT-LED-004",
+      "domain": "leads",
+      "asOfDate": "2025-12-31",
+      "store": "GSA-002",
+      "entityType": "store_day",
+      "entityId": "GSA-002|2025-12-31",
+      "severity": "medium",
+      "title": "Show rate below the review threshold on a day meeting the sample floor",
+      "ownerRole": "BDC manager",
+      "recommendedReview": "Review the appointment population for this day against how many of them were confirmed and how many were cancelled in advance.",
+      "limitations": "Show rate is measured on the scheduled date basis with eligible appointments as its denominator. The threshold is a project default for a fictional group and not an industry standard.",
+      "dateBasis": "appointment scheduled date",
+      "observedDate": "2025-12-31",
+      "drillThrough": "/dashboard/leads-marketing?store=GSA-002",
+      "evidence": [
+        {
+          "name": "show_rate",
+          "value": "0.61111111111111111111",
+          "type": "exact",
+          "unit": "ratio",
+          "displayPrecision": 3
+        },
+        {
+          "name": "eligible_appointments",
+          "value": 18,
+          "type": "integer",
+          "unit": "appointments",
+          "displayPrecision": null
+        },
+        {
+          "name": "scheduled_appointments",
+          "value": 22,
+          "type": "integer",
+          "unit": "appointments",
+          "displayPrecision": null
+        },
+        {
+          "name": "shown_appointments",
+          "value": 11,
+          "type": "integer",
+          "unit": "appointments",
+          "displayPrecision": null
+        },
+        {
+          "name": "cancelled_in_advance_appointments",
+          "value": 4,
+          "type": "integer",
+          "unit": "appointments",
+          "displayPrecision": null
+        },
+        {
+          "name": "confirmed_appointments",
+          "value": 18,
+          "type": "integer",
+          "unit": "appointments",
+          "displayPrecision": null
+        },
+        {
+          "name": "cancellation_rate",
+          "value": "0.18181818181818181818",
+          "type": "exact",
+          "unit": "ratio",
+          "displayPrecision": 3
+        }
+      ],
+      "thresholdsUsed": [
+        {
+          "name": "show_rate_review",
+          "label": "Show-rate review threshold — project default",
+          "value": "0.70",
+          "units": "ratio",
+          "source": "project-default-review-threshold",
+          "authority": "ACT-LED-004"
+        },
+        {
+          "name": "minimum_sample_floor",
+          "label": "Minimum sample",
+          "value": "10",
+          "units": "eligible appointments on the scheduled date",
+          "source": "governed",
+          "authority": "governed minimum-sample project default (fn_minimum_sample_floor)"
+        }
+      ]
+    },
+    {
+      "actionId": "ACT-ACC-001:ACC-GL-VARIANCE:gl_reconciliation:20251031-2-1:17",
+      "ruleId": "ACT-ACC-001",
+      "domain": "accounting",
+      "asOfDate": "2025-12-31",
+      "store": "GSA-002",
+      "entityType": "accounting_exception",
+      "entityId": "ACC-GL-VARIANCE:gl_reconciliation:20251031-2-1",
+      "severity": "medium",
+      "title": "General-ledger control variance against the stock schedule",
+      "ownerRole": "Controller",
+      "recommendedReview": "Reconcile the general-ledger balance and the stock schedule behind this control account.",
+      "limitations": "Both sides of the comparison are valid data. The sign states which side carries more, not which side is wrong, and a variance is a finding to investigate rather than an error.",
+      "dateBasis": "exception date",
+      "observedDate": "2025-10-31",
+      "drillThrough": "/dashboard/accounting?store=GSA-002",
+      "evidence": [
+        {
+          "name": "exception_amount",
+          "value": "-865.40",
+          "type": "currency",
+          "unit": "USD",
+          "displayPrecision": null
+        },
+        {
+          "name": "exception_date",
+          "value": "2025-10-31",
+          "type": "date",
+          "unit": "exception date",
+          "displayPrecision": null
+        },
+        {
+          "name": "exception_code",
+          "value": "ACC-GL-VARIANCE",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        },
+        {
+          "name": "exception_detail",
+          "value": "New Vehicle Inventory at Granite Subaru of Manchester on date key 20251031: GL balance 1154119.83 against subledger balance 1154985.23, signed variance -865.40. BOTH SIDES ARE VALID DATA. Positive means the control account carries more than the stock schedule supports; negative means the schedule carries more than the account. This is a reconciliation finding to investigate, not a broken record.",
+          "type": "string",
+          "unit": null,
+          "displayPrecision": null
+        }
+      ],
+      "thresholdsUsed": []
+    }
+  ]
+}

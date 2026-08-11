@@ -171,11 +171,20 @@ export function NoMatchingRecords({
 /**
  * The sections that do not exist yet.
  *
- * Named, with the increment that delivers each, and deliberately not links. The
- * Management Action Center is `DASH.12`'s and there is no honest way to show an
- * action queue before the rules that generate it exist — a placeholder card with
- * three invented alerts would be the single most damaging thing this page could
- * contain, because an action is a recommendation and Gate 2 does not permit one.
+ * Named, with the increment that delivers each, and deliberately not links: a link to a
+ * page that does not exist is a promise this project does not make.
+ *
+ * THE LIST IS EMPTY AS OF `DASH.12`, AND THAT IS WHY THIS COMPONENT HAS TWO STATES.
+ * It held one entry — the Management Action Center — from the increment that named it
+ * until the increment that built it. The old copy said an action queue would stay absent
+ * "until the rules that produce them exist and can show their evidence"; those rules now
+ * exist, in `config/dashboard/action_rules.yaml`, and every action shows the exported
+ * values that made it fire.
+ *
+ * The region is kept rather than deleted, and reports completion rather than disappearing.
+ * A reader who saw a backlog here should be able to learn that it closed; a region that
+ * silently vanished would leave them unsure whether the work was done or the disclosure
+ * was withdrawn.
  */
 export function PlannedSections({
   sections,
@@ -186,6 +195,26 @@ export function PlannedSections({
     readonly purpose: string
   }[]
 }) {
+  if (sections.length === 0) {
+    return (
+      <div className="flex flex-col gap-4">
+        <Text size="sm" tone="muted" className="max-w-prose">
+          Every console section the information architecture names is built. Nothing is
+          outstanding, so nothing is listed here — this region reports completion rather
+          than disappearing, because a disclosure that vanished would leave a reader
+          unsure whether the work closed or the claim was withdrawn.
+        </Text>
+        <Text size="sm" tone="muted" className="max-w-prose">
+          The Management Action Center was the last entry, delivered by `DASH.12`. What
+          remains in the backlog is hardening and release rather than a surface: the
+          delivery increments are recorded in the dashboard backlog, and this console
+          still publishes figures and deterministic rule outputs rather than
+          recommendations.
+        </Text>
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <Text size="sm" tone="muted" className="max-w-prose">
@@ -213,9 +242,9 @@ export function PlannedSections({
         ))}
       </ul>
       <Text size="sm" tone="muted" className="max-w-prose">
-        Management actions in particular stay absent until the rules that produce them
-        exist and can show their evidence. An action is a recommendation, and this console
-        publishes figures and deterministic rule outputs rather than recommendations.
+        A section stays absent until the governed data behind it exists and can show its
+        evidence. This console publishes figures and deterministic rule outputs rather
+        than recommendations.
       </Text>
     </div>
   )

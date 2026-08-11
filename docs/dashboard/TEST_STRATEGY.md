@@ -547,3 +547,37 @@ boundary, the reconciliation suites and the seeded defects are untouched. `UX.1`
 updated route targets where a route moved and rewrote assertions where the thing
 being asserted was genuinely replaced; it deleted no test because the information
 architecture changed.
+
+---
+
+## `DASH.12` — the action engine
+
+**The predicate grammar is tested as a security boundary.** The claim is negative — "there is no
+interpreter to reach" — and a negative claim is worth what the attempts to falsify it are worth.
+`tests/unit/test_action_predicate.py` drives 27 hostile expressions, each of which would do something
+under `eval`: `__import__("os")`, `open(...)`, `lambda`, attribute access, subscripting, dict and
+list literals, statement separators, arithmetic and bitwise operators, SQL, JavaScript arrow and
+template syntax. Each must fail before any row is read.
+
+**Every enabled rule has a firing fixture and a suppressing one**, derived rather than hand-written.
+The firing row is a real exported row the rule matched; the suppressing row is that same row with
+the predicate's fields set to NULL — which tests the property most likely to be got wrong, since a
+unit with no market estimate must not satisfy a ratio comparison. Two rules are carved out and given
+the inverse pair, derived from the predicate rather than listed by identifier: `ACT-FNI-006` and
+`ACT-ACC-002` ask about ABSENCE, so a null is their answer rather than an unknown.
+
+**The register audit's claims are asserted, not narrated.** "No posting timestamp exists" is tested
+by proving `posting_lag_days` equals `days_in_stock` on every exported row. "The lead denominators
+never reach the floor" is tested against the export. "This condition cannot survive into a valid
+export" is tested by looking for it.
+
+**Two enabled rules fire zero times**, and `TestHonestZeroes` records why rather than smoothing it:
+both match real rows inside the reporting window and none inside the as-of scope, so the zero is a
+fact about the period rather than about the rule.
+
+**Determinism** is a double run, a run with every input list reversed, an assertion that no timestamp
+enters the payload, and an assertion that the committed queue equals the re-derived one.
+
+**The cross-language drill-through check** is not a regex over a string: the generator resolves every
+destination against the console's route registry and the destination's own filter-support matrix, and
+the E2E suite fetches a sample of them.

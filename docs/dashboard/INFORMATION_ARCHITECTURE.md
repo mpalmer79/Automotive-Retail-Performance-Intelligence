@@ -415,3 +415,36 @@ beneath it exists. Deep links are exercised cold in `dashboard-filters.spec.ts` 
 arbitrary range, multi-store, comparison mode, and the store-source-day scope at which an order
 statistic resolves — and one test asserts the navigated view and the deep-linked view produce
 identical text, which is the claim "a copied URL reproduces the view" stated as an equality.
+
+---
+
+## `/dashboard/actions` — Management Actions (`DASH.12`)
+
+The ninth operating destination, last in the rail: management attention follows business status.
+
+**Five regions.** Queue summary · facets · review queue · change drivers · methodology on demand.
+
+**The queue arrives decided.** The route selects from it and arranges it. It evaluates no rule,
+decides no severity, reads no threshold and builds no drill-through — all of that happened at export
+time against the rule file.
+
+**No filter bar, and the reason is in `ACTIONS_SUPPORT`.** Every other operating route carries the
+shared period/store/condition control. This one does not, because each rule declares its OWN as-of
+scope and they differ by domain: the as-of snapshot for inventory, the as-of month for deliveries,
+the published exception register for accounting. A period control over rows selected on three
+different bases would offer a selection meaning something different in each. `store` is the one
+global parameter that survives, and it appears as a facet beside the three the route owns —
+`severity`, `domain` and `owner`.
+
+**Facets are anchors.** URL state, canonically serialised, surviving reload, copy-paste, Back and
+Forward, and working with scripting off. Facet counts are computed over the WHOLE queue rather than
+the filtered one, because a count that fell to zero the moment its own facet was selected would
+answer no question a reader has.
+
+**The Executive block.** Five prompts on `/`, a prefix of the queue's own order — no second ranking,
+no rotation, no sampling, no personalisation — placed after the business regions with a compact
+change-driver panel beside it.
+
+**Actions and change drivers are different things**, and the page keeps them apart. An action is a
+condition holding now; a driver is arithmetic about a change that already happened. Neither explains
+the other.

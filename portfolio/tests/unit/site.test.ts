@@ -90,7 +90,7 @@ describe('the route map is well-formed', () => {
   })
 })
 
-describe('the fifteen primary routes exist and the lab is not one of them', () => {
+describe('the sixteen primary routes exist and the lab is not one of them', () => {
   // Declaration order, which is also navigation order and footer order.
   const PRIMARY = [
     // The operating application, in rail order.
@@ -102,6 +102,7 @@ describe('the fifteen primary routes exist and the lab is not one of them', () =
     '/dashboard/leads-marketing',
     '/dashboard/employees',
     '/dashboard/accounting',
+    '/dashboard/actions',
     // The reference domain.
     '/technical',
     '/about',
@@ -129,7 +130,7 @@ describe('the fifteen primary routes exist and the lab is not one of them', () =
     '/dealerships/granite-pre-owned',
   ]
 
-  it('declares exactly the fifteen primary routes plus the lab', () => {
+  it('declares exactly the sixteen primary routes plus the lab', () => {
     expect(ALL_ROUTES.map((route) => route.href).sort()).toEqual(
       [...PRIMARY, '/ui-lab'].sort()
     )
@@ -383,7 +384,7 @@ describe('the group sub-navigation is what makes the Dealerships grouping honest
 })
 
 describe('the operating rail is the definition of the operating application', () => {
-  it('carries the eight built destinations, in working order', () => {
+  it('carries the nine built destinations, in working order', () => {
     expect(OPERATING_NAV.map((item) => item.label)).toEqual([
       'Executive',
       'Sales & Gross',
@@ -393,6 +394,7 @@ describe('the operating rail is the definition of the operating application', ()
       'Leads & Marketing',
       'Employees',
       'Accounting',
+      'Actions',
     ])
   })
 
@@ -403,14 +405,26 @@ describe('the operating rail is the definition of the operating application', ()
   })
 
   it('offers no link to a section that is not built', () => {
-    // `DASH.12` is named as text and never as a destination. A navigation item
-    // for an unbuilt route is a promise, and this is the assertion that stops one
-    // arriving before the increment does.
+    /*
+     * The planned list is EMPTY as of `DASH.12`, which delivered the one section it held.
+     * The assertion is unchanged in substance and stronger in form: whatever the list
+     * contains must not name a route the application can already navigate to. It passed
+     * before because `/dashboard/actions` did not exist; it passes now because nothing is
+     * claimed to be missing. A future entry that outlived its increment fails here.
+     */
     const planned = PLANNED_DASHBOARD_SECTIONS.map((section) => section.label)
-    expect(planned).toContain('Management actions')
-    for (const href of OPERATING_ROUTE_HREFS) {
-      expect(href).not.toBe('/dashboard/actions')
+    expect(planned).toEqual([])
+    const navLabels = OPERATING_NAV.map((item) => item.label)
+    for (const label of planned) {
+      expect(
+        navLabels,
+        `${label} is described as unbuilt but is in the rail`
+      ).not.toContain(label)
     }
+    // The rail is the definition of the operating application, so every href it derives
+    // must point at a route that exists. `/dashboard/actions` is one of them as of
+    // `DASH.12`, and was deliberately absent before.
+    expect(OPERATING_ROUTE_HREFS).toContain('/dashboard/actions')
   })
 
   it('treats a Deal Jacket as inside the application and the reference domain as outside', () => {
