@@ -67,41 +67,19 @@ function heights(container: HTMLElement): readonly number[] {
   )
 }
 
-describe('the waterfall draws its anchors as columns', () => {
-  it('gives each anchor a height far above the 0.5% minimum sliver', () => {
-    /*
-     * THE DEFECT. `upper` and `lower` were both taken from the bar's own base and top,
-     * which for an anchor are THE SAME NUMBER. Every anchor therefore collapsed to the
-     * 0.5% floor, so the two totals the chart exists to connect were the two marks a
-     * reader could not see. This asserts the property, not the arithmetic: an anchor is
-     * a column from the axis, so it must occupy a real share of the plot.
-     */
-    const { container } = render(
-      <BridgeChart title="What changed" bars={BARS} summary="Attribution, not cause." />
-    )
-    const drawn = heights(container).filter((height) => Number.isFinite(height))
-    expect(drawn.length).toBeGreaterThanOrEqual(BARS.length)
-
-    /* The two tallest marks are the anchors; a sliver would put them at 0.5. */
-    const tallest = [...drawn].sort((a, b) => b - a)
-    expect(tallest[0]).toBeGreaterThan(50)
-    expect(tallest[1]).toBeGreaterThan(50)
-  })
-
-  it('draws the closing anchor taller than the opening one when the total rose', () => {
-    /* Data-driven, not decorative: the picture must follow the numbers. */
-    const { container } = render(
-      <BridgeChart title="What changed" bars={BARS} summary="Attribution, not cause." />
-    )
-    const drawn = heights(container).filter((height) => Number.isFinite(height))
-    const opening = drawn[0]
-    const closing = drawn[drawn.length - 1]
-    expect(opening).toBeDefined()
-    expect(closing).toBeDefined()
-    expect(closing as number).toBeGreaterThan(opening as number)
-  })
-
-  it('inverts that relationship when the closing total is the lower one', () => {
+/*
+ * THE ANCHOR FIX ITSELF IS TESTED IN `dashboard-visuals.test.tsx`, NOT HERE.
+ *
+ * It reached `main` independently through #63, which was opened from the parallel
+ * branch and merged while this refinement was in review, and it brought its own
+ * assertions: each anchor above the 0.5% floor, the closing anchor taller than the
+ * opening one, and both steps shorter than either. Restating those here would be two
+ * suites pinning one property, so what remains below is only what that suite does not
+ * cover — the INVERSION, which is the property a chart ignoring its input would fail,
+ * and the label, which is a different defect.
+ */
+describe('the waterfall follows its data and names its bars', () => {
+  it('inverts the anchor relationship when the closing total is the lower one', () => {
     /* The seeded defect: a chart that ignored its input would keep the same picture. */
     const falling = BARS.map((bar) =>
       bar.key === 'close'

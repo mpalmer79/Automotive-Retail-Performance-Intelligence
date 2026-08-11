@@ -10,8 +10,14 @@ implementation wins" is neither — `UX.2B` is one completed product increment a
 — but the losing branch is still evidence, and throwing away evidence without reading it is
 not a decision, it is an omission.
 
-**Nothing in PR #62 was merged.** What follows is a comparison, a set of decisions with
-reasons, and the measurements behind them.
+**PR #62 itself was not merged, and is now closed as superseded.** One change did reach `main`
+from its branch by another route: PR #63 was opened from that branch carrying only the
+`BridgeChart` anchor fix, and merged as `112e3ea` while this audit was in review. That is
+recorded in §4 rather than glossed, because this document would otherwise claim credit for a
+fix that landed independently.
+
+What follows is a comparison, a set of decisions with reasons, and the measurements behind
+them.
 
 ---
 
@@ -19,7 +25,7 @@ reasons, and the measurements behind them.
 
 | | PR #61 (canonical) | PR #62 |
 |---|---|---|
-| Merge commit | `4593efd` | not merged |
+| Merge commit | `4593efd` | not merged (one commit from its branch reached `main` via #63) |
 | Head | `44f3a3a` | `705c409` |
 | Base | `3463fd5` | `3463fd5` |
 | Diff | +7,204 / −1,885 over 46 files | +5,371 / −1,448 over 28 files |
@@ -130,10 +136,30 @@ being fixed.
 
 | # | Defect | Confirmed on main | Fixed |
 |---|---|---|---|
-| 1 | `BridgeChart` drew both anchors from `base` to `top` — the same number — so each rendered as the 0.5 % minimum sliver | yes, `visuals.tsx:466` and by screenshot: the opening and closing totals were hairlines | yes |
+| 1 | `BridgeChart` drew both anchors from `base` to `top` — the same number — so each rendered as the 0.5 % minimum sliver | yes, `visuals.tsx:466` and by screenshot: the opening and closing totals were hairlines | **on `main` already** — see below |
 | 2 | `BridgeChart` labels used `truncate`, rendering the closing anchor as "Front-end …" in a five-of-twelve module | yes, `visuals.tsx:499` | yes |
 | 3 | `TrendChart` drew no axis labels, so a reader could not tell whether a trend covered a fortnight or six months | yes — `axisLabels` on main belongs to `ExecutiveMicroTrend`, added by `UX.2A`; `TrendChart` had none | yes |
 | 4 | `Module` was not a container, so section grids asked the **viewport** width; a 3-of-12 module is ~300 px while still satisfying `lg` | yes — `AMOUNT FINANCED` rendered as "$21,358." above "02" on the Deal Jacket | yes |
+
+### Defect 1 reached `main` by another route
+
+While this refinement was in review, **PR #63 was opened from PR #62's own branch carrying just the
+anchor fix, and merged** as `112e3ea`. Its change is the same expression this branch had already
+written — `bar.kind === 'anchor' ? lowest : Math.min(base, top)` and its counterpart — so merging
+`main` here produced a **comment-only conflict**, resolved in favour of `main`'s wording, which is
+the better of the two: it names why `tops` returns `base` unchanged for an anchor, and it notes that
+`UX.2B` added a second waterfall to the Deal Jacket, so the defect misread on two routes rather than
+one.
+
+`#63` also brought its own assertions in `dashboard-visuals.test.tsx`: each anchor above the 0.5 %
+floor, the closing anchor taller than the opening one, both steps shorter than either. Two of the
+tests this branch had written restated exactly those, so they were removed rather than left as a
+second suite pinning one property. What remains here is what `#63` does not cover — the **inversion**
+(the property a chart ignoring its input would fail) and the **label**, which is a separate defect
+`#63` did not touch.
+
+The outcome is unchanged: the fix is on `main` once, tested twice from different angles, and this
+branch no longer claims to be the thing that fixed it.
 
 A fifth item PR #62 reported — exact arithmetic leaking into presentation components — is
 **already prevented on main**. `dashboard-boundaries.test.ts` allows arithmetic in

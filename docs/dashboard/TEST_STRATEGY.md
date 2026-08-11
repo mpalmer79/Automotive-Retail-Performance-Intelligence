@@ -703,18 +703,29 @@ reconciliation suites and every seeded defect from earlier increments are untouc
 
 ## `UX.2B.1` — the refinement suite, and the six tests a contract change moved
 
-`tests/unit/ux2b1-refinement.test.tsx` adds **11** tests covering the four shared-primitive
-defects an audit of a parallel `UX.2B` implementation surfaced, plus the disclosure the
-inventory unit table now uses. They are written the way the rest of this repository's geometry
+`tests/unit/ux2b1-refinement.test.tsx` adds **9** tests covering the shared-primitive defects an
+audit of a parallel `UX.2B` implementation surfaced, plus the disclosure the inventory unit table
+now uses.
+
+It is nine rather than eleven because the audit found four defects and only three of them are
+this branch's to fix. The fourth — `BridgeChart` drawing its anchors as 0.5 % slivers — reached
+`main` independently through `#63`, which was opened from the parallel branch and merged while
+this work was in review, and it brought its own assertions in `dashboard-visuals.test.tsx`: each
+anchor above the floor, the closing anchor taller than the opening one, both steps shorter than
+either. The two tests here that restated those were removed rather than kept for the count. What
+remains is what that suite does not cover — the **inversion**, which is the property a chart
+ignoring its input would fail, and the **label**, which is a different defect. They are written the way the rest of this repository's geometry
 tests are written: each asserts the property that made the defect a defect — an anchor that
 occupies no share of the plot, a trend with no horizontal reference, a scroll region a keyboard
 cannot reach, a module that is not the layout reference for its own contents — rather than the
 class name that happens to encode today's fix.
 
-**Six of them were proved to fail against the unfixed code.** The two `visuals.tsx` defects were
-re-seeded exactly as `main` carried them (`upper`/`lower` taken from the bar's own base and top;
-`axisLabels` defaulted off) and the suite was re-run: six failed, five passed, and the file was
-restored. That is the §58 standard applied to a fix rather than to a feature.
+**Four of them were proved to fail against the unfixed code.** Both `visuals.tsx` defects were
+re-seeded exactly as they stood before either fix (`upper`/`lower` taken from the bar's own base
+and top; `axisLabels` defaulted off) and the suite was re-run: **four failed, five passed**, and
+the file was restored. That is the §58 standard applied to a fix rather than to a feature. It was
+six before the two duplicated anchor tests were removed; the anchor contract is still verified,
+by `dashboard-visuals.test.tsx`, which is where `#63` put it.
 
 **Six existing e2e tests changed, all for one reason.** The inventory unit table moved into a
 `<details>`, which is an intentional product-contract change, and a closed disclosure is not in

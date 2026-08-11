@@ -505,16 +505,20 @@ export function BridgeChart({
           /*
            * AN ANCHOR IS A COLUMN FROM THE AXIS; A STEP IS A FLOATING SEGMENT.
            *
-           * This drew both from `base` to `top`, which for an anchor are the SAME NUMBER.
-           * Every anchor therefore rendered as the 0.5% minimum sliver at its own level,
-           * and the two totals a waterfall exists to connect were the two marks a reader
-           * could not see. `UX.2B` promoted this chart to the largest visual on
-           * `/dashboard/sales-gross`, so the defect stopped being cosmetic.
+           * This drew both between `base` and `top`, and for an anchor those are the SAME
+           * NUMBER — `tops` returns `base` unchanged for `kind === 'anchor'` twenty lines
+           * above. So `upper === lower`, the height was zero, and every anchor rendered at
+           * the `Math.max(height, 0.5)` floor: the two totals a waterfall exists to connect
+           * were the two marks a reader could not see.
            *
-           * NO ARITHMETIC CHANGED. The levels, the running total, the axis extent and
-           * every printed amount are what they were; this decides only which two
-           * coordinates the rectangle is drawn between. Anchors keep the neutral
-           * reference fill, because a level is not a direction.
+           * It was invisible while the bridge was the last band of a 7,228 px document.
+           * `UX.2B` promotes it on `/dashboard/sales-gross` and adds a second waterfall to
+           * the Deal Jacket's front-gross composition, so it now misreads on two routes.
+           *
+           * NO ARITHMETIC CHANGED. The running levels, the axis extent, the span and every
+           * printed amount are exactly what they were; this decides which two coordinates
+           * the rectangle is drawn between. The anchors keep the neutral reference fill,
+           * because a level is not a direction.
            */
           const upper =
             bar.kind === 'anchor' ? Math.max(base, lowest) : Math.max(base, top)
