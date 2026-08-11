@@ -934,14 +934,15 @@ describe('ADR-0013 condition 2: no frontend redefines a KPI', () => {
       'a module converted an exact value to a float for something other than geometry'
     ).toEqual([
       'components/dashboard/employees-sections.tsx',
-      // `UX.2A`. `StoreMeasureBars` turns a governed value into a bar width against the
-      // measure's own largest store; `FunnelChart` receives shares already divided. Both
-      // are widths, both print every value as text beside the bar, and neither derives a
-      // displayed figure from the float.
-      'components/dashboard/exec-visuals.tsx',
       'components/dashboard/lead-funnel.tsx',
       'components/dashboard/leads-marketing-sections.tsx',
       'components/dashboard/visuals.tsx',
+      // `UX.2B`. `GroupedMeasureBars` turns a governed value into a bar width against the
+      // measure's own largest subject. It is a width, every value is printed as text beside
+      // the bar, and no displayed figure is derived from the float. `exec-visuals.tsx` is no
+      // longer on this list: `FunnelChart` receives shares the view model already divided,
+      // and the two primitives that did convert moved into this file.
+      'components/dashboard/workspace-visuals.tsx',
       'lib/dashboard/decimal.ts',
     ])
   })

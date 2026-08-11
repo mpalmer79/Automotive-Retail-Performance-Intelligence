@@ -8,7 +8,7 @@ import {
   TopActions,
 } from '@/components/dashboard/actions-sections'
 import { ActiveFilters, ContextProvenance } from '@/components/dashboard/context-rail'
-import { GridRow, Module, Workspace } from '@/components/dashboard/exec-grid'
+import { GridRow, Module, Workspace } from '@/components/dashboard/workspace-grid'
 import { FilterBar, type FilterOption } from '@/components/dashboard/filter-bar'
 import { InventoryRisk } from '@/components/dashboard/inventory-risk'
 import { KpiStrip } from '@/components/dashboard/kpi-strip'

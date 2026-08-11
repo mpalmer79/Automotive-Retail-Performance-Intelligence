@@ -1,13 +1,21 @@
 /**
- * The command center's grid: a module, and the twelve columns it sits in.
+ * The console's workspace grid: a module, and the twelve columns it sits in.
+ *
+ * IT WAS `exec-grid.tsx` AND IT IS NOT ANY MORE. `UX.2A` built it for one route and named it
+ * after that route. `UX.2B` lays out `/dashboard/sales-gross`, `/dashboard/deals`,
+ * `/dashboard/deals/[saleId]`, `/dashboard/inventory` and `/dashboard/fi` with the same three
+ * components, so the old name had become a false statement about where the file is used. The
+ * rename is the whole of that change: no prop, no span, no zone and no markup moved with it.
  *
  * WHAT REPLACED WHAT
  * ------------------
- * `UX.1` left this route as five full-width horizontal bands, each opening with an
+ * `UX.1` left the Executive route as five full-width horizontal bands, each opening with an
  * eyebrow, an `h2` and usually a paragraph, stacked down an 8,161 px document. That is
  * the rhythm of an article. It reads top to bottom, one subject at a time, and it puts
  * the first framed figure 1,389 px from the top of a 900 px viewport — measured, in
- * `docs/reviews/UX-2-BASELINE.md`.
+ * `docs/reviews/UX-2-BASELINE.md`. The same shape, measured on the five revenue and vehicle
+ * routes in `docs/reviews/UX-2B-BASELINE.md`, was worse: four of them contained no framed
+ * figure at all.
  *
  * A dashboard does not read top to bottom. It reads outward from a focal point, and its
  * unit is a MODULE: a titled panel with one question in it, sitting beside three others
@@ -94,11 +102,14 @@ const SPAN: Readonly<Record<3 | 4 | 5 | 6 | 7 | 8 | 12, string>> = {
  * the rule `UX.1` established and this pass keeps, moved from the band to the module now
  * that the module is the unit a reader's eye lands on.
  */
-const ZONE: Readonly<Record<'performance' | 'plan' | 'inventory' | 'funnel', string>> = {
+const ZONE: Readonly<
+  Record<'performance' | 'plan' | 'inventory' | 'funnel' | 'finance', string>
+> = {
   performance: 'bg-zone-performance',
   plan: 'bg-zone-plan',
   inventory: 'bg-zone-inventory',
   funnel: 'bg-zone-funnel',
+  finance: 'bg-zone-finance',
 }
 
 export interface ModuleProps {

@@ -54,7 +54,10 @@ import { addExact, cellToExact, divideExact, exactZero, type Exact } from './dec
  * person, and nothing may style it as a failure.
  */
 export type AbsenceKind =
-  'not-applicable' | 'no-data' | 'not-at-this-grain' | 'insufficient-sample'
+  | 'not-applicable'
+  | 'no-data'
+  | 'not-at-this-grain'
+  | 'insufficient-sample'
 
 export interface Absent {
   readonly kind: AbsenceKind

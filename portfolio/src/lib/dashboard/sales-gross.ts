@@ -268,10 +268,26 @@ export interface MixRow {
   readonly key: string
   readonly label: string
   readonly units: number
+  /** The unit count as an exact value, so a comparison bar can be drawn from it. */
+  readonly unitsExact: Exact
   readonly gross: Exact
   readonly grossDisplay: string
   /** Share of the mix total, or null when the total is zero. */
   readonly share: string | null
+  /**
+   * Gross per retail unit for this segment: `KPI-GRS-006` evaluated at the segment's scope.
+   *
+   * NOT A NEW MEASURE. It is the same identity the performance rail computes for the whole
+   * scope — SUM(gross) ÷ SUM(units), from the two additive columns this row already sums —
+   * evaluated over a narrower set of rows. `UX.2B` §54 forbids redefining a KPI and this
+   * redefines nothing: the catalogue identifier is the same one, and the store scoreboard on
+   * `/` has published the store-scoped value since `DASH.2`.
+   *
+   * `null` where the segment sold no unit. A rate with no denominator is undefined and not
+   * zero, and the comparison bar draws nothing for it.
+   */
+  readonly pvr: Exact | null
+  readonly pvrDisplay: string | null
 }
 
 export interface MixBreakdown {
@@ -285,6 +301,24 @@ function shareOf(part: Exact, whole: Exact): string | null {
   const ratio = divideExact(part, whole, 6)
   if (ratio === null) return null
   return formatRatioAsPercent(ratio)
+}
+
+/**
+ * `KPI-GRS-006` for one segment: its own summed gross over its own summed units.
+ *
+ * SUM(numerator) ÷ SUM(denominator), never a mean of per-row rates — rule 1 at the head of
+ * this module, applied to a narrower row set. A zero denominator yields `null`, which is
+ * rule 2.
+ */
+function perUnit(
+  gross: Exact,
+  units: Exact
+): { readonly pvr: Exact | null; readonly pvrDisplay: string | null } {
+  const value = divideExact(gross, units, 2)
+  return {
+    pvr: value,
+    pvrDisplay: value === null ? null : formatPerUnitExact(value),
+  }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -807,9 +841,11 @@ function buildMixes(
       key,
       label,
       units: Number(exactToString(units)),
+      unitsExact: units,
       gross,
       grossDisplay: formatCurrencyExact(gross),
       share: totalUnits === null ? null : shareOf(units, totalUnits),
+      ...perUnit(gross, units),
     }
   })
 
@@ -821,9 +857,11 @@ function buildMixes(
       key: store.id,
       label: store.shortName,
       units: Number(exactToString(units)),
+      unitsExact: units,
       gross,
       grossDisplay: formatCurrencyExact(gross),
       share: totalGross === null ? null : shareOf(gross, totalGross),
+      ...perUnit(gross, units),
     }
   })
 
@@ -843,9 +881,14 @@ function buildMixes(
       key,
       label,
       units: Number(exactToString(units)),
+      unitsExact: units,
       gross: exactZero(2),
       grossDisplay: 'Not published by sale type',
       share: null,
+      // No gross is published by sale type, so no per-unit gross exists for one either.
+      // A rate over an invented numerator would be worse than the absence.
+      pvr: null,
+      pvrDisplay: null,
     }
   })
 

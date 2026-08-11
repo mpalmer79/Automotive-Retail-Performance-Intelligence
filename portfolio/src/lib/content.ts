@@ -45,7 +45,12 @@ export const facts = entities.filter((entity) => entity.kind === 'fact')
 /* -------------------------------------------------------------------------- */
 
 export type DomainId =
-  'sales' | 'gross' | 'inventory' | 'funnel' | 'marketing' | 'dataQuality'
+  | 'sales'
+  | 'gross'
+  | 'inventory'
+  | 'funnel'
+  | 'marketing'
+  | 'dataQuality'
 
 export interface DomainDefinition {
   readonly id: DomainId

@@ -162,7 +162,11 @@ export interface InventoryStatusItem {
   readonly label: string
   /** A `StatusLevel` from `lib/status`, kept as a string union here to avoid a cycle. */
   readonly state:
-    'complete' | 'in-progress' | 'pending-external' | 'blocked' | 'not-started'
+    | 'complete'
+    | 'in-progress'
+    | 'pending-external'
+    | 'blocked'
+    | 'not-started'
   readonly detail: string
 }
 

@@ -321,7 +321,7 @@ describe('every text colour clears the WCAG AA floor on every ground', () => {
   ]
 
   /**
-   * The four domain washes, which became real grounds when the console started
+   * The domain washes, which became real grounds when the console started
    * tinting a region by business area.
    *
    * THEY ARE RENDERED AT FULL STRENGTH, WHICH IS WHY THEY CAN BE MEASURED AT ALL.
@@ -339,6 +339,10 @@ describe('every text colour clears the WCAG AA floor on every ground', () => {
     '--arpi-colour-zone-plan',
     '--arpi-colour-zone-inventory',
     '--arpi-colour-zone-funnel',
+    // `UX.2B`. The finance wash is a named business area on `/dashboard/fi`. It resolves
+    // to the funnel tint today, and it is asserted separately anyway: if it is ever given
+    // a colour of its own, the contrast evidence for it already exists.
+    '--arpi-colour-zone-finance',
   ]
 
   /** Every opaque surface on the console that can carry text or a mark. */

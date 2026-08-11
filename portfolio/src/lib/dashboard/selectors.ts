@@ -70,7 +70,13 @@ import type { ResolvedPeriod } from './periods'
 /* -------------------------------------------------------------------------- */
 
 export type MetricUnit =
-  'count' | 'currency' | 'currency-per-unit' | 'ratio' | 'days' | 'minutes' | 'turns'
+  | 'count'
+  | 'currency'
+  | 'currency-per-unit'
+  | 'ratio'
+  | 'days'
+  | 'minutes'
+  | 'turns'
 
 /**
  * What a metric resolved to.
