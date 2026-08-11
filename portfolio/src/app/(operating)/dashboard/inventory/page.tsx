@@ -554,11 +554,15 @@ export default async function InventoryPage({
                * increment supplies it focusable and named — which this table needs, because
                * `min-w` rose with the investment column `UX.2B` added. At 60rem the ten
                * columns squeezed the vehicle name until every row wrapped to two lines.
+               *
+               * THE TITLE IS LOWER-CASED INTO THE SUMMARY LINE, as every other caller's is,
+               * so it has to read correctly that way — "31 December 2025" came out as "31
+               * december 2025". The date is on the page header, in the rail and in this
+               * table's own caption, so the summary states the count and leaves the date to
+               * them.
                */
               <TableDisclosure
-                title={`all ${String(ordered.length)} units at ${
-                  snapshotDate === null ? 'this date' : formatIsoDate(snapshotDate)
-                }`}
+                title={`all ${String(ordered.length)} units at this snapshot date`}
               >
                 <table className="w-full min-w-[72rem] border-collapse text-sm">
                   <caption className="sr-only">
