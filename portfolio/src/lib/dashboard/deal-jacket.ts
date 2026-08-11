@@ -323,6 +323,19 @@ export interface ProductSection {
 export interface BackGrossSection {
   readonly reserve: string
   readonly originalProductGross: string
+  /**
+   * The same three figures as exact values, for the composition bar's geometry.
+   *
+   * THE ORIGINAL PRODUCT GROSS, NEVER THE NET. `DASH.7` fixed the identity as
+   * reserve + ORIGINAL product gross = back-end gross on the deal-date basis, and the
+   * retained figure answers a different question on a different basis. A bar drawn from
+   * `netProductGrossAsOf` would be a picture of an identity that does not hold, so the
+   * exact fields carry the deal-date components and nothing else. The retained context is
+   * below the bar, in words, with its own date.
+   */
+  readonly reserveExact: Exact
+  readonly originalProductGrossExact: Exact
+  readonly backEndGrossExact: Exact
   readonly otherFiIncome: string
   readonly backEndGross: string
   /** reserve + original product gross === back-end gross, to the cent. */
@@ -341,8 +354,34 @@ export interface IntegrityCheck {
   readonly detail: string
 }
 
+/**
+ * The five figures a deal reviewer wants at once, in one place.
+ *
+ * WHY THE VIEW MODEL AND NOT THE HEADER COMPONENT. They already exist on this object —
+ * inside `frontGross.lines`, `totalGross.lines` and `vehicle` — and a header that reached
+ * into a calculation array by index would break silently the day a line is inserted. They
+ * are named here, once, from the same exported columns the calculation blocks are built
+ * from, so the header and the arithmetic below it cannot disagree.
+ *
+ * NOTHING NEW IS COMPUTED. Every field is an exported column formatted by the governed
+ * formatter, or the same column as its exact value for a bar's geometry.
+ */
+export interface DealHeadline {
+  readonly salePrice: string
+  readonly frontGross: string
+  readonly backGross: string
+  readonly totalGross: string
+  /** Null where the export carries none. Rendered as words, never as a zero. */
+  readonly daysInInventory: number | null
+  readonly salePriceExact: Exact
+  readonly frontGrossExact: Exact
+  readonly backGrossExact: Exact
+  readonly totalGrossExact: Exact
+}
+
 export interface DealJacket {
   readonly identity: DealIdentity
+  readonly headline: DealHeadline
   readonly vehicle: DealVehicle
   readonly frontGross: {
     readonly lines: readonly CalculationLine[]
@@ -465,6 +504,17 @@ export function buildDealJacket(saleId: string): DealJacket | null {
   )
 
   return {
+    headline: {
+      salePrice: formatCurrencyExact(salePrice, 2),
+      frontGross: formatCurrencyExact(frontGross, 2),
+      backGross: formatCurrencyExact(backGross, 2),
+      totalGross: formatCurrencyExact(totalGross, 2),
+      daysInInventory: count(row, 'days_in_inventory_at_sale'),
+      salePriceExact: salePrice,
+      frontGrossExact: frontGross,
+      backGrossExact: backGross,
+      totalGrossExact: totalGross,
+    },
     identity: {
       saleId: text(row, 'sale_id'),
       saleDate: formatIsoDate(text(row, 'sale_date')),
@@ -836,6 +886,9 @@ function buildBackGross(
   return {
     reserve: formatCurrencyExact(reserve, 2),
     originalProductGross: formatCurrencyExact(original, 2),
+    reserveExact: reserve,
+    originalProductGrossExact: original,
+    backEndGrossExact: backGross,
     otherFiIncome: formatCurrencyExact(ZERO, 2),
     backEndGross: formatCurrencyExact(backGross, 2),
     verified: compareExact(explained, backGross) === 0,

@@ -7,6 +7,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 
 import { Canvas } from '@/components/shell/field'
+import { DealHeadlineHeader } from '@/components/dashboard/deal-headline'
 import {
   ChecksSection,
   BackGrossSectionBlock,
@@ -21,7 +22,8 @@ import {
   TradeSectionBlock,
   VehicleSection,
 } from '@/components/dashboard/deal-jacket-sections'
-import { Container, Section, SectionHeader } from '@/components/ui/layout'
+import { GridRow, Module, Workspace } from '@/components/dashboard/workspace-grid'
+import { Container, Section } from '@/components/ui/layout'
 import { Text } from '@/components/ui/typography'
 import { dashboardManifest } from '@/lib/dashboard/data'
 import { buildDealJacket, dealRow } from '@/lib/dashboard/deal-jacket'
@@ -82,16 +84,29 @@ export async function generateMetadata({
 /**
  * The Deal Jacket: one finalized transaction, explained to the cent.
  *
+ * WHAT `UX.2B` CHANGED, MEASURED
+ * ------------------------------
+ * `docs/reviews/UX-2B-BASELINE.md` §7 measured it at 5,806 px with ten `h2`s of equal weight
+ * and 616 words of visible prose about one transaction. Sale price, front gross, back gross,
+ * total gross and days in stock — the five figures a reviewer wants at once — were in four
+ * different sections, and the first viewport at 1440 × 900 carried an `h1` and two section
+ * titles and no money at all.
+ *
+ * `UX.2B` §19–§24 rebuild it as an identity header carrying those five figures, then the
+ * workspace grid's modules in the money's own order, with two economics visuals and the
+ * verification behind a disclosure. Six section ledes explaining the METHOD before the figures
+ * they qualify are gone; the method itself is not — every calculation block, every
+ * recomputation and all eight integrity checks are in the document, and a failed check still
+ * renders visibly rather than behind a summary.
+ *
  * A RECORD VIEW, NOT A WORKFLOW. Nothing on this page can be edited, assigned,
  * approved, submitted, repriced, funded or contracted, and no control exists that
  * pretends to. That is not a styling choice: the export carries no column such an
  * action would write to, and there is no API to write it through.
  *
- * SECTION ORDER IS THE MONEY'S ORDER. Identity, vehicle, then the front-gross
- * arithmetic, then the trade context that is deliberately outside it, then the
- * finance amounts and the aggregate back gross, then the total. Mobile keeps that
- * order exactly; the desktop two-column layout puts the money on the right and the
- * identity, people and paper trail on the left, without reordering the calculation.
+ * SECTION ORDER IS STILL THE MONEY'S ORDER. Identity and the headline, then the front-gross
+ * arithmetic, then the trade context that is deliberately outside it, then the finance
+ * amounts and the aggregate back gross, then the total. Mobile keeps that order exactly.
  */
 export default async function DealJacketPage({
   params,
@@ -121,173 +136,146 @@ export default async function DealJacketPage({
         ])}
         backLink={{ href: ROUTES.dashboardDeals.href, label: 'All deals' }}
         methodology={<ExportProvenance exportState={exportState} powerBi={powerBi} />}
-      />
+      >
+        {/*
+          THE PERSISTENT DISCLOSURE. Above the fold, in the body, on paper. It is the one
+          sentence a reader of ONE TRANSACTION needs before they meet the deal, and it is not
+          behind anything.
+        */}
+        <p className="rounded-lg border border-line bg-surface-sunken/60 p-3 text-sm font-medium text-ink">
+          Fictional transaction from the synthetic Granite Auto Group dataset. Not a real
+          sale, customer, or dealership record.
+        </p>
+      </OperatingPageHeader>
 
-      {/* ------------------------------------------------------------------ */}
-      {/* The persistent disclosure. Above the fold, in the body, on paper.  */}
-      {/* ------------------------------------------------------------------ */}
-      <Section rhythm="none" tone="evidence" className="py-section-tight" id="disclosure">
-        <Container width="full">
-          <div className="flex flex-col gap-4">
-            <p className="rounded-lg border border-line bg-surface-sunken/60 p-4 text-sm font-medium text-ink">
-              Fictional transaction from the synthetic Granite Auto Group dataset. Not a
-              real sale, customer, or dealership record.
-            </p>
-            <div id="identity">
-              <IdentitySection jacket={jacket} />
-            </div>
-          </div>
-        </Container>
-      </Section>
+      <Workspace>
+        {/* ---------------------------------------------------------------- */}
+        {/* ROW 1 — what deal this is, and what it made                       */}
+        {/* ---------------------------------------------------------------- */}
+        <GridRow>
+          <Module
+            id="headline"
+            title="This deal"
+            zone="performance"
+            visual="deal-headline"
+          >
+            <DealHeadlineHeader jacket={jacket} />
+          </Module>
+        </GridRow>
 
-      {/*
-        The operating layout. Money on the right at ≥1024px, identity and paper trail
-        on the left; a single column below that, in the money's own order.
-      */}
-      <Section rhythm="default">
-        <Container width="full">
-          <div className="grid gap-x-10 gap-y-10 lg:grid-cols-2">
-            {/* ---------------------------------------------------------- */}
-            {/* Left: the unit, the people, the paper trail                 */}
-            {/* ---------------------------------------------------------- */}
-            <div className="order-2 flex flex-col gap-10 lg:order-1">
-              <section id="vehicle">
-                <SectionHeader
-                  eyebrow="Vehicle"
-                  title="The unit that was sold"
-                  lede="Identity, condition and how long it sat. The odometer is banded and the VIN-style identifier is synthetic."
-                />
-                <div className="pt-6">
-                  <VehicleSection jacket={jacket} />
-                </div>
-              </section>
+        {/* ---------------------------------------------------------------- */}
+        {/* ROW 2 — the two economics, side by side                           */}
+        {/* ---------------------------------------------------------------- */}
+        {/*
+          `UX.2B` §49 asks the Jacket to show deal identity and core economics without
+          scrolling. The header above is the identity and the five figures; these two modules
+          are where each of the two grosses comes from, and they are the first thing under it.
+        */}
+        <GridRow>
+          <Module
+            id="front-gross"
+            title="Vehicle economics"
+            span={6}
+            visual="front-economics"
+          >
+            <FrontGrossSection jacket={jacket} />
+          </Module>
+          <Module
+            id="back-gross"
+            title="Finance office economics"
+            span={6}
+            zone="finance"
+            visual="back-economics"
+          >
+            <BackGrossSectionBlock jacket={jacket} />
+          </Module>
+        </GridRow>
 
-              <section id="staff">
-                <SectionHeader
-                  eyebrow="Attribution"
-                  title="Who worked the transaction"
-                  lede="Synthetic identifiers and roles. No name exists anywhere in ARPI."
-                />
-                <div className="pt-6">
-                  <StaffSection staff={jacket.staff} />
-                </div>
-              </section>
+        {/* ---------------------------------------------------------------- */}
+        {/* ROW 3 — the trade, the funding, the total                         */}
+        {/* ---------------------------------------------------------------- */}
+        {/*
+          NO MODULE NOTES BELOW THIS POINT, AND THAT IS THE PROSE REDUCTION. Every one of
+          these modules already carries the sentence a reader needs INSIDE its own body,
+          where the figures it qualifies are: the trade block states that variance is
+          deliberately outside the front-gross identity, the finance block lists what the
+          model does not hold, the staff block states that no name exists anywhere in ARPI,
+          and the checks block states what a check is. A module note repeating any of them
+          is the same caveat printed twice on one screen — measured at 616 visible words on
+          this route before `UX.2B`, and the largest single source of them was exactly this
+          kind of restatement in a section lede.
+        */}
+        <GridRow>
+          <Module id="trade" title="Trade" span={4}>
+            <TradeSectionBlock trade={jacket.trade} />
+          </Module>
+          <Module id="finance" title="How the deal was funded" span={4} zone="finance">
+            <FinanceSectionBlock jacket={jacket} />
+          </Module>
+          <Module id="total-gross" title="Total gross" span={4} zone="performance">
+            <TotalGrossSection jacket={jacket} />
+          </Module>
+        </GridRow>
 
-              <section id="timeline">
-                <SectionHeader
-                  eyebrow="Paper trail"
-                  title="How the deal arrived"
-                  lede="The lead and appointment stages the model actually records, in order."
-                />
-                <div className="pt-6">
-                  <TimelineSectionBlock timeline={jacket.timeline} />
-                </div>
-              </section>
-            </div>
+        {/* ---------------------------------------------------------------- */}
+        {/* ROW 4 — the contracts, and the unit                               */}
+        {/* ---------------------------------------------------------------- */}
+        <GridRow>
+          <Module id="products" title="F&amp;I products written" span={7} zone="finance">
+            <ProductSectionBlock jacket={jacket} />
+          </Module>
+          <Module
+            id="vehicle"
+            title="The unit that was sold"
+            span={5}
+            zone="inventory"
+            note="The odometer is banded and the VIN-style identifier is synthetic."
+          >
+            <VehicleSection jacket={jacket} />
+          </Module>
+        </GridRow>
 
-            {/* ---------------------------------------------------------- */}
-            {/* Right: the money, in formula order                          */}
-            {/* ---------------------------------------------------------- */}
-            <div className="order-1 flex flex-col gap-10 lg:order-2">
-              <section id="front-gross">
-                <SectionHeader
-                  eyebrow="Front-end gross"
-                  title="What the vehicle made"
-                  lede="The ARPI formula, in its own order, from the exported exact decimals. This page recomputes the identity from the components below rather than trusting the stored figure."
-                />
-                <div className="pt-6">
-                  <FrontGrossSection jacket={jacket} />
-                </div>
-              </section>
+        {/* ---------------------------------------------------------------- */}
+        {/* ROW 5 — the paper trail                                           */}
+        {/* ---------------------------------------------------------------- */}
+        <GridRow>
+          <Module id="structure" title="Deal structure" span={4}>
+            <IdentitySection jacket={jacket} />
+          </Module>
+          <Module id="staff" title="Who worked the transaction" span={4}>
+            <StaffSection staff={jacket.staff} />
+          </Module>
+          <Module id="timeline" title="How the deal arrived" span={4} zone="funnel">
+            <TimelineSectionBlock timeline={jacket.timeline} />
+          </Module>
+        </GridRow>
 
-              <section id="trade">
-                <SectionHeader
-                  eyebrow="Trade"
-                  title="The trade, and why it is not in the formula above"
-                  lede="Trade variance is allowance less actual cash value. It is a real figure and it is deliberately outside the front-gross calculation."
-                />
-                <div className="pt-6">
-                  <TradeSectionBlock trade={jacket.trade} />
-                </div>
-              </section>
-
-              <section id="finance">
-                <SectionHeader
-                  eyebrow="Finance"
-                  title="How the deal was funded"
-                  lede="Amounts and a fictional funding source. No APR, term, payment, buy rate, sell rate or spread exists anywhere in this project, and none ever will: finance reserve is an amount, never a rate."
-                />
-                <div className="pt-6">
-                  <FinanceSectionBlock jacket={jacket} />
-                </div>
-              </section>
-
-              <section id="products">
-                <SectionHeader
-                  eyebrow="F&amp;I products"
-                  title="What was written, and what remains"
-                  lede="One row per product contract, with the price, the cost, the gross it was written for and what survived every adjustment posted since. Original and net are separate columns because they answer different questions."
-                />
-                <div className="pt-6">
-                  <ProductSectionBlock jacket={jacket} />
-                </div>
-              </section>
-
-              <section id="back-gross">
-                <SectionHeader
-                  eyebrow="Back-end gross"
-                  title="What the finance office made, decomposed"
-                  lede="Finance reserve plus original product gross, recomputed here from the components and checked to the cent. Other F&amp;I income is exactly $0.00 and is not a balancing figure."
-                />
-                <div className="pt-6">
-                  <BackGrossSectionBlock jacket={jacket} />
-                </div>
-              </section>
-
-              <section id="total-gross">
-                <SectionHeader
-                  eyebrow="Total gross"
-                  title="What the deal made"
-                  lede="Front plus back, recomputed here from the two figures above."
-                />
-                <div className="pt-6">
-                  <TotalGrossSection jacket={jacket} />
-                </div>
-              </section>
-            </div>
-          </div>
-        </Container>
-      </Section>
-
-      {/* ------------------------------------------------------------------ */}
-      {/* Checks and lineage                                                  */}
-      {/* ------------------------------------------------------------------ */}
-      <Section rhythm="default" tone="evidence" id="checks">
-        <Container width="content">
-          <SectionHeader
-            eyebrow="Integrity"
+        {/* ---------------------------------------------------------------- */}
+        {/* ROW 6 — integrity and lineage                                     */}
+        {/* ---------------------------------------------------------------- */}
+        {/*
+          `UX.2B` §24 subordinates verification to the transaction and requires it to stay
+          easy to inspect. The eight checks are a module rather than a page region, they are
+          below every figure they check, and the count of any needing review is in the control
+          band's context line at the top — so a reader never has to scroll to discover that
+          something disagreed.
+        */}
+        <GridRow>
+          <Module
+            id="checks"
             title="What this page checked before showing you the figures"
-            lede="Eight checks, each recomputing something from the figures on this page rather than reading a stored flag. A check that cannot fail is not a check, so the three that needed the F&amp;I model were named as absent until DASH.7 gave them something to verify."
-          />
-          <div className="flex flex-col gap-6 pt-6">
+            span={7}
+          >
             <ChecksSection
               checks={jacket.checks}
               needingReview={jacket.checksNeedingReview}
             />
+          </Module>
+          <Module id="lineage" title="Where these figures came from" span={5}>
             <LineageSection jacket={jacket} />
-            {/*
-              THE FULL STATEMENT MOVED INTO THE CONTROL BAND'S DISCLOSURE at `UX.1`,
-              where every operating route carries it and `operating-copy.spec.ts`
-              asserts it. It was rendered here as well, and a disclosure stated
-              twice on one document is not twice as honest — it is the repetition
-              that made a finished platform read as an apology. What stays visible
-              on this page is the sentence a reader of ONE TRANSACTION needs, at the
-              top where they meet the deal: this is a fictional transaction, not a
-              real sale, customer or dealership record.
-            */}
-          </div>
-        </Container>
-      </Section>
+          </Module>
+        </GridRow>
+      </Workspace>
 
       {/*
         Navigation back. Omitted from print: paper has nowhere to go.

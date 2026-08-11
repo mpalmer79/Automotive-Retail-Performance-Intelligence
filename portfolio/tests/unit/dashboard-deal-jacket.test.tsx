@@ -689,7 +689,15 @@ describe('a corrupted export surfaces as a visible verification failure', () => 
   it('still shows the figures as exported rather than hiding a broken deal', async () => {
     const jacket = await jacketFromCorrupted('front_end_gross')
     render(<FrontGrossSection jacket={jacket} />)
-    expect(screen.getByText(jacket.frontGross.lines.at(-1)!.display)).toBeInTheDocument()
+    /*
+     * `getAllByText`, because `UX.2B` renders the front-gross identity twice: once as the
+     * economics ladder a reviewer meets first, and once as the exact `<dl>` inside the
+     * verification disclosure. Both are in the document and both carry the EXPORTED figure,
+     * which is what this test is about — a broken deal is shown as exported rather than
+     * hidden or silently adjusted.
+     */
+    const shown = screen.getAllByText(jacket.frontGross.lines.at(-1)!.display)
+    expect(shown.length).toBeGreaterThan(0)
   })
 
   it('surfaces the failed check in the checklist with a count needing review', async () => {
