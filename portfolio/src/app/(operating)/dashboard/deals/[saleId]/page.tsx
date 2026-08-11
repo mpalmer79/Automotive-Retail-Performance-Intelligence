@@ -149,9 +149,12 @@ export default async function DealJacketPage({
         ])}
         backLink={{ href: ROUTES.dashboardDeals.href, label: 'All deals' }}
         notices={
-          <p className="rounded-lg border border-line bg-surface-sunken/60 p-3 text-sm font-medium text-ink">
-            Fictional transaction from the synthetic Granite Auto Group dataset. Not a real
-            sale, customer, or dealership record.
+          <p
+            id="disclosure"
+            className="rounded-lg border border-line bg-surface-sunken/60 p-3 text-sm font-medium text-ink"
+          >
+            Fictional transaction from the synthetic Granite Auto Group dataset. Not a
+            real sale, customer, or dealership record.
           </p>
         }
         methodology={<ExportProvenance exportState={exportState} powerBi={powerBi} />}

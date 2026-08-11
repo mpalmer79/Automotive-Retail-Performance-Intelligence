@@ -429,9 +429,7 @@ export function GroupedMeasureBars({
                             )}
                             style={{
                               width: percent(anyNegative ? width / 2 : width),
-                              marginLeft: negative
-                                ? percent((1 - width) / 2)
-                                : undefined,
+                              marginLeft: negative ? percent((1 - width) / 2) : undefined,
                               marginRight: negative ? 'auto' : undefined,
                             }}
                           />
@@ -491,7 +489,10 @@ export function GroupedMeasureBars({
           </thead>
           <tbody>
             {categories.map((category, index) => (
-              <tr key={category.key} className="border-b border-line-subtle/60 last:border-0">
+              <tr
+                key={category.key}
+                className="border-b border-line-subtle/60 last:border-0"
+              >
                 <th scope="row" className="py-1.5 pr-3 font-normal text-ink-secondary">
                   {category.label}
                 </th>
@@ -847,20 +848,32 @@ export function PositionMap({
                 <th scope="col" className="py-2 pr-3 font-medium text-ink-muted">
                   Vehicle
                 </th>
-                <th scope="col" className="py-2 pl-3 text-right font-medium text-ink-muted">
+                <th
+                  scope="col"
+                  className="py-2 pl-3 text-right font-medium text-ink-muted"
+                >
                   {yAxis.label}
                 </th>
-                <th scope="col" className="py-2 pl-3 text-right font-medium text-ink-muted">
+                <th
+                  scope="col"
+                  className="py-2 pl-3 text-right font-medium text-ink-muted"
+                >
                   {xAxis.label}
                 </th>
-                <th scope="col" className="py-2 pl-3 text-right font-medium text-ink-muted">
+                <th
+                  scope="col"
+                  className="py-2 pl-3 text-right font-medium text-ink-muted"
+                >
                   {areaLabel}
                 </th>
               </tr>
             </thead>
             <tbody>
               {points.map((point) => (
-                <tr key={point.key} className="border-b border-line-subtle/60 last:border-0">
+                <tr
+                  key={point.key}
+                  className="border-b border-line-subtle/60 last:border-0"
+                >
                   <th scope="row" className="py-1.5 pr-3 font-normal text-ink-secondary">
                     <a
                       href={point.href}
@@ -892,10 +905,11 @@ export function PositionMap({
           >
             {externalTable.label}
           </a>
-          {' carries every plotted unit and its exact figures. Each mark above is also a link, and its accessible name is that unit\u2019s own values.'}
+          {
+            ' carries every plotted unit and its exact figures. Each mark above is also a link, and its accessible name is that unit\u2019s own values.'
+          }
         </p>
       )}
-
     </ChartFrame>
   )
 }

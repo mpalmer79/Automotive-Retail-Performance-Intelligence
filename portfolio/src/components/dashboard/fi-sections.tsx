@@ -1184,7 +1184,7 @@ export function FiGrossComposition({ view }: { readonly view: FiView }) {
         },
       ]}
       total={p.backEndGrossDealDate}
-      shareDisclosure="Reserve and product gross are published separately and are not ranked against each other. Other F&I income is exactly $0.00 and is not a balancing figure: the two components account for all of back-end gross, and the identity is recomputed and stated in words below."
+      shareDisclosure="Reserve and product gross are published separately and neither is the better half of a month. Other F&I income is exactly $0.00 and is not a balancing figure: the two components account for all of back-end gross, and the identity is recomputed and stated in words below."
       headingLevel={4}
     />
   )
@@ -1372,20 +1372,20 @@ export function AdjustmentTrend({ view }: { readonly view: FiView }) {
         </div>
       )}
       {single !== undefined ? null : (
-      <TrendChart
-        title="Adjustment amount by posting month"
-        measure="Adjustment amount"
-        points={months.map((month) => ({
-          key: month.key,
-          label: month.label,
-          value: month.total,
-          display: formatCurrencyExact(month.total),
-        }))}
-        periodHeading="Posting month"
-        valueHeading="Amount"
-        summaryMode="sr-only"
-        headingLevel={4}
-      />
+        <TrendChart
+          title="Adjustment amount by posting month"
+          measure="Adjustment amount"
+          points={months.map((month) => ({
+            key: month.key,
+            label: month.label,
+            value: month.total,
+            display: formatCurrencyExact(month.total),
+          }))}
+          periodHeading="Posting month"
+          valueHeading="Amount"
+          summaryMode="sr-only"
+          headingLevel={4}
+        />
       )}
       <TableDisclosure title="adjustment amount by posting month and type">
         <table className="w-full border-collapse text-sm">
@@ -1413,7 +1413,10 @@ export function AdjustmentTrend({ view }: { readonly view: FiView }) {
           </thead>
           <tbody>
             {months.map((month) => (
-              <tr key={month.key} className="border-b border-line-subtle/60 last:border-0">
+              <tr
+                key={month.key}
+                className="border-b border-line-subtle/60 last:border-0"
+              >
                 <th scope="row" className="py-1.5 pr-3 font-normal text-ink-secondary">
                   {month.label}
                 </th>

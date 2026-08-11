@@ -197,6 +197,7 @@ export default async function InventoryPage({
             : `Snapshot ${formatIsoDate(snapshotDate)}`,
           `Aged over ${String(summary.agedThresholdDays ?? 60)} days`,
         ])}
+        subtitle="Stock held at one snapshot date. Positions, never summed across dates."
         notices={
           <div className="flex flex-col gap-4 empty:hidden">
             {/*
@@ -208,8 +209,8 @@ export default async function InventoryPage({
               full notes are in the methodology disclosure beside the filters.
             */}
             <Text size="sm" tone="secondary">
-              The aged threshold is an ARPI project default, not an industry benchmark, and
-              it is a different number from the top age bucket. The market estimate is
+              The aged threshold is an ARPI project default, not an industry benchmark,
+              and it is a different number from the top age bucket. The market estimate is
               synthetic and is not a market valuation.
             </Text>
             <StaleBanner stale={exportState.stale} />
@@ -305,7 +306,9 @@ export default async function InventoryPage({
             zone="inventory"
             visual="kpi-rail"
             meta={
-              snapshotDate === null ? 'No snapshot' : `Snapshot ${formatIsoDate(snapshotDate)}`
+              snapshotDate === null
+                ? 'No snapshot'
+                : `Snapshot ${formatIsoDate(snapshotDate)}`
             }
           >
             <InventoryRail summary={summary} />
@@ -322,13 +325,7 @@ export default async function InventoryPage({
           row is a follow-up.
         */}
         <GridRow align="start">
-          <Module
-            id="age"
-            title="Age and capital"
-            span={5}
-            zone="inventory"
-            visual="age"
-          >
+          <Module id="age" title="Age and capital" span={5} zone="inventory" visual="age">
             <AgeAndCapital summary={summary} />
           </Module>
           <Module
@@ -402,9 +399,9 @@ export default async function InventoryPage({
               {unitNotFound ? (
                 <Text size="sm" tone="muted">
                   No unit with that identifier is in stock at this snapshot date and store
-                  selection. Check the identifier, or clear the store and period filters — a
-                  unit that sold before this snapshot date is not on the lot and has no row
-                  here.{' '}
+                  selection. Check the identifier, or clear the store and period filters —
+                  a unit that sold before this snapshot date is not on the lot and has no
+                  row here.{' '}
                   <a
                     className="underline decoration-line underline-offset-2 transition-colors duration-(--arpi-motion-fast) hover:text-accent"
                     href={ROUTE}
@@ -420,7 +417,10 @@ export default async function InventoryPage({
                       Operational position
                     </h3>
                     <dl className="flex flex-col gap-1.5 text-sm">
-                      <Row label="Snapshot date" value={formatIsoDate(unit.snapshotDate)} />
+                      <Row
+                        label="Snapshot date"
+                        value={formatIsoDate(unit.snapshotDate)}
+                      />
                       <Row label="Days in stock" value={String(unit.daysInStock)} />
                       <Row
                         label="Age bucket"
@@ -474,8 +474,8 @@ export default async function InventoryPage({
                     </h3>
                     {accounting === null ? (
                       <Text size="sm" tone="muted">
-                        No accounting snapshot for this unit at this date. That is a missing
-                        row, not a book value of zero.
+                        No accounting snapshot for this unit at this date. That is a
+                        missing row, not a book value of zero.
                       </Text>
                     ) : (
                       <dl className="flex flex-col gap-1.5 text-sm">
@@ -504,9 +504,9 @@ export default async function InventoryPage({
                     )}
                     <Text size="xs" tone="faint" className="pt-2">
                       Floorplan principal is a liability carried alongside the unit. It is
-                      not part of book value and is never netted against it; ARPI publishes
-                      no net inventory position and models no floorplan interest, curtailment
-                      or carrying cost.
+                      not part of book value and is never netted against it; ARPI
+                      publishes no net inventory position and models no floorplan
+                      interest, curtailment or carrying cost.
                     </Text>
                   </div>
                 </div>

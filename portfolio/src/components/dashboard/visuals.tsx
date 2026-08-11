@@ -152,7 +152,26 @@ export function TableDisclosure({
       <summary className="flex min-h-touch cursor-pointer items-center px-3 text-xs font-medium text-ink-muted transition-colors duration-(--arpi-motion-fast) hover:text-accent">
         {`Read ${title.toLowerCase()} as a table`}
       </summary>
-      <div className="overflow-x-auto px-3 pb-3">{children}</div>
+      {/*
+        THE SCROLL CONTAINER IS FOCUSABLE AND NAMED.
+
+        A region that scrolls horizontally must be reachable by keyboard, or a reader
+        without a pointer cannot see its right-hand columns at all — WCAG 2.1.1, and
+        `dashboard-inventory.spec.ts` has asserted it on this route since `DASH.9`. The
+        route's own unit table carried `role="region"` and `tabIndex` before `UX.2B` moved
+        it inside this primitive; the primitive did not, so the attribute would have been
+        silently lost on every table it now wraps. `aria-label` names the region, because a
+        focus stop announced only as "region" tells a screen-reader user nothing about
+        which of the page's tables they have landed in.
+      */}
+      <div
+        role="region"
+        tabIndex={0}
+        aria-label={title}
+        className="overflow-x-auto px-3 pb-3"
+      >
+        {children}
+      </div>
     </details>
   )
 }
@@ -507,7 +526,8 @@ export function BridgeChart({
            * rectangle is drawn between. The anchors keep the neutral reference fill, because
            * a level is not a direction.
            */
-          const upper = bar.kind === 'anchor' ? Math.max(base, lowest) : Math.max(base, top)
+          const upper =
+            bar.kind === 'anchor' ? Math.max(base, lowest) : Math.max(base, top)
           const lower = bar.kind === 'anchor' ? lowest : Math.min(base, top)
           const height = ((upper - lower) / span) * 100
           const offset = ((lower - lowest) / span) * 100

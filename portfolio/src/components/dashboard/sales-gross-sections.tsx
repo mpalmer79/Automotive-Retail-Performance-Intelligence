@@ -281,7 +281,10 @@ export function SalesKpiRail({
           />
         ))}
       </ul>
-      <Disclosure label="How every figure on this rail is calculated" className="border-0">
+      <Disclosure
+        label="How every figure on this rail is calculated"
+        className="border-0"
+      >
         <div className="flex flex-col gap-5">
           {withDefinition.map((metric) => {
             const definition =
@@ -710,10 +713,10 @@ export function DistributionSection({
         <Text size="xs" tone="muted">
           Deal gross has a long tail, so the mean sits above the typical deal and either
           centre alone invites the wrong conclusion. The median is computed from the
-          deal-level values themselves, never from store medians: an order statistic cannot
-          be recomputed from an aggregate. The mean over a retail population is total gross
-          divided by retail units, which is KPI-GRS-006 by definition, so it is the same
-          figure the rail shows.
+          deal-level values themselves, never from store medians: an order statistic
+          cannot be recomputed from an aggregate. The mean over a retail population is
+          total gross divided by retail units, which is KPI-GRS-006 by definition, so it
+          is the same figure the rail shows.
         </Text>
       </Disclosure>
     </div>
@@ -801,14 +804,15 @@ export function DiscountSection({
           <Text size="xs" tone="muted">
             The distribution is one value per retail deal: the original asking price less
             the sale price, both exported at deal grain. It is an observed difference and
-            not evidence of a negotiation, a policy or a manager decision; ARPI models none
-            of those.
+            not evidence of a negotiation, a policy or a manager decision; ARPI models
+            none of those.
           </Text>
           <Text size="xs" tone="muted">
             The MSRP discount divides by the units that actually carry an MSRP, which is
-            fewer than the retail count — a used unit has none. Dividing by the retail count
-            would understate it by counting units the measure cannot apply to, and where no
-            unit in scope carries an MSRP the measure is not applicable rather than zero.
+            fewer than the retail count — a used unit has none. Dividing by the retail
+            count would understate it by counting units the measure cannot apply to, and
+            where no unit in scope carries an MSRP the measure is not applicable rather
+            than zero.
           </Text>
         </div>
       </Disclosure>
@@ -935,28 +939,28 @@ export function BridgeSection({ bridge }: { readonly bridge: BridgeState }) {
       */}
       <Text size="xs" tone={bridge.verified ? 'muted' : 'secondary'}>
         {bridge.verified
-          ? 'Verified against the exported numerators. An attribution, never a cause: nothing here identifies why volume or rate moved.'
+          ? 'Verified: the exported component numerators sum exactly to the comparison unit count multiplied by the period change. An attribution, never a cause: nothing here identifies why volume or rate moved.'
           : 'The exported components did not reconcile to the period change. The figures above are shown as exported, and this state is a defect rather than a rounding artefact.'}
       </Text>
       <Disclosure label="How the decomposition is ordered" className="border-0">
         <div className="flex flex-col gap-2">
           <Text size="xs" tone="muted">
-            The bridge attributes change under a documented arithmetic order: volume priced
-            at the comparison period rate, then each rate change valued at the current
-            period volume. `vw_gross_change_bridge` owns that order and computes it once;
-            this page reads the exported numerators and verifies the identity SQL
+            The bridge attributes change under a documented arithmetic order: volume
+            priced at the comparison period rate, then each rate change valued at the
+            current period volume. `vw_gross_change_bridge` owns that order and computes
+            it once; this page reads the exported numerators and verifies the identity SQL
             guarantees, and never decides how much of a change belongs to volume.
           </Text>
           <Text size="xs" tone="muted">
-            It is an attribution and not a cause. No person, department, inventory position
-            or marketing spend is implicated by any step.
+            It is an attribution and not a cause. No person, department, inventory
+            position or marketing spend is implicated by any step.
           </Text>
           {bridge.rounding === null ? null : (
             <Text size="xs" tone="muted">
               The rounding line is the residual left when each component is divided by the
-              comparison unit count and rounded to the cent. It is shown rather than folded
-              into a component, because adjusting one component to make a column add up
-              would misstate that component.
+              comparison unit count and rounded to the cent. It is shown rather than
+              folded into a component, because adjusting one component to make a column
+              add up would misstate that component.
             </Text>
           )}
         </div>

@@ -206,6 +206,12 @@ export default async function FiPage({
               meta={view.periodContext.period.label}
             >
               <FiRail view={view} />
+              <FiDisclosure
+                id="production-detail"
+                summary="Eight production figures, with every basis line"
+              >
+                <ProductionSummary view={view} />
+              </FiDisclosure>
             </Module>
           </GridRow>
 
@@ -229,6 +235,16 @@ export default async function FiPage({
               meta={<BasisTag basis="deal" />}
             >
               <FiGrossComposition view={view} />
+              <FiDisclosure
+                id="composition-detail"
+                summary="The back-gross identity, recomputed to the cent"
+              >
+                <BackGrossComposition
+                  view={view}
+                  identityHolds={identityHolds}
+                  residual={residual}
+                />
+              </FiDisclosure>
             </Module>
             <Module
               id="structure"
@@ -240,6 +256,12 @@ export default async function FiPage({
               note="Structure decides what could be sold: GAP needs financing, Lease Wear Protection needs a lease, and a cash delivery can earn no reserve at all."
             >
               <StructureMixChart view={view} />
+              <FiDisclosure
+                id="structure-detail"
+                summary="Structure counts and shares, as a table"
+              >
+                <StructureMix structures={view.structures} view={view} />
+              </FiDisclosure>
             </Module>
             <Module
               id="penetration"
@@ -250,6 +272,12 @@ export default async function FiPage({
               meta={<BasisTag basis="deal" />}
             >
               <PenetrationChart view={view} />
+              <FiDisclosure
+                id="penetration-detail"
+                summary="Both sides of every ratio, with its eligibility rule identifier"
+              >
+                <PenetrationTable view={view} comparisonLabel={comparisonLabel} />
+              </FiDisclosure>
             </Module>
           </GridRow>
 
@@ -266,6 +294,12 @@ export default async function FiPage({
               meta={<BasisTag basis="deal" />}
             >
               <CategoryEconomicsChart view={view} />
+              <FiDisclosure
+                id="economics-detail"
+                summary="Retail, cost, gross, adjustments and net, by category"
+              >
+                <CategoryEconomics view={view} />
+              </FiDisclosure>
             </Module>
             <Module
               id="adjustments"
@@ -274,9 +308,15 @@ export default async function FiPage({
               zone="fi"
               visual="adjustments"
               meta={<BasisTag basis="adjustment" />}
-              note="A chargeback in this period against a contract written earlier belongs to this period; the earlier contract keeps the gross it was written with."
+              note="Events are grouped by the date each posted. A chargeback in this period against a contract written earlier belongs to this period; the earlier contract keeps the gross it was written with."
             >
               <AdjustmentTrend view={view} />
+              <FiDisclosure
+                id="adjustments-detail"
+                summary="By type and category, with their period-proxy rates"
+              >
+                <AdjustmentSection view={view} />
+              </FiDisclosure>
             </Module>
           </GridRow>
 
@@ -289,67 +329,9 @@ export default async function FiPage({
               title="Finance managers, in context"
               span={12}
               zone="fi"
-              note="Ordered by store and synthetic identifier. Not a ranking: a finance manager's figures inherit the store's vehicle mix, its finance-structure mix and its product-eligibility mix, and below the governed minimum-deal floor a ratio is withheld rather than shown small."
+              note="Below the governed minimum-deal floor a ratio is withheld rather than shown small: a one-deal penetration of 100% is a number that will be repeated and cannot be defended."
             >
               <ManagerComparison view={view} />
-            </Module>
-          </GridRow>
-
-          {/* ---------------------------------------------------------------- */}
-          {/* ROW 5 — the full tables, on demand                                */}
-          {/* ---------------------------------------------------------------- */}
-          {/*
-            EVERY TABLE THE ROUTE EVER RENDERED IS STILL RENDERED, AND STILL IN THE
-            DOCUMENT. `<details>` collapses a body of detail visually while leaving it in
-            the accessibility tree's reading order, in a browser text search and in the
-            printed page — the technique every chart on this console uses for its data
-            alternative. The modules above answer the questions a finance director opens the
-            page with; these answer the ones they open a table for.
-          */}
-          <GridRow>
-            <Module id="detail" title="The full tables" span={12}>
-              <div className="flex flex-col gap-3">
-                <FiDisclosure
-                  id="production-detail"
-                  summary="Eight production figures, with every basis line"
-                >
-                  <ProductionSummary view={view} />
-                </FiDisclosure>
-                <FiDisclosure
-                  id="composition-detail"
-                  summary="The back-gross identity, recomputed to the cent"
-                >
-                  <BackGrossComposition
-                    view={view}
-                    identityHolds={identityHolds}
-                    residual={residual}
-                  />
-                </FiDisclosure>
-                <FiDisclosure
-                  id="structure-detail"
-                  summary="Structure counts and shares, as a table"
-                >
-                  <StructureMix structures={view.structures} view={view} />
-                </FiDisclosure>
-                <FiDisclosure
-                  id="penetration-detail"
-                  summary="Penetration, with both sides of every ratio and its rule identifier"
-                >
-                  <PenetrationTable view={view} comparisonLabel={comparisonLabel} />
-                </FiDisclosure>
-                <FiDisclosure
-                  id="economics-detail"
-                  summary="Retail, cost, gross, adjustments and net, by category"
-                >
-                  <CategoryEconomics view={view} />
-                </FiDisclosure>
-                <FiDisclosure
-                  id="adjustments-detail"
-                  summary="Adjustments by type and category, with their period-proxy rates"
-                >
-                  <AdjustmentSection view={view} />
-                </FiDisclosure>
-              </div>
             </Module>
           </GridRow>
         </Workspace>
@@ -388,7 +370,10 @@ function FiDisclosure({
   readonly children: React.ReactNode
 }) {
   return (
-    <details id={id} className="rounded-xl border border-line-subtle bg-surface-sunken/40">
+    <details
+      id={id}
+      className="rounded-xl border border-line-subtle bg-surface-sunken/40"
+    >
       <summary className="flex min-h-touch cursor-pointer items-center px-3 text-sm font-medium text-ink-secondary transition-colors duration-(--arpi-motion-fast) hover:text-accent">
         {summary}
       </summary>
@@ -414,8 +399,8 @@ function FiMethodology({ asOfDate }: { readonly asOfDate: string }) {
           <Text size="sm" tone="muted">
             <strong className="font-medium text-ink">Deal date.</strong> What the finance
             office produced, attributed to the day the deal was struck. Reserve, original
-            product gross and back-end gross are on this basis and are never rewritten when a
-            later event posts.
+            product gross and back-end gross are on this basis and are never rewritten
+            when a later event posts.
           </Text>
           <Text size="sm" tone="muted">
             <strong className="font-medium text-ink">As of {asOfDate}.</strong> What the
@@ -432,27 +417,28 @@ function FiMethodology({ asOfDate }: { readonly asOfDate: string }) {
 
       <Disclosure label="Why the period proxy rates are not loss rates">
         <Text size="sm" tone="muted">
-          A chargeback rate on this page divides an amount posted in the selected period by
-          the original gross of contracts <em>sold</em> in the selected period. Those are two
-          different populations: the contracts charged back in a month are mostly not the
-          ones written in it. The result is a period proxy, useful for watching the direction
-          of travel, and it is not a contract-cohort loss rate. Computing a true cohort rate
-          would need the full life of each cohort, and the reporting window truncates the
-          tail of the adjustment lag distribution — which is also why the most recent sale
-          months carry structurally fewer adjustments than the earliest ones.
+          A chargeback rate on this page divides an amount posted in the selected period
+          by the original gross of contracts <em>sold</em> in the selected period. Those
+          are two different populations: the contracts charged back in a month are mostly
+          not the ones written in it. The result is a period proxy, useful for watching
+          the direction of travel, and it is not a contract-cohort loss rate. Computing a
+          true cohort rate would need the full life of each cohort, and the reporting
+          window truncates the tail of the adjustment lag distribution — which is also why
+          the most recent sale months carry structurally fewer adjustments than the
+          earliest ones.
         </Text>
       </Disclosure>
 
       <Disclosure label="Why each category has its own denominator">
         <Text size="sm" tone="muted">
           Penetration is only meaningful beside the population it was computed over. A GAP
-          rate over all retail deliveries would count cash buyers who have no loan for GAP to
-          cover, and would make every store with a heavier cash mix look worse for a reason
-          that has nothing to do with its finance office. Each category is therefore measured
-          against the deals eligible for it under one governed rule, the rule identifier is
-          on every row, and both sides of the ratio are published. A category with no
-          eligible deals shows &ldquo;No eligible deals&rdquo; rather than 0%, because a rate
-          with no denominator is undefined and not zero.
+          rate over all retail deliveries would count cash buyers who have no loan for GAP
+          to cover, and would make every store with a heavier cash mix look worse for a
+          reason that has nothing to do with its finance office. Each category is
+          therefore measured against the deals eligible for it under one governed rule,
+          the rule identifier is on every row, and both sides of the ratio are published.
+          A category with no eligible deals shows &ldquo;No eligible deals&rdquo; rather
+          than 0%, because a rate with no denominator is undefined and not zero.
         </Text>
       </Disclosure>
 
@@ -462,8 +448,8 @@ function FiMethodology({ asOfDate }: { readonly asOfDate: string }) {
             <strong className="font-medium text-ink">
               There is no benchmark and no target.
             </strong>{' '}
-            ARPI publishes no industry F&amp;I figures, so nothing here is good, bad, healthy
-            or standard. A penetration of 40.7% is stated as 40.7%.
+            ARPI publishes no industry F&amp;I figures, so nothing here is good, bad,
+            healthy or standard. A penetration of 40.7% is stated as 40.7%.
           </Text>
           <Text size="sm" tone="muted">
             <strong className="font-medium text-ink">There is no recommendation.</strong>{' '}
@@ -475,15 +461,15 @@ function FiMethodology({ asOfDate }: { readonly asOfDate: string }) {
             <strong className="font-medium text-ink">
               There is no menu and no offer history.
             </strong>{' '}
-            The model records what was sold, not what was offered and declined, so no closing
-            rate is computable from it.
+            The model records what was sold, not what was offered and declined, so no
+            closing rate is computable from it.
           </Text>
           <Text size="sm" tone="muted">
             <strong className="font-medium text-ink">
               Manager rows are comparisons, not evaluations.
             </strong>{' '}
-            They carry no ranking and no label, and below the governed minimum-deal floor a
-            ratio is withheld: a one-deal penetration of 100% is a number that will be
+            They carry no ranking and no label, and below the governed minimum-deal floor
+            a ratio is withheld: a one-deal penetration of 100% is a number that will be
             repeated and cannot be defended.
           </Text>
         </div>

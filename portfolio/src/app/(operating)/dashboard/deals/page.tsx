@@ -280,7 +280,9 @@ export default async function DealExplorerPage({
             <Text size="xs" tone="faint">
               A wholesale disposal or dealer trade is shown and labelled as not retail: it
               is a real transaction, and judging it by retail measures would be the error,
-              not showing it. Each deal id opens its Deal Jacket.
+              not showing it. Each deal id opens its Deal Jacket: the transaction
+              explained to the cent, with the cost components behind its front gross, its
+              trade context, staff attribution, lead timeline and integrity checks.
             </Text>
           </Module>
         </GridRow>

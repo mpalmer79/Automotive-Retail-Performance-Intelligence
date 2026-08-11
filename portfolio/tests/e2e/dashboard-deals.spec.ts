@@ -36,23 +36,50 @@ test.describe('the route exists and states its scope', () => {
 
 test.describe('the index shows the deal, not the customer', () => {
   test('renders the operating columns', async ({ page }) => {
+    /*
+     * TEN BY DEFAULT, FOURTEEN ON REQUEST. `UX.2B` §4 asks the table not to be overloaded
+     * and permits secondary columns through a controlled detail mode. The ten below are
+     * the ones §4 names; the four that moved are asserted directly underneath, because a
+     * column that is one click away is different from a column that was deleted and the
+     * test has to be able to tell those apart.
+     */
     await gotoRendered(page, ROUTE)
     const text = await mainTextContent(page)
     for (const heading of [
       'Deal',
       'Sale date',
       'Store',
-      'Unit',
       'Vehicle',
+      'Condition',
       'Sale type',
       'Sale price',
       'Front gross',
       'Back gross',
       'Total gross',
-      'Lead source',
     ]) {
       expect(text, `${heading} column missing`).toContain(heading)
     }
+  })
+
+  test('keeps the secondary columns one link away, and shows them there', async ({
+    page,
+  }) => {
+    await gotoRendered(page, ROUTE)
+    const toggle = page.locator('main a', {
+      hasText: /Show unit, days, source and staff/i,
+    })
+    await expect(toggle).toBeVisible()
+
+    await toggle.click()
+    await page.waitForURL(/[?&]detail=1/)
+    const text = await mainTextContent(page)
+    for (const heading of ['Unit', 'Days', 'Lead source', 'Staff']) {
+      expect(text, `${heading} column missing in detail mode`).toContain(heading)
+    }
+
+    // And it is a URL, so it survives a cold load and a share.
+    await page.goto(page.url())
+    await expect(page.locator('main')).toContainText('Lead source')
   })
 
   test('declares no customer column, and carries no contact-shaped value', async ({
@@ -140,7 +167,10 @@ test.describe('sorting is links, and works without JavaScript', () => {
     const hrefs = await page
       .locator('thead a')
       .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('href') ?? ''))
-    expect(hrefs.length).toBeGreaterThanOrEqual(6)
+    // Five in the default column set — the sale date and the four money columns. Days in
+    // stock is the sixth and is sortable in detail mode; `parseListState` accepts its sort
+    // key either way, so a shared URL carrying that order still produces it.
+    expect(hrefs.length).toBeGreaterThanOrEqual(5)
     for (const href of hrefs) {
       expect(href).toContain('/dashboard/deals')
       /*

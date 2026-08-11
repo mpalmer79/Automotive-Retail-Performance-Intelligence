@@ -68,15 +68,25 @@ test.describe('the page works with scripting disabled', () => {
   test('renders every section as complete HTML', async ({ page }) => {
     await page.goto(ROUTE)
     const text = await mainTextContent(page)
+    /*
+     * THE MODULE TITLES, NOT THE BAND HEADINGS. `UX.2B` replaced eight full-width bands —
+     * each with an eyebrow, an `h2` and a three-to-five-line lede — with modules on the
+     * twelve-column grid, so the strings this test used to look for no longer exist and
+     * should not: a module's own title says what it holds. What the test is actually for
+     * is unchanged and is what it still asserts: with scripting disabled, every region of
+     * this page is complete HTML.
+     */
     for (const heading of [
-      'What the finance office produced',
-      'Reserve against product, to the cent',
-      'How the deliveries were funded',
-      'What was sold, against what could have been',
-      'What each category earned',
-      'What came back, and when it posted',
-      'The same measures, by desk, with their context',
-      'How to read this page, and what it cannot tell you',
+      'Result',
+      'Gross composition',
+      'Deal structure',
+      'Penetration',
+      'Category economics',
+      'Adjustments',
+      'Finance managers, in context',
+      // The methodology moved into the control band's disclosure, where every operating
+      // route carries its provenance. It is still in the document, so this still holds.
+      'The three date bases, and why they are not interchangeable',
     ]) {
       expect(text, `${heading} is missing without JavaScript`).toContain(heading)
     }
@@ -283,8 +293,12 @@ test.describe('the numbers on the page are the numbers in the export', () => {
     page,
   }) => {
     await gotoRendered(page, ROUTE)
-    const penetration = page.locator('#penetration')
-    const text = (await penetration.innerText()).replace(/\s+/g, ' ')
+    // Read as `textContent`: the table carrying both sides of every ratio is inside a
+    // `<details>`, which keeps it in the document and out of `innerText`.
+    const text = ((await page.locator('#penetration').textContent()) ?? '').replace(
+      /\s+/g,
+      ' '
+    )
     // Numerator and denominator are their own COLUMNS, which is stronger than printing
     // "227 of 558" in one cell: a reader can sum either side down the table.
     expect(text).toMatch(/Deals with product/i)
@@ -298,13 +312,18 @@ test.describe('the numbers on the page are the numbers in the export', () => {
     page,
   }) => {
     await gotoRendered(page, ROUTE)
-    const text = await page.locator('#penetration').innerText()
+    const text = (await page.locator('#penetration').textContent()) ?? ''
     expect(text).toMatch(/ELIG-[A-Z]+/)
   })
 
   test('labels the adjustment section as the adjustment-date basis', async ({ page }) => {
     await gotoRendered(page, ROUTE)
-    const text = (await page.locator('#adjustments').innerText()).replace(/\s+/g, ' ')
+    // Read as `textContent`: this region's full table is inside a `<details>`, which
+    // keeps it in the document and out of `innerText`. See `TableDisclosure`.
+    const text = ((await page.locator('#adjustments').textContent()) ?? '').replace(
+      /\s+/g,
+      ' '
+    )
     expect(text).toMatch(/grouped by the date each posted/i)
     expect(text).toMatch(/posted in the selected period/i)
     expect(text).toMatch(/period proxy/i)
@@ -316,7 +335,12 @@ test.describe('the numbers on the page are the numbers in the export', () => {
     page,
   }) => {
     await gotoRendered(page, ROUTE)
-    const text = (await page.locator('#composition').innerText()).replace(/\s+/g, ' ')
+    // Read as `textContent`: this region's full table is inside a `<details>`, which
+    // keeps it in the document and out of `innerText`. See `TableDisclosure`.
+    const text = ((await page.locator('#composition').textContent()) ?? '').replace(
+      /\s+/g,
+      ' '
+    )
     expect(text).toMatch(/reserve/i)
     expect(text).toMatch(/product gross/i)
     expect(text).toMatch(/back-end gross/i)
@@ -390,9 +414,27 @@ test.describe('accessibility of the page structure', () => {
     const order = await page.evaluate(() =>
       Array.from(document.querySelectorAll('main section[id]')).map((node) => node.id)
     )
-    expect(order.indexOf('context')).toBeLessThan(order.indexOf('production'))
-    expect(order.indexOf('production')).toBeLessThan(order.indexOf('penetration'))
-    expect(order.indexOf('managers')).toBeLessThan(order.indexOf('methodology'))
+    /*
+     * THE DIAGNOSTIC ORDER, RE-EXPRESSED FOR THE MODULE GRID. `UX.2B` removed the
+     * `context` and `methodology` BANDS — the first became the control band that every
+     * operating route now carries, the second became that band's disclosure — so the two
+     * ids they contributed are gone. The order that matters is unchanged and is the reason
+     * this test exists: what the office produced, then what could have been sold, then
+     * what was sold against it, then what came back, then who wrote it. A reader who meets
+     * penetration before structure is reading rates whose denominators they have not seen.
+     */
+    for (const id of [
+      'production',
+      'structure',
+      'penetration',
+      'adjustments',
+      'managers',
+    ])
+      expect(order, `${id} is not a section on the page`).toContain(id)
+    expect(order.indexOf('production')).toBeLessThan(order.indexOf('structure'))
+    expect(order.indexOf('structure')).toBeLessThan(order.indexOf('penetration'))
+    expect(order.indexOf('penetration')).toBeLessThan(order.indexOf('adjustments'))
+    expect(order.indexOf('adjustments')).toBeLessThan(order.indexOf('managers'))
   })
 })
 

@@ -99,9 +99,43 @@ test.describe('the governed figures reach the screen', () => {
   test('carries a methodology disclosure for every governed measure', async ({
     page,
   }) => {
+    /*
+     * ONE DISCLOSURE CARRYING NINE ENTRIES, NOT NINE DISCLOSURES.
+     *
+     * This asserted nine `How is this calculated?` summary lines, which is what the route
+     * rendered until `UX.2B`: one per metric tile, nine identical questions in the eye
+     * path of a manager looking for a number. `UX.2A` had already replaced that pattern on
+     * the Executive rail for the same reason, and this route now follows it.
+     *
+     * WHAT MUST STILL BE TRUE is unchanged and is what the test now checks: every governed
+     * measure's catalogue entry — its definition AND its formula — is in the document,
+     * reachable, and rendered from the same `KpiEntry` through the same fields. Nothing was
+     * summarised and nothing was dropped; a `<details>` keeps all of it in the
+     * accessibility tree's reading order and in a browser text search.
+     */
     await gotoRendered(page, ROUTE)
-    const summaries = page.locator('summary', { hasText: 'How is this calculated?' })
-    expect(await summaries.count()).toBeGreaterThanOrEqual(9)
+
+    const rail = page.locator('#performance')
+    await expect(
+      rail.locator('summary', { hasText: /How every figure on this rail is calculated/i })
+    ).toHaveCount(1)
+
+    const text = ((await rail.textContent()) ?? '').replace(/\s+/g, ' ')
+    for (const kpiId of [
+      'KPI-SLS-001',
+      'KPI-SLS-002',
+      'KPI-SLS-003',
+      'KPI-GRS-001',
+      'KPI-GRS-002',
+      'KPI-GRS-003',
+      'KPI-GRS-004',
+      'KPI-GRS-005',
+      'KPI-GRS-006',
+    ]) {
+      expect(text, `${kpiId} has no entry on the rail`).toContain(kpiId)
+    }
+    // The formulae are the half a consolidated disclosure could quietly lose.
+    expect(text).toMatch(/SUM\(|COUNT\(|\//)
   })
 })
 

@@ -112,7 +112,9 @@ export function InventoryRail({ summary }: { readonly summary: InventorySummary 
           label="Median days in stock"
           value={summary.medianAge === null ? '—' : String(summary.medianAge)}
           note={
-            summary.meanAge === null ? undefined : `Mean ${summary.meanAge.toFixed(1)} days`
+            summary.meanAge === null
+              ? undefined
+              : `Mean ${summary.meanAge.toFixed(1)} days`
           }
         />
       </ul>
@@ -464,7 +466,9 @@ export function UnitTable({
     )
   }
   return (
-    <TableDisclosure title={`every unit at ${snapshotDate ?? 'this date'}`}>
+    <TableDisclosure
+      title={`all ${String(units.length)} units at ${snapshotDate ?? 'this date'}`}
+    >
       <table className="w-full min-w-[52rem] border-collapse text-sm">
         <caption className="sr-only">
           {`Inventory units at ${snapshotDate ?? 'no date'}`}
@@ -502,7 +506,10 @@ export function UnitTable({
         </thead>
         <tbody>
           {units.map((row) => (
-            <tr key={row.vehicleId} className="border-b border-line-subtle/60 last:border-0">
+            <tr
+              key={row.vehicleId}
+              className="border-b border-line-subtle/60 last:border-0"
+            >
               <th scope="row" className="py-1.5 pr-3 text-left font-normal">
                 <a
                   className="underline decoration-line underline-offset-2 transition-colors duration-(--arpi-motion-fast) hover:text-accent"
@@ -515,7 +522,9 @@ export function UnitTable({
               <td className="py-1.5 pr-3 text-ink-muted">
                 {row.modelYear} {row.make} {row.modelName}
               </td>
-              <td className="numeric py-1.5 pr-3 text-right text-ink">{row.daysInStock}</td>
+              <td className="numeric py-1.5 pr-3 text-right text-ink">
+                {row.daysInStock}
+              </td>
               <td className="py-1.5 pr-3 text-ink-muted">{row.ageBucket}</td>
               <td className="numeric py-1.5 pr-3 text-right text-ink">
                 {formatCurrencyExact(row.currentAskingPrice)}
@@ -578,8 +587,8 @@ export function InventoryMethodology({
           {agedNote}
         </Text>
         <Text size="sm" tone="muted">
-          Price movement is derived from consecutive month-end snapshots of the same unit at
-          the same store. It is an observed change in the advertised price and is not
+          Price movement is derived from consecutive month-end snapshots of the same unit
+          at the same store. It is an observed change in the advertised price and is not
           evidence of a manager decision, a pricing strategy or a repricing action; ARPI
           models none of those.
         </Text>

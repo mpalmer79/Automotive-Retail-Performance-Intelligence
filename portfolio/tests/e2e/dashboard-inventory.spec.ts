@@ -20,7 +20,7 @@
  *     about what a reader is shown;
  *   * the tables reflow rather than overflow at 320 px, which is a CSS fact.
  */
-import { expect, test } from '@playwright/test'
+import { expect, test, type Locator, type Page } from '@playwright/test'
 
 import { affirmativeSentences, gotoRendered, mainText, mainTextContent } from './helpers'
 
@@ -35,6 +35,25 @@ const ROUTE = '/dashboard/inventory'
  * URL that was never going to arrive. Naming the field the form owns is unambiguous.
  */
 const searchForm = 'main form:has(#q)'
+
+/**
+ * Open the unit table's disclosure and return its first unit link.
+ *
+ * `UX.2B` made the unit table a `<details>`. The route was 11,543 px — thirteen screens —
+ * because 250 rows of unit detail WERE the page; they are now one summary click below three
+ * modules of geometry, and the position map above them offers the same drill-through on
+ * every plotted unit. A disclosure keeps the table in the document, in the accessibility
+ * tree's reading order, in a browser text search and in the printed page.
+ *
+ * Opening it is a real interaction available to every reader, including one with scripting
+ * disabled: `<summary>` is native. So these tests open it rather than asserting the rows
+ * are visible on arrival, which is a claim the route deliberately no longer makes.
+ */
+async function openUnitTable(page: Page): Promise<Locator> {
+  const summary = page.locator('#units summary', { hasText: /units at/i }).first()
+  await summary.click()
+  return page.locator('#units tbody th a').first()
+}
 
 test.describe('the inventory route renders its governed figures', () => {
   test('answers 200 and names itself in one h1', async ({ page }) => {
@@ -81,9 +100,13 @@ test.describe('the inventory route renders its governed figures', () => {
 
     expect(text).toMatch(/synthetic/i)
     expect(text).toMatch(/not a market valuation/i)
-    // The column header itself carries the qualifier, so a reader scanning the table
-    // sees it without opening a disclosure.
-    expect(text).toMatch(/Est\. \(synthetic\)/i)
+    // The position map's axis note carries the qualifier where the ratio is DRAWN, which
+    // is the surface a reader now meets first.
+    expect(text).toMatch(/synthetic estimate/i)
+    // And the table's own column header still carries it, inside the disclosure — read as
+    // `textContent`, which sees the whole subtree.
+    const all = (await page.locator('main').textContent()) ?? ''
+    expect(all).toMatch(/Est\. \(synthetic\)/i)
   })
 
   test('makes no repricing recommendation of any kind', async ({ page }) => {
@@ -144,7 +167,7 @@ test.describe('unit drill-through is a URL', () => {
   }) => {
     await gotoRendered(page, ROUTE)
 
-    const firstUnit = page.locator('main tbody th a').first()
+    const firstUnit = await openUnitTable(page)
     const unitId = (await firstUnit.textContent())?.trim() ?? ''
     expect(unitId).toMatch(/^VEH-\d{7}$/)
 
@@ -163,7 +186,7 @@ test.describe('unit drill-through is a URL', () => {
 
   test('returns to the index on Back and reopens on Forward', async ({ page }) => {
     await gotoRendered(page, ROUTE)
-    await page.locator('main tbody th a').first().click()
+    await (await openUnitTable(page)).click()
     await page.waitForURL(/[?&]unit=/)
 
     await page.goBack()
@@ -220,7 +243,8 @@ test.describe('search, ordering and filters land in the URL', () => {
 
   test('applies a store filter and says it applied it', async ({ page }) => {
     await gotoRendered(page, `${ROUTE}?store=GSA-001`)
-    const rows = page.locator('main tbody tr')
+    await openUnitTable(page)
+    const rows = page.locator('#units tbody tr')
     await expect(rows.first()).toBeVisible()
     const text = await mainText(page)
     expect(text).toContain('GSA-001')
@@ -242,7 +266,10 @@ test.describe('the page works without JavaScript', () => {
     expect(text).toContain('0-30')
     expect(text).toMatch(/Over 120/)
     expect(text).toMatch(/synthetic/i)
-    await expect(page.locator('main tbody tr').first()).toBeVisible()
+    // The rows are in the document either way; opening the disclosure is native browser
+    // behaviour and needs no script, which is the point of using `<details>` here.
+    await openUnitTable(page)
+    await expect(page.locator('#units tbody tr').first()).toBeVisible()
   })
 
   test('renders the drill-through panel from the URL alone', async ({ page }) => {

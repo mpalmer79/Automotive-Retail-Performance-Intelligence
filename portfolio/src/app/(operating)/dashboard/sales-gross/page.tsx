@@ -295,11 +295,11 @@ export default async function SalesGrossPage({
           <GridRow align="start">
             <Module
               id="targets"
-              title="Plan and pace"
+              title="Targets and pace"
               span={4}
               zone="plan"
               visual="pace"
-              note="The projection is selling-day arithmetic, not a forecast. Targets are synthetic operating goals, not benchmarks."
+              note="Units and gross beside the month's committed goal, with the selling days elapsed and the current rate per selling day. The projection is selling-day arithmetic, not a forecast. Targets are synthetic operating goals, not benchmarks. A monthly plan is a single-month figure, so it is shown as a reference beside the totals rather than drawn onto the daily trend: a flat daily target line would state a number the reporting layer does not define."
             >
               <TargetPaceSection context={view.targets} headingLevel="h4" />
             </Module>
@@ -366,8 +366,10 @@ function mixById(view: SalesGrossView, id: string) {
 }
 
 function figuresById(view: SalesGrossView, ids: readonly string[]) {
-  const found: Record<string, SalesGrossView['performance'][number]['figure']['current']> =
-    {}
+  const found: Record<
+    string,
+    SalesGrossView['performance'][number]['figure']['current']
+  > = {}
   for (const id of ids) {
     const metric = view.performance.find((entry) => entry.id === id)
     if (metric !== undefined) found[id] = metric.figure.current

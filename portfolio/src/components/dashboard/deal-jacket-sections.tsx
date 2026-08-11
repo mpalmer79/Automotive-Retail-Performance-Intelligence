@@ -562,8 +562,8 @@ export function ProductSectionBlock({ jacket }: { readonly jacket: DealJacket })
       <Disclosure label="What original and net each mean">
         <Text size="xs" tone="muted">
           Original gross is what the contract was written for, on the day of the deal. Net
-          gross is what remained as at {products.asOfDate} after every adjustment posted on
-          or before that date. Status is derived from each contract&rsquo;s own event
+          gross is what remained as at {products.asOfDate} after every adjustment posted
+          on or before that date. Status is derived from each contract&rsquo;s own event
           history and never from today&rsquo;s date.
         </Text>
       </Disclosure>
@@ -764,8 +764,8 @@ export function TimelineSectionBlock({
         ))}
       </ol>
       <Text size="xs" tone="faint">
-        No message, note, email, phone number or free-form CRM text exists in the model: it
-        records that a lead was contacted, not what was said.
+        No message, note, email, phone number or free-form CRM text exists in the model:
+        it records that a lead was contacted, not what was said.
       </Text>
     </div>
   )
@@ -810,16 +810,16 @@ export function ChecksSection({
         {needingReview === 0
           ? 'All checks passed.'
           : `${String(needingReview)} check${needingReview === 1 ? '' : 's'} need review.`}{' '}
-        Each recomputes something from the figures on this page rather than reading a stored
-        flag.
+        Eight checks, each recomputing something from the figures on this page rather than
+        reading a stored flag.
       </Text>
       <Disclosure label="Why three of these were once absent">
         <Text size="xs" tone="muted">
           Back-gross reconciliation, product eligibility and product-adjustment validity
           were named as absent through{' '}
           <code className="font-mono text-[0.6875rem]">DASH.4</code> because the F&amp;I
-          model had no surface here. A check that cannot fail is not a check. They are real
-          now, and each can fail.
+          model had no surface here. A check that cannot fail is not a check. They are
+          real now, and each can fail.
         </Text>
       </Disclosure>
     </div>
@@ -986,7 +986,8 @@ export function FrontGrossWaterfall({ jacket }: { readonly jacket: DealJacket })
        file chooses which of the two published values a bar is measured from. */
     value: line.signedAmount,
     display: line.display,
-    kind: (index === 0 || line.isResult === true ? 'anchor' : 'step') as 'anchor' | 'step',
+    kind: (index === 0 || line.isResult === true ? 'anchor' : 'step') as
+      'anchor' | 'step',
   }))
   return (
     <div className="flex flex-col gap-3">
@@ -1038,7 +1039,7 @@ export function BackGrossComposition({ jacket }: { readonly jacket: DealJacket }
       />
       <Text size="xs" tone={jacket.backGross.verified ? 'muted' : 'secondary'}>
         {jacket.backGross.verified
-          ? `Recomputed from the two components and equal to the published back-end gross to the cent. Other F&I income is ${jacket.backGross.otherFiIncome} and is not a balancing figure.`
+          ? `Reconciled to the cent: finance reserve plus original product gross equals the published back-end gross exactly, with other F&I income of ${jacket.backGross.otherFiIncome} and no balancing figure.`
           : `The components do not sum to the published back-end gross. Residual ${jacket.backGross.residual}. Both figures are shown as exported; this state is a defect rather than a rounding artefact.`}
       </Text>
       <Text size="xs" tone="faint">
