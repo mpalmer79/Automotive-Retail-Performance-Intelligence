@@ -468,14 +468,14 @@ export function AppointmentProgression({
       <ul className="flex flex-col gap-2">
         {bars.map((bar) => (
           <li key={bar.key} className="flex flex-col gap-1">
-            <p className="flex items-baseline justify-between gap-3">
+            <div className="flex items-baseline justify-between gap-3">
               <span className="min-w-0 truncate text-xs text-ink-secondary">
                 {bar.label}
               </span>
               <span className="numeric shrink-0 text-sm font-semibold text-ink">
                 {formatCountExact(bar.count)}
               </span>
-            </p>
+            </div>
             <span
               aria-hidden="true"
               className="flex h-4 w-full items-center overflow-hidden rounded-xs bg-surface-sunken"
@@ -616,7 +616,7 @@ export function ResponseWorkspace({ response }: { readonly response: ResponseSum
       <ul className="flex flex-col gap-1.5">
         {response.bands.map((band) => (
           <li key={band.label} className="flex flex-col gap-1">
-            <p className="flex items-baseline justify-between gap-3">
+            <div className="flex items-baseline justify-between gap-3">
               <span className="min-w-0 truncate text-xs text-ink-secondary">
                 {band.label}
               </span>
@@ -626,7 +626,7 @@ export function ResponseWorkspace({ response }: { readonly response: ResponseSum
                   {figureText(band.share, percent1)}
                 </span>
               </span>
-            </p>
+            </div>
             <span
               aria-hidden="true"
               className="h-3 w-full overflow-hidden rounded-pill bg-surface-sunken"
@@ -641,14 +641,14 @@ export function ResponseWorkspace({ response }: { readonly response: ResponseSum
 
         {/* THE POPULATION BOTH KPIS CANNOT SEE, on the same axis as the ones they can. */}
         <li className="mt-1 flex flex-col gap-1 border-t border-line pt-2">
-          <p className="flex items-baseline justify-between gap-3">
+          <div className="flex items-baseline justify-between gap-3">
             <span className="min-w-0 truncate text-xs text-ink-secondary">
               Never answered
             </span>
             <span className="numeric shrink-0 text-sm font-semibold text-ink">
               {formatCountExact(response.unrespondedLeads)}
             </span>
-          </p>
+          </div>
           <span
             aria-hidden="true"
             className="h-3 w-full overflow-hidden rounded-pill bg-surface-sunken"
@@ -750,14 +750,14 @@ export function StageLossBars({ loss }: { readonly loss: StageLoss }) {
       <ul className="flex flex-col gap-1.5">
         {loss.entries.map((entry) => (
           <li key={entry.id} className="flex flex-col gap-1">
-            <p className="flex items-baseline justify-between gap-3">
+            <div className="flex items-baseline justify-between gap-3">
               <span className="min-w-0 truncate text-xs text-ink-secondary">
                 {entry.label}
               </span>
               <span className="numeric shrink-0 text-sm font-semibold text-ink">
                 {formatCountExact(entry.count)}
               </span>
-            </p>
+            </div>
             <span
               aria-hidden="true"
               className="h-3 w-full overflow-hidden rounded-pill bg-surface-sunken"
@@ -1384,14 +1384,14 @@ export function VendorCounts({
       <ul className="flex flex-col gap-1.5">
         {cells.map((cell) => (
           <li key={cell.label} className="flex flex-col gap-1">
-            <p className="flex items-baseline justify-between gap-3">
+            <div className="flex items-baseline justify-between gap-3">
               <span className="min-w-0 truncate text-xs text-ink-secondary">
                 {cell.label}
               </span>
               <span className="numeric shrink-0 text-sm font-semibold text-ink">
                 {formatCountExact(cell.value)}
               </span>
-            </p>
+            </div>
             <span
               aria-hidden="true"
               className="h-2.5 w-full overflow-hidden rounded-pill bg-surface-sunken"

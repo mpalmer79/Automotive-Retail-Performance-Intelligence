@@ -933,6 +933,11 @@ describe('ADR-0013 condition 2: no frontend redefines a KPI', () => {
       geometryImporters,
       'a module converted an exact value to a float for something other than geometry'
     ).toEqual([
+      // `UX.2C`. `BalanceComparison` converts the two balances once each, to scale two bars
+      // against their shared maximum and to mark the overhang between them. Both amounts and
+      // the signed variance are printed from `formatCurrencyExact` and
+      // `formatCurrencyDifference` over the exact values; the float never reaches a figure.
+      'components/dashboard/accounting-workspace.tsx',
       'components/dashboard/deal-headline.tsx',
       'components/dashboard/employees-sections.tsx',
       // `UX.2B`. `fi-workspace.tsx` reaches it in exactly two functions, `shareOf` and
