@@ -28,12 +28,13 @@ import {
 import {
   FunnelChart,
   type FunnelStageBar,
-} from '../../src/components/dashboard/exec-visuals.tsx'
+} from '../../src/components/dashboard/workspace-visuals.tsx'
 /*
  * `UX.2B` moved the switch and the grouped comparison out of `exec-visuals.tsx` and into
  * `workspace-visuals.tsx`, because a second, third and fourth route now render them and the
- * file said in its own docstring that this is what would happen. The assertions below are
- * unchanged: the same components, the same props, the same expected output.
+ * file said in its own docstring that this is what would happen. `UX.2C` moved the funnel for
+ * the same stated reason and deleted the emptied file. The assertions below are unchanged:
+ * the same components, the same props, the same expected output.
  */
 import {
   MetricSwitch,

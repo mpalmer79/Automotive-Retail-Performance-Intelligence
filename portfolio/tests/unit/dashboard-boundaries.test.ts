@@ -946,12 +946,18 @@ describe('ADR-0013 condition 2: no frontend redefines a KPI', () => {
       'components/dashboard/inventory-workspace.tsx',
       'components/dashboard/lead-funnel.tsx',
       'components/dashboard/leads-marketing-sections.tsx',
+      // `UX.2C`. Three functions reach it and all three return a CSS length: `widthOf` for a
+      // share of a stated population, `rateWidth` for a rate against its own 0-1 scale, and
+      // the matrix's `widthFor` for a value against its column's own largest. Every figure
+      // printed beside every one of those bars comes from a governed formatter over the
+      // exact value, and no bar's number is derived from its width.
+      'components/dashboard/leads-workspace.tsx',
       'components/dashboard/visuals.tsx',
       // `UX.2B`. `GroupedMeasureBars` turns a governed value into a bar width against the
       // measure's own largest subject. It is a width, every value is printed as text beside
-      // the bar, and no displayed figure is derived from the float. `exec-visuals.tsx` is no
-      // longer on this list: `FunnelChart` receives shares the view model already divided,
-      // and the two primitives that did convert moved into this file.
+      // the bar, and no displayed figure is derived from the float. `FunnelChart` joined this
+      // file at `UX.2C` and does not change the finding: it receives shares the view model
+      // already divided, and reaches no conversion of its own.
       'components/dashboard/workspace-visuals.tsx',
       'lib/dashboard/decimal.ts',
       // `UX.2B`. `summarizeInventory` divides a bucket's exact investment by the exact
