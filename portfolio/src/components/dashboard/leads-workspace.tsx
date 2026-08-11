@@ -232,13 +232,16 @@ export function DemandRail({
         ))}
       </ul>
 
-      <Disclosure label="How every figure on this rail is calculated" className="border-0">
+      <Disclosure
+        label="How every figure on this rail is calculated"
+        className="border-0"
+      >
         <div className="flex flex-col gap-4 text-sm text-ink-muted">
           <p>
             <strong className="text-ink">Valid leads (KPI-FUN-001)</strong> counts
-            non-duplicate lead records on the date the lead arrived. Duplicates are removed
-            from both sides of every rate rather than from neither: they inflate volume and
-            depress every conversion rate at once.
+            non-duplicate lead records on the date the lead arrived. Duplicates are
+            removed from both sides of every rate rather than from neither: they inflate
+            volume and depress every conversion rate at once.
           </p>
           <p>
             <strong className="text-ink">Contact rate (KPI-FUN-002)</strong> divides
@@ -251,23 +254,24 @@ export function DemandRail({
           </p>
           <p>
             <strong className="text-ink">Show rate (KPI-FUN-004)</strong> is an
-            appointment-grain measure over eligible appointments on the scheduled date. One
-            lead can produce several appointments, so it does not continue the lead counts
-            beside it, and it is on this rail as context rather than as a funnel step.
+            appointment-grain measure over eligible appointments on the scheduled date.
+            One lead can produce several appointments, so it does not continue the lead
+            counts beside it, and it is on this rail as context rather than as a funnel
+            step.
           </p>
           <p>
             <strong className="text-ink">Median response (KPI-FUN-008)</strong> is
-            recomputed from the exported response population under the current filters, not
-            blended from published medians: a median does not decompose, and averaging daily
-            or store medians gives a different and wrong answer. It and the mean both
-            exclude leads that were never answered, which is why{' '}
-            <strong className="text-ink">Never answered</strong> is on the same rail. A lead
-            with no recorded response was never answered; it is not a response of zero
-            seconds, and a genuine zero-second auto-response is counted normally.
+            recomputed from the exported response population under the current filters,
+            not blended from published medians: a median does not decompose, and averaging
+            daily or store medians gives a different and wrong answer. It and the mean
+            both exclude leads that were never answered, which is why{' '}
+            <strong className="text-ink">Never answered</strong> is on the same rail. A
+            lead with no recorded response was never answered; it is not a response of
+            zero seconds, and a genuine zero-second auto-response is counted normally.
           </p>
           <p>
-            No figure here is coloured or compared to a target. ARPI holds no benchmark for
-            any of them and publishes none.
+            No figure here is coloured or compared to a target. ARPI holds no benchmark
+            for any of them and publishes none.
           </p>
         </div>
       </Disclosure>
@@ -657,8 +661,8 @@ export function ResponseWorkspace({ response }: { readonly response: ResponseSum
           <p className="text-2xs leading-normal text-ink-muted">
             A share of {formatCountExact(response.validLeads)} valid leads, not of the
             answered population above: response coverage{' '}
-            {figureText(response.coverageRate, percent1)}. Excluded from the median and the
-            mean by definition — never answered is not a response of zero seconds.
+            {figureText(response.coverageRate, percent1)}. Excluded from the median and
+            the mean by definition — never answered is not a response of zero seconds.
           </p>
         </li>
       </ul>
@@ -666,8 +670,8 @@ export function ResponseWorkspace({ response }: { readonly response: ResponseSum
       <TableDisclosure title="the response distribution">
         <table className="w-full min-w-[24rem] border-collapse text-sm">
           <caption className="sr-only">
-            First-response bands, with the count of answered leads in each and its share of
-            all answered leads.
+            First-response bands, with the count of answered leads in each and its share
+            of all answered leads.
           </caption>
           <thead>
             <tr className="border-b border-line text-left text-xs tracking-wide text-ink-muted uppercase">
@@ -771,9 +775,9 @@ export function StageLossBars({ loss }: { readonly loss: StageLoss }) {
         Each lead is counted once, at the furthest stage it reached, and the counts sum to{' '}
         {formatCountExact(loss.leadsReceived)} valid leads. They say where progression
         stopped, never why: no communication or activity detail exists in this project to
-        carry a reason. Separately, {formatCountExact(loss.soldWithoutShowroomVisit)} of the
-        leads that bought have no modelled showroom visit — already counted in an earlier
-        stage above, shown here rather than added.
+        carry a reason. Separately, {formatCountExact(loss.soldWithoutShowroomVisit)} of
+        the leads that bought have no modelled showroom visit — already counted in an
+        earlier stage above, shown here rather than added.
       </p>
     </ChartFrame>
   )
@@ -1007,7 +1011,11 @@ export function SourceMatrix({ sources }: { readonly sources: readonly SourceRow
     },
   ]
 
-  const rows = sources.map((source) => ({ ...source, key: source.code, label: source.name }))
+  const rows = sources.map((source) => ({
+    ...source,
+    key: source.code,
+    label: source.name,
+  }))
 
   return (
     <MeasureMatrix

@@ -312,10 +312,7 @@ export default async function LeadsMarketingPage({
             <MarketingEconomics marketing={view.marketing} />
           </Module>
           <Module id="vendor" title="Vendor reconciliation" span={4} visual="vendor">
-            <VendorCounts
-              vendor={view.vendor}
-              wholeMonths={view.marketing.wholeMonths}
-            />
+            <VendorCounts vendor={view.vendor} wholeMonths={view.marketing.wholeMonths} />
           </Module>
         </GridRow>
 
@@ -347,25 +344,26 @@ export default async function LeadsMarketingPage({
                   counts sum exactly to the valid leads in scope. They say where
                   progression stopped. They say nothing about why, and nothing in this
                   project could: no communication content, activity detail, note or
-                  disposition is modelled anywhere in it. Some leads that bought
-                  have no modelled showroom visit — a walk-in later matched to a lead —
-                  which is why the chain of stage rates only approximates lead-to-sale
-                  conversion rather than equalling it. That difference is expected and is
-                  not an error.
+                  disposition is modelled anywhere in it. Some leads that bought have no
+                  modelled showroom visit — a walk-in later matched to a lead — which is
+                  why the chain of stage rates only approximates lead-to-sale conversion
+                  rather than equalling it. That difference is expected and is not an
+                  error.
                 </Text>
               </Disclosure>
               <Disclosure label="Why marketing is monthly, and why organic sources show no cost">
                 <Text size="sm">
-                  Spend is recorded by calendar month while leads arrive daily, so dividing
-                  a month of spend by part of a month of leads would produce a figure that
-                  looks precise and means nothing. Cost measures are computed only over
-                  whole months in the selected period, and spend is never prorated: this
-                  project governs no proration rule. For organic and internal sources, cost
-                  per lead, cost per sale and gross return are NOT APPLICABLE rather than
-                  zero — a walk-in is not a zero-cost advertising campaign, and a $0.00 cost
-                  per lead would rank it as the most efficient channel the group operates.
-                  Where spend produced no attributed lead or no attributed sale, that is
-                  stated as its own result rather than shown as an infinite or missing cost.
+                  Spend is recorded by calendar month while leads arrive daily, so
+                  dividing a month of spend by part of a month of leads would produce a
+                  figure that looks precise and means nothing. Cost measures are computed
+                  only over whole months in the selected period, and spend is never
+                  prorated: this project governs no proration rule. For organic and
+                  internal sources, cost per lead, cost per sale and gross return are NOT
+                  APPLICABLE rather than zero — a walk-in is not a zero-cost advertising
+                  campaign, and a $0.00 cost per lead would rank it as the most efficient
+                  channel the group operates. Where spend produced no attributed lead or
+                  no attributed sale, that is stated as its own result rather than shown
+                  as an infinite or missing cost.
                 </Text>
               </Disclosure>
               <Disclosure label="Why the comparison is by source and the table is by campaign">
@@ -377,8 +375,8 @@ export default async function LeadsMarketingPage({
                   hundred. The same governed arithmetic is applied at three groups on this
                   page — per source for the comparison, per source and campaign for the
                   table, and over every cost-attributable row for the headline figures.
-                  KPI-MKT-001, KPI-MKT-002 and KPI-MKT-003 keep their published definitions
-                  at all three.
+                  KPI-MKT-001, KPI-MKT-002 and KPI-MKT-003 keep their published
+                  definitions at all three.
                 </Text>
               </Disclosure>
               <Disclosure label="What gross return on ad spend is, and is not">
@@ -389,8 +387,8 @@ export default async function LeadsMarketingPage({
                   deducted anywhere in this project — so it is not profit, not net profit
                   and not return on investment. A revenue-based return is deliberately not
                   shown: vehicle revenue includes the cost of the vehicle, which inflates
-                  such a ratio by roughly an order of magnitude. Clicks and impressions are
-                  vendor-reported activity rather than value, and are not presented as
+                  such a ratio by roughly an order of magnitude. Clicks and impressions
+                  are vendor-reported activity rather than value, and are not presented as
                   marketing outcomes.
                 </Text>
               </Disclosure>
@@ -404,29 +402,29 @@ export default async function LeadsMarketingPage({
                   creation month rather than the sale date, so this month&rsquo;s spend is
                   never credited with last quarter&rsquo;s leads — and the consequence is
                   that the most recent cohort has had the least time to convert and always
-                  looks worst. ARPI defines no maturity horizon, so recent cohorts are shown
-                  in full and labelled rather than hidden or adjusted.
+                  looks worst. ARPI defines no maturity horizon, so recent cohorts are
+                  shown in full and labelled rather than hidden or adjusted.
                 </Text>
               </Disclosure>
               <Disclosure label="Why vendor lead counts do not match the CRM">
                 <Text size="sm">
                   They are different populations on purpose. Vendors count leads their own
-                  way and typically count duplicates that the CRM de-duplicates, so the two
-                  figures are published side by side and never reconciled to each other. The
-                  gap is something to raise with a vendor; it is not automatically a
-                  data-quality failure, and the vendor figure is never substituted for the
-                  governed valid-lead count.
+                  way and typically count duplicates that the CRM de-duplicates, so the
+                  two figures are published side by side and never reconciled to each
+                  other. The gap is something to raise with a vendor; it is not
+                  automatically a data-quality failure, and the vendor figure is never
+                  substituted for the governed valid-lead count.
                 </Text>
               </Disclosure>
               <Disclosure label="What this page deliberately does not contain">
                 <Text size="sm">
                   No lead, customer, salesperson, message, note, call recording, phone
-                  number or email address appears anywhere on this page, because none of it
-                  is exported: the response distribution is a histogram of counts with no
-                  identity attached to any bin. Every source, vendor and campaign named here
-                  is fictional, and the data is synthetic throughout. There is no employee
-                  ranking — that is a separate surface — and no recommendation: this page
-                  reports evidence and does not tell you what to do about it.
+                  number or email address appears anywhere on this page, because none of
+                  it is exported: the response distribution is a histogram of counts with
+                  no identity attached to any bin. Every source, vendor and campaign named
+                  here is fictional, and the data is synthetic throughout. There is no
+                  employee ranking — that is a separate surface — and no recommendation:
+                  this page reports evidence and does not tell you what to do about it.
                 </Text>
               </Disclosure>
             </div>
