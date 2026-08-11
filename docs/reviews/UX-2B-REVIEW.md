@@ -24,17 +24,17 @@ ones" — zero. `/dashboard/deals`, `/dashboard/deals/[saleId]`, `/dashboard/inv
 | `/dashboard/deals` | 0 | 0 — deliberately, see §5 | — |
 | `/dashboard/deals/[saleId]` | **0** | **2** | 2 |
 | `/dashboard/inventory` | **0** | **3** | 2 |
-| `/dashboard/fi` | **0** | **4** | 3 |
+| `/dashboard/fi` | **0** | **4** | 2 |
 
 And the documents they sat in were long. `/dashboard/inventory` was 11,543 px — thirteen screens —
 to show one snapshot date.
 
 | Route | Document height, before | After | Change |
 |---|---:|---:|---:|
-| `/dashboard/inventory` | 11,543 | **2,191** | **−81.0%** |
+| `/dashboard/inventory` | 11,543 | **2,214** | **−80.8%** |
+| `/dashboard/fi` | 6,614 | **2,628** | **−60.3%** |
 | `/dashboard/deals` | 3,063 | **1,289** | **−57.9%** |
-| `/dashboard/sales-gross` | 7,228 | **3,055** | **−57.7%** |
-| `/dashboard/fi` | 6,614 | **2,881** | **−56.4%** |
+| `/dashboard/sales-gross` | 7,228 | **3,159** | **−56.3%** |
 | `/dashboard/deals/[saleId]` | 5,806 | **3,861** | **−33.5%** |
 
 ---
@@ -52,17 +52,17 @@ visualization is added, because every visualization adds an accessible summary t
 
 | Measure | Before | After | Change |
 |---|---:|---:|---|
-| Document height, desktop | 7,228 | **3,055** | −57.7% |
-| Document height, mobile | 11,439 | 6,699 | −41.4% |
+| Document height, desktop | 7,228 | **3,159** | −56.3% |
+| Document height, mobile | 11,439 | 6,821 | −40.4% |
 | First framed figure, desktop | 2,752 | **689** | −75.0% |
 | First framed figure, mobile | 4,677 | 1,634 | −65.1% |
 | Framed figures | 6 | 8 | — |
 | Framed figures inside the first viewport | **0** | **4** | — |
 | Data-driven visual regions | 0 | 9 (**4** inside the first viewport) | — |
-| Visible prose, `proseRepo` | 891 | **334** | **−62.5%** |
-| Visible prose, `proseEye` | 1,029 | **477** | **−53.6%** |
-| `proseUx1` | 1,361 | 1,121 | −17.6% |
-| Route cost | 428.7 kB | 427.8 kB | −0.9 kB |
+| Visible prose, `proseRepo` | 891 | **405** | **−54.5%** |
+| Visible prose, `proseEye` | 1,029 | **548** | **−46.7%** |
+| `proseUx1` | 1,361 | 1,192 | −12.4% |
+| Route cost | 428.7 kB | 430.2 kB | +1.5 kB |
 | Visible `summary` lines reading "How is this calculated?" | 9 | **0** | — |
 | Client islands | 1 | 1 | unchanged |
 
@@ -71,12 +71,17 @@ visualization is added, because every visualization adds an accessible summary t
 | Measure | Before | After | Change |
 |---|---:|---:|---|
 | Document height, desktop | 3,063 | **1,289** | −57.9% |
-| Document height, mobile | 8,583 | 8,313 | −3.1% |
+| Document height, mobile | 8,583 | 8,382 | −2.3% |
 | Framed figures | 0 | 0 | unchanged, and deliberate — §5 |
 | Default table columns | 14 | **10** | four more under `?detail=1` |
-| Visible prose, `proseRepo` | 128 | 79 | −38.3% |
-| Visible prose, `proseEye` | 136 | 92 | −32.4% |
-| Route cost | 419.1 kB | 411.5 kB | −7.6 kB |
+| Visible prose, `proseRepo` | 128 | 103 | −19.5% |
+| Visible prose, `proseEye` | 136 | 116 | −14.7% |
+| Route cost | 419.1 kB | 411.7 kB | −7.4 kB |
+
+The prose fell by a fifth rather than by a third, and §11 is explicit that a route which is
+already efficient should not have a percentage forced on it. At 128 words this was the
+leanest surface in the console — a seventh of the Deal Jacket's and a seventh of Sales &
+Gross's — and what was wrong with it was density, not verbosity.
 
 The mobile height barely moved and that is correct: below 1280 px the route renders stacked cards
 rather than the table, twenty-five of them, and no layout change to a table affects a page that is
@@ -87,26 +92,26 @@ not showing one. The card markup was not redesigned.
 | Measure | Before | After | Change |
 |---|---:|---:|---|
 | Document height, desktop | 5,806 | **3,861** | −33.5% |
-| Document height, mobile | 9,944 | 7,837 | −21.2% |
+| Document height, mobile | 9,944 | 7,855 | −21.0% |
 | First framed figure | **none on the route** | 515 | — |
 | Framed figures | **0** | **2** | — |
 | Data-driven visual regions | 0 | 3 (**3** inside the first viewport) | — |
-| Visible prose, `proseRepo` | 616 | **312** | **−49.4%** |
-| Visible prose, `proseEye` | 638 | **330** | **−48.3%** |
-| Route cost | 407.2 kB | 413.2 kB | +6.0 kB |
+| Visible prose, `proseRepo` | 616 | **314** | **−49.0%** |
+| Visible prose, `proseEye` | 638 | **332** | **−48.0%** |
+| Route cost | 407.2 kB | 411.5 kB | +4.3 kB |
 
 ### 2.4 `/dashboard/inventory`
 
 | Measure | Before | After | Change |
 |---|---:|---:|---|
-| Document height, desktop | **11,543** | **2,191** | **−81.0%** |
-| Document height, mobile | 12,218 | **3,626** | **−70.3%** |
-| First framed figure | **none on the route** | 788 | — |
+| Document height, desktop | **11,543** | **2,214** | **−80.8%** |
+| Document height, mobile | 12,218 | **3,668** | **−70.0%** |
+| First framed figure | **none on the route** | 810 | — |
 | Framed figures | **0** | **3** | — |
 | Data-driven visual regions | 0 | 4 (**3** inside the first viewport) | — |
-| Visible prose, `proseRepo` | 131 | 303 | **+131.3%** |
-| Visible prose, `proseEye` | 137 | 322 | **+135.0%** |
-| Route cost | 435.1 kB | **495.5 kB** | **+60.4 kB** |
+| Visible prose, `proseRepo` | 131 | 314 | **+139.7%** |
+| Visible prose, `proseEye` | 137 | 333 | **+143.1%** |
+| Route cost | 435.1 kB | **496.3 kB** | **+61.2 kB** |
 
 **Two of those numbers went the wrong way and both are stated rather than buried.**
 
@@ -125,23 +130,24 @@ accessible name carrying its exact figures, which is what "keyboard/focus inspec
 textual point information" and "selected-unit drill-through" require when read as a reader would.
 Two reductions were made and measured: the plot no longer renders its own copy of the unit table
 (−34 kB) and each mark's accessible name was shortened to the identity and the three plotted values
-(−3 kB). What remains is the per-unit data itself, which is irreducible while every unit is
-focusable. `DASH.13-02` sets the payload budgets; this is recorded so that increment inherits a
+(−3 kB, most of the repeated wording having already been squeezed out by compression). What remains
+is the per-unit data itself — an identifier, a vehicle, three values and a URL, 234 times — which is
+irreducible while every unit is focusable. `DASH.13-02` sets the payload budgets; this is recorded so that increment inherits a
 figure rather than a surprise.
 
 ### 2.5 `/dashboard/fi`
 
 | Measure | Before | After | Change |
 |---|---:|---:|---|
-| Document height, desktop | 6,614 | **2,881** | −56.4% |
-| Document height, mobile | 9,016 | 4,821 | −46.5% |
-| First framed figure | **none on the route** | 767 | — |
+| Document height, desktop | 6,614 | **2,628** | −60.3% |
+| Document height, mobile | 9,016 | 4,736 | −47.5% |
+| First framed figure | **none on the route** | 823 | — |
 | Framed figures | **0** | **4** | — |
 | Data-driven visual regions | 0 | 6 (**4** inside the first viewport) | — |
-| Visible prose, `proseRepo` | 700 | **346** | **−50.6%** |
-| Visible prose, `proseEye` | 767 | **378** | **−50.7%** |
+| Visible prose, `proseRepo` | 700 | **344** | **−50.9%** |
+| Visible prose, `proseEye` | 767 | **376** | **−51.0%** |
 | `proseUx1` | 1,362 | 1,482 | +8.8% |
-| Route cost | 410.9 kB | 425.1 kB | +14.2 kB |
+| Route cost | 410.9 kB | 430.1 kB | +19.2 kB |
 
 `proseUx1` rose by 120 words, which is the four new accessible chart summaries and their table
 captions. That is the metric doing what `UX-2-BASELINE.md` predicted it would, and why it is not a
