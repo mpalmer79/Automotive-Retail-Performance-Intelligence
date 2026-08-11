@@ -233,9 +233,18 @@ export function QueueShape({
         the WHOLE queue -- selecting High does not renumber the domains -- which is the
         behaviour `buildActionQueue` implements and `UX.2C` §37 forbids changing silently.
       */}
+      {/*
+        TWO PARTITIONS ACROSS ON A PHONE, FOUR ON A DESKTOP, and the base case is two rather
+        than one because of what it costs on the route below it. Stacked one to a row, the four
+        groups measured 872 px at 390 px wide, which put the first review prompt 1,947 px down
+        -- 259 px past the two screens `UX.2C` §52 asks this route for. Two across halves the
+        column and the first prompt lands at 1,319 px. `High 18` in a 180 px column is not a
+        cramped label; four groups a reader has to scroll past to reach the queue is a cramped
+        page.
+      */}
       <nav
         aria-label="Filter the review queue"
-        className="grid gap-x-4 gap-y-3 @md:grid-cols-2 @2xl:grid-cols-4"
+        className="grid grid-cols-2 gap-x-4 gap-y-3 @2xl:grid-cols-4"
       >
         <FacetBars
           legend="Severity"

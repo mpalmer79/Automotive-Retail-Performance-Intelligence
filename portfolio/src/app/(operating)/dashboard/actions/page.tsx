@@ -195,6 +195,13 @@ export default async function DashboardActionsPage({
           a driver is arithmetic about a change that already happened. A general manager opens
           this route asking both questions in one breath -- what needs review, and what moved
           -- and the route used to answer the second at the foot of an eighteen-screen page.
+
+          THE BRIDGE MODULE CARRIES NO NOTE, deliberately. The distinction above is the reason
+          the two modules are separate, not a caption the reader needs printed: the figure's own
+          statement says what the decomposition found, and the disclosure under it says the
+          bridge attributes rather than establishes cause. A module note repeating the boundary
+          would be the same sentence twice on one screen, and it was 76 px of the phone budget
+          this route spends on reaching its first review prompt.
         */}
         <GridRow align="start">
           <Module
@@ -216,7 +223,6 @@ export default async function DashboardActionsPage({
             title="What the gross change decomposes into"
             span={4}
             visual="change-bridge"
-            note="A decomposition of an observed period-over-period difference, distinct from the queue beside it: an action is a condition that holds now, and a driver is arithmetic about a change that already happened."
           >
             <ChangeDriverBridge drivers={drivers} authority={policy.authority} />
           </Module>

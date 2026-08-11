@@ -704,11 +704,11 @@ The hardest form `UX.2C` produced is the source comparison on `/dashboard/leads-
 lead sources against four measures, which is precisely the shape a charting library's grouped-bar or
 small-multiples API exists for. Measured against the same condition:
 
-| The condition §6.0c set | What the source matrix actually needs |
-| --- | --- |
-| a **continuous scale** | three columns whose values are already fractions of one, and two scaled to their own column maximum. One division per cell. |
-| an **axis with computed ticks** | none. Every value is printed beside its own bar and the columns carry names, not ticks. |
-| a **layout algorithm** | none. It is a CSS grid: one row per identity, one column per measure. |
+| The condition §6.0c set         | What the source matrix actually needs                                                                                       |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| a **continuous scale**          | three columns whose values are already fractions of one, and two scaled to their own column maximum. One division per cell. |
+| an **axis with computed ticks** | none. Every value is printed beside its own bar and the columns carry names, not ticks.                                     |
+| a **layout algorithm**          | none. It is a CSS grid: one row per identity, one column per measure.                                                       |
 
 `MeasureMatrix` is 120 lines of grid and one width function. The outcome is unchanged for the fourth
 time, and the measured client-JavaScript delta across all four `UX.2C` routes is **zero bytes**.

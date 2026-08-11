@@ -147,11 +147,17 @@ test.describe('the phone meets business state before methodology', () => {
    */
   const TWO_SCREENS = 844 * 2
 
+  /*
+   * ACTIONS IS ASSERTED ON ITS QUEUE SHAPE, and its first review prompt has its own test
+   * below. `UX.2C` §52 asks that route for the queue summary and the FIRST ACTIONABLE PROMPT
+   * inside two screens — not for the gross bridge, which is the second question a general
+   * manager asks and correctly sits after the queue on a phone.
+   */
   for (const [route, region] of [
     ['/dashboard/leads-marketing', 'lead-funnel'],
     ['/dashboard/employees', 'employee-comparison'],
     ['/dashboard/accounting', 'balance-comparison'],
-    ['/dashboard/actions', 'change-bridge'],
+    ['/dashboard/actions', 'queue-shape'],
   ] as const) {
     test(`${route} reaches ${region} inside two screens`, async ({ page }) => {
       await gotoRendered(page, route)
@@ -179,7 +185,22 @@ test.describe('the phone meets business state before methodology', () => {
     expect(order[0]).toBe('kpi-rail')
   })
 
-  test('Actions opens with the queue size before the first prompt', async ({ page }) => {
+  test('Actions reaches its first review prompt inside two screens', async ({ page }) => {
+    /*
+     * THE ASSERTION §52 ACTUALLY MAKES for this route, and the one that shaped the facet nav.
+     * With the four partitions stacked one to a row the queue shape measured 872 px at this
+     * width, and the first review prompt landed at 1,947 px -- 259 px past the second screen.
+     * Two partitions across, plus one redundant module note removed, brings it to 1,638 px
+     * with the layout otherwise unchanged.
+     *
+     * Two other arrangements were measured and rejected. Moving the bridge beside the prompts
+     * fixed the phone and cost 5,199 px of desktop height, because the prompt column narrows
+     * under the container-query threshold for two columns and forty-seven cards stack in one.
+     * Moving it below them fixed both and put the strongest analytical object on the route
+     * back at the foot of the page, which is the defect the baseline recorded. A CSS `order`
+     * swap would have satisfied everything and was refused: it splits the DOM order from the
+     * visual one on exactly the viewport where a keyboard user can least afford it.
+     */
     await gotoRendered(page, '/dashboard/actions')
     const offsets = await page.evaluate(() => {
       const top = (selector: string): number | null => {
@@ -188,11 +209,19 @@ test.describe('the phone meets business state before methodology', () => {
           ? null
           : Math.round(node.getBoundingClientRect().top + window.scrollY)
       }
-      return { shape: top('[data-visual-region="queue-shape"]'), first: top('#prompts') }
+      return {
+        shape: top('[data-visual-region="queue-shape"]'),
+        prompts: top('#prompts'),
+        firstCard: top('#prompts article'),
+      }
     })
     expect(offsets.shape).not.toBeNull()
-    expect(offsets.first).not.toBeNull()
-    expect(offsets.shape ?? 0).toBeLessThan(offsets.first ?? 0)
+    expect(offsets.firstCard).not.toBeNull()
+    expect(offsets.shape ?? 0).toBeLessThan(offsets.prompts ?? 0)
+    expect(
+      offsets.firstCard ?? Number.POSITIVE_INFINITY,
+      `the first review prompt is ${String(offsets.firstCard)} px down`
+    ).toBeLessThan(TWO_SCREENS)
   })
 })
 

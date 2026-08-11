@@ -20,20 +20,20 @@ and on Accounting by 12, and changed no `proseRepo` figure.
 
 ## A. Baseline, and what replaced it
 
-| Route | Height, desktop | Height, mobile | Framed figures | In first viewport | First figure | `proseRepo` | `proseEye` | Route cost |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| **Leads & Marketing** before | 8,821 | 11,896 | 7 | 1 | 639 px | 1,102 | 1,143 | 434.6 kB |
-| Leads & Marketing after | **3,998** | **7,187** | 7 | **3** | 833 px | **555** | **673** | 451.6 kB |
-| | −55% | −40% | — | +2 | +194 px | **−50%** | **−41%** | +17.0 kB |
-| **Employees** before | 5,386 | 9,417 | **0** | 0 | — | 303 | 317 | 415.7 kB |
-| Employees after | **4,169** | **6,311** | **2** | **2** | 790 px | 258 | 279 | 419.6 kB |
-| | −23% | −33% | +2 | +2 | new | −15% | −12% | +3.9 kB |
-| **Accounting** before | 3,290 | 5,032 | **0** | 0 | — | 422 | 453 | 402.6 kB |
-| Accounting after | **2,408** | **4,228** | **2** | **2** | 783 px | 434 | 494 | 408.4 kB |
-| | −27% | −16% | +2 | +2 | new | **+12 words** | +41 words | +5.8 kB |
-| **Actions** before | **16,741** | **22,401** | **0** | 0 | — | 922 | 1,567 | 525.6 kB |
-| Actions after | **7,437** | **17,551** | **1** | **1** | 370 px | 835 | **847** | 530.3 kB |
-| | **−56%** | −22% | +1 | +1 | new | −9% | **−46%** | +4.7 kB |
+| Route                        | Height, desktop | Height, mobile | Framed figures | In first viewport | First figure |   `proseRepo` | `proseEye` | Route cost |
+| ---------------------------- | --------------: | -------------: | -------------: | ----------------: | -----------: | ------------: | ---------: | ---------: |
+| **Leads & Marketing** before |           8,821 |         11,896 |              7 |                 1 |       639 px |         1,102 |      1,143 |   434.6 kB |
+| Leads & Marketing after      |       **3,998** |      **7,187** |              7 |             **3** |       833 px |       **555** |    **673** |   451.6 kB |
+|                              |            −55% |           −40% |              — |                +2 |      +194 px |      **−50%** |   **−41%** |   +17.0 kB |
+| **Employees** before         |           5,386 |          9,417 |          **0** |                 0 |            — |           303 |        317 |   415.7 kB |
+| Employees after              |       **4,169** |      **6,311** |          **2** |             **2** |       790 px |           258 |        279 |   419.6 kB |
+|                              |            −23% |           −33% |             +2 |                +2 |          new |          −15% |       −12% |    +3.9 kB |
+| **Accounting** before        |           3,290 |          5,032 |          **0** |                 0 |            — |           422 |        453 |   402.6 kB |
+| Accounting after             |       **2,408** |      **4,228** |          **2** |             **2** |       783 px |           434 |        494 |   408.4 kB |
+|                              |            −27% |           −16% |             +2 |                +2 |          new | **+12 words** |  +41 words |    +5.8 kB |
+| **Actions** before           |      **16,741** |     **22,401** |          **0** |                 0 |            — |           922 |      1,567 |   525.6 kB |
+| Actions after                |       **7,405** |     **17,243** |          **1** |             **1** |       291 px |           803 |    **815** |   535.3 kB |
+|                              |        **−56%** |           −23% |             +1 |                +1 |          new |          −13% |   **−48%** |    +9.7 kB |
 
 `data-visual-region` — the hook `UX.2A` introduced so a first-viewport contract can be asserted
 by measurement — was on **zero** elements across the four routes. It is now on **16**: eight on
@@ -65,10 +65,10 @@ arrived at.
 **Funnel architecture, and the grain separation (§8).** Two adjacent modules in one row, never
 one shrinking ramp.
 
-* `Lead cohort` — the five governed lead-grain stages on the lead-creation date, drawn as
-  shares of valid leads so the shape *is* the conversion. Module meta reads
+- `Lead cohort` — the five governed lead-grain stages on the lead-creation date, drawn as
+  shares of valid leads so the shape _is_ the conversion. Module meta reads
   `Lead grain · lead-creation date`.
-* `Appointments` — five appointment-grain counts on two date bases. Module meta reads
+- `Appointments` — five appointment-grain counts on two date bases. Module meta reads
   `Appointment grain · two date bases`.
 
 The five lead-grain stages stayed in one figure and that is deliberate: `appointment_shown_leads`
@@ -94,8 +94,8 @@ justify one.
 
 **Never-responded treatment.** A row of the same figure, below a rule, drawn against **valid
 leads** rather than against the answered population — because that is the population it is a
-share of — and labelled as such. It is also a rail card. The line under it reads *"never
-answered is not a response of zero seconds"*.
+share of — and labelled as such. It is also a rail card. The line under it reads _"never
+answered is not a response of zero seconds"_.
 
 **Stage-loss visualization (§12).** The `DASH.10` mutually exclusive furthest-stage partition,
 five bars against valid leads, with a test asserting the five counts sum exactly to the cohort
@@ -132,8 +132,8 @@ reconciliation diagnostic and the demand funnel is the page's subject.
    `buildMarketingSummary` reads marketing performance over WHOLE CALENDAR MONTHS only. Whenever
    the period is not exactly a set of whole months the two populations differ, and a bubble
    whose position came from one and whose area came from the other would be a fan-out drawn as a
-   finding. §13's own condition — *"only build this if all measures share a defensible source
-   grain"* — is not met.
+   finding. §13's own condition — _"only build this if all measures share a defensible source
+   grain"_ — is not met.
 2. **One five-bar shrinking funnel spanning both grains.** §8, and the reasoning above.
 3. **A response-time trend.** The response export is a binned distribution per store-month, not
    a time series; a trend would have to reconstruct a median per period from bins, and a median
@@ -162,12 +162,12 @@ Back and Forward work, no script — and the surface it switches now materially 
 **Role-specific visual design (§19–§23).** `FAMILY_PRESENTATION` gives each family its own
 arrangement:
 
-| Family | Bands | Mix placement | Why |
-|---|---|---|---|
-| Salesperson | one, `Gross per retail unit` | under | Volume leads; opportunity context decides whether two rows are the same job |
-| Desk Management | one, `Gross per retail unit desked` | under | Non-retail units, outside the denominator, are stated on the row |
-| Finance | one, `Income per retail unit` | **beside** | Both figures divide by every delivery including cash deals, which cannot generate reserve |
-| BDC | **two**, `Lead grain` and `Appointment grain` | under | Two measures count leads and two count appointments |
+| Family          | Bands                                         | Mix placement | Why                                                                                       |
+| --------------- | --------------------------------------------- | ------------- | ----------------------------------------------------------------------------------------- |
+| Salesperson     | one, `Gross per retail unit`                  | under         | Volume leads; opportunity context decides whether two rows are the same job               |
+| Desk Management | one, `Gross per retail unit desked`           | under         | Non-retail units, outside the denominator, are stated on the row                          |
+| Finance         | one, `Income per retail unit`                 | **beside**    | Both figures divide by every delivery including cash deals, which cannot generate reserve |
+| BDC             | **two**, `Lead grain` and `Appointment grain` | under         | Two measures count leads and two count appointments                                       |
 
 Finance is the only family with the mix promoted and BDC the only one with two bands, and both
 for a reason in the data rather than for visual rhythm. Tests assert that the Finance row
@@ -215,8 +215,8 @@ does not.
 **Variance treatment.** Neither sign is coloured. The direction is carried three ways — which bar
 is longer, the printed amount, and the sentence `varianceDirection` supplies — and a test asserts
 the rendered markup contains no `data-positive`, `data-negative`, `text-verified` or `text-failed`.
-The visible line reads *"Neither direction is favourable: this project governs no threshold above
-which a variance becomes a failure."*
+The visible line reads _"Neither direction is favourable: this project governs no threshold above
+which a variance becomes a failure."_
 
 **Comparison states (§30).** The export's own closed set of four, drawn as a population of every
 position at the date. Only the two MISSING-SIDE states take the attention treatment, and a test
@@ -277,11 +277,11 @@ order, in a browser text search and with scripting off. Tests assert the rule id
 outside the visible flow and inside the disclosure.
 
 The prompts render two-across above `@4xl`, which is where a 62-prompt queue's height came from.
-`proseEye` fell 46% — 1,567 → 847 — and that is the number that captures what §39 targeted: 153
+`proseEye` fell 48% — 1,567 → 815 — and that is the number that captures what §39 targeted: 153
 short repeated mechanics paragraphs are gone.
 
-**`proseRepo` fell 9%, against the ≥25% this baseline set, and the reason is stated rather than
-excused.** Roughly 800 of the remaining 835 words are 47 × `recommendedReview` — one sentence per
+**`proseRepo` fell 13%, against the ≥25% this baseline set, and the reason is stated rather than
+excused.** Roughly 780 of the remaining 803 words are 47 × `recommendedReview` — one sentence per
 prompt saying what to look at. §39 names the drill-through guidance as something that stays
 visible, so cutting it would have hit the target by deleting the substance. The rule-engine
 documentation §39 actually targeted is the part that moved, and `proseEye` measures it.
@@ -291,7 +291,28 @@ decomposition the Executive already draws, through one shared module. There is n
 formula in this repository. Volume, front PVR and back PVR effects with signed semantic colour,
 neutral anchor, exact reconciliation, materiality remainder grouped and never dropped, and
 `bridge attributes` rather than `caused`. It moved from the foot of an eighteen-screen document
-to the first screen, beside the queue shape.
+to **291 px**, beside the queue shape.
+
+**The phone contract cost three attempts, and the two rejected ones are recorded because the
+reasoning is the finding.** `UX.2C` §52 asks Actions for the queue summary and the FIRST
+ACTIONABLE REVIEW PROMPT inside two screens at 390 px. With the four facet partitions stacked
+one to a row, the queue shape measured 872 px and the first prompt landed at **1,947 px** — 259
+px past the second screen.
+
+- _Bridge beside the prompts_ (queue 12, then prompts 8 + bridge 4) fixed the phone and cost
+  **5,199 px** of desktop height: the prompt column narrows to 691 px, under the
+  container-query threshold for two columns, so forty-seven cards stack in one.
+- _Bridge below the prompts_ (three full-width rows) fixed both and put the strongest
+  analytical object on the route back at 7,110 px — the foot of the page, which is the defect
+  the baseline recorded in the first place.
+- _What shipped_: the facet nav draws two partitions across at every width rather than one, and
+  the bridge module's note — which restated the boundary its title and its own statement
+  already carry — is gone. The first prompt is at **1,638 px**, the bridge stays at 291 px, and
+  the desktop document is 32 px SHORTER than the arrangement that missed the phone.
+
+A CSS `order` swap would have satisfied every measurement in one line and was refused: it splits
+the DOM order from the visual one on exactly the viewport where a keyboard user can least afford
+it.
 
 **No-workflow confirmation.** A test renders the queue shape and twelve prompts and asserts the
 markup contains no `mark as done`, `mark done`, `assignee`, `assigned to`, `due date`, `snooze`
@@ -343,12 +364,12 @@ overflow on any route, and no money value or identifier wrapping mid-token at 32
 
 ## G. Performance
 
-| Route | HTML | JS | CSS | Fonts | Other | Total | Δ total |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| `/dashboard/leads-marketing` | 80.5 kB | 189.3 kB | 48.1 kB | 84.9 kB | 48.7 kB | **451.6 kB** | +17.0 kB |
-| `/dashboard/employees` | 48.6 kB | 189.3 kB | 48.1 kB | 84.9 kB | 48.8 kB | **419.6 kB** | +3.9 kB |
-| `/dashboard/accounting` | 37.3 kB | 189.3 kB | 48.1 kB | 84.9 kB | 48.8 kB | **408.4 kB** | +5.8 kB |
-| `/dashboard/actions` | 119.5 kB | 186.9 kB | 48.1 kB | 84.9 kB | 90.9 kB | **530.3 kB** | +4.7 kB |
+| Route                        |     HTML |       JS |     CSS |   Fonts |   Other |        Total |  Δ total |
+| ---------------------------- | -------: | -------: | ------: | ------: | ------: | -----------: | -------: |
+| `/dashboard/leads-marketing` |  80.5 kB | 189.3 kB | 48.1 kB | 84.9 kB | 48.7 kB | **451.6 kB** | +17.0 kB |
+| `/dashboard/employees`       |  48.6 kB | 189.3 kB | 48.1 kB | 84.9 kB | 48.8 kB | **419.6 kB** |  +3.9 kB |
+| `/dashboard/accounting`      |  37.3 kB | 189.3 kB | 48.1 kB | 84.9 kB | 48.8 kB | **408.4 kB** |  +5.8 kB |
+| `/dashboard/actions`         | 124.5 kB | 186.9 kB | 48.1 kB | 84.9 kB | 90.9 kB | **535.3 kB** |  +9.7 kB |
 
 **Client JavaScript owned by these four routes: zero bytes, before and after.** The JS column is
 the framework and the shell, unchanged to the byte. Every figure `UX.2C` adds is server-rendered
@@ -359,7 +380,7 @@ nineteen sources × four measure cells twice over, five appointment bars, four r
 the never-answered row, five stage-loss bars and four vendor bars, each with its track, its
 value and its table row. Accounting is +5.7 kB for two balance bars, the variance mark, four
 state bars and the state tags. Employees is +3.8 kB for the floor bar, the store bars and the
-context chips. Actions is +4.6 kB for four facet partitions drawn as bars, offset against the
+context chips. Actions is +9.6 kB for four facet partitions drawn as bars, offset against the
 prompt compaction. CSS moved 48.0 → 48.1 kB across the whole console.
 
 Nothing was optimised away and nothing was hidden: a route that draws more marks carries more
@@ -370,15 +391,15 @@ the trade this increment makes.
 
 ## H. Data impact
 
-| | Expected | Actual |
-|---|---|---|
-| New SQL | 0 | **0** |
-| New warehouse objects | 0 | **0** |
-| New reporting views | 0 | **0** |
-| New export datasets | 0 | **0** |
-| New KPI definitions | 0 | **0** |
-| Power BI files changed | 0 | **0** |
-| Generated dataset bytes changed | 0 | **0** — `dashboard:check` reports 38 datasets, 312 files, 7,356,934 bytes, unchanged |
+|                                 | Expected | Actual                                                                               |
+| ------------------------------- | -------- | ------------------------------------------------------------------------------------ |
+| New SQL                         | 0        | **0**                                                                                |
+| New warehouse objects           | 0        | **0**                                                                                |
+| New reporting views             | 0        | **0**                                                                                |
+| New export datasets             | 0        | **0**                                                                                |
+| New KPI definitions             | 0        | **0**                                                                                |
+| Power BI files changed          | 0        | **0**                                                                                |
+| Generated dataset bytes changed | 0        | **0** — `dashboard:check` reports 38 datasets, 312 files, 7,356,934 bytes, unchanged |
 
 **One view-model addition, and it is a grouping rather than a measure.** `MarketingSummary.bySource`
 applies the existing `marketingMeasures` function at a third documented group. That function
@@ -418,25 +439,25 @@ not change.
 
 ## I. Verification
 
-| Gate | Result |
-|---|---|
-| `uv run ruff format --check .` | 319 files already formatted |
-| `uv run ruff check .` | All checks passed |
-| `uv run mypy src tests` | no issues in 172 source files |
-| `uv run pytest -q -m "not integration" --cov=arpi` | **3,667 passed**, 1,229 deselected, 88.94% coverage |
-| `check_naming.py` | OK — 2,427 files read |
-| `check_docs_links.py` | OK |
-| `check_reference_data.py` | every rule passed |
-| `check_secrets.py` | OK — 1,301 files, 7 detectors |
-| `check_project_capabilities.py` | OK |
-| `generate_project_capabilities.py --check` | OK |
-| `check_powerbi_model.py` | OK — 49 measures, 9,452 assertions |
-| `simulate_semantic_model.py --check` | SIMULATED SEMANTIC-MODEL VALIDATION — 1,271 checks, 49/49 measures, 0 findings |
-| `check_simulation_labels.py` | passed |
-| `npm run format:check` / `lint` / `typecheck` | clean |
-| `npm run manifest:check` / `inventory:check` / `dashboard:check` | up to date |
-| `npx vitest run` | **1,455 passed**, 36 files |
-| `npx playwright test --project=chromium` | **903 passed**, 0 failed, 0 flaky |
+| Gate                                                             | Result                                                                         |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `uv run ruff format --check .`                                   | 319 files already formatted                                                    |
+| `uv run ruff check .`                                            | All checks passed                                                              |
+| `uv run mypy src tests`                                          | no issues in 172 source files                                                  |
+| `uv run pytest -q -m "not integration" --cov=arpi`               | **3,667 passed**, 1,229 deselected, 88.94% coverage                            |
+| `check_naming.py`                                                | OK — 2,427 files read                                                          |
+| `check_docs_links.py`                                            | OK                                                                             |
+| `check_reference_data.py`                                        | every rule passed                                                              |
+| `check_secrets.py`                                               | OK — 1,301 files, 7 detectors                                                  |
+| `check_project_capabilities.py`                                  | OK                                                                             |
+| `generate_project_capabilities.py --check`                       | OK                                                                             |
+| `check_powerbi_model.py`                                         | OK — 49 measures, 9,452 assertions                                             |
+| `simulate_semantic_model.py --check`                             | SIMULATED SEMANTIC-MODEL VALIDATION — 1,271 checks, 49/49 measures, 0 findings |
+| `check_simulation_labels.py`                                     | passed                                                                         |
+| `npm run format:check` / `lint` / `typecheck`                    | clean                                                                          |
+| `npm run manifest:check` / `inventory:check` / `dashboard:check` | up to date                                                                     |
+| `npx vitest run`                                                 | **1,455 passed**, 36 files                                                     |
+| `npx playwright test --project=chromium`                         | **903 passed**, 0 failed, 0 flaky                                              |
 
 **Integration tests were not run locally and no claim is made that they were.** They need a
 populated PostgreSQL database; GitHub CI exercises its canonical integration lane. No data-layer
@@ -446,12 +467,12 @@ file changed in this increment.
 
 ## J. Roadmap
 
-| Increment | Status |
-|---|---|
-| `UX.2A` | **Implemented** |
-| `UX.2B` | **Implemented** |
-| `UX.2C` | **Implemented** |
-| `UX.2D` | Planned — not begun |
+| Increment | Status              |
+| --------- | ------------------- |
+| `UX.2A`   | **Implemented**     |
+| `UX.2B`   | **Implemented**     |
+| `UX.2C`   | **Implemented**     |
+| `UX.2D`   | Planned — not begun |
 | `DASH.13` | Planned — not begun |
 
 **Non-goals held.** No `UX.2D` work: no cross-route interaction consistency pass, no shared
