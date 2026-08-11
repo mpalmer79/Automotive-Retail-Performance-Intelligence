@@ -1,6 +1,9 @@
 import type { Metadata } from 'next'
 
-import { RoleNav, UnknownEmployeeNotice } from '@/components/dashboard/employees-sections'
+import {
+  RoleNav,
+  UnknownEmployeeNotice,
+} from '@/components/dashboard/employees-workspace'
 import {
   EmployeeComparison,
   FamilyRail,

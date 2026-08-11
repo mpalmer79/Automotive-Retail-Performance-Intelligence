@@ -122,7 +122,7 @@ function laneSources(): readonly { relative: string; text: string }[] {
     'lib/dashboard/employees.ts',
     'lib/dashboard/employees-data.ts',
     'lib/dashboard/employees-chunks.ts',
-    'components/dashboard/employees-sections.tsx',
+    'components/dashboard/employees-workspace.tsx',
     'app/(operating)/dashboard/employees/page.tsx',
   ]
   for (const relative of targets) {
@@ -758,10 +758,10 @@ describe('nothing on this route ranks anybody', () => {
 
   it('carries no gamification vocabulary in any executable source', () => {
     // The narrow half: an icon, class name, asset path or string literal naming any of these
-    // is a defect. Checked against COMMENT-STRIPPED source, because `employees-sections.tsx`
-    // states the ban in its own header — "no trophy, medal, crown, star, podium, badge,
-    // streak or flame appears anywhere" — and that sentence is the contract, not a breach of
-    // it. This is the same distinction the label guard above draws.
+    // is a defect. Checked against COMMENT-STRIPPED source, because `employees-workspace.tsx`
+    // states the ban in its own header — "no podium, medal, trophy, crown, star, badge,
+    // streak or flame" — and that sentence is the contract, not a breach of it. This is the
+    // same distinction the label guard above draws.
     const banned = [
       'trophy',
       'medal',
@@ -810,7 +810,7 @@ describe('nothing on this route ranks anybody', () => {
     // DEFECT 31. The only non-neutral treatment is the publication state, which is also
     // spelled out in words, so colour is never the sole carrier of meaning.
     const component = stripComments(
-      readFileSync(join(SRC, 'components/dashboard/employees-sections.tsx'), 'utf8')
+      readFileSync(join(SRC, 'components/dashboard/employees-workspace.tsx'), 'utf8')
     )
     expect(component).not.toContain('data-positive')
     expect(component).not.toContain('data-negative')

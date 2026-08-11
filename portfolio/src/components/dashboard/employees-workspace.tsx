@@ -62,7 +62,7 @@
 import type { ReactNode } from 'react'
 
 import { Card } from '@/components/ui/card-static'
-import type { Exact } from '@/lib/dashboard/decimal'
+import { exactToApproxNumber, type Exact } from '@/lib/dashboard/decimal'
 import {
   type EmployeeRow,
   type Measured,
@@ -72,12 +72,130 @@ import {
   type StoreInventoryContext,
   type UnassignedSummary,
 } from '@/lib/dashboard/employees'
-import { isFigure } from '@/lib/dashboard/figures'
-import { formatCurrencyExact, formatRatioAsPercent } from '@/lib/dashboard/format'
+import { isFigure, type Figure } from '@/lib/dashboard/figures'
+import {
+  formatCurrencyExact,
+  formatRateExact,
+  formatRatioAsPercent,
+} from '@/lib/dashboard/format'
 import { cx } from '@/lib/utils'
 
-import { figureText, roleMarkClass } from './employees-sections'
 import { ChartFrame } from './visuals'
+
+/* -------------------------------------------------------------------------- */
+/* Shared rendering                                                            */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * A figure as the reader sees it: the number, or the words for why there is none.
+ *
+ * FOUR ABSENCES, FOUR DIFFERENT STRINGS, and never one dash for all of them.
+ *
+ *   Not applicable       the measure does not belong to this role at all.
+ *   Insufficient sample  it does, and its own governed denominator is below the floor. The
+ *                        denominator and the floor are printed beside it, because the count
+ *                        is what explains the suppression.
+ *   No data              it does, and nothing was observed. There is no sample, which is not
+ *                        the same as a sample that is too small.
+ *   0                    a real observed zero, which is a VALUE and is never routed here.
+ */
+export function figureText(value: Figure, format: (exact: Exact) => string): string {
+  if (isFigure(value)) return format(value.value)
+  switch (value.kind) {
+    case 'not-applicable':
+      return 'Not applicable'
+    case 'insufficient-sample':
+      return 'Insufficient sample'
+    case 'not-at-this-grain':
+      return 'Not published at this grain'
+    default:
+      return 'No data'
+  }
+}
+
+/**
+ * The categorical colour of a role family. IDENTITY, NOT EVALUATION.
+ *
+ * Four stable hues from the design system's data-visualisation palette so a reader can tell
+ * at a glance which surface they are on. None of them means good or bad, none is ordered
+ * against another, and every figure they sit beside is also present as text.
+ */
+export function roleMarkClass(family: RoleFamily): string {
+  // Written out in full so Tailwind's source scan can see every class.
+  switch (family) {
+    case 'Salesperson':
+      return 'bg-data-primary'
+    case 'Desk Management':
+      return 'bg-data-secondary'
+    case 'Finance':
+      return 'bg-data-tertiary'
+    default:
+      return 'bg-data-neutral'
+  }
+}
+
+/**
+ * The role switch, as links.
+ *
+ * PLAIN LINKS AND A REAL `nav`, not an ARIA tab set. This is navigation between four server-
+ * rendered documents, not a scripted tab interface, and claiming `role="tablist"` would
+ * promise keyboard behaviour — arrow-key roving focus, `aria-selected` following focus — that
+ * nothing here implements. Links already survive reload, copy-paste, Back, Forward and
+ * JavaScript being off, which is the whole requirement.
+ */
+export function RoleNav({
+  items,
+  current,
+}: {
+  readonly items: readonly {
+    readonly slug: string
+    readonly label: string
+    readonly href: string
+  }[]
+  readonly current: string
+}) {
+  return (
+    <nav aria-label="Employee role family" className="flex flex-wrap gap-2">
+      {items.map((item) => (
+        <a
+          key={item.slug}
+          href={item.href}
+          aria-current={item.slug === current ? 'page' : undefined}
+          className={
+            item.slug === current
+              ? 'inline-flex min-h-9 items-center rounded-pill border border-accent bg-accent/10 px-3 py-1.5 text-sm text-ink'
+              : 'inline-flex min-h-9 items-center rounded-pill border border-line-subtle px-3 py-1.5 text-sm text-ink-muted hover:text-ink'
+          }
+        >
+          {item.label}
+        </a>
+      ))}
+    </nav>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+/* Notices                                                                     */
+/* -------------------------------------------------------------------------- */
+
+/** Says so when `employee=` named a code the export does not contain. */
+export function UnknownEmployeeNotice({
+  code,
+}: {
+  readonly code: string | null
+}): ReactNode {
+  if (code === null) return null
+  return (
+    <p
+      role="status"
+      className="rounded-lg border border-data-warning/40 bg-data-warning-wash px-4 py-3 text-sm text-ink"
+    >
+      No employee <span className="font-mono">{code}</span> exists in the exported roster.
+      The comparison below is unfiltered rather than empty — an empty page would have
+      implied a person with no activity, which is a different statement.
+    </p>
+  )
+}
 
 /* -------------------------------------------------------------------------- */
 /* Per-family presentation                                                     */
@@ -153,7 +271,7 @@ function widthOf(part: number, whole: number): string {
 /** A governed share as a CSS percentage. A share is already a fraction of one. */
 function shareWidth(slice: MixSlice): string {
   if (!isFigure(slice.share)) return '0%'
-  const ratio = Number(slice.share.value.units) / 10 ** slice.share.value.scale
+  const ratio = exactToApproxNumber(slice.share.value)
   return `${(Math.max(0, Math.min(1, ratio)) * 100).toFixed(4)}%`
 }
 
@@ -570,8 +688,7 @@ export function StoreOpportunity({
 
   const values = inventory.map((store) =>
     isFigure(store.averageActiveUnits)
-      ? Number(store.averageActiveUnits.value.units) /
-        10 ** store.averageActiveUnits.value.scale
+      ? exactToApproxNumber(store.averageActiveUnits.value)
       : null
   )
   const largest = values.reduce<number>((max, value) => Math.max(max, value ?? 0), 0)
@@ -583,7 +700,7 @@ export function StoreOpportunity({
       summary={inventory
         .map(
           (store) =>
-            `${store.storeId} ${figureText(store.averageActiveUnits, (exact) => (Number(exact.units) / 10 ** exact.scale).toFixed(1))} average active units over ${String(store.observedDays)} observed snapshot days`
+            `${store.storeId} ${figureText(store.averageActiveUnits, (exact) => formatRateExact(exact, 1))} average active units over ${String(store.observedDays)} observed snapshot days`
         )
         .join('. ')}
       summaryMode="sr-only"
@@ -600,7 +717,7 @@ export function StoreOpportunity({
                 </span>
                 <span className="numeric shrink-0 text-sm font-semibold text-ink">
                   {figureText(store.averageActiveUnits, (exact) =>
-                    (Number(exact.units) / 10 ** exact.scale).toFixed(1)
+                    formatRateExact(exact, 1)
                   )}
                 </span>
               </p>

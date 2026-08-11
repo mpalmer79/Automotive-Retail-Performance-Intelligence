@@ -79,13 +79,32 @@ import {
 } from '@/lib/dashboard/leads-marketing'
 import { cx } from '@/lib/utils'
 
-import { figureText } from './leads-marketing-sections'
 import { ChartFrame, TableDisclosure } from './visuals'
 import { FunnelChart, type FunnelStageBar } from './workspace-visuals'
 
 /* -------------------------------------------------------------------------- */
 /* Shared                                                                      */
 /* -------------------------------------------------------------------------- */
+
+/**
+ * A figure as the reader sees it: the number, or the words for why there is none.
+ *
+ * The four absence kinds render as four different strings. "Not applicable" and "No data"
+ * are not synonyms — the first says the measure does not exist for this thing, the second
+ * says it would exist and has not been observed — and a page that prints one dash for both
+ * has told the reader nothing.
+ */
+export function figureText(value: Figure, format: (exact: Exact) => string): string {
+  if (isFigure(value)) return format(value.value)
+  switch (value.kind) {
+    case 'not-applicable':
+      return 'Not applicable'
+    case 'not-at-this-grain':
+      return 'Not published at this grain'
+    default:
+      return 'No data'
+  }
+}
 
 /** A bar width as a CSS percentage. The one place approximate numbers are permitted. */
 function widthOf(part: Exact, whole: Exact): string {
