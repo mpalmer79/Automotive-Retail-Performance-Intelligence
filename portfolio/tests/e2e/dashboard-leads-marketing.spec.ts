@@ -56,9 +56,9 @@ test.describe('the leads and marketing route renders its governed figures', () =
       'Lead-created cohort',
       'Time to first response',
       'Appointment outcomes',
-      'Where the cohort stopped',
-      'Sources by outcome',
-      'Marketing efficiency',
+      'Furthest stage reached',
+      'Sources on volume and the three governed rates',
+      'Cost and return, by source',
       'Vendor counts against the CRM',
     ]) {
       expect(text, `${block} is missing from the rendered page`).toContain(block)
@@ -97,9 +97,13 @@ test.describe('the cautions travel with the figures they qualify', () => {
      */
     await gotoRendered(page, ROUTE)
     const block = figureNamed(page, 'Appointment outcomes')
-    await expect(block).toContainText('Show rate')
+    // `UX.2C` §9 draws the exclusion rather than asserting it: advance cancellations are a
+    // bar of the same progression, labelled as the population removed before the show-rate
+    // denominator is formed.
     await expect(block).toContainText('Cancelled in advance')
-    await expect(block).toContainText('excluded from the show-rate denominator')
+    await expect(block).toContainText('removed from the show-rate denominator')
+    await expect(block).toContainText('Eligible to show')
+    await expect(block).toContainText('of eligible appointments')
   })
 
   test('shows the unanswered leads on the same block as the response distribution', async ({
@@ -110,8 +114,8 @@ test.describe('the cautions travel with the figures they qualify', () => {
     // whether the median means anything.
     await gotoRendered(page, ROUTE)
     const block = figureNamed(page, 'Time to first response')
-    await expect(block).toContainText('Median response')
-    await expect(block).toContainText('Leads with no recorded response')
+    await expect(block).toContainText('Median')
+    await expect(block).toContainText('Never answered')
     await expect(block).toContainText('never answered')
   })
 
@@ -120,7 +124,8 @@ test.describe('the cautions travel with the figures they qualify', () => {
     const block = figureNamed(page, 'Time to first response')
     await expect(block).toContainText('KPI-FUN-008')
     await expect(block).toContainText('KPI-FUN-007')
-    await expect(block).toContainText('companion to the median')
+    await expect(block).toContainText('the headline: the distribution is heavily skewed')
+    await expect(block).toContainText('moved by the tail')
   })
 
   test('distinguishes a never-answered lead from a zero-second response', async ({
@@ -128,22 +133,24 @@ test.describe('the cautions travel with the figures they qualify', () => {
   }) => {
     await gotoRendered(page, ROUTE)
     const text = await mainText(page)
-    expect(text).toContain('it is not a response of zero seconds')
+    expect(text).toContain('never answered is not a response of zero seconds')
   })
 
   test('names the grain and date basis of the appointment measures', async ({ page }) => {
     await gotoRendered(page, ROUTE)
     const block = figureNamed(page, 'Appointment outcomes')
-    await expect(block).toContainText('appointment-grain')
-    await expect(block).toContainText('scheduled-date basis')
-    await expect(block).toContainText('show-date basis')
+    await expect(block).toContainText('Counts APPOINTMENTS, not leads')
+    await expect(block).toContainText('on the scheduled date')
+    await expect(block).toContainText('on the show date')
   })
 
   test('states the attribution convention where marketing results are read', async ({
     page,
   }) => {
     await gotoRendered(page, ROUTE)
-    await expect(page.getByTestId('attribution-notice')).toContainText('first-touch')
+    // The convention moved from a standalone notice to the marketing module's own note,
+    // which is where the results it governs are read.
+    await expect(page.locator('#marketing')).toContainText('first-touch')
   })
 
   test('qualifies the newest cohort rather than hiding or adjusting it', async ({
@@ -358,13 +365,13 @@ test.describe('with JavaScript disabled', () => {
       'Valid leads',
       'Contacted',
       'Appointment set',
-      'Median response',
-      'Leads with no recorded response',
+      'Median',
+      'Never answered',
       'Show rate',
       'Cancelled in advance',
-      'Where the cohort stopped',
-      'Sources by outcome',
-      'Marketing efficiency',
+      'Furthest stage reached',
+      'Sources on volume and the three governed rates',
+      'Cost and return, by source',
       'Cost per valid lead',
       'Gross return on ad spend',
       'Vendor counts against the CRM',
@@ -414,14 +421,28 @@ test.describe('responsive behaviour', () => {
   test('keeps the wide marketing table inside its own scroll container', async ({
     page,
   }) => {
-    // A table this wide cannot reflow into 320 px and must not push the page sideways
-    // either. Its own horizontal scroll is the answer, and it has to be reachable.
+    /*
+     * A table this wide cannot reflow into 320 px and must not push the page sideways
+     * either. Its own horizontal scroll is the answer, and it has to be reachable.
+     *
+     * `UX.2C` moved the ten-column campaign table behind the disclosure the console uses for
+     * exact detail, so the test opens it first -- which is the reader's actual path to it, and
+     * a stronger check than reading a container nobody has revealed. The disclosure's own
+     * region carries `role="region"` and `tabIndex={0}`, so the scroll is keyboard-reachable.
+     */
     await page.setViewportSize({ width: 320, height: 900 })
     await gotoRendered(page, ROUTE)
-    const scrollable = await page
-      .locator('main div.overflow-x-auto:has(table)')
+    const disclosure = page
+      .locator('details')
+      .filter({ hasText: /spend and attribution by campaign/i })
       .first()
-      .evaluate((node) => node.scrollWidth > node.clientWidth)
-    expect(scrollable).toBe(true)
+    await disclosure.locator('summary').click()
+    const region = disclosure.getByRole('region', {
+      name: /spend and attribution by campaign/i,
+    })
+    await expect(region).toHaveAttribute('tabindex', '0')
+    expect(await region.evaluate((node) => node.scrollWidth > node.clientWidth)).toBe(
+      true
+    )
   })
 })

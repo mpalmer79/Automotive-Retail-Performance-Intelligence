@@ -294,7 +294,12 @@ function Chip({
           : 'border-line-subtle bg-surface text-ink-muted'
       )}
     >
-      <span className="shrink-0">{label}</span>
+      {/*
+        THE SEPARATOR IS A CHARACTER, NOT A GAP. The flex gap separates the two for the eye
+        and contributes nothing to `textContent`, so a screen reader — and every text-content
+        assertion in the suites — read "Sample9 of 10 retail units" as one token.
+      */}
+      <span className="shrink-0">{label}</span>{' '}
       <span className="numeric min-w-0 truncate font-medium text-ink">{value}</span>
     </span>
   )

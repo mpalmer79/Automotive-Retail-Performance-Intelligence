@@ -53,7 +53,7 @@
 | `DASH.11` | Employee performance | Medium | **Implemented** |
 | `UX.1` | Executive productization and operating experience | Large | **Implemented** |
 | `DASH.12` | Management Action Center and change drivers | Large | **Implemented** |
-| `UX.2` | Executive visualization and decision workspace | Large | In progress — `UX.2A` and `UX.2B` **Implemented**, `UX.2C`–`UX.2D` Planned |
+| `UX.2` | Executive visualization and decision workspace | Large | In progress — `UX.2A`–`UX.2C` **Implemented**, `UX.2D` Planned |
 | `DASH.13` | Hardening and release | Large | Planned |
 | `DASH.O-*` | Optional enhancements | — | Deferred |
 
@@ -1102,7 +1102,7 @@ rather than about the rules; no threshold was moved to fill the queue.
 | **Estimated complexity** | Large, delivered as four sub-increments |
 | **Blocking gate** | None |
 | **Architecture references** | [ADR-0013](../architecture-decisions/ADR-0013-governed-web-operating-console.md); [ADR-0015](../architecture-decisions/ADR-0015-product-first-operating-experience.md); [`INFORMATION_ARCHITECTURE.md`](../dashboard/INFORMATION_ARCHITECTURE.md); [`DESIGN_SYSTEM.md`](../../portfolio/docs/DESIGN_SYSTEM.md) |
-| **Status** | **In progress.** `UX.2A` and `UX.2B` are Implemented; `UX.2C` and `UX.2D` are Planned. |
+| **Status** | **In progress.** `UX.2A`, `UX.2B` and `UX.2C` are Implemented; `UX.2D` is Planned. |
 
 **It is not a `DASH` increment, and the identifier says so** — the same reasoning `UX.1` records. It
 adds no warehouse fact, no dimension, no reporting view, no export dataset and no KPI identifier, and
@@ -1116,7 +1116,7 @@ where ADR-0013 put it.
 |---|---|---|---|
 | `UX.2A` | Executive Command Center | Large | **Implemented** |
 | `UX.2B` | Revenue and Vehicle Operations | Large | **Implemented** |
-| `UX.2C` | Demand, People and Controls | Large | Planned |
+| `UX.2C` | Demand, People and Controls | Large | **Implemented** |
 | `UX.2D` | Interaction, consistency and closeout | Medium | Planned |
 
 `UX.2A` rebuilds `/` as a twelve-column grid of modules with a compact control band, an eight-figure
@@ -1124,9 +1124,9 @@ KPI rail, a metric-switched primary trend, a grouped store comparison, visual pa
 age-and-capital inventory stack, a visual funnel, a prominent change-driver waterfall, an integrated
 management-attention module and a concise accounting reading. `UX.2B` carries the same treatment to
 `/dashboard/sales-gross`, `/dashboard/deals`, `/dashboard/deals/[saleId]`, `/dashboard/inventory` and
-`/dashboard/fi`; `UX.2C` to `/dashboard/leads-marketing`, `/dashboard/employees` and
-`/dashboard/accounting`; `UX.2D` closes interaction consistency, the cross-route visual vocabulary and
-the increment audit.
+`/dashboard/fi`; `UX.2C` to `/dashboard/leads-marketing`, `/dashboard/employees`,
+`/dashboard/accounting` and `/dashboard/actions`; `UX.2D` closes interaction consistency, the
+cross-route visual vocabulary and the increment audit.
 
 **`/dashboard/fi` moved from the `UX.2C` list into `UX.2B`, and the split above says so rather than
 leaving the old sentence standing.** The `UX.2B` brief scopes the increment as the dealership's
@@ -1216,6 +1216,64 @@ view or export dataset. No KPI identifier. No ranking of a store, a category or 
 repricing recommendation and no suggested price. No benchmark.
 
 Power BI real-engine validation remains externally pending; `UX.2B` does not modify the semantic model.
+
+### `UX.2C` as-built notes
+
+**`/dashboard/actions` joined the `UX.2C` list, and the split above says so rather than leaving the
+old sentence standing.** The three routes originally named are the demand, people and control
+surfaces; Management Actions is the fourth surface a general manager reads in the same sitting, and
+it was measured at **16,741 px with zero framed figures** — the tallest operating route in the
+console and the largest single geometry finding left on it. Treating it in `UX.2D`, whose subject is
+consistency rather than transformation, would have left the worst route untransformed through the
+increment named for transformation.
+
+Measured before and after in [`UX-2C-BASELINE.md`](../reviews/UX-2C-BASELINE.md) and
+[`UX-2C-REVIEW.md`](../reviews/UX-2C-REVIEW.md). Six decisions are worth recording here:
+
+1. **The lead and appointment grains are two adjacent modules, not one funnel.** All five stages of
+   the cohort funnel count LEADS on the lead-creation date and stayed in one figure, because they
+   share a grain and a basis. Show rate and show-to-sale count APPOINTMENTS on two different date
+   bases and sit in the module beside it, each naming its own grain in its own meta line. A single
+   five-bar ramp would have asserted a denominator continuity the export does not have.
+
+2. **The source comparison is an aligned matrix rather than a grouped bar, and the grouped bar was
+   the wrong primitive rather than an unavailable one.** Nineteen sources against four measures is
+   seventy-six bars under a nineteen-item colour legend; the grouped form is right for three stores
+   and wrong for nineteen sources. `MeasureMatrix` lives in `leads-workspace.tsx` with two call
+   sites on one route, per the repository's rule that an abstraction over one call site is a guess
+   about the second.
+
+3. **A source scatter of conversion against spend was refused.** `buildSourceComparison` reads the
+   lead funnel daily on the lead-creation date; `buildMarketingSummary` reads marketing over whole
+   calendar months. Whenever the period is not exactly a set of whole months the two populations
+   differ, so a bubble positioned by one and sized by the other would be a fan-out drawn as a
+   finding.
+
+4. **`DASH.11`'s fairness context became visual rather than shorter.** Employees fell only 15% in
+   visible prose and was never meant to fall further: tenure, store, mix, opportunity and every
+   sample verdict are chips and bars on the row they qualify, and the sample floor is a two-segment
+   bar on the family rail. The role now materially changes the arrangement — Finance draws its
+   structure mix beside its two income figures because both divide by every delivery including cash
+   deals; BDC splits its four measures into two labelled grain bands.
+
+5. **Accounting's visible prose rose by twelve words, and the review records it rather than burying
+   it.** Two new figures each need a caveat a reader would misread them without. The route is 27%
+   shorter and has two figures where it had none.
+
+6. **No chart library, asked a fourth time.** The hardest case this increment produced was the
+   nineteen-source comparison, which is exactly the shape a charting library exists for. The answer
+   is unchanged and for the unchanged reason: every figure has to be in the served HTML, and three
+   of the four candidates cannot render server-side without a measured container.
+
+**Non-goals held.** No `UX.2D` work — no cross-route interaction pass and no shared visual-vocabulary
+refactor beyond two primitives that moved for a stated reason. No `DASH.13` work. No warehouse fact,
+dimension, reporting view or export dataset; the generated data is byte-identical. No KPI identifier:
+`MarketingSummary.bySource` applies the existing `marketingMeasures` function at a third documented
+group, so KPI-MKT-001, KPI-MKT-002 and KPI-MKT-003 keep their published definitions. No employee
+rank, score, percentile, tier or composite. No workflow state on the action queue.
+
+Power BI real-engine validation remains externally pending; `UX.2C` does not modify the semantic
+model.
 
 ---
 

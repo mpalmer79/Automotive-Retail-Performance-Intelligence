@@ -497,6 +497,8 @@ export function AppointmentProgression({
             </div>
             <span
               aria-hidden="true"
+              data-testid="bar-track"
+              data-width={widthOf(bar.count, scheduled)}
               className="flex h-4 w-full items-center overflow-hidden rounded-xs bg-surface-sunken"
             >
               {/*
@@ -648,6 +650,8 @@ export function ResponseWorkspace({ response }: { readonly response: ResponseSum
             </div>
             <span
               aria-hidden="true"
+              data-testid="bar-track"
+              data-width={widthOf(band.count, response.respondedLeads)}
               className="h-3 w-full overflow-hidden rounded-pill bg-surface-sunken"
             >
               <span
@@ -670,6 +674,8 @@ export function ResponseWorkspace({ response }: { readonly response: ResponseSum
           </div>
           <span
             aria-hidden="true"
+            data-testid="bar-track"
+            data-width={widthOf(response.unrespondedLeads, response.validLeads)}
             className="h-3 w-full overflow-hidden rounded-pill bg-surface-sunken"
           >
             <span
@@ -779,6 +785,8 @@ export function StageLossBars({ loss }: { readonly loss: StageLoss }) {
             </div>
             <span
               aria-hidden="true"
+              data-testid="bar-track"
+              data-width={widthOf(entry.count, loss.leadsReceived)}
               className="h-3 w-full overflow-hidden rounded-pill bg-surface-sunken"
             >
               <span
@@ -954,6 +962,8 @@ function MeasureMatrix<Row extends { readonly key: string; readonly label: strin
                     {width === null ? null : (
                       <span
                         aria-hidden="true"
+                        data-testid="bar-track"
+                        data-width={width}
                         className="h-1.5 w-full overflow-hidden rounded-pill bg-surface-sunken"
                       >
                         <span
@@ -1413,6 +1423,8 @@ export function VendorCounts({
             </div>
             <span
               aria-hidden="true"
+              data-testid="bar-track"
+              data-width={widthOf(cell.value, largest)}
               className="h-2.5 w-full overflow-hidden rounded-pill bg-surface-sunken"
             >
               <span

@@ -694,10 +694,34 @@ It was measured against the criterion §6.0c wrote down, and it does not reach i
 So the scatter is positioned marks in a relatively-positioned box, and the outcome is unchanged for
 the third time. The measured client-JavaScript delta across all five `UX.2B` routes is **zero bytes**.
 
-**The condition stands, unchanged, for `UX.2C` and `UX.2D`.** The first primitive that genuinely needs
-a computed tick scale, a time axis or a layout algorithm is the point at which this is re-opened —
-and an increment that reaches it should measure the four options rather than reuse §6.0c's published
-sizes.
+**The condition stands, unchanged, for `UX.2D`.** The first primitive that genuinely needs a computed
+tick scale, a time axis or a layout algorithm is the point at which this is re-opened — and an
+increment that reaches it should measure the four options rather than reuse §6.0c's published sizes.
+
+##### §6.0f — asked a fourth time at `UX.2C`, and not close
+
+The hardest form `UX.2C` produced is the source comparison on `/dashboard/leads-marketing`: nineteen
+lead sources against four measures, which is precisely the shape a charting library's grouped-bar or
+small-multiples API exists for. Measured against the same condition:
+
+| The condition §6.0c set | What the source matrix actually needs |
+| --- | --- |
+| a **continuous scale** | three columns whose values are already fractions of one, and two scaled to their own column maximum. One division per cell. |
+| an **axis with computed ticks** | none. Every value is printed beside its own bar and the columns carry names, not ticks. |
+| a **layout algorithm** | none. It is a CSS grid: one row per identity, one column per measure. |
+
+`MeasureMatrix` is 120 lines of grid and one width function. The outcome is unchanged for the fourth
+time, and the measured client-JavaScript delta across all four `UX.2C` routes is **zero bytes**.
+
+#### The `UX.2C` primitives
+
+One primitive MOVED and one ARRIVED. `FunnelChart` left `exec-visuals.tsx` for
+`workspace-visuals.tsx`, which that file's own docstring required once a second route drew it, and the
+emptied file was deleted rather than kept for a name that no longer described anything; its stage row
+now wraps rather than truncating `Appointment set` to `Appoi…` in a three-of-twelve module.
+`MeasureMatrix` is new and lives in `leads-workspace.tsx` rather than in the shared set, because it
+has two call sites on one route and this repository's rule is that an abstraction over one call site
+is a guess about the second.
 
 #### The `UX.2B` primitives
 

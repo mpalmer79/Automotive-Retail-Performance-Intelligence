@@ -562,9 +562,16 @@ snapshot — was two tables and an 11,543 px document.
 
 **Why `DASH.13` depends on a completed `UX.2`.** `DASH.13-01` sweeps a full route × viewport matrix and
 `DASH.13-02` sets payload budgets from measurements. Both produce artefacts whose whole value is that
-they describe the shipped product; running them against surfaces `UX.2C`–`UX.2D` are still rebuilding
-would produce a sweep and a set of budgets that expire on the next merge, and a budget nobody trusts is
-a budget that gets raised rather than investigated.
+they describe the shipped product; running them against surfaces `UX.2D` is still rebuilding would
+produce a sweep and a set of budgets that expire on the next merge, and a budget nobody trusts is a
+budget that gets raised rather than investigated.
+
+[`UX-2C-BASELINE.md`](../reviews/UX-2C-BASELINE.md) found the shape a third time on the demand, people
+and control routes: **three of the four contained no framed figure at all**, and the fourth drew seven
+and still put one of them inside the first screen behind 213 words of prose.
+`/dashboard/actions` — the deterministic review queue a general manager opens first on a Monday —
+was a **16,741 px** document, eighteen and a half screens, with fifty-one disclosures and no figure.
+It joined the `UX.2C` list for that reason; the [as-built notes](DASHBOARD_BACKLOG.md) say so.
 
 ## 19. Dependencies
 
@@ -583,7 +590,7 @@ a budget that gets raised rather than investigated.
 - `DASH.12` depends on every surface it links into AND on completed `UX.1`, for the reason in §18.1.
 - `UX.2` depends on completed `UX.1` and completed `DASH.12`: it is a visual rebuild of surfaces that
   must first exist and be correct. It promotes no entity, adds no reporting view and adds no export
-  dataset. `UX.2A` and `UX.2B` are Implemented; `UX.2C` and `UX.2D` are Planned.
+  dataset. `UX.2A`, `UX.2B` and `UX.2C` are Implemented; `UX.2D` is Planned.
 - `DASH.13` depends on a completed `UX.2` as well as on every `DASH` increment, for the reason in
   §18.2, and closes the program.
 - External: none. No new paid service, no live AI, no third-party data. A charting library is not
