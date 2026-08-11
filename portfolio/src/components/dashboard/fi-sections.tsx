@@ -34,15 +34,12 @@ import {
   formatCountExact,
   formatCurrencyExact,
   formatPerUnitExact,
-  formatPointsDifference,
   formatRatioAsPercent,
 } from '@/lib/dashboard/format'
 import type {
   FiAdjustmentTypeRow,
-  FiCategoryRow,
   FiManagerRow,
   FiRatio,
-  FiStructureShare,
   FiView,
 } from '@/lib/dashboard/fi'
 import { exactToString, isZero, type Exact } from '@/lib/dashboard/decimal'
@@ -392,201 +389,16 @@ function residualZero(): Exact {
 }
 
 /* -------------------------------------------------------------------------- */
-/* 3. Finance structure mix                                                    */
+/* 3-4. Structure mix and penetration — moved to `fi-workspace.tsx`             */
 /* -------------------------------------------------------------------------- */
-
-export function StructureMix({
-  structures,
-  view,
-}: {
-  readonly structures: readonly FiStructureShare[]
-  readonly view: FiView
-}) {
-  const total = structures.reduce(
-    (sum, entry) => sum + Number(exactToString(entry.deals)),
-    0
-  )
-  return (
-    <div className="flex flex-col gap-4">
-      <table className="w-full text-sm">
-        <caption className="sr-only">
-          Retail deliveries by finance structure, over {view.periodContext.period.label}
-        </caption>
-        <thead>
-          <tr className="border-b border-rule text-left">
-            <th scope="col" className="py-2 font-medium text-ink-muted">
-              Structure
-            </th>
-            <th scope="col" className="py-2 text-right font-medium text-ink-muted">
-              Deliveries
-            </th>
-            <th scope="col" className="py-2 text-right font-medium text-ink-muted">
-              Share of retail deliveries
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {structures.map((entry) => (
-            <tr key={entry.structure} className="border-b border-rule/60">
-              <th scope="row" className="py-2 text-left font-normal">
-                {entry.structure}
-              </th>
-              <td className="numeric py-2 text-right">{formatCountExact(entry.deals)}</td>
-              <td className="numeric py-2 text-right">
-                {percentOrReason(entry.share, 'No retail deliveries')}
-              </td>
-            </tr>
-          ))}
-          <tr className="font-medium">
-            <th scope="row" className="py-2 text-left">
-              All retail deliveries
-            </th>
-            <td className="numeric py-2 text-right">{total.toLocaleString('en-US')}</td>
-            <td className="numeric py-2 text-right">100.0%</td>
-          </tr>
-        </tbody>
-      </table>
-      <Text size="xs" tone="faint">
-        Wholesale and dealer-trade disposals are not retail structures and are not part of
-        this mix: a disposal has no consumer, so it carries no finance product and no
-        consumer lender. Shares are computed from summed counts, never averaged from store
-        percentages. <KpiLink id="KPI-FNI-019" />
-      </Text>
-    </div>
-  )
-}
-
-/* -------------------------------------------------------------------------- */
-/* 4. Penetration                                                              */
-/* -------------------------------------------------------------------------- */
-
-/** The plain-English denominator for a governed rule, from the rule id on the row. */
-const RULE_DESCRIPTION: Readonly<Record<string, string>> = {
-  'ELIG-VSC': 'All retail deliveries',
-  'ELIG-GAP': 'Financed retail deliveries only',
-  'ELIG-TW': 'All retail deliveries',
-  'ELIG-PPM': 'New and certified retail deliveries only',
-  'ELIG-LWP': 'Lease deliveries only',
-  'ELIG-OTH': 'All retail deliveries',
-}
-
-export function PenetrationTable({
-  view,
-  comparisonLabel,
-}: {
-  readonly view: FiView
-  readonly comparisonLabel: string | null
-}) {
-  return (
-    <div className="flex flex-col gap-4">
-      {/* Focusable: a horizontally scrolling region is unreachable by keyboard
-           otherwise, so a keyboard-only reader would see the first columns and
-           never the rest. */}
-      <div
-        className="overflow-x-auto"
-        tabIndex={0}
-        role="region"
-        aria-label="Back-end gross composition, scrollable"
-      >
-        <table className="w-full min-w-[52rem] text-sm">
-          <caption className="sr-only">
-            Product penetration by category, each over its own eligible denominator
-          </caption>
-          <thead>
-            <tr className="border-b border-rule text-left">
-              <th scope="col" className="py-2 font-medium text-ink-muted">
-                Product category
-              </th>
-              <th scope="col" className="py-2 text-right font-medium text-ink-muted">
-                Contracts
-              </th>
-              <th scope="col" className="py-2 text-right font-medium text-ink-muted">
-                Deals with product
-              </th>
-              <th scope="col" className="py-2 text-right font-medium text-ink-muted">
-                Eligible deals
-              </th>
-              <th scope="col" className="py-2 text-right font-medium text-ink-muted">
-                Penetration
-              </th>
-              <th scope="col" className="py-2 text-right font-medium text-ink-muted">
-                {comparisonLabel === null ? 'Prior period' : comparisonLabel}
-              </th>
-              <th scope="col" className="py-2 text-right font-medium text-ink-muted">
-                Change
-              </th>
-              <th scope="col" className="py-2 font-medium text-ink-muted">
-                Eligible population
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {view.categories.map((row) => (
-              <PenetrationRow key={row.category} row={row} />
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <Text size="xs" tone="faint">
-        Penetration counts <strong className="font-medium">distinct deals</strong>{' '}
-        carrying at least one contract in the category, over the deals{' '}
-        <strong className="font-medium">eligible for that category</strong> — not over all
-        retail deliveries. One deal may carry two different products in one category,
-        which is why contracts and deals with product differ. Every denominator names the
-        governed rule that produced it.
-      </Text>
-    </div>
-  )
-}
-
-function PenetrationRow({ row }: { readonly row: FiCategoryRow }) {
-  const noEligible = row.emptyReason === 'no-eligible-deals'
-  return (
-    <tr className="border-b border-rule/60">
-      <th scope="row" className="py-2 text-left font-normal">
-        {row.category}
-      </th>
-      <td className="numeric py-2 text-right">{formatCountExact(row.contracts)}</td>
-      <td className="numeric py-2 text-right">{formatCountExact(row.attachedDeals)}</td>
-      <td className="numeric py-2 text-right">
-        {noEligible ? (
-          <span className="text-ink-muted">None eligible</span>
-        ) : (
-          formatCountExact(row.eligibleDeals)
-        )}
-      </td>
-      <td className="numeric py-2 text-right">
-        {row.penetration.value === null ? (
-          <span className="text-ink-muted">No eligible deals</span>
-        ) : (
-          formatRatioAsPercent(row.penetration.value, 1)
-        )}
-      </td>
-      <td className="numeric py-2 text-right">
-        {row.priorPenetration === null || row.priorPenetration.value === null ? (
-          <span className="text-ink-muted">Not available</span>
-        ) : (
-          formatRatioAsPercent(row.priorPenetration.value, 1)
-        )}
-      </td>
-      <td className="numeric py-2 text-right">
-        {row.penetrationChange === null ? (
-          <span className="text-ink-muted">—</span>
-        ) : (
-          formatPointsDifference(row.penetrationChange, 1)
-        )}
-      </td>
-      <td className="py-2">
-        <span className="font-mono text-[0.6875rem] text-ink-muted">
-          {row.eligibilityRuleId}
-        </span>{' '}
-        <span className="text-xs text-ink-muted">
-          {RULE_DESCRIPTION[row.eligibilityRuleId] ?? ''}
-        </span>
-      </td>
-    </tr>
-  )
-}
+/*
+ * `UX.2B` replaced both with the visuals in `fi-workspace.tsx`: the structure mix is a
+ * part-to-whole bar and penetration is a bar per category drawn against full eligibility.
+ * Nothing was dropped in the move — the structure table, its "All retail deliveries"
+ * denominator row and the penetration table's contracts, attached deals, eligible deals,
+ * prior period and change columns are all inside those figures' own table disclosures,
+ * against the same governed ratios and the same `ELIG-*` denominators.
+ */
 
 /* -------------------------------------------------------------------------- */
 /* 5. Category economics                                                       */

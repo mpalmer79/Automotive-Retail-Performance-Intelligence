@@ -935,6 +935,11 @@ describe('ADR-0013 condition 2: no frontend redefines a KPI', () => {
     ).toEqual([
       'components/dashboard/deal-headline.tsx',
       'components/dashboard/employees-sections.tsx',
+      // `UX.2B`. `fi-workspace.tsx` reaches it in exactly two functions, `shareOf` and
+      // `shareOfAmount`, which turn a governed ratio and a governed signed amount into a bar
+      // width. Every percentage and every amount printed beside those bars comes from a
+      // governed formatter over the exact value.
+      'components/dashboard/fi-workspace.tsx',
       // `UX.2B`. `AgePriceMap` turns a governed ratio and a governed investment into a
       // coordinate and a mark diameter; `InventoryRail` never touches it. Every figure the
       // module prints comes from a governed formatter over the exact value.

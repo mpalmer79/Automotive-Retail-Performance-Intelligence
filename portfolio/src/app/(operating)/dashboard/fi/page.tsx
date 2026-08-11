@@ -13,10 +13,17 @@ import {
   BackGrossComposition,
   CategoryEconomics,
   ManagerComparison,
-  PenetrationTable,
   ProductionSummary,
-  StructureMix,
 } from '@/components/dashboard/fi-sections'
+import {
+  AdjustmentBars,
+  DateBasisKey,
+  FiDisclosure,
+  FiRail,
+  PenetrationBars,
+  StructureComposition,
+} from '@/components/dashboard/fi-workspace'
+import { GridRow, Module, Workspace } from '@/components/dashboard/workspace-grid'
 import {
   FilterNotice,
   NoMatchingRecords,
@@ -24,8 +31,7 @@ import {
   ReconciliationBanner,
   StaleBanner,
 } from '@/components/dashboard/notices'
-import { Disclosure } from '@/components/ui/disclosure'
-import { Container, Section, SectionHeader } from '@/components/ui/layout'
+import { Container, Section } from '@/components/ui/layout'
 import { Text } from '@/components/ui/typography'
 import {
   calendarMonths,
@@ -47,7 +53,7 @@ import {
   FI_CATEGORY_ORDER,
   fiCategorySlug,
 } from '@/lib/dashboard/fi'
-import { formatIsoMonth } from '@/lib/dashboard/format'
+import { formatCountExact, formatIsoMonth } from '@/lib/dashboard/format'
 import { exportTrust, powerBiTrust, reconciliationFailed } from '@/lib/dashboard/trust'
 import { engines } from '@/lib/manifest'
 import { pageMetadata } from '@/lib/metadata'
@@ -178,225 +184,263 @@ export default async function FiPage({
       </OperatingPageHeader>
 
       {view.hasRows ? (
-        <>
+        <Workspace>
           {/* -------------------------------------------------------------- */}
-          {/* 1. Production                                                   */}
+          {/* ROW 1 — what the finance office produced                        */}
           {/* -------------------------------------------------------------- */}
-          <Section rhythm="default" id="production">
-            <Container width="full">
-              <SectionHeader
-                eyebrow="Production"
-                title="What the finance office produced"
-                lede="Eight governed figures on two date bases. The deal-date figures are what was produced and are never rewritten by a later event; the as-of figure is what remained after every adjustment posted on or before the dataset's own as-of date."
-              />
-              <div className="pt-6">
+          <GridRow>
+            <Module
+              id="production"
+              title="Production"
+              zone="finance"
+              visual="kpi-rail"
+              meta={view.periodContext.period.label}
+            >
+              <FiRail view={view} />
+              {/*
+                ALL EIGHT GOVERNED PRODUCTION FIGURES ARE STILL ON THIS PAGE. The rail ranks
+                six of them; the other two — products per retail unit and gross per contract
+                — and the gross amounts behind every rate are in the disclosure below, in
+                full, with their catalogue identifiers and their date bases. `UX.2B` §12
+                permits moving detail behind a disclosure and forbids removing a figure, and
+                `<details>` removes nothing: the block is in the document, in the
+                accessibility tree's reading order, in a browser text search and with
+                scripting off.
+              */}
+              <FiDisclosure
+                id="production-detail"
+                summary="Every governed production figure, with its basis"
+              >
                 <ProductionSummary view={view} />
-              </div>
-            </Container>
-          </Section>
+              </FiDisclosure>
+            </Module>
+          </GridRow>
 
           {/* -------------------------------------------------------------- */}
-          {/* 2. Composition                                                  */}
+          {/* ROW 2 — what it was made of, and what could be sold into        */}
           {/* -------------------------------------------------------------- */}
-          <Section rhythm="default" tone="evidence" id="composition">
-            <Container width="content">
-              <SectionHeader
-                eyebrow="Composition"
-                title="Reserve against product, to the cent"
-                lede="Back-end gross was a single number before the F&I model existed. It is now explained: finance reserve plus original product gross accounts for all of it, with other F&I income of exactly $0.00 and no balancing figure."
+          {/*
+            `UX.2B` §49 asks F&I to show the rail and a gross-or-structure visual inside
+            1440 × 900. Both are here, and the third module is the date-basis key: this
+            route publishes figures on three different bases, and a reader who does not
+            know which one a number is on can misread every figure below.
+          */}
+          <GridRow>
+            <Module
+              id="composition"
+              title="Reserve against product"
+              span={5}
+              zone="finance"
+              visual="back-composition"
+            >
+              <BackGrossComposition
+                view={view}
+                identityHolds={identityHolds}
+                residual={residual}
               />
-              <div className="pt-6">
-                <BackGrossComposition
-                  view={view}
-                  identityHolds={identityHolds}
-                  residual={residual}
-                />
-              </div>
-            </Container>
-          </Section>
-
-          {/* -------------------------------------------------------------- */}
-          {/* 3. Structure                                                    */}
-          {/* -------------------------------------------------------------- */}
-          <Section rhythm="default" id="structure">
-            <Container width="content">
-              <SectionHeader
-                eyebrow="Deal structure"
-                title="How the deliveries were funded"
-                lede="Structure decides what could be sold before anything about a customer does: GAP needs financing, Lease Wear Protection needs a lease, and a cash delivery can earn no finance reserve at all. It is the context every penetration figure below sits in."
+            </Module>
+            <Module
+              id="structure"
+              title="Deal structure"
+              span={4}
+              zone="finance"
+              visual="structure-mix"
+            >
+              <StructureComposition
+                structures={view.structures}
+                totalDisplay={formatCountExact(view.production.retailUnits)}
+                periodLabel={view.periodContext.period.label}
               />
-              <div className="pt-6">
-                <StructureMix structures={view.structures} view={view} />
-              </div>
-            </Container>
-          </Section>
-
-          {/* -------------------------------------------------------------- */}
-          {/* 4. Penetration                                                  */}
-          {/* -------------------------------------------------------------- */}
-          <Section rhythm="default" tone="evidence" id="penetration">
-            <Container width="full">
-              <SectionHeader
-                eyebrow="Penetration"
-                title="What was sold, against what could have been"
-                lede="Each category is measured against the deals it was eligible for — not against all retail deliveries. GAP is over financed deliveries, Lease Wear Protection over leases, Prepaid Maintenance over new and certified units. Both sides of every ratio are shown, so the denominator is never something a reader has to take on trust."
+            </Module>
+            <Module
+              id="bases"
+              title="Which date a figure is on"
+              span={3}
+              note="Three bases, never collapsed into one. Every figure on this page carries the one it is measured on."
+            >
+              <DateBasisKey
+                asOfDate={view.asOfDate}
+                periodLabel={view.periodContext.period.label}
               />
-              <div className="pt-6">
-                <PenetrationTable view={view} comparisonLabel={comparisonLabel} />
-              </div>
-            </Container>
-          </Section>
+            </Module>
+          </GridRow>
 
           {/* -------------------------------------------------------------- */}
-          {/* 5. Category economics                                           */}
+          {/* ROW 3 — attachment, and what came back                          */}
           {/* -------------------------------------------------------------- */}
-          <Section rhythm="default" id="economics">
-            <Container width="full">
-              <SectionHeader
-                eyebrow="Category economics"
-                title="What each category earned"
-                lede="Retail, cost and gross by category on the deal-date basis, with what remained after adjustments. Attachment and economics are different questions: a category can be attached often and earn little, or rarely and earn a great deal."
+          <GridRow>
+            <Module
+              id="penetration"
+              title="Penetration"
+              span={7}
+              zone="finance"
+              visual="penetration"
+            >
+              <PenetrationBars
+                categories={view.categories}
+                comparisonLabel={comparisonLabel}
               />
-              <div className="pt-6">
-                <CategoryEconomics view={view} />
-              </div>
-            </Container>
-          </Section>
+            </Module>
+            <Module id="adjustments" title="Adjustments" span={5} visual="adjustments">
+              {view.adjustmentTypes.length === 0 ? (
+                <Text size="sm" tone="muted">
+                  {`No adjustment posted in ${view.periodContext.period.label}. That is a genuine absence of events rather than a zero: cancellations and chargebacks are grouped by the date they posted, and the reporting window truncates the tail of the lag distribution, so the most recent sale months carry structurally fewer of them.`}
+                </Text>
+              ) : (
+                <div className="flex flex-col gap-4">
+                  <AdjustmentBars
+                    rows={view.adjustmentTypes}
+                    periodLabel={view.periodContext.period.label}
+                  />
+                  {/*
+                    THE EXACT TABLE STAYS, BEHIND THE BARS RATHER THAN INSTEAD OF THEM. It
+                    carries three things the bars do not: contracts affected, the mixed-basis
+                    period proxy rate with the export's own disclosure sentence, and the net
+                    effect on retained gross. None of those is a length, and none of them was
+                    dropped.
+                  */}
+                  <FiDisclosure
+                    id="adjustment-detail"
+                    summary="Events, contracts affected and the period proxy rate"
+                  >
+                    <AdjustmentSection view={view} />
+                  </FiDisclosure>
+                </div>
+              )}
+            </Module>
+          </GridRow>
 
           {/* -------------------------------------------------------------- */}
-          {/* 6. Adjustments                                                  */}
+          {/* ROW 4 — the exact tables                                        */}
           {/* -------------------------------------------------------------- */}
-          <Section rhythm="default" tone="evidence" id="adjustments">
-            <Container width="full">
-              <SectionHeader
-                eyebrow="Adjustments"
-                title="What came back, and when it posted"
-                lede="Cancellations, chargebacks, reinstatements and approved adjustments, grouped by the date each posted. A chargeback in this period against a contract written earlier belongs to this period; the earlier contract keeps the gross it was written with."
-              />
-              <div className="pt-6">
-                <AdjustmentSection view={view} />
-              </div>
-            </Container>
-          </Section>
+          {/*
+            NEITHER OF THESE MODULES CARRIES A NOTE, AND THAT IS THE PROSE REDUCTION. Both
+            section bodies already state, visibly, the sentence a reader needs: category
+            economics states that original gross is the deal-date figure and net is what
+            remained as at the as-of date, and the manager comparison states that the rows
+            are ordered by store and identifier and never by a metric. A module note
+            restating either is the same caveat printed twice on one screen — measured at
+            700 visible words on this route before `UX.2B`.
+
+            THE TABLES STAY TABLES. `UX.2B` §60 is explicit: charts answer summary,
+            comparison, distribution and composition questions, and a table answers
+            "what exactly did each category earn". Category economics is nine columns of
+            money over six categories, and the manager comparison is a contextual table
+            that may never become a ranking. Neither is drawn.
+          */}
+          <GridRow>
+            <Module id="economics" title="What each category earned" span={12}>
+              <CategoryEconomics view={view} />
+            </Module>
+          </GridRow>
+
+          <GridRow>
+            <Module
+              id="managers"
+              title="The same measures, by desk, with their context"
+              span={12}
+            >
+              <ManagerComparison view={view} />
+            </Module>
+          </GridRow>
 
           {/* -------------------------------------------------------------- */}
-          {/* 7. Managers                                                     */}
+          {/* ROW 5 — how to read the page, on demand                         */}
           {/* -------------------------------------------------------------- */}
-          <Section rhythm="default" id="managers">
-            <Container width="full">
-              <SectionHeader
-                eyebrow="Finance managers"
-                title="The same measures, by desk, with their context"
-                lede="Ordered by store and synthetic identifier. These are not rankings: a finance manager's figures inherit the store's vehicle mix, its finance-structure mix and its product-eligibility mix, and below the governed minimum-deal floor a ratio is withheld rather than shown small."
-              />
-              <div className="pt-6">
-                <ManagerComparison view={view} />
-              </div>
-            </Container>
-          </Section>
+          <GridRow>
+            <Module id="methodology" title="How to read this page" span={12}>
+              <FiDisclosure
+                id="date-bases"
+                summary="The three date bases, and why they are not interchangeable"
+              >
+                <Text size="sm" tone="muted">
+                  <strong className="font-medium text-ink">Deal date.</strong> What the
+                  finance office produced, attributed to the day the deal was struck.
+                  Reserve, original product gross and back-end gross are on this basis and
+                  are never rewritten when a later event posts.
+                </Text>
+                <Text size="sm" tone="muted">
+                  <strong className="font-medium text-ink">As of {view.asOfDate}.</strong>{' '}
+                  What the store retained: original gross less every adjustment posted on
+                  or before that date. The as-of date is the last day anything measured
+                  happened in the export, never today&rsquo;s date.
+                </Text>
+                <Text size="sm" tone="muted">
+                  <strong className="font-medium text-ink">Adjustment period.</strong>{' '}
+                  Events grouped by the day they posted. The adjustment module is on this
+                  basis alone.
+                </Text>
+              </FiDisclosure>
 
-          {/* -------------------------------------------------------------- */}
-          {/* 8. Methodology                                                  */}
-          {/* -------------------------------------------------------------- */}
-          <Section rhythm="default" tone="evidence" id="methodology">
-            <Container width="content">
-              <SectionHeader
-                eyebrow="Methodology"
-                title="How to read this page, and what it cannot tell you"
-              />
-              <div className="flex flex-col gap-4 pt-6">
-                <Disclosure label="The three date bases, and why they are not interchangeable">
-                  <div className="flex flex-col gap-2">
-                    <Text size="sm" tone="muted">
-                      <strong className="font-medium text-ink">Deal date.</strong> What
-                      the finance office produced, attributed to the day the deal was
-                      struck. Reserve, original product gross and back-end gross are on
-                      this basis and are never rewritten when a later event posts.
-                    </Text>
-                    <Text size="sm" tone="muted">
-                      <strong className="font-medium text-ink">
-                        As of {view.asOfDate}.
-                      </strong>{' '}
-                      What the store retained: original gross less every adjustment posted
-                      on or before that date. The as-of date is the last day anything
-                      measured happened in the export, never today&rsquo;s date.
-                    </Text>
-                    <Text size="sm" tone="muted">
-                      <strong className="font-medium text-ink">Adjustment period.</strong>{' '}
-                      Events grouped by the day they posted. The adjustment section is on
-                      this basis alone.
-                    </Text>
-                  </div>
-                </Disclosure>
+              <FiDisclosure
+                id="proxy-rates"
+                summary="Why the period proxy rates are not loss rates"
+              >
+                <Text size="sm" tone="muted">
+                  A chargeback rate on this page divides an amount posted in the selected
+                  period by the original gross of contracts <em>sold</em> in the selected
+                  period. Those are two different populations: the contracts charged back
+                  in a month are mostly not the ones written in it. The result is a period
+                  proxy, useful for watching the direction of travel, and it is not a
+                  contract-cohort loss rate. Computing a true cohort rate would need the
+                  full life of each cohort, and the reporting window truncates the tail of
+                  the adjustment lag distribution — which is also why the most recent sale
+                  months carry structurally fewer adjustments than the earliest ones.
+                </Text>
+              </FiDisclosure>
 
-                <Disclosure label="Why the period proxy rates are not loss rates">
-                  <Text size="sm" tone="muted">
-                    A chargeback rate on this page divides an amount posted in the
-                    selected period by the original gross of contracts <em>sold</em> in
-                    the selected period. Those are two different populations: the
-                    contracts charged back in a month are mostly not the ones written in
-                    it. The result is a period proxy, useful for watching the direction of
-                    travel, and it is not a contract-cohort loss rate. Computing a true
-                    cohort rate would need the full life of each cohort, and the reporting
-                    window truncates the tail of the adjustment lag distribution — which
-                    is also why the most recent sale months carry structurally fewer
-                    adjustments than the earliest ones.
-                  </Text>
-                </Disclosure>
+              <FiDisclosure
+                id="denominators"
+                summary="Why each category has its own denominator"
+              >
+                <Text size="sm" tone="muted">
+                  Penetration is only meaningful beside the population it was computed
+                  over. A GAP rate over all retail deliveries would count cash buyers who
+                  have no loan for GAP to cover, and would make every store with a heavier
+                  cash mix look worse for a reason that has nothing to do with its finance
+                  office. Each category is therefore measured against the deals eligible
+                  for it under one governed rule, the rule identifier is on every row, and
+                  both sides of the ratio are published. A category with no eligible deals
+                  shows &ldquo;No eligible deals&rdquo; rather than 0%, because a rate
+                  with no denominator is undefined and not zero.
+                </Text>
+              </FiDisclosure>
 
-                <Disclosure label="Why each category has its own denominator">
-                  <Text size="sm" tone="muted">
-                    Penetration is only meaningful beside the population it was computed
-                    over. A GAP rate over all retail deliveries would count cash buyers
-                    who have no loan for GAP to cover, and would make every store with a
-                    heavier cash mix look worse for a reason that has nothing to do with
-                    its finance office. Each category is therefore measured against the
-                    deals eligible for it under one governed rule, the rule identifier is
-                    on every row, and both sides of the ratio are published. A category
-                    with no eligible deals shows &ldquo;No eligible deals&rdquo; rather
-                    than 0%, because a rate with no denominator is undefined and not zero.
-                  </Text>
-                </Disclosure>
-
-                <Disclosure label="What this page will not tell you">
-                  <div className="flex flex-col gap-2">
-                    <Text size="sm" tone="muted">
-                      <strong className="font-medium text-ink">
-                        There is no benchmark and no target.
-                      </strong>{' '}
-                      ARPI publishes no industry F&amp;I figures, so nothing here is good,
-                      bad, healthy or standard. A penetration of 40.7% is stated as 40.7%.
-                    </Text>
-                    <Text size="sm" tone="muted">
-                      <strong className="font-medium text-ink">
-                        There is no recommendation.
-                      </strong>{' '}
-                      Nothing here suggests a product to sell, a price to charge, a
-                      customer to approach or a lender to use. ARPI approves nothing,
-                      declines nothing and tiers nobody.
-                    </Text>
-                    <Text size="sm" tone="muted">
-                      <strong className="font-medium text-ink">
-                        There is no menu and no offer history.
-                      </strong>{' '}
-                      The model records what was sold, not what was offered and declined,
-                      so no closing rate is computable from it.
-                    </Text>
-                    <Text size="sm" tone="muted">
-                      <strong className="font-medium text-ink">
-                        Manager rows are comparisons, not evaluations.
-                      </strong>{' '}
-                      They carry no ranking and no label, and below{' '}
-                      {view.periodContext.period.label === '' ? '' : ''}the governed
-                      minimum-deal floor a ratio is withheld: a one-deal penetration of
-                      100% is a number that will be repeated and cannot be defended.
-                    </Text>
-                  </div>
-                </Disclosure>
-              </div>
-            </Container>
-          </Section>
-        </>
+              <FiDisclosure id="limits" summary="What this page will not tell you">
+                <Text size="sm" tone="muted">
+                  <strong className="font-medium text-ink">
+                    There is no benchmark and no target.
+                  </strong>{' '}
+                  ARPI publishes no industry F&amp;I figures, so nothing here is good,
+                  bad, healthy or standard. A penetration of 40.7% is stated as 40.7%.
+                </Text>
+                <Text size="sm" tone="muted">
+                  <strong className="font-medium text-ink">
+                    There is no recommendation.
+                  </strong>{' '}
+                  Nothing here suggests a product to sell, a price to charge, a customer
+                  to approach or a lender to use. ARPI approves nothing, declines nothing
+                  and tiers nobody.
+                </Text>
+                <Text size="sm" tone="muted">
+                  <strong className="font-medium text-ink">
+                    There is no menu and no offer history.
+                  </strong>{' '}
+                  The model records what was sold, not what was offered and declined, so
+                  no closing rate is computable from it.
+                </Text>
+                <Text size="sm" tone="muted">
+                  <strong className="font-medium text-ink">
+                    Manager rows are comparisons, not evaluations.
+                  </strong>{' '}
+                  They carry no ranking and no label, and below the governed minimum-deal
+                  floor a ratio is withheld: a one-deal penetration of 100% is a number
+                  that will be repeated and cannot be defended.
+                </Text>
+              </FiDisclosure>
+            </Module>
+          </GridRow>
+        </Workspace>
       ) : (
         <Section rhythm="default">
           <Container width="content">
