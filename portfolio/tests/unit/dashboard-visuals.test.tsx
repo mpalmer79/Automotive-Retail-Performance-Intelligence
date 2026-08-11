@@ -191,6 +191,45 @@ describe('BridgeChart', () => {
     )
     expect(container.querySelector('caption')?.textContent).toContain(summary)
   })
+
+  /*
+   * THE ANCHORS ARE COLUMNS FROM THE AXIS, AND THIS IS A REGRESSION TEST.
+   *
+   * The chart drew every bar between `base` and `top`, and for an anchor those are the same
+   * number — so `upper === lower`, the computed height was zero, and both anchors rendered
+   * at the `Math.max(height, 0.5)` floor. The two totals a waterfall exists to connect were
+   * the two marks a reader could not see.
+   *
+   * Asserted as a RELATIONSHIP rather than against a pixel figure: an anchor at $289,390 on
+   * an axis whose largest level is $321,935 must be a substantial fraction of the frame, and
+   * must be taller than a step of $52,622 drawn on the same axis. Both are true of a correct
+   * waterfall at any size, and neither was true of the defect.
+   */
+  it('draws each anchor as a column from the axis rather than as a sliver', () => {
+    const { container } = render(
+      <BridgeChart title="What changed" bars={BARS} summary="The bridge attributes." />
+    )
+    const heights = [...container.querySelectorAll('[aria-hidden="true"] span span')].map(
+      (node) => Number.parseFloat((node as HTMLElement).style.height)
+    )
+    expect(heights).toHaveLength(BARS.length)
+
+    const [comparison, volume, frontPvr, current] = heights as [
+      number,
+      number,
+      number,
+      number,
+    ]
+    // An anchor is a level read from zero, so it fills most of a frame whose top is the
+    // other anchor. Anything near the 0.5% floor is the defect returning.
+    expect(comparison).toBeGreaterThan(50)
+    expect(current).toBeGreaterThan(50)
+    // The closing anchor is the larger total, so it is the taller of the two.
+    expect(current).toBeGreaterThan(comparison)
+    // And a step is a movement, so it is shorter than the level it moves.
+    expect(volume).toBeLessThan(comparison)
+    expect(frontPvr).toBeLessThan(comparison)
+  })
 })
 
 describe('DistributionStrip', () => {

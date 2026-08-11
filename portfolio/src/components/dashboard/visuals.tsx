@@ -463,8 +463,27 @@ export function BridgeChart({
         {bars.map((bar, index) => {
           const base = levels[index] ?? 0
           const top = tops[index] ?? 0
-          const upper = Math.max(base, top)
-          const lower = Math.min(base, top)
+          /*
+           * AN ANCHOR IS A COLUMN FROM THE AXIS; A STEP IS A FLOATING SEGMENT.
+           *
+           * This drew both between `base` and `top`, and for an anchor those are the SAME
+           * NUMBER — `tops` returns `base` unchanged for `kind === 'anchor'` twenty lines
+           * above. So `upper === lower`, the height was zero, and every anchor rendered at
+           * the `Math.max(height, 0.5)` floor: the two totals a waterfall exists to connect
+           * were the two marks a reader could not see.
+           *
+           * It was invisible while the bridge was the last band of a 7,228 px document.
+           * `UX.2B` promotes it on `/dashboard/sales-gross` and adds a second waterfall to
+           * the Deal Jacket's front-gross composition, so it now misreads on two routes.
+           *
+           * NO ARITHMETIC CHANGED. The running levels, the axis extent, the span and every
+           * printed amount are exactly what they were; this decides which two coordinates
+           * the rectangle is drawn between. The anchors keep the neutral reference fill,
+           * because a level is not a direction.
+           */
+          const upper =
+            bar.kind === 'anchor' ? Math.max(base, lowest) : Math.max(base, top)
+          const lower = bar.kind === 'anchor' ? lowest : Math.min(base, top)
           const height = ((upper - lower) / span) * 100
           const offset = ((lower - lowest) / span) * 100
           const falling = bar.kind === 'step' && isNegative(bar.value)
