@@ -1297,7 +1297,7 @@ add one is restated there, unchanged.
 ### No budget is enforced from these numbers
 
 `DASH.13-02` sets the budgets, from measurements taken once `UX.2` is complete. Setting one here
-would fix a number for five routes while `UX.2C` and `UX.2D` are still changing the four around them.
+would fix a number for nine routes while `UX.2D` is still changing how they behave together.
 
 ## 9.14 `UX.2B.1` — 9,503 px for 2.8 kB
 
@@ -1323,3 +1323,34 @@ The four sub-kilobyte increases elsewhere are the same thing in each case: `role
 `aria-label` on each disclosure's scroll region, plus two axis labels per trend.
 
 Client JavaScript owned by the five operating routes remains **zero bytes**.
+
+## 9.15 `UX.2C` — 16,196 px for 31.4 kB, all of it markup
+
+Compressed transfer, cold load, production server, Chromium, 1440 × 900. Before-figures from
+[`UX-2C-BASELINE.md`](../../docs/reviews/UX-2C-BASELINE.md).
+
+| Route                        | Height before | Height after | Bytes before | Bytes after |        Δ |
+| ---------------------------- | ------------: | -----------: | -----------: | ----------: | -------: |
+| `/dashboard/actions`         |    **16,741** |    **7,437** |      525,600 |     530,300 |  +4.7 kB |
+| `/dashboard/leads-marketing` |         8,821 |    **3,998** |      434,600 |     451,600 | +17.0 kB |
+| `/dashboard/employees`       |         5,386 |    **4,169** |      415,700 |     419,600 |  +3.9 kB |
+| `/dashboard/accounting`      |         3,290 |    **2,408** |      402,600 |     408,400 |  +5.8 kB |
+
+**Every kilobyte of the increase is HTML, and every kilobyte of it is drawn geometry.** The
+JavaScript column is byte-identical before and after on all four routes: it is the framework and
+the shell, and the routes' own figures contribute nothing to it. CSS moved 48.0 → 48.1 kB across
+the whole console.
+
+This is the opposite asymmetry to §9.14 and reads the same way. Inventory lost nine thousand
+pixels and gained bytes because its rows stopped being _laid out_; these four lose sixteen
+thousand pixels between them and gain bytes because they started _drawing_. Leads carries the
+largest share — nineteen sources × four measure cells, rendered twice, plus five appointment bars,
+five response rows, five stage-loss bars and four vendor bars, each with a track, a printed value
+and a table row.
+
+Nothing was optimised away to reach these numbers and nothing was hidden behind a client fetch.
+A route that draws more marks carries more markup; 17 kB of gzipped HTML for a route that lost
+4,823 px and half its visible prose is the trade the increment makes, and it is recorded rather
+than rounded off.
+
+Client JavaScript owned by the nine operating routes remains **zero bytes**.

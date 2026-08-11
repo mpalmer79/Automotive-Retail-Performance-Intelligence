@@ -1,7 +1,16 @@
 import type { Metadata } from 'next'
 
+import {
+  BalanceComparison,
+  ComparisonStates,
+  ExceptionRegister,
+  PeriodOwnership,
+  PositionRail,
+  PositionTable,
+} from '@/components/dashboard/accounting-workspace'
 import { FilterBar, type FilterOption } from '@/components/dashboard/filter-bar'
 import { ExportProvenance } from '@/components/dashboard/export-provenance'
+import { GridRow, Module, Workspace } from '@/components/dashboard/workspace-grid'
 import {
   ActiveFilterChips,
   OperatingPageHeader,
@@ -14,7 +23,6 @@ import {
 } from '@/components/dashboard/notices'
 import { Canvas } from '@/components/shell/field'
 import { Disclosure } from '@/components/ui/disclosure'
-import { Container, Section, SectionHeader } from '@/components/ui/layout'
 import { Text } from '@/components/ui/typography'
 import {
   accountingExceptionRows,
@@ -39,11 +47,7 @@ import {
   parseFilters,
   type QueryInput,
 } from '@/lib/dashboard/filters'
-import {
-  formatCurrencyDifference,
-  formatCurrencyExact,
-  formatIsoDate,
-} from '@/lib/dashboard/format'
+import { formatIsoDate } from '@/lib/dashboard/format'
 import { exportTrust, powerBiTrust, reconciliationFailed } from '@/lib/dashboard/trust'
 import { engines } from '@/lib/manifest'
 import { pageMetadata } from '@/lib/metadata'
@@ -78,6 +82,33 @@ const ROUTE = ROUTES.dashboardAccounting.href
  *    never sums or averages across dates.
  * 4. A variance is something to investigate, not proof of an error — and in this dataset
  *    some of them are planted on purpose. Both facts are on the page, not in a footnote.
+ *
+ * WHAT THIS ROUTE WAS, MEASURED, AND WHAT IT IS NOW
+ * ------------------------------------------------
+ * `docs/reviews/UX-2C-BASELINE.md` measured it on the merge of `UX.2B.1`: **zero framed
+ * figures at any viewport**, down a 3,290 px document of four regions. The three figures a
+ * controller opens the page for arrived FOURTH, after a subtitle, a filter bar, a disclosure,
+ * an eyebrow, an `h2` and a lede — and arrived as four equal cells in which the signed variance
+ * was a peer of "positions not comparable".
+ *
+ * `UX.2C` rebuilds it as the twelve-column module grid: the three balances lead, at three times
+ * the weight of the four figures that qualify them; the comparison itself is two bars on one
+ * shared scale with the difference marked on the same axis; and the four governed comparison
+ * states are a drawn population rather than a count and a sentence. The `Period ownership`
+ * region — 130 of the route's 422 words, at the foot of the page — is a table behind a
+ * disclosure, which is where `UX.2C` §46 puts detail a reader needs exactly once.
+ *
+ * THE NOT-A-GENERAL-LEDGER LIMITATION STAYS VISIBLE (`UX.2C` §32). It is the route's subtitle,
+ * where it cannot scroll away. What went behind the disclosure is the FULL explanation — the
+ * two-sides-from-one-model statement, the invented chart of accounts, the planted scenarios —
+ * and no P&L, EBITDA, department statement, cash flow, journal entry, trial balance, contract
+ * in transit, receivable or floorplan interest arrived to replace it, because none of it exists
+ * in the export.
+ *
+ * THE FIRST-VIEWPORT CONTRACT (`UX.2C` §5 and §52). At 1440 x 900: the control band, the
+ * seven-figure position rail whole, and both geometry modules — the balance comparison and the
+ * state population. Each carries `data-visual-region`, so the contract is measured, not
+ * asserted.
  */
 export default async function AccountingPage({
   searchParams,
@@ -98,6 +129,21 @@ export default async function AccountingPage({
     toExceptionRows(accountingExceptionRows()),
     parsed.filters
   )
+
+  /*
+   * The physical count standing behind the schedule at this date.
+   *
+   * A SELECTION, NOT A MEASURE. `stock_unit_count` is an exported column and a unit belongs to
+   * exactly one control account, so summing it across the positions at ONE date is addition of
+   * a partition rather than a new statistic — and it is never summed across dates, for the same
+   * reason the balances are not. A position that does not publish one contributes nothing, and
+   * where no position publishes one the rail says "Not published" rather than zero.
+   */
+  const unitRows = selected.filter((row) => row.stockUnitCount !== null)
+  const stockUnits =
+    unitRows.length === 0
+      ? null
+      : unitRows.reduce((total, row) => total + (row.stockUnitCount ?? 0), 0)
 
   const chips = activeFilterChips(parsed.filters, ACCOUNTING_SUPPORT)
   const exportState = exportTrust(dashboardManifest)
@@ -178,280 +224,105 @@ export default async function AccountingPage({
         </div>
       </OperatingPageHeader>
 
-      {/* ------------------------------------------------------------------ */}
-      {/* Reconciliation summary                                              */}
-      {/* ------------------------------------------------------------------ */}
-      <Section id="summary">
-        <Container width="full">
-          <SectionHeader
-            eyebrow="Reconciliation"
+      <Workspace>
+        {/* ---------------------------------------------------------------- */}
+        {/* ROW 1 — the position                                              */}
+        {/* ---------------------------------------------------------------- */}
+        <GridRow>
+          <Module
+            id="summary"
             title="The position"
-            lede={
+            visual="position-rail"
+            meta={
               comparisonDate === null
-                ? 'No comparison date falls inside the selected period.'
-                : `Comparable positions only. Missing-side positions are counted below and excluded from these totals, because a balance that does not exist is not a balance of zero.`
+                ? 'No comparison date in this period'
+                : formatIsoDate(comparisonDate)
             }
-          />
-          <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="flex flex-col gap-1 rounded-card border border-line p-4">
-              <dt className="text-xs uppercase tracking-wide text-ink-muted">
-                Inventory subledger
-              </dt>
-              <dd className="font-mono text-lg text-ink">
-                {formatCurrencyExact(summary.subledgerTotal)}
-              </dd>
-              <dd className="text-xs text-ink-faint">
-                {summary.comparablePositions} comparable position
-                {summary.comparablePositions === 1 ? '' : 's'}
-              </dd>
-            </div>
-            <div className="flex flex-col gap-1 rounded-card border border-line p-4">
-              <dt className="text-xs uppercase tracking-wide text-ink-muted">
-                GL control balance
-              </dt>
-              <dd className="font-mono text-lg text-ink">
-                {formatCurrencyExact(summary.glTotal)}
-              </dd>
-              <dd className="text-xs text-ink-faint">Synthetic control accounts</dd>
-            </div>
-            <div className="flex flex-col gap-1 rounded-card border border-line p-4">
-              <dt className="text-xs uppercase tracking-wide text-ink-muted">
-                Signed variance
-              </dt>
-              <dd className="font-mono text-lg text-ink">
-                {formatCurrencyDifference(summary.signedVariance, 2)}
-              </dd>
-              {/* The direction in words. A minus sign is not a description, and colour may
-                  not carry meaning on its own. */}
-              <dd className="text-xs text-ink-faint">
-                {varianceDirection(summary.signedVariance)}
-              </dd>
-            </div>
-            <div className="flex flex-col gap-1 rounded-card border border-line p-4">
-              <dt className="text-xs uppercase tracking-wide text-ink-muted">
-                Positions not comparable
-              </dt>
-              <dd className="font-mono text-lg text-ink">
-                {summary.missingGlPositions + summary.missingSubledgerPositions}
-              </dd>
-              <dd className="text-xs text-ink-faint">
-                {summary.missingGlPositions} missing GL,{' '}
-                {summary.missingSubledgerPositions} missing subledger
-              </dd>
-            </div>
-          </dl>
+          >
+            <PositionRail
+              summary={summary}
+              exceptionCount={exceptions.length}
+              stockUnits={stockUnits}
+            />
+          </Module>
+        </GridRow>
 
-          <p className="mt-4 text-sm text-ink-muted">
-            Variance is general ledger minus subledger. A positive figure means the
-            general ledger carries more than the schedule supports; a negative figure
-            means the reverse. Group totals add the signed variances, so opposing
-            positions offset rather than accumulate.
-          </p>
-        </Container>
-      </Section>
+        {/* ---------------------------------------------------------------- */}
+        {/* ROW 2 — the comparison, and the population of states it came from */}
+        {/* ---------------------------------------------------------------- */}
+        {/*
+          THE TWO BELONG SIDE BY SIDE. The balance comparison answers "by how much"; the state
+          population answers "over what". A reader who saw only the first would not know that
+          two of the positions have no variance at all because a side is absent, and a reader
+          who saw only the second would not know the size of the difference among the ones
+          that do. Neither figure is complete without the other in view.
+        */}
+        <GridRow align="start">
+          <Module
+            id="positions"
+            title="Schedule against control"
+            span={7}
+            visual="balance-comparison"
+          >
+            <BalanceComparison
+              summary={summary}
+              directionText={varianceDirection(summary.signedVariance)}
+            />
+          </Module>
+          <Module
+            id="states"
+            title="Comparison states"
+            span={5}
+            visual="comparison-states"
+          >
+            <ComparisonStates summary={summary} rows={selected} />
+          </Module>
+        </GridRow>
 
-      {/* ------------------------------------------------------------------ */}
-      {/* GL against subledger                                                */}
-      {/* ------------------------------------------------------------------ */}
-      <Section id="positions" tone="evidence">
-        <Container width="full">
-          <SectionHeader
-            eyebrow="Positions"
+        {/* ---------------------------------------------------------------- */}
+        {/* ROW 3 — the detail a controller actually ticks off                */}
+        {/* ---------------------------------------------------------------- */}
+        <GridRow>
+          <Module
+            id="detail"
             title="Each control account, by store"
-            lede="One row per store and control account at the comparison date. A missing side is shown as missing."
-          />
-          {selected.length === 0 ? (
-            <p className="text-sm text-ink-muted">
-              No comparison rows for this period and store selection.
-            </p>
-          ) : (
-            <div
-              className="overflow-x-auto"
-              tabIndex={0}
-              role="region"
-              aria-label="Reconciliation positions"
-            >
-              <table className="w-full min-w-[52rem] border-collapse text-sm">
-                <caption className="sr-only">
-                  Inventory subledger against GL control balances at{' '}
-                  {comparisonDate === null ? 'no date' : formatIsoDate(comparisonDate)}
-                </caption>
-                <thead>
-                  <tr className="border-b border-line text-left">
-                    <th scope="col" className="py-2 pr-4 font-medium">
-                      Store
-                    </th>
-                    <th scope="col" className="py-2 pr-4 font-medium">
-                      Control account
-                    </th>
-                    <th scope="col" className="py-2 pr-4 text-right font-medium">
-                      Subledger
-                    </th>
-                    <th scope="col" className="py-2 pr-4 text-right font-medium">
-                      GL
-                    </th>
-                    <th scope="col" className="py-2 pr-4 text-right font-medium">
-                      Variance
-                    </th>
-                    <th scope="col" className="py-2 pr-4 font-medium">
-                      State
-                    </th>
-                    <th scope="col" className="py-2 text-right font-medium">
-                      Units
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selected.map((row) => (
-                    <tr
-                      key={`${row.dealershipId}-${row.glAccountNumber}`}
-                      className="border-b border-line-subtle"
-                    >
-                      <th scope="row" className="py-2 pr-4 text-left font-normal">
-                        {row.dealershipId}
-                      </th>
-                      <td className="py-2 pr-4">
-                        {row.glAccountNumber} · {row.glAccountName}
-                      </td>
-                      <td className="py-2 pr-4 text-right font-mono">
-                        {row.subledgerBalance === null ? (
-                          <span className="text-ink-faint">No subledger balance</span>
-                        ) : (
-                          formatCurrencyExact(row.subledgerBalance)
-                        )}
-                      </td>
-                      <td className="py-2 pr-4 text-right font-mono">
-                        {row.glBalance === null ? (
-                          <span className="text-ink-faint">No GL balance</span>
-                        ) : (
-                          formatCurrencyExact(row.glBalance)
-                        )}
-                      </td>
-                      <td className="py-2 pr-4 text-right font-mono">
-                        {row.varianceAmount === null ? (
-                          <span className="text-ink-faint">Not comparable</span>
-                        ) : (
-                          formatCurrencyDifference(row.varianceAmount, 2)
-                        )}
-                      </td>
-                      <td className="py-2 pr-4">{row.comparisonState}</td>
-                      <td className="py-2 text-right font-mono">
-                        {row.stockUnitCount ?? '—'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </Container>
-      </Section>
+            span={12}
+            meta={`${String(summary.totalPositions)} position${summary.totalPositions === 1 ? '' : 's'}`}
+            note="A missing side is shown as missing, never as $0.00, and is excluded from both totals."
+          >
+            <PositionTable rows={selected} comparisonDate={comparisonDate} />
+          </Module>
+        </GridRow>
 
-      {/* ------------------------------------------------------------------ */}
-      {/* Exceptions                                                          */}
-      {/* ------------------------------------------------------------------ */}
-      <Section id="exceptions">
-        <Container width="full">
-          <SectionHeader
-            eyebrow="Exceptions"
+        {/* ---------------------------------------------------------------- */}
+        {/* ROW 4 — exceptions, and the date bases                            */}
+        {/* ---------------------------------------------------------------- */}
+        <GridRow align="start">
+          <Module
+            id="exceptions"
             title="Accounting exceptions"
-            lede="Governed exceptions over the whole export, on their own exception date. These are not one kind of finding and are deliberately not totalled together."
-          />
-          {exceptions.length === 0 ? (
-            <p className="text-sm text-ink-muted">
-              No accounting exceptions for this store selection. The controls were
-              evaluated and found nothing; that is a result, not an absence of checking.
-            </p>
-          ) : (
-            <ul className="flex flex-col gap-3">
-              {exceptions.map((row) => {
-                const href = exceptionDrillThrough(row)
-                return (
-                  <li
-                    key={row.exceptionId}
-                    className="rounded-card border border-line p-4"
-                  >
-                    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                      <span className="font-mono text-sm text-ink">
-                        {row.exceptionCode}
-                      </span>
-                      <span className="text-xs text-ink-muted">
-                        {row.dealershipId} · {formatIsoDate(row.exceptionDate)}
-                      </span>
-                      {row.exceptionAmount === null ? null : (
-                        <span className="font-mono text-sm text-ink">
-                          {formatCurrencyDifference(row.exceptionAmount, 2)}
-                        </span>
-                      )}
-                    </div>
-                    <p className="mt-2 text-sm text-ink-muted">{row.exceptionDetail}</p>
-                    <p className="mt-2 text-sm">
-                      {href === null ? (
-                        <span className="text-ink-faint">
-                          No drill-through available for this exception type
-                        </span>
-                      ) : (
-                        <a className="underline" href={href}>
-                          Open this position
-                        </a>
-                      )}
-                    </p>
-                  </li>
-                )
-              })}
-            </ul>
-          )}
-        </Container>
-      </Section>
-
-      {/* ------------------------------------------------------------------ */}
-      {/* Period ownership                                                    */}
-      {/* ------------------------------------------------------------------ */}
-      <Section id="timing" tone="evidence">
-        <Container width="full">
-          <SectionHeader
-            eyebrow="Period ownership"
-            title="Which date owns which row"
-            lede="Every section on this page is on a stated date basis. They are not interchangeable."
-          />
-          <dl className="grid gap-4 sm:grid-cols-2">
-            <div className="flex flex-col gap-0.5 border-t border-line pt-3">
-              <dt className="text-sm font-medium text-ink">Subledger balance</dt>
-              <dd className="text-sm text-ink-muted">
-                Accounting snapshot date — a month end. The schedule is a position, and a
-                unit still in stock at two month ends appears at both.
-              </dd>
-            </div>
-            <div className="flex flex-col gap-0.5 border-t border-line pt-3">
-              <dt className="text-sm font-medium text-ink">GL control balance</dt>
-              <dd className="text-sm text-ink-muted">
-                Balance date. Compared only against a subledger balance on the same date;
-                an unmatched date is not compared at all.
-              </dd>
-            </div>
-            <div className="flex flex-col gap-0.5 border-t border-line pt-3">
-              <dt className="text-sm font-medium text-ink">Reconciliation</dt>
-              <dd className="text-sm text-ink-muted">
-                The matched accounting and balance date, shown above. Positions from other
-                dates are not pooled into it.
-              </dd>
-            </div>
-            <div className="flex flex-col gap-0.5 border-t border-line pt-3">
-              <dt className="text-sm font-medium text-ink">Exceptions</dt>
-              <dd className="text-sm text-ink-muted">
-                The exception&rsquo;s own date, which is not restated into the period a
-                reader happens to be looking at.
-              </dd>
-            </div>
-          </dl>
-          <p className="mt-4 text-sm text-ink-muted">
-            ARPI records no posting timestamp, so no journal-posting delay is computable
-            and none is shown. The only timing figure the accounting domain supports is
-            the interval from a unit&rsquo;s acquisition to its first month-end appearance
-            on the schedule.
-          </p>
-        </Container>
-      </Section>
+            span={8}
+            meta={`${String(exceptions.length)} in scope`}
+            note="Each on its own exception date. Not one kind of finding, and deliberately not totalled together."
+          >
+            <ExceptionRegister
+              entries={exceptions.map((row) => ({
+                exceptionId: row.exceptionId,
+                exceptionCode: row.exceptionCode,
+                dealershipId: row.dealershipId,
+                exceptionDate: row.exceptionDate,
+                exceptionAmount: row.exceptionAmount,
+                exceptionDetail: row.exceptionDetail,
+                href: exceptionDrillThrough(row),
+              }))}
+              scenarioNote={CONTROLLED_SCENARIO_NOTE}
+            />
+          </Module>
+          <Module id="timing" title="Period ownership" span={4}>
+            <PeriodOwnership />
+          </Module>
+        </GridRow>
+      </Workspace>
     </Canvas>
   )
 }

@@ -25,30 +25,26 @@
  * use it for -- but its contents are then held to the same rule. Explanatory copy belongs
  * INSIDE the `<dd>` it qualifies, where a screen reader receives it as part of the
  * description rather than as loose text between groups.
+ *
+ * WHY THE SUBJECTS CHANGED AT `UX.2C`, AND WHY THE GUARD DID NOT. This file was written
+ * against three `/dashboard/leads-marketing` sections because that is where the defect was.
+ * `UX.2C` rebuilt that route and those three components no longer render anywhere: the
+ * figures that replaced them carry their qualifiers as bar labels rather than as definition
+ * lists, so there is no `<dl>` left on the route to guard. A guard pointed at a component
+ * nothing renders is a test that passes because it is checking nothing.
+ *
+ * It is therefore pointed at the definition lists `UX.2C` DOES ship -- the employees route's
+ * unassigned-activity block and every action card's evidence list, which is the largest
+ * population of `<dl>` groups in the console at sixty-odd instances of one component -- and
+ * the `toBeGreaterThan(0)` assertion on each is what stops the same erosion happening again.
+ * The rule, the fault detector and its own self-test are unchanged.
  */
 import { render } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
-import {
-  AppointmentOutcomesSection,
-  MarketingSection,
-  VendorDiscrepancySection,
-} from '../../src/components/dashboard/leads-marketing-sections.tsx'
-import { decodeDataset } from '../../src/lib/dashboard/data.ts'
-import {
-  buildAppointmentOutcomes,
-  buildMarketingSummary,
-  buildVendorDiscrepancy,
-  type LeadsScope,
-} from '../../src/lib/dashboard/leads-marketing.ts'
-import { appointmentSourceChunkFile } from '../../src/lib/dashboard/leads-marketing-chunks.ts'
-import {
-  campaignRows,
-  marketingPerformanceRows,
-} from '../../src/lib/dashboard/leads-marketing-data.ts'
-import { chunkFile } from '../../src/lib/dashboard/chunks.ts'
-import { dashboardLeadSources } from '../../src/lib/dashboard/data.ts'
-import type { DashboardRow } from '../../src/types/dashboard.ts'
+import { ReviewPrompt } from '../../src/components/dashboard/actions-workspace.tsx'
+import { UnassignedActivity } from '../../src/components/dashboard/employees-workspace.tsx'
+import { managementActions } from '../../src/lib/dashboard/actions-data.ts'
 
 /* -------------------------------------------------------------------------- */
 /* The rule                                                                    */
@@ -105,96 +101,59 @@ function definitionListFaults(container: HTMLElement): string[] {
 /* Fixtures — the real export, at the grain the route reads it                  */
 /* -------------------------------------------------------------------------- */
 
-const STORES = ['GSA-001', 'GSA-002', 'GSA-003'] as const
-const MONTH = '2025-12'
-
-function period() {
-  return {
-    start: `${MONTH}-01`,
-    end: `${MONTH}-31`,
-    label: 'December 2025',
-    months: [MONTH],
-    wholeMonths: [MONTH],
-    calendarDays: 31,
-    sellingDays: 27,
-  }
-}
-
-function scope(): LeadsScope {
-  return {
-    stores: [...STORES],
-    period: period(),
-    leadSources: null,
-    campaigns: null,
-  }
-}
-
-/**
- * Read a partition under a key that NAMES it.
- *
- * `decodeDataset` memoizes, and passing the bare dataset name would return the first
- * partition's rows for every store. The route builds the key this way and so does this.
+/*
+ * REAL EXPORT ROWS, NOT A HAND-WRITTEN FIXTURE. The defect this file exists for lived in the
+ * `.map()` that builds each group, so a fixture with one cell would have exercised the same
+ * code — but a builder that returns no rows for a scope would not, and these blocks change
+ * shape when a measure is unavailable. Real data keeps the rendered shape the one the route
+ * produces.
  */
-function appointments(): readonly DashboardRow[] {
-  const rows: DashboardRow[] = []
-  for (const store of STORES) {
-    const file = appointmentSourceChunkFile(store, MONTH)
-    if (file === undefined) throw new Error(`no appointment partition ${store}/${MONTH}`)
-    rows.push(...decodeDataset(`appointment-source-funnel/${store}/${MONTH}`, file))
-  }
-  return rows
-}
+const ACTIONS = managementActions()
 
-function funnelRows(): readonly DashboardRow[] {
-  const rows: DashboardRow[] = []
-  for (const store of STORES) {
-    const file = chunkFile('lead-funnel', store, MONTH)
-    if (file === undefined) throw new Error(`no lead-funnel partition ${store}/${MONTH}`)
-    rows.push(...decodeDataset(`lead-funnel/${store}/${MONTH}`, file))
+/** An action carrying more than one evidence row, which is what renders the `<dl>`. */
+function actionWithEvidence() {
+  const found = ACTIONS.find((action) => action.evidence.length > 1)
+  if (found === undefined) {
+    throw new Error(
+      'the exported queue carries no action with more than one evidence row'
+    )
   }
-  return rows
+  return found
 }
 
 /* -------------------------------------------------------------------------- */
 
-describe('the leads and marketing definition lists are structurally valid', () => {
-  /*
-   * Rendered from the REAL export rather than from a hand-written fixture. The defect
-   * lived in the `.map()` that builds each group, so a fixture with one cell would have
-   * exercised the same code — but a builder that returns no rows for a scope would not,
-   * and these sections change shape when a measure is unavailable. Real data keeps the
-   * rendered shape the same one the route produces.
-   */
-  it('AppointmentOutcomesSection keeps its notes inside the description', () => {
-    const { container } = render(
-      <AppointmentOutcomesSection
-        outcomes={buildAppointmentOutcomes(appointments(), scope())}
-      />
-    )
+describe('the operating definition lists are structurally valid', () => {
+  it("ReviewPrompt keeps its evidence rows inside the group's <dt>/<dd>", () => {
+    const { container } = render(<ReviewPrompt action={actionWithEvidence()} />)
     expect(container.querySelectorAll('dl').length).toBeGreaterThan(0)
     expect(definitionListFaults(container)).toEqual([])
   })
 
-  it('MarketingSection keeps its notes inside the description', () => {
-    const { container } = render(
-      <MarketingSection
-        marketing={buildMarketingSummary(
-          marketingPerformanceRows(),
-          campaignRows(),
-          scope(),
-          dashboardLeadSources
-        )}
-      />
-    )
-    expect(container.querySelectorAll('dl').length).toBeGreaterThan(0)
-    expect(definitionListFaults(container)).toEqual([])
+  it('every exported action renders a structurally valid evidence list', () => {
+    /*
+     * ONE COMPONENT, SIXTY-ODD INSTANCES, EVERY ONE CHECKED. The card's shape varies with the
+     * evidence it carries — a null value, a boolean, a currency, a bare count — and the
+     * defect this file guards is one a single well-chosen example would have missed on the
+     * route that shipped it.
+     */
+    for (const action of ACTIONS) {
+      const { container, unmount } = render(<ReviewPrompt action={action} />)
+      expect(definitionListFaults(container), action.actionId).toEqual([])
+      unmount()
+    }
   })
 
-  it('VendorDiscrepancySection keeps its notes inside the description', () => {
+  it('UnassignedActivity keeps its note inside the description', () => {
     const { container } = render(
-      <VendorDiscrepancySection
-        vendor={buildVendorDiscrepancy(marketingPerformanceRows(), funnelRows(), scope())}
-        wholeMonths={[MONTH]}
+      <UnassignedActivity
+        entries={[
+          {
+            label: 'Deliveries with nobody on the F&I desk',
+            count: 4,
+            note: 'Real retail deliveries with no finance manager credited. Inside the store total, outside the comparison above.',
+          },
+        ]}
       />
     )
     expect(container.querySelectorAll('dl').length).toBeGreaterThan(0)
@@ -203,27 +162,28 @@ describe('the leads and marketing definition lists are structurally valid', () =
 
   it('still renders the explanatory copy, rather than having dropped it', () => {
     /*
-     * THE FIX THIS TEST GUARDS COULD HAVE BEEN MADE BY DELETING THE NOTES. That would
-     * pass every structural assertion above and would be strictly worse than the defect:
-     * "KPI-FUN-004 · 188 of 309 eligible appointments · scheduled-date basis" is what
-     * tells a reader which denominator produced the figure. So the text is asserted
-     * present, and asserted to be inside the `<dd>` it qualifies.
+     * THE FIX THIS TEST GUARDS COULD HAVE BEEN MADE BY DELETING THE NOTES. That would pass
+     * every structural assertion above and would be strictly worse than the defect: the note
+     * beside an unassigned count is what tells a reader those transactions are inside the
+     * store total and outside the comparison. So the text is asserted present, and asserted
+     * to be inside the `<dd>` it qualifies.
      */
     const { container } = render(
-      <AppointmentOutcomesSection
-        outcomes={buildAppointmentOutcomes(appointments(), scope())}
+      <UnassignedActivity
+        entries={[
+          {
+            label: 'Valid leads assigned to nobody',
+            count: 12,
+            note: 'Real opportunity that reached no assignee. Counted in the store funnel, credited to no person.',
+          },
+        ]}
       />
     )
     const descriptions = [...container.querySelectorAll('dd')].map(
       (node) => node.textContent ?? ''
     )
-    expect(descriptions.some((text) => text.includes('KPI-FUN-004'))).toBe(true)
-    expect(descriptions.some((text) => text.includes('KPI-FUN-005'))).toBe(true)
-    expect(
-      descriptions.some((text) =>
-        text.includes('excluded from the show-rate denominator')
-      )
-    ).toBe(true)
+    expect(descriptions.some((text) => text.includes('12'))).toBe(true)
+    expect(descriptions.some((text) => text.includes('credited to no person'))).toBe(true)
   })
 })
 

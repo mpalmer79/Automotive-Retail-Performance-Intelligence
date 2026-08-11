@@ -46,7 +46,7 @@ import { operatingHref } from '@/lib/dashboard/navigation'
 import type { ComparedMetric } from '@/lib/dashboard/selectors'
 import { ROUTES } from '@/lib/site'
 
-import { FunnelChart, type FunnelStageBar } from './exec-visuals'
+import { FunnelChart, type FunnelStageBar } from './workspace-visuals'
 import { KpiDefinitionList, MetricReason, formatMetric, stateLabel } from './metric'
 
 export function LeadFunnel({

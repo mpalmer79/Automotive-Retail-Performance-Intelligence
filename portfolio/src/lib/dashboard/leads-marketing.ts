@@ -711,8 +711,40 @@ function marketingMeasures(
   }
 }
 
+/**
+ * One lead source's marketing economics, at the source grain.
+ *
+ * WHY THIS EXISTS AND WHAT IT IS NOT. `UX.2C` §14 asks for cost per lead, cost per sale and
+ * gross return to be COMPARABLE rather than only readable, and a comparison needs a grain
+ * coarse enough to be drawn. The exported rows are source × campaign and there are thirty-five
+ * of them in the widest scope; nineteen sources is a comparison, thirty-five campaign rows is
+ * the table that already exists.
+ *
+ * IT IS NOT A NEW MEASURE. `marketingMeasures` — the same function, unmodified — is already
+ * applied at two grains by this file: once per source × campaign group for `rows`, and once
+ * over every cost-attributable row for the group totals. This is that same function at a third
+ * documented group, so KPI-MKT-001, KPI-MKT-002 and KPI-MKT-003 keep their published
+ * definitions, the ratio-of-sums rule is inherited rather than re-implemented, and the organic
+ * rule that makes an owned source NOT APPLICABLE rather than $0.00 cannot be lost here because
+ * this code does not decide it.
+ */
+export interface MarketingSourceRow {
+  readonly sourceCode: string
+  readonly sourceName: string
+  readonly costAttributable: boolean
+  readonly spend: Figure
+  readonly attributedLeads: Exact
+  readonly attributedRetailUnits: Exact
+  readonly costPerLead: Figure
+  readonly costPerSale: Figure
+  readonly grossRoas: Figure
+  readonly costState: CostState
+}
+
 export interface MarketingSummary {
   readonly rows: readonly MarketingRow[]
+  /** The same governed measures at source grain, for the comparison. Business-code order. */
+  readonly bySource: readonly MarketingSourceRow[]
   readonly totalSpend: Figure
   readonly attributedLeads: Exact
   readonly attributedRetailUnits: Exact
@@ -815,11 +847,43 @@ export function buildMarketingSummary(
       (a.campaignCode ?? '').localeCompare(b.campaignCode ?? '')
   )
 
+  // The same grouping again, one level coarser. `marketingMeasures` decides the organic rule
+  // and the zero-denominator states, exactly as it does for the rows above and the totals
+  // below, so a source that carries no advertising cost arrives NOT APPLICABLE from the same
+  // branch rather than from a second copy of the rule that could drift away from it.
+  const bySourceGroups = new Map<string, DashboardRow[]>()
+  for (const row of selected) {
+    const source = textCell(row, 'lead_source_code')
+    const bucket = bySourceGroups.get(source)
+    if (bucket === undefined) bySourceGroups.set(source, [row])
+    else bucket.push(row)
+  }
+
+  const bySource: MarketingSourceRow[] = []
+  for (const [sourceCode, group] of bySourceGroups) {
+    const costAttributable = group.some((row) => row.is_cost_attributable === true)
+    const measures = marketingMeasures(group, costAttributable)
+    bySource.push({
+      sourceCode,
+      sourceName: sources.find((entry) => entry.code === sourceCode)?.name ?? sourceCode,
+      costAttributable,
+      spend: measures.spend,
+      attributedLeads: measures.attributedLeads,
+      attributedRetailUnits: measures.attributedRetailUnits,
+      costPerLead: measures.costPerLead,
+      costPerSale: measures.costPerSale,
+      grossRoas: measures.grossRoas,
+      costState: measures.costState,
+    })
+  }
+  bySource.sort((a, b) => a.sourceCode.localeCompare(b.sourceCode))
+
   const paidRows = selected.filter((row) => row.is_cost_attributable === true)
   const totals = marketingMeasures(paidRows, paidRows.length > 0)
 
   return {
     rows: built,
+    bySource,
     rowCount: selected.length,
     wholeMonths,
     monthGrainUnavailable: wholeMonths.length === 0,

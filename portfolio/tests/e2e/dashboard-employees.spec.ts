@@ -51,10 +51,14 @@ test.describe('the role family is addressable', () => {
       await expect(
         nav.getByRole('link', { name: role.label, exact: true })
       ).toHaveAttribute('aria-current', 'page')
-      // The surface actually changed, not just the highlight.
-      await expect(
-        page.getByRole('heading', { name: 'What this surface measures' })
-      ).toBeVisible()
+      // The surface actually changed, not just the highlight. `UX.2C` replaced the region
+      // heading with the family rail, whose module names the family and whose volume label
+      // is the one that family is credited in.
+      await expect(page.getByRole('heading', { name: 'This role family' })).toBeVisible()
+      await expect(page.locator('#summary')).toContainText('People credited')
+      await expect(page.locator('#summary')).toContainText(
+        'Comparison-eligible on the leading figure'
+      )
     })
   }
 
@@ -115,8 +119,10 @@ test.describe('the minimum sample is visible in the rendering', () => {
     expect(text, 'the committed below-floor scope has gone').toContain(
       'insufficient sample'
     )
-    // THE DENOMINATOR THAT CAUSED THE SUPPRESSION IS PUBLISHED BESIDE IT.
-    expect(text).toMatch(/\d+ retail units, minimum \d+/)
+    // THE DENOMINATOR THAT CAUSED THE SUPPRESSION IS PUBLISHED BESIDE IT. `UX.2C` made it a
+    // chip -- "Sample 9 of 10 retail units" -- so both the count and the floor are still on
+    // the row that carries the withheld figure.
+    expect(text).toMatch(/sample \d+ of \d+ retail units/)
 
     // AND THE SUPPRESSED FIGURE IS NOT PRINTED AS A NUMBER. A suppressed row must not carry
     // "$0" or "0.0%" in place of the ratio, because those are false statements rather than
@@ -153,7 +159,10 @@ test.describe('the minimum sample is visible in the rendering', () => {
       expect(text, `no sample labelled "${label}"`).toContain(label)
     }
     // The appointment-set denominator is CONTACTED leads and the page says so.
-    expect(text).toMatch(/n = \d+ contacted leads/)
+    expect(text).toMatch(/n \d+ contacted leads/)
+    // And the two grains are drawn apart rather than left to be inferred.
+    expect(text).toContain('lead grain')
+    expect(text).toContain('appointment grain')
   })
 })
 
@@ -293,7 +302,7 @@ test.describe('the page is complete without JavaScript', () => {
       // JavaScript disabled the document is already complete, so its text is read directly —
       // and `textContent` also reaches inside the closed methodology disclosure.
       const text = (await mainTextContent(page)).toLowerCase()
-      expect(text).toContain('what this surface measures')
+      expect(text).toContain('this role family')
       expect(text).toContain('credited activity, by person')
       expect(text).toContain('minimum sample')
       expect(await page.locator('li[data-employee]').count()).toBeGreaterThan(0)
@@ -316,7 +325,7 @@ test.describe('the page is complete without JavaScript', () => {
     await page.goto(`${ROUTE}?period=2025-12`)
     const text = (await mainTextContent(page)).toLowerCase()
     expect(text).toContain('insufficient sample')
-    expect(text).toMatch(/\d+ retail units, minimum \d+/)
+    expect(text).toMatch(/sample \d+ of \d+ retail units/)
     expect(text).toContain('tenure')
     expect(text).toContain('average active units')
     // The disclosure is a native <details>, so its contents are in the document even closed.

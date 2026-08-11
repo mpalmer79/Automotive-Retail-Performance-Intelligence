@@ -915,12 +915,12 @@ describe('ADR-0013 condition 2: no frontend redefines a KPI', () => {
     /*
      * The list is exhaustive and every entry but the first draws something. `decimal.ts`
      * declares the function; `visuals.tsx` holds eight primitives; `lead-funnel.tsx`
-     * sizes its own stage bars against leads received; `leads-marketing-sections.tsx`
-     * (`DASH.10`) reaches it in exactly one function, `widthOf`, which returns a CSS
-     * percentage for a funnel, band, stage-loss or source bar and is the only float on that
-     * page. `employees-sections.tsx` (`DASH.11`) reaches it in exactly one function,
-     * `shareWidth`, which turns a governed share into a CSS percentage for a mix bar; that
-     * page's other bar divides two integer counts and never touches an exact value at all.
+     * sizes its own stage bars against leads received; `leads-workspace.tsx` (`UX.2C`)
+     * reaches it in three functions that all return a CSS length, and is the only float on
+     * that page. `employees-workspace.tsx` (`DASH.11`, rebuilt at `UX.2C`) reaches it in
+     * exactly one function, `shareWidth`, which turns a governed share into a CSS percentage
+     * for a mix bar; that page's other bar divides two integer counts and never touches an
+     * exact value at all.
      * `pace-bar.tsx` is deliberately absent: it reaches the same conversion through
      * `paceBarGeometry` in `targets.ts`, which divides exactly first and hands the component
      * a ratio.
@@ -933,8 +933,19 @@ describe('ADR-0013 condition 2: no frontend redefines a KPI', () => {
       geometryImporters,
       'a module converted an exact value to a float for something other than geometry'
     ).toEqual([
+      // `UX.2C`. `BalanceComparison` converts the two balances once each, to scale two bars
+      // against their shared maximum and to mark the overhang between them. Both amounts and
+      // the signed variance are printed from `formatCurrencyExact` and
+      // `formatCurrencyDifference` over the exact values; the float never reaches a figure.
+      'components/dashboard/accounting-workspace.tsx',
       'components/dashboard/deal-headline.tsx',
-      'components/dashboard/employees-sections.tsx',
+      // `UX.2C`. `employees-sections.tsx` is no longer on this list because the file is gone:
+      // the three components that were left in it after the workspace rebuild were a mark, a
+      // formatter and a nav, none of which is a section, so they moved into
+      // `employees-workspace.tsx` and the emptied file was deleted rather than kept for its
+      // name. The one conversion it performed -- a governed share into a mix-bar width --
+      // moved with it.
+      'components/dashboard/employees-workspace.tsx',
       // `UX.2B`. `fi-workspace.tsx` reaches it in exactly two functions, `shareOf` and
       // `shareOfAmount`, which turn a governed ratio and a governed signed amount into a bar
       // width. Every percentage and every amount printed beside those bars comes from a
@@ -945,13 +956,18 @@ describe('ADR-0013 condition 2: no frontend redefines a KPI', () => {
       // module prints comes from a governed formatter over the exact value.
       'components/dashboard/inventory-workspace.tsx',
       'components/dashboard/lead-funnel.tsx',
-      'components/dashboard/leads-marketing-sections.tsx',
+      // `UX.2C`. Three functions reach it and all three return a CSS length: `widthOf` for a
+      // share of a stated population, `rateWidth` for a rate against its own 0-1 scale, and
+      // the matrix's `widthFor` for a value against its column's own largest. Every figure
+      // printed beside every one of those bars comes from a governed formatter over the
+      // exact value, and no bar's number is derived from its width.
+      'components/dashboard/leads-workspace.tsx',
       'components/dashboard/visuals.tsx',
       // `UX.2B`. `GroupedMeasureBars` turns a governed value into a bar width against the
       // measure's own largest subject. It is a width, every value is printed as text beside
-      // the bar, and no displayed figure is derived from the float. `exec-visuals.tsx` is no
-      // longer on this list: `FunnelChart` receives shares the view model already divided,
-      // and the two primitives that did convert moved into this file.
+      // the bar, and no displayed figure is derived from the float. `FunnelChart` joined this
+      // file at `UX.2C` and does not change the finding: it receives shares the view model
+      // already divided, and reaches no conversion of its own.
       'components/dashboard/workspace-visuals.tsx',
       'lib/dashboard/decimal.ts',
       // `UX.2B`. `summarizeInventory` divides a bucket's exact investment by the exact

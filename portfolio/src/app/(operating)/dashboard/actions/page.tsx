@@ -1,11 +1,8 @@
 import type { Metadata } from 'next'
 
-import {
-  ActionFacetBar,
-  ActionQueue,
-  ChangeDriverPanel,
-  QueueSummary,
-} from '@/components/dashboard/actions-sections'
+import { ChangeDriverBridge } from '@/components/dashboard/actions-sections'
+import { QueueShape, ReviewQueue } from '@/components/dashboard/actions-workspace'
+import { GridRow, Module, Workspace } from '@/components/dashboard/workspace-grid'
 import { ExportProvenance } from '@/components/dashboard/export-provenance'
 import {
   FilterNotice,
@@ -18,7 +15,6 @@ import {
 } from '@/components/dashboard/operating-page-header'
 import { Canvas } from '@/components/shell/field'
 import { Disclosure } from '@/components/ui/disclosure'
-import { Container, Section, SectionHeader } from '@/components/ui/layout'
 import { Text } from '@/components/ui/typography'
 import { DOMAIN_LABELS, SEVERITY_LABELS } from '@/lib/dashboard/action-contract'
 import { buildActionQueue, parseActionFacets } from '@/lib/dashboard/actions'
@@ -60,8 +56,35 @@ export const metadata: Metadata = pageMetadata('dashboardActions')
  * NOTHING HERE COMPUTES ANYTHING
  * ------------------------------
  * The queue arrives decided. This page selects from it and arranges it; it evaluates no
- * rule, reads no threshold and re-derives no figure. The change-driver panel is the same
- * `DASH.3` bridge the Sales and Gross page renders, read through one shared module.
+ * rule, reads no threshold and re-derives no figure. The change-driver bridge is the same
+ * `DASH.3` decomposition the Sales and Gross page and the Executive render, read through one
+ * shared module — there is no second bridge formula anywhere in this repository.
+ *
+ * WHAT THIS ROUTE WAS, MEASURED, AND WHAT IT IS NOW
+ * ------------------------------------------------
+ * `docs/reviews/UX-2C-BASELINE.md` measured it on the merge of `UX.2B.1` at **16,741 px** —
+ * eighteen and a half desktop screens, the tallest operating route in the console — with zero
+ * framed figures, forty-eight `<h3>`s, fifty-one `<details>` and 1,567 visible words across
+ * 207 paragraphs. The queue's shape was available only as counts inside a control bar, and the
+ * gross bridge, which is the strongest analytical object this project has, was the last thing
+ * on the page.
+ *
+ * `UX.2C` rebuilds it as the twelve-column module grid. The queue summary and the facet bar
+ * were the same numbers printed twice, one above the other; they are now one object in which
+ * the counts ARE the controls, drawn as four partitions of the queue. The bridge moved from the
+ * foot of the document to the first screen, beside them. And each of the sixty-two review
+ * prompts is compacted to what `UX.2C` §39 keeps visible — why it exists, the observed value,
+ * the threshold, the context and the drill-through — with the rule identifier, the entity, the
+ * date basis, the limitation and the full evidence set moved into the prompt's own disclosure,
+ * still in the served markup and still readable with scripting off.
+ *
+ * NOTHING WAS ADDED THAT WOULD MAKE THIS A TASK MANAGER (`UX.2C` §35). No Done, Complete,
+ * Resolve, Assign, assignee, due date, snooze, comment, workflow state or persistent note.
+ * `DASH.12` implements none of those and this increment implements none of them either.
+ *
+ * THE FIRST-VIEWPORT CONTRACT (`UX.2C` §5 and §52). At 1440 x 900: the queue size, its four
+ * distributions, the gross bridge, and the first review prompts. Both geometry modules carry
+ * `data-visual-region`.
  *
  * Server component.
  */
@@ -162,76 +185,99 @@ export default async function DashboardActionsPage({
         </div>
       </OperatingPageHeader>
 
-      {/* ------------------------------------------------------------------ */}
-      {/* Region 1 and 2 — the summary and the facets                         */}
-      {/* ------------------------------------------------------------------ */}
-      <Section id="queue">
-        <Container width="full">
-          <SectionHeader
-            eyebrow="Review queue"
-            title="What meets a review rule right now"
-            lede="Ordered by severity, then domain, then store, then rule. The order is a property of the data rather than of the reader: everyone looking at the same figures sees the same sequence."
-          />
-          <div className="flex flex-col gap-5">
-            <QueueSummary
+      <Workspace>
+        {/* ---------------------------------------------------------------- */}
+        {/* ROW 1 — how much there is, what it is made of, and what moved     */}
+        {/* ---------------------------------------------------------------- */}
+        {/*
+          THE QUEUE'S SHAPE AND THE GROSS BRIDGE ARE DIFFERENT KINDS OF FACT and sit beside
+          each other rather than nine screens apart. An action is a condition that HOLDS NOW;
+          a driver is arithmetic about a change that already happened. A general manager opens
+          this route asking both questions in one breath -- what needs review, and what moved
+          -- and the route used to answer the second at the foot of an eighteen-screen page.
+
+          THE BRIDGE MODULE CARRIES NO NOTE, deliberately. The distinction above is the reason
+          the two modules are separate, not a caption the reader needs printed: the figure's own
+          statement says what the decomposition found, and the disclosure under it says the
+          bridge attributes rather than establishes cause. A module note repeating the boundary
+          would be the same sentence twice on one screen, and it was 76 px of the phone budget
+          this route spends on reaching its first review prompt.
+        */}
+        <GridRow align="start">
+          <Module
+            id="queue"
+            title="The review queue"
+            span={8}
+            zone="performance"
+            visual="queue-shape"
+            meta={`Ruleset ${ruleset.fileSha256.slice(0, 12)}`}
+          >
+            <QueueShape
               view={view}
-              asOfDate={dashboardManifest.asOfDate}
               facets={facets}
+              asOfDate={dashboardManifest.asOfDate}
             />
-            <ActionFacetBar view={view} facets={facets} />
-            <ActionQueue view={view} />
-          </div>
-        </Container>
-      </Section>
+          </Module>
+          <Module
+            id="change-drivers"
+            title="What the gross change decomposes into"
+            span={4}
+            visual="change-bridge"
+          >
+            <ChangeDriverBridge drivers={drivers} authority={policy.authority} />
+          </Module>
+        </GridRow>
 
-      {/* ------------------------------------------------------------------ */}
-      {/* Region 4 — why did this change?                                     */}
-      {/* ------------------------------------------------------------------ */}
-      <Section id="change-drivers">
-        <Container width="full">
-          <SectionHeader
-            eyebrow="Change drivers"
-            title="Why did total gross change?"
-            lede="A decomposition of an observed period-over-period difference. Distinct from the queue above: an action is a condition that holds now, and a driver is arithmetic about a change that already happened."
-          />
-          <ChangeDriverPanel drivers={drivers} authority={policy.authority} />
-        </Container>
-      </Section>
+        {/* ---------------------------------------------------------------- */}
+        {/* ROW 2 — the queue, which is still the page's primary object       */}
+        {/* ---------------------------------------------------------------- */}
+        <GridRow>
+          <Module
+            id="prompts"
+            title="What meets a review rule right now"
+            span={12}
+            meta="Severity, then domain, then store, then rule"
+            note="The order is a property of the data rather than of the reader: everyone looking at the same figures sees the same sequence."
+          >
+            <ReviewQueue view={view} />
+          </Module>
+        </GridRow>
 
-      {/* ------------------------------------------------------------------ */}
-      {/* Region 5 — methodology on demand                                    */}
-      {/* ------------------------------------------------------------------ */}
-      <Section id="methodology">
-        <Container width="full">
-          <Disclosure label="How this queue is produced">
-            <div className="flex flex-col gap-3">
-              <Text size="sm">
-                Rules live in <code>{ruleset.file}</code> as data, not code, and are
-                evaluated once at export time against the datasets this console already
-                publishes. The queue is then a governed artifact with its own hash,
-                exactly like a dataset.
-              </Text>
-              <Text size="sm">
-                The rule file is an input to the published data. Changing a threshold
-                changes the queue even though no business fact moved, so the export check
-                re-derives the queue from the current rule file and fails if the committed
-                one differs. Ruleset {ruleset.fileSha256.slice(0, 12)} produced what is
-                shown here.
-              </Text>
-              <Text size="sm">
-                Facet counts are counts of the queue on this page. They are presentation
-                figures derived from the rows, not new measures, and the generator refuses
-                a count that disagrees with the rows it counts.
-              </Text>
-              <Text size="sm">
-                Every drill-through is checked against the console&rsquo;s own route
-                registry before the queue is written, so a link here cannot point at a
-                retired route or carry a parameter its destination does not read.
-              </Text>
-            </div>
-          </Disclosure>
-        </Container>
-      </Section>
+        {/* ---------------------------------------------------------------- */}
+        {/* ROW 3 — how the queue is produced                                 */}
+        {/* ---------------------------------------------------------------- */}
+        <GridRow>
+          <Module id="methodology" title="How this queue is produced" span={12}>
+            <Disclosure label="Where the rules live, and what keeps them honest">
+              <div className="flex flex-col gap-3">
+                <Text size="sm">
+                  Rules live in <code>{ruleset.file}</code> as data, not code, and are
+                  evaluated once at export time against the datasets this console already
+                  publishes. The queue is then a governed artifact with its own hash,
+                  exactly like a dataset.
+                </Text>
+                <Text size="sm">
+                  The rule file is an input to the published data. Changing a threshold
+                  changes the queue even though no business fact moved, so the export
+                  check re-derives the queue from the current rule file and fails if the
+                  committed one differs. Ruleset {ruleset.fileSha256.slice(0, 12)}{' '}
+                  produced what is shown here.
+                </Text>
+                <Text size="sm">
+                  Facet counts are counts of the queue on this page. They are presentation
+                  figures derived from the rows, not new measures, and the generator
+                  refuses a count that disagrees with the rows it counts.
+                </Text>
+                <Text size="sm">
+                  Every drill-through is checked against the console&rsquo;s own route
+                  registry before the queue is written, so a link here cannot point at a
+                  retired route or carry a parameter its destination does not read.
+                </Text>
+              </div>
+            </Disclosure>
+          </Module>
+        </GridRow>
+      </Workspace>
     </Canvas>
   )
 }

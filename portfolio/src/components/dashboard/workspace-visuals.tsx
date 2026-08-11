@@ -7,8 +7,10 @@
  * needed and the console-wide set did not have, and it said in its own docstring what would
  * happen next: *"If a second route ever renders one of these, it moves."* `UX.2B` renders two
  * of the three on `/dashboard/sales-gross`, `/dashboard/inventory` and `/dashboard/fi`, so
- * they moved. `MetricSwitch` and the grouped comparison are here; `FunnelChart` is still
- * rendered by one route and stayed where it was.
+ * they moved. `UX.2C` draws the third on `/dashboard/leads-marketing`, so it moved too, and
+ * `exec-visuals.tsx` is gone rather than left behind as an empty file with a name that no
+ * longer describes anything. The move is the whole of that change: no prop, no geometry and
+ * no markup travelled with it.
  *
  * They did not move into `visuals.tsx`, and the reason is the one that kept them out of it
  * the first time: that module is 1,750 lines carrying eight primitives, and the two below
@@ -500,5 +502,189 @@ export function StoreMeasureBars({
       headingLevel={headingLevel}
       {...(className === undefined ? {} : { className })}
     />
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+/* FunnelChart                                                                 */
+/* -------------------------------------------------------------------------- */
+
+/** One stage of the funnel, ready to render. */
+export interface FunnelStageBar {
+  readonly key: string
+  readonly label: string
+  /** The count, already formatted, or the words for a state that is not a value. */
+  readonly display: string
+  /**
+   * The stage's share of the FIRST stage, `0`-`1`, or `null` where it is undefined.
+   *
+   * Arithmetic on two exported columns for the geometry, and labelled as such wherever it
+   * is printed. It is not one of the governed rates: those arrive on `rate` with their
+   * catalogue identifiers, and the two are never presented as the same kind of thing.
+   */
+  readonly share: number | null
+  readonly shareDisplay: string | null
+  /** The governed rate published for this stage against leads received, if any. */
+  readonly rate: {
+    readonly display: string
+    readonly kpiId: string | null
+  } | null
+}
+
+/**
+ * The five governed funnel stages, as a nesting.
+ *
+ * WHY A NESTING AND NOT A RAMP. Each stage is a SUBSET of the one above it, so the
+ * narrowing width already carries the whole progression. A colour ramp down the stages
+ * would have to say which end is the good end, and this console publishes no governed
+ * favourable direction for conversion — the same reasoning `lead-funnel.tsx` recorded when
+ * this was a table with a bar in one column.
+ *
+ * WHAT CHANGED FROM THE TABLE, AND WHAT DID NOT. The presentation. Every stage, every
+ * count, every governed rate and every catalogue identifier is the same value from the
+ * same selector; the share is the same two-column division, still labelled as arithmetic
+ * rather than as a KPI; show rate is still absent from the "Showed" stage, because
+ * KPI-FUN-004 has a different denominator and putting it here would relabel a measure
+ * rather than report one.
+ *
+ * A ZERO BASE HAS NO SHARES. Drawing five stages at zero width would present "nobody
+ * enquired" as "everybody dropped out at the first step", so `share` is `null` and the
+ * row says so.
+ */
+export function FunnelChart({
+  title,
+  caption,
+  stages,
+  shareNote,
+  headingLevel = 3,
+  className,
+}: {
+  readonly title: string
+  readonly caption?: ReactNode
+  readonly stages: readonly FunnelStageBar[]
+  /** The one sentence that keeps the bar from being read as a governed rate. */
+  readonly shareNote: string
+  readonly headingLevel?: 2 | 3 | 4
+  readonly className?: string
+}) {
+  const summary =
+    stages.length === 0
+      ? 'No funnel stage resolves for this scope.'
+      : stages
+          .map(
+            (stage) =>
+              `${stage.label} ${stage.display}` +
+              (stage.rate === null ? '' : ` (${stage.rate.display})`)
+          )
+          .join(', ') + '.'
+
+  return (
+    <ChartFrame
+      title={title}
+      caption={caption}
+      summary={summary}
+      summaryMode="sr-only"
+      headingLevel={headingLevel}
+      className={className}
+    >
+      <ul className="flex flex-col gap-2">
+        {stages.map((stage) => (
+          <li key={stage.key} className="flex flex-col gap-1">
+            {/*
+              THE ROW WRAPS RATHER THAN TRUNCATING. `UX.2C` renders this figure in a
+              three-of-twelve module, where the stage name, the count, the governed rate and
+              its identifier do not fit on one line: `Appointment set` truncated to
+              `Appoi…`, which is a stage nobody can name. A wrapped row is taller by one
+              line on a narrow panel and identical on a wide one; a truncated label is
+              wrong at every width it happens at.
+            */}
+            <p className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+              <span className="min-w-0 text-xs text-ink-secondary">{stage.label}</span>
+              <span className="flex shrink-0 items-baseline gap-2">
+                <span className="numeric text-sm font-semibold text-ink">
+                  {stage.display}
+                </span>
+                {stage.rate === null ? null : (
+                  <span className="numeric text-2xs text-ink-muted">
+                    {stage.rate.display}
+                    {stage.rate.kpiId === null ? null : (
+                      <span className="font-mono text-ink-faint">
+                        {' '}
+                        {stage.rate.kpiId}
+                      </span>
+                    )}
+                  </span>
+                )}
+              </span>
+            </p>
+            {stage.share === null ? (
+              <p className="text-2xs text-ink-faint">
+                No proportion is defined without leads received
+              </p>
+            ) : (
+              <span
+                aria-hidden="true"
+                className="flex h-4 w-full items-center gap-2 overflow-hidden rounded-xs bg-surface-sunken"
+              >
+                <span
+                  className="h-full rounded-xs bg-data-primary"
+                  style={{ width: percent(stage.share) }}
+                />
+                <span className="numeric shrink-0 pr-1 text-2xs text-ink-faint">
+                  {stage.shareDisplay}
+                </span>
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
+
+      <p className="text-2xs leading-normal text-ink-faint">{shareNote}</p>
+
+      <TableDisclosure title={title}>
+        <table className="w-full border-collapse text-sm">
+          <caption className="sr-only">{`${title}. ${summary}`}</caption>
+          <thead>
+            <tr className="border-b border-line-subtle text-left">
+              <th scope="col" className="py-2 pr-3 font-medium text-ink-muted">
+                Stage
+              </th>
+              <th scope="col" className="py-2 pr-3 text-right font-medium text-ink-muted">
+                Leads
+              </th>
+              <th scope="col" className="py-2 pr-3 text-right font-medium text-ink-muted">
+                Share of leads received
+              </th>
+              <th scope="col" className="py-2 text-right font-medium text-ink-muted">
+                Governed rate
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {stages.map((stage) => (
+              <tr
+                key={stage.key}
+                className="border-b border-line-subtle/60 last:border-0"
+              >
+                <th scope="row" className="py-1.5 pr-3 font-normal text-ink-secondary">
+                  {stage.label}
+                </th>
+                <td className="numeric py-1.5 pr-3 text-right text-ink">
+                  {stage.display}
+                </td>
+                <td className="numeric py-1.5 pr-3 text-right text-ink-muted">
+                  {stage.shareDisplay ?? 'Not defined'}
+                </td>
+                <td className="numeric py-1.5 text-right text-ink">
+                  {stage.rate === null
+                    ? 'No governed rate at this stage'
+                    : `${stage.rate.display}${stage.rate.kpiId === null ? '' : ` (${stage.rate.kpiId})`}`}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </TableDisclosure>
+    </ChartFrame>
   )
 }

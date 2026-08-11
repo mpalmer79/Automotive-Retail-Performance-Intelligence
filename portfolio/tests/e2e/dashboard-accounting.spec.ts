@@ -50,7 +50,9 @@ test.describe('the accounting route renders its governed figures', () => {
     expect(text).toMatch(/Inventory subledger/i)
     expect(text).toMatch(/GL control balance/i)
     expect(text).toMatch(/Signed variance/i)
-    expect(text).toMatch(/Comparison date/i)
+    // The date the position was taken. `UX.2C` moved it onto the rail beside the balances it
+    // governs, so it cannot scroll away from them.
+    expect(text).toMatch(/Position at/i)
     // A real date, not a placeholder.
     expect(text).toMatch(/\d{1,2} \w+ \d{4}/)
   })
@@ -62,7 +64,7 @@ test.describe('the accounting route renders its governed figures', () => {
       /(general ledger carries more|subledger carries more|two sides agree exactly)/i
     )
     // And the convention itself is on the page rather than assumed.
-    expect(text).toMatch(/general ledger minus subledger/i)
+    expect(text).toMatch(/GL minus subledger/i)
   })
 
   test('renders a missing side as missing rather than as a zero balance', async ({
@@ -73,7 +75,8 @@ test.describe('the accounting route renders its governed figures', () => {
 
     // The development export carries at least one one-sided position at the latest date.
     expect(text).toMatch(/No (GL|subledger) balance/i)
-    expect(text).toMatch(/Positions not comparable/i)
+    expect(text).toMatch(/Not comparable/i)
+    expect(text).toMatch(/missing GL, \d+ missing subledger/i)
     // A one-sided row shows "Not comparable" in the variance column, never a number.
     expect(text).toMatch(/Not comparable/i)
   })
@@ -101,8 +104,14 @@ test.describe('the accounting route renders its governed figures', () => {
 
   test('states which date owns which row', async ({ page }) => {
     await gotoRendered(page, ROUTE)
-    const text = await mainText(page)
-    expect(text).toMatch(/Which date owns which row/i)
+    /*
+     * `UX.2C` moved this from a full region at the foot of the page -- 130 of the route's 422
+     * words -- into the disclosure the console uses for detail a reader needs exactly once.
+     * `mainTextContent` reads inside a closed `<details>`, which is the point: it is still in
+     * the served markup, in reading order, and findable by a browser text search.
+     */
+    const text = await mainTextContent(page)
+    expect(text).toMatch(/which date owns which row/i)
     expect(text).toMatch(/Accounting snapshot date/i)
     expect(text).toMatch(/Balance date/i)
     // The narrowed timing basis, and the reason there is no posting lag.

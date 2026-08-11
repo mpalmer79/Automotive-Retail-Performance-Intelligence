@@ -746,3 +746,126 @@ matter:
   checking that the column header still carries the qualifier for a reader who opens the table.
 
 No test was deleted and no assertion was weakened.
+
+---
+
+## `UX.2C` — the demand, people and control workspaces
+
+`tests/unit/ux2c-workspaces.test.tsx` adds **38** tests and
+`tests/e2e/ux2c-workspaces.spec.ts` **26**, in the same two halves `UX.2B` established.
+
+### 1. Geometry that moves — `UX.2C` §55
+
+Each new visual is rendered in two materially different states and its geometry compared. The
+assertion is on the set of rendered CSS widths, so a primitive that ignored its input — a
+full-width bar, a fixed composition, two identical balance bars — fails on the property that makes
+it decorative rather than on a rendered string.
+
+Covered: the lead-grain funnel (and that it narrows monotonically, because every stage is a subset
+of the first), the appointment progression, the response distribution, the stage-loss partition,
+the source matrix, the balance comparison, the comparison-state population, the employee family
+rail and the action queue's four facet partitions.
+
+**Two of them assert a property a "geometry changed" test would miss.**
+
+- *the balance comparison scales both balances against one shared maximum*. Scaling each bar to
+  its own maximum draws two identical full-width bars whatever the variance is — a chart whose
+  geometry never moves while passing a change test, because the two states differ elsewhere. The
+  assertion is that the larger side pins at 100% and the smaller does not.
+- *the source matrix draws no bar at all for a rate that does not exist*. A rate with no
+  denominator is not a rate of zero, and the failure mode is a zero-length bar rather than a
+  missing one. The assertion counts one FEWER bar after an absence is injected, which a width
+  comparison would have passed.
+
+**The helper has its own self-test**, for the reason §58 gives: a geometry assertion that returns
+an empty set for everything passes for the wrong reason, so the width reader is shown a tree with
+no geometry and required to find none, and a tree with one known width and required to read it.
+
+### 2. Semantics that hold — `UX.2C` §56
+
+The denominators, the grains, the absence states, the ordering contract and the facet semantics
+the increment could plausibly have broken while rearranging the pages that carry them. Several
+perturb the INPUT exactly as a mistaken selector would.
+
+The two worth naming:
+
+- **the employee ordering contract.** The rendered `data-employee` sequence is asserted equal to
+  the view's, the view's equal to store|role|code ascending, AND **not** equal to descending
+  volume — which on the real export it is not, so the assertion can fail. A later refactor that
+  reached for `.sort((a, b) => b.volume - a.volume)` because it "reads better" fails here rather
+  than merges.
+- **the action queue's facet semantics.** Selecting `severity=high` must narrow `shown` without
+  changing `total` or any domain count, because the counts are counts of the whole queue and a
+  cross-filtered count answers a question nobody asked.
+
+### 3. Three bans that had to be written as contracts, not word lists
+
+A substring ban is the obvious way to assert an absence and it is wrong three times here, in a way
+worth recording because the failure is silent in the other direction — a ban that fires on correct
+copy teaches the next person to delete the test rather than the defect.
+
+- **`age` is inside `average` and `manager`**, and `rank` inside `franchise`. The employee privacy
+  guard uses word boundaries.
+- **`leaderboard` is on the employees page**, in the sentence that refuses to be one: *"a list
+  sorted by a measure is a leaderboard whether or not it is labelled one."* The guard asserts that
+  exact sentence rather than banning the word, because deleting the sentence would remove the
+  statement that makes the ordering rule legible.
+- **`completed`, `assigned` and `workflow state` are on the actions page**, in the sentence saying
+  the queue holds none of them. The no-task-manager guard bans the CONTROLS instead — no
+  `assignee`, no `due date`, no `snooze`, no `mark as done` — and asserts the rendered tree
+  contains **zero** `button`, `input` or checkbox elements, which is the property that actually
+  distinguishes a review queue from a task list.
+
+### 4. Geometry a reader can see — `tests/e2e/ux2c-workspaces.spec.ts`
+
+- **The first-viewport contracts (§5)**, one per route at 1440 × 900, read off
+  `data-visual-region` offsets, and held under a filter on Leads and under every role on
+  Employees.
+- **The phone contract (§52)** at 390 × 844: `UX.2C` names TWO screens, and the assertion is that
+  the primary state and the first analytical figure are both inside 1,688 px.
+- **Height ceilings (§54)** set well above the measured after-figures. They exist to catch a
+  regression toward the baseline shape, not to freeze a layout — §54 says the goal is analytical
+  density rather than minimum pixels.
+- **The responsive matrix (§51)** at eight widths, plus an assertion that no money value or
+  identifier wraps mid-token at 320 px.
+- **No-JavaScript (§50)** per route, including that the Actions facets and the employee role
+  switch still navigate, because they are links.
+- **Tab-order ceilings (§49)**, and an assertion that no drawn mark is focusable on any of the
+  four routes. The `UX.2B` scatter review is the reason: direct drill-through is useful and
+  hundreds of sequential focus stops is still a regression.
+
+### 5. PR #55's definition-list guard, repointed rather than retired
+
+`tests/unit/dashboard-definition-lists.test.tsx` was written against three
+`/dashboard/leads-marketing` sections. `UX.2C` rebuilt that route and those components no longer
+render anywhere: the figures that replaced them carry their qualifiers as bar labels rather than
+as definition lists, so there is no `<dl>` left on the route to guard.
+
+**A guard pointed at a component nothing renders is a test that passes because it is checking
+nothing**, which is the failure mode this file was created to prevent in the first place. It now
+checks the lists `UX.2C` does ship — the employees route's unassigned-activity block, and **every
+one of the exported action cards individually** rather than one chosen example, because the card's
+shape varies with the evidence it carries. The rule, the fault detector and its own self-test are
+unchanged, and each subject still asserts `toBeGreaterThan(0)` on the `<dl>` count so the same
+erosion cannot happen again.
+
+### 6. Existing tests that changed, and why
+
+Thirty e2e assertions across the four per-route suites were reading copy the rebuild replaced.
+**None was deleted and none was weakened**; each was repointed at the same contract in its new
+form, and several were made stronger:
+
+- *shows the cancellation rate on the same block as the show rate* now also asserts
+  `Eligible to show` and `removed from the show-rate denominator` — the exclusion is drawn as a
+  bar rather than asserted in a sentence, so the test checks the geometry's labels.
+- *keeps the wide marketing table inside its own scroll container* now opens the disclosure the
+  table moved into — the reader's actual path to it — and asserts the region carries `tabindex="0"`
+  before checking that it scrolls.
+- *states which date owns which row* now reads through `mainTextContent`, which reaches inside a
+  closed `<details>`. That is the point: the period-ownership matrix is still in the served markup,
+  in reading order and findable by a browser text search, and the assertion proves it.
+
+**One defect was found by these tests rather than by eye.** The employee context chip rendered its
+label and value as two flex children with a gap, so `textContent` read `Sample9 of 10 retail units`
+as one token — invisible to a sighted reader and wrong for a screen reader. The separator is a
+character now.

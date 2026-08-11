@@ -122,7 +122,11 @@ test.describe('a queue row carries what a reader needs to check it', () => {
   test('offers the review prompt and the drill-through', async ({ page }) => {
     await gotoRendered(page, ROUTE)
     const text = await mainText(page)
-    expect(text).toMatch(/Review next:/)
+    // `UX.2C` compacted the prompt: the recommended review is the line above the link rather
+    // than a labelled field, and the review role, the observed value and the threshold are
+    // all still on the card.
+    expect(text).toMatch(/Review role:/)
+    expect(text).toMatch(/project default/i)
     await expect(
       page.getByRole('link', { name: /Open the evidence behind this/ }).first()
     ).toBeVisible()
@@ -234,7 +238,11 @@ test.describe('the change drivers explain a change without claiming a cause', ()
   test('renders the decomposition and its total', async ({ page }) => {
     await gotoRendered(page, ROUTE)
     const text = await mainText(page)
-    expect(text).toMatch(/Why did total gross change/i)
+    // The panel became the waterfall the Executive already draws -- one bridge, one formula,
+    // read through one shared module -- so the module title carries the subject and the
+    // figure carries the month.
+    expect(text).toMatch(/What the gross change decomposes into/i)
+    expect(text).toMatch(/Total gross change/i)
     expect(text).toMatch(/Volume effect|Front PVR effect|Back PVR effect/)
     expect(text).toMatch(/bridge attributes/i)
   })
@@ -305,8 +313,10 @@ test.describe('the page works without JavaScript', () => {
     const text = await page.locator('main').innerText()
     expect(text).toMatch(/open review prompts/)
     expect(text).toMatch(/Review role:/)
-    expect(text).toMatch(/Review next:/)
     expect(text).toMatch(/project default/i)
+    // The four facet partitions are links, so the queue's shape is readable with no script.
+    expect(text).toMatch(/Severity/)
+    expect(text).toMatch(/Review role/)
   })
 
   test('renders the change drivers', async ({ page }) => {
