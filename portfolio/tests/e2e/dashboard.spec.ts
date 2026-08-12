@@ -884,7 +884,16 @@ test.describe('KPI methodology', () => {
         `the overview links to the unbuilt ${unbuilt}`
       ).toBe(false)
     }
-    expect(hrefs.some((href) => href.startsWith('/kpis#KPI-'))).toBe(true)
+    /*
+     * `UX.2D` REPOINTED THE CATALOGUE LINK AT THE CATALOGUE.
+     *
+     * `/kpis` is the address the KPI catalogue had before `UX.1` consolidated the six
+     * documentation routes into `/technical`. It still resolves — it is one of the eight
+     * permanent redirects the route map keeps — so every KPI identifier on the console
+     * was one 308 away from its definition. `kpiCatalogueHref` builds the real address.
+     */
+    expect(hrefs.some((href) => href.startsWith('/technical?view=kpis#KPI-'))).toBe(true)
+    expect(hrefs.some((href) => href.startsWith('/kpis#'))).toBe(false)
   })
 
   test('the unbuilt console routes are not reachable and answer 404', async ({

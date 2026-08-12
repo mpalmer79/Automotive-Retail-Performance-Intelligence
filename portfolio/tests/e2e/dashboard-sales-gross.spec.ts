@@ -33,7 +33,8 @@ test.describe('the route exists and states its context', () => {
     const text = await mainText(page)
     expect(text).toContain('December 2025')
     expect(text).toContain('November 2025')
-    expect(text).toMatch(/Granite Auto Group, all three stores/i)
+    // `UX.2D`: one scope vocabulary across nine routes. See `lib/dashboard/scope.ts`.
+    expect(text).toMatch(/All three stores/i)
   })
 
   test('marks itself current in the operating rail', async ({ page }) => {
