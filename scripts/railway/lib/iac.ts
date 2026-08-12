@@ -39,6 +39,30 @@ import { REPO_ROOT, IAC_PATH, type ToolingSpec } from './spec.ts'
  */
 export const TARGET_ENVIRONMENT_VARIABLE = 'ARPI_RAILWAY_TARGET_ENVIRONMENT'
 
+/**
+ * The variable through which PER-INVOCATION production intent reaches the
+ * declaration, added by the `DASH.13` closeout.
+ *
+ * `DASH.13` approved a production release and taught `bootstrap_railway.ts` to
+ * accept `--environment production --confirm-production`, but `.railway/railway.ts`
+ * still threw on any evaluation whose target was production. The approved path
+ * therefore failed at OFFLINE VALIDATION, before a token was even read — the
+ * repository declared production supported and the declaration refused it.
+ *
+ * The declaration now refuses production unless BOTH hold:
+ *
+ *   1. `project.productionRelease.approved` is true — the standing decision,
+ *      reviewable in the repository;
+ *   2. this variable is exactly `"true"` — the per-invocation intent, set ONLY by
+ *      a tool that was given `--confirm-production` on its command line.
+ *
+ * Keeping the second signal separate from the environment NAME is the point. A
+ * stray `railway config apply` linked to production, or an ambient
+ * `RAILWAY_ENVIRONMENT_NAME=production`, supplies a name and nothing else, so the
+ * declaration still throws. Intent has to be typed.
+ */
+export const CONFIRM_PRODUCTION_VARIABLE = 'ARPI_RAILWAY_CONFIRM_PRODUCTION'
+
 /* -------------------------------------------------------------------------- */
 /* The graph shape, narrowed to what this repository asserts on               */
 /* -------------------------------------------------------------------------- */
@@ -159,7 +183,16 @@ export function resolveRunnerHint(tooling: ToolingSpec): string {
  * `stdio: ['ignore', ...]` closes it.
  */
 export async function evaluateIac(
-  options: { file?: string; environmentName?: string } = {}
+  options: {
+    file?: string
+    environmentName?: string
+    /**
+     * Whether the caller was given explicit production intent on ITS command
+     * line. Defaults to false, which is the fail-closed direction: a caller that
+     * says nothing is a caller that did not ask for production.
+     */
+    confirmProduction?: boolean
+  } = {}
 ): Promise<EvaluateResult> {
   const file = options.file ?? join(REPO_ROOT, IAC_PATH)
   const args = ['--command', 'evaluate', '--file', file, '--compact']
@@ -176,6 +209,15 @@ export async function evaluateIac(
   const env: NodeJS.ProcessEnv = { ...process.env }
   if (options.environmentName !== undefined) {
     env[TARGET_ENVIRONMENT_VARIABLE] = options.environmentName
+  }
+  // Set only when the caller genuinely holds the confirmation, and DELETED
+  // otherwise rather than left to whatever the ambient environment carries: an
+  // inherited `ARPI_RAILWAY_CONFIRM_PRODUCTION=true` from some earlier shell must
+  // not confirm a run that did not ask for production.
+  if (options.confirmProduction === true) {
+    env[CONFIRM_PRODUCTION_VARIABLE] = 'true'
+  } else {
+    delete env[CONFIRM_PRODUCTION_VARIABLE]
   }
 
   const { stdout, stderr } = await new Promise<{

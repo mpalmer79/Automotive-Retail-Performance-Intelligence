@@ -1,5 +1,5 @@
 {
-  "schema": "arpi.deployment_evidence/1",
+  "schema": "arpi.deployment_evidence/2",
   "_comment": [
     "NON-SECRET DEPLOYMENT EVIDENCE. Three deployments are recorded separately because",
     "they are three different claims, and collapsing them is how a live website comes to",
@@ -34,7 +34,22 @@
     "This paragraph states the rule rather than which fields happen to be filled today.",
     "The sentence it replaces asserted that every such field WAS UNVERIFIED, and became",
     "false the moment the first verification landed - a stale claim inside the very file",
-    "that exists to hold claims to their evidence."
+    "that exists to hold claims to their evidence.",
+    "",
+    "SCHEMA 2, WRITTEN BY THE DASH.13 CLOSEOUT. Schema 1 held ONE verification block, at",
+    "portfolio level, because there was one environment there could be. Once production",
+    "became a supported target that shape had a defect with no error in it: recording a",
+    "production verification would have OVERWRITTEN staging's, and the file would then",
+    "carry one set of check results under two environments without saying which run they",
+    "came from. Verification is now recorded inside the environment it is about, so the",
+    "two records cannot collide and neither can be mistaken for the other.",
+    "",
+    "ROLE IS INTENT, NOT INFERENCE. `role` says whether a deployment is the public one.",
+    "It is supplied by whoever records the evidence and is never derived from the URL:",
+    "https://arpi.up.railway.app looks exactly like a production origin and has been",
+    "staging's throughout. `indexing_role` and `canonical_role` are the OBSERVED",
+    "counterparts, read off the live deployment, and the recorder refuses to write a",
+    "record whose observation contradicts its declared role."
   ],
   "portfolio": {
     "_comment": [
@@ -46,6 +61,7 @@
     "environments": [
       {
         "environment": "staging",
+        "role": "preview",
         "service_name": "arpi-portfolio",
         "public_url": "https://arpi.up.railway.app",
         "health_path": "/technical",
@@ -55,47 +71,63 @@
         "health_verified_at": "2026-08-01T20:31:00+00:00",
         "remote_smoke_test": "81 passed, 0 failed, 1 skipped, 0 flaky",
         "security_headers": "passed (1)",
-        "connects_to_database": false
+        "connects_to_database": false,
+        "indexing_role": "UNVERIFIED",
+        "canonical_role": "UNVERIFIED",
+        "verification": {
+          "_comment": [
+            "Written by scripts/record_deployment_evidence.py from a run of",
+            "portfolio/tests/remote/deployed-site.spec.ts against THIS environment.",
+            "Each check names the assertion that proves it; a check whose test did not",
+            "run reads UNVERIFIED rather than inheriting the suite's overall verdict.",
+            "",
+            "POINT IN TIME, NOT CONTINUOUS. This records one run against one commit. It",
+            "goes stale the moment either changes, and nothing here re-runs on a schedule.",
+            "Re-run the Verify deployment workflow to refresh it.",
+            "",
+            "Migrated from schema 1's single portfolio-level block by the DASH.13 closeout.",
+            "The run it records is unchanged: workflow run 30717032559, 2026-08-01, against",
+            "the staging deployment. indexing_role and canonical_role read UNVERIFIED",
+            "because that run predates the fields and nothing may be filled in by hand."
+          ],
+          "homepage_http_ok": true,
+          "verified_at": "2026-08-01T20:31:00+00:00",
+          "workflow_run": "https://github.com/mpalmer79/Automotive-Retail-Performance-Intelligence/actions/runs/30717032559",
+          "suite_green": true,
+          "checks": {
+            "routes_reachable": "passed (8)",
+            "status_route": "passed (1)",
+            "machine_readable_routes": "passed (1)",
+            "canonical_metadata": "passed (8)",
+            "sitemap": "passed (1)",
+            "case_study_locked": "passed (1)",
+            "security_headers": "passed (1)",
+            "no_localhost_url": "passed (1)",
+            "no_database_connection": "passed (1)",
+            "no_console_error": "passed (1)",
+            "mobile_navigation": "passed (1)",
+            "reduced_motion": "passed (1)"
+          }
+        }
       }
     ],
     "production_environment": "not-created",
+    "production_environment_note": [
+      "No Railway production environment exists, so no production record appears above.",
+      "The DASH.13 closeout made the tooling able to create and verify one and did not",
+      "create one: RAILWAY_API_TOKEN is not configured in GitHub Actions (proved by run",
+      "31650259855, which printed 'token : MISSING' and exited 2 at authentication), and",
+      "the environments this project is developed in answer 403 to CONNECT against the",
+      "Railway API. Writing a production record here would be the one thing this file",
+      "exists to prevent."
+    ],
     "connects_to_database_evidence": [
       "deployment/railway/project.config.json services.portfolio.requiresDatabase = false",
       "deployment/railway/project.config.json deliberatelyAbsent.websiteDatabaseAccess",
       "scripts/railway/verify_railway_configuration.ts"
     ],
     "remote_suite": "portfolio/tests/remote/deployed-site.spec.ts",
-    "remote_suite_last_run": "2026-08-01T20:31:00+00:00",
-    "verification": {
-      "_comment": [
-        "Written by scripts/record_deployment_evidence.py from a run of",
-        "portfolio/tests/remote/deployed-site.spec.ts against the deployment.",
-        "Each check names the assertion that proves it; a check whose test did not",
-        "run reads UNVERIFIED rather than inheriting the suite's overall verdict.",
-        "",
-        "POINT IN TIME, NOT CONTINUOUS. This records one run against one commit. It",
-        "goes stale the moment either changes, and nothing here re-runs on a schedule.",
-        "Re-run the Verify deployment workflow to refresh it."
-      ],
-      "homepage_http_ok": true,
-      "verified_at": "2026-08-01T20:31:00+00:00",
-      "workflow_run": "https://github.com/mpalmer79/Automotive-Retail-Performance-Intelligence/actions/runs/30717032559",
-      "suite_green": true,
-      "checks": {
-        "routes_reachable": "passed (8)",
-        "status_route": "passed (1)",
-        "machine_readable_routes": "passed (1)",
-        "canonical_metadata": "passed (8)",
-        "sitemap": "passed (1)",
-        "case_study_locked": "passed (1)",
-        "security_headers": "passed (1)",
-        "no_localhost_url": "passed (1)",
-        "no_database_connection": "passed (1)",
-        "no_console_error": "passed (1)",
-        "mobile_navigation": "passed (1)",
-        "reduced_motion": "passed (1)"
-      }
-    }
+    "remote_suite_last_run": "2026-08-01T20:31:00+00:00"
   },
   "analytical_platform": {
     "_comment": [

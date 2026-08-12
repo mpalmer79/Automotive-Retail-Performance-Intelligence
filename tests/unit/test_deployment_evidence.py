@@ -54,13 +54,63 @@ def document() -> dict[str, Any]:
     return loaded
 
 
+def _verification_of(document: dict[str, Any], environment: str) -> dict[str, Any]:
+    """The verification block recorded INSIDE one environment.
+
+    Schema 2 moved it there so two environments cannot overwrite each other's
+    evidence; reading it through one accessor keeps every test asserting against the
+    same shape.
+    """
+    for entry in document["portfolio"]["environments"]:
+        if entry.get("environment") == environment:
+            found = entry.get("verification", {})
+            assert isinstance(found, dict)
+            return found
+    return {}
+
+
 # --------------------------------------------------------------------------------------
 # The file on disk
 # --------------------------------------------------------------------------------------
 
 
 def test_the_evidence_file_exists_and_parses(document: dict[str, Any]) -> None:
-    assert document["schema"] == "arpi.deployment_evidence/1"
+    assert document["schema"] == "arpi.deployment_evidence/2"
+
+
+def test_verification_is_recorded_per_environment_not_per_service(
+    document: dict[str, Any],
+) -> None:
+    """Schema 2's reason for existing, asserted rather than described.
+
+    Schema 1 held one `verification` block at portfolio level. That was unambiguous
+    while staging was the only environment there could be, and became a defect with
+    no error in it the moment production became a supported target: recording a
+    production verification would have overwritten staging's, leaving one set of
+    check results filed under two deployments with nothing saying which run produced
+    them.
+
+    A portfolio-level block reappearing is therefore a regression, not a leftover.
+    """
+    assert "verification" not in document["portfolio"], (
+        "verification belongs inside the environment it is about; a portfolio-level "
+        "block is schema 1's shape, in which recording one environment destroys "
+        "the other's evidence"
+    )
+    for entry in document["portfolio"]["environments"]:
+        assert "verification" in entry, (
+            f"{entry.get('environment')} carries no verification block of its own"
+        )
+
+
+def test_every_environment_declares_a_role(document: dict[str, Any]) -> None:
+    """A role is intent, and an unlabelled deployment must not read as the public one."""
+    for entry in document["portfolio"]["environments"]:
+        assert entry.get("role") in ("preview", "production"), (
+            f"{entry.get('environment')} declares no role. It may never be inferred "
+            "from the URL: a preview deployment has a public URL too, and "
+            "arpi.up.railway.app is one."
+        )
 
 
 def test_every_environment_carries_the_full_contract(document: dict[str, Any]) -> None:
@@ -131,7 +181,7 @@ def test_a_filled_live_field_is_backed_by_a_run(document: dict[str, Any]) -> Non
     """
     staging = read_deployment_evidence().environment("staging")
     assert staging is not None
-    verification = document["portfolio"].get("verification", {})
+    verification = _verification_of(document, "staging")
 
     live_fields = (staging.health_verified_at, staging.remote_smoke_test, staging.security_headers)
     if any(field != UNVERIFIED for field in live_fields):
@@ -145,7 +195,7 @@ def test_the_health_timestamp_comes_from_the_recorded_run(document: dict[str, An
     """One run, one timestamp. Two would mean one of them was carried over."""
     staging = read_deployment_evidence().environment("staging")
     assert staging is not None
-    verification = document["portfolio"].get("verification", {})
+    verification = _verification_of(document, "staging")
     if staging.health_verified_at != UNVERIFIED:
         assert staging.health_verified_at == verification.get("verified_at")
 
@@ -156,11 +206,14 @@ def test_a_green_suite_leaves_no_check_unverified(document: dict[str, Any]) -> N
     A check reads `UNVERIFIED` when its test did not run. If any did not run, the
     suite did not fully verify the deployment, whatever its exit code said.
     """
-    verification = document["portfolio"].get("verification", {})
-    checks: dict[str, str] = verification.get("checks", {})
-    unverified = sorted(name for name, value in checks.items() if value == UNVERIFIED)
-    if verification.get("suite_green"):
-        assert unverified == [], f"suite_green is true while {unverified} did not run"
+    for entry in document["portfolio"]["environments"]:
+        verification = entry.get("verification", {})
+        checks: dict[str, str] = verification.get("checks", {})
+        unverified = sorted(name for name, value in checks.items() if value == UNVERIFIED)
+        if verification.get("suite_green"):
+            assert unverified == [], (
+                f"{entry.get('environment')}: suite_green is true while {unverified} did not run"
+            )
 
 
 def test_the_deployment_is_recorded_and_now_also_verified() -> None:

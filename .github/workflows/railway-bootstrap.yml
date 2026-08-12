@@ -31,6 +31,28 @@
 # exactly one routine deployment owner and it is not this file — running a second
 # unconditional deploy from CI on every commit would make it impossible to say
 # which system deployed what.
+#
+# TWO ENVIRONMENTS, ONE WORKFLOW — ADDED BY THE `DASH.13` CLOSEOUT
+# ---------------------------------------------------------------
+# `DASH.13` approved a public production deployment and taught
+# `bootstrap_railway.ts` to target it, but this workflow stayed staging-only: its
+# language, its three `railway-staging` environments and its argument-free
+# `npm run bootstrap` all assumed there was one environment there could be. The
+# production capability existed in the tool and had no way to be reached through
+# the only path that holds a credential.
+#
+# The fix extends this workflow rather than adding a second one. A second
+# secret-bearing Railway workflow would double the surface on which the account
+# token can leak, to save some duplicated YAML — a bad trade, and one that would
+# need an ADR rather than a commit. So: one workflow, one secret, and the target
+# environment is an INPUT whose consequences are checked before anything is
+# contacted.
+#
+# The GitHub environment is selected from that input, so production approvals,
+# reviewers and branch restrictions are configured on `railway-production` and
+# staging's on `railway-staging`. The selection is asserted inside each job that
+# holds the token — an expression that silently resolved the wrong way would
+# otherwise route a production apply through staging's approval rules.
 # =============================================================================
 
 name: Railway bootstrap
@@ -46,6 +68,24 @@ on:
         options:
           - dry-run
           - apply
+      target_environment:
+        description: 'Which environment to converge. production additionally requires confirm_production, a run from main, and expected_release_sha.'
+        required: true
+        default: staging
+        type: choice
+        options:
+          - staging
+          - production
+      confirm_production:
+        description: 'Second, deliberate act of intent. Required for production; must stay false for staging.'
+        required: false
+        default: false
+        type: boolean
+      expected_release_sha:
+        description: 'The full main SHA production must be built from. Required for a production apply; must equal the checked-out commit AND current remote main.'
+        required: false
+        default: ''
+        type: string
       verify_only:
         description: 'Skip bootstrap and only verify the live configuration against the repository.'
         required: false
@@ -55,6 +95,11 @@ on:
 # One bootstrap at a time. Two concurrent applies against the same project is a
 # race with a live database on one side of it, so a queued run waits rather than
 # being cancelled: cancelling mid-apply is the worse of the two outcomes.
+#
+# Deliberately NOT keyed on the target environment. A staging apply and a
+# production apply touch the same Railway project, so letting them run
+# concurrently because their inputs differ would be the same race with an extra
+# step.
 concurrency:
   group: railway-bootstrap
   cancel-in-progress: false
@@ -64,6 +109,10 @@ permissions:
 
 env:
   NODE_VERSION: '22'
+  # Named once. Every job that holds the token asserts its own `environment`
+  # resolved to this, so a misrouted job fails instead of borrowing the other
+  # environment's approval rules.
+  EXPECTED_GITHUB_ENVIRONMENT: ${{ inputs.target_environment == 'production' && 'railway-production' || 'railway-staging' }}
 
 jobs:
   # ---------------------------------------------------------------------------
@@ -79,6 +128,52 @@ jobs:
     steps:
       - name: Check out the repository
         uses: actions/checkout@v4
+
+      # ---------------------------------------------------------------------
+      # THE RELEASE-INTENT GUARD.
+      #
+      # First step of the first job, so a request that should never have been
+      # made dies before a runner has installed anything, let alone touched an
+      # account. It needs no credential and no network beyond the checkout, and
+      # it reinforces `bootstrap_railway.ts`'s own guards rather than replacing
+      # them: the tool refuses the same requests on its own, and would still
+      # refuse them if this step were deleted.
+      #
+      # `scripts/railway/check_release_intent.mjs` holds the logic so it can be
+      # unit-tested. YAML that is only ever exercised by dispatching it is the
+      # kind of guard that is discovered to be wrong during a release.
+      # ---------------------------------------------------------------------
+      - name: Check the release intent
+        env:
+          ARPI_MODE: ${{ inputs.mode }}
+          ARPI_TARGET_ENVIRONMENT: ${{ inputs.target_environment }}
+          ARPI_CONFIRM_PRODUCTION: ${{ inputs.confirm_production }}
+          ARPI_EXPECTED_RELEASE_SHA: ${{ inputs.expected_release_sha }}
+          ARPI_VERIFY_ONLY: ${{ inputs.verify_only }}
+          ARPI_WORKFLOW_REF: ${{ github.ref }}
+          ARPI_CHECKED_OUT_SHA: ${{ github.sha }}
+        run: node scripts/railway/check_release_intent.mjs
+
+      # The remote head of `main`, read AFTER the intent check so the cheap
+      # refusals happen first. A production release must be built from a commit
+      # that is currently `main` — not merely from a commit that once was, which
+      # is what a stale `expected_release_sha` names.
+      - name: Require the release SHA to be current remote main
+        if: inputs.target_environment == 'production' && inputs.mode == 'apply' && inputs.verify_only != true
+        env:
+          ARPI_EXPECTED_RELEASE_SHA: ${{ inputs.expected_release_sha }}
+        run: |
+          set -euo pipefail
+          remote_main="$(git ls-remote origin refs/heads/main | cut -f1)"
+          echo "remote main          : ${remote_main}"
+          echo "expected_release_sha : ${ARPI_EXPECTED_RELEASE_SHA}"
+          if [ "${remote_main}" != "${ARPI_EXPECTED_RELEASE_SHA}" ]; then
+            echo "::error::expected_release_sha is not the current head of remote main."
+            echo "main has advanced since this release SHA was recorded. Re-read main,"
+            echo "wait for CI and Frontend to be green on it, and dispatch again with"
+            echo "the new SHA. Production must serve a commit that is still main."
+            exit 1
+          fi
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -129,11 +224,25 @@ jobs:
     runs-on: ubuntu-latest
     # A GitHub environment even for the dry run, because it is the first step that
     # handles the account token. Reviewers, wait timers and branch restrictions are
-    # configured on the environment rather than in this file.
-    environment: railway-staging
+    # configured on the environment rather than in this file — which is exactly why
+    # the production dry run must land in `railway-production` rather than borrowing
+    # staging's rules.
+    environment: ${{ inputs.target_environment == 'production' && 'railway-production' || 'railway-staging' }}
     outputs:
       plan: ${{ steps.plan.outputs.summary }}
     steps:
+      - name: Assert the GitHub environment matches the target
+        env:
+          RESOLVED: ${{ inputs.target_environment == 'production' && 'railway-production' || 'railway-staging' }}
+        run: |
+          set -euo pipefail
+          echo "target_environment  : ${{ inputs.target_environment }}"
+          echo "GitHub environment  : ${RESOLVED}"
+          if [ "${RESOLVED}" != "${EXPECTED_GITHUB_ENVIRONMENT}" ]; then
+            echo "::error::the GitHub environment did not resolve to ${EXPECTED_GITHUB_ENVIRONMENT}."
+            exit 1
+          fi
+
       - name: Check out the repository
         uses: actions/checkout@v4
 
@@ -160,9 +269,18 @@ jobs:
           # The ONE secret, passed as an environment variable to the one step that
           # needs it. The tool reads it from here and refuses it as an argument.
           RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+          ARPI_TARGET_ENVIRONMENT: ${{ inputs.target_environment }}
         run: |
           set -o pipefail
-          npm run bootstrap:dry-run -- --json > dry-run.json
+          # Production is named on the command line, never defaulted to, and the
+          # tool refuses `--environment production` without `--confirm-production`
+          # regardless of what this workflow passes.
+          if [ "${ARPI_TARGET_ENVIRONMENT}" = "production" ]; then
+            npm run bootstrap:dry-run -- --json \
+              --environment production --confirm-production > dry-run.json
+          else
+            npm run bootstrap:dry-run -- --json > dry-run.json
+          fi
           # Values are redacted by the tool, and `--show-values` is never passed.
           node -e "
             const r = require('./dry-run.json');
@@ -188,11 +306,27 @@ jobs:
   # ---------------------------------------------------------------------------
   apply:
     name: Bootstrap apply
+    # `needs: dry-run` is the mechanism behind "an apply is never the first remote
+    # operation". A dry run of the SAME target, in the SAME dispatch, has to have
+    # succeeded before this job exists to be approved — there is no input that
+    # skips it and no path that reaches an apply without one.
     needs: [validate, dry-run]
     if: inputs.mode == 'apply' && inputs.verify_only != true
     runs-on: ubuntu-latest
-    environment: railway-staging
+    environment: ${{ inputs.target_environment == 'production' && 'railway-production' || 'railway-staging' }}
     steps:
+      - name: Assert the GitHub environment matches the target
+        env:
+          RESOLVED: ${{ inputs.target_environment == 'production' && 'railway-production' || 'railway-staging' }}
+        run: |
+          set -euo pipefail
+          echo "target_environment  : ${{ inputs.target_environment }}"
+          echo "GitHub environment  : ${RESOLVED}"
+          if [ "${RESOLVED}" != "${EXPECTED_GITHUB_ENVIRONMENT}" ]; then
+            echo "::error::the GitHub environment did not resolve to ${EXPECTED_GITHUB_ENVIRONMENT}."
+            exit 1
+          fi
+
       - name: Check out the repository
         uses: actions/checkout@v4
 
@@ -219,9 +353,15 @@ jobs:
         id: apply
         env:
           RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+          ARPI_TARGET_ENVIRONMENT: ${{ inputs.target_environment }}
         run: |
           set -o pipefail
-          npm run bootstrap -- --json > bootstrap.json
+          if [ "${ARPI_TARGET_ENVIRONMENT}" = "production" ]; then
+            npm run bootstrap -- --json \
+              --environment production --confirm-production > bootstrap.json
+          else
+            npm run bootstrap -- --json > bootstrap.json
+          fi
 
       - name: Publish the non-secret outputs
         if: always()
@@ -233,9 +373,12 @@ jobs:
           node -e "
             const r = require('./bootstrap.json');
             const o = r.outputs || {};
+            const target = process.env.ARPI_TARGET_ENVIRONMENT || 'staging';
             const lines = Object.entries(o).map(([k, v]) => '| ' + k + ' | ' + String(v) + ' |');
-            process.stdout.write('## Railway staging\n\n| output | value |\n| --- | --- |\n' + lines.join('\n') + '\n');
+            process.stdout.write('## Railway ' + target + '\n\n| output | value |\n| --- | --- |\n' + lines.join('\n') + '\n');
           " >> "$GITHUB_STEP_SUMMARY"
+        env:
+          ARPI_TARGET_ENVIRONMENT: ${{ inputs.target_environment }}
 
       # `publicUrl` is carried forward so the verification job does not have to
       # re-derive it. It is not a secret.
@@ -269,13 +412,27 @@ jobs:
   verify:
     name: Verify live configuration
     needs: [validate, apply]
+    # NOTE: the verifier is named the target environment explicitly below. Before
+    # the `DASH.13` closeout it read the declared default and therefore always
+    # verified staging — which after a production apply would have reported a
+    # green configuration for the environment that was not released.
     # `always()` so a failed apply is still followed by a report of what the live
     # project actually looks like, which is usually the fastest diagnosis. Skipped
     # only when the apply job itself was skipped and this is not a verify-only run.
     if: always() && needs.validate.result == 'success' && (inputs.verify_only == true || needs.apply.result == 'success')
     runs-on: ubuntu-latest
-    environment: railway-staging
+    environment: ${{ inputs.target_environment == 'production' && 'railway-production' || 'railway-staging' }}
     steps:
+      - name: Assert the GitHub environment matches the target
+        env:
+          RESOLVED: ${{ inputs.target_environment == 'production' && 'railway-production' || 'railway-staging' }}
+        run: |
+          set -euo pipefail
+          if [ "${RESOLVED}" != "${EXPECTED_GITHUB_ENVIRONMENT}" ]; then
+            echo "::error::the GitHub environment did not resolve to ${EXPECTED_GITHUB_ENVIRONMENT}."
+            exit 1
+          fi
+
       - name: Check out the repository
         uses: actions/checkout@v4
 
@@ -298,9 +455,15 @@ jobs:
         id: verify
         env:
           RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+          ARPI_TARGET_ENVIRONMENT: ${{ inputs.target_environment }}
         run: |
           set -o pipefail
-          npm run verify:railway -- --json > verification.json
+          # Always named, including for staging. The verifier still defaults to
+          # staging for compatibility, but a report that had to be inferred from a
+          # default is a report somebody will one day read as being about the other
+          # environment.
+          npm run verify:railway -- --json \
+            --environment "${ARPI_TARGET_ENVIRONMENT}" > verification.json
 
       - name: Publish the verification result
         if: always()
@@ -315,13 +478,17 @@ jobs:
             process.stdout.write('## Configuration verification\n\n| check | status | detail |\n| --- | --- | --- |\n' + rows + '\n');
           " >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Export the public URL
+      - name: Export the public URLs
         id: url
         if: always()
         run: |
           if [ -f verification.json ]; then
             url="$(node -e "process.stdout.write(String((require('./verification.json').outputs||{}).publicUrl||''))")"
             echo "public_url=${url}" >> "$GITHUB_OUTPUT"
+            # The OTHER environment's origin, so the deployed-site job can prove a
+            # production release did not make the preview deployment public.
+            other="$(node -e "process.stdout.write(String((require('./verification.json').outputs||{}).otherEnvironmentPublicUrl||''))")"
+            echo "other_public_url=${other}" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Upload the verification result
@@ -335,6 +502,7 @@ jobs:
 
     outputs:
       public_url: ${{ steps.url.outputs.public_url }}
+      other_public_url: ${{ steps.url.outputs.other_public_url }}
 
   # ---------------------------------------------------------------------------
   # 5. deployed-site — test the thing a visitor receives.
@@ -362,6 +530,11 @@ jobs:
         working-directory: portfolio
         run: npm ci
 
+      # The release-policy verifier lives in the ROOT tooling package, not the
+      # website's. It holds no credential and makes unauthenticated public GETs.
+      - name: Install the deployment tooling
+        run: npm ci
+
       - name: Install Chromium for Playwright
         working-directory: portfolio
         run: npx playwright install --with-deps chromium
@@ -376,6 +549,57 @@ jobs:
         env:
           ARPI_REMOTE_BASE_URL: ${{ needs.verify.outputs.public_url }}
         run: npx playwright test --config playwright.remote.config.ts
+
+      # THE EXTERNAL RELEASE-POLICY CHECK, invoked rather than reimplemented.
+      #
+      # `verify_release_policy.ts` is the single authority on what "indexable
+      # production" and "disallowed preview" mean from outside. Restating any of
+      # it in YAML would create a second implementation able to disagree with the
+      # first, and the one in YAML is the one nobody unit-tests.
+      #
+      # Gated, not advisory: a deployment that does not answer the policy it was
+      # released under has not been released.
+      - name: External release-policy verification
+        env:
+          ARPI_REMOTE_BASE_URL: ${{ needs.verify.outputs.public_url }}
+          ARPI_TARGET_ENVIRONMENT: ${{ inputs.target_environment }}
+          ARPI_EXPECTED_RELEASE_SHA: ${{ inputs.expected_release_sha }}
+        run: |
+          set -euo pipefail
+          if [ "${ARPI_TARGET_ENVIRONMENT}" = "production" ]; then
+            if [ -n "${ARPI_EXPECTED_RELEASE_SHA}" ]; then
+              npx tsx scripts/railway/verify_release_policy.ts \
+                --url "${ARPI_REMOTE_BASE_URL}" \
+                --expect production \
+                --expect-commit "${ARPI_EXPECTED_RELEASE_SHA}"
+            else
+              npx tsx scripts/railway/verify_release_policy.ts \
+                --url "${ARPI_REMOTE_BASE_URL}" --expect production
+            fi
+          else
+            npx tsx scripts/railway/verify_release_policy.ts \
+              --url "${ARPI_REMOTE_BASE_URL}" --expect preview
+          fi
+
+      # A production release must not have made the preview deployment public, and
+      # that cannot be established by looking at production. Read the other one.
+      #
+      # `continue-on-error` is deliberately NOT set: staging becoming indexable is
+      # a release defect even when production is perfect.
+      - name: Prove the preview deployment is still disallowed
+        if: inputs.target_environment == 'production'
+        env:
+          ARPI_PREVIEW_URL: ${{ needs.verify.outputs.other_public_url }}
+        run: |
+          set -euo pipefail
+          if [ -z "${ARPI_PREVIEW_URL}" ] || [ "${ARPI_PREVIEW_URL}" = "(none)" ]; then
+            echo "::error::the preview environment reported no public URL, so it could not be"
+            echo "checked. A production release is not verified until the preview deployment"
+            echo "has been shown to be still non-public."
+            exit 1
+          fi
+          npx tsx scripts/railway/verify_release_policy.ts \
+            --url "${ARPI_PREVIEW_URL}" --expect preview
 
       # Recorded, not gated. A performance score measures a network and a runner
       # as much as a site, and a job that fails on 0.89 teaches people to lower the

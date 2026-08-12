@@ -26,6 +26,10 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import { TOUR_STEPS } from '@/components/sections/product-tour'
+import { formatMetric } from '@/components/dashboard/metric'
+import { dashboardStores } from '@/lib/dashboard/data'
+import { buildExecutiveOverview } from '@/lib/dashboard/executive'
+import { parseFilters } from '@/lib/dashboard/filters'
 import { OG_IMAGE_HEIGHT, OG_IMAGE_PATH, OG_IMAGE_WIDTH } from '@/lib/metadata'
 
 const PUBLIC_DIR = join(process.cwd(), 'public')
@@ -191,17 +195,83 @@ describe('the social card', () => {
     expect(source).toMatch(/synthetic/i)
   })
 
-  it('shows no KPI value, so a reader cannot mistake it for a result', () => {
+  /*
+   * WHAT REPLACED "THE CARD SHOWS NO VALUE", AND WHY.
+   *
+   * Until the `DASH.13` closeout this block asserted that the card contained no
+   * currency amount, no percentage and no unit count. That was the right rule for
+   * the card it was written against: that card drew a wireframe of `/inventory`
+   * with empty cells, and any figure in an empty wireframe would have been
+   * invented.
+   *
+   * The replacement card carries four KPI values and a six-month trend, and the
+   * rule that makes THAT honest is not "no numbers" — it is "every number is the
+   * product's own output, and can be recomputed". So the assertion is now the
+   * stronger one: the figures printed on the card are compared against
+   * `buildExecutiveOverview()`, the same governed path that renders `/`.
+   *
+   * This also closes a failure mode the old rule could not see. A card with
+   * hand-typed figures passes "no invented values" the day it is drawn and goes
+   * silently stale the first time the synthetic dataset is regenerated. This test
+   * fails on that day instead.
+   */
+  describe('every figure on it is the product’s own output', () => {
     const source = readFileSync(svg, 'utf8')
-    // The card draws a table shell with column headers and no cells. A currency
-    // amount, a percentage or a unit count in it would read as a real figure
-    // from a real dealership, which is the one thing this project may not imply.
     const drawnText = [...source.matchAll(/>([^<]+)</g)]
       .map((match) => match[1]?.trim() ?? '')
       .join(' ')
-    expect(drawnText).not.toMatch(/\$\s?\d/)
-    expect(drawnText).not.toMatch(/\d+(\.\d+)?\s?%/)
-    expect(drawnText).not.toMatch(/\b\d+\s+(units|deals|sales|leads)\b/i)
+
+    const parsed = parseFilters({}, 'EXECUTIVE_OVERVIEW')
+    const overview = buildExecutiveOverview(parsed.filters, parsed.resets)
+    const valueOf = (label: string): string => {
+      const card = overview.cards.find((candidate) => candidate.label === label)
+      expect(card, `the page no longer renders a "${label}" card`).toBeDefined()
+      return String(formatMetric(card!.metric.selector, card!.metric.current))
+    }
+
+    it.each([
+      ['Retail units'],
+      ['Total gross'],
+      ['Total gross per retail unit'],
+      ['Aged inventory percentage'],
+      ['Inventory investment'],
+    ])('draws the live value of %s', (label) => {
+      const rendered = valueOf(label)
+      expect(
+        drawnText,
+        `the card does not show ${rendered}, which is what the Executive Command ` +
+          `Center currently computes for "${label}". Regenerate the card from the ` +
+          'current dataset rather than editing the number: public/brand/social-preview.svg ' +
+          'is the master and its header comment records the provenance of every figure.'
+      ).toContain(rendered)
+    })
+
+    it('draws the period those figures were read over', () => {
+      // A figure without its period is not checkable, which is the whole reason
+      // the values are allowed on the card at all.
+      expect(drawnText.toUpperCase()).toContain(
+        overview.periodContext.period.label.toUpperCase()
+      )
+    })
+
+    it('keeps the synthetic disclosure in the same visual weight as the figures', () => {
+      // The disclosure is not small print. It gets a bordered panel and an accent
+      // colour, and this asserts the panel is still there rather than trusting
+      // that the word "synthetic" appears somewhere in a comment.
+      const body = source.slice(source.indexOf('</defs>'))
+      expect(body).toMatch(/Synthetic data/)
+      expect(body).toMatch(/Granite Auto Group is fictional/)
+    })
+
+    it('names no store and no employee', () => {
+      // Fairness freeze, applied to the one surface whose context cannot travel
+      // with the picture. In the product a store comparison carries its
+      // disclosures; cropped into a social card it reads as a league table.
+      for (const store of dashboardStores) {
+        expect(drawnText, `the card names the store "${store.label}"`).not.toContain(store.label)
+      }
+      expect(drawnText).not.toMatch(/\bsalesperson|\badvisor\b|\bemployee of\b/i)
+    })
   })
 
   it('stays small enough to be fetched by a link unfurler', () => {

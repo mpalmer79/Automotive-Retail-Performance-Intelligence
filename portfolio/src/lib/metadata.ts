@@ -36,10 +36,12 @@ export const OG_IMAGE_HEIGHT = 630
  * `public/brand/social-preview.svg` changes.
  */
 export const OG_IMAGE_ALT =
-  `${SITE_TITLE}. A dark card carrying the ARPI mark, the project name, and the line "one governed view of dealership performance", ` +
-  'beside a wireframe of the inventory application showing its store, condition, year, make and price columns with no values in them, ' +
-  'and a diagram of four PostgreSQL layers converging on a governed model with a dashed semantic model and report layer above it. ' +
-  `A panel states that the data is synthetic only and that Granite Auto Group is fictional. Built by ${SITE_AUTHOR}.`
+  `${SITE_TITLE}. A dark card carrying the ARPI mark and the line "dealership management intelligence", above the operating domains ` +
+  'sales, inventory, F&I, leads and accounting, and a diagram of the raw, staging, warehouse and reporting layers resolving into a ' +
+  'governed KPI model. Beside it, the Executive Command Center: four figures for December 2025 across all stores — 92 retail units, ' +
+  '$321,935 total gross, $3,499 gross per retail unit and 40.4% aged inventory — a six-month total-gross trend that falls through ' +
+  'October and partly recovers, and $5,438,057 of inventory investment with the aged share marked on a bar. ' +
+  `A panel states that the data is synthetic and that Granite Auto Group is fictional. Built by ${SITE_AUTHOR}.`
 
 /** The site-wide metadata, applied in the root layout. */
 export const rootMetadata: Metadata = {
