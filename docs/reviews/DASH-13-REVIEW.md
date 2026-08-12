@@ -165,26 +165,48 @@ social card during a release freeze is scope this increment refuses.
 
 ## 6. Quality
 
-<!-- Filled from the runs recorded in the pull request. -->
+Counts are from the runs on this branch, not copied from an earlier increment.
 
 | Suite | Result |
 |---|---|
-| Vitest | **1,610 passed**, 38 files |
+| Python (`-m "not integration"`, `--cov=arpi`) | **3,667 passed**, 1,229 deselected, in 20m 56s |
+| Python coverage | **88.94%** against a required floor of 85% |
+| Vitest (website) | **1,610 passed**, 38 files |
+| Vitest (deployment tooling, root project) | **195 passed**, 5 files |
 | Playwright (chromium) | see the pull request transcript |
-| Python (`-m "not integration"`, `--cov=arpi`) | see the pull request transcript |
-| PostgreSQL 16 integration | **not run locally** — no populated database in this environment. GitHub CI's `Integration (PostgreSQL 16)` job is the required evidence. |
-| `ruff format --check`, `ruff check`, `mypy` | see the pull request transcript |
-| `prettier --check`, `eslint`, `tsc --noEmit` | pass |
+| PostgreSQL 16 integration | **not run locally** — no populated database in this environment. GitHub CI's `Integration (PostgreSQL 16)` job is the required evidence; it passed on the base commit. |
+| `ruff format --check` | 326 files already formatted |
+| `ruff check` | all checks passed |
+| `mypy src tests` | no issues in 172 source files |
+| `npm audit --audit-level=high` (root tooling) | 0 vulnerabilities |
+| `spec:validate`, `iac:evaluate` | pass — 28 IaC steps |
+| `prettier --check`, `eslint`, `tsc --noEmit` | pass, in both the website and the root tooling package |
 | `manifest:check`, `inventory:check`, `dashboard:check` | pass — 541 inventory records across 3 stores; 38 dashboard datasets, 312 files, 7,356,934 bytes |
 | `next build` | pass, under local, production and staging environment arguments |
 | `check_naming`, `check_secrets`, `check_docs_links`, `check_project_capabilities`, `generate_project_capabilities --check` | pass |
 | `check_powerbi_model`, `simulate_semantic_model --check`, `check_simulation_labels` | see the pull request transcript |
 | Railway specification validation | pass |
 
-New tests added by this increment: `portfolio/tests/unit/dash13-release-policy.test.ts` (109 cases —
-Open Graph completeness per route, single title suffix, both robots policies, fail-closed environment
-classification) and a production-release-policy block in
-`portfolio/tests/unit/railway-config.test.ts`.
+New tests added by this increment:
+
+- `portfolio/tests/unit/dash13-release-policy.test.ts` — 109 cases: Open Graph completeness per route,
+  the title suffix applied exactly once, both robots policies, fail-closed environment classification.
+- a production-release-policy block in `portfolio/tests/unit/railway-config.test.ts`.
+- a production-release-policy block in `tests/railway/spec.test.ts` — including the three fail-closed
+  cases: an approval with an empty `approvedBy`, an approval that does not require production build
+  arguments, and an absent `productionRelease` block reading as **not** approved.
+- two browser guards in `portfolio/tests/e2e/navigation.spec.ts`, for the two metadata defects, asserted
+  against what a browser is actually served rather than against `pageMetadata()`.
+
+**One correction made during the increment, recorded because the mechanism is the point.** The first
+version of the production-release change relaxed the specification validator so
+`createProductionEnvironment: true` was permitted once `productionRelease.approved` was set.
+`tests/railway/spec.test.ts` failed, and the test was right: that would have given
+production-creation intent **two** authorities — a persistent config flag and the per-invocation
+`--confirm-production` argument — and the persistent one is the worse to trust, because once set it stays
+set. The assertion was restored unchanged from before the release was approved. The root Vitest project
+covering `tests/railway/` is separate from the website's, and had been missed in the first local gate
+run; it is now part of the recorded set above.
 
 ## 7. Performance
 
