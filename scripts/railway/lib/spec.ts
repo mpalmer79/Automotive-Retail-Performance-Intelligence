@@ -69,6 +69,22 @@ export interface ProjectSpec {
     environment: string
     productionEnvironment: string
     createProductionEnvironment: boolean
+    /**
+     * The repository's standing decision about a public production deployment.
+     *
+     * Optional in the type so a spec written before `DASH.13` still parses, and
+     * absent is read as NOT approved — the fail-closed direction.
+     */
+    productionRelease?: {
+      approved: boolean
+      approvedBy?: string
+      note?: string
+      requiredFlags?: string[]
+      deploymentRef?: string
+      indexable?: boolean
+      buildMustSupplyEnvironmentArguments?: boolean
+      buildArgumentNote?: string
+    }
   }
   repository: {
     slug: string
@@ -255,21 +271,85 @@ export function validateSpecification(spec: LoadedSpecification): ValidationResu
   if (!project.name.trim()) fail('project.name is empty.')
   if (!project.environment.trim()) fail('project.environment is empty.')
 
-  // The single most important assertion in this function.
+  /*
+   * THE SINGLE MOST IMPORTANT ASSERTION IN THIS FUNCTION, AND WHAT `DASH.13`
+   * CHANGED ABOUT IT.
+   *
+   * Before `DASH.13` production was forbidden outright. It is now APPROVED — but
+   * approval moved production from "never" to "only on purpose", and this
+   * assertion is what keeps the difference real. The DECLARED DEFAULT may still
+   * never be production: if editing this JSON file were enough to point the
+   * tooling at production, then a copy-paste, a merge resolution or a
+   * search-and-replace of "staging" would be enough to deploy it, which is
+   * exactly the accident the guard exists for.
+   *
+   * Production is therefore reachable only as an explicit RUNTIME target, through
+   * `--environment production --confirm-production` in `bootstrap_railway.ts`,
+   * which additionally requires `productionRelease.approved` here. Three
+   * independent things must agree, two of them typed by a person at the moment of
+   * the deployment.
+   */
   if (
     project.environment.toLowerCase() === project.productionEnvironment.toLowerCase()
   ) {
     fail(
       `project.environment ("${project.environment}") is the production environment. ` +
-        'This tooling must never target production; production promotion is a separately ' +
-        'approved, manual act.'
+        'The declared default must remain a non-production environment even now that a ' +
+        'production release is approved: production is selected per invocation with ' +
+        '--environment production --confirm-production, never by editing this file.'
     )
   }
+
+  /*
+   * `createProductionEnvironment` STAYS FORBIDDEN, EVEN NOW THAT THE RELEASE IS
+   * APPROVED.
+   *
+   * The first version of this change relaxed it — permitted when
+   * `productionRelease.approved` was true — and that was wrong. It would have
+   * given production-creation intent TWO authorities: this flag and the
+   * `--confirm-production` argument. Two switches that mean nearly the same thing
+   * is how the wrong one ends up set, and the config flag is the worse of the two
+   * to trust, because it is persistent: once true it stays true for every
+   * subsequent run, while an argument is typed for one invocation and expires with
+   * it.
+   *
+   * So intent lives at the command line and only at the command line, and this
+   * assertion is unchanged from before the release was approved. `tests/railway/
+   * spec.test.ts` asserts it, and that test is what caught the relaxation.
+   */
   if (project.createProductionEnvironment) {
     fail(
-      'project.createProductionEnvironment is true. No production deployment has been ' +
-        'approved, and this tooling must not create one.'
+      'project.createProductionEnvironment is true. Creating or modifying the production ' +
+        'environment is expressed per invocation, with --environment production and ' +
+        '--confirm-production, never as a persistent flag in this file.'
     )
+  }
+
+  const release = project.productionRelease
+  if (release !== undefined) {
+    if (typeof release.approved !== 'boolean') {
+      fail('project.productionRelease.approved must be a boolean.')
+    }
+    if (release.approved && !release.approvedBy?.trim()) {
+      // An approval with nobody and no increment attached is not an approval.
+      fail(
+        'project.productionRelease.approved is true but approvedBy is empty. An approval ' +
+          'must name the increment that made it.'
+      )
+    }
+    if (release.approved && release.buildMustSupplyEnvironmentArguments !== true) {
+      /*
+       * The constraint `DASH.13` measured: a production deployment whose build did
+       * not carry production build arguments ships a robots.txt and a set of page
+       * metadata that disagree. Declaring production approved without declaring
+       * that constraint would approve the failure mode along with the release.
+       */
+      fail(
+        'project.productionRelease.approved is true but buildMustSupplyEnvironmentArguments ' +
+          'is not. A production deployment must be a fresh build carrying production build ' +
+          'arguments; a promoted image ships mismatched indexing and canonical metadata.'
+      )
+    }
   }
 
   /* --- Repository ------------------------------------------------------- */

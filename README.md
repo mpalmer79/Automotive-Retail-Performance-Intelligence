@@ -32,8 +32,32 @@ Seeded synthetic data generated in Python, validated in memory, loaded into a Po
 
 * **Lifecycle Phase 1–4 — complete.** All eight MVP dimensions, all five MVP facts, twenty-eight reporting views, and all 29 KPIs in [`KPI_CATALOG.md`](KPI_CATALOG.md) are implemented, computable and tested. Gate 1 is **OPEN** — [`docs/requirements/GATE_1_READINESS.md`](docs/requirements/GATE_1_READINESS.md).
 * **Lifecycle Phase 5 — semantic model built, NOT complete.** A source-controlled Power BI Project exists at [`powerbi/ARPI_Performance_Intelligence/`](powerbi/ARPI_Performance_Intelligence), stored as TMDL: twenty-six tables, forty-two relationships, and all twenty-nine governed KPI measures. **Static validation passes** (9,452 assertions in `scripts/check_powerbi_model.py`). **Real-engine validation is still pending** — no Microsoft semantic-model engine has yet loaded this model, refreshed it, or returned a single number from it, so its DAX is unproven. Phase 5 is not complete until that happens.
-* **No dashboard page or visual exists**, and no analytical finding has been drawn. Both are later phases.
-* **Portfolio website foundation — built, under [`portfolio/`](portfolio/).** A Next.js site that renders this repository's own documentation: architecture, data model, KPI *definitions*, governance, and a project status derived from source-controlled evidence. It contains **no Power BI dashboard page, visual or bookmark**, because none exists; real-engine validation of the semantic model is **still pending on both accepted paths**. **Gate 2 is CLOSED**, all three of its conditions unmet, so the **public analytical case study remains gated** — the site ships a **locked** case-study shell, not the case study. **The site is deployed** to Railway's `staging` environment at [`https://arpi.up.railway.app`](https://arpi.up.railway.app), from the reviewable configuration in [`deployment/railway/README.md`](deployment/railway/README.md); no production environment has been created. **A deployed website is not a deployed analytical platform.** The site is prerendered routes with **no database connection at all**, so its being reachable says nothing about PostgreSQL, which remains **declared and unprovisioned**, or about the semantic model, which no engine has run. The three statuses are recorded separately in [`deployment/evidence/portfolio_deployment.json`](deployment/evidence/portfolio_deployment.json), where every field this repository's own automation could not obtain reads `UNVERIFIED` rather than a guess. Governed by [ADR-0009](docs/architecture-decisions/ADR-0009-portfolio-ui-foundation-before-gate-2.md).
+* **No Power BI report page or visual exists**, and no analytical finding has been drawn from the
+  semantic model. Both are later phases. This is a statement about the **Power BI** deliverable only —
+  the `.Report` folder is a PBIR shell with zero pages, zero visuals and zero bookmarks. The **web
+  operating application described in the next bullet is built**, and reads governed exports rather than
+  the semantic model.
+* **Web operating application — built, under [`portfolio/`](portfolio/).** A Next.js application in two
+  parts. An **operating console**: `/` (Executive Command Center) plus `/dashboard/sales-gross`,
+  `/dashboard/deals` and the Deal Jacket at `/dashboard/deals/[saleId]`, `/dashboard/inventory`,
+  `/dashboard/fi`, `/dashboard/leads-marketing`, `/dashboard/employees`, `/dashboard/accounting` and the
+  **Management Action Center** at `/dashboard/actions`, behind a navigation rail with URL-addressable
+  filters. And a **reference destination**: `/technical` with eight server-addressable views, `/about`,
+  `/inventory`, three store pages and a gated `/case-study`. It reads **committed, governed exports** —
+  **no database connection at all**, no API route, no charting library, and it computes no KPI of its
+  own. It contains **no Power BI report page, visual or bookmark**, because none exists; real-engine
+  validation of the semantic model is **still pending on both accepted paths**. **Gate 2 is CLOSED**, all
+  three of its conditions unmet, so the **public analytical case study remains gated** — the site ships a
+  **locked** case-study shell, not the case study. **Every operating figure it displays is synthetic**,
+  and Granite Auto Group is fictional. **A reachable application is not a deployed analytical
+  platform:** its being up says nothing about PostgreSQL, which remains **declared and unprovisioned**,
+  or about the semantic model, which no engine has run. Deployment state, including which environment is
+  public and what has actually been verified from outside, is
+  [§ Deployment](#deployment) — recorded in
+  [`deployment/evidence/portfolio_deployment.json`](deployment/evidence/portfolio_deployment.json),
+  where every field this repository's own automation could not obtain reads `UNVERIFIED` rather than a
+  guess. Governed by [ADR-0009](docs/architecture-decisions/ADR-0009-portfolio-ui-foundation-before-gate-2.md)
+  and [ADR-0015](docs/architecture-decisions/ADR-0015-product-first-operating-experience.md).
 
 See [Current implementation status](#current-implementation-status).
 
@@ -61,6 +85,7 @@ See [Current implementation status](#current-implementation-status).
 - [Current implementation status](#current-implementation-status)
 - [Roadmap](#roadmap)
 - [Local development](#local-development)
+- [Deployment](#deployment)
 - [Testing and quality](#testing-and-quality)
 - [Synthetic data and privacy](#synthetic-data-and-privacy)
 - [Documentation](#documentation)
@@ -309,7 +334,7 @@ Labels are used strictly. **Implemented** means it exists and runs today.
 | **Real-engine validation of the semantic model** | **Pending** | No Microsoft engine has loaded, refreshed or queried this model. Static parsing cannot substitute. This is the only thing between here and a complete Lifecycle Phase 5 |
 | Stakeholder-question traceability matrix | Implemented | [`docs/requirements/STAKEHOLDER_QUESTIONS.md`](docs/requirements/STAKEHOLDER_QUESTIONS.md) |
 | Gate 1 readiness review | Implemented | [`docs/requirements/GATE_1_READINESS.md`](docs/requirements/GATE_1_READINESS.md) |
-| Portfolio website foundation | Implemented | [`portfolio/`](portfolio/) — Next.js 16 App Router, React 19, TypeScript strict mode, Tailwind CSS v4, Motion, lucide-react. Two information domains, split by [ADR-0015](docs/architecture-decisions/ADR-0015-product-first-operating-experience.md): an **operating application** — `/` (Executive Command Center) plus `/dashboard/sales-gross`, `/dashboard/deals`, `/dashboard/inventory`, `/dashboard/fi`, `/dashboard/leads-marketing`, `/dashboard/employees` and `/dashboard/accounting`, behind a navigation rail — and a **reference destination**: `/technical` with eight server-addressable views, `/about`, `/inventory`, the three store pages and `/case-study`, plus a non-indexed internal `/ui-lab`. Eight retired URLs, including `/dashboard` and the six former documentation routes, are permanent redirects. Isolated from the Python and PostgreSQL runtime: no API route, no database connection, no query interface, no charting library, and it computes no KPI. Governed by [ADR-0009](docs/architecture-decisions/ADR-0009-portfolio-ui-foundation-before-gate-2.md). **Deployed to Railway `staging` at [`https://arpi.up.railway.app`](https://arpi.up.railway.app); no production environment exists.** The deployment is automated and source-controlled — see [`deployment/railway/README.md`](deployment/railway/README.md) — and its recorded evidence is [`deployment/evidence/portfolio_deployment.json`](deployment/evidence/portfolio_deployment.json). Live health, remote smoke and security-header results read `UNVERIFIED` there: neither CI nor the environments this project is built in may reach the deployment host, and an unobtained fact is not recorded as a pass. |
+| Web operating application | Implemented | [`portfolio/`](portfolio/) — Next.js 16 App Router, React 19, TypeScript strict mode, Tailwind CSS v4, Motion, lucide-react. Seventeen routes in two information domains, split by [ADR-0015](docs/architecture-decisions/ADR-0015-product-first-operating-experience.md): an **operating application** — `/` (Executive Command Center) plus `/dashboard/sales-gross`, `/dashboard/deals` and `/dashboard/deals/[saleId]`, `/dashboard/inventory`, `/dashboard/fi`, `/dashboard/leads-marketing`, `/dashboard/employees`, `/dashboard/accounting` and the Management Action Center at `/dashboard/actions`, behind a navigation rail with URL-addressable filters — and a **reference destination**: `/technical` with eight server-addressable views, `/about`, `/inventory`, the three store pages and `/case-study`, plus a non-indexed internal `/ui-lab`. Eight retired URLs, including `/dashboard` and the six former documentation routes, are permanent `308` redirects that preserve the query string. Isolated from the Python and PostgreSQL runtime: no API route, no database connection, no query interface, no charting library, and it computes no KPI. Governed by [ADR-0009](docs/architecture-decisions/ADR-0009-portfolio-ui-foundation-before-gate-2.md). Deployment state is [§ Deployment](#deployment) — it is deliberately recorded in one place rather than restated here, so a promotion cannot leave a stale claim in a table. |
 | Website evidence generation and its own CI | Implemented | Every engineering count and implementation status the site shows is generated at build time into `portfolio/src/generated/project-manifest.json` by `portfolio/scripts/generate-project-manifest.ts`, from `powerbi/validation/model_expectations.json`, `powerbi/validation/sql_baseline_metadata.json`, both engine evidence files, the TMDL source, `KPI_CATALOG.md`, the readiness documents, and the `sql/` tree. The generator **fails the build** when a status contradicts its evidence. A separate workflow, `.github/workflows/frontend.yml`, runs two jobs — `quality` and `browser` — needs no credential of any kind, and never contacts an engine; `.github/workflows/ci.yml` is unchanged. 385 unit, component, and content-integrity tests and 233 Playwright accessibility, end-to-end, content-integrity, and design-system tests pass, with zero critical or serious axe violations across all ten routes. |
 | Gated case-study shell | Implemented, locked | The `/case-study` route exists as a **locked shell**. Gate 2 is **CLOSED** and all three of its conditions are unmet, so the public analytical case study remains gated; the page shows the unmet conditions instead of findings. Unlocking requires five independent conditions, and the environment flag among them is necessary and never sufficient — [ADR-0009](docs/architecture-decisions/ADR-0009-portfolio-ui-foundation-before-gate-2.md). There is no KPI value anywhere on the site. |
 | NHTSA vPIC public enrichment | Planned | Phase 1.1 |
@@ -388,6 +413,56 @@ Commands exit `0` on success and non-zero when a critical validation check fails
 To exercise the SQL layer and the integration tests, set up PostgreSQL locally by following [`docs/database-setup.md`](docs/database-setup.md).
 
 Configuration is overridable per key from the environment using the `ARPI_` prefix and `__` as the nested delimiter, for example `ARPI_LOGGING__LEVEL=DEBUG` or `ARPI_DATABASE__HOST=localhost`. See [`.env.example`](.env.example).
+
+---
+
+## Deployment
+
+**This section is the one place the deployment state is written down.** Every other document points
+here, because a status restated in five files is a status that goes stale in four of them.
+
+| Environment | Purpose | Source | Public | Indexing | `robots.txt` | Preview notice |
+|---|---|---|---|---|---|---|
+| `staging` | The reviewable deployment. Safe to point at unfinished work. | `main` | Yes, but unlisted | **`noindex, nofollow`** | `Disallow: /` | Shown |
+| `production` | The public release. | `main`, verified green | Yes | `index, follow` | `Allow: /`, `Disallow: /ui-lab` | Never shown |
+
+**Current state.** `staging` is deployed. **A `production` environment has been approved by `DASH.13`
+and has not yet been created**, so ARPI has no public, indexable origin at the time of writing, and a
+social crawler cannot build a preview card for it — a preview deployment correctly answers
+`Disallow: /` to every crawler, which is a working safeguard rather than a defect. What is still
+required is recorded in [`docs/reviews/DASH-13-REVIEW.md`](docs/reviews/DASH-13-REVIEW.md).
+
+Approval makes production a **supported target**, not the default one. The declared default in
+[`deployment/railway/project.config.json`](deployment/railway/project.config.json) is still `staging`,
+and no edit to that file alone can retarget the tooling: a production run requires
+`--environment production --confirm-production` together, and the bootstrap tool refuses with exit `2`
+on either flag alone, on an unrecognised environment, or on finding itself linked to production
+without having asked for it.
+
+**A production deployment must be a fresh build.** The canonical origin and the indexing policy are
+resolved from `RAILWAY_ENVIRONMENT_NAME` and `RAILWAY_PUBLIC_DOMAIN` at **build** time for every
+statically prerendered route, and at request time for a dynamic one. Promoting an image built in
+another environment therefore ships a deployment whose `robots.txt` and page metadata **disagree** —
+`DASH.13` reproduced exactly that, and it fails silently. Verify any deployment from outside with:
+
+```
+tsx scripts/railway/verify_release_policy.ts --url <origin> --expect production
+tsx scripts/railway/verify_release_policy.ts --url <origin> --expect preview
+```
+
+It asserts reachability, one coherent indexing policy across `robots.txt` and page metadata, canonical
+correctness, Open Graph completeness, that the 1200x630 social image is fetchable as `image/png`, and
+that the sitemap publishes one origin with no retired alias and no internal route. It never claims a
+social network has built a card: a crawler's cache is not a property of the deployment.
+
+**What the website is not.** It holds **no database credential**, opens **no connection**, and is not
+granted a reference to one — asserted by `scripts/railway/verify_railway_configuration.ts`. A
+production database, if one is ever provisioned for the semantic model, stays separate from it. Live
+health, remote smoke and security-header results read `UNVERIFIED` in
+[`deployment/evidence/portfolio_deployment.json`](deployment/evidence/portfolio_deployment.json):
+neither CI nor the environments this project is built in may reach the deployment host, and an
+unobtained fact is not recorded as a pass. The full configuration is
+[`deployment/railway/README.md`](deployment/railway/README.md).
 
 ---
 

@@ -38,6 +38,10 @@ import { fileURLToPath } from 'node:url'
 
 import { describe, expect, it } from 'vitest'
 
+// Imported so the route COUNT the deployment configuration claims is tied to the
+// route map rather than to a number somebody typed twice.
+import { ALL_ROUTES } from '../../src/lib/site.ts'
+
 const HERE = dirname(fileURLToPath(import.meta.url))
 const PORTFOLIO = resolve(HERE, '..', '..')
 const REPO = resolve(PORTFOLIO, '..')
@@ -605,5 +609,113 @@ describe('railway.json deploy configuration', () => {
     }
     expect(RAILWAY_CONFIG).not.toHaveProperty('variables')
     expect(RAILWAY_CONFIG.deploy).not.toHaveProperty('variables')
+  })
+})
+
+/* -------------------------------------------------------------------------- */
+/* The release policy: two environments, both declared                        */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * `DASH.13` approved an intentional public production deployment. That approval
+ * is only safe if the configuration still makes production hard to reach BY
+ * ACCIDENT, so this block asserts the shape of the approval rather than merely
+ * its presence:
+ *
+ *   - production is approved, and names the increment that approved it;
+ *   - the DECLARED DEFAULT is still not production, so no edit to this file alone
+ *     can retarget the tooling;
+ *   - both command-line flags are recorded as required;
+ *   - staging keeps its safeguards.
+ *
+ * The runtime half of the gate lives in `scripts/railway/bootstrap_railway.ts`
+ * and refuses with exit 2 on each of: production without `--confirm-production`,
+ * `--confirm-production` without production, and an environment that is neither.
+ */
+describe('the production release policy', () => {
+  const project = JSON.parse(read('deployment/railway/project.config.json')) as {
+    project: {
+      environment: string
+      productionEnvironment: string
+      createProductionEnvironment: boolean
+      productionRelease?: {
+        approved: boolean
+        approvedBy?: string
+        requiredFlags?: string[]
+        deploymentRef?: string
+        indexable?: boolean
+        buildMustSupplyEnvironmentArguments?: boolean
+      }
+    }
+    deliberatelyAbsent: Record<string, string>
+  }
+
+  it('understands both environments by name', () => {
+    expect(project.project.environment).toBe('staging')
+    expect(project.project.productionEnvironment).toBe('production')
+  })
+
+  it('approves a production release and says which increment did', () => {
+    expect(project.project.productionRelease?.approved).toBe(true)
+    expect(project.project.productionRelease?.approvedBy).toBe('DASH.13')
+  })
+
+  it('does not make production the declared default', () => {
+    /*
+     * The assertion that keeps approval from becoming exposure. If these two were
+     * ever equal, a search-and-replace of "staging" would be a production deploy.
+     */
+    expect(project.project.environment.toLowerCase()).not.toBe(
+      project.project.productionEnvironment.toLowerCase()
+    )
+  })
+
+  it('does not authorise creating production without an explicit run', () => {
+    expect(project.project.createProductionEnvironment).toBe(false)
+  })
+
+  it('records both flags a production run must carry', () => {
+    const flags = project.project.productionRelease?.requiredFlags ?? []
+    expect(flags).toContain('--environment production')
+    expect(flags).toContain('--confirm-production')
+  })
+
+  it('declares that production must be indexable and built from main', () => {
+    expect(project.project.productionRelease?.indexable).toBe(true)
+    expect(project.project.productionRelease?.deploymentRef).toBe('main')
+  })
+
+  it('declares that a production build must carry its own build arguments', () => {
+    /*
+     * The constraint `DASH.13` measured rather than assumed: the canonical origin
+     * and the indexing policy are baked at build time for a statically prerendered
+     * route and read at request time for a dynamic one, so a promoted image ships
+     * a robots.txt and page metadata that disagree.
+     */
+    expect(project.project.productionRelease?.buildMustSupplyEnvironmentArguments).toBe(
+      true
+    )
+  })
+
+  it('still records the website as holding no database access', () => {
+    // A production database must not become a reason to give the site a credential.
+    expect(project.deliberatelyAbsent).toHaveProperty('websiteDatabaseAccess')
+    expect(project.deliberatelyAbsent.backendWebService).toMatch(
+      /no runtime data source/i
+    )
+  })
+
+  it('describes the route count and render modes as built', () => {
+    /*
+     * Stale before `DASH.13`, which said "fourteen statically prerendered routes":
+     * there are seventeen, and the nine operating ones are server-rendered on
+     * demand because their state is a URL query. Asserted POSITIVELY rather than as
+     * a ban on the old wording, because the field now explains what it used to say
+     * and a substring ban would fire on that note.
+     */
+    const claim = project.deliberatelyAbsent.backendWebService
+    expect(claim).toMatch(/seventeen routes/i)
+    expect(claim).toMatch(/server-rendered on demand/i)
+    expect(ALL_ROUTES.length).toBe(17)
   })
 })

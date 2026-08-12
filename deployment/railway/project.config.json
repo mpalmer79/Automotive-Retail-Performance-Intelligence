@@ -4,7 +4,17 @@
     "name": "ARPI",
     "environment": "staging",
     "productionEnvironment": "production",
-    "createProductionEnvironment": false
+    "createProductionEnvironment": false,
+    "productionRelease": {
+      "approved": true,
+      "approvedBy": "DASH.13",
+      "note": "DASH.13 is the increment that approved an intentional public production deployment. Approval makes production a SUPPORTED target; it does not make it the DEFAULT one. project.environment above is still staging, and no edit to this file alone can point the tooling at production: targeting it requires --environment production and --confirm-production on the command line, and the tooling refuses production without both. Staging keeps every safeguard it had — it remains non-production, robots-disallowed and preview-marked, and is never deleted or repurposed as a side effect of a production release.",
+      "requiredFlags": ["--environment production", "--confirm-production"],
+      "deploymentRef": "main",
+      "indexable": true,
+      "buildMustSupplyEnvironmentArguments": true,
+      "buildArgumentNote": "The canonical origin and the indexing policy are resolved from RAILWAY_ENVIRONMENT_NAME and RAILWAY_PUBLIC_DOMAIN at BUILD time for every statically prerendered route, and at request time for a dynamic one. A production deployment must therefore be a FRESH BUILD carrying production build arguments. Promoting or re-running an image built in another environment ships a deployment whose robots.txt and page metadata disagree — DASH.13 reproduced exactly that. scripts/railway/verify_release_policy.ts detects it from outside."
+    }
   },
   "repository": {
     "slug": "mpalmer79/Automotive-Retail-Performance-Intelligence",
@@ -121,9 +131,9 @@
     }
   ],
   "deliberatelyAbsent": {
-    "backendWebService": "The ARPI architecture has no general-purpose backend. The website is fourteen statically prerendered routes with no runtime data source, so a backend would be a service with nothing to serve.",
+    "backendWebService": "The ARPI architecture has no general-purpose backend. The website is seventeen routes with no runtime data source: the reference and utility pages are statically prerendered, and the nine operating routes are server-rendered on demand because their state is a URL query, not because they reach for data — every figure comes from committed generated datasets read at render time. A backend would be a service with nothing to serve. Corrected in DASH.13: this field previously said 'fourteen statically prerendered routes', which was true before the operating application gained URL-addressable filters.",
     "websiteDatabaseAccess": "The website holds no database credential, opens no connection, and is not granted a reference to one. Verified by scripts/railway/verify_railway_configuration.ts.",
-    "productionEnvironment": "No production deployment has been approved. The bootstrap tool refuses to create or modify a production environment.",
+    "productionEnvironment": "Approved by DASH.13 and still absent at the time this file was written. It is listed here because its absence remains a deliberate state rather than an oversight: approval makes production a supported target, and creating it is a separate act that requires --environment production and --confirm-production. Until it exists, staging is the only deployed environment and is correctly non-indexable.",
     "prEnvironments": "Evaluated and deliberately not enabled; see deployment/railway/README.md section 9."
   }
 }

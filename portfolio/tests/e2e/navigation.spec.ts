@@ -619,6 +619,45 @@ test.describe('metadata and discovery', () => {
     expect(await page.title()).toBe('Automotive Retail Performance Intelligence')
   })
 
+  test('applies the title suffix exactly once on every route', async ({ page }) => {
+    /*
+     * The sibling test above guards the home page, which returns an ABSOLUTE title.
+     * This guards the other shape of the same defect, which shipped: a route that
+     * builds its own `"<name> - ARPI"` string and returns it as a plain string gets
+     * the root template's suffix appended a SECOND time. `/technical` served
+     * `How ARPI works - ARPI - ARPI` until `DASH.13` — on the route a technical
+     * reviewer arriving from a shared link is most likely to open.
+     *
+     * Asserted over every primary route rather than just `/technical`, because the
+     * mistake is available to any route that composes its own title.
+     */
+    for (const route of PRIMARY_ROUTES) {
+      await page.goto(route.path)
+      const title = await page.title()
+      expect(title, `${route.path} doubles the title suffix`).not.toMatch(
+        / - ARPI - ARPI/
+      )
+      expect(title, `${route.path} has an empty title`).not.toBe('')
+    }
+  })
+
+  test('names the site in the social card metadata on every route', async ({ page }) => {
+    /*
+     * `og:site_name` was absent from every route until `DASH.13`: `pageMetadata()`
+     * returns a fresh `openGraph` object and `Metadata` overrides are shallow, so
+     * the root layout's value was replaced rather than merged. A social crawler
+     * renders it as the card's attribution line, so a card built from a page without
+     * it is a headline and an image with nothing naming the site they came from.
+     */
+    for (const route of PRIMARY_ROUTES) {
+      await page.goto(route.path)
+      await expect(page.locator('meta[property="og:site_name"]')).toHaveAttribute(
+        'content',
+        'Automotive Retail Performance Intelligence'
+      )
+    }
+  })
+
   test('serves an Open Graph image and a Twitter card on every route', async ({
     page,
   }) => {

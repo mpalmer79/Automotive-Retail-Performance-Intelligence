@@ -173,6 +173,16 @@ describe('the validator catches each mistake that matters', () => {
   })
 
   it('rejects being asked to create production', () => {
+    /*
+     * UNCHANGED BY `DASH.13`, DELIBERATELY.
+     *
+     * `DASH.13` approved a production release, and the first version of that change
+     * relaxed this assertion so the flag was permitted once approval existed. That
+     * gave production-creation intent two authorities — this persistent config flag
+     * and the per-invocation `--confirm-production` argument — and a persistent flag
+     * is the worse of the two to trust, because once set it stays set. This test is
+     * what caught it. Intent lives at the command line only.
+     */
     expect(
       errorsOf(mutate((d) => (d.project.project.createProductionEnvironment = true)))
     ).toMatch(/createProductionEnvironment is true/)
@@ -413,5 +423,73 @@ describe('no credential may appear in the specification', () => {
     const serialised = JSON.stringify(spec.variables)
     expect(serialised).toContain('${{Postgres.DATABASE_URL}}')
     expect(serialised).toContain('secret(')
+  })
+})
+
+describe('the production release policy, approved by `DASH.13`', () => {
+  it('is approved, and names the increment that approved it', () => {
+    const release = spec.project.project.productionRelease
+    expect(release?.approved).toBe(true)
+    expect(release?.approvedBy).toBe('DASH.13')
+  })
+
+  it('keeps the declared default environment out of production', () => {
+    /*
+     * Approval moved production from "never" to "only on purpose". This is the
+     * assertion that keeps the difference real: if editing the config file were
+     * enough to retarget the tooling, a merge resolution or a search-and-replace of
+     * "staging" would be a production deployment.
+     */
+    expect(spec.project.project.environment.toLowerCase()).not.toBe(
+      spec.project.project.productionEnvironment.toLowerCase()
+    )
+  })
+
+  it('records both flags a production run must carry', () => {
+    const flags = spec.project.project.productionRelease?.requiredFlags ?? []
+    expect(flags).toContain('--environment production')
+    expect(flags).toContain('--confirm-production')
+  })
+
+  it('rejects an approval with nobody attached to it', () => {
+    expect(
+      errorsOf(
+        mutate((d) => {
+          if (d.project.project.productionRelease) {
+            d.project.project.productionRelease.approvedBy = ''
+          }
+        })
+      )
+    ).toMatch(/approvedBy is empty/)
+  })
+
+  it('rejects an approval that does not require production build arguments', () => {
+    /*
+     * The constraint `DASH.13` measured rather than assumed: the canonical origin
+     * and the indexing policy are baked at BUILD time for a statically prerendered
+     * route and read at request time for a dynamic one, so a promoted image ships a
+     * robots.txt and a set of page metadata that contradict each other, silently.
+     * Approving the release without declaring that constraint would approve the
+     * failure mode along with it.
+     */
+    expect(
+      errorsOf(
+        mutate((d) => {
+          if (d.project.project.productionRelease) {
+            d.project.project.productionRelease.buildMustSupplyEnvironmentArguments = false
+          }
+        })
+      )
+    ).toMatch(/fresh build carrying production build arguments/)
+  })
+
+  it('reads an absent release block as NOT approved rather than as approved', () => {
+    // Fail-closed: a specification written before `DASH.13` still parses, and the
+    // absence of an approval is not an approval.
+    const withoutRelease = mutate((d) => {
+      delete d.project.project.productionRelease
+    })
+    expect(validateSpecification(withoutRelease).errors).toEqual([])
+    expect(withoutRelease.project.project.productionRelease).toBeUndefined()
   })
 })

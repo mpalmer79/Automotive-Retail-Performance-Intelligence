@@ -54,7 +54,7 @@
 | `UX.1` | Executive productization and operating experience | Large | **Implemented** |
 | `DASH.12` | Management Action Center and change drivers | Large | **Implemented** |
 | `UX.2` | Executive visualization and decision workspace | Large | **Implemented** — `UX.2A`–`UX.2D` |
-| `DASH.13` | Hardening and release | Large | Planned |
+| `DASH.13` | Hardening and release | Large | **In progress** — repository hardening complete; the public production deployment is an external manual dependency, see below |
 | `DASH.O-*` | Optional enhancements | — | Deferred |
 
 `DASH.11` is Medium, not Large, by the audit: it adds no warehouse entity — one reporting view over
@@ -1390,7 +1390,7 @@ model.
 | **Estimated complexity** | Large |
 | **Blocking gate** | None; explicitly may not alter Gate 2 without genuine evidence |
 | **Architecture references** | Program §21; ADR-0013 Consequences |
-| **Status** | Planned |
+| **Status** | **In progress.** The repository half is complete and recorded in [`DASH-13-BASELINE.md`](../reviews/DASH-13-BASELINE.md) and [`DASH-13-REVIEW.md`](../reviews/DASH-13-REVIEW.md): truth audit, six P1 corrections, the metadata defects, the production release policy, the external release verifier, and the documentation closeout. **Not Implemented, and deliberately not marked so:** `DASH.13`'s contract includes a public production deployment and its external verification, and neither can be performed from an environment with no Railway credential and no outbound reach to the deployment host. The remaining work is one external manual action plus a verification command, both stated in the review. |
 
 Items: `DASH.13-01` accessibility and responsive sweep (Large) — full route × viewport matrix
 (320/375/390/768/1024/1280/1440/1920 — 390 added to the tested set), 200% zoom, reduced motion,

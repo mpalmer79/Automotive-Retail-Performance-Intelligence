@@ -262,11 +262,18 @@ configuration.
 - the Railway environment is anything **other than** `production`
 
 The third is the important one, and it is deliberately expressed as "not
-production" rather than "named staging". No production deployment has been
-approved, so **every deployment that currently exists is an unpublished one** — and
-a rule that had to name each new environment would fail open the first time
-somebody added one. Failing closed costs a staging deployment nothing: it is not
+production" rather than "named staging". A rule that had to name each new
+environment would fail open the first time somebody added one; this one fails
+**closed**, and failing closed costs a staging deployment nothing, because it is not
 meant to be in a search index.
+
+**`DASH.13` did not change this rule, and the tempting simplification remains
+forbidden.** Now that a production environment is approved, `environment !== 'staging'
+⇒ production` looks equivalent and is not: it would publish a typo, a renamed
+environment or a future PR environment. Only the exact name `production` counts —
+compared case-insensitively and whitespace-trimmed, because those values are typed
+into a dashboard text field. `tests/unit/flags.test.ts` owns the truth table and
+`tests/unit/dash13-release-policy.test.ts` asserts the release reading of it.
 
 ### An unpublished deployment (Railway `staging`, today)
 
@@ -284,15 +291,46 @@ deployment would put a point-in-time snapshot of those statements into search
 results, where it would outlive the state it describes — and the whole point of the
 site is that its statements track their evidence.
 
-### Production, when it is approved
+### Production — approved by `DASH.13`, and not yet created
+
+Approval is recorded in `deployment/railway/project.config.json` under
+`project.productionRelease`. It makes production a **supported target**, not the
+default one: the declared `project.environment` is still `staging`, and the
+bootstrap tool refuses production unless `--environment production` and
+`--confirm-production` are both present. See §6.
+
+What a production deployment must look like, every item of which
+`scripts/railway/verify_release_policy.ts --expect production` checks from outside:
 
 - `ARPI_SITE_URL` set only if a custom domain is used; otherwise the platform's
   domain still answers
-- `robots.txt` allows everything except `/ui-lab`, and points at `sitemap.xml`
-- `sitemap.xml` lists the eight indexable routes
-- canonical tags are absolute, on the production origin
+- `robots.txt` allows everything except `/ui-lab`, and points at `sitemap.xml` on
+  the production origin
+- `sitemap.xml` lists the sixteen indexable routes plus the seven non-default
+  `/technical` views — 23 entries, one origin, no retired alias, no `/ui-lab`
+- canonical tags are absolute, `https`, on the production origin
+- `og:site_name`, `og:url`, `og:title`, `og:description`, `og:image`,
+  `og:image:width` `1200`, `og:image:height` `630` and `og:image:alt` all present,
+  with absolute URLs on the production origin
+- `/social-preview.png` answers `200 image/png` and is really `1200x630`
 - `/ui-lab` carries `X-Robots-Tag: noindex, nofollow`
 - the preview marker renders nothing
+
+#### A production deployment must be a fresh build. This is not a preference.
+
+The canonical origin and the indexing policy are resolved from
+`RAILWAY_ENVIRONMENT_NAME` and `RAILWAY_PUBLIC_DOMAIN` at **build** time for every
+statically prerendered route, and at **request** time for a dynamic one. Both
+values must therefore be present as build arguments — they are, in
+`project.config.json`'s `buildArguments` — and the build must happen **in the
+environment it is being deployed to**.
+
+Promote or re-run an image built elsewhere and the deployment ships a mixture.
+`DASH.13` reproduced it: `robots.txt` said `Allow: /` with a production `Host:`
+while the home page carried `noindex, nofollow` and canonicalised itself to the
+staging origin. Two contradictory instructions to every crawler, and **nothing
+failed and nothing logged**. That is the single failure mode this policy exists to
+prevent, and the external verifier is what detects it.
 
 ### Local
 
@@ -322,10 +360,21 @@ the runtime contract and the served site.
 
 ---
 
-## 6. An unpublished deployment before production approval
+## 6. Staging keeps every safeguard, now that production exists
 
-A staging deployment is permitted while production is not, but only under all of
-these conditions:
+`DASH.13` approved a production release. **Nothing in that approval loosens staging.**
+The conditions below were written when staging was the only deployment, and they
+continue to bind it: staging remains non-production, `noindex`, `Disallow: /`,
+preview-marked, and safe to point at unfinished work — which is the whole reason to
+keep it after a public release exists rather than to retire or promote it.
+
+The release was **not** implemented by making staging public, by allowing crawlers on
+it, or by special-casing any crawler's user agent. `DASH.13` verified that the
+rendered metadata on a production build is byte-identical across `LinkedInBot`,
+`Twitterbot`, `facebookexternalhit` and an ordinary browser: the application does not
+branch on user agent, and the release did not teach it to.
+
+A staging deployment is permitted under all of these conditions:
 
 - it **incurs a cost that has been approved** — unlike Vercel's free tier, Railway
   charges for the compute and for the database volume. See
@@ -401,6 +450,39 @@ the wrong claim being public is the urgent part.
 Rolling back a _configuration_ change is a different operation: revert the commit
 that changed `railway.json` or `.railway/railway.ts` and re-run the bootstrap
 workflow, which converges the project back onto the declaration.
+
+### Rolling back the production release
+
+Written before the first production cutover rather than after it, because a rollback
+procedure invented during an incident is not a procedure. Six steps, in order:
+
+1. **Identify the previous good production deployment** and its commit.
+   `railway deployment list --service arpi-portfolio --environment production --json`.
+   "Good" means it was verified, not merely that it built.
+2. **Redeploy it.** `railway redeploy --service arpi-portfolio --environment production --yes`.
+   No rebuild, so the build arguments that produced its metadata are the ones it had.
+3. **Restore the public domain** if the rollback is a domain problem rather than a
+   code problem — the domain belongs to an environment, so moving it back is the
+   rollback.
+4. **Verify the commit.** The deployment must report the SHA you intended, not merely
+   answer `200`:
+   `tsx scripts/railway/verify_release_policy.ts --url <origin> --expect production --expect-commit <sha>`.
+   A reachable deployment serving a different commit is not evidence for the tree you
+   think you rolled back to.
+5. **Re-verify robots and canonical.** Same command, whose `indexing-coherence` and
+   `canonical` steps are the ones that catch a rollback landing on an image built for
+   another environment.
+6. **Confirm staging is untouched.** `--expect preview` against the staging origin.
+   Staging is never deleted, retargeted or made public by any production operation,
+   including a failed one, and this is where that is checked rather than assumed.
+
+**Order matters when a wrong claim is public:** roll back first, then fix, then
+redeploy. If the problem is that production was never coherent in the first place —
+the mixed-metadata failure in §5 — the fix is a **fresh build with production build
+arguments**, not a redeploy of the same image.
+
+**Do not test this destructively against a live release.** Steps 1 and 4–6 are
+read-only and can be rehearsed at any time; 2 and 3 change what the public sees.
 
 ---
 

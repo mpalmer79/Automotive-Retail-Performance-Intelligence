@@ -32,8 +32,13 @@ What it is *not*, stated first because the distinction is the whole design:
 - Not a CRM. It does not own a customer, assign a task or manage a follow-up.
 - Not an F&I contracting platform. It does not produce a contract or transmit to a lender.
 - Not an accounting system. It reconciles *against* a ledger; it does not restate one.
-- Not a recommendation engine. It organizes evidence. A deterministic action queue is a planned
-  increment (`DASH.12`), not a shipped capability, and nothing on the site recommends an action.
+- Not a recommendation engine. It organizes evidence. The Management Action Center shipped in
+  `DASH.12` and is a **deterministic queue**, not a recommender: every entry is produced by a
+  registered rule with a permanent identifier, a governed threshold and three-valued logic over exact
+  decimal arithmetic, so the same data and the same as-of date always produce the same queue. It ranks
+  evidence a manager already owns and links to the transactions behind it; it does not score options,
+  predict outcomes, or decide anything. No entry is a recommendation, and there is no task state —
+  ARPI does not track whether anyone acted.
 - Not artificial intelligence. There is no model, no inference and no prediction anywhere in it. The
   one "projection" it publishes is linear arithmetic over a governed selling-day calendar and says so
   wherever it appears.

@@ -55,7 +55,7 @@ if (argv.includes('--help') || argv.includes('-h')) {
 Usage: tsx scripts/railway/audit_deployed_site.ts [options]
 
   --url <url>              Target. Defaults to ARPI_REMOTE_BASE_URL.
-  --route <path>           Route to audit; repeatable. Defaults to / and /kpis.
+  --route <path>           Route to audit; repeatable. Defaults to / and /dashboard/inventory.
   --out <directory>        Where to write the summary and the full reports.
                            Defaults to lighthouse/ (git-ignored).
   --json                   Print the summary as JSON on stdout.
@@ -103,7 +103,18 @@ const baseUrl = (flag('url') ?? process.env['ARPI_REMOTE_BASE_URL'] ?? '').repla
   /\/+$/,
   ''
 )
-const routes = flags('route').length > 0 ? flags('route') : ['/', '/kpis']
+/*
+ * THE DEFAULTS ARE THE TWO ROUTES WORTH AUDITING, NOT THE TWO THAT USED TO EXIST.
+ *
+ * This read `['/', '/kpis']` until `DASH.13`. `/kpis` was retired into
+ * `/technical?view=kpis` when the six documentation routes were consolidated, so
+ * the default audit had been following a `308` and scoring the redirect target
+ * under the wrong name. `/dashboard/inventory` replaces it: it is the heaviest
+ * operating route in the application, which makes it the one whose Lighthouse
+ * numbers are worth having beside the home page's.
+ */
+const routes =
+  flags('route').length > 0 ? flags('route') : ['/', '/dashboard/inventory']
 // `resolve` against the repository root, not `join`.
 //
 // `join(REPO_ROOT, '/tmp/x')` produces `<repo>/tmp/x` — it concatenates rather

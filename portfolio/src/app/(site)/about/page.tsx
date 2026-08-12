@@ -196,7 +196,8 @@ export default function AboutPage() {
               </Text>
               <Text size="body" tone="muted" className="max-w-prose">
                 It is deliberately not a production system, and it is honest about what it
-                is not. There is no dashboard yet. The semantic model has never been
+                is not. Every figure in it is synthetic. The Power BI report layer is a
+                shell with no page and no visual, and the semantic model has never been
                 loaded by a Microsoft engine. Saying so on the front page costs something,
                 and saying so is the point: a project that reports its own gaps is a
                 project whose other claims are worth reading.
