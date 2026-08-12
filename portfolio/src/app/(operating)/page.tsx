@@ -56,7 +56,11 @@ import {
 import { managementActions } from '@/lib/dashboard/actions-data'
 import { buildBridge, buildChangeDrivers } from '@/lib/dashboard/change-drivers'
 import { grossChangeBridgeRows } from '@/lib/dashboard/change-drivers-data'
-import { parseFilters, type QueryInput } from '@/lib/dashboard/filters'
+import {
+  EXECUTIVE_OVERVIEW_SUPPORT,
+  parseFilters,
+  type QueryInput,
+} from '@/lib/dashboard/filters'
 import { formatIsoDate, formatIsoMonth } from '@/lib/dashboard/format'
 import { operatingHref } from '@/lib/dashboard/navigation'
 import { exportTrust, powerBiTrust, reconciliationFailed } from '@/lib/dashboard/trust'
@@ -251,11 +255,14 @@ export default async function DashboardPage({
         filters={
           <FilterBar
             action={ROUTE}
+            support={EXECUTIVE_OVERVIEW_SUPPORT}
             filters={overview.filters}
             periodOptions={periodOptions(overview)}
             stores={storeOptions()}
             conditions={conditionOptions()}
             leadSources={leadSourceOptions()}
+            conditionHint="Inventory measures only."
+            leadSourceHint="Funnel measures only."
           />
         }
         methodologyId="trust"

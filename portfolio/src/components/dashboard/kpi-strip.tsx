@@ -116,10 +116,7 @@ export function KpiStrip({
         <p className="text-2xs text-ink-faint">{scopeNotes.join(' · ')}</p>
       )}
 
-      <Disclosure
-        label="How every figure on this rail is calculated"
-        className="border-0"
-      >
+      <Disclosure label="How every figure on this rail is measured" className="border-0">
         <KpiRailMethodology cards={cards} />
       </Disclosure>
     </div>

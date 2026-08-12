@@ -194,13 +194,12 @@ export default async function LeadsMarketingPage({
         filters={
           <FilterBar
             action={ROUTE}
+            support={LEADS_MARKETING_SUPPORT}
             filters={parsed.filters}
             periodOptions={periodOptions}
             stores={storeOptions}
-            conditions={[]}
             leadSources={sourceOptions}
             campaigns={campaignOptions}
-            conditionHint="Not applied here. No lead or appointment dataset carries a condition group."
             leadSourceHint="Scopes both sides of every rate on this page, including the appointment outcomes."
             campaignHint="Scopes the funnel, response, appointment and marketing blocks alike."
           />

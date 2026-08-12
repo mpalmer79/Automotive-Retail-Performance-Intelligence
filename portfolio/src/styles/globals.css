@@ -393,6 +393,36 @@
 @utility numeric {
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'tnum' 1;
+
+  /* A FIGURE IS ONE TOKEN AND MAY NOT BE BROKEN ACROSS TWO LINES.
+
+     `body` sets `overflow-wrap: anywhere`, for the reason recorded there: this
+     site puts 68-character schema-qualified identifiers inside ordinary prose,
+     and only `anywhere` reduces min-content width enough to stop them forcing a
+     320px viewport sideways. That rule is right for prose and wrong for money,
+     because `anywhere` breaks a word at ANY character once the line is full --
+     including between two digits of a price.
+
+     Measured on `main` at `9c109b67`, and still true after `UX.2D`: the Deal
+     Explorer's price, gross and payment columns broke 22 money values across two
+     lines at 1440 x 900, in a 66px cell. `$38,127` rendered as `$38,12` above a
+     lone `7`. Not clipped, not ellipsised -- silently rewritten into a different,
+     smaller-looking number that a reader skimming a column of figures has no
+     reason to distrust. 35 across five routes in total.
+
+     `UX.2B.1` saw the symptom on the Deal Jacket (`$21,358.` above `02`) and
+     treated it with container queries, which fixed that panel's width without
+     fixing the rule.
+
+     `normal` restores the default breaking rules, under which UAX #14 treats a
+     currency prefix, its digits and its group separators as one unbreakable
+     numeric run. It cannot reintroduce the overflow the body rule prevents:
+     these are short tokens inside table cells, and every wide table on this site
+     already sits in a keyboard-reachable `overflow-x: auto` region, so a column
+     that needs more room widens the table the reader can already scroll rather
+     than the page they cannot. */
+  overflow-wrap: normal;
+  word-break: normal;
 }
 
 /* ==========================================================================

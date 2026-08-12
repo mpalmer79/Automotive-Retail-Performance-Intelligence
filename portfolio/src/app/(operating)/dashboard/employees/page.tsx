@@ -239,6 +239,16 @@ export default async function EmployeesPage({
     value: store.id,
     label: store.shortName,
   }))
+  /*
+   * `UX.2D.1`. `EMPLOYEES_SUPPORT.source` is declared `partial` — it scopes the
+   * lead-source mix and the lead funnel — and the route shipped the control with
+   * an EMPTY option list, so the one parameter it says it applies could not be
+   * selected from the form. The value was reachable only by typing it into the
+   * URL. It is a catalogue list like every other route's.
+   */
+  const leadSourceOptions: readonly FilterOption[] = dashboardLeadSources.map(
+    (source) => ({ value: source.code, label: source.name })
+  )
 
   // BOTH LINK BUILDERS GO THROUGH THE GOVERNED SERIALIZER, never through hand-assembled
   // query strings. `operatingHref` fixes the canonical parameter order and the sorted
@@ -338,12 +348,12 @@ export default async function EmployeesPage({
         filters={
           <FilterBar
             action={ROUTE}
+            support={EMPLOYEES_SUPPORT}
             filters={parsed.filters}
             periodOptions={periodOptions}
             stores={storeOptions}
-            conditions={[]}
-            leadSources={[]}
-            conditionHint="Not applied here. The new and used mix is shown on every selling row instead, because a condition filter would narrow the gross numerator without narrowing the retail-unit denominator the sample floor is applied to."
+            leadSources={leadSourceOptions}
+            leadSourceHint="Lead mix and funnel only."
           />
         }
       >

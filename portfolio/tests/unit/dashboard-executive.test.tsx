@@ -650,10 +650,17 @@ describe('KPI methodology disclosure', () => {
      * that the ANSWER did not collapse with the question: every catalogue field still
      * renders, once per card, from the catalogue.
      */
-    expect(
-      screen.getAllByText('How every figure on this rail is calculated')
-    ).toHaveLength(1)
+    expect(screen.getAllByText('How every figure on this rail is measured')).toHaveLength(
+      1
+    )
+    /*
+     * `UX.2D.1` §21 settled the verb. The console said "calculated" in five
+     * places and "measured" in one for the same act, so the summary lines are
+     * all "measured" now and both retired phrasings are asserted absent — the
+     * question form the metric card used, and the calculated form this rail did.
+     */
     expect(screen.queryByText('How is this calculated?')).toBeNull()
+    expect(screen.queryByText('How every figure on this rail is calculated')).toBeNull()
     for (const card of overview.cards) {
       expect(
         screen.getAllByRole('heading', { level: 4, name: card.label }).length,

@@ -329,7 +329,7 @@ export function KpiMethodology({
   defaultOpen?: boolean
 }) {
   return (
-    <Disclosure label="How is this calculated?" defaultOpen={defaultOpen}>
+    <Disclosure label="How this is measured" defaultOpen={defaultOpen}>
       <KpiDefinitionList selector={selector} definition={definition} />
     </Disclosure>
   )

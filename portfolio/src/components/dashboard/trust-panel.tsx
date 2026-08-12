@@ -81,7 +81,7 @@ function ExportLane({ state }: { state: ExportTrust }) {
         ))}
       </ul>
 
-      <Disclosure label="Which reporting views produced these figures?">
+      <Disclosure label="Which reporting views produced these figures">
         <Text size="sm" tone="muted">
           The exporter reads an explicit allowlist and nothing else. It never touches the
           raw, staging, warehouse or audit schemas, and a column outside the declared
@@ -96,7 +96,7 @@ function ExportLane({ state }: { state: ExportTrust }) {
         </ul>
       </Disclosure>
 
-      <Disclosure label="What are the known limits of this data?">
+      <Disclosure label="The known limits of this data">
         <ul className="flex flex-col gap-2">
           {state.limitations.map((limitation) => (
             <li key={limitation.slice(0, 48)}>
