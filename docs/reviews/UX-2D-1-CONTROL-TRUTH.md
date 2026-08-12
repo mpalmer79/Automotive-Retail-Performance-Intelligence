@@ -199,7 +199,36 @@ box nobody sees; a screen reader is handed a string, and line boxes do not exist
 
 ---
 
-## 5. What this says about the program's method
+## 5. Gate results, as run
+
+Against `732fbcb`, from a production build.
+
+| Gate | Result |
+|---|---|
+| `uv run ruff format --check .` | 324 files already formatted |
+| `uv run ruff check .` | all checks passed |
+| `uv run mypy src tests` | no issues in 172 source files |
+| `check_naming` · `check_docs_links` · `check_reference_data` · `check_secrets` | pass |
+| `check_powerbi_model` · `simulate_semantic_model --check` · `check_simulation_labels` | pass, 1,271 checks, 0 findings |
+| `check_project_capabilities` · `generate_project_capabilities --check` | pass |
+| `npm run format:check` · `lint` · `typecheck` · `manifest:check` · `inventory:check` · `dashboard:check` | pass; 38 datasets, 312 files, 7,356,934 bytes — unchanged |
+| `npx vitest run` | **1,492 passed** |
+| `npx playwright test --project=chromium` | **1,008 passed, 0 failed** |
+
+`pytest` was not re-run for this increment and no claim is made from it: **no Python file changed.**
+The last full run on this branch's base recorded 3,667 passed at 88.94% coverage, and CI exercises the
+canonical lane including the integration tests, which need a populated PostgreSQL this environment
+does not have.
+
+**Three existing browser assertions were repointed** and none weakened. `dashboard-fi.spec.ts`
+asserted the reason an inapplicable filter is not applied by matching a hand-copied string from the
+`conditionHint` this increment deletes; it imports `FI_SUPPORT` and asserts the matrix's own note now.
+The two `dashboard.spec.ts` KPI-methodology assertions named the retired verb, and both retired
+phrasings are now asserted **absent** — stronger than they were.
+
+---
+
+## 6. What this says about the program's method
 
 Three of these five were reachable by reading a declaration the repository already contained and
 comparing it against what shipped. The other two were reachable only by looking — one at a rendered
@@ -212,7 +241,7 @@ is right" are different statements**, and the gap between them is where correct-
 
 ---
 
-## 6. Roadmap
+## 7. Roadmap
 
 `UX.2` remains **Implemented**; `UX.2D` remains **Implemented**. This increment changes no status: it
 is a defect pass over merged work, recorded as `UX.2D.1` in the same way `UX.2B.1` recorded its own.
