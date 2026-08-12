@@ -834,3 +834,55 @@ focusable links with a skip link ahead of them. It is better on discoverability 
 drill-through and worse on screen-reader verbosity, touch-target size and payload; it was not
 adopted, and the reasoning is recorded in `docs/reviews/UX-2B-1-REFINEMENT.md` §3 as an open
 question rather than a settled one.
+
+---
+
+## The operating control band (`UX.2D`)
+
+### A disclosure a screen reader can believe
+
+The filter form sits in a native `<details>`. On a phone it behaves as one: the summary is a real
+control, reachable by Tab, toggled by Enter or Space, and announced with its own expanded and
+collapsed state — none of which a `div` with an `aria-expanded` attribute gets for free, and all of
+which was the reason for choosing the element over a scripted panel.
+
+Above 48rem the summary is `display: none` and the content is forced visible in CSS. **The element
+then announces nothing at all**, which is the right answer: there is no disclosure on a desktop, so
+there is no disclosure state to communicate. The `<details>` keeps its implicit `group` role and the
+controls inside it are ordinary form controls in the tab order.
+
+Verified by tabbing, at both widths, on `/dashboard/inventory?store=GSA-002`:
+
+| Width | Order after the rail                                                                          |
+| ----- | --------------------------------------------------------------------------------------------- |
+| 1440  | methodology summary → chip → reset → period → comparison → store → condition → lead source    |
+| 390   | drawer button → methodology summary → chip → reset → **controls summary** → route disclosures |
+
+At 390 the form controls are correctly absent from the tab order while the disclosure is closed, and
+present the moment it opens.
+
+### Removal and reset are links
+
+Every active-filter chip and the reset are server-rendered `<a>` elements to the same route with one
+parameter removed, or with none. There is no button, no handler and no state: removing a filter is
+navigation. This is what makes the whole control surface work with scripting disabled, and it is why
+`UX.2D` extended the Executive surface's treatment to the other eight routes rather than the
+reverse — the eight had inert text where the one had links.
+
+### Target size
+
+The controls summary is `min-h-touch` (44 px) at every width, verified at 320 px. Chips and the
+reset are `min-h-6` (24 px), the WCAG 2.2 Target Size (Minimum) floor, because they sit in a
+wrapping row where the neighbour-offset exception cannot be relied on.
+
+### 200% zoom
+
+200% at 1280 presents as a 640 px layout viewport, which is below the 48rem breakpoint: a zoomed
+desktop reader gets the phone disclosure. That is the intended behaviour and is asserted — the
+summary is visible and a full target, the form opens, and nothing overflows sideways.
+
+### What did not change
+
+The axe sweep, its route list, the definition-list guard from PR #55, the mobile drawer's focus
+contract, the scroll-region focus contract and the reduced-motion floor are all unchanged. `UX.2D`
+added no suppression.

@@ -565,3 +565,51 @@ change-driver panel beside it.
 **Actions and change drivers are different things**, and the page keeps them apart. An action is a
 condition holding now; a driver is arithmetic about a change that already happened. Neither explains
 the other.
+
+---
+
+## The control architecture and cross-route continuity (`UX.2D`)
+
+### The band, on every operating route
+
+| Tier | Visible | Contents |
+|---|---|---|
+| Scope | always | route name, optional subtitle, and the analytical scope in business words |
+| Active filters | always, when any is set | one removable chip per parameter, and a reset |
+| Controls | desktop always, phone on demand | the shared filter form and any control form the route owns |
+
+The third tier is a native `<details>`, revealed by CSS above 48rem. No JavaScript is involved in
+the responsive behaviour; the mechanism is recorded in
+[`DESIGN_SYSTEM.md`](../../portfolio/docs/DESIGN_SYSTEM.md).
+
+### The scope line
+
+One vocabulary, from `lib/dashboard/scope.ts`. `All three stores` for the whole group; the store's
+published short name for one; a comma list for two. **A route may not print a store identifier where
+the dimension publishes a name.** Five routes did before `UX.2D`.
+
+### What survives a navigation
+
+Unchanged in principle from §6 — the route-support matrix is the whole basis — and now enforced at
+every link rather than at the rail alone:
+
+* **Every in-content operating link goes through `operatingHref`.** It reduces the filter context to
+  the destination's declared support before serializing it, so a `not-applicable` parameter is
+  dropped rather than carried into a page that would show it as an active filter doing nothing.
+* **A route's own parameter goes through `withRouteParam`.** `role` on `/dashboard/employees` is not
+  part of the thirteen-key grammar and `operatingHref` correctly does not know it; the helper
+  appends it, encoded, and drops an empty value.
+* **A chip's removal link is not a carrying link.** Its contract is "remove exactly this parameter
+  and leave the rest", including a parameter the route declares `not-applicable` — which is what the
+  `not-applicable` chip exists for. It is built by `filtersHref`, deliberately.
+
+The matrix is asserted in `tests/unit/ux2d-consistency.test.ts` and through real browser navigations
+in `tests/e2e/ux2d-controls.spec.ts`.
+
+### Drill-through additions and refusals (`UX.2D`)
+
+| Path | State |
+|---|---|
+| `/dashboard/fi` -> `/dashboard/employees` | **Added.** A finance-manager row links to that desk's people context with `employee` and `role=finance`. The unstaffed group gets no link. |
+| `/dashboard/leads-marketing` -> anywhere | **Refused.** Every candidate destination would assert a lead-to-deal or lead-to-employee attribution the export does not publish at that grain. |
+| KPI identifier -> catalogue | **Repointed.** Three modules built `/kpis#…`, the catalogue's pre-`UX.1` address, which resolves through a permanent redirect. `kpiCatalogueHref` now points at `/technical?view=kpis#…` directly. |

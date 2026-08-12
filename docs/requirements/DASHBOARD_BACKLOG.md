@@ -53,7 +53,7 @@
 | `DASH.11` | Employee performance | Medium | **Implemented** |
 | `UX.1` | Executive productization and operating experience | Large | **Implemented** |
 | `DASH.12` | Management Action Center and change drivers | Large | **Implemented** |
-| `UX.2` | Executive visualization and decision workspace | Large | In progress — `UX.2A`–`UX.2C` **Implemented**, `UX.2D` Planned |
+| `UX.2` | Executive visualization and decision workspace | Large | **Implemented** — `UX.2A`–`UX.2D` |
 | `DASH.13` | Hardening and release | Large | Planned |
 | `DASH.O-*` | Optional enhancements | — | Deferred |
 
@@ -1102,7 +1102,7 @@ rather than about the rules; no threshold was moved to fill the queue.
 | **Estimated complexity** | Large, delivered as four sub-increments |
 | **Blocking gate** | None |
 | **Architecture references** | [ADR-0013](../architecture-decisions/ADR-0013-governed-web-operating-console.md); [ADR-0015](../architecture-decisions/ADR-0015-product-first-operating-experience.md); [`INFORMATION_ARCHITECTURE.md`](../dashboard/INFORMATION_ARCHITECTURE.md); [`DESIGN_SYSTEM.md`](../../portfolio/docs/DESIGN_SYSTEM.md) |
-| **Status** | **In progress.** `UX.2A`, `UX.2B` and `UX.2C` are Implemented; `UX.2D` is Planned. |
+| **Status** | **Implemented.** All four sub-increments are Implemented. Program closeout: [`UX-2-REVIEW.md`](../reviews/UX-2-REVIEW.md). |
 
 **It is not a `DASH` increment, and the identifier says so** — the same reasoning `UX.1` records. It
 adds no warehouse fact, no dimension, no reporting view, no export dataset and no KPI identifier, and
@@ -1117,7 +1117,7 @@ where ADR-0013 put it.
 | `UX.2A` | Executive Command Center | Large | **Implemented** |
 | `UX.2B` | Revenue and Vehicle Operations | Large | **Implemented** |
 | `UX.2C` | Demand, People and Controls | Large | **Implemented** |
-| `UX.2D` | Interaction, consistency and closeout | Medium | Planned |
+| `UX.2D` | Interaction, consistency and closeout | Medium | **Implemented** |
 
 `UX.2A` rebuilds `/` as a twelve-column grid of modules with a compact control band, an eight-figure
 KPI rail, a metric-switched primary trend, a grouped store comparison, visual pace, an
@@ -1273,6 +1273,61 @@ group, so KPI-MKT-001, KPI-MKT-002 and KPI-MKT-003 keep their published definiti
 rank, score, percentile, tier or composite. No workflow state on the action queue.
 
 Power BI real-engine validation remains externally pending; `UX.2C` does not modify the semantic
+model.
+
+### `UX.2D` as-built notes
+
+Measured before and after in [`UX-2D-BASELINE.md`](../reviews/UX-2D-BASELINE.md) and
+[`UX-2D-REVIEW.md`](../reviews/UX-2D-REVIEW.md); the whole program is closed out in
+[`UX-2-REVIEW.md`](../reviews/UX-2-REVIEW.md). Six decisions are worth recording here:
+
+1. **The shared control band was the increment, and the measurement said so before the design did.**
+   The band was 548-921 px at 390 x 844 — 65% to 109% of one phone screen — on eight routes, and the
+   two routes that performed well were the two that render no shared filter form. It is 201-439 px,
+   and the first data visualization on every affected route moved up by 326 to 482 px.
+
+2. **The responsive disclosure is CSS, not JavaScript, and that was the whole design constraint.**
+   The filter form sits in a native `<details>`; above 48rem `globals.css` hides the summary and
+   forces the content visible through `::details-content` — the same pseudo-element this site
+   already uses to open every disclosure for print, and the only way a stylesheet can reveal a
+   closed disclosure, because `open` is an attribute. An `@supports selector(::details-content)`
+   guard makes the fallback on an engine without it "one click to the controls" rather than "no
+   controls". Zero bytes of client JavaScript were added and no client island exists that did not
+   before.
+
+3. **Five of nine routes were printing the warehouse key in the analytical scope line.**
+   `?store=GSA-002` rendered as `GSA-002 · December 2025` on Inventory, Leads, Employees, Accounting
+   and Actions, and the whole group was spelled four different ways across the other four —
+   including F&I's lowercase `the group`. One vocabulary now, in `lib/dashboard/scope.ts`.
+
+4. **Eight of nine routes had no way to remove one filter and no way to reset.** The Executive
+   surface rendered removable chips and a reset; the other eight rendered the same information as
+   inert text. One `ActiveFilterSummary` now, on all nine. A chip removes exactly its own parameter
+   and leaves the rest, including one the route declares `not-applicable`, because that chip exists
+   precisely so a reader can remove that parameter deliberately.
+
+5. **Six filter-continuity defects were found by touring the product, not by reading the code.**
+   Executive to Inventory, to Accounting and to Actions were bare pathnames; all 250 Inventory unit
+   links dropped the lot they were clicked from; Employees role links and Deal Explorer sort headers
+   propagated a `compare` both routes declare not-applicable. Every in-content operating link now
+   goes through `operatingHref`, and `withRouteParam` appends a route's private parameter in one
+   place. The persistence matrix is asserted in `tests/unit/ux2d-consistency.test.ts` and through
+   real browser navigations in `tests/e2e/ux2d-controls.spec.ts`.
+
+6. **One drill-through was added and one was refused.** F&I's manager table reaches a finance desk's
+   people context on `/dashboard/employees`, which declares `employee` applied — closing a pair that
+   had been one-way since `DASH.11`. Leads & Marketing still has no outbound drill-through, and the
+   review records why: every candidate would assert an attribution the export does not publish at
+   that grain.
+
+**Non-goals held.** No `DASH.13` work. No new operating route, business domain or KPI family. No
+warehouse fact, dimension, reporting view or export dataset; the generated tree is byte-identical.
+No Power BI file changed. No chart library, asked a fifth time and not reopened, because `UX.2D` §66
+permits reopening it only on a genuine unresolved visualization requirement and none appeared. No
+new frontend dependency. No employee rank, score or percentile; no workflow state on the action
+queue.
+
+Power BI real-engine validation remains externally pending; `UX.2D` does not modify the semantic
 model.
 
 ---

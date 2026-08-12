@@ -1354,3 +1354,50 @@ A route that draws more marks carries more markup; 17 kB of gzipped HTML for a r
 than rounded off.
 
 Client JavaScript owned by the nine operating routes remains **zero bytes**.
+
+## 9.16 `UX.2D` — 3.8 kB of markup for 482 px of phone screen
+
+Measured on a production build (`next build`, `next start -p 3311`) in Chromium at 1440 x 900, cold
+load, uncompressed bytes. **This section's harness reports RAW bytes, not the compressed transfer the
+sections above report**, so its columns compare against each other and not against §9.12-§9.15.
+
+| Route                        | HTML before |   After | JS before |   After |   Delta |
+| ---------------------------- | ----------: | ------: | --------: | ------: | ------: |
+| `/`                          |     615,306 | 616,752 |   631,038 | 631,038 | +1.4 kB |
+| `/dashboard/sales-gross`     |     337,895 | 340,178 |   631,038 | 631,038 | +2.3 kB |
+| `/dashboard/deals`           |     326,711 | 328,832 |   631,038 | 631,038 | +2.1 kB |
+| `/dashboard/deals/[saleId]`  |     218,003 | 218,003 |   624,567 | 624,567 |       0 |
+| `/dashboard/inventory`       |     781,800 | 784,062 |   631,038 | 631,038 | +2.3 kB |
+| `/dashboard/fi`              |     253,505 | 257,321 |   631,038 | 631,038 | +3.8 kB |
+| `/dashboard/leads-marketing` |     442,058 | 444,199 |   631,038 | 631,038 | +2.1 kB |
+| `/dashboard/employees`       |     248,003 | 250,020 |   631,038 | 631,038 | +2.0 kB |
+| `/dashboard/accounting`      |     158,039 | 160,241 |   631,038 | 631,038 | +2.2 kB |
+| `/dashboard/actions`         |     663,098 | 663,098 |   624,567 | 624,567 |       0 |
+
+**JavaScript is identical on every route, to the byte.** `UX.2D` added no client island, no
+dependency and no script. The responsive control disclosure is two CSS rules; the reason it could be
+two CSS rules is in [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md) under "The operating control band".
+
+**The HTML rise is the disclosure and its links.** Eight routes gained a `<details>` wrapper, a
+summary, and one anchor per active filter plus a reset. F&I gained 3.8 kB rather than 2.2 because it
+also gained a drill-through link on each finance-manager row. The Deal Jacket and Management Actions
+gained nothing because neither renders a shared filter form.
+
+**What the 3.8 kB bought:** 482 px of phone screen on `/dashboard/inventory`, 436 px on
+`/dashboard/accounting`, 430 px on `/dashboard/deals`, and between 326 and 418 px on the other five.
+The control band was 65% to 109% of a 390 x 844 screen and is 24% to 52%.
+
+**The largest routes are unchanged and are not the control band.** `/technical` at 1,078.6 kB of
+JavaScript (its motion and diagram modules) and `/dashboard/inventory` at 784 kB of HTML (its
+250-unit disclosure) are the two payload drivers on the site, exactly as they were.
+
+### `UX.2D` added no dependency
+
+`package.json` is unchanged. The chart-library question was not reopened, because `UX.2D` introduced
+no visual primitive at all.
+
+### Budgets can now be set
+
+`DASH.13-02` sets the budgets. The reason the previous sections gave for not setting one here — that
+`UX.2D` was still changing how the routes behave together — no longer applies: `UX.2` is Implemented
+and every route's cost is measured at both ends of this increment.

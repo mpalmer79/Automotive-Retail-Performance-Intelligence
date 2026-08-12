@@ -1,6 +1,6 @@
 {
   "schema": "arpi.project_manifest/1",
-  "generatedFromCommit": "9c109b677725c629d6e041521a40e4c2334679c5",
+  "generatedFromCommit": "1ac945f86b93732fb3d6feae094275bb80970ed6",
   "dataProfile": "development",
   "project": {
     "name": "Automotive Retail Performance Intelligence",

@@ -562,9 +562,17 @@ snapshot — was two tables and an 11,543 px document.
 
 **Why `DASH.13` depends on a completed `UX.2`.** `DASH.13-01` sweeps a full route × viewport matrix and
 `DASH.13-02` sets payload budgets from measurements. Both produce artefacts whose whole value is that
-they describe the shipped product; running them against surfaces `UX.2D` is still rebuilding would
-produce a sweep and a set of budgets that expire on the next merge, and a budget nobody trusts is a
-budget that gets raised rather than investigated.
+they describe the shipped product; running them against surfaces `UX.2D` was still rebuilding would
+have produced a sweep and a set of budgets that expire on the next merge, and a budget nobody trusts is
+a budget that gets raised rather than investigated. `UX.2` is now Implemented and the surfaces have
+stopped moving, so that dependency is satisfied.
+
+[`UX-2D-BASELINE.md`](../reviews/UX-2D-BASELINE.md) found a fourth shape, and it was not the content:
+after three increments had put figures on every operating route, the SHARED CONTROL BAND was consuming
+**65% to 109% of a 390 × 844 phone screen** on eight of them — 921 px on `/dashboard/inventory`, taller
+than the screen it renders on — and the two routes that performed well were the two that render no
+shared filter form. `UX.2D` is the increment that made the controls stop being what a phone reader
+scrolls past.
 
 [`UX-2C-BASELINE.md`](../reviews/UX-2C-BASELINE.md) found the shape a third time on the demand, people
 and control routes: **three of the four contained no framed figure at all**, and the fourth drew seven
@@ -590,7 +598,8 @@ It joined the `UX.2C` list for that reason; the [as-built notes](DASHBOARD_BACKL
 - `DASH.12` depends on every surface it links into AND on completed `UX.1`, for the reason in §18.1.
 - `UX.2` depends on completed `UX.1` and completed `DASH.12`: it is a visual rebuild of surfaces that
   must first exist and be correct. It promotes no entity, adds no reporting view and adds no export
-  dataset. `UX.2A`, `UX.2B` and `UX.2C` are Implemented; `UX.2D` is Planned.
+  dataset. All four sub-increments are Implemented; the program closeout is
+  [`UX-2-REVIEW.md`](../reviews/UX-2-REVIEW.md).
 - `DASH.13` depends on a completed `UX.2` as well as on every `DASH` increment, for the reason in
   §18.2, and closes the program.
 - External: none. No new paid service, no live AI, no third-party data. A charting library is not

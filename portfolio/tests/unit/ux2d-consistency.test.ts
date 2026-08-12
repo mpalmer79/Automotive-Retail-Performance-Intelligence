@@ -102,10 +102,13 @@ describe('the analytical scope is stated in business words', () => {
       import('@/lib/dashboard/fi'),
     ])
     const one = [dashboardStoreIds[1] as string]
-    const group = executive.buildExecutiveOverview(DEFAULT_FILTERS)
+    const group = executive.buildExecutiveOverview(DEFAULT_FILTERS, [])
     expect(group.scope.label).toBe(ALL_STORES_LABEL)
 
-    const scoped = executive.buildExecutiveOverview({ ...DEFAULT_FILTERS, store: one })
+    const scoped = executive.buildExecutiveOverview(
+      { ...DEFAULT_FILTERS, store: one },
+      []
+    )
     expect(scoped.scope.label).toBe(storeLabel(one[0] as string))
 
     expect(salesGross.buildSalesGross(DEFAULT_FILTERS).scope.label).toBe(ALL_STORES_LABEL)
