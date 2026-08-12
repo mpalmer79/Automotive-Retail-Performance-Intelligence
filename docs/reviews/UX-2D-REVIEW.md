@@ -246,7 +246,7 @@ director unable to reach a desk's people context at all — now complete without
 - **The Deal Jacket has no next/previous within the filtered deal set.** A reader who drills into one
   of 106 deals returns to the index rather than stepping through it.
 
-**34. Is ARPI ready for `DASH.13`?** Yes. §6 below is the handoff.
+**34. Is ARPI ready for `DASH.13`?** Yes. §7 below is the handoff.
 
 ---
 
@@ -305,7 +305,43 @@ superseded and both proven unused before deletion.
 
 ---
 
-## 6. `DASH.13` handoff
+## 6. Quality, as run
+
+| Gate                                                       | Result                                                       |
+| ---------------------------------------------------------- | ------------------------------------------------------------ |
+| `uv run ruff format --check .`                              | 199 files already formatted                                   |
+| `uv run ruff check .`                                       | all checks passed                                             |
+| `uv run mypy src tests`                                     | clean, after `uv sync --frozen --all-extras`                  |
+| `uv run pytest -q -m "not integration" --cov=arpi`          | **3,667 passed**, 1,229 deselected, **coverage 88.94%**        |
+| `scripts/check_naming.py`                                   | no retired identifier used as a current identity              |
+| `scripts/check_docs_links.py`                               | every relative link and anchor resolves                       |
+| `scripts/check_reference_data.py`                           | every rule passed                                             |
+| `scripts/check_secrets.py`                                  | no high-signal secret pattern                                 |
+| `scripts/check_powerbi_model.py`                            | the semantic model matches its documentation                  |
+| `scripts/simulate_semantic_model.py --check`                | 1,271 checks, 49/49 measures simulated, 11 contexts, 0 findings |
+| `scripts/check_simulation_labels.py`                        | labelling check passed                                        |
+| `scripts/check_project_capabilities.py`                     | declared status, documentation and the website agree           |
+| `scripts/generate_project_capabilities.py --check`          | every generated block current                                 |
+| `npm run format:check`, `lint`, `typecheck`                 | clean                                                         |
+| `npm run manifest:check`, `inventory:check`, `dashboard:check` | 541 inventory records, **38 datasets / 312 files / 7,356,934 bytes — byte-identical** |
+| `npx vitest run`                                            | **1,492 passed** across 37 files (37 new in `ux2d-consistency.test.ts`) |
+| `next build`                                                | compiled, 22 routes                                           |
+| `npx playwright test --project=chromium`                    | **958 passed** (55 new in `ux2d-controls.spec.ts`)             |
+
+**Integration tests were not run locally**: this environment has no populated PostgreSQL, and no
+data, SQL or loader file changed. CI runs the canonical integration lane, and it passed.
+
+**Seven existing browser assertions were changed, and every one for a stated reason.** Six named the
+old scope vocabulary; one asserted the Executive band's duplicate "None. Showing the group"
+sentence that this increment deleted; one asserted the per-chip note for a `partial` parameter; one
+asserted the KPI catalogue's pre-`UX.1` address. An eighth moved its negative from the whole of
+`<main>` to the scope line, because "All three stores" is also the store control's default option —
+a page-wide negative would have been asserting that the control was missing rather than that the
+scope was narrowed.
+
+---
+
+## 7. `DASH.13` handoff
 
 `UX.2D` leaves a stable product. What `DASH.13` inherits, and what it still has to do:
 

@@ -244,7 +244,7 @@ Recorded rather than solved, because solving them means new data and `UX.2` adde
 
 What `DASH.13` inherits is a product whose surfaces have stopped moving: every route measured before
 and after, payload figures from a stable base, an accessibility sweep that has been clean throughout,
-and a control architecture with its own regression ceilings. `UX-2D-REVIEW.md` §6 is the itemized
+and a control architecture with its own regression ceilings. `UX-2D-REVIEW.md` §7 is the itemized
 handoff.
 
 ---
