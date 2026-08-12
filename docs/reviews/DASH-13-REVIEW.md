@@ -173,7 +173,7 @@ Counts are from the runs on this branch, not copied from an earlier increment.
 | Python coverage | **88.94%** against a required floor of 85% |
 | Vitest (website) | **1,610 passed**, 38 files |
 | Vitest (deployment tooling, root project) | **195 passed**, 5 files |
-| Playwright (chromium) | see the pull request transcript |
+| Playwright (chromium) | **1,008 passed** — 1,007 on the first full run in 22m 0s, plus the two new browser guards. One test failed on that first run and did **not** indicate a defect; see below. |
 | PostgreSQL 16 integration | **not run locally** — no populated database in this environment. GitHub CI's `Integration (PostgreSQL 16)` job is the required evidence; it passed on the base commit. |
 | `ruff format --check` | 326 files already formatted |
 | `ruff check` | all checks passed |
@@ -197,6 +197,18 @@ New tests added by this increment:
   arguments, and an absent `productionRelease` block reading as **not** approved.
 - two browser guards in `portfolio/tests/e2e/navigation.spec.ts`, for the two metadata defects, asserted
   against what a browser is actually served rather than against `pageMetadata()`.
+
+**The one Playwright failure, and why it was not a defect.** `disallows the UI lab in robots.txt` failed on
+the first full run. `playwright.config.ts` starts its server with `npx next start` and does **not** rebuild,
+so the suite ran against whichever `.next` was on disk — and this increment had deliberately left it built
+with **staging** environment arguments while verifying the preview policy. A staging build's `robots.txt`
+is `Disallow: /` and contains no `/ui-lab` line, so the assertion was correct to fail. Rebuilt with no
+environment arguments, the whole spec passes: 68 of 68, including that test and both new guards.
+
+It is worth recording rather than dismissing, because it is the same mechanism as §3 seen from a different
+angle: **the build on disk, not the environment of the process reading it, decides what `robots.txt` says.**
+An environment-sensitive suite that reuses a build is a suite that can be made to lie by a previous
+command, and here it was.
 
 **One correction made during the increment, recorded because the mechanism is the point.** The first
 version of the production-release change relaxed the specification validator so
