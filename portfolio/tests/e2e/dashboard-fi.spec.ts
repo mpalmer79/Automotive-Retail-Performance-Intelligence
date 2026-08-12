@@ -25,6 +25,7 @@ import { expect, test } from '@playwright/test'
 
 import { affirmativeSentences, gotoRendered, mainText, mainTextContent } from './helpers'
 import { DASHBOARD_VIEWPORTS } from './routes'
+import { FI_SUPPORT } from '@/lib/dashboard/filters'
 
 const ROUTE = '/dashboard/fi'
 
@@ -441,7 +442,19 @@ test.describe('the filter bar states what it does and does not apply', () => {
      * denominator, so applying it again on top would filter the population twice.
      */
     expect(text).toMatch(/not applied here/i)
-    expect(text).toMatch(/already decides which categories are eligible/i)
+    /*
+     * `UX.2D.1` MOVED WHERE THE REASON COMES FROM, AND THE ASSERTION FOLLOWS IT.
+     * It used to be a hand-written `conditionHint` under a Condition select that
+     * this route declares inert -- an operable control, with its full option
+     * list, on a page where selecting from it moved nothing. The control is gone;
+     * the reason is `FI_SUPPORT.condition.note`, rendered by the active-filter
+     * summary. Asserting against the matrix rather than against a copied string
+     * is what stops the two drifting apart again, which is how the second copy
+     * came to exist.
+     */
+    const note = FI_SUPPORT.condition.note
+    expect(note, 'FI_SUPPORT.condition states a reason').toBeTruthy()
+    expect(text).toContain(note ?? '')
   })
 
   test('scopes the page to one store and says which', async ({ page }) => {

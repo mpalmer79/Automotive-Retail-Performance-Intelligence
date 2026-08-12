@@ -803,7 +803,15 @@ test.describe('KPI methodology', () => {
      */
     await gotoRendered(page, ROUTE)
     expect(await page.getByText('How is this calculated?').count()).toBe(0)
-    const summary = page.getByText('How every figure on this rail is calculated')
+    /*
+     * `UX.2D.1` settled the verb: the console said "calculated" in five places
+     * and "measured" in one for the same act. Both retired phrasings are
+     * asserted absent, so a route reintroducing either fails here.
+     */
+    expect(
+      await page.getByText('How every figure on this rail is calculated').count()
+    ).toBe(0)
+    const summary = page.getByText('How every figure on this rail is measured')
     await expect(summary).toHaveCount(1)
     await summary.click()
     // Scoped to the rail's own disclosure: the stock module carries a disclosure of the
@@ -843,7 +851,7 @@ test.describe('KPI methodology', () => {
     page,
   }) => {
     await gotoRendered(page, ROUTE)
-    const summary = page.getByText('How every figure on this rail is calculated').first()
+    const summary = page.getByText('How every figure on this rail is measured').first()
     const details = summary.locator('xpath=ancestor::details[1]')
     await expect(details).not.toHaveAttribute('open', '')
     await summary.click()
