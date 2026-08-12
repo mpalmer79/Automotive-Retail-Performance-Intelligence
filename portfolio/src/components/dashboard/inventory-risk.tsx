@@ -55,7 +55,6 @@ import { kpiDefinition, type InventorySummary } from '@/lib/dashboard/executive'
 import { exactToString } from '@/lib/dashboard/decimal'
 import { formatCurrencyExact, formatIsoDate } from '@/lib/dashboard/format'
 import type { ComparedMetric } from '@/lib/dashboard/selectors'
-import { ROUTES } from '@/lib/site'
 
 import { KpiDefinitionList, MetricDifference, MetricValue, stateLabel } from './metric'
 import { InventoryAgeStack } from './visuals'
@@ -84,9 +83,21 @@ function figuresOf(
 export function InventoryRisk({
   inventory,
   comparisonLabel,
+  unitsHref,
 }: {
   inventory: InventorySummary
   comparisonLabel: string | null
+  /**
+   * The Inventory route, carrying the context this scope can be reproduced with.
+   *
+   * BUILT BY THE PAGE THROUGH `operatingHref`, not written here as a bare
+   * pathname. `UX.2D` §10 measured this link on `main`: from `/?period=2025-11&store=GSA-002`
+   * it pointed at `/dashboard/inventory` with nothing attached, so a general manager
+   * who had selected Granite Subaru and November arrived at the whole group at the
+   * latest snapshot and had to select both again. Inventory declares `store` applied
+   * and `period` partial, so both survive the journey.
+   */
+  readonly unitsHref: string
 }) {
   const figures = figuresOf(inventory)
 
@@ -172,7 +183,7 @@ export function InventoryRisk({
       </Disclosure>
 
       <Text size="xs" tone="faint">
-        <Link className="underline" href={ROUTES.dashboardInventory.href}>
+        <Link className="underline" href={unitsHref}>
           Open the units behind these figures
         </Link>
       </Text>

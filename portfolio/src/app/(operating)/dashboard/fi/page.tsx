@@ -4,7 +4,6 @@ import { Canvas } from '@/components/shell/field'
 import { FilterBar, type FilterOption } from '@/components/dashboard/filter-bar'
 import { ExportProvenance } from '@/components/dashboard/export-provenance'
 import {
-  ActiveFilterChips,
   OperatingPageHeader,
   operatingContext,
 } from '@/components/dashboard/operating-page-header'
@@ -57,6 +56,7 @@ import { formatCountExact, formatIsoMonth } from '@/lib/dashboard/format'
 import { exportTrust, powerBiTrust, reconciliationFailed } from '@/lib/dashboard/trust'
 import { engines } from '@/lib/manifest'
 import { pageMetadata } from '@/lib/metadata'
+import { operatingHref, withRouteParam } from '@/lib/dashboard/navigation'
 import { ROUTES } from '@/lib/site'
 
 export const metadata: Metadata = pageMetadata('dashboardFi')
@@ -118,6 +118,26 @@ export default async function FiPage({
   const identityHolds = backGrossIdentityHolds(view.production)
   const residual = backGrossResidual(view.production)
 
+  /*
+   * THE ONE DRILL-THROUGH OUT OF THIS ROUTE, AND WHERE ITS RULES COME FROM.
+   *
+   * `operatingHref` reduces the current filter context to what `/dashboard/employees`
+   * declares it can act on — it drops `compare`, which Employees does not support, and
+   * keeps period and store — and then the destination's own `role` parameter is
+   * appended, exactly as `employees/page.tsx` appends it to its own links. `role` is
+   * that route's parameter and not part of the thirteen-key global grammar, which is
+   * why it is not something `operatingHref` knows about.
+   */
+  const managerHref = (code: string): string =>
+    withRouteParam(
+      operatingHref(ROUTES.dashboardEmployees.href, {
+        ...parsed.filters,
+        employee: code,
+      }),
+      'role',
+      'finance'
+    )
+
   return (
     <Canvas>
       {/* ------------------------------------------------------------------ */}
@@ -141,15 +161,18 @@ export default async function FiPage({
             asOf={view.asOfDate}
           />
         }
-      >
-        <div className="flex flex-col gap-4">
-          <StaleBanner stale={exportState.stale} />
-          <ReconciliationBanner failed={failedReconciliation} />
-          <FilterNotice resets={parsed.reset} resetHref={ROUTE} />
-          <PeriodNotice notices={view.periodContext.notices} />
-
-          <ActiveFilterChips chips={chips} />
-
+        chips={chips}
+        filterState={parsed.filters}
+        route={ROUTE}
+        notices={
+          <div className="flex flex-col gap-4 empty:hidden">
+            <StaleBanner stale={exportState.stale} />
+            <ReconciliationBanner failed={failedReconciliation} />
+            <FilterNotice resets={parsed.reset} resetHref={ROUTE} />
+            <PeriodNotice notices={view.periodContext.notices} />
+          </div>
+        }
+        filters={
           <FilterBar
             action={ROUTE}
             filters={parsed.filters}
@@ -160,7 +183,9 @@ export default async function FiPage({
             conditionHint="Not applied here. Vehicle condition already decides which categories are eligible, and the rule applies it inside each denominator."
             leadSourceHint="Not applied here. The F&I datasets carry no lead-source attribute."
           />
-
+        }
+      >
+        <div className="flex flex-col gap-4">
           {/* The synthetic disclosure, once and prominently, rather than repeated
                 on every row. Detail is in the methodology section at the foot. */}
           <div className="rounded border border-line-subtle bg-surface px-4 py-3">
@@ -340,7 +365,7 @@ export default async function FiPage({
               title="The same measures, by desk, with their context"
               span={12}
             >
-              <ManagerComparison view={view} />
+              <ManagerComparison view={view} managerHref={managerHref} />
             </Module>
           </GridRow>
 

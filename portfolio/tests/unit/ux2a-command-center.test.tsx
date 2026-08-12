@@ -296,6 +296,7 @@ describe('the age stack carries units and capital, and both move', () => {
       <InventoryRisk
         inventory={overviewFor('condition=New').inventory}
         comparisonLabel={null}
+        unitsHref="/dashboard/inventory"
       />
     )
     const before = widthsIn(asNew)
@@ -304,6 +305,7 @@ describe('the age stack carries units and capital, and both move', () => {
       <InventoryRisk
         inventory={overviewFor('condition=Used').inventory}
         comparisonLabel={null}
+        unitsHref="/dashboard/inventory"
       />
     )
     expect(before.length).toBeGreaterThan(0)

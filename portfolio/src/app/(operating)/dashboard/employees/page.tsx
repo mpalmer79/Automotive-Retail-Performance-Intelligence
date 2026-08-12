@@ -15,7 +15,6 @@ import { GridRow, Module, Workspace } from '@/components/dashboard/workspace-gri
 import { FilterBar, type FilterOption } from '@/components/dashboard/filter-bar'
 import { ExportProvenance } from '@/components/dashboard/export-provenance'
 import {
-  ActiveFilterChips,
   OperatingPageHeader,
   operatingContext,
 } from '@/components/dashboard/operating-page-header'
@@ -57,14 +56,14 @@ import {
 import {
   activeFilterChips,
   EMPLOYEES_SUPPORT,
-  filtersHref,
   parseFilters,
   type QueryInput,
 } from '@/lib/dashboard/filters'
 import { formatIsoMonth } from '@/lib/dashboard/format'
+import { storeScopeLabel } from '@/lib/dashboard/scope'
 import { calendarWindow, resolvePeriod } from '@/lib/dashboard/periods'
 import { exportTrust, powerBiTrust, reconciliationFailed } from '@/lib/dashboard/trust'
-import { operatingHref } from '@/lib/dashboard/navigation'
+import { operatingHref, withRouteParam } from '@/lib/dashboard/navigation'
 import { engines } from '@/lib/manifest'
 import { pageMetadata } from '@/lib/metadata'
 import { ROUTES } from '@/lib/site'
@@ -242,23 +241,28 @@ export default async function EmployeesPage({
   }))
 
   // BOTH LINK BUILDERS GO THROUGH THE GOVERNED SERIALIZER, never through hand-assembled
-  // query strings. `serializeFilters` fixes the canonical parameter order and the sorted
+  // query strings. `operatingHref` fixes the canonical parameter order and the sorted
   // store list, so two equivalent states produce byte-identical URLs; a local `URLSearchParams`
   // here would have produced a second, subtly different serialization of the same filters.
   // `role` is appended afterwards because it is this route's own parameter and not part of
   // the thirteen-parameter global grammar.
-  const withRole = (href: string, slug: string): string => {
-    if (slug === DEFAULT_ROLE_SLUG) return href
-    return href.includes('?') ? `${href}&role=${slug}` : `${href}?role=${slug}`
-  }
+  //
+  // `operatingHref`, NOT `filtersHref`, AND `UX.2D` §11 IS WHY. `filtersHref` serializes the
+  // whole filter context; `operatingHref` first reduces it to what THIS route declares it can
+  // act on. Employees declares `compare` not-applicable, and measured on `main` from
+  // `/dashboard/employees?period=2025-11&compare=prior-year&store=GSA-002` every role link and
+  // every employee link carried `compare=prior-year` forward — a parameter this page ignores,
+  // propagating through its own navigation and arriving in any link a reader copied out of it.
+  const withRole = (href: string, slug: string): string =>
+    slug === DEFAULT_ROLE_SLUG ? href : withRouteParam(href, 'role', slug)
 
   /** A link that keeps every filter and changes only the role. */
   const roleHref = (slug: string): string =>
-    withRole(filtersHref(ROUTE, { ...parsed.filters, employee: null }), slug)
+    withRole(operatingHref(ROUTE, { ...parsed.filters, employee: null }), slug)
 
   /** A link that keeps the role and the filters and selects one employee. */
   const employeeHref = (code: string): string =>
-    withRole(filtersHref(ROUTE, { ...parsed.filters, employee: code }), role)
+    withRole(operatingHref(ROUTE, { ...parsed.filters, employee: code }), role)
 
   const roleItems = (Object.keys(ROLE_SLUGS) as RoleSlug[]).map((slug) => ({
     slug,
@@ -313,26 +317,25 @@ export default async function EmployeesPage({
       <OperatingPageHeader
         title="Employees"
         context={operatingContext([
-          scope.stores.length === dashboardStores.length
-            ? 'All three stores'
-            : scope.stores.join(', '),
+          storeScopeLabel(parsed.filters.store),
           periodContext.period.label,
           `${ROLE_SLUGS[role]} view`,
         ])}
         methodology={<ExportProvenance exportState={exportState} powerBi={powerBi} />}
-      >
-        <div className="flex flex-col gap-4">
-          <StaleBanner stale={exportState.stale} />
-          <ReconciliationBanner failed={reconciliationFailed(dashboardManifest)} />
-          <FilterNotice resets={parsed.reset} resetHref={ROUTE} />
-          <UnknownEmployeeNotice
-            code={scope.employeeUnknown ? parsed.filters.employee : null}
-          />
-
-          <RoleNav items={roleItems} current={role} />
-
-          <ActiveFilterChips chips={chips} />
-
+        chips={chips}
+        filterState={parsed.filters}
+        route={ROUTE}
+        notices={
+          <div className="flex flex-col gap-4 empty:hidden">
+            <StaleBanner stale={exportState.stale} />
+            <ReconciliationBanner failed={reconciliationFailed(dashboardManifest)} />
+            <FilterNotice resets={parsed.reset} resetHref={ROUTE} />
+            <UnknownEmployeeNotice
+              code={scope.employeeUnknown ? parsed.filters.employee : null}
+            />
+          </div>
+        }
+        filters={
           <FilterBar
             action={ROUTE}
             filters={parsed.filters}
@@ -342,7 +345,18 @@ export default async function EmployeesPage({
             leadSources={[]}
             conditionHint="Not applied here. The new and used mix is shown on every selling row instead, because a condition filter would narrow the gross numerator without narrowing the retail-unit denominator the sample floor is applied to."
           />
-        </div>
+        }
+      >
+        {/*
+          THE ROLE SWITCH STAYS OUTSIDE THE CONTROL DISCLOSURE, AND `UX.2D` §41 IS THE
+          REASON. Four role families are four VIEWS of this route, not four filter
+          values: the page's whole vocabulary — which measures exist, which sample
+          floor applies, which fairness context is shown — changes with the switch.
+          A reader on a phone must be able to see which view they are on and move to
+          another without opening anything, so it is navigation in the band rather
+          than a control inside it.
+        */}
+        <RoleNav items={roleItems} current={role} />
       </OperatingPageHeader>
 
       <Workspace>

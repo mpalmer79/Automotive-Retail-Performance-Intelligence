@@ -729,13 +729,13 @@ describe('KPI methodology disclosure', () => {
         expect(card.definitionHref).toBeNull()
         continue
       }
-      expect(card.definitionHref).toBe(`/kpis#${card.kpiId}`)
+      expect(card.definitionHref).toBe(`/technical?view=kpis#${card.kpiId}`)
       expect(kpis.some((entry) => entry.id === card.kpiId)).toBe(true)
     }
   })
 
   it('builds a catalogue href only for a KPI the catalogue carries', () => {
-    expect(kpiDefinitionHref('KPI-INV-004')).toBe('/kpis#KPI-INV-004')
+    expect(kpiDefinitionHref('KPI-INV-004')).toBe('/technical?view=kpis#KPI-INV-004')
     expect(kpiDefinition('KPI-INV-004')).toBeDefined()
   })
 

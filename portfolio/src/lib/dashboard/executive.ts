@@ -25,6 +25,7 @@
  * rule is read from the data rather than assumed from a name.
  */
 import { kpis } from '@/lib/content'
+import { kpiCatalogueHref } from '@/lib/technical'
 import type { KpiEntry } from '@/types/content'
 
 import { accountingExceptionRows, glReconciliationRows } from './accounting-data'
@@ -52,6 +53,7 @@ import {
   type DashboardStore,
 } from './data'
 import { addExact, cellToExact, exactZero, type Exact } from './decimal'
+import { storeScopeLabel } from './scope'
 import {
   EXECUTIVE_OVERVIEW_SUPPORT,
   activeFilterChips,
@@ -104,7 +106,7 @@ export function kpiDefinition(kpiId: string): KpiEntry | undefined {
 
 /** The catalogue anchor for a KPI. A real destination, not a placeholder route. */
 export function kpiDefinitionHref(kpiId: string): string {
-  return `/kpis#${kpiId}`
+  return kpiCatalogueHref(kpiId)
 }
 
 /* -------------------------------------------------------------------------- */
@@ -125,10 +127,7 @@ function resolveStoreScope(filters: DashboardFilters): StoreScope {
     ids,
     stores,
     isGroup: filters.store.length === 0,
-    label:
-      filters.store.length === 0
-        ? 'Granite Auto Group, all three stores'
-        : stores.map((store) => store.shortName).join(', '),
+    label: storeScopeLabel(filters.store),
   }
 }
 

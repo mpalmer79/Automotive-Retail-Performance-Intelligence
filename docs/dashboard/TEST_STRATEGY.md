@@ -869,3 +869,54 @@ form, and several were made stronger:
 label and value as two flex children with a gap, so `textContent` read `Sample9 of 10 retail units`
 as one token — invisible to a sighted reader and wrong for a screen reader. The separator is a
 character now.
+
+---
+
+## `UX.2D` — the consistency suites
+
+Two files, and the split between them is the split between meaning and geometry.
+
+### `tests/unit/ux2d-consistency.test.ts` (37 assertions)
+
+Asserts contracts that decay silently, because nothing breaks when one route starts spelling a store
+differently:
+
+1. **The scope vocabulary.** No warehouse key is ever a scope label; the whole group is one sentence;
+   every store in the dimension resolves to its published short name; an unknown code falls back to
+   the identifier so a data defect stays diagnosable. The four selectors that build a scope label are
+   asserted to agree with the helper.
+2. **The canonical link builder.** Every operating route publishes a support matrix; a Deal Jacket
+   resolves to the Deal Explorer; nothing is carried outside the application; every applicable
+   parameter survives and every `not-applicable` one is dropped; no parameter is emitted twice from
+   any state; the order is the declared one, so two equivalent states are byte-identical; a default
+   destination is a bare pathname; the destination re-parses to exactly what was carried; and the
+   builder is idempotent.
+3. **The persistence matrix**, as ten named journeys with an explicit keeps-and-drops list each.
+4. **`withRouteParam`**, including encoding and the empty-value drop.
+5. **The KPI catalogue address.**
+
+### `tests/e2e/ux2d-controls.spec.ts` (55 assertions)
+
+Asserts what only a browser can:
+
+1. **Band height ceilings** — 470 px at 390 × 844 and 520 px at 1440 × 900, each stated in the file
+   with the measurement it was set from and the headroom it leaves. `UX.2D` §61 asks for ceilings
+   broad enough to allow evolution and narrow enough to prevent a return to a 900 px stack.
+2. **The disclosure**, at both widths: collapsed with a visible summary on a phone, absent with
+   visible controls on a desktop, openable by click and by keyboard, with the element's own `open`
+   state checked rather than a class.
+3. **Everything above, again, with `javaScriptEnabled: false`** — including a real form submission
+   that lands on the filtered URL.
+4. **Removal and reset on all eight filtered routes**, and nothing rendered when nothing is set.
+5. **The scope line naming Granite Subaru rather than `GSA-002`** on all nine.
+6. **Context surviving real navigations**: Executive to Inventory, Executive to Accounting, a unit
+   link inside a filtered lot, Employees' own role links, the Deal Explorer's own sort headers, F&I
+   to a finance desk, and a KPI identifier.
+7. **Back, forward and a URL pasted into a fresh context.**
+8. **The eight-width matrix with the controls both closed and open**, 200% zoom, and the summary's
+   touch target at 320 px.
+
+### What is deliberately not asserted
+
+No screenshot and no full-page snapshot. The ceilings are ceilings, not pixel equality: a route that
+grows a control should not turn the suite red, and a route that grows a 900 px control stack should.

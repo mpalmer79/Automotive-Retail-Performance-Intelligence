@@ -1095,3 +1095,71 @@ waterfall. An empty panel is not neutral; a reader looks into it for the thing t
 **No chart library was added.** The question was not reopened: nothing in this increment
 introduces a continuous scale, a computed axis or a layout algorithm, which are the three
 conditions §6.0c records. Two static end labels under a column field are not an axis.
+
+---
+
+## The operating control band (`UX.2D`)
+
+### The three tiers, and the line between them
+
+Every operating route's opening `<section>` is one component,
+`components/dashboard/operating-controls.tsx`, rendered by `OperatingPageHeader`:
+
+| Tier                  | Always visible | Contents                                                                                |
+| --------------------- | -------------- | --------------------------------------------------------------------------------------- |
+| Scope                 | yes            | the route name, an optional subtitle, and the analytical scope in business words        |
+| Active-filter summary | yes            | one removable chip per set parameter, and a reset — absent entirely when nothing is set |
+| Controls              | on desktop     | the filter form and any control form the route owns                                     |
+
+**What stays outside the third tier is the design decision, not what goes in.** Anything a reader
+must SEE to interpret a figure stays visible: the export-staleness banner, the reconciliation
+banner, the reset and period notices, the Inventory aged-threshold and market-estimate caveats, the
+F&I synthetic-lender statement. So does anything that is navigation rather than filtering — the
+Employees role switch, because four role families are four views of the route and a reader on a
+phone must be able to see which one they are on without opening anything.
+
+### The responsive mechanism
+
+The controls sit in a native `<details data-operating-controls>`. `globals.css` carries two rules:
+
+```css
+@supports selector(::details-content) {
+  @media (width >= 48rem) {
+    [data-operating-controls] > summary {
+      display: none;
+    }
+    [data-operating-controls]::details-content {
+      content-visibility: visible;
+      block-size: auto;
+    }
+  }
+}
+```
+
+`::details-content` is the only way CSS can reveal a closed disclosure — `open` is an attribute and
+a stylesheet cannot set one — and this file already uses the same technique to open every disclosure
+for print. **The consequence is that the responsive behaviour needs no JavaScript, no viewport
+measurement and no client island**: a phone gets a real disclosure that toggles natively and
+announces its own state, and a desktop gets the controls with no disclosure at all.
+
+**The `@supports` guard is load-bearing.** Without it, an engine lacking the pseudo-element would
+apply `display: none` to the summary and still hide the content, and the controls would be
+unreachable. Guarded, the fallback on such an engine is the phone behaviour at every width.
+
+### Measured
+
+At 390 × 844 the band was 548–921 px before `UX.2D` and is 201–439 px after. At 1440 × 900 it was
+230–494 px and is 200–486 px — the desktop band was already close to right, and the job there was to
+stop it drifting. `tests/e2e/ux2d-controls.spec.ts` holds a 470 px ceiling at 390 and a 520 px
+ceiling at 1440, both stated with the headroom they leave.
+
+### The analytical-scope vocabulary
+
+`lib/dashboard/scope.ts`. `storeScopeLabel` maps selected store identifiers onto the labels the
+store dimension publishes: `All three stores` for the whole group, the store's short name for one,
+a comma list for two. **A warehouse key is never a scope label.** Five routes were printing
+`GSA-002` and four spelled the group four different ways before this module existed.
+
+**No chart library was added.** The question was not reopened: `UX.2D` introduced no visual
+primitive at all, and §6.0c's three conditions — a continuous scale, a computed axis, a layout
+algorithm — are the only grounds for reopening it.

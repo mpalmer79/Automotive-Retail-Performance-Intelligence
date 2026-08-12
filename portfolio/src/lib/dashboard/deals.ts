@@ -31,6 +31,7 @@ import type { Exact } from './decimal'
 import { cellToExact, compareExact, sumExact } from './decimal'
 import { dashboardStoreIds, dashboardStores, textCell, numericCell } from './data'
 import { dealChunkFile } from './deal-chunks'
+import { storeScopeLabel } from './scope'
 import type { DashboardFilters } from './filters'
 import { formatCurrencyExact, formatIsoDate } from './format'
 import { calendarWindow, resolvePeriod, type PeriodContext } from './periods'
@@ -413,13 +414,7 @@ export function buildDeals(filters: DashboardFilters, state: DealListState): Dea
 
   return {
     periodContext,
-    scopeLabel:
-      filters.store.length === 0
-        ? 'Granite Auto Group, all three stores'
-        : dashboardStores
-            .filter((store) => storeIds.includes(store.id))
-            .map((store) => store.shortName)
-            .join(', '),
+    scopeLabel: storeScopeLabel(filters.store),
     storeIds,
     state: { ...state, page: clampedPage },
     rows: visible.map(toDealRow),

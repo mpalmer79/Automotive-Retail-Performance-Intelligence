@@ -51,14 +51,21 @@ import Link from 'next/link'
 
 import { Text } from '@/components/ui/typography'
 import type { ReconciliationSignalView } from '@/lib/dashboard/executive'
-import { ROUTES } from '@/lib/site'
 
 import { ReconciliationScale } from './visuals'
 
 export function ReconciliationSection({
   signal,
+  accountingHref,
 }: {
   readonly signal: ReconciliationSignalView
+  /**
+   * The Accounting route, carrying the context it can act on.
+   *
+   * See `InventoryRisk`'s note: both of this section's links were bare pathnames
+   * and dropped a store selection the destination declares `applied`.
+   */
+  readonly accountingHref: string
 }) {
   if (signal.comparisonDate === null || signal.accounts.length === 0) {
     return (
@@ -67,7 +74,7 @@ export function ReconciliationSection({
         comparison is published at month end, so a period containing no month end has no
         position to report. That is an absence of a measurement date, not a reconciliation
         that failed.{' '}
-        <Link className="underline" href={ROUTES.dashboardAccounting.href}>
+        <Link className="underline" href={accountingHref}>
           Open accounting integrity
         </Link>
         .
@@ -121,7 +128,7 @@ export function ReconciliationSection({
         {signal.exceptionCount} governed{' '}
         {signal.exceptionCount === 1 ? 'exception' : 'exceptions'} in scope, each on its
         own business date.{' '}
-        <Link className="underline" href={ROUTES.dashboardAccounting.href}>
+        <Link className="underline" href={accountingHref}>
           Open accounting integrity, account by account
         </Link>
       </Text>

@@ -171,3 +171,30 @@ export function operatingHref(pathname: string, filters: DashboardFilters): stri
   const query = params.toString()
   return query === '' ? pathname : `${pathname}?${query}`
 }
+
+/**
+ * A route's OWN parameter, appended to a canonical operating href.
+ *
+ * WHY THIS IS A FUNCTION RATHER THAN A TEMPLATE STRING IN TWO FILES
+ * -----------------------------------------------------------------
+ * Three parameters in the console are properties of ONE route rather than of the
+ * thirteen-key grammar every route shares: `role` on `/dashboard/employees`, `sort`
+ * and `q` on `/dashboard/inventory` and `/dashboard/deals`. `operatingHref` does not
+ * know them, correctly — a support matrix that listed another route's private
+ * parameter would be describing something it cannot honour.
+ *
+ * So they are appended, and `UX.2D` §11 asks that the appending happen in one place.
+ * It had been written twice as `href.includes('?') ? '&' : '?'`, which is right until
+ * a value needs encoding or a caller passes a parameter that is already present, and
+ * then it is two places to fix.
+ *
+ * The value is encoded. An empty value is DROPPED rather than serialized as `key=`,
+ * for the same reason `serializeFilters` omits defaults: `?role=` and no `role` at
+ * all describe the same view, and two URLs for one view is what makes a shared link
+ * fail to match a bookmark.
+ */
+export function withRouteParam(href: string, key: string, value: string): string {
+  if (value === '') return href
+  const separator = href.includes('?') ? '&' : '?'
+  return `${href}${separator}${encodeURIComponent(key)}=${encodeURIComponent(value)}`
+}

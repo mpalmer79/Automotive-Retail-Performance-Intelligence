@@ -3,7 +3,6 @@ import type { Metadata } from 'next'
 import { FilterBar, type FilterOption } from '@/components/dashboard/filter-bar'
 import { ExportProvenance } from '@/components/dashboard/export-provenance'
 import {
-  ActiveFilterChips,
   OperatingPageHeader,
   operatingContext,
 } from '@/components/dashboard/operating-page-header'
@@ -43,6 +42,7 @@ import {
   type QueryInput,
 } from '@/lib/dashboard/filters'
 import { formatIsoMonth } from '@/lib/dashboard/format'
+import { storeScopeLabel } from '@/lib/dashboard/scope'
 import {
   buildLeadsMarketingView,
   scopeFromFilters,
@@ -177,20 +177,21 @@ export default async function LeadsMarketingPage({
       <OperatingPageHeader
         title="Leads & Marketing"
         context={operatingContext([
-          scope.stores.length === dashboardStores.length
-            ? 'All three stores'
-            : scope.stores.join(', '),
+          storeScopeLabel(parsed.filters.store),
           periodContext.period.label,
         ])}
         methodology={<ExportProvenance exportState={exportState} powerBi={powerBi} />}
-      >
-        <div className="flex flex-col gap-3">
-          <StaleBanner stale={exportState.stale} />
-          <ReconciliationBanner failed={reconciliationFailed(dashboardManifest)} />
-          <FilterNotice resets={parsed.reset} resetHref={ROUTE} />
-
-          <ActiveFilterChips chips={chips} />
-
+        chips={chips}
+        filterState={parsed.filters}
+        route={ROUTE}
+        notices={
+          <div className="flex flex-col gap-3 empty:hidden">
+            <StaleBanner stale={exportState.stale} />
+            <ReconciliationBanner failed={reconciliationFailed(dashboardManifest)} />
+            <FilterNotice resets={parsed.reset} resetHref={ROUTE} />
+          </div>
+        }
+        filters={
           <FilterBar
             action={ROUTE}
             filters={parsed.filters}
@@ -203,9 +204,9 @@ export default async function LeadsMarketingPage({
             leadSourceHint="Scopes both sides of every rate on this page, including the appointment outcomes."
             campaignHint="Scopes the funnel, response, appointment and marketing blocks alike."
           />
-
-          <CohortMaturityLine immature={view.includesImmatureCohort} />
-        </div>
+        }
+      >
+        <CohortMaturityLine immature={view.includesImmatureCohort} />
       </OperatingPageHeader>
 
       <Workspace>

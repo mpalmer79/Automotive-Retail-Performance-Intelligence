@@ -39,7 +39,18 @@ test.describe('a copied URL reproduces the view', () => {
     await gotoRendered(page, `${ROUTE}?store=GSA-002`)
     const text = await mainText(page)
     expect(text).toContain('Granite Subaru')
-    expect(text).not.toContain('Granite Auto Group, all three stores')
+    /*
+     * THE NEGATIVE IS ON THE SCOPE LINE, NOT ON THE WHOLE OF `<main>`.
+     *
+     * `UX.2D` gave all nine routes one scope vocabulary — the group is "All three
+     * stores" everywhere — and that phrase is also the STORE CONTROL'S own default
+     * option, which is on the page whatever is selected. A page-wide negative would
+     * therefore be asserting that the control is missing rather than that the scope is
+     * narrowed. The scope line is the element that must not name the whole group.
+     */
+    const scope = await page.locator('main section p').first().innerText()
+    expect(scope).toContain('Granite Subaru')
+    expect(scope).not.toContain('All three stores')
     // And the chip says which parameter produced it, with the way to remove it.
     expect(text).toMatch(/Store: GSA-002/)
   })
@@ -128,9 +139,8 @@ test.describe('the browser history is the undo stack', () => {
 
     await page.goBack()
     await expect(page).toHaveURL(new RegExp(`${ROUTE}$`))
-    await expect(page.locator('main')).toContainText(
-      'Granite Auto Group, all three stores'
-    )
+    // `UX.2D` replaced four scope vocabularies with one. See `lib/dashboard/scope.ts`.
+    await expect(page.locator('main')).toContainText('All three stores')
 
     await page.goForward()
     await expect(page).toHaveURL(/store=GSA-001/)
@@ -158,9 +168,8 @@ test.describe('reset and per-filter removal', () => {
     await gotoRendered(page, `${ROUTE}?store=GSA-001&period=2025-09&condition=Used`)
     await page.getByRole('link', { name: 'Reset filters' }).click()
     await expect(page).toHaveURL(new RegExp(`${ROUTE}$`))
-    await expect(page.locator('main')).toContainText(
-      'Granite Auto Group, all three stores'
-    )
+    // `UX.2D` replaced four scope vocabularies with one. See `lib/dashboard/scope.ts`.
+    await expect(page.locator('main')).toContainText('All three stores')
     await expect(page.locator('main')).toContainText('December 2025')
   })
 
@@ -172,9 +181,19 @@ test.describe('reset and per-filter removal', () => {
   })
 
   test('shows no reset control when nothing is filtered', async ({ page }) => {
+    /*
+     * `UX.2D` DELETED THE SENTENCE THIS USED TO ASSERT, AND THE DELETION IS THE POINT.
+     *
+     * The band said "Active filters — None. Showing the group over the latest full
+     * month, against the prior month." above a scope line four elements higher reading
+     * "All three stores · December 2025 · vs November 2025". Same information twice, in
+     * the top 300 px of the busiest route in the product. The summary now renders
+     * NOTHING when nothing is set, which is what this asserts instead.
+     */
     await gotoRendered(page, ROUTE)
     expect(await page.getByRole('link', { name: 'Reset filters' }).count()).toBe(0)
-    await expect(page.locator('main')).toContainText('None. Showing the group')
+    expect(await page.locator('[data-active-filters]').count()).toBe(0)
+    await expect(page.locator('main')).toContainText('All three stores')
   })
 })
 
@@ -200,9 +219,8 @@ test.describe('bad input fails safely and visibly', () => {
   }) => {
     await gotoRendered(page, `${ROUTE}?store=GSA-999`)
     await expect(page.locator('main')).toContainText('No such store in this dataset')
-    await expect(page.locator('main')).toContainText(
-      'Granite Auto Group, all three stores'
-    )
+    // `UX.2D` replaced four scope vocabularies with one. See `lib/dashboard/scope.ts`.
+    await expect(page.locator('main')).toContainText('All three stores')
   })
 
   test('an unknown parameter is ignored without a notice', async ({ page }) => {
@@ -258,7 +276,15 @@ test.describe('a filter this route cannot apply says so', () => {
     await gotoRendered(page, `${ROUTE}?condition=Used`)
     const text = await mainText(page)
     expect(text).toContain('(partial)')
-    expect(text).toContain('Selects inventory measures only')
+    /*
+     * `UX.2D` KEPT THE MARKER AND DROPPED THE SENTENCE BESIDE IT, for `partial` only.
+     *
+     * The per-chip note restated the control's own hint, which sits in the same band and
+     * says in full what the parameter scopes. A `not-applicable` chip keeps its sentence
+     * — that is the case where a reader can believe a filter is working when it is not —
+     * and the test above this one still asserts it.
+     */
+    expect(text).toContain('Condition')
   })
 
   test('leaves a measure alone when its dataset has no such attribute', async ({

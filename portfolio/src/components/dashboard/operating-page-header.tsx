@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react'
 import Link from 'next/link'
 
-import type { ActiveFilterChip } from '@/lib/dashboard/filters'
+import type { ActiveFilterChip, DashboardFilters } from '@/lib/dashboard/filters'
+import { ActiveFilterSummary, OperatingControls } from './operating-controls'
 import { Container, Section } from '@/components/ui/layout'
 import { Heading, Text } from '@/components/ui/typography'
 import { SYNTHETIC_DATA_STATEMENT, SYNTHETIC_DEMO_SHORT } from '@/lib/site'
@@ -80,8 +81,27 @@ export interface OperatingPageHeaderProps {
   readonly subtitle?: string
   /** Where the reader came from, for a drill-through. Rendered as one back link. */
   readonly backLink?: { readonly href: string; readonly label: string }
-  /** The route's filter controls. */
+  /**
+   * The route's filter controls, and any control form the route owns.
+   *
+   * Rendered inside `<OperatingControls>`: a native disclosure on a phone, and
+   * simply the band above 48rem. Everything a reader must SEE to interpret a
+   * figure belongs in `notices` or `children` instead — see the file comment on
+   * `operating-controls.tsx` for the line between the two.
+   */
   readonly filters?: ReactNode
+  /**
+   * The parameters currently set, for the removable summary above the controls.
+   *
+   * Passing these rather than rendering a chip list per route is what `UX.2D` §2
+   * bought: one summary, with removal and reset, on all nine routes instead of a
+   * removable one on the Executive surface and an inert one on the other eight.
+   */
+  readonly chips?: readonly ActiveFilterChip[]
+  /** The current filter state, so a chip can link to the view without it. */
+  readonly filterState?: DashboardFilters
+  /** This route's pathname. Chip removal and reset are navigations back to it. */
+  readonly route?: string
   /** Reset notices, period notices, stale banners. Rendered above the controls. */
   readonly notices?: ReactNode
   /**
@@ -121,16 +141,25 @@ export function OperatingPageHeader({
   subtitle,
   backLink,
   filters,
+  chips,
+  filterState,
+  route,
   notices,
   methodology,
   methodologyId,
   children,
   className,
 }: OperatingPageHeaderProps) {
+  const summary =
+    chips === undefined || filterState === undefined || route === undefined ? null : (
+      <ActiveFilterSummary chips={chips} filters={filterState} route={route} />
+    )
+
   return (
     <Section
       rhythm="none"
       tone="evidence"
+      data-operating-band
       className={cx('border-b border-line py-4', className)}
     >
       <Container width="full">
@@ -204,7 +233,12 @@ export function OperatingPageHeader({
           </div>
 
           {notices === undefined ? null : notices}
-          {filters === undefined ? null : filters}
+          {summary}
+          {filters === undefined ? null : (
+            <OperatingControls activeCount={chips?.length ?? 0}>
+              {filters}
+            </OperatingControls>
+          )}
           {children === undefined ? null : children}
         </div>
       </Container>
@@ -225,37 +259,3 @@ export function operatingContext(parts: readonly (string | null | undefined)[]):
 
 /** The demo statement, for a surface that renders no methodology disclosure. */
 export const OPERATING_DEMO_STATEMENT = SYNTHETIC_DEMO_SHORT
-
-/**
- * The active parameters, including the ones this route cannot act on.
- *
- * A filter that is in the URL and not in this summary is a filter the reader
- * believes is working, so a `not-applicable` parameter is shown and labelled
- * rather than hidden. `UX.1` extracted this from six routes that each rendered
- * the same list with slightly different markup.
- */
-export function ActiveFilterChips({
-  chips,
-}: {
-  readonly chips: readonly ActiveFilterChip[]
-}) {
-  if (chips.length === 0) return null
-  return (
-    <ul className="flex flex-wrap gap-2">
-      {chips.map((chip) => (
-        <li
-          key={chip.key}
-          className="inline-flex min-h-6 items-center gap-1.5 rounded-pill border border-line-subtle bg-surface px-2.5 py-1 text-xs"
-        >
-          <span className="text-ink-muted">{chip.label}</span>{' '}
-          <span className="text-ink">{chip.value}</span>
-          {chip.support === 'applied' ? null : (
-            <span className="text-ink-faint">
-              {chip.support === 'partial' ? '· partly applied' : '· not applied here'}
-            </span>
-          )}
-        </li>
-      ))}
-    </ul>
-  )
-}

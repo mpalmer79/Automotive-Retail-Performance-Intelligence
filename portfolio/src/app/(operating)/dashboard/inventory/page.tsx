@@ -3,7 +3,6 @@ import type { Metadata } from 'next'
 import { FilterBar, type FilterOption } from '@/components/dashboard/filter-bar'
 import { ExportProvenance } from '@/components/dashboard/export-provenance'
 import {
-  ActiveFilterChips,
   OperatingPageHeader,
   operatingContext,
 } from '@/components/dashboard/operating-page-header'
@@ -42,8 +41,10 @@ import {
   INVENTORY_SUPPORT,
   activeFilterChips,
   parseFilters,
+  serializeFilters,
   type QueryInput,
 } from '@/lib/dashboard/filters'
+import { filtersForRoute } from '@/lib/dashboard/navigation'
 import {
   formatCountExact,
   formatCurrencyDifference,
@@ -54,6 +55,7 @@ import {
 } from '@/lib/dashboard/format'
 import { exactFromInteger } from '@/lib/dashboard/decimal'
 import { exportTrust, powerBiTrust, reconciliationFailed } from '@/lib/dashboard/trust'
+import { storeScopeLabel } from '@/lib/dashboard/scope'
 import { engines } from '@/lib/manifest'
 import { pageMetadata } from '@/lib/metadata'
 import { ROUTES } from '@/lib/site'
@@ -167,6 +169,26 @@ export default async function InventoryPage({
     value: store.id,
     label: store.shortName,
   }))
+  /*
+   * A UNIT LINK THAT KEEPS THE VIEW IT WAS CLICKED FROM.
+   *
+   * `UX.2D` §10. On `main` every one of the 250 unit links in the table below was
+   * `/dashboard/inventory?unit=VEH-…` and nothing else, so a used-vehicle manager who
+   * had filtered to Granite Subaru and pre-owned stock, found an aged unit and opened
+   * it landed back on the unfiltered lot — and the Back button was the only way to
+   * recover a selection the URL had been carrying all along.
+   *
+   * `filtersForRoute` first drops anything this route cannot act on, so the link is
+   * the canonical serialization of the current view plus one unit, and never a
+   * parameter the destination would display as active and ignore.
+   */
+  const unitFilterQuery = serializeFilters(filtersForRoute(parsed.filters, ROUTE))
+
+  const unitHref = (vehicleId: string): string =>
+    unitFilterQuery === ''
+      ? `${ROUTE}?unit=${vehicleId}`
+      : `${ROUTE}?${unitFilterQuery}&unit=${vehicleId}`
+
   const periodOptions: readonly FilterOption[] = months.map((month) => ({
     value: month,
     label: formatIsoMonth(month),
@@ -177,9 +199,7 @@ export default async function InventoryPage({
       <OperatingPageHeader
         title="Inventory"
         context={operatingContext([
-          parsed.filters.store.length === 0
-            ? 'All stores'
-            : parsed.filters.store.join(', '),
+          storeScopeLabel(parsed.filters.store),
           snapshotDate === null
             ? 'No snapshot in this period'
             : `Snapshot ${formatIsoDate(snapshotDate)}`,
@@ -193,96 +213,106 @@ export default async function InventoryPage({
             {...(snapshotDate === null ? {} : { asOf: snapshotDate })}
           />
         }
-      >
-        <div className="flex flex-col gap-4">
-          {/*
-            TWO CAVEATS STAY VISIBLE, AND THE MECHANISM BEHIND THEM DOES NOT.
+        chips={chips}
+        filterState={parsed.filters}
+        route={ROUTE}
+        notices={
+          <div className="flex flex-col gap-4 empty:hidden">
+            {/*
+              TWO CAVEATS STAY VISIBLE, AND THE MECHANISM BEHIND THEM DOES NOT.
 
-            `UX.1`'s rule is that a caveat is visible and a mechanism is disclosed.
-            These two are caveats: a reader who takes the aged threshold for an
-            industry standard, or the price estimate for a valuation, has misread
-            every figure on the page. The full notes are in the disclosure below.
-          */}
-          <p className="text-sm text-ink-secondary">
-            The aged threshold is an ARPI project default, not an industry benchmark, and
-            it is a different number from the top age bucket. The market estimate is
-            synthetic and is not a market valuation.
-          </p>
-          <StaleBanner stale={exportState.stale} />
-          <ReconciliationBanner failed={failedReconciliation} />
-          <FilterNotice resets={parsed.reset} resetHref={ROUTE} />
+              `UX.1`'s rule is that a caveat is visible and a mechanism is disclosed.
+              These two are caveats: a reader who takes the aged threshold for an
+              industry standard, or the price estimate for a valuation, has misread
+              every figure on the page. The full notes are in the disclosure below.
 
-          <ActiveFilterChips chips={chips} />
+              They stay OUTSIDE the `UX.2D` control disclosure for the same reason: a
+              caveat a reader has to open a panel to find is a caveat they will not read.
+            */}
+            <p className="text-sm text-ink-secondary">
+              The aged threshold is an ARPI project default, not an industry benchmark,
+              and it is a different number from the top age bucket. The market estimate is
+              synthetic and is not a market valuation.
+            </p>
+            <StaleBanner stale={exportState.stale} />
+            <ReconciliationBanner failed={failedReconciliation} />
+            <FilterNotice resets={parsed.reset} resetHref={ROUTE} />
+          </div>
+        }
+        filters={
+          <div className="flex flex-col gap-4">
+            <FilterBar
+              action={ROUTE}
+              filters={parsed.filters}
+              periodOptions={periodOptions}
+              stores={storeOptions}
+              conditions={CONDITION_OPTIONS}
+              leadSources={[]}
+              leadSourceHint="Not applied here. The inventory datasets carry no lead-source attribute."
+            />
 
-          <FilterBar
-            action={ROUTE}
-            filters={parsed.filters}
-            periodOptions={periodOptions}
-            stores={storeOptions}
-            conditions={CONDITION_OPTIONS}
-            leadSources={[]}
-            leadSourceHint="Not applied here. The inventory datasets carry no lead-source attribute."
-          />
-
-          {/* Unit search and ordering, as a native GET form so the page works without
+            {/* Unit search and ordering, as a native GET form so the page works without
                 JavaScript. Both land in the URL, so a filtered view is copyable and the
                 browser's own history works. */}
-          {/* Two controls across at every width rather than stacked below `sm`. Measured on
+            {/* Two controls across at every width rather than stacked below `sm`. Measured on
               a 390 px phone: the stacked form put the control band's bottom edge at 985 px,
               which is past the fold, and the first visual with it. */}
-          <form
-            action={ROUTE}
-            method="get"
-            className="grid grid-cols-2 items-end gap-2 sm:flex sm:flex-wrap sm:gap-3"
-          >
-            {preservedFilterInputs(params)}
-            <div className="flex flex-col gap-1">
-              <label
-                htmlFor="q"
-                className="text-xs uppercase tracking-wide text-ink-muted"
-              >
-                Find a unit
-              </label>
-              <input
-                id="q"
-                name="q"
-                type="search"
-                defaultValue={search ?? ''}
-                placeholder="VEH-0000013, Chevrolet, Tahoe"
-                className="min-h-9 rounded border border-line bg-surface px-3 py-1.5 text-sm"
-              />
-              <span className="text-2xs text-ink-faint">{SEARCHABLE_FIELDS}</span>
-            </div>
-            <div className="flex flex-col gap-1">
-              <label
-                htmlFor="sort"
-                className="text-xs uppercase tracking-wide text-ink-muted"
-              >
-                Order by
-              </label>
-              <select
-                id="sort"
-                name="sort"
-                defaultValue={sort}
-                className="min-h-9 rounded border border-line bg-surface px-3 py-1.5 text-sm"
-              >
-                <option value="store">Store, then unit</option>
-                <option value="age-desc">Days in stock, longest first</option>
-                <option value="age-asc">Days in stock, shortest first</option>
-                <option value="price-desc">Asking price, highest first</option>
-                <option value="price-asc">Asking price, lowest first</option>
-                <option value="ratio-desc">Price to market, highest first</option>
-                <option value="ratio-asc">Price to market, lowest first</option>
-              </select>
-            </div>
-            <button
-              type="submit"
-              className="col-span-2 min-h-touch rounded border border-line bg-surface px-4 py-1.5 text-sm sm:col-span-1 sm:min-h-9"
+            <form
+              action={ROUTE}
+              method="get"
+              className="grid grid-cols-2 items-end gap-2 sm:flex sm:flex-wrap sm:gap-3"
             >
-              Apply
-            </button>
-          </form>
-
+              {preservedFilterInputs(params)}
+              <div className="flex flex-col gap-1">
+                <label
+                  htmlFor="q"
+                  className="text-xs uppercase tracking-wide text-ink-muted"
+                >
+                  Find a unit
+                </label>
+                <input
+                  id="q"
+                  name="q"
+                  type="search"
+                  defaultValue={search ?? ''}
+                  placeholder="VEH-0000013, Chevrolet, Tahoe"
+                  className="min-h-9 rounded border border-line bg-surface px-3 py-1.5 text-sm"
+                />
+                <span className="text-2xs text-ink-faint">{SEARCHABLE_FIELDS}</span>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label
+                  htmlFor="sort"
+                  className="text-xs uppercase tracking-wide text-ink-muted"
+                >
+                  Order by
+                </label>
+                <select
+                  id="sort"
+                  name="sort"
+                  defaultValue={sort}
+                  className="min-h-9 rounded border border-line bg-surface px-3 py-1.5 text-sm"
+                >
+                  <option value="store">Store, then unit</option>
+                  <option value="age-desc">Days in stock, longest first</option>
+                  <option value="age-asc">Days in stock, shortest first</option>
+                  <option value="price-desc">Asking price, highest first</option>
+                  <option value="price-asc">Asking price, lowest first</option>
+                  <option value="ratio-desc">Price to market, highest first</option>
+                  <option value="ratio-asc">Price to market, lowest first</option>
+                </select>
+              </div>
+              <button
+                type="submit"
+                className="col-span-2 min-h-touch rounded border border-line bg-surface px-4 py-1.5 text-sm sm:col-span-1 sm:min-h-9"
+              >
+                Apply
+              </button>
+            </form>
+          </div>
+        }
+      >
+        <div className="flex flex-col gap-4">
           <Disclosure label="What the market estimate is, and what the aged threshold means">
             <div className="flex flex-col gap-3">
               <Text size="sm">{SYNTHETIC_ESTIMATE_NOTE}</Text>
@@ -611,10 +641,7 @@ export default async function InventoryPage({
                     {ordered.map((row) => (
                       <tr key={row.vehicleId} className="border-b border-line-subtle">
                         <th scope="row" className="py-2 pr-4 text-left font-normal">
-                          <a
-                            className="underline"
-                            href={`${ROUTE}?unit=${row.vehicleId}`}
-                          >
+                          <a className="underline" href={unitHref(row.vehicleId)}>
                             {row.vehicleId}
                           </a>
                         </th>
