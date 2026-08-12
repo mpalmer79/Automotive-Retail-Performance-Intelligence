@@ -300,19 +300,32 @@ export function validateSpecification(spec: LoadedSpecification): ValidationResu
     )
   }
 
-  const release = project.productionRelease
-  if (project.createProductionEnvironment && release?.approved !== true) {
-    /*
-     * Fail CLOSED on the combination that would matter: a spec that authorises
-     * creating production without the repository having approved a production
-     * release. An absent `productionRelease` block reads as not approved.
-     */
+  /*
+   * `createProductionEnvironment` STAYS FORBIDDEN, EVEN NOW THAT THE RELEASE IS
+   * APPROVED.
+   *
+   * The first version of this change relaxed it — permitted when
+   * `productionRelease.approved` was true — and that was wrong. It would have
+   * given production-creation intent TWO authorities: this flag and the
+   * `--confirm-production` argument. Two switches that mean nearly the same thing
+   * is how the wrong one ends up set, and the config flag is the worse of the two
+   * to trust, because it is persistent: once true it stays true for every
+   * subsequent run, while an argument is typed for one invocation and expires with
+   * it.
+   *
+   * So intent lives at the command line and only at the command line, and this
+   * assertion is unchanged from before the release was approved. `tests/railway/
+   * spec.test.ts` asserts it, and that test is what caught the relaxation.
+   */
+  if (project.createProductionEnvironment) {
     fail(
-      'project.createProductionEnvironment is true but project.productionRelease.approved ' +
-        'is not true. Creating a production environment requires the repository to have ' +
-        'approved a production release first.'
+      'project.createProductionEnvironment is true. Creating or modifying the production ' +
+        'environment is expressed per invocation, with --environment production and ' +
+        '--confirm-production, never as a persistent flag in this file.'
     )
   }
+
+  const release = project.productionRelease
   if (release !== undefined) {
     if (typeof release.approved !== 'boolean') {
       fail('project.productionRelease.approved must be a boolean.')
