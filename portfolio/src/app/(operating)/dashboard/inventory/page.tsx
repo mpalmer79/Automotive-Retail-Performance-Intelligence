@@ -243,12 +243,11 @@ export default async function InventoryPage({
           <div className="flex flex-col gap-4">
             <FilterBar
               action={ROUTE}
+              support={INVENTORY_SUPPORT}
               filters={parsed.filters}
               periodOptions={periodOptions}
               stores={storeOptions}
               conditions={CONDITION_OPTIONS}
-              leadSources={[]}
-              leadSourceHint="Not applied here. The inventory datasets carry no lead-source attribute."
             />
 
             {/* Unit search and ordering, as a native GET form so the page works without

@@ -49,6 +49,39 @@
  * route. `UX.2A` §4 asks the control band to be compact, and an explanation that explains
  * nothing is the first place to get it — the active-filter chips below the bar still label
  * every parameter's support level on every route.
+ *
+ * WHICH CONTROLS EXIST AT ALL, AFTER `UX.2D.1`
+ * --------------------------------------------
+ * The ones the route's `RouteFilterSupport` does not declare `not-applicable`, and no
+ * others. `support` is a required prop and it is the whole rule.
+ *
+ * THE DOCTRINE WAS ALREADY WRITTEN AND WAS APPLIED TO ONE PARAMETER. The `campaigns`
+ * prop below has said since `DASH.10` that "a route that passes nothing gets no control
+ * rather than an inert one", and campaign was the only parameter that obeyed it. Measured
+ * on `main` at `88d1179` — after `UX.2D` rebuilt the control band — seven of the nine
+ * operating routes still rendered at least one control their own matrix declares
+ * `not-applicable`, each with a sentence beneath it explaining that it does nothing:
+ *
+ *   `/dashboard/fi`          Condition AND lead source, both with their full option
+ *                            lists, both operable, both declared inert. A reader could
+ *                            select `New`, submit, and watch every figure stay put.
+ *   `/dashboard/accounting`  Both, with empty option lists and two long notes.
+ *   `/dashboard/employees`   Condition inert; lead source is `partial` on this route and
+ *                            was passed an EMPTY list, so the one control the page
+ *                            declares it applies could not be operated at all.
+ *   `/dashboard/leads-marketing`, `/dashboard/inventory`, `/dashboard/sales-gross`
+ *                            One each.
+ *
+ * `UX.2D` moved these controls inside a disclosure on a phone, which made the band
+ * compact and left the controls inert — a reader now taps "Filters" to reach a select
+ * that cannot move a figure. The correct behaviour was already declared in `filters.ts`
+ * and simply was not read.
+ *
+ * The note that used to sit under an inert control is not lost: it lives in the support
+ * matrix, and the active-filter summary renders it whenever such a parameter actually
+ * arrives in the URL — which is the only moment a reader needs it, and the moment the
+ * hint under a permanently-empty select could never reach, because a filter carried in
+ * from another route does not touch this form.
  */
 import { useCallback, useState, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
@@ -61,7 +94,9 @@ import {
   type CompareMode,
   type ConditionValue,
   type DashboardFilters,
+  type FilterKey,
   type PeriodSelection,
+  type RouteFilterSupport,
 } from '@/lib/dashboard/filters'
 
 export interface FilterOption {
@@ -74,6 +109,15 @@ export interface FilterBarProps {
   readonly action: string
   readonly filters: DashboardFilters
   /**
+   * What this route can honestly do with each parameter.
+   *
+   * The same declaration the active-filter summary labels its chips from and
+   * `navigation.ts` reduces a cross-route link with — so a parameter cannot be
+   * offered here, dropped by the link builder and labelled inert by the summary,
+   * which is the three-way disagreement `UX.2D.1` found.
+   */
+  readonly support: RouteFilterSupport
+  /**
    * The period presets, already labelled.
    *
    * Built on the server rather than here, so this island imports no formatter and
@@ -83,17 +127,19 @@ export interface FilterBarProps {
    */
   readonly periodOptions: readonly FilterOption[]
   readonly stores: readonly FilterOption[]
-  readonly conditions: readonly FilterOption[]
-  readonly leadSources: readonly FilterOption[]
   /**
-   * The campaigns, or omitted on a route where campaign means nothing.
+   * The condition, lead-source and campaign option lists.
    *
-   * OPTIONAL, unlike the four above, and that asymmetry is the point. Only
-   * `/dashboard/leads-marketing` carries datasets grained on campaign; every other console
-   * route declares `campaign` as `not-applicable`, and rendering a control that cannot
-   * change a figure is how a filter bar starts lying about what it reaches. A route that
-   * passes nothing gets no control rather than an inert one.
+   * ALL THREE ARE OPTIONAL AND ALL THREE OBEY THE SAME RULE: a control is rendered
+   * when the route's `support` declares the parameter applicable AND an option list
+   * arrives for it. A route that declares a parameter inapplicable gets no control
+   * whatever it passes, and a route that declares one applicable and passes no
+   * options gets none either — because a select whose only entry is "All lead
+   * sources" is a control that cannot be operated, which is the defect
+   * `/dashboard/employees` shipped with.
    */
+  readonly conditions?: readonly FilterOption[]
+  readonly leadSources?: readonly FilterOption[]
   readonly campaigns?: readonly FilterOption[]
   /**
    * What the condition and lead-source parameters do ON THIS ROUTE.
@@ -142,17 +188,30 @@ function writePeriod(period: PeriodSelection): string {
 export function FilterBar({
   action,
   filters,
+  support,
   periodOptions,
   stores,
   conditions,
   leadSources,
   campaigns,
-  conditionHint = 'Inventory measures only.',
-  leadSourceHint = 'Funnel measures only.',
-  campaignHint = 'Selects funnel and marketing measures.',
+  conditionHint,
+  leadSourceHint,
+  campaignHint,
 }: FilterBarProps) {
   const router = useRouter()
   const [draft, setDraft] = useState<DashboardFilters>(filters)
+
+  /**
+   * Whether this route offers a control for a parameter.
+   *
+   * Two conditions, both necessary. The declaration decides whether the parameter
+   * MEANS anything here; the option list decides whether there is anything to
+   * choose. `period`, `compare` and `store` need only the first, because their
+   * options are structural rather than catalogue-derived.
+   */
+  const offers = (key: FilterKey, options?: readonly FilterOption[]): boolean =>
+    support[key].support !== 'not-applicable' &&
+    (options === undefined ? true : options.length > 0)
 
   const apply = useCallback(
     (next: DashboardFilters) => {
@@ -181,130 +240,165 @@ export function FilterBar({
       className="flex flex-col gap-3"
     >
       <div className="grid grid-cols-2 gap-x-3 gap-y-3 sm:gap-x-4 md:grid-cols-3 xl:grid-cols-6">
-        <Field id="filter-period" label="Period" active={draft.period.kind !== 'default'}>
-          <SelectControl
+        {!offers('period') ? null : (
+          <Field
             id="filter-period"
-            name="period"
-            value={writePeriod(draft.period)}
+            label="Period"
             active={draft.period.kind !== 'default'}
-            onChange={(event) => {
-              const value = event.target.value
-              // Selecting the deep-linked range option is a no-op: it is already
-              // the current period and there is nothing to change it to.
-              if (value === 'range') return
-              apply({ ...draft, period: readPeriod(value) })
-            }}
           >
-            {periodOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </SelectControl>
-        </Field>
+            <SelectControl
+              id="filter-period"
+              name="period"
+              value={writePeriod(draft.period)}
+              active={draft.period.kind !== 'default'}
+              onChange={(event) => {
+                const value = event.target.value
+                // Selecting the deep-linked range option is a no-op: it is already
+                // the current period and there is nothing to change it to.
+                if (value === 'range') return
+                apply({ ...draft, period: readPeriod(value) })
+              }}
+            >
+              {/*
+                THE DEFAULT ENTRY IS RENDERED HERE, NOT PASSED IN.
 
-        <Field
-          id="filter-compare"
-          label="Comparison"
-          active={draft.compare !== DEFAULT_FILTERS.compare}
-        >
-          <SelectControl
+                Absent `period` means "the latest full month the dataset holds",
+                which is a real member of `PeriodSelection` and serializes to no
+                parameter at all. A `<select>` whose value is `''` and whose options
+                do not include `''` falls back to displaying its FIRST option -- so
+                seven of the eight routes carrying a period control opened showing
+                `July 2025` above a page reporting December, because each had
+                rebuilt the option list from `calendarMonths` and only the Executive
+                remembered the default entry.
+
+                A control that names a period the page is not showing is worse than
+                one with no label at all: the reader has no reason to distrust it.
+                Rendering it here means no route can forget it, and the empty value
+                is exactly what the no-JavaScript GET submits to return to the
+                default.
+              */}
+              {periodOptions.some((option) => option.value === '') ? null : (
+                <option value="">Latest full month (default)</option>
+              )}
+              {periodOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </SelectControl>
+          </Field>
+        )}
+
+        {!offers('compare') ? null : (
+          <Field
             id="filter-compare"
-            name="compare"
-            value={draft.compare}
+            label="Comparison"
             active={draft.compare !== DEFAULT_FILTERS.compare}
-            onChange={(event) =>
-              apply({ ...draft, compare: event.target.value as CompareMode })
-            }
           >
-            {COMPARE_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </SelectControl>
-        </Field>
+            <SelectControl
+              id="filter-compare"
+              name="compare"
+              value={draft.compare}
+              active={draft.compare !== DEFAULT_FILTERS.compare}
+              onChange={(event) =>
+                apply({ ...draft, compare: event.target.value as CompareMode })
+              }
+            >
+              {COMPARE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </SelectControl>
+          </Field>
+        )}
 
-        <Field id="filter-store" label="Store" active={draft.store.length > 0}>
-          <SelectControl
-            id="filter-store"
-            name="store"
-            value={draft.store[0] ?? ''}
-            active={draft.store.length > 0}
-            onChange={(event) =>
-              apply({
-                ...draft,
-                store: event.target.value === '' ? [] : [event.target.value],
-              })
-            }
-          >
-            <option value="">All three stores</option>
-            {stores.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </SelectControl>
-        </Field>
+        {!offers('store') ? null : (
+          <Field id="filter-store" label="Store" active={draft.store.length > 0}>
+            <SelectControl
+              id="filter-store"
+              name="store"
+              value={draft.store[0] ?? ''}
+              active={draft.store.length > 0}
+              onChange={(event) =>
+                apply({
+                  ...draft,
+                  store: event.target.value === '' ? [] : [event.target.value],
+                })
+              }
+            >
+              <option value="">All three stores</option>
+              {stores.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </SelectControl>
+          </Field>
+        )}
 
-        <Field
-          id="filter-condition"
-          label="Condition"
-          active={draft.condition !== null}
-          hint={conditionHint}
-        >
-          <SelectControl
+        {!offers('condition', conditions) ? null : (
+          <Field
             id="filter-condition"
-            name="condition"
-            value={draft.condition ?? ''}
+            label="Condition"
             active={draft.condition !== null}
-            onChange={(event) =>
-              apply({
-                ...draft,
-                condition:
-                  event.target.value === ''
-                    ? null
-                    : (event.target.value as ConditionValue),
-              })
-            }
+            hint={conditionHint}
           >
-            <option value="">All conditions</option>
-            {conditions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </SelectControl>
-        </Field>
+            <SelectControl
+              id="filter-condition"
+              name="condition"
+              value={draft.condition ?? ''}
+              active={draft.condition !== null}
+              onChange={(event) =>
+                apply({
+                  ...draft,
+                  condition:
+                    event.target.value === ''
+                      ? null
+                      : (event.target.value as ConditionValue),
+                })
+              }
+            >
+              <option value="">All conditions</option>
+              {(conditions ?? []).map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </SelectControl>
+          </Field>
+        )}
 
-        <Field
-          id="filter-source"
-          label="Lead source"
-          active={draft.source !== null}
-          hint={leadSourceHint}
-        >
-          <SelectControl
+        {!offers('source', leadSources) ? null : (
+          <Field
             id="filter-source"
-            name="source"
-            value={draft.source ?? ''}
+            label="Lead source"
             active={draft.source !== null}
-            onChange={(event) =>
-              apply({
-                ...draft,
-                source: event.target.value === '' ? null : event.target.value,
-              })
-            }
+            hint={leadSourceHint}
           >
-            <option value="">All lead sources</option>
-            {leadSources.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </SelectControl>
-        </Field>
+            <SelectControl
+              id="filter-source"
+              name="source"
+              value={draft.source ?? ''}
+              active={draft.source !== null}
+              onChange={(event) =>
+                apply({
+                  ...draft,
+                  source: event.target.value === '' ? null : event.target.value,
+                })
+              }
+            >
+              <option value="">All lead sources</option>
+              {(leadSources ?? []).map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </SelectControl>
+          </Field>
+        )}
 
-        {campaigns === undefined ? null : (
+        {!offers('campaign', campaigns) ? null : (
           <Field
             id="filter-campaign"
             label="Campaign"
@@ -324,7 +418,7 @@ export function FilterBar({
               }
             >
               <option value="">All campaigns</option>
-              {campaigns.map((option) => (
+              {(campaigns ?? []).map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>

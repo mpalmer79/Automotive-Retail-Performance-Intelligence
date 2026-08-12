@@ -39,7 +39,11 @@ import {
   dashboardManifest,
   dashboardStores,
 } from '@/lib/dashboard/data'
-import { parseFilters, type QueryInput } from '@/lib/dashboard/filters'
+import {
+  SALES_GROSS_SUPPORT,
+  parseFilters,
+  type QueryInput,
+} from '@/lib/dashboard/filters'
 import { formatIsoMonth } from '@/lib/dashboard/format'
 import { operatingHref } from '@/lib/dashboard/navigation'
 import { buildSalesGross, type MixBreakdown } from '@/lib/dashboard/sales-gross'
@@ -158,13 +162,12 @@ export default async function SalesGrossPage({
         filters={
           <FilterBar
             action={ROUTE}
+            support={SALES_GROSS_SUPPORT}
             filters={parsed.filters}
             periodOptions={periodOptions()}
             stores={storeOptions()}
             conditions={conditionOptions()}
-            leadSources={leadSourceOptions()}
             conditionHint="New and Used select the exported condition split of units and gross."
-            leadSourceHint="Not applied on this page. Deal-level attribution is in the Deal Explorer."
           />
         }
         methodology={
@@ -476,11 +479,4 @@ function storeOptions(): readonly FilterOption[] {
 
 function conditionOptions(): readonly FilterOption[] {
   return dashboardConditionGroups.map((group) => ({ value: group, label: group }))
-}
-
-function leadSourceOptions(): readonly FilterOption[] {
-  return dashboardLeadSources.map((source) => ({
-    value: source.code,
-    label: source.name,
-  }))
 }

@@ -228,7 +228,7 @@ function TargetCard({
       )}
 
       <Disclosure
-        label={`How ${definition.label.toLowerCase()} against plan is calculated`}
+        label={`How ${definition.label.toLowerCase()} against plan is measured`}
       >
         <ul className="flex flex-col gap-1.5">
           <li>

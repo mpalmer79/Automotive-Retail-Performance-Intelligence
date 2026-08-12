@@ -193,13 +193,10 @@ export default async function AccountingPage({
         filters={
           <FilterBar
             action={ROUTE}
+            support={ACCOUNTING_SUPPORT}
             filters={parsed.filters}
             periodOptions={periodOptions}
             stores={storeOptions}
-            conditions={[]}
-            leadSources={[]}
-            conditionHint="Not applied here. A control balance is a store-and-account position; vehicle condition decides which control account a unit belongs to, and that grouping is already the account."
-            leadSourceHint="Not applied here. The accounting datasets carry no lead-source attribute."
           />
         }
       >

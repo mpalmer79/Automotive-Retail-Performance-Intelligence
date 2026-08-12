@@ -251,10 +251,7 @@ export function DemandRail({
         ))}
       </ul>
 
-      <Disclosure
-        label="How every figure on this rail is calculated"
-        className="border-0"
-      >
+      <Disclosure label="How every figure on this rail is measured" className="border-0">
         <div className="flex flex-col gap-4 text-sm text-ink-muted">
           <p>
             <strong className="text-ink">Valid leads (KPI-FUN-001)</strong> counts

@@ -1330,6 +1330,55 @@ queue.
 Power BI real-engine validation remains externally pending; `UX.2D` does not modify the semantic
 model.
 
+### `UX.2D.1` as-built notes
+
+Evidence: [`UX-2D-1-CONTROL-TRUTH.md`](../reviews/UX-2D-1-CONTROL-TRUTH.md).
+
+A defect pass over merged `UX.2D` work, in the same relationship `UX.2B.1` had to `UX.2B`. It changes
+no status and no architecture: the control band, the `::details-content` disclosure, the scope-line
+vocabulary, `ActiveFilterSummary`, chip removal and reset, and the link-builder repairs are all
+exactly as `UX.2D` shipped them.
+
+**Five defects, and the thing they have in common is that none of them is a measurement.** Every one
+is correct-looking markup, which is why an increment that measured the band did not see them.
+
+1. **Seven of the nine routes offered a filter control their own `RouteFilterSupport` declares
+   `not-applicable`.** `/dashboard/fi` offered two, both with full option lists and both operable —
+   a reader could select `New`, submit, and watch every figure stay put. `/dashboard/employees`
+   offered `source`, which it declares `partial`, with an **empty option list**, so the one parameter
+   that route says it applies could not be selected from the form. `UX.2D` moved these inside a
+   disclosure on a phone, which made the band compact and left the controls inert. `<FilterBar>`
+   takes `support` as a required prop now; the doctrine it applies was written in the `campaigns`
+   prop at `DASH.10` and had been applied to `campaign` alone.
+
+2. **Money split mid-token, 35 times across five routes.** `body` sets `overflow-wrap: anywhere` for
+   a real reason — 68-character identifiers in prose — and it breaks a price in a 66 px cell:
+   `$38,127` rendered as `$38,12` above a lone `7`, silently rewritten into a smaller-looking number.
+   `UX.2B.1` treated the symptom on the Deal Jacket with container queries without reaching the rule.
+   The `numeric` utility sets `overflow-wrap: normal`; the count is zero at 390 and at 1440.
+
+3. **The rail said a live route was not built.** `PLANNED_DASHBOARD_SECTIONS` was emptied by
+   `DASH.12`; the rail printed a hard-coded copy of its last entry — `Not built yet · Actions ·
+   DASH.12` — above a live `Actions` link, on every route, at every viewport, for four increments.
+   `site.test.ts` guarded the data; nothing guarded the view, because the view was not reading it.
+
+4. **Seven of the eight period controls named a period the page was not showing.** Absent `period`
+   serializes to nothing, and a `<select>` with no `''` option renders its first — `July 2025` above
+   a page reporting December. Only `/` carried the default entry. Found by eye, in a screenshot pass,
+   on a build whose whole suite was green.
+
+5. **One methodology vocabulary.** The unused `Methodology` component (zero rendered usages since
+   `UX.1`) removed; six disclosure labels moved to statement form and one verb, including one built
+   from a template that only the browser test reached.
+
+**Non-goals held.** No `DASH.13` work. No new business domain, KPI, warehouse fact, dimension,
+reporting view or export dataset; the generated data is byte-identical. No `powerbi/` file. No chart
+library, not reopened. No new dependency and no new client island — client JavaScript rises by the
+`support` prop and a five-line predicate.
+
+Power BI real-engine validation remains externally pending; `UX.2D.1` does not modify the semantic
+model.
+
 ---
 
 ## `DASH.13` — Hardening and release

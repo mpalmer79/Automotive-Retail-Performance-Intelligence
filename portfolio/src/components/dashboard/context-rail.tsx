@@ -132,7 +132,7 @@ function FilterGrammar({ route }: { route: string }) {
   ]
 
   return (
-    <Disclosure label="What can I put in the URL?">
+    <Disclosure label="What the URL accepts">
       <Text size="sm" tone="muted" className="max-w-prose">
         Filter state lives entirely in the query string. There is no cookie, no stored
         preference and no server session: a copied link reproduces the view, the back

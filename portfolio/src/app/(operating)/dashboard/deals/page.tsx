@@ -218,6 +218,7 @@ export default async function DealExplorerPage({
 
             <FilterBar
               action={ROUTE}
+              support={DEAL_EXPLORER_SUPPORT}
               filters={parsed.filters}
               periodOptions={periodOptions()}
               stores={storeOptions()}

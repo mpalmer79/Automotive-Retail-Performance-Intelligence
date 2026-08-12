@@ -50,6 +50,7 @@ import { parseFilters } from '@/lib/dashboard/filters'
 import { useEscapeKey, useFocusTrap, useScrollLock } from '@/lib/hooks'
 import {
   OPERATING_NAV,
+  PLANNED_DASHBOARD_SECTIONS,
   REPOSITORY_URL,
   SYNTHETIC_DEMO_SHORT,
   UTILITY_NAV,
@@ -250,18 +251,33 @@ function RailBody({
       </nav>
 
       {/*
-        The unbuilt section, named as text and never as a link.
+        The unbuilt sections, named as text and never as a link.
 
         It is here rather than only at the foot of the Executive page because the
         rail is where a reader looks for "is there a page for that", and the honest
         answer for management actions is "not yet, and here is the increment that
         delivers it". A disabled-looking link would be a promise; a line of text is
         a status.
+
+        RENDERED FROM `PLANNED_DASHBOARD_SECTIONS`. The list was emptied by
+        `DASH.12` -- which built the action queue -- and this block was a
+        hard-coded copy of its last entry, so the rail went on printing
+        "Not built yet · Actions · DASH.12" directly above a live `Actions` link
+        to a route four increments had been shipping, on every operating route,
+        at every viewport, in both the rail and the drawer. `site.test.ts`
+        already guarded the DATA against outliving the work it describes; nothing
+        guarded the VIEW, because the view was not reading the data.
       */}
-      <div className="flex flex-col gap-1 border-t border-line pt-4">
-        <p className="eyebrow text-2xs text-ink-faint">Not built yet</p>
-        <p className="text-sm text-ink-faint">Actions · DASH.12</p>
-      </div>
+      {PLANNED_DASHBOARD_SECTIONS.length === 0 ? null : (
+        <div className="flex flex-col gap-1 border-t border-line pt-4">
+          <p className="eyebrow text-2xs text-ink-faint">Not built yet</p>
+          {PLANNED_DASHBOARD_SECTIONS.map((section) => (
+            <p key={section.label} className="text-sm text-ink-faint">
+              {section.label} · {section.increment}
+            </p>
+          ))}
+        </div>
+      )}
 
       <nav aria-label="Utility" className="border-t border-line pt-4">
         <ul className="flex flex-col">

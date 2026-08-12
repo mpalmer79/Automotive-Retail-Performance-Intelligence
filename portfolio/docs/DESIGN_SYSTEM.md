@@ -1163,3 +1163,93 @@ a comma list for two. **A warehouse key is never a scope label.** Five routes we
 **No chart library was added.** The question was not reopened: `UX.2D` introduced no visual
 primitive at all, and §6.0c's three conditions — a continuous scale, a computed axis, a layout
 algorithm — are the only grounds for reopening it.
+
+---
+
+## `UX.2D.1`: the declaration is the control surface
+
+`UX.2D` rebuilt the control band and asserted it thoroughly. A second pass over the same surface
+found five defects its measurements were not shaped to see, because **none of them is a
+measurement** — each is correct-looking markup. Recorded in
+[`UX-2D-1-CONTROL-TRUTH.md`](../../docs/reviews/UX-2D-1-CONTROL-TRUTH.md); two of them change a rule
+in this document.
+
+### A control exists only where the route declares the parameter applies
+
+`filters.ts` declares, per route, what each of the thirteen URL parameters can honestly do there.
+That declaration drives three things and must drive all three, or they disagree:
+
+| Reads the declaration | To decide                                                                  |
+| --------------------- | -------------------------------------------------------------------------- |
+| `<FilterBar>`         | whether to render a control at all                                         |
+| `ActiveFilterSummary` | how to label a parameter carrying a value, and whether to state its reason |
+| `navigation.ts`       | whether to carry the parameter across a link                               |
+
+Before `UX.2D.1` only the second and third read it. Seven of the nine operating routes therefore
+offered at least one control the route itself declares inert, and `/dashboard/employees` offered a
+control it declares `partial` with an empty option list.
+
+The doctrine was not new — the `campaigns` prop has said since `DASH.10` that _"a route that passes
+nothing gets no control rather than an inert one"_ — it had simply been applied to one parameter.
+`support` is a required prop now, and the rule is: render a control when the declaration says the
+parameter means something here **and** an option list exists for it.
+
+**A hint beginning "Not applied" under a control a reader can operate is the signature of the
+defect, and no such hint may exist.** The reason it used to carry lives in the support matrix and is
+rendered by the active-filter summary when the parameter actually arrives in the URL — which is the
+only moment a reader needs it, and the moment a hint under a permanently-empty select could never
+reach, because a filter carried in by the rail does not touch the destination's form.
+
+### A figure is one token
+
+`body` sets `overflow-wrap: anywhere`, and that is correct: this site puts 68-character
+schema-qualified identifiers inside prose, and only `anywhere` reduces min-content width enough to
+stop one forcing a 320 px viewport sideways. It is wrong for money, because `anywhere` breaks a word
+at any character once the line is full.
+
+`UX.2B.1` saw the symptom on the Deal Jacket (`$21,358.` above `02`) and treated it with container
+queries, which fixed that panel's width without fixing the rule. 35 money values across five routes
+were still breaking after `UX.2D`: in a 66 px price cell `$38,127` renders as `$38,12` above a lone
+`7` — not clipped, not ellipsised, silently rewritten into a different, smaller-looking number.
+
+The `numeric` utility sets `overflow-wrap: normal` and `word-break: normal`, under which UAX #14
+treats a currency prefix, its digits and its group separators as one unbreakable run. It cannot
+reintroduce page overflow: these are short tokens in table cells, and every wide table already sits
+in a keyboard-reachable `overflow-x: auto` region.
+
+### One methodology vocabulary, and one verb
+
+`components/dashboard/methodology.tsx` — created by `UX.1` to be the console's one methodology
+interaction — had **zero rendered usages**, ever. All 32 sites use `components/ui/disclosure.tsx`,
+which already _was_ the one pattern; the dead module is removed rather than adopted.
+
+Statement form throughout, and **measured** rather than _calculated_:
+
+| Was                                             | Is                                             |
+| ----------------------------------------------- | ---------------------------------------------- |
+| `How is this calculated?`                       | `How this is measured`                         |
+| `How every figure on this rail is calculated`   | `How every figure on this rail is measured`    |
+| `How {metric} against plan is calculated`       | `How {metric} against plan is measured`        |
+| `What can I put in the URL?`                    | `What the URL accepts`                         |
+| `Which reporting views produced these figures?` | `Which reporting views produced these figures` |
+| `What are the known limits of this data?`       | `The known limits of this data`                |
+
+The distinction between "this metric" and "every figure on this rail" is kept: it is a real
+difference in what opening the disclosure gives you.
+
+### Two rules for anything the view renders from a list
+
+Both of the remaining defects are the same mistake in different files, and the rule is worth stating
+once.
+
+**A view that describes data must read that data.** The rail printed `Not built yet · Actions ·
+DASH.12` above a live `Actions` link for four increments. `PLANNED_DASHBOARD_SECTIONS` had been
+correctly emptied by `DASH.12` and `site.test.ts` guards it against outliving the work it describes —
+but the block was a hard-coded copy of the list's last entry, so the guard protected a value nothing
+displayed.
+
+**A `<select>` whose value can be the empty string must offer the empty string.** Absent `period`
+means "the latest full month the dataset holds"; a `<select>` with no `''` option falls back to
+rendering its first, so seven of eight routes opened reading `July 2025` above a page reporting
+December. The default entry is rendered by `FilterBar` itself now, so no route can forget it and none
+can render it twice.

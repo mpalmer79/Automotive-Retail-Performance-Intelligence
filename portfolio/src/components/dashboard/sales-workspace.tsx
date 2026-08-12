@@ -136,10 +136,7 @@ export function SalesRail({
         ))}
       </ul>
 
-      <Disclosure
-        label="How every figure on this rail is calculated"
-        className="border-0"
-      >
+      <Disclosure label="How every figure on this rail is measured" className="border-0">
         <div className="flex flex-col gap-5">
           {rail.map((metric) => {
             const definition =

@@ -121,7 +121,7 @@ export function MetricTile({
         </a>
       ) : null}
       {definition ? (
-        <Disclosure label="How is this calculated?">
+        <Disclosure label="How this is measured">
           <Text size="xs" tone="muted">
             {definition.definition}
           </Text>

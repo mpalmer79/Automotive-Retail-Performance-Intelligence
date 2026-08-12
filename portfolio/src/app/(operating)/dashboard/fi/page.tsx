@@ -34,7 +34,6 @@ import { Container, Section } from '@/components/ui/layout'
 import { Text } from '@/components/ui/typography'
 import {
   calendarMonths,
-  dashboardConditionGroups,
   dashboardLeadSources,
   dashboardManifest,
   dashboardStores,
@@ -175,13 +174,10 @@ export default async function FiPage({
         filters={
           <FilterBar
             action={ROUTE}
+            support={FI_SUPPORT}
             filters={parsed.filters}
             periodOptions={periodOptions()}
             stores={storeOptions()}
-            conditions={conditionOptions()}
-            leadSources={leadSourceOptions()}
-            conditionHint="Not applied here. Vehicle condition already decides which categories are eligible, and the rule applies it inside each denominator."
-            leadSourceHint="Not applied here. The F&I datasets carry no lead-source attribute."
           />
         }
       >
@@ -493,17 +489,6 @@ function periodOptions(): readonly FilterOption[] {
 
 function storeOptions(): readonly FilterOption[] {
   return dashboardStores.map((store) => ({ value: store.id, label: store.shortName }))
-}
-
-function conditionOptions(): readonly FilterOption[] {
-  return dashboardConditionGroups.map((group) => ({ value: group, label: group }))
-}
-
-function leadSourceOptions(): readonly FilterOption[] {
-  return dashboardLeadSources.map((source) => ({
-    value: source.code,
-    label: source.name,
-  }))
 }
 
 /**
