@@ -84,9 +84,21 @@ export async function generateMetadata({
    */
   const base = pageMetadata('technical')
 
+  /*
+   * THE TITLE IS ABSOLUTE, BECAUSE IT ALREADY CARRIES THE SUFFIX.
+   *
+   * The root layout's title template is `%s - ARPI`, and it is applied to any
+   * plain-string title a route returns. This route builds its own
+   * `"<view> - ARPI"` string so the eight technical states each name themselves,
+   * which meant the template appended a second suffix and `/technical` shipped
+   * `<title>How ARPI works - ARPI - ARPI</title>`. Found by `DASH.13`'s metadata
+   * audit, on the one route a technical reviewer arriving from LinkedIn is most
+   * likely to open. `absolute` is the documented way to opt out of the template;
+   * `pageMetadata` uses it for the home page for the same reason.
+   */
   return {
     ...base,
-    title: `${definition.title} - ${SITE_NAME}`,
+    title: { absolute: `${definition.title} - ${SITE_NAME}` },
     description: definition.lede,
     alternates: { canonical },
     openGraph: {

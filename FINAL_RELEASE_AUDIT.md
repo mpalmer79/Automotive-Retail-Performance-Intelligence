@@ -1,5 +1,36 @@
 # ARPI final release audit
 
+> ## Superseded in part by `DASH.13` — 12 August 2026
+>
+> This document is the audit from the **`claude/arpi-final-release-hardening`** increment of 6 August
+> 2026, and it is kept as written: it is the record of that increment, not a living status page. Two
+> things a later reader needs to know before using it.
+>
+> **1. The release position is now `DASH.13`'s.** The current, authoritative answer to "can somebody
+> independently verify that the public claim matches the repository?" is
+> [`docs/reviews/DASH-13-REVIEW.md`](docs/reviews/DASH-13-REVIEW.md), with the audit it was read against
+> in [`docs/reviews/DASH-13-BASELINE.md`](docs/reviews/DASH-13-BASELINE.md). `DASH.13` found and fixed
+> six P1 truth defects and two metadata defects that postdate this document, and it built the external
+> verifier that makes the question answerable in one command:
+>
+> ```
+> tsx scripts/railway/verify_release_policy.ts --url <origin> --expect production
+> ```
+>
+> **2. §5's Railway rows are still open, and one of them has been reframed.** No production environment
+> exists yet. What changed is that a production release is now **approved** — `productionRelease` in
+> `deployment/railway/project.config.json` — so the remaining work is a deliberate, gated act rather than
+> an unapproved one. The exact sequence, in the order that makes production serve the verified release
+> commit, is `DASH-13-REVIEW.md` §9. The row reading "Confirm the Railway environment is named
+> `production`" understated the problem: `DASH.13` established that the environment name must be correct
+> **at build time as well as at run time**, because a statically prerendered route bakes its canonical
+> origin and its indexability into the build, and a deployment whose build and runtime environments
+> disagree ships a `robots.txt` and a set of page metadata that contradict each other, silently.
+>
+> Nothing below has been edited to agree with `DASH.13`. Where this document and `DASH.13` differ on a
+> fact about the current tree, `DASH.13` is later and wins.
+
+
 **Branch:** `claude/arpi-final-release-hardening`
 **Baseline commit:** `90bf876` — `main` plus the seven-chapter home page rebuild
 **Date:** 6 August 2026

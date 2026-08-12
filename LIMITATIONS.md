@@ -1035,24 +1035,43 @@ review notes cite the previous numbering:
 
 ## 14. What the governed dashboard export lane cannot support (ADR-0013, `DASH.1`)
 
-The export lane exists; the console does not. `DASH.1` built the data path, its manifest and its
-controls, and stopped there deliberately. What follows is what the lane genuinely cannot do today, so
-that nobody reads its existence as more than it is.
+`DASH.1` built the export lane — the data path, its manifest and its controls — and stopped there
+deliberately. `DASH.2` through `DASH.12` then built the console that consumes it, and `UX.2` rebuilt
+that console's surfaces. What follows is what the LANE itself genuinely cannot do, so that nobody
+reads its existence as more than it is.
 
-### 14.1 There is no dashboard
+> **Rewritten in `DASH.13`.** Sections 14.1 and 14.2 described the state of the world at `DASH.1`, and
+> they went on describing it after it stopped being true. 14.1 said there was no dashboard route, no
+> component, no chart, no filter and no navigation entry, and that the generated datasets were consumed
+> by nothing; 14.2 listed targets, F&I products, reserve, penetration, chargebacks, inventory
+> accounting, GL control balances, management actions, employee performance and deal-level detail as
+> needing warehouse entities that did not exist. All of that was superseded by increments this document
+> did not follow. The corrected statements are below. Nothing was removed to make the project look
+> better: 14.3 through 14.9 are unchanged, and the Power BI limitation in 14.8 is unchanged and still
+> the largest one.
 
-No `/dashboard` route, no dashboard component, no chart, no filter, no navigation entry. The
-artifacts under `data/dashboard/` and `portfolio/src/generated/dashboard/` are consumed by nothing,
-and a test asserts that. Anyone visiting the site sees exactly what they saw before.
+### 14.1 The console consumes the lane, and both are synthetic
 
-### 14.2 The export covers the 29 implemented KPIs and nothing else
+There is an operating console: nine routes behind a navigation rail — `/` plus
+`/dashboard/sales-gross`, `/dashboard/deals` (with `/dashboard/deals/[saleId]`),
+`/dashboard/inventory`, `/dashboard/fi`, `/dashboard/leads-marketing`, `/dashboard/employees`,
+`/dashboard/accounting` and `/dashboard/actions` — reading the artifacts under `data/dashboard/` and
+`portfolio/src/generated/dashboard/`. What remains true, and matters more than the count of routes:
+every figure it renders is **synthetic**, it holds **no database connection at all**, it computes no
+KPI of its own, and it uses **no charting library** — the visuals are hand-authored SVG and CSS. A
+reachable console is not a deployed analytical platform.
 
-No targets, no itemized F&I products, no finance reserve, no product penetration, no chargebacks or
-cancellations, no inventory accounting, no GL control balances, no management actions, no employee
-performance, no deal-level detail. Those need warehouse entities that do not exist yet
-([DATA_DICTIONARY.md Part G](DATA_DICTIONARY.md); increments `DASH.5` through `DASH.12`). No dataset
-here stands in for one, and no placeholder file was created — a fabricated empty dataset would look
-like implementation without being it.
+### 14.2 The export covers the implemented KPI and domain set, and nothing beyond it
+
+Targets, itemized F&I products, finance reserve, product penetration, chargebacks and cancellations,
+inventory accounting, GL control balances, management actions, employee performance and deal-level
+detail are all now exported, each on the warehouse entities its increment added
+([DATA_DICTIONARY.md](DATA_DICTIONARY.md); increments `DASH.5` through `DASH.12`). What the export
+still does not carry is what the warehouse does not hold: no general ledger beyond the inventory
+control accounts, no service or parts domain, no real market valuation, and nothing sourced from a
+real DMS or CRM. No dataset stands in for one, and no placeholder file was ever created — a fabricated
+empty dataset would look like implementation without being it. The full list is
+[`docs/product/PRODUCT_GAPS.md`](docs/product/PRODUCT_GAPS.md) §4 and §6.
 
 ### 14.3 Group figures exist only where the measure is additive
 

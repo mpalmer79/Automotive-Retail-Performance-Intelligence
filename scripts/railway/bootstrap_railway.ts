@@ -77,13 +77,44 @@ import {
 import { loadSpecification, validateSpecification } from './lib/spec.ts'
 
 const argv = process.argv.slice(2)
-const args = parseCommonArguments(argv)
+
+/*
+ * PRODUCTION TARGETING, ADDED BY `DASH.13`.
+ *
+ * `DASH.13` approved an intentional public production deployment, so this tool
+ * has to be ABLE to target production — and must be much harder to point at it by
+ * accident than at staging. Four things have to agree:
+ *
+ *   1. `--environment production`   named explicitly, never defaulted to;
+ *   2. `--confirm-production`       a second, non-guessable act of intent;
+ *   3. `productionRelease.approved` the repository's standing decision;
+ *   4. the project identity check   already performed below against the spec.
+ *
+ * Anything less targets the declared default, which is staging. Omitting only
+ * `--confirm-production` is treated as a REFUSAL rather than a downgrade to
+ * staging: silently deploying somewhere other than where the operator said is
+ * how the wrong environment gets clobbered.
+ */
+const environmentFlagIndex = argv.indexOf('--environment')
+const requestedEnvironment =
+  environmentFlagIndex === -1 ? undefined : argv[environmentFlagIndex + 1]
+const confirmProduction = argv.includes('--confirm-production')
+
+const args = parseCommonArguments(
+  // The value-taking flag and its value are not "unknown arguments".
+  argv.filter((arg, index) => {
+    if (arg === '--environment' || arg === '--confirm-production') return false
+    return argv[index - 1] !== '--environment'
+  })
+)
 
 if (args.help) {
   process.stdout.write(
     `Bootstrap the ARPI Railway project.
 
 Usage: tsx scripts/railway/bootstrap_railway.ts [--dry-run] [--json]
+       tsx scripts/railway/bootstrap_railway.ts --environment production \\
+         --confirm-production
 
   --dry-run   Make no remote mutation and no deployment. Prints the project,
               services, variable references and settings that would be applied,
@@ -91,6 +122,16 @@ Usage: tsx scripts/railway/bootstrap_railway.ts [--dry-run] [--json]
               specification.
   --json      Emit a machine-readable result on stdout. Never contains a
               password, a credential-bearing URL, or a token.
+
+  --environment <name>
+              Target environment. Defaults to the declared non-production
+              environment in deployment/railway/project.config.json.
+  --confirm-production
+              Required, in addition to --environment production, to target the
+              production environment. Both are required every time: production is
+              never the default and is never inferred. Targeting production also
+              requires project.productionRelease.approved in the configuration.
+              Staging is never deleted or repurposed by a production release.
 
 Authentication is read from the RAILWAY_API_TOKEN environment variable only. It
 is never accepted as a command-line argument. An account- or workspace-scoped
@@ -128,8 +169,72 @@ const report = new RunReport(
 )
 
 const targetProject = spec.project.project.name
-const targetEnvironment = spec.project.project.environment
+const declaredEnvironment = spec.project.project.environment
 const productionEnvironment = spec.project.project.productionEnvironment
+const productionRelease = spec.project.project.productionRelease
+
+/* --- Resolve the target environment, and gate production on real intent --- */
+
+const wantsProduction =
+  requestedEnvironment !== undefined &&
+  requestedEnvironment.trim().toLowerCase() === productionEnvironment.toLowerCase()
+
+if (requestedEnvironment !== undefined && requestedEnvironment.trim() === '') {
+  process.stderr.write('Refusing to start: --environment was given no value.\n')
+  process.exit(2)
+}
+
+if (wantsProduction) {
+  if (productionRelease?.approved !== true) {
+    process.stderr.write(
+      `Refusing to target "${productionEnvironment}": the configuration does not approve a ` +
+        'production release.\n\n' +
+        'Set project.productionRelease.approved in deployment/railway/project.config.json,\n' +
+        'which is a reviewable change to the repository rather than a flag on a command.\n'
+    )
+    process.exit(2)
+  }
+  if (!confirmProduction) {
+    /*
+     * REFUSE rather than fall back to staging. An operator who typed
+     * `--environment production` and is missing the confirmation must not have
+     * their command silently redirected at a different environment.
+     */
+    process.stderr.write(
+      `Refusing to target "${productionEnvironment}" without --confirm-production.\n\n` +
+        'This is the public deployment. Re-run with both flags when that is what you mean:\n' +
+        `  tsx scripts/railway/bootstrap_railway.ts --environment ${productionEnvironment} ` +
+        '--confirm-production\n\n' +
+        'Nothing has been contacted and nothing has changed.\n'
+    )
+    process.exit(2)
+  }
+} else if (
+  requestedEnvironment !== undefined &&
+  requestedEnvironment.trim().toLowerCase() !== declaredEnvironment.toLowerCase()
+) {
+  // An environment that is neither the declared default nor production is a typo
+  // far more often than it is a plan, and this tool creates what it cannot find.
+  process.stderr.write(
+    `Refusing to target "${requestedEnvironment.trim()}": it is neither the declared ` +
+      `environment ("${declaredEnvironment}") nor the production environment ` +
+      `("${productionEnvironment}").\n`
+  )
+  process.exit(2)
+}
+
+if (confirmProduction && !wantsProduction) {
+  // --confirm-production on a staging run means the operator believes they are
+  // deploying production. Stop and let them look.
+  process.stderr.write(
+    '--confirm-production was passed without --environment ' +
+      `${productionEnvironment}. Refusing to proceed: this run would have targeted ` +
+      `"${declaredEnvironment}".\n`
+  )
+  process.exit(2)
+}
+
+const targetEnvironment = wantsProduction ? productionEnvironment : declaredEnvironment
 const portfolioName = spec.project.services.portfolio.name
 const postgresName = spec.project.services.postgres.name
 const jobName = spec.project.services.databaseSetup.name
@@ -386,11 +491,31 @@ try {
   const looksLikeProduction = linkedEnvironments.some(
     (name) => name.toLowerCase() === productionEnvironment.toLowerCase()
   )
-  if (looksLikeProduction) {
+  /*
+   * The guard now checks AGREEMENT rather than absence.
+   *
+   * Before `DASH.13` any sign of production here was fatal. Now that production is
+   * a supported target, the question is whether what we are linked to is what the
+   * operator asked for. Both mismatches are fatal, and the dangerous one is the
+   * first: a run that did not ask for production finding itself pointed at it.
+   */
+  if (looksLikeProduction && !wantsProduction) {
     report.failed(
       'production-guard',
-      `the linked environment resolves to "${productionEnvironment}". Refusing to proceed: ` +
-        'no production deployment of this site has been approved.'
+      `the linked environment resolves to "${productionEnvironment}", but this run did not ` +
+        'ask for it. Refusing to proceed: re-run with --environment ' +
+        `${productionEnvironment} --confirm-production if a production deployment is what ` +
+        'you mean.'
+    )
+    report.finish()
+    process.exit(2)
+  }
+  if (!looksLikeProduction && wantsProduction) {
+    report.failed(
+      'production-guard',
+      `this run asked for "${productionEnvironment}" but the linked environment does not ` +
+        'resolve to it. Refusing to proceed rather than deploying a production release into ' +
+        'another environment.'
     )
     report.finish()
     process.exit(2)
@@ -399,7 +524,9 @@ try {
   if (environmentIds[0] !== undefined) resolved.environmentId = environmentIds[0]
   report.ok(
     'production-guard',
-    `linked environment is not "${productionEnvironment}"`
+    wantsProduction
+      ? `linked environment is "${productionEnvironment}", as this run explicitly requested`
+      : `linked environment is not "${productionEnvironment}"`
   )
 } catch (error) {
   report.warn(

@@ -102,7 +102,16 @@ export const rootMetadata: Metadata = {
     ],
     apple: [{ url: '/apple-touch-icon.png', sizes: '180x180' }],
   },
-  manifest: '/site.webmanifest',
+  /*
+   * NO `manifest` KEY. `app/manifest.ts` IS THE MANIFEST.
+   *
+   * This field used to read `/site.webmanifest`, which was inert and wrong at the
+   * same time: Next's file-based `app/manifest.ts` convention wins over a
+   * `metadata.manifest` value, so the rendered link has always been
+   * `/manifest.webmanifest`, and `/site.webmanifest` answers 404. Removing the
+   * line rather than repointing it keeps one authority for the manifest instead
+   * of two that have to agree.
+   */
   alternates: { canonical: SITE_URL },
 }
 
@@ -129,6 +138,23 @@ export function pageMetadata(key: RouteKey, overrides: Partial<Metadata> = {}): 
       : { index: false, follow: false, nocache: true },
     openGraph: {
       type: 'website',
+      /*
+       * `siteName` AND `locale` ARE REPEATED HERE, NOT INHERITED.
+       *
+       * `Metadata` overrides are shallow, and every route on this site builds its
+       * metadata through this function — so this `openGraph` object REPLACES the
+       * one in `rootMetadata` rather than merging into it. The root's `siteName`
+       * and `locale` were therefore dropped from every page on the site, and
+       * `DASH.13`'s metadata audit found `og:site_name` absent from all of them.
+       *
+       * It matters more than a missing tag usually would: `og:site_name` is the
+       * line a social crawler renders as the card's attribution, so a card built
+       * from a page without it is a headline and an image with nothing naming the
+       * site it came from. The same shallow-override rule is already documented at
+       * the one other place that spreads this object, `technical/page.tsx`.
+       */
+      siteName: SITE_TITLE,
+      locale: 'en_US',
       url,
       title: isHome ? SITE_TITLE : `${route.title} - ${SITE_NAME}`,
       description: route.description,
