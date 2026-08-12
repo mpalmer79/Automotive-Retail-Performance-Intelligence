@@ -27,7 +27,6 @@ import { GrossComposition } from '@/components/dashboard/visuals'
 import { TargetPaceSection } from '@/components/dashboard/target-context'
 import { ExportProvenance } from '@/components/dashboard/export-provenance'
 import {
-  ActiveFilterChips,
   OperatingPageHeader,
   operatingContext,
 } from '@/components/dashboard/operating-page-header'
@@ -151,9 +150,11 @@ export default async function SalesGrossPage({
             <ReconciliationBanner failed={failedReconciliation} />
             <FilterNotice resets={parsed.reset} resetHref={ROUTE} />
             <PeriodNotice notices={view.periodContext.notices} />
-            <ActiveFilterChips chips={view.chips} />
           </div>
         }
+        chips={view.chips}
+        filterState={parsed.filters}
+        route={ROUTE}
         filters={
           <FilterBar
             action={ROUTE}

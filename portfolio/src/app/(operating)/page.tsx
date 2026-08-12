@@ -7,7 +7,7 @@ import {
   ChangeDriverBridge,
   TopActions,
 } from '@/components/dashboard/actions-sections'
-import { ActiveFilters, ContextProvenance } from '@/components/dashboard/context-rail'
+import { ContextProvenance } from '@/components/dashboard/context-rail'
 import { GridRow, Module, Workspace } from '@/components/dashboard/workspace-grid'
 import { FilterBar, type FilterOption } from '@/components/dashboard/filter-bar'
 import { InventoryRisk } from '@/components/dashboard/inventory-risk'
@@ -58,6 +58,7 @@ import { buildBridge, buildChangeDrivers } from '@/lib/dashboard/change-drivers'
 import { grossChangeBridgeRows } from '@/lib/dashboard/change-drivers-data'
 import { parseFilters, type QueryInput } from '@/lib/dashboard/filters'
 import { formatIsoDate, formatIsoMonth } from '@/lib/dashboard/format'
+import { operatingHref } from '@/lib/dashboard/navigation'
 import { exportTrust, powerBiTrust, reconciliationFailed } from '@/lib/dashboard/trust'
 import { engines } from '@/lib/manifest'
 import { pageMetadata } from '@/lib/metadata'
@@ -201,6 +202,25 @@ export default async function DashboardPage({
     }
   )
 
+  /*
+   * EVERY DRILL-THROUGH OUT OF THIS SURFACE GOES THROUGH `operatingHref`.
+   *
+   * `UX.2D` §10-§11. Measured on `main` from `/?period=2025-11&store=GSA-002&compare=prior-year`,
+   * three of the Executive's outbound links were bare pathnames: the inventory link,
+   * both accounting links and "View all review prompts". A general manager who had
+   * scoped the group to one store and one month arrived at the whole group at the
+   * default period and rebuilt the selection by hand — on the surface whose entire
+   * purpose is to be the place a manager starts.
+   *
+   * `operatingHref` reduces the context to what each destination declares it can act
+   * on, so Actions keeps the store and drops the period it does not support, and
+   * Inventory keeps both. There is one serializer and one support matrix; nothing here
+   * decides what travels.
+   */
+  const inventoryHref = operatingHref(ROUTES.dashboardInventory.href, parsed.filters)
+  const accountingHref = operatingHref(ROUTES.dashboardAccounting.href, parsed.filters)
+  const actionsHref = operatingHref(ROUTES.dashboardActions.href, parsed.filters)
+
   return (
     <Canvas>
       <OperatingPageHeader
@@ -223,9 +243,11 @@ export default async function DashboardPage({
             <ReconciliationBanner failed={failedReconciliation} />
             <FilterNotice resets={overview.resets} resetHref={ROUTE} />
             <PeriodNotice notices={overview.periodContext.notices} />
-            <ActiveFilters overview={overview} route={ROUTE} />
           </div>
         }
+        chips={overview.chips}
+        filterState={overview.filters}
+        route={ROUTE}
         filters={
           <FilterBar
             action={ROUTE}
@@ -342,6 +364,7 @@ export default async function DashboardPage({
               visual="inventory"
             >
               <InventoryRisk
+                unitsHref={inventoryHref}
                 inventory={overview.inventory}
                 comparisonLabel={comparisonLabel}
               />
@@ -396,7 +419,7 @@ export default async function DashboardPage({
               <TopActions
                 actions={topActions(attentionQueue.actions, 4)}
                 total={attentionQueue.total}
-                href={ROUTES.dashboardActions.href}
+                href={actionsHref}
               />
             </Module>
           </GridRow>
@@ -420,7 +443,10 @@ export default async function DashboardPage({
               visual="accounting"
               note="A variance between the stock schedule and the general ledger is a finding to investigate, not a broken record, and both sides are valid data."
             >
-              <ReconciliationSection signal={accountingSignal} />
+              <ReconciliationSection
+                signal={accountingSignal}
+                accountingHref={accountingHref}
+              />
             </Module>
             <Module id="detail" title="Detail, on demand" span={5}>
               {/*

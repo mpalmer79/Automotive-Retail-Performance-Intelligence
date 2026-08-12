@@ -23,6 +23,7 @@ import { buildBridge, buildChangeDrivers } from '@/lib/dashboard/change-drivers'
 import { grossChangeBridgeRows } from '@/lib/dashboard/change-drivers-data'
 import { dashboardManifest, dashboardStores } from '@/lib/dashboard/data'
 import { exportTrust, powerBiTrust, reconciliationFailed } from '@/lib/dashboard/trust'
+import { storeScopeLabel } from '@/lib/dashboard/scope'
 import { engines } from '@/lib/manifest'
 import { pageMetadata } from '@/lib/metadata'
 import type { ActionDomain, ActionSeverity } from '@/types/dashboard'
@@ -127,7 +128,7 @@ export default async function DashboardActionsPage({
       <OperatingPageHeader
         title="Management Actions"
         context={operatingContext([
-          facets.store.length === 0 ? 'All three stores' : facets.store.join(', '),
+          storeScopeLabel(facets.store),
           `${String(view.total)} open review ${view.total === 1 ? 'prompt' : 'prompts'}`,
         ])}
         subtitle="Deterministic review prompts backed by the same governed data as the operating console."

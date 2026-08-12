@@ -27,6 +27,7 @@
  * F&I benchmark, so a comparison is stated as a comparison and left there.
  */
 import type { ReactNode } from 'react'
+import Link from 'next/link'
 
 import { Disclosure } from '@/components/ui/disclosure'
 import { Text } from '@/components/ui/typography'
@@ -660,7 +661,31 @@ function AdjustmentRow({ row }: { readonly row: FiAdjustmentTypeRow }) {
 /* 7. Finance managers                                                         */
 /* -------------------------------------------------------------------------- */
 
-export function ManagerComparison({ view }: { readonly view: FiView }) {
+export function ManagerComparison({
+  view,
+  managerHref,
+}: {
+  readonly view: FiView
+  /**
+   * Where one manager's people-side context lives, or `null` for the unstaffed group.
+   *
+   * `UX.2D` §35 and §77 STEP 7. The F&I route had NO outbound drill-through of any
+   * kind — measured on `main`, zero anchors from `<main>` to another operating route —
+   * while `/dashboard/employees` has linked INTO this page since `DASH.11`. The pair
+   * was one-way: an F&I director could not reach a desk's tenure, sample state and
+   * fairness context from the desk's own PVR row without retyping the identifier.
+   *
+   * The link is offered only where the destination honours the parameter: Employees
+   * declares `employee` applied and scopes every figure by it. The unstaffed group has
+   * no employee to scope by and gets no link rather than a link to nothing — the same
+   * rule `employees/page.tsx` follows in the other direction.
+   *
+   * IT IS NOT A RANKING AND CHANGES NO ORDER. The rows stay in store-and-identifier
+   * order, every ratio keeps its own denominator, and the sample floor still withholds
+   * what it withheld.
+   */
+  readonly managerHref: (code: string) => string
+}) {
   return (
     <div className="flex flex-col gap-4">
       {/* Focusable: a horizontally scrolling region is unreachable by keyboard
@@ -706,7 +731,11 @@ export function ManagerComparison({ view }: { readonly view: FiView }) {
           </thead>
           <tbody>
             {view.managers.map((row) => (
-              <ManagerRow key={row.code ?? 'unstaffed'} row={row} />
+              <ManagerRow
+                key={row.code ?? 'unstaffed'}
+                row={row}
+                href={row.code === null ? null : managerHref(row.code)}
+              />
             ))}
           </tbody>
         </table>
@@ -724,7 +753,13 @@ export function ManagerComparison({ view }: { readonly view: FiView }) {
   )
 }
 
-function ManagerRow({ row }: { readonly row: FiManagerRow }) {
+function ManagerRow({
+  row,
+  href,
+}: {
+  readonly row: FiManagerRow
+  readonly href: string | null
+}) {
   const withheld = !row.meetsMinimumSample
   const ratioCell = (ratio: FiRatio, render: (value: Exact) => string): ReactNode => {
     if (withheld) return <span className="text-ink-muted">—</span>
@@ -735,7 +770,16 @@ function ManagerRow({ row }: { readonly row: FiManagerRow }) {
   return (
     <tr className="border-b border-rule/60">
       <th scope="row" className="py-2 text-left font-normal">
-        <span className="font-mono text-xs">{row.label}</span>
+        {href === null ? (
+          <span className="font-mono text-xs">{row.label}</span>
+        ) : (
+          <Link
+            href={href}
+            className="font-mono text-xs underline decoration-line underline-offset-2 transition-colors duration-(--arpi-motion-fast) hover:text-accent"
+          >
+            {row.label}
+          </Link>
+        )}
         {withheld ? (
           <span className="ml-2 whitespace-nowrap text-xs text-ink-muted">
             Insufficient sample (n = {formatCountExact(row.retailUnits)})

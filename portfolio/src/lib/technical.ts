@@ -174,6 +174,24 @@ export function technicalHref(view: TechnicalView): string {
   return view === DEFAULT_TECHNICAL_VIEW ? '/technical' : `/technical?view=${view}`
 }
 
+/**
+ * The catalogue entry for one KPI, as a link.
+ *
+ * `UX.2D` §35 SWEPT THE DRILL-THROUGHS AND FOUND THIS ONE POINTING AT A REDIRECT.
+ * Three modules built the same href by hand as `/kpis#KPI-FIN-002` — the catalogue's
+ * address before `UX.1` consolidated the six documentation routes into `/technical`.
+ * It still resolves, because `/kpis` is one of the eight permanent redirects the
+ * route map keeps for exactly this reason, but every KPI identifier on the operating
+ * console was a 308 away from its definition, and a fragment that survives a redirect
+ * survives it by browser convention rather than by contract.
+ *
+ * One helper, composed from `technicalHref`, so the catalogue can move again without
+ * three modules needing to hear about it.
+ */
+export function kpiCatalogueHref(kpiId: string): string {
+  return `${technicalHref('kpis')}#${kpiId}`
+}
+
 /** Every retired route and the view state it now resolves to. */
 export const LEGACY_TECHNICAL_ROUTES: readonly {
   readonly from: string

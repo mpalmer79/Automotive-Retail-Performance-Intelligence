@@ -35,6 +35,7 @@
 import type { KpiEntry } from '@/types/content'
 import type { DashboardRow } from '@/types/dashboard'
 import { kpis } from '@/lib/content'
+import { kpiCatalogueHref } from '@/lib/technical'
 
 import type { Exact } from './decimal'
 import {
@@ -63,6 +64,7 @@ import {
   type DashboardStore,
 } from './data'
 import { dealChunkFile } from './deal-chunks'
+import { storeScopeLabel } from './scope'
 import {
   formatCountExact,
   formatCurrencyDifference,
@@ -481,10 +483,7 @@ function resolveStoreScope(filters: DashboardFilters): StoreScope {
     ids,
     stores,
     isGroup: filters.store.length === 0,
-    label:
-      filters.store.length === 0
-        ? 'Granite Auto Group, all three stores'
-        : stores.map((store) => store.shortName).join(', '),
+    label: storeScopeLabel(filters.store),
   }
 }
 
@@ -921,5 +920,5 @@ export function kpiDefinition(kpiId: string): KpiEntry | undefined {
 
 /** Where a KPI id links to. */
 export function kpiDefinitionHref(kpiId: string): string {
-  return `/kpis#${kpiId}`
+  return kpiCatalogueHref(kpiId)
 }

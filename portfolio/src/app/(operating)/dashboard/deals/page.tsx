@@ -6,7 +6,6 @@ import { DealSummaryStrip } from '@/components/dashboard/deal-summary'
 import { FilterBar, type FilterOption } from '@/components/dashboard/filter-bar'
 import { ExportProvenance } from '@/components/dashboard/export-provenance'
 import {
-  ActiveFilterChips,
   OperatingPageHeader,
   operatingContext,
 } from '@/components/dashboard/operating-page-header'
@@ -34,7 +33,7 @@ import {
   type QueryInput,
 } from '@/lib/dashboard/filters'
 import { formatIsoMonth } from '@/lib/dashboard/format'
-import { operatingHref } from '@/lib/dashboard/navigation'
+import { filtersForRoute, operatingHref } from '@/lib/dashboard/navigation'
 import { exportTrust, powerBiTrust, reconciliationFailed } from '@/lib/dashboard/trust'
 import { engines } from '@/lib/manifest'
 import { pageMetadata } from '@/lib/metadata'
@@ -101,7 +100,17 @@ export default async function DealExplorerPage({
   const powerBi = powerBiTrust(engines)
   const failedReconciliation = reconciliationFailed(dashboardManifest)
   const chips = activeFilterChips(parsed.filters, DEAL_EXPLORER_SUPPORT)
-  const filterQuery = serializeFilters(parsed.filters)
+  /*
+   * THE QUERY THIS ROUTE CARRIES THROUGH ITS OWN NAVIGATION.
+   *
+   * Reduced to what the Deal Explorer declares it can act on BEFORE it is serialized.
+   * `UX.2D` §11-§12: the sort headers, the pager, the search form's hidden fields and
+   * the "clear search" link all ride on this string, and on `main` it was the whole
+   * filter context — so `/dashboard/deals?period=2025-11&compare=prior-year` reproduced
+   * `compare=prior-year` in every one of them, on a route that declares `compare`
+   * not-applicable and shows no comparison anywhere.
+   */
+  const filterQuery = serializeFilters(filtersForRoute(parsed.filters, ROUTE))
   /*
    * The drill-through BACK to the aggregate (`UX.2B` §47). `operatingHref` reduces the
    * filter state to what Sales & Gross can act on, so the search term and the sale-type
@@ -129,89 +138,97 @@ export default async function DealExplorerPage({
             asOf={view.asOfDate}
           />
         }
-      >
-        <div className="flex flex-col gap-4">
-          <StaleBanner stale={exportState.stale} />
-          <ReconciliationBanner failed={failedReconciliation} />
-          <FilterNotice resets={parsed.reset} resetHref={ROUTE} />
-          <PeriodNotice notices={view.periodContext.notices} />
-
-          {list.reset.length > 0 ? (
-            <div
-              role="status"
-              className="rounded-lg border border-line bg-surface-sunken/60 p-4"
-            >
-              <Text size="sm" tone="secondary">
-                {list.reset
-                  .map(
-                    (entry) =>
-                      `The ${entry.key} value "${entry.value}" was not usable and was reset. ${entry.reason}`
-                  )
-                  .join(' ')}
-              </Text>
-            </div>
-          ) : null}
-
-          {view.pageClamped ? (
-            <div
-              role="status"
-              className="rounded-lg border border-line bg-surface-sunken/60 p-4"
-            >
-              <Text size="sm" tone="secondary">
-                {`That page is past the end of this result set, so the last page is shown instead. There ${view.pageCount === 1 ? 'is 1 page' : `are ${String(view.pageCount)} pages`} of results.`}
-              </Text>
-            </div>
-          ) : null}
-
-          {/* Search. A native GET form: it needs no JavaScript, its result is a
-                URL, and its state survives a reload and a share. */}
-          <form method="get" action={ROUTE} className="flex flex-wrap items-end gap-3">
-            {/* The global filters ride along as hidden fields, so searching does
-                  not silently discard the period or store the reader chose. */}
-            {hiddenFilterFields(filterQuery)}
-            <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <label htmlFor="deal-search" className="text-xs font-medium text-ink-muted">
-                Search deals
-              </label>
-              <input
-                id="deal-search"
-                name="q"
-                type="search"
-                defaultValue={view.state.query}
-                placeholder="Deal id, unit id, make or model"
-                className="min-h-touch rounded-md border border-line-subtle bg-surface px-3 text-sm text-ink placeholder:text-ink-faint focus-visible:border-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-              />
-            </div>
-            <button
-              type="submit"
-              className="inline-flex min-h-touch items-center rounded-md border border-line-subtle px-4 text-sm font-medium text-ink transition-colors duration-(--arpi-motion-fast) hover:border-accent hover:text-accent"
-            >
-              Search
-            </button>
-            {view.state.query === '' ? null : (
-              <a
-                href={filterQuery === '' ? ROUTE : `${ROUTE}?${filterQuery}`}
-                className="inline-flex min-h-touch items-center text-sm text-ink-muted underline decoration-line underline-offset-2 transition-colors duration-(--arpi-motion-fast) hover:text-accent"
+        chips={chips}
+        filterState={parsed.filters}
+        route={ROUTE}
+        notices={
+          <div className="flex flex-col gap-4 empty:hidden">
+            <StaleBanner stale={exportState.stale} />
+            <ReconciliationBanner failed={failedReconciliation} />
+            <FilterNotice resets={parsed.reset} resetHref={ROUTE} />
+            <PeriodNotice notices={view.periodContext.notices} />
+          </div>
+        }
+        filters={
+          <div className="flex flex-col gap-4">
+            {list.reset.length > 0 ? (
+              <div
+                role="status"
+                className="rounded-lg border border-line bg-surface-sunken/60 p-4"
               >
-                Clear search
-              </a>
-            )}
-          </form>
+                <Text size="sm" tone="secondary">
+                  {list.reset
+                    .map(
+                      (entry) =>
+                        `The ${entry.key} value "${entry.value}" was not usable and was reset. ${entry.reason}`
+                    )
+                    .join(' ')}
+                </Text>
+              </div>
+            ) : null}
 
-          <ActiveFilterChips chips={chips} />
+            {view.pageClamped ? (
+              <div
+                role="status"
+                className="rounded-lg border border-line bg-surface-sunken/60 p-4"
+              >
+                <Text size="sm" tone="secondary">
+                  {`That page is past the end of this result set, so the last page is shown instead. There ${view.pageCount === 1 ? 'is 1 page' : `are ${String(view.pageCount)} pages`} of results.`}
+                </Text>
+              </div>
+            ) : null}
 
-          <FilterBar
-            action={ROUTE}
-            filters={parsed.filters}
-            periodOptions={periodOptions()}
-            stores={storeOptions()}
-            conditions={conditionOptions()}
-            leadSources={leadSourceOptions()}
-            conditionHint="Selects deals by the vehicle's condition."
-            leadSourceHint="Selects deals with a linked lead from that source. Walk-in deals are excluded when a source is chosen."
-          />
-        </div>
-      </OperatingPageHeader>
+            {/* Search. A native GET form: it needs no JavaScript, its result is a
+                URL, and its state survives a reload and a share. */}
+            <form method="get" action={ROUTE} className="flex flex-wrap items-end gap-3">
+              {/* The global filters ride along as hidden fields, so searching does
+                  not silently discard the period or store the reader chose. */}
+              {hiddenFilterFields(filterQuery)}
+              <div className="flex min-w-0 flex-1 flex-col gap-1">
+                <label
+                  htmlFor="deal-search"
+                  className="text-xs font-medium text-ink-muted"
+                >
+                  Search deals
+                </label>
+                <input
+                  id="deal-search"
+                  name="q"
+                  type="search"
+                  defaultValue={view.state.query}
+                  placeholder="Deal id, unit id, make or model"
+                  className="min-h-touch rounded-md border border-line-subtle bg-surface px-3 text-sm text-ink placeholder:text-ink-faint focus-visible:border-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                />
+              </div>
+              <button
+                type="submit"
+                className="inline-flex min-h-touch items-center rounded-md border border-line-subtle px-4 text-sm font-medium text-ink transition-colors duration-(--arpi-motion-fast) hover:border-accent hover:text-accent"
+              >
+                Search
+              </button>
+              {view.state.query === '' ? null : (
+                <a
+                  href={filterQuery === '' ? ROUTE : `${ROUTE}?${filterQuery}`}
+                  className="inline-flex min-h-touch items-center text-sm text-ink-muted underline decoration-line underline-offset-2 transition-colors duration-(--arpi-motion-fast) hover:text-accent"
+                >
+                  Clear search
+                </a>
+              )}
+            </form>
+
+            <FilterBar
+              action={ROUTE}
+              filters={parsed.filters}
+              periodOptions={periodOptions()}
+              stores={storeOptions()}
+              conditions={conditionOptions()}
+              leadSources={leadSourceOptions()}
+              conditionHint="Selects deals by the vehicle's condition."
+              leadSourceHint="Selects deals with a linked lead from that source. Walk-in deals are excluded when a source is chosen."
+            />
+          </div>
+        }
+      />
 
       <Workspace>
         {/* ---------------------------------------------------------------- */}

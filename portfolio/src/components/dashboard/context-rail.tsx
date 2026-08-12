@@ -18,8 +18,8 @@
  * are marked "not applied here" in words rather than dropped, because a filter that
  * is in the URL and not in the summary is a filter the reader believes is working.
  *
- * `UX.1` SPLIT IT IN TWO, ALONG THE LINE THAT WAS ALREADY THERE
- * -------------------------------------------------------------
+ * `UX.1` SPLIT IT IN TWO, AND `UX.2D` MOVED THE OTHER HALF OUT
+ * ------------------------------------------------------------
  * The rail carried two different kinds of thing under one heading. The active
  * filters, their removal links and the "not applied here" notes are CONTROLS: a
  * reader acts on them, and hiding them behind a disclosure would hide the only way
@@ -27,106 +27,19 @@
  * contract fingerprint and the URL grammar reference are PROVENANCE: true,
  * checkable, and not what a general manager opens a dashboard for.
  *
- * So `<ActiveFilters>` stays in the control band beside the filter form, and
- * `<ContextProvenance>` moved into the band's methodology disclosure. One
- * component became two rather than one component growing a `variant` prop,
- * because the two halves have different audiences and are rendered in different
- * places.
+ * `UX.1` moved the provenance half into the band's methodology disclosure, which
+ * is what this file still holds. `UX.2D` moved the control half to
+ * `operating-controls.tsx`, where it became the ONE active-filter summary all nine
+ * operating routes render — the Executive surface was the only route that had a
+ * removable one, and eight routes had no reset at all.
  *
  * Server component.
  */
-import Link from 'next/link'
-
 import { Badge } from '@/components/ui/badge'
 import { Disclosure } from '@/components/ui/disclosure'
 import { Text } from '@/components/ui/typography'
 import type { ExecutiveOverview } from '@/lib/dashboard/executive'
-import { filtersHref, withoutFilter } from '@/lib/dashboard/filters'
 import { formatIsoDate } from '@/lib/dashboard/format'
-import { cx } from '@/lib/utils'
-
-/**
- * The controls: which parameters are active, and how to remove one.
- *
- * Visible, never collapsed. A reader who cannot see that a store filter is applied
- * is reading a group figure as a store figure.
- */
-export function ActiveFilters({
-  overview,
-  route,
-}: {
-  overview: ExecutiveOverview
-  route: string
-}) {
-  const { filters, chips } = overview
-  return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="font-mono text-2xs tracking-wide text-ink-muted uppercase">
-          Active filters
-        </span>
-        {chips.length === 0 ? (
-          <Text size="xs" tone="faint" as="span">
-            None. Showing the group over the latest full month, against the prior month.
-          </Text>
-        ) : (
-          <ul className="flex flex-wrap items-center gap-2">
-            {chips.map((chip) => (
-              <li key={chip.key}>
-                <Link
-                  href={filtersHref(route, withoutFilter(filters, chip.key))}
-                  className={cx(
-                    // `min-h-6`: WCAG 2.2 Target Size (Minimum) is 24 CSS pixels,
-                    // and a 13px line with 4px of padding is 21. The chips sit in a
-                    // wrapping row where the neighbour offset cannot be relied on.
-                    'inline-flex min-h-6 items-center gap-1.5 rounded-pill border px-2.5 py-1 text-xs leading-none',
-                    'transition-colors duration-(--arpi-motion-fast)',
-                    chip.support === 'not-applicable'
-                      ? 'border-line-strong bg-deferred-wash text-deferred hover:border-line-strong'
-                      : 'border-accent-muted/45 bg-accent-wash text-accent hover:border-accent'
-                  )}
-                >
-                  <span className="font-medium">{chip.label}: </span>
-                  <span className="font-mono">{chip.value}</span>
-                  {chip.support === 'not-applicable' ? (
-                    <span className="text-2xs">(not applied here)</span>
-                  ) : chip.support === 'partial' ? (
-                    <span className="text-2xs">(partial)</span>
-                  ) : null}
-                  <span aria-hidden="true">&times;</span>
-                  <span className="sr-only">Remove this filter</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-        {chips.length === 0 ? null : (
-          <Link
-            href={route}
-            className="inline-flex min-h-6 items-center rounded-pill border border-line px-2.5 py-1 text-xs font-medium text-ink-secondary transition-colors hover:border-line-strong hover:text-ink"
-          >
-            Reset filters
-          </Link>
-        )}
-      </div>
-
-      {chips.some((chip) => chip.support !== 'applied') ? (
-        <ul className="flex flex-col gap-1.5">
-          {chips
-            .filter((chip) => chip.support !== 'applied')
-            .map((chip) => (
-              <li key={chip.key}>
-                <Text size="xs" tone="muted">
-                  <span className="font-medium text-ink-secondary">{chip.label}</span>{' '}
-                  {chip.note}
-                </Text>
-              </li>
-            ))}
-        </ul>
-      ) : null}
-    </div>
-  )
-}
 
 /** The provenance: the scope in full, the version it came from, and the grammar. */
 export function ContextProvenance({

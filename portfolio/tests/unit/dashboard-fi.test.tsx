@@ -1041,7 +1041,7 @@ describe('the F&I page stays inside its increment', () => {
   it('names every store in the scope it claims', () => {
     const view = wholeWindow()
     expect(view.scope.stores.length).toBe(dashboardStores.length)
-    expect(view.scope.label).toBe('the group')
+    expect(view.scope.label).toBe('All three stores')
     const one = wholeWindow({ store: [dashboardStoreIds[0] as string] })
     expect(one.scope.stores.length).toBe(1)
     expect(one.scope.label).toBe(dashboardStores[0]!.shortName)

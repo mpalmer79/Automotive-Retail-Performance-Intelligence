@@ -396,6 +396,44 @@
 }
 
 /* ==========================================================================
+   The operating control band, above and below 48rem
+   --------------------------------------------------------------------------
+   `UX.2D` §6-§8. The filter form and the route's own control forms live in one
+   native `<details data-operating-controls>`. On a phone that is a disclosure: a
+   reader sees the scope line, the active-filter chips and a "Filters and
+   controls" summary, and the form is one tap away. On a desktop there is no
+   disclosure at all — the summary is hidden and the form is simply the band.
+
+   `::details-content` IS THE ONLY WAY CSS CAN OPEN A `<details>`, for the reason
+   the print block below states: `open` is an attribute, and a stylesheet cannot
+   set an attribute. This is the same technique, at a different breakpoint, and it
+   is what makes the responsive behaviour need no JavaScript, no viewport
+   measurement and no client component — a phone with scripting disabled gets a
+   working native disclosure, and a desktop with scripting disabled gets the
+   controls with nothing to open.
+
+   THE `@supports` GUARD IS LOAD-BEARING. An engine that does not support the
+   pseudo-element must not be given the `display: none` on the summary, or the
+   controls become unreachable rather than merely one click away. Guarded, the
+   fallback on such an engine is the phone behaviour at every width: a visible
+   summary that opens a form. Unguarded it would be a hidden control, which is the
+   one outcome §8 forbids.
+   ========================================================================== */
+
+@supports selector(::details-content) {
+  @media (width >= 48rem) {
+    [data-operating-controls] > summary {
+      display: none;
+    }
+
+    [data-operating-controls]::details-content {
+      content-visibility: visible;
+      block-size: auto;
+    }
+  }
+}
+
+/* ==========================================================================
    Disclosures in print
    --------------------------------------------------------------------------
    A printed page has no interaction, so a collapsed `<details>` on paper is

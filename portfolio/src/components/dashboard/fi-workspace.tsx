@@ -50,6 +50,7 @@ import type {
 import { cx } from '@/lib/utils'
 
 import { ChartFrame, TableDisclosure } from './visuals'
+import { kpiCatalogueHref } from '@/lib/technical'
 
 /** A percentage, as CSS wants it, from a fraction. Layout only. */
 function widthOf(fraction: number): string {
@@ -198,7 +199,7 @@ function RailCell({
       <dd className="mt-auto flex flex-wrap items-baseline justify-between gap-x-2 pt-0.5 text-2xs text-ink-faint">
         <span>{basis}</span>
         <a
-          href={`/kpis#${kpiId}`}
+          href={kpiCatalogueHref(kpiId)}
           className="inline-flex min-h-6 items-center font-mono tracking-wide underline decoration-line underline-offset-2 transition-colors duration-(--arpi-motion-fast) hover:text-accent"
         >
           {kpiId}

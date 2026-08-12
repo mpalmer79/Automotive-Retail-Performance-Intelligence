@@ -12,7 +12,6 @@ import { FilterBar, type FilterOption } from '@/components/dashboard/filter-bar'
 import { ExportProvenance } from '@/components/dashboard/export-provenance'
 import { GridRow, Module, Workspace } from '@/components/dashboard/workspace-grid'
 import {
-  ActiveFilterChips,
   OperatingPageHeader,
   operatingContext,
 } from '@/components/dashboard/operating-page-header'
@@ -48,6 +47,7 @@ import {
   type QueryInput,
 } from '@/lib/dashboard/filters'
 import { formatIsoDate } from '@/lib/dashboard/format'
+import { storeScopeLabel } from '@/lib/dashboard/scope'
 import { exportTrust, powerBiTrust, reconciliationFailed } from '@/lib/dashboard/trust'
 import { engines } from '@/lib/manifest'
 import { pageMetadata } from '@/lib/metadata'
@@ -167,9 +167,7 @@ export default async function AccountingPage({
       <OperatingPageHeader
         title="Accounting"
         context={operatingContext([
-          parsed.filters.store.length === 0
-            ? 'All three stores'
-            : parsed.filters.store.join(', '),
+          storeScopeLabel(parsed.filters.store),
           comparisonDate === null
             ? 'No comparison date in this period'
             : `Position at ${formatIsoDate(comparisonDate)}`,
@@ -182,14 +180,17 @@ export default async function AccountingPage({
             {...(comparisonDate === null ? {} : { asOf: comparisonDate })}
           />
         }
-      >
-        <div className="flex flex-col gap-4">
-          <StaleBanner stale={exportState.stale} />
-          <ReconciliationBanner failed={failedReconciliation} />
-          <FilterNotice resets={parsed.reset} resetHref={ROUTE} />
-
-          <ActiveFilterChips chips={chips} />
-
+        chips={chips}
+        filterState={parsed.filters}
+        route={ROUTE}
+        notices={
+          <div className="flex flex-col gap-4 empty:hidden">
+            <StaleBanner stale={exportState.stale} />
+            <ReconciliationBanner failed={failedReconciliation} />
+            <FilterNotice resets={parsed.reset} resetHref={ROUTE} />
+          </div>
+        }
+        filters={
           <FilterBar
             action={ROUTE}
             filters={parsed.filters}
@@ -200,7 +201,9 @@ export default async function AccountingPage({
             conditionHint="Not applied here. A control balance is a store-and-account position; vehicle condition decides which control account a unit belongs to, and that grouping is already the account."
             leadSourceHint="Not applied here. The accounting datasets carry no lead-source attribute."
           />
-
+        }
+      >
+        <div className="flex flex-col gap-4">
           <Disclosure label="What this page reconciles, and what it does not">
             <div className="flex flex-col gap-3">
               <Text size="sm">

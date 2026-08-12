@@ -71,6 +71,7 @@ import { dashboardStores, numericCell, textCell, type DashboardStore } from './d
 import type { DashboardFilters } from './filters'
 import { fiAdjustmentRows, fiSummaryRows } from './fi-data'
 import { penetrationChunkFile } from './fi-chunks'
+import { storeScopeLabel } from './scope'
 import { decodeDataset } from './data'
 import type { DashboardRow } from '@/types/dashboard'
 import { dashboardCalendar, dashboardManifest } from './data'
@@ -912,10 +913,7 @@ export function buildFi(filters: DashboardFilters): FiView {
   return {
     periodContext,
     scope: {
-      label:
-        scopeStores.length === dashboardStores.length
-          ? 'the group'
-          : scopeStores.map((store) => store.shortName).join(', '),
+      label: storeScopeLabel(filters.store),
       stores: scopeStores,
     },
     asOfDate: dashboardManifest.asOfDate,
