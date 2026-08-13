@@ -1,15 +1,15 @@
 'use client'
 
 /**
- * The product tour: four working experiences, shown rather than linked.
+ * The product tour: five working experiences, shown rather than linked.
  *
  * WHY THIS SECTION EXISTS
  * -----------------------
- * The four strongest artefacts on this site are the inventory explorer, the
- * architecture explorer, the data model explorer and the KPI catalogue. Before
- * this release the home page mentioned all four and showed none of them. A
- * reviewer with sixty seconds saw thirteen chapters of prose about software they
- * had to take on trust.
+ * The five strongest artefacts on this site are the operating console, the
+ * inventory explorer, the architecture explorer, the data model explorer and the
+ * KPI catalogue. Before this release the home page mentioned them and showed none
+ * of them. A reviewer with sixty seconds saw thirteen chapters of prose about
+ * software they had to take on trust.
  *
  * Each step shows what the route actually looks like, says in one paragraph what
  * it is for, states one technical decision a reader could not guess from a
@@ -27,10 +27,10 @@
  *
  * ONE VISIBLE FRAME AT A TIME
  * ---------------------------
- * Only the selected step's image is in the DOM. Four 60 kB captures stacked
- * vertically would be the heaviest thing on the page and three of them would
- * never be looked at. Each is `loading="lazy"` with intrinsic dimensions, so the
- * box is reserved before the bytes arrive and the swap causes no layout shift.
+ * Only the selected step's image is in the DOM. Five captures stacked vertically
+ * would be the heaviest thing on the page and four of them would never be looked
+ * at. Each is `loading="lazy"` with intrinsic dimensions, so the box is reserved
+ * before the bytes arrive and the swap causes no layout shift.
  *
  * ACCESSIBILITY
  * -------------

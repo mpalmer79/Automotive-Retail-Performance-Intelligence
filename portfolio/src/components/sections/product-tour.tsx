@@ -6,7 +6,7 @@
  *
  *   1. The island holds a selection and nothing else. Keeping the copy out of it
  *      keeps the client bundle to the behaviour.
- *   2. Three of the four steps quote a repository count. Those come from
+ *   2. Three of the five steps quote a repository count. Those come from
  *      `lib/manifest`, which is generated from repository evidence on every
  *      build and fails the build when it disagrees with that evidence. Reading
  *      them here keeps the manifest on the server, and it keeps this section
@@ -34,6 +34,46 @@ import { technicalHref } from '@/lib/technical'
  * exists to catch, and it can only catch it if both sides come from here.
  */
 export const TOUR_STEPS: readonly TourStep[] = [
+  {
+    /*
+     * THE CONSOLE IS FIRST BECAUSE IT IS THE PRODUCT.
+     *
+     * The tour opened on the inventory explorer for as long as `/` was a landing
+     * page and the explorers were the only things to show. `ADR-0015` made the
+     * operating console the front door, and the tour went on showing four
+     * explorers and not the application a reader now lands on. It is the first
+     * step for the same reason it is the first route: everything else on this
+     * site exists to explain how its figures are kept honest.
+     */
+    id: 'executive',
+    tab: 'Executive',
+    title: 'Start on the operating console',
+    href: ROUTES.home.href,
+    /*
+     * "Executive console" and not "Executive Command Center", which is the route's
+     * title in `ROUTES`. The chrome truncates its title, the frame is seven columns
+     * of twelve, and the full name lost its last word to an ellipsis at every
+     * desktop width — a product frame whose first line is a clipped product name
+     * reads as a rendering defect. The four siblings are named for the surface
+     * rather than titled — "Inventory explorer", "KPI catalogue" — and this follows
+     * them. The route's own name is one click away, on the route.
+     */
+    surface: 'Executive console',
+    provenance: 'capture',
+    provenanceNote: 'Default filter state',
+    summary:
+      'The group at a glance: retail units, gross, gross per retail unit, lead-to-sale conversion, inventory investment and aged inventory, each against the prior month, above the operating trend, a store comparison and where the month sits against plan. Every figure carries the identifier of the governed KPI that defines it, and drills through to the transactions behind it.',
+    insight:
+      'The whole surface is rendered on the server from an export packaged at build time, and there is exactly one client island on it — the filter form. The trend’s metric switch is a radio group and CSS, so it ships no JavaScript and cannot recalculate anything. With scripting switched off the rail, the trend, the comparison, the pace bullets and every disclosure are all still there, and filter state stays in the URL, so any view of the console is a link somebody else can open.',
+    insightLabel: 'Why the console renders with scripting switched off',
+    cta: 'Open the executive console',
+    image: {
+      src: '/media/executive-command-center.webp',
+      alt: 'The executive console at a desktop width: a navigation rail listing the operating sections, a control band with period, comparison, store, condition and lead source filters, a rail of KPI cards showing retail units, total gross, gross per retail unit, front and back gross per retail unit, lead-to-sale conversion, inventory investment and aged inventory percentage, each with its movement against the prior month and its governed KPI identifier, and below them the operating trend, a store comparison and a plan-and-pace panel.',
+      width: 1600,
+      height: 1111,
+    },
+  },
   {
     id: 'inventory',
     tab: 'Inventory',
@@ -133,7 +173,7 @@ export function ProductTourSection() {
         <SectionHeader
           layout="wide"
           eyebrow="The product tour"
-          title="Four things you can open right now"
+          title="Five things you can open right now"
           lede="Each frame is a straight capture of the route named on it, taken from a production build. Nothing here is a mockup."
         />
 

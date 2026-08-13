@@ -426,8 +426,14 @@ test.describe('reflow and target size', () => {
     // visitor must be able to hit on a phone. The hero's two are gone with the
     // hero; `UX.1` §12 requires the same floor of the operating shell's own
     // controls, which the block below covers.
+    //
+    // THE CALL TO ACTION MEASURED IS THE TOUR'S FIRST STEP, because only the
+    // selected step's panel is in the DOM. It was the inventory explorer's while
+    // the tour opened on that step, and it is the console's now that the console
+    // is step one. Naming the step that is actually rendered is what keeps this
+    // measuring a control a visitor can reach rather than one that is absent.
     const controls: { role: 'link' | 'button'; name: RegExp }[] = [
-      { role: 'link', name: /open the inventory explorer/i },
+      { role: 'link', name: /open the executive console/i },
       { role: 'button', name: /open navigation menu/i },
     ]
     for (const control of controls) {
