@@ -1,18 +1,22 @@
 /**
- * Compact, serialisable previews of the inventory lane, for the interactive
- * surfaces on the home page.
+ * Compact, serialisable previews of the inventory lane, for the store chapter.
  *
  * WHY THIS MODULE EXISTS AT ALL
  * -----------------------------
- * The home page's hero is now a working store switcher over real sanitized
- * listings, and the store chapter is a working tab set over the same data. Both
- * are client islands, because both hold selection state.
+ * The store chapter on `/technical?view=overview` is a working tab set over real
+ * sanitized listings. It is a client island, because it holds selection state.
+ *
+ * It had a second consumer: the retired home page's hero, a store switcher over
+ * the same data, whose `inventoryPreviews` export included a fourth "all three
+ * stores" state that no surviving surface asks for. `ADR-0015` retired the hero
+ * and the tour's console frame replaced it; the export outlived both, and is gone
+ * with them. What is left is what the store chapter reads.
  *
  * A client island that imported `lib/inventory` directly would pull the entire
- * 541-record set into the home page's JavaScript bundle. That set already ships
- * on `/inventory`, where a visitor is filtering all of it and the weight buys
- * something; on the home page it would buy four visible rows. So the derivation
- * happens HERE, on the server, and the islands receive a payload of roughly two
+ * 541-record set into that route's JavaScript bundle. That set already ships on
+ * `/inventory`, where a visitor is filtering all of it and the weight buys
+ * something; here it would buy four visible rows per panel. So the derivation
+ * happens HERE, on the server, and the island receives a payload of roughly two
  * dozen rows as props.
  *
  * EVERY VALUE IS DERIVED, AND EVERY STRING IS FORMATTED ONCE
@@ -37,7 +41,6 @@ import {
   formatPrice,
   formatShare,
   inventoryRecords,
-  inventorySummary,
 } from './inventory'
 import { ROUTES } from './site'
 import { formatCount } from './utils'
@@ -185,8 +188,6 @@ function observationFor(
 /* The previews                                                                */
 /* -------------------------------------------------------------------------- */
 
-const storeNames = new Map(dealerships.map((store) => [store.id, store.shortName]))
-
 function figuresForStore(dealershipId: string): readonly PreviewFigure[] {
   const store = dealerships.find((entry) => entry.id === dealershipId)
   if (!store) return []
@@ -198,44 +199,6 @@ function figuresForStore(dealershipId: string): readonly PreviewFigure[] {
     { label: 'Makes', value: formatCount(inventory.makeCount) },
     { label: 'Median advertised', value: formatPrice(inventory.medianPrice) },
   ]
-}
-
-/**
- * The whole group, as one preview state.
- *
- * The rows are drawn from across all three stores rather than from the largest,
- * so the panel a visitor sees first shows the group's actual variety and the
- * store column earns its place.
- */
-function groupPreview(): InventoryPreview {
-  const summary = inventorySummary
-  const rows = forDisplay(inventoryRecords)
-    .slice(0, PREVIEW_ROWS)
-    .map((record) =>
-      toRow(record, storeNames.get(record.dealershipId) ?? record.dealershipId)
-    )
-
-  return {
-    id: 'group',
-    tab: 'All three stores',
-    title: 'Granite Auto Group',
-    href: ROUTES.inventory.href,
-    accent: null,
-    figures: [
-      { label: 'Listings', value: formatCount(summary.totalRecords) },
-      { label: 'New', value: formatCount(summary.newRecords) },
-      { label: 'Pre-owned', value: formatCount(summary.preOwnedRecords) },
-      { label: 'Makes', value: formatCount(summary.makeCount) },
-      { label: 'Median advertised', value: formatPrice(summary.medianPrice) },
-    ],
-    rows,
-    observation: observationFor(
-      summary.totalRecords,
-      summary.newRecords,
-      summary.makeCount,
-      summary.modelYearRange
-    ),
-  }
 }
 
 function storePreview(dealershipId: string): InventoryPreview | null {
@@ -264,20 +227,6 @@ function storePreview(dealershipId: string): InventoryPreview | null {
     ),
   }
 }
-
-/**
- * The hero's preview states: the group, then each store in registry order.
- *
- * Computed once at module scope. This module is only ever imported by server
- * components, so the work happens at build time and the result is what gets
- * serialised into the island's props.
- */
-export const inventoryPreviews: readonly InventoryPreview[] = [
-  groupPreview(),
-  ...dealerships
-    .map((store) => storePreview(store.id))
-    .filter((preview): preview is InventoryPreview => preview !== null),
-]
 
 /** The store chapter's panels: the same previews, plus each store's copy. */
 export const storeStoryPanels: readonly StoreStoryPanel[] = dealerships

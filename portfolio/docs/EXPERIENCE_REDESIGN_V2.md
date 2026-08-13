@@ -51,6 +51,18 @@ was. `/kpis` meant what `/technical?view=kpis` means now; `/dashboard` meant wha
 `/` means now. Rewriting those references would make a record of what was
 measured into a claim about what is.
 
+The same rule applies to three components this document names in the present
+tense. **`ProductShowcase`, `LineageRail` and `GovernedSignal` have since been
+deleted from the repository.** `UX.1` retired the hero all three were built for
+and rehomed the sections around them; the components themselves were left behind
+and sat with no call site until a later increment removed them, along with the
+`inventoryPreviews` export that fed the first and the `draw-in` and `signal-run`
+keyframes that animated the third. Section 13.3 is left as written, including the
+sentence saying `GovernedSignal` was not deleted — it was true when it was
+written, and the social card it refers to is a committed SVG that never imported
+the component. The store chapter described beside them is still live, still a
+client island, and still reads `storeStoryPanels` from `lib/product-preview`.
+
 ---
 
 ## 1. Baseline

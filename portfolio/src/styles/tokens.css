@@ -522,11 +522,6 @@
   --arpi-motion-deliberate: 900ms;
   --arpi-motion-ambient: 14s;
 
-  /* The hero's signature sequence: one signal travelling from the source
-     systems, through the governed layers, to the analytical domains. It runs
-     once on load and stops. */
-  --arpi-motion-signal: 2600ms;
-
   /* Easing scale. */
   --arpi-ease-standard: cubic-bezier(0.32, 0.72, 0, 1);
   --arpi-ease-out: cubic-bezier(0.16, 1, 0.3, 1);

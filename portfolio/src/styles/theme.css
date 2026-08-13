@@ -186,52 +186,24 @@
   --ease-out-expo: var(--arpi-ease-out);
   --ease-in-expo: var(--arpi-ease-in);
 
-  /* Three animations, each with a narrative job, each running a finite number
-     of times. There is no ambient token here on purpose: an animation with no
-     end and no meaning is decoration that costs a repaint forever.
+  /* One animation, with a narrative job, running a finite number of times. There
+     is no ambient token here on purpose: an animation with no end and no meaning
+     is decoration that costs a repaint forever.
 
-     `draw-in`      a path drawing itself, for the signature visual's structure
-     `signal-run`   a signal travelling that path, once
-     `wake`         a layer arriving as the signal reaches it, once
+     `wake`   a panel arriving on selection, once
 
-     The two removed in this redesign were `pulse-signal` and `drift`: both
-     looped indefinitely, neither was referenced by any component, and both were
-     recorded as finding D-05 in EXPERIENCE_REDESIGN_V2.md. */
-  --animate-draw-in: draw-in var(--arpi-motion-deliberate) var(--arpi-ease-out) forwards;
-  --animate-signal-run: signal-run var(--arpi-motion-signal) var(--arpi-ease-linear) 1
-    forwards;
+     `pulse-signal` and `drift` were removed in the V2 redesign: both looped
+     indefinitely, neither was referenced by any component, and both were recorded
+     as finding D-05 in EXPERIENCE_REDESIGN_V2.md. `draw-in` and `signal-run` went
+     the same way later and for the same reason — they drew and lit the retired
+     hero's signature visual, they were referenced by that component and by nothing
+     else, and it is gone. The explorers' edge drawing is not affected: it is a
+     `pathLength` spring driven by the animation library, and its reduced-motion
+     fallback is the `[data-arpi-draw]` rule in globals.css, which stays. */
   --animate-wake: wake var(--arpi-motion-slow) var(--arpi-ease-out) 1 both;
 }
 
 /* Keyframes referenced by the --animate-* tokens above. */
-@keyframes draw-in {
-  from {
-    stroke-dashoffset: var(--draw-length, 1000);
-  }
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-
-/* A dash travelling the length of a path. `stroke-dasharray` is set by the
-   component to "dash gap" where the gap is the path's own length, so exactly one
-   dash exists and it moves from the start to the end and stops. */
-@keyframes signal-run {
-  from {
-    stroke-dashoffset: var(--signal-length, 600);
-    opacity: 0;
-  }
-  8% {
-    opacity: 1;
-  }
-  88% {
-    opacity: 1;
-  }
-  to {
-    stroke-dashoffset: 0;
-    opacity: 0;
-  }
-}
 
 /* A layer arriving. Opacity and a two-pixel rise, nothing more: the element is
    readable at every frame, so a reader who arrives mid-animation has lost
