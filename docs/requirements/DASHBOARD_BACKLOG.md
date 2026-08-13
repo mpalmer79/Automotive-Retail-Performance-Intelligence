@@ -54,7 +54,7 @@
 | `UX.1` | Executive productization and operating experience | Large | **Implemented** |
 | `DASH.12` | Management Action Center and change drivers | Large | **Implemented** |
 | `UX.2` | Executive visualization and decision workspace | Large | **Implemented** — `UX.2A`–`UX.2D` |
-| `DASH.13` | Hardening and release | Large | **In progress** — repository hardening complete; the public production deployment is an external manual dependency, see below |
+| `DASH.13` | Hardening and release | Large | **In progress** — repository hardening and release tooling complete and production-capable; creating the public production deployment is blocked on one external credential, see below |
 | `DASH.O-*` | Optional enhancements | — | Deferred |
 
 `DASH.11` is Medium, not Large, by the audit: it adds no warehouse entity — one reporting view over

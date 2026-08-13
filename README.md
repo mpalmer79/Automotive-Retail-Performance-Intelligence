@@ -4,6 +4,15 @@
 
 It runs on a fictional three-store dealer group and entirely synthetic data. Every figure it produces is reproducible from this repository alone.
 
+![The ARPI Executive Command Center: retail units, total gross, gross per retail unit and aged inventory for December 2025, a six-month gross trend, and the inventory position — all from synthetic data for a fictional dealer group](portfolio/public/social-preview.png)
+
+> **Release status.** ARPI is **not yet publicly deployed.** A production release is approved and the
+> release tooling is built and tested; the only deployed environment is a protected preview that
+> correctly answers `Disallow: /` to every crawler, so there is no public origin to link to here yet.
+> [§ Deployment](#deployment) is the one place that state is written down, and
+> [`deployment/evidence/portfolio_deployment.json`](deployment/evidence/portfolio_deployment.json) is
+> the evidence behind it.
+
 ### What a manager can do with it
 
 | Question | Where it is answered |
@@ -431,6 +440,15 @@ and has not yet been created**, so ARPI has no public, indexable origin at the t
 social crawler cannot build a preview card for it — a preview deployment correctly answers
 `Disallow: /` to every crawler, which is a working safeguard rather than a defect. What is still
 required is recorded in [`docs/reviews/DASH-13-REVIEW.md`](docs/reviews/DASH-13-REVIEW.md).
+
+**What is blocking it, precisely.** One credential. `RAILWAY_API_TOKEN` is not configured in GitHub
+Actions: workflow run
+[31650259855](https://github.com/mpalmer79/Automotive-Retail-Performance-Intelligence/actions/runs/31650259855)
+validated the specification, the declaration and 195 tooling tests, then failed at authentication with
+`token : MISSING` and exit `2`, having contacted nothing. The release tooling itself is complete and
+was proved offline — the `DASH.13` closeout found that `.railway/railway.ts` threw on *every*
+production evaluation including the approved one, which made the documented release command fail
+before it read a token, and fixed it. `DASH-13-REVIEW.md` §11 is the record.
 
 Approval makes production a **supported target**, not the default one. The declared default in
 [`deployment/railway/project.config.json`](deployment/railway/project.config.json) is still `staging`,

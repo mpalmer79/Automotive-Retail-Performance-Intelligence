@@ -27,6 +27,15 @@
 > origin and its indexability into the build, and a deployment whose build and runtime environments
 > disagree ships a `robots.txt` and a set of page metadata that contradict each other, silently.
 >
+> **3. The `DASH.13` closeout added a third correction, on 12 August 2026.** The sequence referenced
+> above as `DASH-13-REVIEW.md` §9 **could not have been executed as written**:
+> `.railway/railway.ts` threw on every evaluation whose target was production, including the approved
+> one, and that guard fires during the bootstrap tool's offline validation. The documented command
+> exited `2` before it read a credential. It is fixed, the release tooling is now production-capable
+> and tested end to end offline, and production still does not exist — `RAILWAY_API_TOKEN` is not
+> configured in GitHub Actions. `DASH-13-REVIEW.md` §11 is the record, including the workflow run that
+> establishes the blocker.
+>
 > Nothing below has been edited to agree with `DASH.13`. Where this document and `DASH.13` differ on a
 > fact about the current tree, `DASH.13` is later and wins.
 

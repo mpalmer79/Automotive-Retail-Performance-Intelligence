@@ -221,8 +221,8 @@ describe('the social card', () => {
       .map((match) => match[1]?.trim() ?? '')
       .join(' ')
 
-    const parsed = parseFilters({}, 'EXECUTIVE_OVERVIEW')
-    const overview = buildExecutiveOverview(parsed.filters, parsed.resets)
+    const parsed = parseFilters({})
+    const overview = buildExecutiveOverview(parsed.filters, parsed.reset)
     const valueOf = (label: string): string => {
       const card = overview.cards.find((candidate) => candidate.label === label)
       expect(card, `the page no longer renders a "${label}" card`).toBeDefined()
@@ -268,7 +268,9 @@ describe('the social card', () => {
       // with the picture. In the product a store comparison carries its
       // disclosures; cropped into a social card it reads as a league table.
       for (const store of dashboardStores) {
-        expect(drawnText, `the card names the store "${store.label}"`).not.toContain(store.label)
+        for (const naming of [store.name, store.shortName]) {
+          expect(drawnText, `the card names the store "${naming}"`).not.toContain(naming)
+        }
       }
       expect(drawnText).not.toMatch(/\bsalesperson|\badvisor\b|\bemployee of\b/i)
     })
