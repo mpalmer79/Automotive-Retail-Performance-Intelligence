@@ -3,8 +3,8 @@
  *
  * WHAT THIS SUITE IS FOR
  * ----------------------
- * This site publishes four product images and one social card, and it makes a
- * strong claim about all five: that they are straight captures of routes of this
+ * This site publishes five product images and one social card, and it makes a
+ * strong claim about all six: that they are straight captures of routes of this
  * application, or a card that states only what the repository can prove. A
  * reader cannot check that claim. These tests are the check.
  *
@@ -37,11 +37,20 @@ const PUBLIC_DIR = join(process.cwd(), 'public')
 /**
  * The largest a product capture may be, in bytes.
  *
- * The four currently sit between 54 and 64 kB. 96 kB is headroom for a re-take
- * at a slightly different crop and a wall for one accidentally written at
- * quality 100 or without the resize.
+ * The four explorer captures sit between 46 and 63 kB. The console capture is 97
+ * kB, and the difference is the subject rather than the encoder: it is the only
+ * one photographed at the full viewport height, and its first screen is a
+ * navigation rail, a control band, eight KPI cards with sparklines and three
+ * modules of geometry, where an explorer is largely one panel of flat surface.
+ * It is encoded at the same quality 80 as the other four.
+ *
+ * 112 kB is therefore headroom for a re-take at a slightly different crop and
+ * still a wall for one accidentally written at quality 100 or without the
+ * resize, which is what this budget is for. Every capture is `loading="lazy"`
+ * and only the selected step's image is in the DOM, so no reader ever pays for
+ * more than one.
  */
-const CAPTURE_MAX_BYTES = 96 * 1024
+const CAPTURE_MAX_BYTES = 112 * 1024
 
 /**
  * Read the intrinsic dimensions of a WebP from its header.
@@ -90,13 +99,18 @@ function webpDimensions(file: string): { width: number; height: number } {
 /* -------------------------------------------------------------------------- */
 
 describe('the product tour captures', () => {
-  it('shows four steps, one per explorable route', () => {
-    expect(TOUR_STEPS).toHaveLength(4)
-    // Three of the four now point at a technical VIEW rather than at a route of
-    // its own: `UX.1` consolidated the six documentation routes into `/technical`,
+  it('shows five steps, one per explorable route', () => {
+    expect(TOUR_STEPS).toHaveLength(5)
+    // Three of the five point at a technical VIEW rather than at a route of its
+    // own: `UX.1` consolidated the six documentation routes into `/technical`,
     // and a tour step that pointed at a redirect would send a reader through a hop
     // to reach the thing it is showing them.
+    //
+    // The first is the operating console, and its position is asserted rather
+    // than incidental: `ADR-0015` made `/` the front door, and a tour that opens
+    // on an explorer opens on something other than the product.
     expect(TOUR_STEPS.map((step) => step.href)).toEqual([
+      '/',
       '/inventory',
       '/technical?view=architecture',
       '/technical?view=data-model',

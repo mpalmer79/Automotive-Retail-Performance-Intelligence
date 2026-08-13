@@ -206,28 +206,35 @@ document. If the site ever grows past a dozen routes, this should be revisited.
 Every graphic the site DRAWS is SVG authored in this repository. There is no
 photography anywhere, no icon sprite sheet, and no decorative raster.
 
-| Asset                              | Bytes  | Where                                                       |
-| ---------------------------------- | ------ | ----------------------------------------------------------- |
-| `favicon.svg`                      | 794    | tab icon                                                    |
-| `brand/monogram.svg`               | 887    | header, footer                                              |
-| `brand/wordmark.svg`               | 1,392  | brand contexts                                              |
-| `brand/social-preview.svg`         | 13,858 | source for the share card                                   |
-| `favicon-32.png`                   | 927    | legacy tab icon                                             |
-| `apple-touch-icon.png`             | 5,029  | iOS home screen                                             |
-| `social-preview.png`               | 93,057 | Open Graph / Twitter card — **never requested by the site** |
-| `media/inventory-explorer.webp`    | 54,954 | home page product tour, step 1                              |
-| `media/kpi-catalogue.webp`         | 55,792 | home page product tour, step 4                              |
-| `media/data-model-explorer.webp`   | 64,280 | home page product tour, step 3                              |
-| `media/architecture-explorer.webp` | 64,368 | home page product tour, step 2                              |
+| Asset                                 | Bytes   | Where                                                       |
+| ------------------------------------- | ------- | ----------------------------------------------------------- |
+| `favicon.svg`                         | 794     | tab icon                                                    |
+| `brand/monogram.svg`                  | 887     | header, footer                                              |
+| `brand/wordmark.svg`                  | 1,392   | brand contexts                                              |
+| `brand/social-preview.svg`            | 13,858  | source for the share card                                   |
+| `favicon-32.png`                      | 927     | legacy tab icon                                             |
+| `apple-touch-icon.png`                | 5,029   | iOS home screen                                             |
+| `social-preview.png`                  | 104,453 | Open Graph / Twitter card — **never requested by the site** |
+| `media/inventory-explorer.webp`       | 47,236  | product tour, step 2                                        |
+| `media/kpi-catalogue.webp`            | 57,554  | product tour, step 5                                        |
+| `media/data-model-explorer.webp`      | 64,280  | product tour, step 4                                        |
+| `media/architecture-explorer.webp`    | 64,368  | product tour, step 3                                        |
+| `media/executive-command-center.webp` | 98,878  | product tour, step 1                                        |
 
-The 93 kB social preview is fetched by a crawler generating a share card, never by
+The 104 kB social preview is fetched by a crawler generating a share card, never by
 a visitor loading a page. It is the largest file in `public/` and costs a reader
 nothing.
 
-### The four product-tour frames, and why they are affordable
+The console capture is the largest of the five frames, and the subject is why: it
+is the only one photographed at the full viewport height, and its first screen is
+a navigation rail, a control band, eight KPI cards with sparklines and three
+modules of geometry. It is encoded at the same quality 80 as the other four, and
+the per-capture budget in `tests/unit/media.test.ts` holds it under 112 kB.
 
-They are the only rasters a visitor ever downloads, and the home page's cost for
-them is **one**, not four:
+### The five product-tour frames, and why they are affordable
+
+They are the only rasters a visitor ever downloads, and the tour's cost for them
+is **one**, not five:
 
 - The tour renders one step at a time, so only the selected frame is in the DOM.
 - Every frame carries `loading="lazy"`, and the tour is the third chapter. None
