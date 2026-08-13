@@ -15,7 +15,8 @@
  *
  *   1. Find or create the PROJECT. A declaration cannot create the project it is
  *      a declaration of.
- *   2. Find or create the ENVIRONMENT, and refuse to touch production.
+ *   2. Find or create the ENVIRONMENT, and refuse to touch production unless both
+ *      the repository's approval and `--confirm-production` are present.
  *   3. Generate the PUBLIC DOMAIN. A Railway-generated domain's name is chosen
  *      by Railway and is not knowable in advance, so it cannot be declared.
  *      Generated BEFORE the first deployment, because the build reads
@@ -50,6 +51,7 @@
  *   2  refused to start: bad specification, missing token, or a guard tripped
  */
 import {
+  CONFIRM_PRODUCTION_VARIABLE,
   TARGET_ENVIRONMENT_VARIABLE,
   evaluateIac,
   findResource,
@@ -235,6 +237,21 @@ if (confirmProduction && !wantsProduction) {
 }
 
 const targetEnvironment = wantsProduction ? productionEnvironment : declaredEnvironment
+
+/**
+ * The environment handed to every Railway CLI call that evaluates the declaration.
+ *
+ * Both variables are set on EVERY call, including the staging ones, and the
+ * confirmation is set to the empty string rather than omitted when this run is not
+ * a production run. The CLI's environment is built by adding to the inherited one,
+ * so omitting the key would let an ambient `ARPI_RAILWAY_CONFIRM_PRODUCTION=true`
+ * — left over in some operator's shell — travel into a staging invocation and sit
+ * there as a confirmation nobody typed for it. An explicit empty value cannot.
+ */
+const declarationEnv: Record<string, string> = {
+  [TARGET_ENVIRONMENT_VARIABLE]: targetEnvironment,
+  [CONFIRM_PRODUCTION_VARIABLE]: wantsProduction ? 'true' : '',
+}
 const portfolioName = spec.project.services.portfolio.name
 const postgresName = spec.project.services.postgres.name
 const jobName = spec.project.services.databaseSetup.name
@@ -260,7 +277,12 @@ for (const warning of specResult.warnings) report.warn('specification', warning)
 
 let iacReferenceCount = 0
 try {
-  const evaluation = await evaluateIac({ environmentName: targetEnvironment })
+  const evaluation = await evaluateIac({
+    environmentName: targetEnvironment,
+    // The declaration refuses production without this, and refusing it here —
+    // offline, before a token is read — is exactly where the refusal belongs.
+    confirmProduction: wantsProduction,
+  })
   const errors = evaluation.diagnostics.filter((d) => d.severity === 'error')
   if (!evaluation.ok || evaluation.graph === undefined || errors.length > 0) {
     for (const diagnostic of errors) {
@@ -533,8 +555,9 @@ try {
     'production-guard',
     'could not read railway status to confirm the linked environment: ' +
       (error instanceof Error ? error.message : String(error)) +
-      '. The declaration itself also refuses to evaluate against production, so this is a ' +
-      'lost confirmation rather than a lost control.'
+      '. The declaration itself also refuses to evaluate against production unless this run ' +
+      'carries both the repository approval and --confirm-production, so this is a lost ' +
+      'confirmation rather than a lost control.'
   )
 }
 
@@ -557,7 +580,7 @@ const planOutcome = await cli.attempt(
     // production guard fires on this path too rather than depending on Railway
     // populating the context. Belt and braces on the one operation that mutates a
     // live project.
-    env: { [TARGET_ENVIRONMENT_VARIABLE]: targetEnvironment },
+    env: declarationEnv,
   }
 )
 
@@ -626,7 +649,7 @@ if (changesPending) {
     // read it, not to let a workflow delete a database at 3am.
     await cli.run(['config', 'apply', '--json', '--yes'], {
       timeoutMs: 900_000,
-      env: { [TARGET_ENVIRONMENT_VARIABLE]: targetEnvironment },
+      env: declarationEnv,
     })
     report.created('config-apply', 'applied')
   } catch (error) {

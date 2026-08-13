@@ -113,6 +113,9 @@ STAGING = DeployedEnvironment(
     remote_smoke_test="UNVERIFIED",
     security_headers="UNVERIFIED",
     connects_to_database=False,
+    role="preview",
+    indexing_role="UNVERIFIED",
+    canonical_role="UNVERIFIED",
 )
 
 DECLARED_ONLY = AnalyticalPlatformEvidence(

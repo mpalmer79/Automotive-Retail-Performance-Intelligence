@@ -71,15 +71,51 @@ describe('project and environment', () => {
 })
 
 describe('the production guard actually fires', () => {
-  it('refuses to evaluate against the production environment', async () => {
-    // A guard nobody has watched fail is a guard nobody should trust. This proves
-    // `railway config apply` against production cannot even produce a graph.
+  /*
+   * Both directions, because the `DASH.13` closeout changed which one is the bug.
+   *
+   * The guard used to throw on ANY production evaluation. That looked like maximum
+   * safety and was in fact a defect: `bootstrap_railway.ts --environment production
+   * --confirm-production` evaluates the declaration during its OFFLINE validation,
+   * so the approved production path exited 2 before it read a token. The repository
+   * declared production supported and the declaration refused it.
+   *
+   * So the assertion is no longer "production always throws". It is "production
+   * throws unless somebody asked for it", and the second test is the one that would
+   * have caught the original defect.
+   */
+  it('refuses production when the caller did not confirm it', async () => {
+    // The accident: an environment NAME reaches the declaration and nothing else.
+    // This is what a stray `railway config apply` against a linked production
+    // environment looks like, and it must not produce a graph.
     const production = await evaluateIac({
       environmentName: spec.project.project.productionEnvironment,
     })
     expect(production.ok).toBe(false)
     expect(production.graph).toBeUndefined()
-    expect(JSON.stringify(production.diagnostics)).toMatch(/production/i)
+    expect(JSON.stringify(production.diagnostics)).toMatch(/confirmation|confirm-production/i)
+  })
+
+  it('evaluates against production when the release is approved and confirmed', async () => {
+    // The approved path. Without this the guard is free to be wrong in the
+    // direction that blocks the release, which is exactly how it was wrong.
+    expect(spec.project.project.productionRelease?.approved).toBe(true)
+
+    const production = await evaluateIac({
+      environmentName: spec.project.project.productionEnvironment,
+      confirmProduction: true,
+    })
+    expect(production.ok).toBe(true)
+    expect(production.graph).toBeDefined()
+  })
+
+  it('still declares one environment, and production is not it', () => {
+    // Unchanged and load-bearing: DECLARING production would create it, so the
+    // declaration names only the default. Production is created by the bootstrap
+    // tool at run time, deliberately, and never by this file existing.
+    expect(graph.environments.map((e) => e.name)).toEqual([
+      spec.project.project.environment,
+    ])
   })
 })
 

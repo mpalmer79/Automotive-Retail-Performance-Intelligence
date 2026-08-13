@@ -94,6 +94,10 @@ class DeployedEnvironment:
         remote_smoke_test: Result of the remote suite, or ``UNVERIFIED``.
         security_headers: Result of the live header inspection, or ``UNVERIFIED``.
         connects_to_database: Whether this deployment holds a database connection.
+        role: ``production`` or ``preview`` -- the deployment's declared role, supplied
+            as intent by whoever recorded it. Never derived from the URL.
+        indexing_role: What the deployment tells crawlers, as observed.
+        canonical_role: Which origin the deployment claims as canonical, as observed.
     """
 
     environment: str
@@ -106,6 +110,19 @@ class DeployedEnvironment:
     remote_smoke_test: str
     security_headers: str
     connects_to_database: bool
+    role: str
+    indexing_role: str
+    canonical_role: str
+
+    @property
+    def is_production(self) -> bool:
+        """Whether this environment is the public one.
+
+        Read from the recorded ``role``, never inferred from the URL. A public URL is
+        what a preview deployment has too, and ``arpi.up.railway.app`` looked exactly
+        like a production origin for the whole time it was staging's.
+        """
+        return self.role == "production"
 
     @property
     def is_recorded(self) -> bool:
@@ -225,6 +242,11 @@ def _environment(entry: dict[str, Any]) -> DeployedEnvironment:
         # Absent means "not asserted", and an unasserted connection is treated as present
         # so that silence cannot be read as a guarantee. Only an explicit `false` clears it.
         connects_to_database=entry.get("connects_to_database", True) is not False,
+        # Absent role reads as `preview`, which is the fail-closed direction: an
+        # unlabelled deployment must not be counted as the public one.
+        role=_string(entry, "role", "preview"),
+        indexing_role=_string(entry, "indexing_role"),
+        canonical_role=_string(entry, "canonical_role"),
     )
 
 

@@ -35,6 +35,26 @@ on:
         required: true
         default: "https://arpi.up.railway.app"
         type: string
+      # WHICH DEPLOYMENT THIS RUN IS ABOUT. Added by the `DASH.13` closeout.
+      #
+      # Before production was a supported target there was one deployment and the
+      # question did not arise. Now a run against a public URL could be either, and
+      # the recorder refuses to guess: a preview deployment has a public URL too,
+      # and `arpi.up.railway.app` is one. The role is stated here and the recorder
+      # checks it against what the deployment actually tells crawlers.
+      deployment_role:
+        description: "Whether this URL is the public production deployment or a preview"
+        required: true
+        default: preview
+        type: choice
+        options:
+          - preview
+          - production
+      expected_commit:
+        description: "Commit the deployment must be serving. Required for production; leave empty to compare the checked-out commit instead."
+        required: false
+        default: ""
+        type: string
 
   # Also on a pull request that changes the deployment evidence, the remote suite
   # or this workflow -- the three things whose correctness cannot be judged
@@ -65,6 +85,10 @@ jobs:
       # `inputs.base_url` is absent on a pull_request trigger, so the default is
       # named once here rather than repeated at every use.
       ARPI_REMOTE_BASE_URL: ${{ inputs.base_url || 'https://arpi.up.railway.app' }}
+      # `preview` on the pull_request trigger, where no input exists. That trigger
+      # only ever runs against the default URL, which is the preview deployment,
+      # and defaulting the OTHER way would file it as production.
+      ARPI_DEPLOYMENT_ROLE: ${{ inputs.deployment_role || 'preview' }}
 
     steps:
       - name: Check out the repository
@@ -93,7 +117,19 @@ jobs:
       # Reported before the suite runs, so a run against the wrong host is
       # obvious in the log rather than discovered in the evidence afterwards.
       - name: Report the target
-        run: echo "Verifying ${ARPI_REMOTE_BASE_URL}"
+        run: echo "Verifying ${ARPI_REMOTE_BASE_URL} as ${ARPI_DEPLOYMENT_ROLE}"
+
+      # A production verification must name the commit it is about, because the
+      # whole point of one is to prove production serves the release. Falling back
+      # to `github.sha` would silently compare against whatever this workflow was
+      # dispatched from, which on a production run is not necessarily the release.
+      - name: Require an expected commit for a production verification
+        if: inputs.deployment_role == 'production' && inputs.expected_commit == ''
+        run: |
+          echo "::error::expected_commit is required when deployment_role is production."
+          echo "A production verification proves the deployment serves the release"
+          echo "commit; without one there is nothing to compare it against."
+          exit 1
 
       # `continue-on-error` so that a failing deployment still produces evidence.
       # A red suite is a finding worth recording precisely, not a reason to end
@@ -123,10 +159,13 @@ jobs:
       - name: Record what the run observed
         id: record
         env:
-          ARPI_TREE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+          # `expected_commit` when the caller named one -- which a production
+          # verification must -- and otherwise the commit this tree is at.
+          ARPI_TREE_COMMIT: ${{ inputs.expected_commit || github.event.pull_request.head.sha || github.sha }}
         run: |
           python scripts/record_deployment_evidence.py \
             --base-url "${ARPI_REMOTE_BASE_URL}" \
+            --role "${ARPI_DEPLOYMENT_ROLE}" \
             --report portfolio/remote-report.json \
             --expect-commit "${ARPI_TREE_COMMIT}" \
             --status-file "${GITHUB_OUTPUT}" \

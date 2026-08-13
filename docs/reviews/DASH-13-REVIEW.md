@@ -333,6 +333,151 @@ happened.
 
 ---
 
+## 11. Closeout, 2026-08-12 — what the release attempt found
+
+Added after PR #68 merged, by the `DASH.13` closeout. **§1–§10 above are left exactly
+as they were written.** They were accurate on 2026-08-12 and the journey is the record;
+this section supersedes them where it says so and nowhere else.
+
+### The headline has not changed
+
+**ARPI is still not publicly released.** No Railway `production` environment exists.
+`DASH.13` is still **In progress**.
+
+### What the closeout found, which §9 did not know
+
+§9 listed the remaining work as "one external action and one verification command".
+That was wrong in a way nobody could have seen without trying it: **the documented
+command could not have worked.**
+
+`.railway/railway.ts` threw on *any* evaluation whose target was production —
+including the approved one. That guard fires inside `bootstrap_railway.ts`'s
+**offline** validation, so §9's step 3 exited `2` before it read a token:
+
+```
+$ tsx scripts/railway/bootstrap_railway.ts --environment production \
+    --confirm-production --dry-run
+  [ ok ] specification                  valid
+  [FAIL] iac-declaration                Refusing to evaluate the ARPI Railway
+         definition against the "production" environment. No production
+         deployment of this site has been approved.
+FAILED: 1 of 2 step(s).
+```
+
+The repository declared production a supported target and the declaration refused it.
+Every guard `DASH.13` built was correct; the one it did not revisit made the release
+impossible. It was reproducible with no credential and no network, which is why the
+closeout reproduced it before changing anything.
+
+**This supersedes §4's claim that production was reachable on purpose.** It was
+reachable in the tool and not through the declaration the tool calls.
+
+### What the closeout changed
+
+| Area | Change |
+|---|---|
+| `.railway/railway.ts` | Refuses production *nobody asked for* rather than production as such. Needs the standing approval **and** `ARPI_RAILWAY_CONFIRM_PRODUCTION`, which only a tool given `--confirm-production` sets. An environment name is deliberately not one of the two signals, so a stray `railway config apply` against a linked production environment still throws. |
+| `verify_railway_configuration.ts` | Takes `--environment` and prints which environment every report is about. It read the declared default before, so a post-release run would have reported green **for staging**. Production existing is no longer a warning when production is the target. Adds a cross-environment check that fails if the two share an environment identity or a public origin, and asserts the production build-argument contract. No `--confirm-production`: it only reads, and copying a mutation guard onto a read-only command teaches people the confirmation is paperwork. |
+| `railway-bootstrap.yml` | Gains `target_environment`, `confirm_production` and `expected_release_sha`; selects `railway-production` or `railway-staging` from the target and asserts the resolution inside every token-bearing job. Still **one workflow and one secret** — a second secret-bearing Railway workflow would double the surface the account token can leak from to save duplicated YAML. |
+| `check_release_intent.mjs` | New, and tested. The dispatch decision was going to live in YAML, where it could only be exercised by dispatching this workflow against a real account — its first real execution would have been the release it guards. |
+| Deployment evidence | Schema **2**. Verification moves inside the environment it is about: schema 1's single portfolio-level block meant recording production would have silently overwritten staging's. `role` is intent and is never inferred from a URL; `indexing_role` is the observed counterpart, and the recorder refuses to write a record whose observation contradicts its declared role. |
+| Social preview | **P2-6 closed.** §5 recorded the card as accurate but no longer representative — it led with an empty `/inventory` wireframe. Replaced with the Executive Command Center, carrying four KPI values, a six-month gross trend and the inventory position. Every figure is produced by `buildExecutiveOverview()`, the same governed path that renders `/`, and `tests/unit/media.test.ts` recomputes them and fails if the card goes stale. |
+
+### The blocker, named precisely
+
+**`RAILWAY_API_TOKEN` is not configured in GitHub Actions.** This is not an inference
+from the 2026-08-02 failure; it was re-established on current `main`:
+
+| | |
+|---|---|
+| Run | [31650259855](https://github.com/mpalmer79/Automotive-Retail-Performance-Intelligence/actions/runs/31650259855), 2026-08-12, `mode: dry-run` |
+| Commit | `3c43012a22120f7a6a93fad115d7777ef51c310f` |
+| `validate` job | passed — specification, IaC declaration, 195 tooling tests, secret scan |
+| `dry-run` job | **failed**, exit `2`: `token : MISSING`, `RAILWAY_API_TOKEN is not set` |
+| Contacted | nothing |
+
+The session doing this work also cannot reach Railway directly: the egress proxy
+answers `403` to `CONNECT backboard.railway.com:443`, confirmed by its own status
+endpoint. So there is no path from here to a production environment — not through
+GitHub Actions, and not locally.
+
+### What is now required, and it is one thing
+
+1. Add `RAILWAY_API_TOKEN` (account- or workspace-scoped) to the repository or to
+   the `railway-staging` and `railway-production` GitHub environments.
+2. Create the `railway-production` GitHub environment if it does not exist.
+3. Dispatch **Railway bootstrap** with `target_environment: production`,
+   `confirm_production: true`, `expected_release_sha: <current main>`,
+   `mode: dry-run`. Read the plan.
+4. Dispatch again with `mode: apply`.
+5. The workflow then verifies the live configuration, runs the remote suite, runs
+   `verify_release_policy.ts --expect production --expect-commit <sha>` **and**
+   `--expect preview` against the preview origin.
+6. Only then: domain decision, deployment evidence, `DASH.13` → Implemented, tag.
+
+Step 1 is the whole blocker. Everything after it is now automated and tested.
+
+### Public GitHub metadata — audited, and not changeable from here
+
+The repository landing page is the first recruiter-facing surface and had never been
+audited. Read from the API on 2026-08-12:
+
+| Field | Current | Finding |
+|---|---|---|
+| Description | `A PostgregSQL and Power BI dealership performance analytics project` | **Two defects.** `PostgregSQL` is a misspelling, on the public description of a data-engineering project. And the description is narrower than the product: it describes an analytics project, where the README's own first line is "a dealership management intelligence platform". |
+| Homepage | `arpi.up.railway.app/` | **Points at the preview deployment.** That origin is `staging`: it answers `Disallow: /`, serves `noindex, nofollow`, and renders a preview notice. GitHub's "website" link therefore sends visitors to a deployment the repository deliberately keeps out of every index. |
+| Topics | not set | Nothing to find the project by. |
+| Licence | MIT, detected | Correct. |
+| Name, README, badges | — | No spelling defect found. |
+
+None of these can be changed from this session: the GitHub integration available
+here exposes no repository-metadata write. They are recorded here rather than
+mentioned in passing, because an unrecorded finding about a public surface is
+indistinguishable from one nobody noticed.
+
+**Description** — within GitHub's 350-character limit, and deliberately avoiding
+"AI", "DMS" and any claim of production dealership software:
+
+```
+Dealership management intelligence platform built with Python, PostgreSQL, Next.js,
+TypeScript, governed analytics and deterministic synthetic data.
+```
+
+**Topics**:
+
+```
+automotive-retail  data-engineering  analytics-engineering  business-intelligence
+postgresql  python  nextjs  typescript  data-quality  dimensional-modeling
+```
+
+**Homepage** — this one is a decision, not a correction. The repository's own policy
+([README § Deployment](../../README.md#deployment)) is that the public origin is
+production, and production does not exist. Two defensible options:
+
+1. **Clear it** until production exists. GitHub then shows no website link, which is
+   accurate: there is no public origin.
+2. **Leave it**, accepting that the link goes to a preview-marked, non-indexable
+   deployment.
+
+The closeout's recommendation is (1), because the field is read as "the live product"
+and the thing behind it is explicitly not that. Either way it must be set to the
+verified production origin once production exists, and **not before** — pointing it
+at production before verification would advertise an origin nobody has checked.
+
+With `gh` available:
+
+```bash
+gh repo edit mpalmer79/Automotive-Retail-Performance-Intelligence \
+  --description "Dealership management intelligence platform built with Python, PostgreSQL, Next.js, TypeScript, governed analytics and deterministic synthetic data." \
+  --homepage "" \
+  --add-topic automotive-retail --add-topic data-engineering \
+  --add-topic analytics-engineering --add-topic business-intelligence \
+  --add-topic postgresql --add-topic python --add-topic nextjs \
+  --add-topic typescript --add-topic data-quality --add-topic dimensional-modeling
+```
+
+---
+
 Power BI real-engine validation remains externally pending on both accepted
 [ADR-0008](../architecture-decisions/ADR-0008-real-engine-validation-paths.md) paths, and Gate 2 remains
 CLOSED. This increment changed no TMDL, no DAX and no semantic-model relationship, and it does not alter

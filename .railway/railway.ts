@@ -40,11 +40,21 @@
  * by the platform at deploy time). Nothing is copied, and there is no literal
  * secret to commit.
  *
- * PRODUCTION IS OUT OF SCOPE AND IS GUARDED
- * -----------------------------------------
- * No production deployment has been approved. This file throws rather than
- * emitting a graph when it is evaluated against a production environment, so
- * `railway config apply` against production fails before it can stage anything.
+ * PRODUCTION IS SUPPORTED, AND IS GUARDED
+ * ---------------------------------------
+ * `DASH.13` approved an intentional public production deployment, so this file no
+ * longer refuses production outright — it refuses production that nobody asked
+ * for. Evaluating against a production environment throws unless BOTH the
+ * repository's standing approval (`project.productionRelease.approved`) and the
+ * caller's per-invocation intent (`ARPI_RAILWAY_CONFIRM_PRODUCTION=true`, set only
+ * by a tool given `--confirm-production`) are present. A stray
+ * `railway config apply` linked to production supplies neither, and still fails
+ * before it can stage anything.
+ *
+ * This is the `DASH.13` closeout's release-critical fix. The unconditional throw
+ * that used to live here made the approved production path impossible: it fired
+ * during the bootstrap tool's OFFLINE validation, so
+ * `--environment production --confirm-production` exited 2 before a token was read.
  */
 import { readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
@@ -93,6 +103,8 @@ interface ProjectSpec {
     environment: string
     productionEnvironment: string
     createProductionEnvironment: boolean
+    /** Absent is read as NOT approved, which is the fail-closed direction. */
+    productionRelease?: { approved?: boolean }
   }
   repository: {
     slug: string
@@ -132,7 +144,7 @@ const DRAINING_SECONDS = '30'
 
 export default defineRailway((ctx, project) => {
   /* ---------------------------------------------------------------------- */
-  /* Guard: never touch production                                          */
+  /* Guard: never touch production BY ACCIDENT                              */
   /* ---------------------------------------------------------------------- */
 
   /**
@@ -159,12 +171,32 @@ export default defineRailway((ctx, project) => {
   const production = spec.project.productionEnvironment
 
   if (targetEnvironment.toLowerCase() === production.toLowerCase()) {
-    throw new Error(
-      `Refusing to evaluate the ARPI Railway definition against the "${production}" ` +
-        'environment. No production deployment of this site has been approved. ' +
-        'Production promotion is a deliberate, separately approved act — see ' +
-        'deployment/railway/README.md section 7.'
-    )
+    /**
+     * TWO independent signals, and production needs both.
+     *
+     * The standing approval lives in the repository and is reviewable. The
+     * per-invocation confirmation is typed at a command line and expires with the
+     * command. Neither alone is enough, and the environment NAME is not one of
+     * them — a name is what an accident supplies.
+     */
+    if (spec.project.productionRelease?.approved !== true) {
+      throw new Error(
+        `Refusing to evaluate the ARPI Railway definition against the "${production}" ` +
+          'environment: deployment/railway/project.config.json does not approve a ' +
+          'production release (project.productionRelease.approved is not true). ' +
+          'Approving one is a reviewable change to the repository — see ' +
+          'deployment/railway/README.md section 7.'
+      )
+    }
+    if ((process.env['ARPI_RAILWAY_CONFIRM_PRODUCTION'] ?? '').trim() !== 'true') {
+      throw new Error(
+        `Refusing to evaluate the ARPI Railway definition against the "${production}" ` +
+          'environment without explicit per-invocation confirmation. A production ' +
+          'release is approved, but approval is not intent: re-run the tool with ' +
+          '--environment production --confirm-production, which is what sets ' +
+          'ARPI_RAILWAY_CONFIRM_PRODUCTION. Nothing has been staged.'
+      )
+    }
   }
 
   /* ---------------------------------------------------------------------- */

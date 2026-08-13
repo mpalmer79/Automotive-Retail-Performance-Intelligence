@@ -4,12 +4,14 @@ How the ARPI website and its PostgreSQL database are deployed to **Railway**, wh
 is automated, what deliberately is not, and the one credential handoff that no
 amount of automation can remove.
 
-> **Production has not been approved and does not exist.** Everything below
-> targets the `staging` environment. Every tool in this directory refuses to
-> target `production`, in three independent places — the specification validator,
-> the bootstrap tool, and the Infrastructure as Code declaration itself. Promoting
-> to production is a separate, deliberate act described in
-> [section 7](#7-production-is-not-approved).
+> **Production is approved and does not yet exist.** `DASH.13` approved an
+> intentional public production deployment; nothing has created one. Everything
+> below **defaults** to the `staging` environment, and production is reachable only
+> by naming it: `--environment production --confirm-production`, both every time.
+> Every tool in this directory refuses production without both, and staging is
+> never deleted, renamed or repurposed by a production release.
+> [Section 7](#7-production-is-approved-and-does-not-yet-exist) is the whole
+> contract, including what still blocks the release.
 
 ---
 
@@ -21,7 +23,7 @@ amount of automation can remove.
 4. [What the bootstrap does, and what Railway does](#4-what-the-bootstrap-does-and-what-railway-does)
 5. [Variables: nothing is copied, nothing is typed](#5-variables-nothing-is-copied-nothing-is-typed)
 6. [Provisioning the database](#6-provisioning-the-database)
-7. [Production is not approved](#7-production-is-not-approved)
+7. [Production is approved and does not yet exist](#7-production-is-approved-and-does-not-yet-exist)
 8. [The Microsoft Fabric handoff, and rotation](#8-the-microsoft-fabric-handoff-and-rotation)
 9. [PR environments: evaluated, not enabled](#9-pr-environments-evaluated-not-enabled)
 10. [Verifying, drift, and live-access tests](#10-verifying-drift-and-live-access-tests)
@@ -96,10 +98,17 @@ Five things, once. Nothing after this requires a person until
    itself, and a second copy is a second thing to rotate and a second place to
    leak from.
 
-4. **Create the `railway-staging` GitHub environment** and add yourself as a
-   required reviewer. Repository → Settings → Environments. The bootstrap
-   workflow's credential-handling jobs are gated on it, so this is what turns
-   "somebody clicked a button" into "somebody approved a change".
+4. **Create the `railway-staging` and `railway-production` GitHub environments**
+   and add yourself as a required reviewer on both. Repository → Settings →
+   Environments. The bootstrap workflow's credential-handling jobs are gated on
+   whichever one the run targets, so this is what turns "somebody clicked a
+   button" into "somebody approved a change".
+
+   Two environments rather than one because that is where the difference between
+   the two releases is expressed: production can carry a stricter reviewer set, a
+   wait timer and a `main`-only branch restriction without any of that slowing a
+   staging convergence down. Add `RAILWAY_API_TOKEN` to both, or to the
+   repository, so a run in either can authenticate.
 
 5. **Approve the paid resources.** The PostgreSQL service and its persistent
    volume cost money on Railway; there is no free tier that covers them. See
@@ -121,12 +130,29 @@ Five things, once. Nothing after this requires a person until
 
 Actions → **Railway bootstrap** → Run workflow.
 
-| Input         | Meaning                                                              |
-| ------------- | -------------------------------------------------------------------- |
-| `mode`        | `dry-run` reports the plan and changes nothing. `apply` converges it. |
-| `verify_only` | Skip bootstrap; only verify the live configuration.                   |
+| Input                  | Meaning                                                                            |
+| ---------------------- | ---------------------------------------------------------------------------------- |
+| `mode`                 | `dry-run` reports the plan and changes nothing. `apply` converges it.               |
+| `target_environment`   | `staging` (default) or `production`. Compared exactly; nothing is aliased.          |
+| `confirm_production`   | Required for production. Must stay false for staging — see below.                   |
+| `expected_release_sha` | Full `main` SHA a production apply must build from. Refused on a staging run.        |
+| `verify_only`          | Skip bootstrap; only verify the live configuration.                                 |
 
-Run `dry-run` first, read the plan in the job summary, then run `apply`.
+Run `dry-run` first, read the plan in the job summary, then run `apply`. The
+`apply` job `needs` the dry run of the same dispatch, so an apply is never the
+first remote operation and there is no input that skips it.
+
+`confirm_production` is refused in **both** directions. Production without it is a
+refusal rather than a downgrade to staging, and a staging run *with* it is refused
+too: an operator who ticked that box believes they are releasing production, and
+converging staging instead would report success for a release that did not happen.
+
+For a production apply, `expected_release_sha` must be a full 40-character SHA, must
+equal the commit the run checked out, and must still be the head of remote `main`.
+`scripts/railway/check_release_intent.mjs` decides all of this before a runner
+installs anything, and `tests/railway/release-intent.test.ts` exercises it offline —
+a guard that can only be tried by dispatching this workflow would otherwise have its
+first real execution during the release it guards.
 
 ### Locally
 
@@ -378,31 +404,110 @@ else.
 
 ---
 
-## 7. Production is not approved
+## 7. Production is approved and does not yet exist
 
-No production deployment of this site exists, and this tooling will not create
-one. Three independent guards:
+`DASH.13` approved a public production deployment. Approval makes production a
+**supported** target; it does not make it the **default** one, and it has not
+created anything.
 
-1. `scripts/railway/lib/spec.ts` fails if the specification's target environment
-   is the production environment, or if `createProductionEnvironment` is true
-2. `scripts/railway/bootstrap_railway.ts` reads `railway status` after linking and
-   refuses to proceed if the linked environment resolves to `production`
-3. `.railway/railway.ts` **throws** rather than emitting a graph when evaluated
-   against production, so `railway config apply` fails before it can stage
-   anything — and `tests/railway/iac-graph.test.ts` asserts that guard actually
-   fires
+### What has to agree before production is touched
 
-The declaration also names only `staging` in its `environments` list, because
-declaring an environment creates it.
+Four independent signals, and production needs all four:
 
-### Promoting to production, when it is approved
+1. **`project.productionRelease.approved`** in `project.config.json` — the
+   standing decision, reviewable as a diff.
+2. **`--environment production`** — named explicitly on the command line. Omitting
+   it targets the declared default, which is `staging`.
+3. **`--confirm-production`** — a second, non-guessable act of intent.
+   `--environment production` alone is a **refusal**, not a downgrade to staging:
+   an operator who asked for production must never have their command quietly
+   redirected somewhere else.
+4. **The linked environment**, read back from `railway status` after linking.
+   `bootstrap_railway.ts` fails if a run that did not ask for production finds
+   itself pointed at it, **and** if a run that did ask is linked elsewhere.
 
-A deliberate, separate change: add `production` to the specification and the
-declaration, decide whether it gets a custom domain, set `ARPI_SITE_URL` if so,
-and re-run bootstrap against it. The site's `IS_PREVIEW` rule means every Railway
-environment **other than** `production` is `noindex` with crawling disallowed, so
-promotion is also the moment the site becomes indexable. That is a decision, not a
-side effect.
+`.railway/railway.ts` enforces (1) and (3) itself, independently of the tool: it
+throws unless the approval is present **and** `ARPI_RAILWAY_CONFIRM_PRODUCTION` is
+`true`, which only a tool given `--confirm-production` sets. An environment *name*
+is deliberately not one of the signals, so a stray `railway config apply` against a
+linked production environment — or an ambient `RAILWAY_ENVIRONMENT_NAME=production`
+— still throws. `tests/railway/iac-graph.test.ts` asserts both directions: that the
+unconfirmed evaluation fails and that the confirmed one succeeds.
+
+> **The second assertion is not padding.** Until the `DASH.13` closeout the
+> declaration threw on *any* production evaluation, including the approved one.
+> That guard fires inside the bootstrap tool's offline validation, so
+> `--environment production --confirm-production` exited `2` before it read a
+> token — the repository declared production supported and the declaration refused
+> it. A guard that has only ever been watched succeed at refusing is not finished.
+
+`createProductionEnvironment` **stays forbidden** in the specification, and that is
+deliberate rather than an oversight: intent lives at the command line and only
+there. A persistent config flag and a per-invocation argument that mean nearly the
+same thing is how the wrong one ends up set, and the persistent one is the worse to
+trust because once true it stays true.
+
+The declaration still names only `staging` in its `environments` list, because
+declaring an environment creates it. Production is created by the bootstrap tool,
+at run time, on purpose.
+
+### Creating it
+
+Through the manual workflow, which is where the credential lives:
+
+`.github/workflows/railway-bootstrap.yml` → **Run workflow**, with
+`target_environment: production`, `confirm_production: true` and
+`expected_release_sha` set to the full `main` SHA production must be built from.
+Run `mode: dry-run` first and read the plan; the `apply` job `needs` the dry run,
+so an apply is never the first remote operation. The production path runs in the
+`railway-production` GitHub environment, so its reviewers and wait timers are
+configured there rather than borrowed from staging's.
+
+Or locally, with an account-scoped `RAILWAY_API_TOKEN`:
+
+```bash
+tsx scripts/railway/bootstrap_railway.ts --environment production \
+  --confirm-production --dry-run          # read the plan first
+tsx scripts/railway/bootstrap_railway.ts --environment production \
+  --confirm-production
+```
+
+**It must be a fresh build carrying production build arguments.** The canonical
+origin and the indexing policy are resolved from `RAILWAY_ENVIRONMENT_NAME` and
+`RAILWAY_PUBLIC_DOMAIN` at *build* time for every statically prerendered route and
+at *request* time for a dynamic one. Promoting an image built in another
+environment therefore ships a deployment whose `robots.txt` and page metadata
+disagree — `DASH.13` reproduced exactly that, and nothing errored.
+`scripts/railway/verify_release_policy.ts` detects it from outside.
+
+### Verifying it
+
+Both, and the second is not optional — it is what proves the release did not make
+the preview deployment public:
+
+```bash
+tsx scripts/railway/verify_railway_configuration.ts --environment production
+tsx scripts/railway/verify_release_policy.ts --url <production origin> \
+  --expect production --expect-commit <release SHA>
+tsx scripts/railway/verify_release_policy.ts --url <preview origin> --expect preview
+```
+
+### What currently blocks it
+
+**`RAILWAY_API_TOKEN` is not configured in GitHub Actions.** Run
+[31650259855](https://github.com/mpalmer79/Automotive-Retail-Performance-Intelligence/actions/runs/31650259855)
+printed `token : MISSING` and exited `2` at authentication, having contacted
+nothing. Add the secret to the `railway-staging` and `railway-production`
+environments, or run the commands above locally with an account-scoped token.
+Until then the tooling is ready and production does not exist.
+
+### Staging is not consumed by any of this
+
+Staging remains a real preview environment: non-production, `noindex`,
+`Disallow: /`, preview-marked, and never deleted, renamed or repurposed as a side
+effect of a production release. The site's `IS_PREVIEW` rule means every Railway
+environment **other than** `production` is non-indexable, so creating production is
+the moment the site becomes indexable — a decision, not a side effect.
 
 ---
 

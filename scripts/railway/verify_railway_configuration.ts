@@ -25,16 +25,34 @@
  * still a reference expression" rather than "the value equals the database's
  * password". The second phrasing would require holding both.
  *
+ * WHICH ENVIRONMENT IT IS ABOUT — ADDED BY THE `DASH.13` CLOSEOUT
+ * --------------------------------------------------------------
+ * This tool used to read `project.environment` and verify that, full stop. Before
+ * `DASH.13` that was unambiguous, because staging was the only environment there
+ * could be. Once production became a supported target it stopped being
+ * unambiguous, and the failure mode is a quiet one: an operator runs the verifier
+ * after a production release, reads a green report, and has verified STAGING.
+ *
+ * So the environment is now named on the command line and printed in every
+ * report. `--environment` is a NAMING requirement, not a confirmation ritual:
+ * this tool reads and never writes, so there is no `--confirm-production` here.
+ * Copying the mutation tool's guard onto a read-only command would teach people
+ * that the confirmation is paperwork rather than a brake.
+ *
+ * The default stays staging, so every existing caller keeps its meaning.
+ *
  *   tsx scripts/railway/verify_railway_configuration.ts
+ *   tsx scripts/railway/verify_railway_configuration.ts --environment staging
+ *   tsx scripts/railway/verify_railway_configuration.ts --environment production
  *   tsx scripts/railway/verify_railway_configuration.ts --json
  *
  * Exit codes
  *   0  the live configuration matches
  *   1  at least one mismatch
- *   2  refused to start: bad specification, missing token
+ *   2  refused to start: bad specification, missing token, unrecognised environment
  */
 import { hasToken, requireToken, resolveRailwayCli } from './lib/cli.ts'
-import { TARGET_ENVIRONMENT_VARIABLE } from './lib/iac.ts'
+import { CONFIRM_PRODUCTION_VARIABLE, TARGET_ENVIRONMENT_VARIABLE } from './lib/iac.ts'
 import {
   collectNamedEntities,
   collectStringsUnderKeys,
@@ -45,13 +63,32 @@ import { parseCommonArguments, rejectCredentialArguments, RunReport } from './li
 import { loadSpecification, validateSpecification } from './lib/spec.ts'
 
 const argv = process.argv.slice(2)
-const args = parseCommonArguments(argv)
+
+const environmentFlagIndex = argv.indexOf('--environment')
+const requestedEnvironment =
+  environmentFlagIndex === -1 ? undefined : argv[environmentFlagIndex + 1]
+
+const args = parseCommonArguments(
+  // The value-taking flag and its value are not "unknown arguments".
+  argv.filter((arg, index) => {
+    if (arg === '--environment') return false
+    return argv[index - 1] !== '--environment'
+  })
+)
 
 if (args.help) {
   process.stdout.write(
     `Verify the live ARPI Railway configuration against the repository.
 
-Usage: tsx scripts/railway/verify_railway_configuration.ts [--json]
+Usage: tsx scripts/railway/verify_railway_configuration.ts [--environment <name>] [--json]
+
+  --environment <name>
+              Which environment to verify. Defaults to the declared
+              non-production environment in deployment/railway/project.config.json.
+              Naming production is required to verify production: this tool
+              never guesses which deployment a report is about, because a green
+              report about the wrong environment is worse than no report.
+              There is no --confirm-production: this command only reads.
 
 Reads only variable KEYS and reference expressions, never resolved values. All
 output is redacted. Requires RAILWAY_API_TOKEN in the environment; it is never
@@ -76,16 +113,49 @@ const spec = loadSpecification()
 const specResult = validateSpecification(spec)
 
 const targetProject = spec.project.project.name
-const targetEnvironment = spec.project.project.environment
+const declaredEnvironment = spec.project.project.environment
 const productionEnvironment = spec.project.project.productionEnvironment
+const productionRelease = spec.project.project.productionRelease
 const portfolioName = spec.project.services.portfolio.name
 const postgresName = spec.project.services.postgres.name
 const jobName = spec.project.services.databaseSetup.name
 
+/* --- Resolve which environment this report is about ----------------------- */
+
+if (requestedEnvironment !== undefined && requestedEnvironment.trim() === '') {
+  process.stderr.write('Refusing to start: --environment was given no value.\n')
+  process.exit(2)
+}
+
+const requested = requestedEnvironment?.trim().toLowerCase()
+const verifyingProduction = requested === productionEnvironment.toLowerCase()
+
+if (
+  requested !== undefined &&
+  !verifyingProduction &&
+  requested !== declaredEnvironment.toLowerCase()
+) {
+  // Same reasoning as the bootstrap tool: an environment that is neither the
+  // declared default nor production is a typo far more often than a plan, and a
+  // verifier that shrugs and reports on something else is the failure this
+  // argument exists to prevent.
+  process.stderr.write(
+    `Refusing to verify "${requestedEnvironment?.trim() ?? ''}": it is neither the declared ` +
+      `environment ("${declaredEnvironment}") nor the production environment ` +
+      `("${productionEnvironment}").\n`
+  )
+  process.exit(2)
+}
+
+const targetEnvironment = verifyingProduction ? productionEnvironment : declaredEnvironment
+const otherEnvironment = verifyingProduction ? declaredEnvironment : productionEnvironment
+const environmentRole = verifyingProduction ? 'production (public, indexable)' : 'preview (non-public)'
+
 const report = new RunReport('ARPI Railway configuration verification', args.json, false)
 report.header([
   `project        : ${targetProject}`,
-  `environment    : ${targetEnvironment}`,
+  `environment    : ${targetEnvironment}${requested === undefined ? '  (declared default; not named on the command line)' : ''}`,
+  `role           : ${environmentRole}`,
   `token          : ${hasToken() ? 'present (never printed)' : 'MISSING'}`,
   'values         : never read; keys and reference expressions only',
 ])
@@ -146,27 +216,97 @@ if (environment === undefined) {
 }
 
 /**
- * Production must not exist as a consequence of anything this tooling did.
+ * What the existence of production means depends on which report this is.
  *
- * Reported as a WARNING rather than a failure when it does exist: a Railway
- * project may legitimately have been created with a default `production`
- * environment before this tooling ever ran, and failing on that would make the
- * verifier unusable for the exact project it is meant to verify. What matters is
- * that this tooling never targets it, which the bootstrap tool's guard and the
- * declaration's guard both enforce, and that a person knows it is there.
+ * Before the `DASH.13` closeout this block warned whenever production existed, on
+ * every run. That was right while production was forbidden and is wrong now: when
+ * the target IS production, its existence is the thing being verified, and warning
+ * about it would train the reader to ignore the one line that matters. When the
+ * target is staging, production existing is likewise not a fault — the two are
+ * meant to coexist. What must hold in both directions is SEPARATION, checked
+ * below.
  */
-const productionExists = environments.some(
+const productionEntry = environments.find(
   (candidate) => candidate.name.toLowerCase() === productionEnvironment.toLowerCase()
 )
-if (productionExists) {
-  report.warn(
-    'production-untouched',
-    `an environment named "${productionEnvironment}" exists in this project. This tooling ` +
-      'never targets it and has not deployed to it. Confirm in the Railway dashboard that ' +
-      'it has no deployment before treating this as expected.'
+const productionExists = productionEntry !== undefined
+
+if (verifyingProduction) {
+  if (productionExists) {
+    report.ok('production-environment', `"${productionEnvironment}" exists, as this report requires`)
+  } else {
+    report.failed(
+      'production-environment',
+      `no environment named "${productionEnvironment}" exists in project "${targetProject}". ` +
+        'This run was asked to verify production and there is no production to verify. ' +
+        'Create it with: tsx scripts/railway/bootstrap_railway.ts --environment ' +
+        `${productionEnvironment} --confirm-production`
+    )
+  }
+
+  // The standing approval is re-read against the LIVE target rather than assumed
+  // from the fact that somebody typed the flag.
+  if (productionRelease?.approved === true) {
+    report.ok(
+      'production-release-approved',
+      `approved by ${productionRelease.approvedBy ?? '(unnamed)'}`
+    )
+  } else {
+    report.failed(
+      'production-release-approved',
+      'deployment/railway/project.config.json does not approve a production release, yet a ' +
+        'production environment is being verified. The repository and the deployment disagree.'
+    )
+  }
+
+  // Staging must not have been renamed, repurposed or consumed to make production.
+  if (environments.some((c) => c.name.toLowerCase() === declaredEnvironment.toLowerCase())) {
+    report.ok('preview-environment-preserved', `"${declaredEnvironment}" still exists`)
+  } else {
+    report.failed(
+      'preview-environment-preserved',
+      `"${declaredEnvironment}" no longer exists. A production release must not delete, ` +
+        'rename or repurpose the preview environment.'
+    )
+  }
+} else if (productionExists) {
+  report.ok(
+    'production-environment',
+    `"${productionEnvironment}" also exists; this report is about "${targetEnvironment}" and ` +
+      'says nothing about it. Verify it with --environment ' + productionEnvironment
   )
 } else {
-  report.ok('production-untouched', `no "${productionEnvironment}" environment exists`)
+  report.ok('production-environment', `no "${productionEnvironment}" environment exists`)
+}
+
+/**
+ * CROSS-ENVIRONMENT SEPARATION.
+ *
+ * The one thing a release must never produce is two names pointing at one
+ * environment. It is worth an explicit assertion rather than an inference,
+ * because the symptom — two deployments claiming the same canonical origin — is
+ * invisible from inside either one of them.
+ *
+ * Deploying BOTH from `main` is expected and is not compared here. Sharing an
+ * environment ID is not.
+ */
+const targetEntry = findByName(environments, targetEnvironment)
+if (targetEntry !== undefined && productionEntry !== undefined && environment !== undefined) {
+  const stagingEntry = findByName(environments, declaredEnvironment)
+  if (stagingEntry !== undefined && stagingEntry.id === productionEntry.id) {
+    report.failed(
+      'environment-separation',
+      `"${declaredEnvironment}" and "${productionEnvironment}" resolve to the same environment ` +
+        `identity (${stagingEntry.id}). They are one environment wearing two names, so a ` +
+        'production release would publish the preview deployment and any preview change would ' +
+        'change production.'
+    )
+  } else if (stagingEntry !== undefined) {
+    report.ok(
+      'environment-separation',
+      `"${declaredEnvironment}" and "${productionEnvironment}" are distinct environments`
+    )
+  }
 }
 
 /* ========================================================================== */
@@ -266,7 +406,22 @@ const currentOutcome = await cli.attempt(
   {
     allowExitCodes: [2],
     timeoutMs: 600_000,
-    env: { [TARGET_ENVIRONMENT_VARIABLE]: targetEnvironment },
+    /*
+     * `config plan` stages nothing — it is the read half of apply — but the
+     * declaration still has to EVALUATE for a plan to exist, and the declaration
+     * refuses production without the confirmation variable. So a production
+     * verification supplies it here.
+     *
+     * This is not the mutation guard leaking into a read-only command. The
+     * brake on production is `--confirm-production` on the tool that WRITES;
+     * this is the declaration being handed the same two facts it is handed on
+     * every other path, so that "drift could not be assessed" is not the answer
+     * every production verification gives.
+     */
+    env: {
+      [TARGET_ENVIRONMENT_VARIABLE]: targetEnvironment,
+      [CONFIRM_PRODUCTION_VARIABLE]: verifyingProduction ? 'true' : '',
+    },
   }
 )
 
@@ -602,11 +757,131 @@ if (publicUrl === undefined) {
   }
 }
 
+/* ========================================================================== */
+/* The two environments must not be one environment                           */
+/* ========================================================================== */
+
+/**
+ * Read the OTHER environment's public URL and latest deployment, and assert they
+ * are not this one's.
+ *
+ * Deploying both from `main` is expected and is deliberately not compared. A
+ * shared public URL or a shared deployment identity is not expected under any
+ * reading: it would mean the release published the preview deployment, or that
+ * the "two" environments are one.
+ *
+ * Only attempted when both environments exist, and every failure to read is a
+ * WARNING rather than a failure — this is a second opinion about a project the
+ * caller may not have full visibility of, and an unreadable second opinion is not
+ * evidence of a fault. The link is restored to the target afterwards so the run
+ * leaves the CLI where it found it.
+ */
+let otherPublicUrl: string | undefined
+const bothExist =
+  productionExists &&
+  environments.some((c) => c.name.toLowerCase() === declaredEnvironment.toLowerCase())
+
+if (bothExist) {
+  try {
+    await cli.run(['link', '--project', project.id, '--environment', otherEnvironment, '--json'])
+    const otherDomains = collectStringsUnderKeys(
+      await cli.json<unknown>(['domain', 'list', '--service', portfolioName]),
+      ['domain', 'host']
+    )
+    const otherFirst = otherDomains[0]
+    if (otherFirst !== undefined) {
+      otherPublicUrl = `https://${otherFirst.replace(/^https?:\/\//, '')}`
+    }
+
+    if (publicUrl !== undefined && otherPublicUrl !== undefined && publicUrl === otherPublicUrl) {
+      report.failed(
+        'distinct-public-origins',
+        `"${targetEnvironment}" and "${otherEnvironment}" both serve ${publicUrl}. Two ` +
+          'deployments claiming one canonical origin is the state a release must never ' +
+          'produce: whichever answers, the other is advertising an origin it does not own.'
+      )
+    } else if (otherPublicUrl !== undefined) {
+      report.ok(
+        'distinct-public-origins',
+        `"${targetEnvironment}" and "${otherEnvironment}" serve different origins`
+      )
+    } else {
+      report.warn(
+        'distinct-public-origins',
+        `"${otherEnvironment}" reported no domain for ${portfolioName}, so the origins could ` +
+          'not be compared.'
+      )
+    }
+  } catch (error) {
+    report.warn(
+      'distinct-public-origins',
+      `could not read "${otherEnvironment}" to compare it: ` +
+        (error instanceof Error ? error.message : String(error))
+    )
+  } finally {
+    // Leave the CLI linked where this run is about, whatever happened above.
+    try {
+      await cli.run(['link', '--project', project.id, '--environment', targetEnvironment, '--json'])
+    } catch {
+      report.warn(
+        'distinct-public-origins',
+        `could not re-link to "${targetEnvironment}" after reading "${otherEnvironment}". ` +
+          'Re-link before running another command against this project.'
+      )
+    }
+  }
+}
+
+/* ========================================================================== */
+/* The production build-argument contract                                     */
+/* ========================================================================== */
+
+/**
+ * Only asserted for production, because it is only load-bearing there.
+ *
+ * `DASH.13` measured what happens when the environment a build was made in and
+ * the environment it runs in disagree: `robots.txt` takes the build-time values
+ * and dynamic routes take the request-time ones, so the deployment issues two
+ * contradictory instructions to every crawler and nothing fails. The repository's
+ * defence is that a production release must be a FRESH BUILD carrying production
+ * build arguments, declared here so the declaration cannot quietly stop requiring
+ * it.
+ */
+if (verifyingProduction) {
+  const declaredBuildArguments = spec.project.services.portfolio.buildArguments ?? []
+  const required = ['RAILWAY_ENVIRONMENT_NAME', 'RAILWAY_PUBLIC_DOMAIN']
+  const absent = required.filter((key) => !declaredBuildArguments.includes(key))
+
+  if (productionRelease?.buildMustSupplyEnvironmentArguments !== true) {
+    report.failed(
+      'production-build-arguments',
+      'project.productionRelease.buildMustSupplyEnvironmentArguments is not true. A production ' +
+        'release approved without it approves the split-brain indexing state along with it.'
+    )
+  } else if (absent.length > 0) {
+    report.failed(
+      'production-build-arguments',
+      `the website does not declare build argument(s) ${absent.join(', ')}. Without them the ` +
+        'build cannot bake the production canonical origin, and every statically prerendered ' +
+        'route ships whichever origin the build host happened to carry.'
+    )
+  } else {
+    report.ok(
+      'production-build-arguments',
+      `${required.join(' and ')} are declared build arguments; the build resolves the ` +
+        'canonical origin and the indexing policy from them'
+    )
+  }
+}
+
 report.setOutputs({
   project: targetProject,
   projectId: project.id,
   environment: targetEnvironment,
+  environmentRole: verifyingProduction ? 'production' : 'preview',
   publicUrl: publicUrl ?? '(none)',
+  otherEnvironment,
+  otherEnvironmentPublicUrl: otherPublicUrl ?? '(none)',
   tcpProxyHost: proxyHosts[0] ?? '(none)',
   tcpProxyPort: proxyPorts[0] ?? '(none)',
   latestDeploymentStatus: latest,
