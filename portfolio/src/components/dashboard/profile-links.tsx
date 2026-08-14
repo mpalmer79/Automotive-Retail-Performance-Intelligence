@@ -1,135 +1,117 @@
-/**
- * The two portfolio profile links that sit in the Executive header's action area.
- *
- * WHAT THESE ARE, AND WHAT THEY ARE NOT
- * -------------------------------------
- * They are secondary navigation to the source repository and to the author's
- * professional profile: the two things a reviewer who arrives at `/` and likes what
- * they see will look for next. They are not part of the console. Nothing here reads a
- * selector, a filter, a KPI or an export; the component takes no props and renders two
- * anchors.
- *
- * WHY THEY LIVE IN A COMPONENT OF THEIR OWN RATHER THAN IN THE SHARED HEADER
- * -------------------------------------------------------------------------
- * `OperatingPageHeader` is one component across nine operating routes. A pair of links
- * to one person's GitHub and LinkedIn hard-coded inside it would appear on the
- * inventory route, the deal jacket and the accounting reconciliation, which is eight
- * places a reviewer did not ask for them. The header exposes an optional
- * `headerActions` slot instead, and `/` is the only route that fills it — asserted by
- * `tests/unit/executive-profile-links.test.tsx`, in both directions.
- *
- * WHY NOT A BRAND GLYPH
- * ---------------------
- * `lucide-react` is the site's only icon package (see `ui/domain-icon.tsx`) and it
- * carries no GitHub or LinkedIn mark. The alternatives were a second dependency for two
- * glyphs, or hand-copied trademark artwork; both cost more than they are worth on a
- * secondary control. `FolderGit2` is already how this site draws "the repository" in the
- * site header and the operating rail, so the GitHub badge is consistent with the two
- * places that link already exists, and each badge carries a text label that says which
- * destination it is. Nothing here depends on an icon being recognised.
- */
-import { ArrowUpRight, FolderGit2, IdCard } from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
+import { ArrowUpRight } from 'lucide-react'
+import type { ComponentType, SVGProps } from 'react'
 
 import { AUTHOR_PROFILE_URL, REPOSITORY_URL } from '@/lib/site'
 import { cx } from '@/lib/utils'
 
+type BrandIcon = ComponentType<SVGProps<SVGSVGElement>>
+
 export interface ProfileLink {
   readonly href: string
-  /**
-   * The visible label, and the first half of the accessible name.
-   *
-   * A NOUN PHRASE NAMING THE DESTINATION. "GitHub Repository", not "GitHub" and not an
-   * icon on its own: an icon-only control is invisible to a screen-reader user and
-   * ambiguous to everyone who has not learned the convention.
-   */
   readonly label: string
-  readonly icon: LucideIcon
+  readonly icon: BrandIcon
+  readonly brandClassName: string
+  readonly arrowClassName: string
 }
 
-/**
- * The links, exported so a test asserts the rendered anchors against this list rather
- * than against a URL typed a second time in the test file.
- */
+function GitHubMark(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      xmlns="http://www.w3.org/2000/svg"
+      {...props}
+    >
+      <path d="M12 .7C5.7.7.7 5.8.7 12.1c0 5 3.2 9.3 7.7 10.8.6.1.8-.2.8-.5v-2.2c-3.1.7-3.8-1.3-3.8-1.3-.5-1.3-1.2-1.6-1.2-1.6-1-.7.1-.7.1-.7 1.1.1 1.7 1.2 1.7 1.2 1 1.7 2.6 1.2 3.2.9.1-.7.4-1.2.7-1.5-2.5-.3-5.1-1.2-5.1-5.6 0-1.2.4-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.2 1.2a11 11 0 0 1 5.8 0c2.2-1.5 3.2-1.2 3.2-1.2.6 1.6.2 2.8.1 3.1.7.8 1.2 1.9 1.2 3.1 0 4.4-2.7 5.3-5.1 5.6.4.3.8 1 .8 2v3.1c0 .3.2.6.8.5a11.4 11.4 0 0 0 7.7-10.8C23.3 5.8 18.3.7 12 .7Z" />
+    </svg>
+  )
+}
+
+function LinkedInMark(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      xmlns="http://www.w3.org/2000/svg"
+      {...props}
+    >
+      <path d="M20.45 20.45h-3.56v-5.57c0-1.33-.03-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.34V8.98h3.42v1.57h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.29ZM5.32 7.41a2.06 2.06 0 1 1 0-4.12 2.06 2.06 0 0 1 0 4.12Zm1.78 13.04H3.54V8.98H7.1v11.47ZM22.23 0H1.77C.79 0 0 .77 0 1.72v20.56C0 23.23.79 24 1.77 24h20.46c.98 0 1.77-.77 1.77-1.72V1.72C24 .77 23.21 0 22.23 0Z" />
+    </svg>
+  )
+}
+
 export const EXECUTIVE_PROFILE_LINKS: readonly ProfileLink[] = [
-  { href: REPOSITORY_URL, label: 'GitHub Repository', icon: FolderGit2 },
-  { href: AUTHOR_PROFILE_URL, label: 'LinkedIn Profile', icon: IdCard },
+  {
+    href: REPOSITORY_URL,
+    label: 'GitHub Repository',
+    icon: GitHubMark,
+    brandClassName: cx(
+      'border-[#24292f] bg-[#24292f] text-white',
+      'shadow-[0_2px_7px_rgba(15,23,42,0.16)]',
+      'hover:border-[#1b1f23] hover:bg-[#1b1f23]',
+      'hover:shadow-[0_4px_10px_rgba(15,23,42,0.22)]'
+    ),
+    arrowClassName: 'text-white/65 group-hover:text-white',
+  },
+  {
+    href: AUTHOR_PROFILE_URL,
+    label: 'LinkedIn Profile',
+    icon: LinkedInMark,
+    brandClassName: cx(
+      'border-[#0A66C2] bg-[#0A66C2] text-white',
+      'shadow-[0_2px_7px_rgba(10,102,194,0.20)]',
+      'hover:border-[#004182] hover:bg-[#004182]',
+      'hover:shadow-[0_4px_10px_rgba(10,102,194,0.26)]'
+    ),
+    arrowClassName: 'text-white/70 group-hover:text-white',
+  },
 ]
 
-/**
- * The badge's own class list, rather than `buttonClass('secondary', 'sm')`.
- *
- * The tokens are the `secondary` variant's tokens, deliberately: the same border, the
- * same ground, the same hover and the same transition, so this reads as an ARPI control
- * and not as a pasted-on social button. What it does NOT reuse is the size scale, and
- * the reason is the target-size rule. `sm` is 36 px, which is right in the desktop
- * band beside a 36 px disclosure pill and below the 44 px floor on a phone, where these
- * are full-width stacked controls with nothing beside them to lend the WCAG 2.2 spacing
- * exception. So the height is 44 px up to `sm` and 36 px above it, expressed as one
- * responsive pair here. Composing that out of `buttonClass` would mean two `min-h`
- * utilities in one class attribute with the winner decided by stylesheet order, which
- * is not a thing worth being clever about.
- */
-const BADGE = cx(
+const BADGE_BASE = cx(
   'group inline-flex min-h-touch w-full items-center justify-center gap-2 rounded-lg px-3',
-  'text-sm font-medium sm:min-h-9 sm:w-auto',
-  'border border-line-strong bg-surface/60 text-ink-secondary',
-  'transition-[background-color,border-color,color] duration-(--arpi-motion-fast)',
+  'text-sm font-semibold sm:min-h-9 sm:w-auto',
+  'border',
+  'transition-[background-color,border-color,box-shadow,transform] duration-(--arpi-motion-fast)',
   'ease-(--arpi-ease-standard)',
-  'hover:border-accent-muted hover:bg-surface-hover hover:text-ink',
-  // The same 1px mechanical press the button primitive uses, neutralised by the
-  // reduced-motion block in globals.css.
+  'hover:-translate-y-px',
   'active:translate-y-px'
 )
 
-/**
- * A pair of profile links, laid out for the header's upper-right action area.
- *
- * THE THREE GEOMETRIES, AND WHY THEY ARE THREE
- * --------------------------------------------
- *   phone   full-width, stacked, one above the other. Two 44 px rows a thumb can hit,
- *           after the scope line and the synthetic-data disclosure and before the
- *           filter stack — which is the reading order the console needs and also the
- *           order the DOM is in, so nothing is re-ordered visually.
- *   tablet   a row from `sm` up, allowed to wrap under the disclosure when the title,
- *           the scope and the pill have taken the width. Wrapping is the intended
- *           behaviour here, not a fallback.
- *   desktop  a row in the band's upper right, on the same line as the title.
- *
- * `justify-center` inside a `w-auto` row is not redundant: it centres the icon, the
- * label and the indicator against each other so the two badges read as a matched pair
- * even though "GitHub Repository" is the wider of the two labels.
- */
 export function ExecutiveProfileLinks() {
   return (
     <div
       data-profile-links
       className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:items-center"
     >
-      {EXECUTIVE_PROFILE_LINKS.map(({ href, label, icon: Icon }) => (
-        <a
-          key={href}
-          href={href}
-          target="_blank"
-          // `noopener` is the one that matters and `noreferrer` is deliberate rather
-          // than habitual: neither destination needs to know which page sent the
-          // visitor.
-          rel="noopener noreferrer"
-          className={BADGE}
-        >
-          <Icon aria-hidden="true" className="size-4 shrink-0" strokeWidth={2} />
-          {label}
-          {/* The external indicator is decorative. The accessible name carries the
-              same fact in words directly below, because an arrow glyph is not a
-              statement a screen reader can make. */}
-          <ArrowUpRight
-            aria-hidden="true"
-            className="size-3.5 shrink-0 text-ink-faint transition-colors duration-(--arpi-motion-fast) group-hover:text-accent"
-            strokeWidth={2}
-          />
-          <span className="sr-only">(opens in a new tab)</span>
-        </a>
-      ))}
+      {EXECUTIVE_PROFILE_LINKS.map(
+        ({ href, label, icon: Icon, brandClassName, arrowClassName }) => (
+          <a
+            key={href}
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cx(BADGE_BASE, brandClassName)}
+          >
+            <Icon
+              aria-hidden="true"
+              className="size-[17px] shrink-0 text-white"
+            />
+
+            <span>{label}</span>
+
+            <ArrowUpRight
+              aria-hidden="true"
+              className={cx(
+                'size-3.5 shrink-0 transition-colors duration-(--arpi-motion-fast)',
+                arrowClassName
+              )}
+              strokeWidth={2}
+            />
+
+            <span className="sr-only">(opens in a new tab)</span>
+          </a>
+        )
+      )}
     </div>
   )
 }
