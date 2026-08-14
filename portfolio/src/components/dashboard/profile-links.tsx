@@ -92,10 +92,7 @@ export function ExecutiveProfileLinks() {
             rel="noopener noreferrer"
             className={cx(BADGE_BASE, brandClassName)}
           >
-            <Icon
-              aria-hidden="true"
-              className="size-[17px] shrink-0 text-white"
-            />
+            <Icon aria-hidden="true" className="size-[17px] shrink-0 text-white" />
 
             <span>{label}</span>
 
