@@ -21,6 +21,7 @@ import {
   TopActions,
 } from '@/components/dashboard/actions-sections'
 import { ContextProvenance } from '@/components/dashboard/context-rail'
+import { ExecutivePreviewBanner } from '@/components/dashboard/executive-preview-banner'
 import { GridRow, Module, Workspace } from '@/components/dashboard/workspace-grid'
 import { FilterBar, type FilterOption } from '@/components/dashboard/filter-bar'
 import { InventoryRisk } from '@/components/dashboard/inventory-risk'
@@ -291,6 +292,31 @@ export default async function DashboardPage({
           </>
         }
       />
+
+      {/*
+        THE EXECUTIVE INTERFACE PREVIEW, ABOVE THE CONSOLE AND OUTSIDE THE `empty` BRANCH.
+
+        It renders on every query, including one that matches no rows, because it is a
+        picture of the product rather than a view of the selection — a banner that vanished
+        when a filter returned nothing would be a picture that behaved like a figure.
+
+        WHAT IT IS NOT IS THE LOAD-BEARING PART. The image is a polished interface concept
+        and the figures drawn inside it are not the output of any governed selector. Its
+        caption says so, once, and the live console below it is unchanged: same
+        `buildExecutiveOverview()`, same denominators, same filters, same action rules, same
+        reconciliation, same drill-through serializer. This is a presentation addition and
+        it moved no calculation.
+
+        IT ALSO MOVED THE FIRST-VIEWPORT CONTRACT, and that is a real cost rather than a
+        detail. `UX.2A` §4 put the control band, the whole KPI rail and three data-driven
+        regions inside 1440 x 900, and a hero the width of the content column cannot coexist
+        with that at a 900 px viewport height — the arithmetic does not close. The contract
+        is now measured from the top of the workspace rather than the top of the document,
+        so the claim it protects (this route is an instrument, not an article) still holds
+        and is still asserted by measurement. `tests/e2e/executive-workspace.spec.ts`
+        records the change where it is made.
+      */}
+      <ExecutivePreviewBanner />
 
       {overview.empty ? (
         <Section rhythm="default">
