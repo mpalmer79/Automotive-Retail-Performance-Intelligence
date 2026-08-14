@@ -178,13 +178,40 @@ test.describe('the first viewport is a workspace, not an introduction', () => {
     page,
   }) => {
     /*
-     * The baseline document was 8,161 px — nine screens. The ceiling is six, which is
-     * comfortably above the measured height and far enough below the baseline that the
-     * route cannot drift back into being a document without this failing first.
+     * The baseline document was 8,161 px — nine screens. The ceiling exists so the route
+     * cannot drift back into being a document without this failing first.
+     *
+     * IT WAS SIX SCREENS AND IT IS SEVEN, AND THE TWO MEASUREMENTS THAT MOVED IT ARE
+     * RECORDED HERE RATHER THAN ABSORBED
+     * ----------------------------------------------------------------------------
+     * Six screens (5,400 px) was set when the route ended at the console. Two increments
+     * have added chrome above it since, and the ceiling was not revisited for either:
+     *
+     *   1. THE EXECUTIVE PREVIEW BANNER, which put a full-content-width 1654 x 951 image
+     *      between the control band and the console. This is the increment that actually
+     *      broke the assertion: on `main` at `19486e91`, with no other change in the tree,
+     *      this test measured 5,504 px and failed. The banner increment relaxed the
+     *      first-viewport ORIGIN in the comment at the top of this file and left the
+     *      document-height ceiling behind, so the contract went red one merge later.
+     *   2. THE HEADER ACTION AREA. The Executive band's right rail now carries the
+     *      repository and profile links after the methodology disclosure. At 1440 the
+     *      title takes about 490 px, the disclosure 502 px and the actions 361 px against
+     *      a 1,043 px content column, so the rail cannot share the title's line and takes
+     *      its own. That row costs 45 px, measured: 5,354 px before it and 5,399 px after,
+     *      on the same build and viewport.
+     *
+     * Seven screens (6,300 px) is the new ceiling. It clears the measured 5,549 px by
+     * about 14%, and it is still 1,861 px below the nine-screen baseline this contract was
+     * written against, so what the assertion protects is unchanged: a route that grew back
+     * into an article would still fail here first.
+     *
+     * WHAT WOULD NOT HAVE BEEN AN HONEST FIX: trimming the disclosure, dropping the banner
+     * or shrinking a module to buy the pixels back. The height is real and the contract is
+     * about proportion, not about a number that must never move.
      */
     await gotoRendered(page, ROUTE)
     const height = await page.evaluate(() => document.documentElement.scrollHeight)
-    expect(height, `document height ${String(height)} px`).toBeLessThan(900 * 6)
+    expect(height, `document height ${String(height)} px`).toBeLessThan(900 * 7)
   })
 })
 
