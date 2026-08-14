@@ -451,7 +451,7 @@ postgresql  python  nextjs  typescript  data-quality  dimensional-modeling
 ```
 
 **Homepage** — this one is a decision, not a correction. The repository's own policy
-([README § Deployment](../../README.md#deployment)) is that the public origin is
+([README § Deployment status](../../README.md#deployment-status)) is that the public origin is
 production, and production does not exist. Two defensible options:
 
 1. **Clear it** until production exists. GitHub then shows no website link, which is

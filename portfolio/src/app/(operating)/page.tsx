@@ -42,6 +42,7 @@ import {
   OperatingPageHeader,
   operatingContext,
 } from '@/components/dashboard/operating-page-header'
+import { ExecutiveProfileLinks } from '@/components/dashboard/profile-links'
 import { StoreScoreboard } from '@/components/dashboard/store-scoreboard'
 import { TargetPaceSection } from '@/components/dashboard/target-context'
 import { TrustPanel } from '@/components/dashboard/trust-panel'
@@ -279,6 +280,16 @@ export default async function DashboardPage({
             leadSourceHint="Funnel measures only."
           />
         }
+        /*
+          THE ONE ROUTE THAT FILLS THE ACTION SLOT.
+
+          `/` is the front door of a portfolio as well as the group's operating console,
+          and a reviewer who has just read the KPI rail is looking for the source next.
+          The two links are secondary and sit after the methodology disclosure in the
+          DOM, so the synthetic-data statement is reached first at every width. The other
+          eight operating routes pass nothing here and are unchanged.
+        */
+        headerActions={<ExecutiveProfileLinks />}
         methodologyId="trust"
         methodology={
           <>
