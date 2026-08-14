@@ -60,6 +60,16 @@ export const IS_PREVIEW = resolveIsPreview(process.env)
 export const REPOSITORY_URL =
   'https://github.com/mpalmer79/Automotive-Retail-Performance-Intelligence'
 
+/**
+ * The author's professional profile.
+ *
+ * Declared beside {@link REPOSITORY_URL} rather than typed into a component, for
+ * the same reason: it appears in more than one place, it is the kind of string a
+ * copy-paste gets subtly wrong, and a constant is the only version of it a test
+ * can assert against. It is a personal profile and never a company page.
+ */
+export const AUTHOR_PROFILE_URL = 'https://www.linkedin.com/in/mpalmer1234/'
+
 /** Build a link to a file in the repository at the default branch. */
 export function repoFileUrl(path: string): string {
   const clean = path.replace(/^\/+/, '')

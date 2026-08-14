@@ -148,6 +148,25 @@ export interface OperatingPageHeaderProps {
    */
   readonly methodologyId?: string
   /**
+   * Secondary links for the band's upper-right action area. OPTIONAL, and empty on
+   * eight of the nine operating routes.
+   *
+   * A SLOT RATHER THAN A FIXED PAIR OF LINKS, for the reason every other slot in this
+   * interface is a slot: what belongs here is a property of the route, not of the
+   * shell. `/` is a portfolio's front door as well as a console, so it carries links to
+   * the repository and to the author's profile; `/dashboard/accounting` is a
+   * reconciliation and carries none. Hard-coding one person's profile links into a
+   * component shared by nine routes would have put them on eight screens where they are
+   * noise.
+   *
+   * RENDERED AFTER THE METHODOLOGY DISCLOSURE, IN THE DOM AND ON THE SCREEN. These are
+   * secondary actions and the disclosure is not: a reader must be able to reach the
+   * synthetic-data statement before anything optional, at every width, and the reading
+   * order is the guarantee of that rather than a visual arrangement that only holds on
+   * a desktop.
+   */
+  readonly headerActions?: ReactNode
+  /**
    * The route's own control block: notices, chips, the filter form, and any
    * route-specific control such as the Deal Explorer's search or the inventory
    * ordering select.
@@ -174,6 +193,7 @@ export function OperatingPageHeader({
   notices,
   methodology,
   methodologyId,
+  headerActions,
   children,
   className,
 }: OperatingPageHeaderProps) {
@@ -186,15 +206,20 @@ export function OperatingPageHeader({
     <Section
       rhythm="none"
       tone="canvas"
-      data-operating-band
       className={cx('border-b border-line py-3 sm:py-4', className)}
     >
       <Container width="full">
         {/* `gap-3`, not `gap-4`. The control band is four stacked things on every
             operating route, and `UX.2A` §4 asks for it to be compact: sixteen pixels
             between each of them cost fifty vertical pixels that the first viewport
-            contract needs for a chart. */}
-        <div className="flex flex-col gap-2.5 sm:gap-3">
+            contract needs for a chart.
+
+            `data-operating-band` marks THIS element rather than the `<Section>`. It was
+            declared on the section and `Section` renders a fixed set of attributes, so
+            the marker never reached the document and no selector could find it. Here it
+            is on a real element, and the box it names is the band's content column,
+            which is the box a layout assertion about the band actually wants. */}
+        <div data-operating-band className="flex flex-col gap-2.5 sm:gap-3">
           {backLink === undefined ? null : (
             <Link
               href={backLink.href}
@@ -234,12 +259,13 @@ export function OperatingPageHeader({
               </div>
             </div>
 
-            {methodology === undefined ? null : (
-              <details
-                id={methodologyId}
-                className="min-w-0 max-w-full rounded-xl border border-line-subtle bg-surface"
-              >
-                {/*
+            <HeaderRightRail actions={headerActions}>
+              {methodology === undefined ? null : (
+                <details
+                  id={methodologyId}
+                  className="min-w-0 max-w-full rounded-xl border border-line-subtle bg-surface"
+                >
+                  {/*
                   THE SUMMARY IS THE DISCLOSURE, NOT A LABEL FOR ONE.
 
                   It carries the compact statement in full — fictional group,
@@ -256,30 +282,33 @@ export function OperatingPageHeader({
                   the sentence, the dot, the full statement inside and the
                   governance link are all exactly as they were.
                 */}
-                <summary className="flex min-h-9 cursor-pointer list-none items-center gap-2 px-3 py-1.5 text-2xs font-medium text-ink-muted transition-colors duration-(--arpi-motion-fast) hover:text-accent [&::-webkit-details-marker]:hidden">
-                  <span
-                    aria-hidden="true"
-                    className="inline-block size-1.5 shrink-0 rounded-pill bg-pending"
-                  />
-                  <span className="text-ink-secondary">{SYNTHETIC_DEMO_SHORT}</span>
-                  <span className="hidden sm:inline">&middot; data and methodology</span>
-                </summary>
-                <div className="flex max-w-3xl flex-col gap-4 px-3 pb-4">
-                  <Text size="xs" tone="faint">
-                    {SYNTHETIC_DATA_STATEMENT}
-                  </Text>
-                  {methodology}
-                  <Text size="xs" tone="faint">
-                    <Link
-                      href={technicalHref('governance')}
-                      className="underline decoration-dotted underline-offset-4 transition-colors duration-(--arpi-motion-fast) hover:text-accent"
-                    >
-                      How this is built, governed and validated
-                    </Link>
-                  </Text>
-                </div>
-              </details>
-            )}
+                  <summary className="flex min-h-9 cursor-pointer list-none items-center gap-2 px-3 py-1.5 text-2xs font-medium text-ink-muted transition-colors duration-(--arpi-motion-fast) hover:text-accent [&::-webkit-details-marker]:hidden">
+                    <span
+                      aria-hidden="true"
+                      className="inline-block size-1.5 shrink-0 rounded-pill bg-pending"
+                    />
+                    <span className="text-ink-secondary">{SYNTHETIC_DEMO_SHORT}</span>
+                    <span className="hidden sm:inline">
+                      &middot; data and methodology
+                    </span>
+                  </summary>
+                  <div className="flex max-w-3xl flex-col gap-4 px-3 pb-4">
+                    <Text size="xs" tone="faint">
+                      {SYNTHETIC_DATA_STATEMENT}
+                    </Text>
+                    {methodology}
+                    <Text size="xs" tone="faint">
+                      <Link
+                        href={technicalHref('governance')}
+                        className="underline decoration-dotted underline-offset-4 transition-colors duration-(--arpi-motion-fast) hover:text-accent"
+                      >
+                        How this is built, governed and validated
+                      </Link>
+                    </Text>
+                  </div>
+                </details>
+              )}
+            </HeaderRightRail>
           </div>
 
           {notices === undefined ? null : notices}
@@ -293,6 +322,55 @@ export function OperatingPageHeader({
         </div>
       </Container>
     </Section>
+  )
+}
+
+/**
+ * The band's right-hand column: the methodology disclosure, and any header actions.
+ *
+ * A WRAPPER THAT ONLY EXISTS WHEN IT HAS TO. Eight of the nine operating routes pass no
+ * actions, and on those eight this renders a fragment — so the disclosure is the flex
+ * item of the title row that it has always been, with no extra element between them and
+ * no chance of a layout that moved because a slot was added for one route. The wrapper
+ * appears only on the route that fills the slot.
+ *
+ * WHEN IT DOES EXIST it is a column on a phone and a right-aligned row from `sm` up:
+ *
+ *   - `items-start` in the column, so the disclosure keeps the content width that makes
+ *     it read as a pill. `EXEC.1` made it one deliberately and a wrapper is not allowed
+ *     to quietly stretch it back into the full-width box it replaced. The actions set
+ *     their own width and are unaffected.
+ *   - `flex-wrap` in the row, so at a tablet width the actions drop under the disclosure
+ *     rather than squeezing the title and its scope line into a narrow column.
+ *   - `ml-auto`, which is what actually keeps the pair in the band's upper RIGHT.
+ *     Measured at 1440 on the Executive route: the title and its scope line take about
+ *     490 px, the disclosure 502 px and the actions 361 px, so the rail cannot share the
+ *     title's line and wraps under it. A wrapped flex line ignores the parent's
+ *     `justify-between` and starts at the left edge, which put the badges in the middle
+ *     of the band. An auto left margin right-aligns the rail whether it shares the
+ *     title's line or takes its own.
+ *   - the disclosure first in both, because the actions are secondary and a reader must
+ *     meet the synthetic-data statement before them at every width.
+ */
+function HeaderRightRail({
+  actions,
+  children,
+}: {
+  readonly actions?: ReactNode
+  readonly children: ReactNode
+}) {
+  if (actions === undefined) return <>{children}</>
+
+  return (
+    <div
+      className={cx(
+        'flex w-full min-w-0 flex-col items-start gap-2.5',
+        'sm:ml-auto sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end sm:gap-3'
+      )}
+    >
+      {children}
+      {actions}
+    </div>
   )
 }
 

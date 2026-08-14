@@ -32,6 +32,7 @@
     "assets": "tsx scripts/render-raster-assets.ts",
     "media": "tsx scripts/capture-product-media.ts",
     "review:screenshots": "tsx scripts/capture-review-screenshots.ts",
+    "review:header": "tsx scripts/capture-profile-links.ts",
     "bundle": "tsx scripts/report-bundle.ts"
   },
   "dependencies": {
