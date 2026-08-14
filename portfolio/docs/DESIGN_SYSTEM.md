@@ -1096,6 +1096,52 @@ waterfall. An empty panel is not neutral; a reader looks into it for the thing t
 introduces a continuous scale, a computed axis or a layout algorithm, which are the three
 conditions §6.0c records. Two static end labels under a column field are not an axis.
 
+### 6.0g `EXEC.1`: the ground is inverted, and the wash is a chip
+
+`UX.2A` gave the console the right STRUCTURE — a grid of titled modules — and left it with the
+wrong SURFACES. Each module carried its business area's pastel wash and sat on the master canvas's
+pure white, so a row of modules read as a row of unrelated pastel boxes, and the near-white cards
+inside them had no edge at all: three surfaces within about eight per cent of each other in
+luminance, and nothing to separate any of them.
+
+**The ground is now the other way round.** `Workspace` is the recessed `evidence` tone; every
+`Module` is the same white raised card on it, with a hairline, a small shadow and a real ruled panel
+header. One surface vocabulary for every module on every operating route.
+
+**The domain wash did not leave; it moved and shrank.** It is the ground of the module's icon chip.
+It still names a business area, it still encodes nothing, and no `zone-*` token is a `data-*` token
+— `dashboard.spec.ts` asserts both halves: the chips are three distinct opaque tints, and every
+module body is one identical ground, so a module cannot start painting a state into its surface. The
+glyph on all five chips is the accent, deliberately: colouring the icon by zone as well would put an
+emerald-and-amber ramp beside figures for which this console publishes no favourable direction.
+
+**The control band swapped tones with the workspace.** It was `evidence`, so the product opened with
+a grey utility strip above the brightest surface on the page. The band is the application's header
+and the workspace is the instrument, so the band is white and the workspace is recessed.
+
+**`GridRow` gained a second span map.** The tablet span used to be derived from the desktop one —
+anything below six columns took half the six-column tablet grid — which is right for a 4/4/4 row and
+wrong for a 5/4/3 one. At 768 px the Executive route drew four ragged half-rows on one screen.
+`mdSpan` is a prop rather than a `className`, because `cx` is a join and not a conflict resolver: two
+utilities setting `grid-column` are resolved by the stylesheet's ordering, not by the attribute's.
+
+**`align="start"` is now used where §6.0f said it should be.** Measured at 1440 × 900 with every row
+stretched: 737 px of empty bordered panel under the trend module, 634 px under the gross module and
+887 px under the detail module. An empty panel is not neutral.
+
+**Measured, before and after, on `/`:**
+
+| Measurement                        | Before  | After   |
+| ---------------------------------- | ------- | ------- |
+| Control band, 390 px               | 298 px  | 263 px  |
+| KPI rail, 390 px                   | 1183 px | 1124 px |
+| Document height, 1440 px           | 4925 px | 4686 px |
+| Empty panel inside modules, 1440px | 3156 px | 0 px    |
+
+No KPI definition, denominator, date basis, comparison, scope note, catalogue identifier or
+disclosure changed. `EXEC.1` is a presentation increment; every figure comes from the same governed
+selector through `buildExecutiveOverview()`, on the server, as before.
+
 ---
 
 ## The operating control band (`UX.2D`)

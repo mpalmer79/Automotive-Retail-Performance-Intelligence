@@ -282,6 +282,38 @@
   overflow: clip;
 }
 
+/* ==========================================================================
+   The plot area
+   --------------------------------------------------------------------------
+   Four evenly-spaced horizontal reference rules behind a column series, painted
+   as a repeating gradient rather than as elements.
+
+   WHY IT IS A BACKGROUND AND NOT FOUR `<span>`s. The console's geometry suites
+   read every inline `style` attribute a chart emits and compare the resulting
+   profile across two different data series - that is how a chart which ignores
+   its input is caught. A constant decorative element carrying an inline offset
+   would enter those profiles and make the comparison partly about furniture. A
+   background paints nothing into the DOM, costs no markup, and is invisible to
+   assistive technology because the plot it sits behind is already `aria-hidden`.
+
+   IT IS A REFERENCE, NOT A SCALE. The rules carry no tick values and the
+   component prints none against them: the only honest labels are the plotted
+   values, and those are in the chart's own data table and in its summary
+   sentence. `--arpi-colour-border-subtle` is a rule colour, not a text colour -
+   the distinction tokens.css draws for the slate steps - so nothing here is
+   information encoded below the contrast floor.
+   ========================================================================== */
+
+@utility plot-grid {
+  background-image: repeating-linear-gradient(
+    to top,
+    var(--arpi-colour-border-subtle) 0,
+    var(--arpi-colour-border-subtle) 1px,
+    transparent 1px,
+    transparent 25%
+  );
+}
+
 /* A blueprint rule: a hairline with alignment ticks at each end. */
 @utility rule-marked {
   position: relative;

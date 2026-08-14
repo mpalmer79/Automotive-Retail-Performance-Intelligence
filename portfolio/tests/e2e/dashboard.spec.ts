@@ -1318,15 +1318,32 @@ test.describe('colour is a second reading and never the only one', () => {
   test('renders the region tints as backgrounds that carry no state', async ({
     page,
   }) => {
+    /*
+     * THE TINT MOVED IN `EXEC.1`; THE RULE IT ENCODES DID NOT.
+     *
+     * A domain wash used to be the ground of a module's whole body. Four pastel bodies on
+     * one screen left every card inside them without an edge and made a row of modules
+     * read as unrelated boxes, so the wash is now the ground of the module's icon chip —
+     * `workspace-grid.tsx` records the measurement. It is still one tint per business
+     * area, still drawn from the same `zone-*` tokens, and still opaque.
+     *
+     * What this test asserts is unchanged and is the part that matters: the tints are
+     * DISTINCT per business area, they are OPAQUE — a translucent wash makes the real
+     * ground a composite of the token and whatever is behind it, and the contrast floor in
+     * `tokens.test.ts` is measured against the token alone — and no `zone-*` token is a
+     * `data-*` token, so a tint can never be read as a value.
+     */
     await gotoRendered(page, ROUTE)
     const grounds = await page.evaluate(() =>
       ['group-performance', 'targets', 'composition'].map((id) => {
-        const region = document.getElementById(id)
-        return region === null ? null : getComputedStyle(region).backgroundColor
+        const chip = document
+          .getElementById(id)
+          ?.querySelector('[aria-hidden="true"][class*="rounded-lg"]')
+        return chip === undefined || chip === null
+          ? null
+          : getComputedStyle(chip).backgroundColor
       })
     )
-    // Three distinct, opaque tints. Opaque matters: a translucent wash makes the real
-    // ground a composite, and the contrast floor is measured against the token.
     expect(new Set(grounds).size).toBe(3)
     for (const ground of grounds) {
       expect(ground).not.toBeNull()
@@ -1334,5 +1351,28 @@ test.describe('colour is a second reading and never the only one', () => {
         /rgba\([^)]*,\s*0?\.\d+\)/
       )
     }
+  })
+
+  test('gives a module tint no state to carry, by giving every module one body', async ({
+    page,
+  }) => {
+    /*
+     * THE OTHER HALF OF THE SAME RULE, AND IT IS NEW WITH `EXEC.1`.
+     *
+     * The wash moved off the module body, so the body is now the thing that must be
+     * uniform: if a module ever started painting its own surface again — to mark a
+     * failing reconciliation, a breached threshold, an "attention" state — a reader would
+     * be reading a value out of a panel colour, which is exactly what the zone rule
+     * exists to forbid. Every module on the route carries the same ground, and a
+     * divergence fails here rather than being noticed in a screenshot.
+     */
+    await gotoRendered(page, ROUTE)
+    const bodies = await page.evaluate(() =>
+      [...document.querySelectorAll('section[aria-labelledby^="module-"]')].map(
+        (node) => getComputedStyle(node).backgroundColor
+      )
+    )
+    expect(bodies.length).toBeGreaterThan(6)
+    expect(new Set(bodies).size, 'a module paints its own state into its ground').toBe(1)
   })
 })

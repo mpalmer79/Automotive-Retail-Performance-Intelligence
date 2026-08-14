@@ -243,11 +243,21 @@ export function MetricValue({
 export function MetricDifference({
   metric,
   comparisonLabel,
+  size = 'default',
   className,
 }: {
   metric: ComparedMetric
   /** "November 2025". Always named: "+12" against an unnamed period is not a fact. */
   comparisonLabel: string | null
+  /**
+   * `compact` for a card in a qualifying rank, where the line sits under a smaller figure.
+   *
+   * A PROP RATHER THAN A CLASS FROM THE CALL SITE, because `cx` is a join and not a
+   * conflict resolver: passing `text-2xs` alongside this component's own `text-xs` leaves
+   * both in the attribute and lets the stylesheet's ordering decide which one paints,
+   * which is a coin toss that survives review.
+   */
+  size?: 'default' | 'compact'
   className?: string
 }) {
   const formatted = formatDifference(metric)
@@ -269,12 +279,32 @@ export function MetricDifference({
         ? 'higher than'
         : 'lower than'
 
+  /*
+   * ONE FLOWING LINE, NOT TWO FLEX CHILDREN — `EXEC.1`.
+   *
+   * This was `flex flex-wrap` with the amount and the direction phrase as two boxes, and
+   * a flex container breaks between its children before it breaks inside one. In a 160 px
+   * KPI card on a 390 px phone that rendered as three stacked lines — "+13 units", "higher
+   * than", "November 2025" — which is 36 px of dead height on eight cards, and reads as
+   * three facts rather than one sentence. Measured on the Executive rail before this pass:
+   * the rail was 1,183 px tall on a phone, and this was the single largest contributor.
+   *
+   * Inline text wraps at word boundaries wherever the line actually runs out, so the same
+   * sentence occupies one line where it fits and breaks sensibly where it does not. The
+   * amount keeps `numeric` — tabular figures and no mid-number break — and the words are
+   * the same words: `dashboard-executive.test.tsx` asserts the direction vocabulary and
+   * `dashboard.spec.ts` asserts it again on the rendered page.
+   */
   return (
-    <p className={cx('flex flex-wrap items-baseline gap-x-2 text-xs', className)}>
-      <span className="numeric font-medium text-ink-secondary">{formatted}</span>
-      <span className="text-ink-faint">
-        {direction} {comparisonLabel ?? 'the comparison period'}
-      </span>
+    <p
+      className={cx(
+        'leading-snug text-ink-faint',
+        size === 'compact' ? 'text-2xs' : 'text-xs',
+        className
+      )}
+    >
+      <span className="numeric font-semibold text-ink-secondary">{formatted}</span>{' '}
+      {direction} {comparisonLabel ?? 'the comparison period'}
     </p>
   )
 }

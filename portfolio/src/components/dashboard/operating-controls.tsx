@@ -233,10 +233,21 @@ export interface OperatingControlsProps {
 export function OperatingControls({ activeCount, children }: OperatingControlsProps) {
   return (
     <details data-operating-controls className="group min-w-0">
+      {/*
+        `EXEC.1` MADE THE COLLAPSED SUMMARY A PILL RATHER THAN A BAR.
+
+        It was a full-width bordered box the height of a touch target, which on a phone
+        put a 44 px white slab the width of the screen between the scope line and the
+        first figure — the second-largest object in the band, for a control that is
+        closed. `w-fit` with a pill radius makes it read as the control it is. It keeps
+        the 44 px height, because unlike the methodology caption this IS a primary
+        control on a phone and `UX.1` §12 sets that floor; what it gives up is the
+        width it never needed.
+      */}
       <summary
         className={cx(
-          'flex min-h-touch cursor-pointer list-none items-center gap-2 rounded-md border border-line',
-          'bg-canvas px-3 text-sm font-medium text-ink-secondary',
+          'flex min-h-touch w-fit cursor-pointer list-none items-center gap-2 rounded-pill border border-line',
+          'bg-canvas px-4 text-sm font-medium text-ink-secondary',
           'transition-colors duration-(--arpi-motion-fast) hover:border-line-strong hover:text-ink',
           '[&::-webkit-details-marker]:hidden'
         )}

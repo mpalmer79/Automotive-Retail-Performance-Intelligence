@@ -1,5 +1,18 @@
 import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
+import {
+  Banknote,
+  Boxes,
+  ClipboardList,
+  Filter,
+  Flag,
+  Gauge,
+  GitCompare,
+  Layers,
+  LineChart,
+  Scale,
+  Store,
+} from 'lucide-react'
 
 import { Canvas } from '@/components/shell/field'
 import {
@@ -304,6 +317,7 @@ export default async function DashboardPage({
             <Module
               id="group-performance"
               title="Group result"
+              icon={Gauge}
               zone="performance"
               visual="kpi-rail"
               note="Colour marks sign, a met target and unit age. Nothing else."
@@ -327,10 +341,19 @@ export default async function DashboardPage({
             right three on the merits: the shape, whose it is, and where the month sits
             against what was committed. Everything below this row is a follow-up question.
           */}
-          <GridRow>
+          {/*
+            `align="start"`, AND THE NUMBERS ARE WHY. Measured at 1440 x 900 with the
+            modules stretched: the trend panel was 1,178 px tall around 442 px of content,
+            the store panel 1,178 px around 674 px, and the row drew 1,242 px of empty
+            bordered box under two of its three modules because the pace module is
+            genuinely 1,161 px. An empty panel is not neutral -- a reader looks into it for
+            the thing that is missing. `workspace-grid.tsx` records the rule this follows.
+          */}
+          <GridRow align="start">
             <Module
               id="operating-trend"
               title="Operating trend"
+              icon={LineChart}
               span={6}
               zone="performance"
               visual="trend"
@@ -341,6 +364,7 @@ export default async function DashboardPage({
             <Module
               id="store-comparison"
               title="Stores"
+              icon={Store}
               span={3}
               zone="performance"
               visual="store-comparison"
@@ -350,6 +374,7 @@ export default async function DashboardPage({
             <Module
               id="targets"
               title="Plan and pace"
+              icon={Flag}
               span={3}
               zone="plan"
               visual="pace"
@@ -362,11 +387,15 @@ export default async function DashboardPage({
           {/* ---------------------------------------------------------------- */}
           {/* ROW 3 — stock, demand, gross                                      */}
           {/* ---------------------------------------------------------------- */}
-          <GridRow>
+          {/* Stretched, this row drew 393 px of empty panel under the stock module and
+              634 px under the gross module, against a 1,051 px funnel. Same rule. */}
+          <GridRow align="start">
             <Module
               id="inventory-exposure"
               title="Inventory exposure"
+              icon={Boxes}
               span={5}
+              mdSpan={6}
               zone="inventory"
               visual="inventory"
             >
@@ -379,6 +408,7 @@ export default async function DashboardPage({
             <Module
               id="composition"
               title="Lead funnel"
+              icon={Filter}
               span={4}
               zone="funnel"
               visual="funnel"
@@ -392,6 +422,7 @@ export default async function DashboardPage({
             <Module
               id="gross-composition"
               title="Gross composition"
+              icon={Banknote}
               span={3}
               zone="performance"
               visual="gross"
@@ -407,6 +438,7 @@ export default async function DashboardPage({
             <Module
               id="change-drivers"
               title="What the bridge attributes the change to"
+              icon={GitCompare}
               span={7}
               visual="change-drivers"
             >
@@ -418,7 +450,9 @@ export default async function DashboardPage({
             <Module
               id="management-attention"
               title="Management attention"
+              icon={ClipboardList}
               span={5}
+              mdSpan={6}
               visual="attention"
               note="Deterministic prompts from rules written down in advance. A reason to look, not a finding, a recommendation or a claim about cause."
             >
@@ -442,10 +476,13 @@ export default async function DashboardPage({
             `accounting-chunks.ts` belong to `/dashboard/accounting`, and a reader who wants
             them follows the drill-through rather than paying for them here.
           */}
-          <GridRow>
+          {/* The detail module is two collapsed disclosures -- 166 px of content beside a
+              1,036 px reconciliation panel. Stretched, it was 887 px of empty box. */}
+          <GridRow align="start">
             <Module
               id="accounting-integrity"
               title="Whether the books agree"
+              icon={Scale}
               span={7}
               visual="accounting"
               note="A variance between the stock schedule and the general ledger is a finding to investigate, not a broken record, and both sides are valid data."
@@ -455,7 +492,13 @@ export default async function DashboardPage({
                 accountingHref={accountingHref}
               />
             </Module>
-            <Module id="detail" title="Detail, on demand" span={5}>
+            <Module
+              id="detail"
+              title="Detail, on demand"
+              icon={Layers}
+              span={5}
+              mdSpan={6}
+            >
               {/*
                 THE SCOREBOARD AND THE BACKLOG ARE DISCLOSURES, and both are still in the
                 document. `<details>` collapses a body of detail visually while leaving it
@@ -501,7 +544,7 @@ export default async function DashboardPage({
       {overview.empty ? (
         <Workspace>
           <GridRow>
-            <Module id="detail" title="Detail, on demand" span={12}>
+            <Module id="detail" title="Detail, on demand" icon={Layers} span={12}>
               <ConsoleDisclosure id="not-built" summary="What is not built yet">
                 <PlannedSections sections={PLANNED_DASHBOARD_SECTIONS} />
               </ConsoleDisclosure>

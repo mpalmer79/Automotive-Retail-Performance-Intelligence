@@ -211,18 +211,28 @@ export function ChartFrame({
   readonly children: ReactNode
 }) {
   const Heading = `h${String(headingLevel)}` as 'h2' | 'h3' | 'h4'
+  /*
+   * THE FRAME IS TIGHTER THAN IT WAS, AND NOTHING LEFT IT — `EXEC.1`.
+   *
+   * A figure inside a three-of-twelve module used to open with a 15 px heading, a 13 px
+   * caption and a 13 px summary at reading leading, which on the Executive trend module
+   * put roughly 120 px of prose above the first column. The module's own title already
+   * names the subject, so the figure's heading is a sub-head rather than a section head
+   * and is set as one; the caption and the summary keep every word and are set at the
+   * metadata step.
+   */
   return (
-    <figure className={cx('flex flex-col gap-4', className)}>
-      <figcaption className="flex flex-col gap-1.5">
-        <Heading className="text-base font-semibold text-ink">{title}</Heading>
+    <figure className={cx('flex flex-col gap-2.5', className)}>
+      <figcaption className="flex flex-col gap-1">
+        <Heading className="text-sm font-semibold text-ink">{title}</Heading>
         {caption ? (
-          <p className="text-sm leading-normal text-ink-muted">{caption}</p>
+          <p className="text-xs leading-normal text-ink-muted">{caption}</p>
         ) : null}
         <p
           className={
             summaryMode === 'sr-only'
               ? 'sr-only'
-              : 'text-sm leading-normal text-ink-secondary'
+              : 'text-xs leading-normal text-ink-secondary'
           }
         >
           {summary}
@@ -326,9 +336,27 @@ export function TrendChart({
       className={className}
     >
       {present.length > 0 ? (
+        /*
+         * THE COLUMNS SIT IN A PLOT AREA NOW, AND THE PLOT AREA IS DRAWN IN CSS.
+         *
+         * A bare row of columns over a single hairline gave a reader no vertical reference
+         * at all: two columns of similar height were indistinguishable, and the eye had
+         * nothing to measure against. `plot-grid` (globals.css) paints four evenly-spaced
+         * rules across the drawn extent as a repeating gradient.
+         *
+         * IN CSS, NOT AS ELEMENTS, and that is not a micro-optimisation. The geometry
+         * suites in `ux1-visual-geometry.test.tsx` read every inline `style` attribute a
+         * chart emits and compare the profiles of two different series; a constant
+         * decorative element carrying an inline offset would enter that profile and make
+         * the comparison partly about furniture. A background paints nothing into the DOM.
+         *
+         * The grid is a REFERENCE, not a scale: it carries no tick values, because the
+         * only honest labels are the plotted values themselves and those are in the table
+         * below and in the summary sentence. Nothing here reads a value or derives one.
+         */
         <div
           aria-hidden="true"
-          className="relative flex h-32 items-end gap-px border-b border-line-subtle"
+          className="plot-grid relative flex h-32 items-end gap-0.5 rounded-md border-b border-line px-1 pt-1 sm:h-36 sm:gap-1 @md:h-44"
         >
           {minimum < 0 ? (
             <span
@@ -351,7 +379,7 @@ export function TrendChart({
               >
                 <span
                   className={cx(
-                    'w-full rounded-t-xs',
+                    'w-full rounded-t-sm',
                     // The series colour is the categorical primary, NOT green: a
                     // period above zero is not thereby a good period, and most of
                     // what this chart plots has no favourable direction. Only the
