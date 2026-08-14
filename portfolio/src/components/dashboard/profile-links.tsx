@@ -10,8 +10,8 @@ export interface ProfileLink {
   readonly href: string
   readonly label: string
   readonly icon: BrandIcon
-  readonly brandClassName: string
-  readonly arrowClassName: string
+  readonly iconColor: string
+  readonly surfaceClassName: string
 }
 
 function GitHubMark(props: SVGProps<SVGSVGElement>) {
@@ -45,36 +45,35 @@ export const EXECUTIVE_PROFILE_LINKS: readonly ProfileLink[] = [
     href: REPOSITORY_URL,
     label: 'GitHub Repository',
     icon: GitHubMark,
-    brandClassName: cx(
-      'border-[#24292f] bg-[#24292f] text-white',
-      'shadow-[0_2px_7px_rgba(15,23,42,0.16)]',
-      'hover:border-[#1b1f23] hover:bg-[#1b1f23]',
-      'hover:shadow-[0_4px_10px_rgba(15,23,42,0.22)]'
+    iconColor: '#24292f',
+    surfaceClassName: cx(
+      'border-[#d0d7de] bg-[#ffffff]',
+      'shadow-[0_1px_3px_rgba(15,23,42,0.10)]',
+      'hover:border-[#afb8c1] hover:bg-[#f6f8fa]',
+      'hover:shadow-[0_3px_8px_rgba(15,23,42,0.14)]'
     ),
-    arrowClassName: 'text-white/65 group-hover:text-white',
   },
   {
     href: AUTHOR_PROFILE_URL,
     label: 'LinkedIn Profile',
     icon: LinkedInMark,
-    brandClassName: cx(
-      'border-[#0A66C2] bg-[#0A66C2] text-white',
-      'shadow-[0_2px_7px_rgba(10,102,194,0.20)]',
-      'hover:border-[#004182] hover:bg-[#004182]',
-      'hover:shadow-[0_4px_10px_rgba(10,102,194,0.26)]'
+    iconColor: '#0A66C2',
+    surfaceClassName: cx(
+      'border-[#b7d5f2] bg-[#f5faff]',
+      'shadow-[0_1px_3px_rgba(10,102,194,0.10)]',
+      'hover:border-[#79b5e8] hover:bg-[#edf6ff]',
+      'hover:shadow-[0_3px_8px_rgba(10,102,194,0.14)]'
     ),
-    arrowClassName: 'text-white/70 group-hover:text-white',
   },
 ]
 
 const BADGE_BASE = cx(
-  'group inline-flex min-h-touch w-full items-center justify-center gap-2 rounded-lg px-3',
-  'text-sm font-semibold sm:min-h-9 sm:w-auto',
-  'border',
-  'transition-[background-color,border-color,box-shadow,transform] duration-(--arpi-motion-fast)',
-  'ease-(--arpi-ease-standard)',
-  'hover:-translate-y-px',
-  'active:translate-y-px'
+  'group inline-flex min-h-touch w-full items-center justify-start gap-2 rounded-lg px-4',
+  'border text-sm font-medium text-ink',
+  'sm:min-h-9 sm:w-auto sm:justify-center sm:px-3',
+  'transition-[background-color,border-color,box-shadow,transform]',
+  'duration-(--arpi-motion-fast) ease-(--arpi-ease-standard)',
+  'hover:-translate-y-px active:translate-y-px'
 )
 
 export function ExecutiveProfileLinks() {
@@ -84,23 +83,28 @@ export function ExecutiveProfileLinks() {
       className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:items-center"
     >
       {EXECUTIVE_PROFILE_LINKS.map(
-        ({ href, label, icon: Icon, brandClassName, arrowClassName }) => (
+        ({ href, label, icon: Icon, iconColor, surfaceClassName }) => (
           <a
             key={href}
             href={href}
             target="_blank"
             rel="noopener noreferrer"
-            className={cx(BADGE_BASE, brandClassName)}
+            className={cx(BADGE_BASE, surfaceClassName)}
           >
-            <Icon aria-hidden="true" className="size-[17px] shrink-0 text-white" />
+            <Icon
+              aria-hidden="true"
+              className="size-[18px] shrink-0"
+              style={{ color: iconColor }}
+            />
 
             <span>{label}</span>
 
             <ArrowUpRight
               aria-hidden="true"
               className={cx(
-                'size-3.5 shrink-0 transition-colors duration-(--arpi-motion-fast)',
-                arrowClassName
+                'ml-auto size-3.5 shrink-0 text-ink-faint',
+                'transition-colors duration-(--arpi-motion-fast)',
+                'group-hover:text-ink-secondary sm:ml-0'
               )}
               strokeWidth={2}
             />
