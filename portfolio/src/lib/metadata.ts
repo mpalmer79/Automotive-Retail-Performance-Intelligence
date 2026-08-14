@@ -21,7 +21,18 @@ import {
   type RouteKey,
 } from './site'
 
-export const OG_IMAGE_PATH = '/social-preview.png'
+/**
+ * The social card, and the one path it is served from.
+ *
+ * `/brand/social-preview.png` RATHER THAN `/social-preview.png`, since ADR-0016. The card
+ * used to be a rendered artefact: `public/brand/social-preview.svg` was the master,
+ * `npm run assets` rasterised it to `public/social-preview.png`, and the source of truth
+ * lived beside the other brand masters while the output lived at the public root. That
+ * arrangement is retired. The card is now a supplied raster committed at the path it is
+ * served from — one file, one location, no generation step, nothing to regenerate and
+ * nothing that can drift from a master.
+ */
+export const OG_IMAGE_PATH = '/brand/social-preview.png'
 export const OG_IMAGE_WIDTH = 1200
 export const OG_IMAGE_HEIGHT = 630
 
@@ -33,15 +44,26 @@ export const OG_IMAGE_HEIGHT = 630
  * card is exactly the context where a reader may get the text and not the
  * image. Kept in one constant so the two places that reference the image cannot
  * describe it differently, and updated whenever
- * `public/brand/social-preview.svg` changes.
+ * `public/brand/social-preview.png` changes.
+ *
+ * IT NAMES THE REGIONS AND NOT THE FIGURES, AND THAT IS ADR-0016 SHOWING THROUGH. The
+ * previous card was governed output — every value on it was reconciled against
+ * `buildExecutiveOverview()` by `media.test.ts`, so the alt text could safely read those
+ * values out. This card is an illustrative interface rendering whose figures are NOT
+ * governed output and do not reconcile with it. Repeating them here would put unreconciled
+ * numbers into the accessibility tree, where they would be indistinguishable from the
+ * product's real ones — the failure mode being described to the one reader who cannot see
+ * that they sit inside a stylised marketing composition. So the description says what kind
+ * of thing is on the card and stops short of quoting any value.
  */
 export const OG_IMAGE_ALT =
-  `${SITE_TITLE}. A dark card carrying the ARPI mark and the line "dealership management intelligence", above the operating domains ` +
-  'sales, inventory, F&I, leads and accounting, and a diagram of the raw, staging, warehouse and reporting layers resolving into a ' +
-  'governed KPI model. Beside it, the Executive Command Center: four figures for December 2025 across all stores — 92 retail units, ' +
-  '$321,935 total gross, $3,499 gross per retail unit and 40.4% aged inventory — a six-month total-gross trend that falls through ' +
-  'October and partly recovers, and $5,438,057 of inventory investment with the aged share marked on a bar. ' +
-  `A panel states that the data is synthetic and that Granite Auto Group is fictional. Built by ${SITE_AUTHOR}.`
+  `${SITE_TITLE}. A light card carrying the ARPI wordmark, the words "Automotive Retail Performance Intelligence" and the line ` +
+  '"Governed. Traceable. Actionable.", above four marks labelled governed data, executive insights, operating workflows and ' +
+  'actionable intelligence. Beside it, an illustrative rendering of an executive dealership analytics dashboard: a row of ' +
+  'summary metric tiles with sparklines, a performance trend chart, a sales funnel and an inventory health ring, with an ' +
+  'executive summary and an attention list beneath them. The figures shown in the rendering are illustrative and are not ' +
+  'governed output. The data is synthetic and Granite Auto Group is fictional. ' +
+  `Built by ${SITE_AUTHOR}.`
 
 /** The site-wide metadata, applied in the root layout. */
 export const rootMetadata: Metadata = {

@@ -64,7 +64,9 @@ describe('the social card contract holds on every route, not just the root layou
   it('declares the governed image path and its 1200 x 630 geometry', () => {
     // The three constants a social crawler reads as a unit. LinkedIn and X both
     // require the dimensions to size the card before the image has loaded.
-    expect(OG_IMAGE_PATH).toBe('/social-preview.png')
+    // `/brand/social-preview.png` since ADR-0016: the card is committed at the path it
+    // is served from, rather than being rendered from a master into the public root.
+    expect(OG_IMAGE_PATH).toBe('/brand/social-preview.png')
     expect(OG_IMAGE_WIDTH).toBe(1200)
     expect(OG_IMAGE_HEIGHT).toBe(630)
   })

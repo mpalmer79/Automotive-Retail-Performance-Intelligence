@@ -899,14 +899,26 @@ reads as a data structure at 512px and as a mark at 16px, which is the only real
 
 **Wordmark** — `ARPI` in Space Grotesk with the lattice as a leading glyph.
 
-Shipped as `public/favicon.svg`, `public/brand/monogram.svg`,
-`public/brand/wordmark.svg`, `public/brand/social-preview.svg`, plus three rasters
-rendered from those SVGs by `npm run assets`: `favicon-32.png`,
-`apple-touch-icon.png`, and `social-preview.png` at 1200×630.
+Shipped as `public/favicon.svg`, `public/brand/monogram.svg` and
+`public/brand/wordmark.svg`, plus two rasters rendered from those SVGs by
+`npm run assets`: `favicon-32.png` and `apple-touch-icon.png`.
 
-The social preview carries the project name, the one-line description and the synthetic-
-data disclosure. A share card that omitted the disclosure would be the one surface where
-the site implied real dealership data.
+The share card is no longer one of them. ADR-0016 retired `brand/social-preview.svg`
+and the render step that produced `social-preview.png`; the card is now a supplied
+raster committed directly at `public/brand/social-preview.png` at 1200×630.
+
+The social preview carries the project name and the positioning line. **It no longer
+carries the synthetic-data disclosure**, and that is a known regression rather than a
+simplification: the retired card stated "Synthetic data" and "Granite Auto Group is
+fictional" on the face of the image, and the supplied raster states neither while still
+drawing dealership KPI tiles. This paragraph previously read that a share card omitting
+the disclosure "would be the one surface where the site implied real dealership data" —
+that sentence described the rule correctly and the current card does not meet it.
+
+ADR-0016 records the trade and the reason it was accepted. The disclosure survives only in
+the card's alternative text, which reaches a screen-reader user and not someone looking at
+a share preview. Restoring it to the image is the recommended fix the next time the asset
+is re-exported.
 
 ---
 

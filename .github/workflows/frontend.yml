@@ -382,7 +382,7 @@ jobs:
                       '/technical?view=product-vision' /about /inventory /case-study \
                       /dashboard/sales-gross /dashboard/deals /dashboard/inventory /dashboard/fi \
                       /dashboard/leads-marketing /dashboard/employees /dashboard/accounting \
-                      /robots.txt /sitemap.xml /manifest.webmanifest /favicon.svg /social-preview.png; do
+                      /robots.txt /sitemap.xml /manifest.webmanifest /favicon.svg /brand/social-preview.png; do
             code="$(curl -s -o /dev/null -w '%{http_code}' "${base}${path}")"
             if [ "$code" != "200" ]; then
               echo "::error title=Served site::${path} returned ${code}"

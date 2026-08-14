@@ -522,7 +522,7 @@ for (const [name, value] of [
 
 const imagePath = ogImage !== null && ogImage.startsWith(ORIGIN)
   ? ogImage.slice(ORIGIN.length)
-  : '/social-preview.png'
+  : '/brand/social-preview.png'
 const image = await get(imagePath, 'image/png')
 if (image.status !== 200) {
   report.failed('og-image-fetch', `GET ${imagePath} answered ${image.status}, expected 200.`)

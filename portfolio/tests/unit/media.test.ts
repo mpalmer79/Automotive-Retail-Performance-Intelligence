@@ -3,10 +3,18 @@
  *
  * WHAT THIS SUITE IS FOR
  * ----------------------
- * This site publishes five product images and one social card, and it makes a
- * strong claim about all six: that they are straight captures of routes of this
- * application, or a card that states only what the repository can prove. A
- * reader cannot check that claim. These tests are the check.
+ * This site publishes five product images and one social card. The five product
+ * images carry a strong claim: that they are straight captures of routes of this
+ * application. A reader cannot check that claim. These tests are the check.
+ *
+ * THE SOCIAL CARD NO LONGER CARRIES THAT CLAIM, AND SAYING SO IS THE POINT.
+ * Until ADR-0016 it was governed output — an SVG whose every figure was reconciled
+ * here against `buildExecutiveOverview()`, character for character. It is now a
+ * supplied raster whose figures are illustrative and do NOT reconcile with the
+ * governed selectors. That is a real reduction in what this file can prove, it is
+ * recorded in ADR-0016 rather than left to be inferred from a deleted test, and the
+ * rules that a raster still admits are asserted further down against the one piece of
+ * text the card still has: its alternative text.
  *
  * They cannot verify that a WebP is a photograph of the right page - that needs
  * eyes, and `scripts/capture-product-media.ts` plus a review of the diff is how
@@ -17,8 +25,11 @@
  *   - a capture whose real pixel dimensions have drifted from the ones the tour
  *     declares, which reserves the wrong box and shifts the layout on load,
  *   - a capture that has quietly become large enough to matter on a phone,
- *   - a raster asset that no longer matches the SVG it is rendered from,
- *   - a social card that has started asserting a business result.
+ *   - a social card at the wrong size, over its byte budget, or served from a path
+ *     the metadata does not point at,
+ *   - a retired social asset reappearing, or the supplied card being overwritten by
+ *     a regenerated one,
+ *   - alternative text that quotes an unreconciled figure as though it were a result.
  */
 import { existsSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
@@ -26,11 +37,13 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import { TOUR_STEPS } from '@/components/sections/product-tour'
-import { formatMetric } from '@/components/dashboard/metric'
 import { dashboardStores } from '@/lib/dashboard/data'
-import { buildExecutiveOverview } from '@/lib/dashboard/executive'
-import { parseFilters } from '@/lib/dashboard/filters'
-import { OG_IMAGE_HEIGHT, OG_IMAGE_PATH, OG_IMAGE_WIDTH } from '@/lib/metadata'
+import {
+  OG_IMAGE_ALT,
+  OG_IMAGE_HEIGHT,
+  OG_IMAGE_PATH,
+  OG_IMAGE_WIDTH,
+} from '@/lib/metadata'
 
 const PUBLIC_DIR = join(process.cwd(), 'public')
 
@@ -183,10 +196,15 @@ describe('the product tour captures', () => {
 
 describe('the social card', () => {
   const png = join(PUBLIC_DIR, OG_IMAGE_PATH)
-  const svg = join(PUBLIC_DIR, 'brand/social-preview.svg')
 
   it('is committed at the declared path', () => {
-    expect(existsSync(png)).toBe(true)
+    expect(existsSync(png), `${OG_IMAGE_PATH} is not committed`).toBe(true)
+  })
+
+  it('is served from the brand directory, where its master used to live', () => {
+    // ADR-0016. One file at one path: the card is committed where it is served from,
+    // rather than being an output rendered from a master somewhere else.
+    expect(OG_IMAGE_PATH).toBe('/brand/social-preview.png')
   })
 
   it('is the size every social platform crops from', () => {
@@ -202,95 +220,147 @@ describe('the social card', () => {
     expect(buffer.readUInt32BE(20)).toBe(OG_IMAGE_HEIGHT)
   })
 
-  it('names the author and states the group is fictional', () => {
-    const source = readFileSync(svg, 'utf8')
-    expect(source).toContain('Michael Palmer')
-    expect(source).toMatch(/fictional/i)
-    expect(source).toMatch(/synthetic/i)
-  })
-
-  /*
-   * WHAT REPLACED "THE CARD SHOWS NO VALUE", AND WHY.
-   *
-   * Until the `DASH.13` closeout this block asserted that the card contained no
-   * currency amount, no percentage and no unit count. That was the right rule for
-   * the card it was written against: that card drew a wireframe of `/inventory`
-   * with empty cells, and any figure in an empty wireframe would have been
-   * invented.
-   *
-   * The replacement card carries four KPI values and a six-month trend, and the
-   * rule that makes THAT honest is not "no numbers" — it is "every number is the
-   * product's own output, and can be recomputed". So the assertion is now the
-   * stronger one: the figures printed on the card are compared against
-   * `buildExecutiveOverview()`, the same governed path that renders `/`.
-   *
-   * This also closes a failure mode the old rule could not see. A card with
-   * hand-typed figures passes "no invented values" the day it is drawn and goes
-   * silently stale the first time the synthetic dataset is regenerated. This test
-   * fails on that day instead.
-   */
-  describe('every figure on it is the product’s own output', () => {
-    const source = readFileSync(svg, 'utf8')
-    const drawnText = [...source.matchAll(/>([^<]+)</g)]
-      .map((match) => match[1]?.trim() ?? '')
-      .join(' ')
-
-    const parsed = parseFilters({})
-    const overview = buildExecutiveOverview(parsed.filters, parsed.reset)
-    const valueOf = (label: string): string => {
-      const card = overview.cards.find((candidate) => candidate.label === label)
-      expect(card, `the page no longer renders a "${label}" card`).toBeDefined()
-      return String(formatMetric(card!.metric.selector, card!.metric.current))
-    }
-
-    it.each([
-      ['Retail units'],
-      ['Total gross'],
-      ['Total gross per retail unit'],
-      ['Aged inventory percentage'],
-      ['Inventory investment'],
-    ])('draws the live value of %s', (label) => {
-      const rendered = valueOf(label)
-      expect(
-        drawnText,
-        `the card does not show ${rendered}, which is what the Executive Command ` +
-          `Center currently computes for "${label}". Regenerate the card from the ` +
-          'current dataset rather than editing the number: public/brand/social-preview.svg ' +
-          'is the master and its header comment records the provenance of every figure.'
-      ).toContain(rendered)
-    })
-
-    it('draws the period those figures were read over', () => {
-      // A figure without its period is not checkable, which is the whole reason
-      // the values are allowed on the card at all.
-      expect(drawnText.toUpperCase()).toContain(
-        overview.periodContext.period.label.toUpperCase()
-      )
-    })
-
-    it('keeps the synthetic disclosure in the same visual weight as the figures', () => {
-      // The disclosure is not small print. It gets a bordered panel and an accent
-      // colour, and this asserts the panel is still there rather than trusting
-      // that the word "synthetic" appears somewhere in a comment.
-      const body = source.slice(source.indexOf('</defs>'))
-      expect(body).toMatch(/Synthetic data/)
-      expect(body).toMatch(/Granite Auto Group is fictional/)
-    })
-
-    it('names no store and no employee', () => {
-      // Fairness freeze, applied to the one surface whose context cannot travel
-      // with the picture. In the product a store comparison carries its
-      // disclosures; cropped into a social card it reads as a league table.
-      for (const store of dashboardStores) {
-        for (const naming of [store.name, store.shortName]) {
-          expect(drawnText, `the card names the store "${naming}"`).not.toContain(naming)
-        }
-      }
-      expect(drawnText).not.toMatch(/\bsalesperson|\badvisor\b|\bemployee of\b/i)
-    })
-  })
-
   it('stays small enough to be fetched by a link unfurler', () => {
     expect(statSync(png).size).toBeLessThanOrEqual(300 * 1024)
+  })
+})
+
+/* -------------------------------------------------------------------------- */
+/* The retired social-card architecture                                        */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * ADR-0016 retired an SVG master and a rendered output. Both are deleted, and these
+ * tests are what stop either from coming back by accident.
+ *
+ * The failure modes are silent, which is why they are worth a test rather than a note.
+ * A regenerated `public/social-preview.png` would sit at a URL nothing references, so
+ * the site would carry two social cards free to disagree. A render target pointed at
+ * `public/brand/social-preview.png` would OVERWRITE the supplied card with whatever it
+ * drew. Neither breaks a build; both are only visible on a share preview.
+ */
+describe('the retired social-card architecture stays retired', () => {
+  it('no longer keeps a rendered card at the public root', () => {
+    expect(
+      existsSync(join(PUBLIC_DIR, 'social-preview.png')),
+      'public/social-preview.png was retired by ADR-0016 and has come back'
+    ).toBe(false)
+  })
+
+  it('no longer keeps an SVG master for the card', () => {
+    expect(
+      existsSync(join(PUBLIC_DIR, 'brand/social-preview.svg')),
+      'brand/social-preview.svg was retired by ADR-0016 and has come back'
+    ).toBe(false)
+  })
+
+  it('cannot be regenerated by the raster pipeline', () => {
+    // The script that used to write the card. It must name neither retired path: not
+    // the old output, and not the supplied card it would overwrite.
+    const script = readFileSync(
+      join(process.cwd(), 'scripts/render-raster-assets.ts'),
+      'utf8'
+    )
+    const targets = [...script.matchAll(/output:\s*'([^']+)'/g)].map((match) => match[1])
+    expect(targets).not.toContain('social-preview.png')
+    expect(targets).not.toContain('brand/social-preview.png')
+    expect([...script.matchAll(/source:\s*'([^']+)'/g)].map((m) => m[1])).not.toContain(
+      'brand/social-preview.svg'
+    )
+  })
+})
+
+/* -------------------------------------------------------------------------- */
+/* What replaced the figure reconciliation                                     */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * THE SAFEGUARD THIS BLOCK REPLACES, AND WHY IT COULD NOT SURVIVE UNCHANGED.
+ *
+ * Until ADR-0016 this file asserted that EVERY figure drawn on the social card equalled
+ * the figure `buildExecutiveOverview()` computes, character for character. That was a
+ * strong rule and it was mechanically checkable for one reason only: the card was an SVG,
+ * so its figures were text a test could read.
+ *
+ * The card is now a supplied raster. There is no text to read, so the reconciliation
+ * cannot be performed at all — and the current asset would not pass it if it could. Its
+ * figures are illustrative: it labels 92 as `ROSI`, a metric this project does not define;
+ * it prints `Total Sales $3,499`, which is the governed value of gross per retail unit;
+ * and its 64% inventory health and 20.5% close rate do not reconcile with the governed
+ * 40.4% aged inventory and 1.5% lead-to-sale conversion. ADR-0016 records that trade
+ * openly rather than leaving a deleted test to imply the rule was met.
+ *
+ * WHAT IS ASSERTED INSTEAD IS NOT NOTHING. The card still has text — its alternative
+ * text — and that is the copy a screen-reader user actually receives. So the honesty
+ * rules move onto it: the alt text may not quote a figure as though it were a result, it
+ * must say the rendering is illustrative, and it stays under the fairness freeze that
+ * forbids naming a store or an employee on the one surface whose context cannot travel
+ * with the picture.
+ *
+ * This is a genuinely weaker guarantee than reconciliation and is recorded as such. It is
+ * the strongest rule that a raster admits.
+ */
+describe('the social card does not present itself as governed output', () => {
+  it('says in its alternative text that the figures are illustrative', () => {
+    expect(OG_IMAGE_ALT).toMatch(/illustrative/i)
+    expect(OG_IMAGE_ALT).toMatch(/not governed output/i)
+  })
+
+  it('carries the synthetic-data disclosure the image itself has lost', () => {
+    /*
+     * THE REGRESSION THIS PINS, STATED PLAINLY. The retired card printed "Synthetic
+     * data" and "Granite Auto Group is fictional" on the face of the image. The supplied
+     * raster prints neither while still drawing dealership KPI tiles, so the alt text is
+     * now the ONLY place the disclosure survives — and it reaches a screen-reader user
+     * rather than someone looking at a share preview.
+     *
+     * That is a weaker position than the project held before, it is recorded in ADR-0016
+     * and in DESIGN_SYSTEM.md section 8, and this test is what stops the last remaining
+     * copy of the disclosure being edited away too.
+     */
+    expect(OG_IMAGE_ALT).toMatch(/synthetic/i)
+    expect(OG_IMAGE_ALT).toMatch(/fictional/i)
+  })
+
+  it('quotes no figure as though it were a result', () => {
+    /*
+     * The load-bearing assertion. The previous card was allowed to print values BECAUSE
+     * they reconciled; this one does not reconcile, so its description may not read any
+     * value out. A currency amount, a percentage or a unit count in this string would
+     * reach a screen-reader user with nothing to mark it as illustrative.
+     */
+    expect(OG_IMAGE_ALT, 'the alt text quotes a currency amount').not.toMatch(/\$[\d,]+/)
+    expect(OG_IMAGE_ALT, 'the alt text quotes a percentage').not.toMatch(
+      /\d+(\.\d+)?\s?%/
+    )
+    expect(OG_IMAGE_ALT, 'the alt text quotes a unit count').not.toMatch(
+      /\b\d[\d,]*\s+(retail units|units|leads|deals|appointments)\b/i
+    )
+  })
+
+  it('claims no business result', () => {
+    for (const forbidden of [
+      /\bincreased? (sales|gross|revenue|profit|turn)\b/i,
+      /\bimproved? (sales|gross|revenue|profit|turn)\b/i,
+      /\breduced? (days supply|aging|aged inventory)\b/i,
+      /\b\d+% (increase|improvement|lift|growth)\b/i,
+      /\bROI\b/,
+    ]) {
+      expect(OG_IMAGE_ALT, 'the alt text asserts a business result').not.toMatch(
+        forbidden
+      )
+    }
+  })
+
+  it('names no store and no employee', () => {
+    // The fairness freeze, kept from the retired block. In the product a store
+    // comparison carries its disclosures; cropped into a social card it reads as a
+    // league table.
+    for (const store of dashboardStores) {
+      for (const naming of [store.name, store.shortName]) {
+        expect(OG_IMAGE_ALT, `the card names the store "${naming}"`).not.toContain(naming)
+      }
+    }
+    expect(OG_IMAGE_ALT).not.toMatch(/\bsalesperson|\badvisor\b|\bemployee of\b/i)
   })
 })
