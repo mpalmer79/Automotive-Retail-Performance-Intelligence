@@ -2,18 +2,30 @@
 /**
  * Render the raster assets that the SVG masters cannot substitute for.
  *
- * Three files, and each one exists for a specific reason rather than for
+ * Two files, and each one exists for a specific reason rather than for
  * completeness:
  *
- *   public/social-preview.png    Open Graph and Twitter card consumers do not
- *                                reliably render SVG. This is the only image on
- *                                the site that is raster by necessity.
  *   public/favicon-32.png        A fallback for browsers that ignore the SVG
  *                                favicon.
  *   public/apple-touch-icon.png  iOS home-screen icon; SVG is not accepted.
  *
  * Everything else on the site - the marks, the diagrams, the motifs - is SVG and
  * is never rasterised.
+ *
+ * WHAT THIS SCRIPT NO LONGER RENDERS, AND MUST NOT START RENDERING AGAIN
+ * ---------------------------------------------------------------------
+ * The social card. It used to be the first target here: `brand/social-preview.svg`
+ * rasterised to `public/social-preview.png` at 1200 x 630. ADR-0016 retired that
+ * arrangement. The card is now a supplied raster committed directly at
+ * `public/brand/social-preview.png`, there is no SVG master to render from, and the
+ * old output path is deleted.
+ *
+ * Two failure modes are worth naming, because both are silent. Re-adding a social
+ * target that writes `public/social-preview.png` would resurrect a retired asset at a
+ * URL nothing references, and the site would carry two social cards that could
+ * disagree. Re-adding one that writes `public/brand/social-preview.png` would
+ * OVERWRITE the supplied card with whatever it rendered. `media.test.ts` asserts this
+ * script names neither path, so neither can happen by accident.
  *
  * The renderer is the Chromium that Playwright already provides, so this adds no
  * dependency. The script is NOT part of `npm run build`: the outputs are
@@ -43,12 +55,6 @@ interface Target {
 }
 
 const TARGETS: readonly Target[] = [
-  {
-    source: 'brand/social-preview.svg',
-    output: 'social-preview.png',
-    width: 1200,
-    height: 630,
-  },
   { source: 'favicon.svg', output: 'favicon-32.png', width: 32, height: 32 },
   { source: 'favicon.svg', output: 'apple-touch-icon.png', width: 180, height: 180 },
 ]

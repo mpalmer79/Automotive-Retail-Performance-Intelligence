@@ -630,10 +630,22 @@ test.describe('the copy makes claims with referents', () => {
     })
   }
 
-  test('the social preview card uses none of them either', async ({ request }) => {
-    // The one surface a reader sees before the site loads.
-    const svg = await (await request.get('/brand/social-preview.svg')).text()
-    const lower = svg.toLowerCase()
+  test('the social preview card uses none of them either', async ({ page }) => {
+    /*
+     * The one surface a reader sees before the site loads.
+     *
+     * READ FROM THE ALT TEXT, NOT FROM THE CARD. Until ADR-0016 the card was an SVG and
+     * this test read its drawn text directly. It is now a supplied raster with no text in
+     * it, so the only copy the card carries is its alternative text — which is also the
+     * copy a screen-reader user receives, and therefore the one that has to be clean.
+     * Checked through the rendered document rather than against the constant, so a phrase
+     * reaching the crawler through the metadata layer is caught the same way.
+     */
+    await gotoRendered(page, '/')
+    const alt =
+      (await page.locator('meta[property="og:image:alt"]').getAttribute('content')) ?? ''
+    expect(alt.length, 'the social card declares no alternative text').toBeGreaterThan(0)
+    const lower = alt.toLowerCase()
     expect(BANNED.filter((phrase) => lower.includes(phrase))).toEqual([])
   })
 

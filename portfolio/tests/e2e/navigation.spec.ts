@@ -672,9 +672,40 @@ test.describe('metadata and discovery', () => {
   })
 
   test('serves the social preview image itself', async ({ request }) => {
-    const response = await request.get('/social-preview.png')
+    const response = await request.get('/brand/social-preview.png')
     expect(response.status()).toBe(200)
     expect(response.headers()['content-type']).toContain('image/png')
+  })
+
+  test('no longer serves the retired root-level social card', async ({ request }) => {
+    /*
+     * ADR-0016 deleted `public/social-preview.png`. Asserting the 404 is what stops the
+     * file being restored "just in case": two social cards at two URLs are free to
+     * disagree, and the one nothing references is the one nobody would notice going
+     * stale.
+     */
+    const response = await request.get('/social-preview.png')
+    expect(response.status()).toBe(404)
+  })
+
+  test('points Open Graph and Twitter at the same canonical card', async ({ page }) => {
+    /*
+     * The metadata half of ADR-0016. A crawler reads `og:image`; X reads
+     * `twitter:image` and falls back to `og:image` only when it is absent. If the two
+     * ever named different files, the card a reader saw would depend on where the link
+     * was pasted — and only one of the two would be the file the tests measure.
+     */
+    for (const route of PRIMARY_ROUTES) {
+      await page.goto(route.path)
+      await expect(page.locator('meta[property="og:image"]'), route.path).toHaveAttribute(
+        'content',
+        /\/brand\/social-preview\.png$/
+      )
+      await expect(
+        page.locator('meta[name="twitter:image"]'),
+        route.path
+      ).toHaveAttribute('content', /\/brand\/social-preview\.png$/)
+    }
   })
 
   test('serves a sitemap listing every indexable route and excluding the UI lab', async ({

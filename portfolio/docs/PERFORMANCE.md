@@ -211,10 +211,9 @@ photography anywhere, no icon sprite sheet, and no decorative raster.
 | `favicon.svg`                         | 794     | tab icon                                                    |
 | `brand/monogram.svg`                  | 887     | header, footer                                              |
 | `brand/wordmark.svg`                  | 1,392   | brand contexts                                              |
-| `brand/social-preview.svg`            | 13,858  | source for the share card                                   |
 | `favicon-32.png`                      | 927     | legacy tab icon                                             |
 | `apple-touch-icon.png`                | 5,029   | iOS home screen                                             |
-| `social-preview.png`                  | 104,453 | Open Graph / Twitter card — **never requested by the site** |
+| `brand/social-preview.png`            | 193,646 | Open Graph / Twitter card — **never requested by the site** |
 | `media/inventory-explorer.webp`       | 47,236  | product tour, step 2                                        |
 | `media/kpi-catalogue.webp`            | 57,554  | product tour, step 5                                        |
 | `media/data-model-explorer.webp`      | 64,280  | product tour, step 4                                        |

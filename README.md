@@ -4,7 +4,7 @@
 
 It runs on a fictional three-store dealer group and entirely synthetic data. Every figure it produces is reproducible from this repository alone.
 
-![The ARPI Executive Command Center: retail units, total gross, gross per retail unit and aged inventory for December 2025, a six-month gross trend, and the inventory position — all from synthetic data for a fictional dealer group](portfolio/public/social-preview.png)
+![The ARPI card: the wordmark, "Automotive Retail Performance Intelligence" and the line "Governed. Traceable. Actionable.", beside an illustrative rendering of an executive dealership analytics dashboard — metric tiles, a performance trend, a sales funnel and an inventory health ring. The figures in the rendering are illustrative and are not governed output; the data is synthetic and Granite Auto Group is fictional](portfolio/public/brand/social-preview.png)
 
 > **Release status.** ARPI is **not yet publicly deployed.** A production release is approved and the
 > release tooling is built and tested; the only deployed environment is a protected preview that

@@ -36,6 +36,17 @@
 > configured in GitHub Actions. `DASH-13-REVIEW.md` §11 is the record, including the workflow run that
 > establishes the blocker.
 >
+> **4. Row 12's social-card architecture no longer exists, as of ADR-0016 (14 August 2026).** The row
+> is left as written because it is the record of what was audited. A later reader should know that both
+> files it names are now deleted: `public/brand/social-preview.svg` and `public/social-preview.png`. The
+> card is a supplied raster committed at `public/brand/social-preview.png`, there is no render step, and
+> the rule the row rests on — "**no KPI value of any kind**" — was replaced at the `DASH.13` closeout by
+> a stronger reconciliation rule and then **withdrawn** by
+> [ADR-0016](docs/architecture-decisions/ADR-0016-social-card-as-an-illustrative-raster.md), which
+> records openly that the current card's figures are illustrative and do not reconcile with governed
+> output. Row 12's verdict of **Rejected** was correct for the card it examined and does not carry
+> forward to the current one.
+>
 > Nothing below has been edited to agree with `DASH.13`. Where this document and `DASH.13` differ on a
 > fact about the current tree, `DASH.13` is later and wins.
 
