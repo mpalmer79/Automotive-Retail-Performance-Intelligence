@@ -624,10 +624,10 @@ export function FunnelChart({
             ) : (
               <span
                 aria-hidden="true"
-                className="flex h-4 w-full items-center gap-2 overflow-hidden rounded-xs bg-surface-sunken"
+                className="flex h-5 w-full items-center gap-2 overflow-hidden rounded-sm bg-surface-sunken"
               >
                 <span
-                  className="h-full rounded-xs bg-data-primary"
+                  className="h-full rounded-sm bg-data-primary"
                   style={{ width: percent(stage.share) }}
                 />
                 <span className="numeric shrink-0 pr-1 text-2xs text-ink-faint">

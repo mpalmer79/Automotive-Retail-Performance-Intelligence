@@ -133,7 +133,7 @@ export function LeadFunnel({
         headingLevel={3}
       />
 
-      <dl className="grid grid-cols-2 gap-x-4 gap-y-2 border-t border-line-subtle pt-3 xl:grid-cols-4">
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-2 border-t border-line-subtle pt-3 @xl:grid-cols-4">
         {responses.map((response) => (
           <div key={response.label} className="flex min-w-0 flex-col gap-0.5">
             <dt className="text-xs text-ink-muted">{response.label}</dt>

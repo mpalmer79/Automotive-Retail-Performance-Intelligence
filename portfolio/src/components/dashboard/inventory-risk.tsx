@@ -103,7 +103,16 @@ export function InventoryRisk({
 
   return (
     <div className="flex flex-col gap-4">
-      <dl className="grid grid-cols-2 gap-x-4 gap-y-3 xl:grid-cols-4">
+      {/*
+        A CONTAINER QUERY, NOT A VIEWPORT ONE — `EXEC.1`.
+
+        `xl:grid-cols-4` asked how wide the WINDOW was. This module is five of twelve
+        columns, so on a 1440 px desktop it satisfied `xl` at about 560 px wide and drew
+        four ~130 px columns: `Inventory investment` wrapped to three lines above a value
+        that only just fitted. The module declares `@container`, so the honest question is
+        how wide THIS PANEL is, and four columns are taken only where four columns fit.
+      */}
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-3 @xl:grid-cols-4">
         {figures.map((figure) => (
           <div key={figure.label} className="flex min-w-0 flex-col gap-0.5">
             <dt className="text-xs font-medium text-ink-secondary">{figure.label}</dt>

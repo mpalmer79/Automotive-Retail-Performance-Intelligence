@@ -53,6 +53,33 @@ import { cx } from '@/lib/utils'
  * statement, which the rail carries persistently and this band restates in the
  * disclosure's own summary. A reader can never be looking at a figure without a
  * statement on screen that the dealer group is fictional.
+ *
+ * WHAT `EXEC.1` CHANGED, AND WHAT IT POINTEDLY DID NOT
+ * ---------------------------------------------------
+ * Measured on the Executive route before this pass: the band was 298 px on a 390 px
+ * phone, 418 px on a tablet and 216 px on a desktop, and every pixel of it was chrome
+ * above the first figure. Three things were doing it.
+ *
+ *   1. THE GROUND. The band was `evidence` — the recessed instrumentation tone — so the
+ *      product opened with a grey utility strip and the working surface below it was the
+ *      brightest thing on the page. That is backwards for an operating console: the band
+ *      is the application's header and the workspace is the instrument. The band is white
+ *      now and the workspace is recessed, which is also what makes a module read as a card
+ *      (see `workspace-grid.tsx`).
+ *   2. THE SCOPE LINE. Title and context were two stacked blocks. They are one baseline
+ *      row from `sm` up, because "Executive" and "All three stores · December 2025" are a
+ *      heading and its qualifier, not two paragraphs.
+ *   3. THE DEMO STATEMENT. It was a bordered box the width of the band, which made the
+ *      one sentence on the page that is not a figure the largest object above the figures.
+ *      It is a pill now, on the title's own row at `lg`, and it is the SAME sentence with
+ *      the SAME full statement inside it. Nothing was shortened, softened or moved out of
+ *      the first viewport — `content-integrity` asserts the full synthetic-data statement
+ *      is inside this disclosure, and it still is.
+ *
+ * The rule this band is not allowed to break: compacting the chrome may never compact the
+ * disclosure. Anything a reader must see to interpret a figure — the staleness banner, the
+ * reconciliation banner, the reset and period notices, the active-filter chips — is
+ * outside the disclosure, at full size, exactly where it was.
  */
 export interface OperatingPageHeaderProps {
   /**
@@ -158,16 +185,16 @@ export function OperatingPageHeader({
   return (
     <Section
       rhythm="none"
-      tone="evidence"
+      tone="canvas"
       data-operating-band
-      className={cx('border-b border-line py-4', className)}
+      className={cx('border-b border-line py-3 sm:py-4', className)}
     >
       <Container width="full">
         {/* `gap-3`, not `gap-4`. The control band is four stacked things on every
             operating route, and `UX.2A` §4 asks for it to be compact: sixteen pixels
             between each of them cost fifty vertical pixels that the first viewport
             contract needs for a chart. */}
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2.5 sm:gap-3">
           {backLink === undefined ? null : (
             <Link
               href={backLink.href}
@@ -177,23 +204,40 @@ export function OperatingPageHeader({
             </Link>
           )}
 
-          <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
-            <div className="flex min-w-0 flex-col gap-1">
-              <Heading level={1} size="h3">
-                {title}
-              </Heading>
-              {subtitle === undefined ? null : (
-                <Text size="sm" tone="muted">
-                  {subtitle}
-                </Text>
-              )}
-              <p className="text-sm font-medium text-ink-secondary">{context}</p>
+          <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
+            {/*
+              THE TITLE AND ITS SCOPE ARE ONE BASELINE ROW, NOT TWO BLOCKS.
+
+              `items-baseline` with `flex-wrap`: on a desktop "Executive" and
+              "All three stores · December 2025 · vs November 2025" sit on one line
+              with the scope set smaller and quieter, which is the relationship
+              between them; on a phone the scope wraps under the title and costs the
+              one line it always cost. The accent keyline is the only ornament in the
+              band and it is 2 px wide — enough to mark where the application's
+              header starts, not enough to be a graphic.
+            */}
+            <div className="flex min-w-0 items-baseline gap-3">
+              <span
+                aria-hidden="true"
+                className="mt-1 hidden h-6 w-0.5 shrink-0 self-center rounded-pill bg-accent sm:block"
+              />
+              <div className="flex min-w-0 flex-col gap-x-3 gap-y-0.5 sm:flex-row sm:flex-wrap sm:items-baseline">
+                <Heading level={1} size="h3">
+                  {title}
+                </Heading>
+                {subtitle === undefined ? null : (
+                  <Text size="sm" tone="muted">
+                    {subtitle}
+                  </Text>
+                )}
+                <p className="text-xs font-medium text-ink-muted sm:text-sm">{context}</p>
+              </div>
             </div>
 
             {methodology === undefined ? null : (
               <details
                 id={methodologyId}
-                className="min-w-0 max-w-full rounded-lg border border-line-subtle bg-surface-sunken/50"
+                className="min-w-0 max-w-full rounded-xl border border-line-subtle bg-surface"
               >
                 {/*
                   THE SUMMARY IS THE DISCLOSURE, NOT A LABEL FOR ONE.
@@ -205,8 +249,14 @@ export function OperatingPageHeader({
                   exactly one compact synthetic-demo statement in the first viewport
                   and forbids the long one; this is that statement, and the long one
                   is the first thing inside.
+
+                  `EXEC.1` MADE IT A PILL AND CHANGED NOT ONE WORD OF IT. The box it
+                  replaced was the width of the band and read as a banner; a pill
+                  reads as what it is — a caption with a disclosure behind it — and
+                  the sentence, the dot, the full statement inside and the
+                  governance link are all exactly as they were.
                 */}
-                <summary className="flex min-h-touch cursor-pointer items-center gap-2 px-3 text-xs font-medium text-ink-muted transition-colors duration-(--arpi-motion-fast) hover:text-accent">
+                <summary className="flex min-h-9 cursor-pointer list-none items-center gap-2 px-3 py-1.5 text-2xs font-medium text-ink-muted transition-colors duration-(--arpi-motion-fast) hover:text-accent [&::-webkit-details-marker]:hidden">
                   <span
                     aria-hidden="true"
                     className="inline-block size-1.5 shrink-0 rounded-pill bg-pending"
