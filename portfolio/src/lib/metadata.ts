@@ -21,7 +21,19 @@ import {
   type RouteKey,
 } from './site'
 
-export const OG_IMAGE_PATH = '/social-preview.png'
+/*
+ * THE SOCIAL CARD IS A SUPPLIED RASTER, NOT A RENDERED ONE.
+ *
+ * `public/brand/social-preview.png` is the canonical Open Graph and Twitter
+ * image. It is a hand-supplied artwork committed directly to the repository —
+ * it is NOT rendered from an SVG master by `npm run assets`, and there is no
+ * longer a `brand/social-preview.svg`. See `docs/DESIGN_SYSTEM.md` section 8 for
+ * what that changed and what the project gave up to do it.
+ *
+ * One path, referenced by every route through the two objects below, so Open
+ * Graph and Twitter can never drift onto different images.
+ */
+export const OG_IMAGE_PATH = '/brand/social-preview.png'
 export const OG_IMAGE_WIDTH = 1200
 export const OG_IMAGE_HEIGHT = 630
 
@@ -33,15 +45,23 @@ export const OG_IMAGE_HEIGHT = 630
  * card is exactly the context where a reader may get the text and not the
  * image. Kept in one constant so the two places that reference the image cannot
  * describe it differently, and updated whenever
- * `public/brand/social-preview.svg` changes.
+ * `public/brand/social-preview.png` is replaced.
+ *
+ * IT CARRIES THE SYNTHETIC-DATA DISCLOSURE, AND THAT IS DELIBERATE. The card
+ * itself no longer prints one. `og:image:alt` is the only part of the card a
+ * platform will render as text, so the disclosure that used to sit in a
+ * bordered panel on the artwork now lives here. It is the last place on this
+ * surface where a reader can be told the figures are not a real dealership's.
  */
 export const OG_IMAGE_ALT =
-  `${SITE_TITLE}. A dark card carrying the ARPI mark and the line "dealership management intelligence", above the operating domains ` +
-  'sales, inventory, F&I, leads and accounting, and a diagram of the raw, staging, warehouse and reporting layers resolving into a ' +
-  'governed KPI model. Beside it, the Executive Command Center: four figures for December 2025 across all stores — 92 retail units, ' +
-  '$321,935 total gross, $3,499 gross per retail unit and 40.4% aged inventory — a six-month total-gross trend that falls through ' +
-  'October and partly recovers, and $5,438,057 of inventory investment with the aged share marked on a bar. ' +
-  `A panel states that the data is synthetic and that Granite Auto Group is fictional. Built by ${SITE_AUTHOR}.`
+  `${SITE_TITLE}. A light card. On the left the ARPI wordmark above the full name ${SITE_TITLE}, the line ` +
+  '"Governed. Traceable. Actionable.", a description of the project as an executive dashboard and operating intelligence built ' +
+  'around trusted data and clear KPIs, and four labelled marks: governed data, executive insights, operating workflows and ' +
+  'actionable intelligence. On the right, a light executive analytics interface showing a dealership performance dashboard for ' +
+  'December 2025 compared with November 2025 — store, period and filter controls, a row of KPI tiles with sparklines, a ' +
+  'performance trend chart, a sales funnel, an inventory health ring and an executive summary row. ' +
+  'The figures on the card are illustrative: this project runs entirely on synthetic data and Granite Auto Group is fictional. ' +
+  `Built by ${SITE_AUTHOR}.`
 
 /** The site-wide metadata, applied in the root layout. */
 export const rootMetadata: Metadata = {

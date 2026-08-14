@@ -64,7 +64,7 @@ describe('the social card contract holds on every route, not just the root layou
   it('declares the governed image path and its 1200 x 630 geometry', () => {
     // The three constants a social crawler reads as a unit. LinkedIn and X both
     // require the dimensions to size the card before the image has loaded.
-    expect(OG_IMAGE_PATH).toBe('/social-preview.png')
+    expect(OG_IMAGE_PATH).toBe('/brand/social-preview.png')
     expect(OG_IMAGE_WIDTH).toBe(1200)
     expect(OG_IMAGE_HEIGHT).toBe(630)
   })
@@ -111,9 +111,45 @@ describe('the social card contract holds on every route, not just the root layou
     expect(pageMetadata(key).twitter).toMatchObject({ card: 'summary_large_image' })
   })
 
+  it.each(ROUTE_KEYS)('points Twitter at the same image as Open Graph on %s', (key) => {
+    /*
+     * Open Graph and Twitter are two tags fed from one constant, and the whole
+     * value of that is lost if only one of them is asserted. A site that moves
+     * `og:image` and leaves `twitter:image` behind serves a card that is correct
+     * on LinkedIn and stale on X, which is not a failure anyone notices from the
+     * inside.
+     */
+    const images = pageMetadata(key).twitter?.images
+    expect(Array.isArray(images)).toBe(true)
+    const [image] = images as { url: string; alt: string }[]
+    expect(image).toBeDefined()
+    if (image === undefined) return
+    expect(image.url).toBe(OG_IMAGE_PATH)
+    expect(image.alt).toBe(OG_IMAGE_ALT)
+  })
+
   it('states the same site name in the root layout as on the routes', () => {
     // Two authorities for one tag is how the original defect went unnoticed.
     expect(rootMetadata.openGraph?.siteName).toBe(SITE_TITLE)
+  })
+
+  it('serves the same card from the root layout on both networks', () => {
+    // The root layout is a third place the image is named. It has to agree.
+    const [openGraph] = rootMetadata.openGraph?.images as {
+      url: string
+      width: number
+      height: number
+      alt: string
+    }[]
+    expect(openGraph).toBeDefined()
+    expect(openGraph?.url).toBe(OG_IMAGE_PATH)
+    expect(openGraph?.width).toBe(OG_IMAGE_WIDTH)
+    expect(openGraph?.height).toBe(OG_IMAGE_HEIGHT)
+
+    const [twitter] = rootMetadata.twitter?.images as { url: string; alt: string }[]
+    expect(twitter).toBeDefined()
+    expect(twitter?.url).toBe(OG_IMAGE_PATH)
+    expect(twitter?.alt).toBe(OG_IMAGE_ALT)
   })
 })
 

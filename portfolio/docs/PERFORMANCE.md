@@ -211,19 +211,29 @@ photography anywhere, no icon sprite sheet, and no decorative raster.
 | `favicon.svg`                         | 794     | tab icon                                                    |
 | `brand/monogram.svg`                  | 887     | header, footer                                              |
 | `brand/wordmark.svg`                  | 1,392   | brand contexts                                              |
-| `brand/social-preview.svg`            | 13,858  | source for the share card                                   |
+| `brand/social-preview.png`            | 631,468 | Open Graph / Twitter card — **never requested by the site** |
 | `favicon-32.png`                      | 927     | legacy tab icon                                             |
 | `apple-touch-icon.png`                | 5,029   | iOS home screen                                             |
-| `social-preview.png`                  | 104,453 | Open Graph / Twitter card — **never requested by the site** |
 | `media/inventory-explorer.webp`       | 47,236  | product tour, step 2                                        |
 | `media/kpi-catalogue.webp`            | 57,554  | product tour, step 5                                        |
 | `media/data-model-explorer.webp`      | 64,280  | product tour, step 4                                        |
 | `media/architecture-explorer.webp`    | 64,368  | product tour, step 3                                        |
 | `media/executive-command-center.webp` | 98,878  | product tour, step 1                                        |
 
-The 104 kB social preview is fetched by a crawler generating a share card, never by
+The 631 kB social preview is fetched by a crawler generating a share card, never by
 a visitor loading a page. It is the largest file in `public/` and costs a reader
 nothing.
+
+It used to be 104 kB, and the sixfold increase is the subject rather than an
+encoding regression. The old card was a flat SVG rendered to PNG by
+`npm run assets`; the current one is a supplied raster with roughly 70,000 unique
+colours in soft gradients, which is the case PNG compresses worst. Every lossless
+route was measured — Pillow's optimiser, zopfli, and four resample filters — and
+584 kB was the floor; going lower would mean quantising the palette and banding
+the artwork. The budget in `tests/unit/media.test.ts` was raised from 300 kB to
+700 kB to match, which is still an order of magnitude inside what LinkedIn and X
+accept (5 MB). Because no page requests this file, the increase changes no
+reader-facing metric.
 
 The console capture is the largest of the five frames, and the subject is why: it
 is the only one photographed at the full viewport height, and its first screen is

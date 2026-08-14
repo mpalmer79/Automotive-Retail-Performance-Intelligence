@@ -36,6 +36,17 @@
 > configured in GitHub Actions. `DASH-13-REVIEW.md` §11 is the record, including the workflow run that
 > establishes the blocker.
 >
+> **4. Row 12's rejection no longer holds, on 14 August 2026.** That row rejected the claim "the social
+> card is stale or overclaims" on the evidence that `public/brand/social-preview.svg` rendered
+> `public/social-preview.png` and carried "built by Michael Palmer", "Granite Auto Group is fictional"
+> and **no KPI value of any kind**. All of that has been superseded. The card is now supplied artwork
+> committed at `public/brand/social-preview.png` and served from `/brand/social-preview.png`; the SVG
+> master and the root-level PNG are both deleted; and the artwork prints figures that this product does
+> not compute and carries no disclosure. The disclosure moved to `og:image:alt`. This was a deliberate,
+> authorised relaxation and it is written up in `portfolio/docs/DESIGN_SYSTEM.md` section 8 — read that
+> before citing row 12 as evidence of anything about the current tree. The row itself is left as
+> written, because it is the record of what was true on 6 August 2026.
+>
 > Nothing below has been edited to agree with `DASH.13`. Where this document and `DASH.13` differ on a
 > fact about the current tree, `DASH.13` is later and wins.
 

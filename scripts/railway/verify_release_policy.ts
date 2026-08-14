@@ -520,9 +520,27 @@ for (const [name, value] of [
 /* 5. The social image is really there, and is really 1200 x 630              */
 /* -------------------------------------------------------------------------- */
 
+/*
+ * Open Graph and Twitter must name ONE image.
+ *
+ * They are fed from a single constant in `src/lib/metadata.ts`, so a
+ * disagreement here means the deployed build is not the one that constant was
+ * compiled into — which is the build-time/runtime mismatch this tool exists to
+ * catch, and it is invisible from inside the app.
+ */
+const twitterImage = metaContent(rootHtml, 'twitter:image')
+if (ogImage !== null && twitterImage !== null && ogImage !== twitterImage) {
+  report.failed(
+    'og-twitter-image-agree',
+    `og:image is "${ogImage}" but twitter:image is "${twitterImage}". One card, one URL.`
+  )
+} else if (twitterImage !== null) {
+  report.ok('og-twitter-image-agree', twitterImage)
+}
+
 const imagePath = ogImage !== null && ogImage.startsWith(ORIGIN)
   ? ogImage.slice(ORIGIN.length)
-  : '/social-preview.png'
+  : '/brand/social-preview.png'
 const image = await get(imagePath, 'image/png')
 if (image.status !== 200) {
   report.failed('og-image-fetch', `GET ${imagePath} answered ${image.status}, expected 200.`)

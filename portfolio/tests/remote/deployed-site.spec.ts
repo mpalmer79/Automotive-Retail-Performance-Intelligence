@@ -141,7 +141,7 @@ test.describe('every route is reachable', () => {
     // `output: 'standalone'` does not populate `public/` or `.next/static`, so the
     // Dockerfile copies both. Getting that wrong produces a site that boots and
     // has no styling and no favicon — which passes a health check.
-    for (const path of ['/favicon.svg', '/favicon-32.png', '/social-preview.png']) {
+    for (const path of ['/favicon.svg', '/favicon-32.png', '/brand/social-preview.png']) {
       const response = await request.get(path)
       expect(response.status(), path).toBe(200)
     }

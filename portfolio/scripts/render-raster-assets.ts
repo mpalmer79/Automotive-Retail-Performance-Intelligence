@@ -2,15 +2,23 @@
 /**
  * Render the raster assets that the SVG masters cannot substitute for.
  *
- * Three files, and each one exists for a specific reason rather than for
+ * Two files, and each one exists for a specific reason rather than for
  * completeness:
  *
- *   public/social-preview.png    Open Graph and Twitter card consumers do not
- *                                reliably render SVG. This is the only image on
- *                                the site that is raster by necessity.
  *   public/favicon-32.png        A fallback for browsers that ignore the SVG
  *                                favicon.
  *   public/apple-touch-icon.png  iOS home-screen icon; SVG is not accepted.
+ *
+ * THE SOCIAL CARD IS NO LONGER ONE OF THEM, AND MUST NOT BE ADDED BACK.
+ *
+ * This script used to render a third file, `public/social-preview.png`, from
+ * `public/brand/social-preview.svg`. Both are gone. The Open Graph card is now a
+ * hand-supplied raster committed at `public/brand/social-preview.png` and served
+ * from `/brand/social-preview.png`; `src/lib/metadata.ts` is the one place that
+ * names it. Re-adding a target would give the site a second production OG PNG
+ * and a generator able to overwrite a file it does not own — which is exactly
+ * the state this change removed. The list lives in `raster-targets.ts` and
+ * `tests/unit/media.test.ts` asserts that nothing in it writes a social card.
  *
  * Everything else on the site - the marks, the diagrams, the motifs - is SVG and
  * is never rasterised.
@@ -18,7 +26,7 @@
  * The renderer is the Chromium that Playwright already provides, so this adds no
  * dependency. The script is NOT part of `npm run build`: the outputs are
  * committed, deterministic for a given input, and rebuilding them on every CI
- * run would download a browser to produce three files that did not change.
+ * run would download a browser to produce two files that did not change.
  * Re-run it by hand after editing an SVG master:
  *
  *   npm run assets
@@ -30,28 +38,11 @@ import { fileURLToPath } from 'node:url'
 import { chromium } from '@playwright/test'
 
 import { resolveChromiumPath } from './chromium.ts'
+import { TARGETS } from './raster-targets.ts'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const PORTFOLIO = resolve(HERE, '..')
 const PUBLIC = join(PORTFOLIO, 'public')
-
-interface Target {
-  readonly source: string
-  readonly output: string
-  readonly width: number
-  readonly height: number
-}
-
-const TARGETS: readonly Target[] = [
-  {
-    source: 'brand/social-preview.svg',
-    output: 'social-preview.png',
-    width: 1200,
-    height: 630,
-  },
-  { source: 'favicon.svg', output: 'favicon-32.png', width: 32, height: 32 },
-  { source: 'favicon.svg', output: 'apple-touch-icon.png', width: 180, height: 180 },
-]
 
 async function main(): Promise<void> {
   for (const target of TARGETS) {
@@ -69,8 +60,8 @@ async function main(): Promise<void> {
       const page = await browser.newPage({
         viewport: { width: target.width, height: target.height },
         // 1 rather than 2: these are fixed-size assets whose dimensions are
-        // dictated by the consumer (1200x630 for Open Graph, 180 for iOS), so a
-        // device-scale factor would produce the wrong size, not a sharper one.
+        // dictated by the consumer (32 for the legacy tab icon, 180 for iOS), so
+        // a device-scale factor would produce the wrong size, not a sharper one.
         deviceScaleFactor: 1,
       })
       // A zero-margin wrapper, so the screenshot is exactly the SVG's box with

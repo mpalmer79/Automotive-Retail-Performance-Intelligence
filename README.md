@@ -4,7 +4,7 @@
 
 It runs on a fictional three-store dealer group and entirely synthetic data. Every figure it produces is reproducible from this repository alone.
 
-![The ARPI Executive Command Center: retail units, total gross, gross per retail unit and aged inventory for December 2025, a six-month gross trend, and the inventory position — all from synthetic data for a fictional dealer group](portfolio/public/social-preview.png)
+![The ARPI social card: the ARPI wordmark and the line "Governed. Traceable. Actionable." beside a light executive analytics interface showing a dealership performance dashboard for December 2025 — KPI tiles, a performance trend, a sales funnel and an inventory health ring. The figures on the card are illustrative; the project runs entirely on synthetic data for a fictional dealer group](portfolio/public/brand/social-preview.png)
 
 > **Release status.** ARPI is **not yet publicly deployed.** A production release is approved and the
 > release tooling is built and tested; the only deployed environment is a protected preview that

@@ -672,9 +672,46 @@ test.describe('metadata and discovery', () => {
   })
 
   test('serves the social preview image itself', async ({ request }) => {
-    const response = await request.get('/social-preview.png')
+    const response = await request.get('/brand/social-preview.png')
     expect(response.status()).toBe(200)
     expect(response.headers()['content-type']).toContain('image/png')
+
+    // Really 1200x630, read from the IHDR of the bytes that were served rather
+    // than from the committed file: the tag declares that geometry to every
+    // crawler, and a card that is not really that size is cropped by the
+    // platform.
+    const bytes = await response.body()
+    expect(bytes.toString('ascii', 12, 16)).toBe('IHDR')
+    expect(bytes.readUInt32BE(16)).toBe(1200)
+    expect(bytes.readUInt32BE(20)).toBe(630)
+  })
+
+  test('no longer serves the retired social preview from the site root', async ({
+    request,
+  }) => {
+    // `/social-preview.png` was the card until it moved into `brand/`. Nothing
+    // may answer there from a committed public asset: a stale second card is
+    // exactly what this migration removed.
+    const response = await request.get('/social-preview.png')
+    expect(response.status()).toBe(404)
+  })
+
+  test('the Open Graph and Twitter tags both name the canonical card', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    for (const selector of ['meta[property="og:image"]', 'meta[name="twitter:image"]']) {
+      const content = await page.locator(selector).first().getAttribute('content')
+      expect(content, selector).toContain('/brand/social-preview.png')
+    }
+    await expect(page.locator('meta[property="og:image:width"]')).toHaveAttribute(
+      'content',
+      '1200'
+    )
+    await expect(page.locator('meta[property="og:image:height"]')).toHaveAttribute(
+      'content',
+      '630'
+    )
   })
 
   test('serves a sitemap listing every indexable route and excluding the UI lab', async ({

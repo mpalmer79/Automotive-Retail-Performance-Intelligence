@@ -18,19 +18,23 @@
  *     declares, which reserves the wrong box and shifts the layout on load,
  *   - a capture that has quietly become large enough to matter on a phone,
  *   - a raster asset that no longer matches the SVG it is rendered from,
- *   - a social card that has started asserting a business result.
+ *   - a social card served from a path nothing else agrees with, or a retired one
+ *     that has come back.
  */
 import { existsSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
+import { TARGETS } from '../../scripts/raster-targets.ts'
 import { TOUR_STEPS } from '@/components/sections/product-tour'
-import { formatMetric } from '@/components/dashboard/metric'
 import { dashboardStores } from '@/lib/dashboard/data'
-import { buildExecutiveOverview } from '@/lib/dashboard/executive'
-import { parseFilters } from '@/lib/dashboard/filters'
-import { OG_IMAGE_HEIGHT, OG_IMAGE_PATH, OG_IMAGE_WIDTH } from '@/lib/metadata'
+import {
+  OG_IMAGE_ALT,
+  OG_IMAGE_HEIGHT,
+  OG_IMAGE_PATH,
+  OG_IMAGE_WIDTH,
+} from '@/lib/metadata'
 
 const PUBLIC_DIR = join(process.cwd(), 'public')
 
@@ -181,9 +185,44 @@ describe('the product tour captures', () => {
 /* The social card                                                             */
 /* -------------------------------------------------------------------------- */
 
+/*
+ * WHAT THIS BLOCK USED TO ASSERT, AND WHY IT NO LONGER CAN.
+ *
+ * Until the social card became a supplied raster, it was drawn as
+ * `public/brand/social-preview.svg` and rendered to `public/social-preview.png`
+ * by `npm run assets`. Because the master was SVG, its text was machine
+ * readable, and this block read it: the card had to name the author, state that
+ * Granite Auto Group is fictional, carry the synthetic-data disclosure in a
+ * bordered panel, name no store and no employee, and — the strongest assertion —
+ * print no KPI figure that `buildExecutiveOverview()` could not reproduce, so a
+ * card could not go stale when the synthetic dataset was regenerated.
+ *
+ * The card is now a hand-supplied PNG at `public/brand/social-preview.png`. A
+ * raster has no extractable text, so none of those assertions can run against
+ * it, and the artwork does not satisfy them in any case: it prints an
+ * `Inventory Health` ring, a lead funnel and a `ROSI` tile that are not outputs
+ * of this product, and it carries no synthetic-data disclosure.
+ *
+ * THIS WAS A DELIBERATE, AUTHORISED RELAXATION OF THE PROJECT'S HONESTY POLICY,
+ * NOT AN OVERSIGHT. The trade and what was given up are recorded in
+ * `docs/DESIGN_SYSTEM.md` section 8, `docs/CONTENT_MODEL.md`, and the
+ * superseding note on row 12 of `FINAL_RELEASE_AUDIT.md`. What survives is
+ * asserted below: the disclosure moved to `og:image:alt`, which is the only text
+ * on this surface a platform still renders, and the fairness freeze on naming a
+ * store or an employee is applied to that text instead.
+ *
+ * If the card is ever redrawn from a machine-readable master, restore the
+ * figure-provenance assertions rather than leaving this comment as their
+ * epitaph.
+ */
 describe('the social card', () => {
   const png = join(PUBLIC_DIR, OG_IMAGE_PATH)
-  const svg = join(PUBLIC_DIR, 'brand/social-preview.svg')
+  const retiredPng = join(PUBLIC_DIR, 'social-preview.png')
+  const retiredSvg = join(PUBLIC_DIR, 'brand/social-preview.svg')
+
+  it('is declared at the canonical brand path', () => {
+    expect(OG_IMAGE_PATH).toBe('/brand/social-preview.png')
+  })
 
   it('is committed at the declared path', () => {
     expect(existsSync(png)).toBe(true)
@@ -202,79 +241,64 @@ describe('the social card', () => {
     expect(buffer.readUInt32BE(20)).toBe(OG_IMAGE_HEIGHT)
   })
 
-  it('names the author and states the group is fictional', () => {
-    const source = readFileSync(svg, 'utf8')
-    expect(source).toContain('Michael Palmer')
-    expect(source).toMatch(/fictional/i)
-    expect(source).toMatch(/synthetic/i)
+  it('is the only production social card in public/', () => {
+    // Two OG PNGs is the failure this change exists to remove: one of them wins
+    // in metadata and the other rots, and nothing tells you which is which.
+    expect(
+      existsSync(retiredPng),
+      'public/social-preview.png is retired; /brand/social-preview.png is the card'
+    ).toBe(false)
+    expect(
+      existsSync(retiredSvg),
+      'the SVG master is retired; it must not come back as a second authority'
+    ).toBe(false)
+  })
+
+  it('cannot be recreated by the raster pipeline', () => {
+    /*
+     * The teeth on the previous assertion. Deleting the file is not enough while
+     * `npm run assets` still knows how to write it: the next person to run the
+     * generator would silently republish a retired card at a path metadata no
+     * longer points at.
+     */
+    expect(TARGETS.map((target) => target.output)).toEqual([
+      'favicon-32.png',
+      'apple-touch-icon.png',
+    ])
+    for (const target of TARGETS) {
+      expect(target.output, 'a raster target writes a social card').not.toMatch(
+        /social-preview/
+      )
+      expect(target.source, 'a raster target reads a social-card master').not.toMatch(
+        /social-preview/
+      )
+    }
   })
 
   /*
-   * WHAT REPLACED "THE CARD SHOWS NO VALUE", AND WHY.
-   *
-   * Until the `DASH.13` closeout this block asserted that the card contained no
-   * currency amount, no percentage and no unit count. That was the right rule for
-   * the card it was written against: that card drew a wireframe of `/inventory`
-   * with empty cells, and any figure in an empty wireframe would have been
-   * invented.
-   *
-   * The replacement card carries four KPI values and a six-month trend, and the
-   * rule that makes THAT honest is not "no numbers" — it is "every number is the
-   * product's own output, and can be recomputed". So the assertion is now the
-   * stronger one: the figures printed on the card are compared against
-   * `buildExecutiveOverview()`, the same governed path that renders `/`.
-   *
-   * This also closes a failure mode the old rule could not see. A card with
-   * hand-typed figures passes "no invented values" the day it is drawn and goes
-   * silently stale the first time the synthetic dataset is regenerated. This test
-   * fails on that day instead.
+   * The card is a raster and its text cannot be read, so the disclosure that
+   * used to be asserted ON the artwork is asserted on the alternative text
+   * instead — see the block comment above this describe for what that replaced.
+   * `og:image:alt` is the only text on this surface a platform renders.
    */
-  describe('every figure on it is the product’s own output', () => {
-    const source = readFileSync(svg, 'utf8')
-    const drawnText = [...source.matchAll(/>([^<]+)</g)]
-      .map((match) => match[1]?.trim() ?? '')
-      .join(' ')
+  describe('the alternative text carries what the artwork no longer states', () => {
+    it('discloses the synthetic data and the fictional group', () => {
+      expect(OG_IMAGE_ALT).toMatch(/synthetic/i)
+      expect(OG_IMAGE_ALT).toMatch(/fictional/i)
+    })
 
-    const parsed = parseFilters({})
-    const overview = buildExecutiveOverview(parsed.filters, parsed.reset)
-    const valueOf = (label: string): string => {
-      const card = overview.cards.find((candidate) => candidate.label === label)
-      expect(card, `the page no longer renders a "${label}" card`).toBeDefined()
-      return String(formatMetric(card!.metric.selector, card!.metric.current))
-    }
+    it('names the author', () => {
+      expect(OG_IMAGE_ALT).toContain('Michael Palmer')
+    })
 
-    it.each([
-      ['Retail units'],
-      ['Total gross'],
-      ['Total gross per retail unit'],
-      ['Aged inventory percentage'],
-      ['Inventory investment'],
-    ])('draws the live value of %s', (label) => {
-      const rendered = valueOf(label)
+    it('does not present the figures on the card as governed output', () => {
+      // The artwork's tiles are not this product's computed values. The alt text
+      // must not repeat them as though they were, and must say what they are.
+      expect(OG_IMAGE_ALT).toMatch(/illustrative/i)
       expect(
-        drawnText,
-        `the card does not show ${rendered}, which is what the Executive Command ` +
-          `Center currently computes for "${label}". Regenerate the card from the ` +
-          'current dataset rather than editing the number: public/brand/social-preview.svg ' +
-          'is the master and its header comment records the provenance of every figure.'
-      ).toContain(rendered)
-    })
-
-    it('draws the period those figures were read over', () => {
-      // A figure without its period is not checkable, which is the whole reason
-      // the values are allowed on the card at all.
-      expect(drawnText.toUpperCase()).toContain(
-        overview.periodContext.period.label.toUpperCase()
-      )
-    })
-
-    it('keeps the synthetic disclosure in the same visual weight as the figures', () => {
-      // The disclosure is not small print. It gets a bordered panel and an accent
-      // colour, and this asserts the panel is still there rather than trusting
-      // that the word "synthetic" appears somewhere in a comment.
-      const body = source.slice(source.indexOf('</defs>'))
-      expect(body).toMatch(/Synthetic data/)
-      expect(body).toMatch(/Granite Auto Group is fictional/)
+        OG_IMAGE_ALT,
+        'the alt text quotes a currency figure, which reads as a governed result'
+      ).not.toMatch(/\$[\d,]+/)
     })
 
     it('names no store and no employee', () => {
@@ -283,14 +307,42 @@ describe('the social card', () => {
       // disclosures; cropped into a social card it reads as a league table.
       for (const store of dashboardStores) {
         for (const naming of [store.name, store.shortName]) {
-          expect(drawnText, `the card names the store "${naming}"`).not.toContain(naming)
+          expect(OG_IMAGE_ALT, `the alt text names the store "${naming}"`).not.toContain(
+            naming
+          )
         }
       }
-      expect(drawnText).not.toMatch(/\bsalesperson|\badvisor\b|\bemployee of\b/i)
+      expect(OG_IMAGE_ALT).not.toMatch(/\bsalesperson|\badvisor\b|\bemployee of\b/i)
+    })
+
+    it('describes the card rather than selling the project', () => {
+      expect(OG_IMAGE_ALT.length).toBeGreaterThan(200)
+      expect(OG_IMAGE_ALT).not.toMatch(/screenshot|image of|picture of/i)
     })
   })
 
+  /*
+   * THE BUDGET WENT UP FROM 300 kB, AND THE REASON IS THE SUBJECT, NOT SLOPPINESS.
+   *
+   * The old card was a flat SVG rendered at 1200x630 and compressed to 104 kB.
+   * The supplied card is a soft-gradient composition with roughly 70,000 unique
+   * colours, which is the case PNG compresses worst. Every lossless route was
+   * measured — Pillow's optimiser, zopfli, and four resample filters — and the
+   * best result is 584 kB; the 631 kB committed here is the LANCZOS resize, kept
+   * because it is the sharpest of the four on the card's small type. Getting
+   * under 300 kB would mean quantising the palette, which would band the
+   * gradients and alter the supplied artwork.
+   *
+   * It stays a budget rather than becoming no rule at all, because the failure it
+   * catches is real: an accidental re-export at 1731x909, or with 16-bit depth,
+   * lands well above this. 700 kB is headroom over the measured 631 kB and still
+   * an order of magnitude inside what every consumer accepts — LinkedIn and X cap
+   * at 5 MB, Facebook at 8 MB.
+   *
+   * No reader pays for it. `docs/PERFORMANCE.md` records that this file is
+   * fetched by a crawler building a share card and is never requested by a page.
+   */
   it('stays small enough to be fetched by a link unfurler', () => {
-    expect(statSync(png).size).toBeLessThanOrEqual(300 * 1024)
+    expect(statSync(png).size).toBeLessThanOrEqual(700 * 1024)
   })
 })

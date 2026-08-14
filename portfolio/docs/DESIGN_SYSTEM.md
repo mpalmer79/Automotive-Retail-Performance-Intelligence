@@ -899,14 +899,44 @@ reads as a data structure at 512px and as a mark at 16px, which is the only real
 
 **Wordmark** — `ARPI` in Space Grotesk with the lattice as a leading glyph.
 
-Shipped as `public/favicon.svg`, `public/brand/monogram.svg`,
-`public/brand/wordmark.svg`, `public/brand/social-preview.svg`, plus three rasters
-rendered from those SVGs by `npm run assets`: `favicon-32.png`,
-`apple-touch-icon.png`, and `social-preview.png` at 1200×630.
+Shipped as `public/favicon.svg`, `public/brand/monogram.svg` and
+`public/brand/wordmark.svg`, plus two rasters rendered from `favicon.svg` by
+`npm run assets`: `favicon-32.png` and `apple-touch-icon.png`.
 
-The social preview carries the project name, the one-line description and the synthetic-
-data disclosure. A share card that omitted the disclosure would be the one surface where
-the site implied real dealership data.
+### The social preview is a supplied raster, and what that cost
+
+`public/brand/social-preview.png`, served at `/brand/social-preview.png`, is the Open Graph
+and Twitter card. It is committed artwork at exactly 1200×630. It is **not** generated:
+`npm run assets` has no social-card target, `public/brand/social-preview.svg` has been
+deleted, and the retired `public/social-preview.png` is gone. `src/lib/metadata.ts` is the
+one place that names the path.
+
+This replaced a card drawn as SVG in this repository and rendered to PNG, and the change
+gave up three things that a machine-readable master made enforceable:
+
+- **The synthetic-data disclosure is no longer printed on the artwork.** It previously sat
+  in a bordered panel at the same visual weight as the figures. The paragraph that used to
+  stand here said a share card omitting it "would be the one surface where the site implied
+  real dealership data" — and that risk is now real rather than hypothetical.
+- **The figures on the card are no longer the product's own output.** The old card's KPI
+  values were asserted against `buildExecutiveOverview()`, so a card could not go stale when
+  the synthetic dataset was regenerated. The current artwork carries an `Inventory Health`
+  ring, a lead funnel and a `ROSI` tile that this product does not compute, and month-over-
+  month deltas nothing reproduces.
+- **`FINAL_RELEASE_AUDIT.md` row 12's finding no longer holds.** That row rejected "the
+  social card is stale or overclaims" on the evidence that the card carried "no KPI value of
+  any kind". See the superseding note in that document.
+
+**What was kept.** `og:image:alt` is the only text on this surface a platform or a screen
+reader renders, so the disclosure moved there: the alt text in `src/lib/metadata.ts` states
+that the figures are illustrative, that the data is synthetic and that Granite Auto Group is
+fictional, and names the author. The fairness freeze — no store named, no employee named —
+is asserted against that text. `tests/unit/media.test.ts` and
+`tests/e2e/content-integrity.spec.ts` enforce both.
+
+This was an authorised, deliberate relaxation of the project's honesty policy for one
+surface. If the card is redrawn from a machine-readable master, restore the figure-
+provenance assertions rather than leaving the alt text as the only guard.
 
 ---
 

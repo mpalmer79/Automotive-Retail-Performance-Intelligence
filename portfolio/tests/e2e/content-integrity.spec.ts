@@ -630,10 +630,25 @@ test.describe('the copy makes claims with referents', () => {
     })
   }
 
-  test('the social preview card uses none of them either', async ({ request }) => {
-    // The one surface a reader sees before the site loads.
-    const svg = await (await request.get('/brand/social-preview.svg')).text()
-    const lower = svg.toLowerCase()
+  test('the social card’s alternative text uses none of them either', async ({
+    page,
+  }) => {
+    /*
+     * The one surface a reader sees before the site loads.
+     *
+     * This used to read `/brand/social-preview.svg` and scan the drawn text. The
+     * card is now a supplied raster with no extractable text, so the assertion
+     * moves to `og:image:alt` — which is not a downgrade in coverage so much as a
+     * change of target: the alt text is the only part of this card a platform or
+     * a screen reader turns into words, and it is authored in this repository.
+     */
+    await page.goto('/')
+    const alt = await page
+      .locator('meta[property="og:image:alt"]')
+      .first()
+      .getAttribute('content')
+    expect(alt, 'og:image:alt is missing').toBeTruthy()
+    const lower = (alt ?? '').toLowerCase()
     expect(BANNED.filter((phrase) => lower.includes(phrase))).toEqual([])
   })
 

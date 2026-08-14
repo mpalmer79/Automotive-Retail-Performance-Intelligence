@@ -100,26 +100,26 @@ Both are what CI runs, in the same order, so a green local run predicts a green 
 
 ## 4. Commands
 
-| Command                           | What it does                                                                |
-| --------------------------------- | --------------------------------------------------------------------------- |
-| `npm run dev`                     | Regenerate the manifest and the inventory data, then start the dev server   |
-| `npm run build`                   | Production build; `prebuild` runs `manifest:check` and `inventory:check`    |
-| `npm run start`                   | Serve the production build                                                  |
-| `npm run manifest`                | Regenerate `src/generated/project-manifest.json` from evidence              |
-| `npm run manifest:check`          | Fail if the committed manifest is stale or self-contradictory               |
-| `npm run inventory`               | Regenerate the three inventory artefacts from the sanitized workbooks       |
-| `npm run inventory:check`         | Fail if the committed inventory artefacts are stale or unsanitized          |
-| `npm run lint`                    | ESLint (flat config, `eslint-config-next`)                                  |
-| `npm run typecheck`               | `tsc --noEmit`                                                              |
-| `npm run format` / `format:check` | Prettier                                                                    |
-| `npm run test`                    | Vitest — unit, component and content-integrity suites                       |
-| `npm run test:e2e`                | Playwright — Chromium by default                                            |
-| `npm run test:e2e:a11y`           | The axe-core sweep alone                                                    |
-| `npm run verify`                  | Everything in the `quality` CI job                                          |
-| `npm run assets`                  | Re-render the raster favicon and social-preview PNGs from their SVG sources |
-| `npm run media`                   | Re-capture the home page's product-tour frames (needs a running server)     |
-| `npm run review:screenshots`      | Capture the adversarial visual-review set (needs a running server)          |
-| `npm run bundle`                  | Per-route transferred-bytes report (needs a running server)                 |
+| Command                           | What it does                                                                             |
+| --------------------------------- | ---------------------------------------------------------------------------------------- |
+| `npm run dev`                     | Regenerate the manifest and the inventory data, then start the dev server                |
+| `npm run build`                   | Production build; `prebuild` runs `manifest:check` and `inventory:check`                 |
+| `npm run start`                   | Serve the production build                                                               |
+| `npm run manifest`                | Regenerate `src/generated/project-manifest.json` from evidence                           |
+| `npm run manifest:check`          | Fail if the committed manifest is stale or self-contradictory                            |
+| `npm run inventory`               | Regenerate the three inventory artefacts from the sanitized workbooks                    |
+| `npm run inventory:check`         | Fail if the committed inventory artefacts are stale or unsanitized                       |
+| `npm run lint`                    | ESLint (flat config, `eslint-config-next`)                                               |
+| `npm run typecheck`               | `tsc --noEmit`                                                                           |
+| `npm run format` / `format:check` | Prettier                                                                                 |
+| `npm run test`                    | Vitest — unit, component and content-integrity suites                                    |
+| `npm run test:e2e`                | Playwright — Chromium by default                                                         |
+| `npm run test:e2e:a11y`           | The axe-core sweep alone                                                                 |
+| `npm run verify`                  | Everything in the `quality` CI job                                                       |
+| `npm run assets`                  | Re-render the raster favicons from `favicon.svg` (it does **not** touch the social card) |
+| `npm run media`                   | Re-capture the home page's product-tour frames (needs a running server)                  |
+| `npm run review:screenshots`      | Capture the adversarial visual-review set (needs a running server)                       |
+| `npm run bundle`                  | Per-route transferred-bytes report (needs a running server)                              |
 
 `ARPI_E2E_ALL_BROWSERS=true` adds Firefox and WebKit to the Playwright run. The reason
 they are not on by default is in

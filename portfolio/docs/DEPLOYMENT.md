@@ -312,7 +312,9 @@ What a production deployment must look like, every item of which
 - `og:site_name`, `og:url`, `og:title`, `og:description`, `og:image`,
   `og:image:width` `1200`, `og:image:height` `630` and `og:image:alt` all present,
   with absolute URLs on the production origin
-- `/social-preview.png` answers `200 image/png` and is really `1200x630`
+- `/brand/social-preview.png` answers `200 image/png` and is really `1200x630`, and
+  `og:image` and `twitter:image` both name it — one card, one URL
+- `/social-preview.png` is retired and answers `404`
 - `/ui-lab` carries `X-Robots-Tag: noindex, nofollow`
 - the preview marker renders nothing
 

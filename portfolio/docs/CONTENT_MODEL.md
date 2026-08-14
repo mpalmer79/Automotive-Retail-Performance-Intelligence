@@ -323,8 +323,15 @@ value, the warehouse contains none by construction (`tests/unit/test_privacy.py`
 repository root enforces that), and no route displays a row.
 
 **The synthetic-data disclosure appears on every primary route**, not only in the footer,
-and `tests/e2e/content-integrity.spec.ts` asserts it route by route. It is also on the
-social-preview card, which is the one surface a reader sees before the site loads.
+and `tests/e2e/content-integrity.spec.ts` asserts it route by route.
+
+**The social-preview card is the one exception, and it is deliberate.** The card was
+replaced with supplied artwork (`public/brand/social-preview.png`) that does not print a
+disclosure, so on the one surface a reader sees _before_ the site loads, the disclosure now
+travels in `og:image:alt` rather than in the picture. That text states the figures are
+illustrative, that the data is synthetic and that Granite Auto Group is fictional. A reader
+whose client renders the image and not the alt text does not receive it. The trade, and what
+it gave up, is recorded in `DESIGN_SYSTEM.md` section 8.
 
 **What may go behind a disclosure, and what may never.** The home page's
 default-visible prose was reduced from **1,931 words to 1,431** in the release

@@ -22,9 +22,10 @@
  * monogram as a lockup, and carries the full project name at small size beneath
  * it on the wide variant.
  *
- * The same geometry is reused for the favicon (public/favicon.svg) and the
- * social preview (public/social-preview.svg), so the identity is one shape at
- * every size. Source geometry is documented in
+ * The same geometry is reused for the favicon (public/favicon.svg), so the
+ * identity is one shape at every size. The social card
+ * (public/brand/social-preview.png) is a supplied raster and is no longer drawn
+ * from this geometry. Source geometry is documented in
  * portfolio/docs/DESIGN_SYSTEM.md section 8.
  */
 import { cx } from '@/lib/utils'
