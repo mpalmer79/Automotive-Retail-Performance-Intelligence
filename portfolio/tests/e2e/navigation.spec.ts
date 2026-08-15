@@ -786,12 +786,40 @@ test.describe('external links', () => {
     }
   })
 
-  test('points at the real repository and at no other host', async ({ page }) => {
+  test('points at the real repository, the author, and at no other host', async ({
+    page,
+  }) => {
+    /*
+     * TWO HOSTS NOW, AND THE SECOND ONE IS NOT A LOOSENING.
+     *
+     * This asserted a single host until the masthead and the footer gained the
+     * author's LinkedIn profile. The claim it was making is that the site links to
+     * nothing it has not declared - no tracker, no CDN, no analytics beacon, no
+     * third-party badge service - and that claim is unchanged. So the set is still
+     * exhaustive and every URL inside it is still checked against a declared
+     * destination rather than merely against its host: `github.com` must be the
+     * author's account, and `linkedin.com` must be the one profile URL.
+     */
     await page.goto('/technical')
-    const hosts = await page.$$eval('a[href^="http"]', (anchors) => [
-      ...new Set(anchors.map((anchor) => new URL(anchor.getAttribute('href')!).host)),
-    ])
-    expect(hosts).toEqual(['github.com'])
+    const externals = await page.$$eval('a[href^="http"]', (anchors) =>
+      anchors.map((anchor) => anchor.getAttribute('href') ?? '')
+    )
+    expect(externals.length).toBeGreaterThan(0)
+
+    const hosts = [...new Set(externals.map((href) => new URL(href).host))].sort()
+    expect(hosts).toEqual(['github.com', 'www.linkedin.com'])
+
+    for (const href of externals) {
+      if (new URL(href).host === 'www.linkedin.com') {
+        expect(href, 'an unexpected LinkedIn URL').toBe(
+          'https://www.linkedin.com/in/mpalmer1234/'
+        )
+      } else {
+        expect(href, 'a GitHub URL outside the author’s account').toMatch(
+          /^https:\/\/github\.com\/mpalmer79(\/|$)/
+        )
+      }
+    }
   })
 
   test('links every source path to a file on the default branch', async ({ page }) => {

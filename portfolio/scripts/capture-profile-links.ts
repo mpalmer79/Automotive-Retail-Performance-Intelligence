@@ -1,7 +1,7 @@
 /**
  * Capture the Executive header at the three review widths, for visual inspection.
  *
- * A review aid, not a test. `tests/e2e/executive-profile-links.spec.ts` owns the
+ * A review aid, not a test. `tests/e2e/author-profile-links.spec.ts` owns the
  * assertions; this writes PNGs a person looks at. Output goes to a directory passed on
  * the command line so nothing is written into the repository by accident.
  *

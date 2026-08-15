@@ -945,6 +945,53 @@ no diff.
 
 ---
 
+## 15. The three external destinations
+
+The site links out of itself to exactly three places, and they answer three different
+questions. Conflating any two of them is a content-model error, not a styling one.
+
+| Destination           | URL constant          | Question it answers                      |
+| --------------------- | --------------------- | ---------------------------------------- |
+| **GitHub Portfolio**  | `AUTHOR_GITHUB_URL`   | What else has this person built?         |
+| **LinkedIn Profile**  | `AUTHOR_LINKEDIN_URL` | What is this person's background?        |
+| **Source repository** | `REPOSITORY_URL`      | Where is the code for ARPI specifically? |
+
+All three are declared in `lib/site.ts` and none may be typed into a component. The
+constant formerly named `AUTHOR_PROFILE_URL` is gone: once there are two author
+profiles, a name that says "the author's profile" cannot say which one it means.
+
+### 15.1 The two profiles are one component
+
+`components/profile/author-profile-links.tsx` owns the brand marks, the labels, the
+surfaces, the focus behaviour and the external-link semantics for the pair. It is
+rendered in five places and there is no second implementation:
+
+| Placement                | Variant   |
+| ------------------------ | --------- |
+| Executive header actions | `badges`  |
+| `/about` hero meta       | `badges`  |
+| Site masthead            | `compact` |
+| Mobile drawer            | `badges`  |
+| Site footer              | `badges`  |
+
+`compact` drops the visible label and keeps everything else, including a 44px target
+and an accessible name that says who as well as where — "Michael Palmer on GitHub".
+Variants may change layout and density. They may not change identity.
+
+### 15.2 The repository keeps its own controls
+
+`Source repository` appears in the footer's first column, on the About identity card
+and on the operating rail, always under that name and always with the folder icon
+rather than a brand mark. It was ALSO the site masthead's only action, drawn as a
+GitHub-shaped surrogate, and it is not any more: the masthead is the author's action
+area and the repository is reached by its own name. A GitHub badge that lands a reader
+on the project they are already reading is the specific failure this section exists to
+prevent, and `tests/unit/author-profile-links.test.tsx` and
+`tests/e2e/author-profile-links.spec.ts` assert both halves — the profiles are present
+where they should be, and the repository is still reachable everywhere it was.
+
+---
+
 ## 13. Adding to the site without breaking the contract
 
 | You want to                    | Do this                                                                                                                                                                                                                                 |
@@ -960,6 +1007,7 @@ no diff.
 | Add a paragraph to `/`         | Take one out, or put it on the route whose subject it is. The budget is 450 words. See 12.4.                                                                                                                                            |
 | Add an inventory snapshot      | Commit the sanitized workbook under `data/reference/inventory/`, then `npm run inventory`. See 11.9.                                                                                                                                    |
 | Change a dealership's copy     | Edit `src/content/dealership-profiles.json`. Prose only: a digit there fails the build.                                                                                                                                                 |
+| Link out to the author         | Render `<AuthorProfileLinks>`. Never a new anchor, never a typed URL, never a Lucide glyph in place of a brand mark. See 15.                                                                                                            |
 | Change a dealership's identity | Change `data/sample/dim_dealership.csv`. The website reads the warehouse's own dimension.                                                                                                                                               |
 | Refresh the dashboard data     | Load a warehouse, `python scripts/export_dashboard_dataset.py`, then `npm run dashboard`. See 14.8.                                                                                                                                     |
 | Add a dashboard dataset        | Add it to `arpi.dashboard.contract` and to `DATA_CONTRACT.md §3` in one change, then to the pinned registry in `src/types/dashboard.ts`.                                                                                                |

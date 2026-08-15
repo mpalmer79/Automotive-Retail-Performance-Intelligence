@@ -61,14 +61,31 @@ export const REPOSITORY_URL =
   'https://github.com/mpalmer79/Automotive-Retail-Performance-Intelligence'
 
 /**
- * The author's professional profile.
+ * THE AUTHOR'S TWO PROFESSIONAL DESTINATIONS, AND WHY NEITHER IS THE REPOSITORY.
  *
- * Declared beside {@link REPOSITORY_URL} rather than typed into a component, for
- * the same reason: it appears in more than one place, it is the kind of string a
- * copy-paste gets subtly wrong, and a constant is the only version of it a test
- * can assert against. It is a personal profile and never a company page.
+ * There are three external destinations on this site and they answer three
+ * different questions, so they are three constants rather than one:
+ *
+ *   {@link REPOSITORY_URL}      the source code for ARPI specifically
+ *   {@link AUTHOR_GITHUB_URL}   Michael Palmer's GitHub profile - ARPI and the
+ *                               other projects beside it
+ *   {@link AUTHOR_LINKEDIN_URL} the professional background behind both
+ *
+ * They were two, and the missing one was the middle: a badge labelled "GitHub"
+ * pointed at the ARPI repository, so a reader who wanted to see what else the
+ * author had built landed on the project they were already reading about. The
+ * separation is the point, and it is why `AUTHOR_PROFILE_URL` no longer exists -
+ * a name that says "the author's profile" cannot say which of the two it means.
+ *
+ * Declared here rather than typed into a component for the same reason
+ * {@link REPOSITORY_URL} is: each appears on five surfaces, each is the kind of
+ * string a copy-paste gets subtly wrong, and a constant is the only version of it
+ * a test can assert against. Both are personal profiles and never a company page.
  */
-export const AUTHOR_PROFILE_URL = 'https://www.linkedin.com/in/mpalmer1234/'
+export const AUTHOR_LINKEDIN_URL = 'https://www.linkedin.com/in/mpalmer1234/'
+
+/** Michael Palmer's GitHub profile. NOT the ARPI repository - see above. */
+export const AUTHOR_GITHUB_URL = 'https://github.com/mpalmer79'
 
 /** Build a link to a file in the repository at the default branch. */
 export function repoFileUrl(path: string): string {

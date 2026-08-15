@@ -14,9 +14,11 @@ import type { Metadata } from 'next'
 
 import { AuthorPortrait } from '@/components/media/author-portrait'
 import { Reveal } from '@/components/motion/reveal'
+import { AuthorProfileLinks } from '@/components/profile/author-profile-links'
 import { LinkButton } from '@/components/ui/button'
 import { Card } from '@/components/ui/card-static'
 import { SourceLink } from '@/components/ui/data-card'
+import { InlineLink } from '@/components/ui/inline-link'
 import { Container, Section, SectionHeader } from '@/components/ui/layout'
 import { PageHeader } from '@/components/ui/page-header'
 import { CapabilityGrid, type Capability } from '@/components/ui/summary-grid'
@@ -24,7 +26,12 @@ import { CodeLabel, Eyebrow, Heading, Text } from '@/components/ui/typography'
 import { FlowDiagram, type FlowStage } from '@/components/visuals/flow'
 import { counts, manifest } from '@/lib/manifest'
 import { pageMetadata } from '@/lib/metadata'
-import { REPOSITORY_URL } from '@/lib/site'
+import {
+  AUTHOR_GITHUB_URL,
+  AUTHOR_LINKEDIN_URL,
+  REPOSITORY_URL,
+  SITE_AUTHOR,
+} from '@/lib/site'
 import { technicalHref } from '@/lib/technical'
 import { Canvas } from '@/components/shell/field'
 
@@ -70,16 +77,59 @@ export const metadata: Metadata = pageMetadata('about')
 export default function AboutPage() {
   return (
     <Canvas>
+      {/*
+        THE HEADER ANSWERS "WHO BUILT THIS", AND THE VISUAL ANSWERS "WHAT IS IT FOR".
+
+        `UX.3` gave this header its structure — the purpose chain beside the copy —
+        and that is unchanged. What changed is the identity half:
+
+          - The eyebrow was "About the author", which is the name of a page rather
+            than the name of a person. It is now the name, which puts MICHAEL PALMER
+            immediately above the headline in the hierarchy the header already had.
+            The headline is untouched: it is the site's one author-positioning claim,
+            asserted in both directions by `content-integrity.spec.ts`, and appending
+            a name to it would weaken both halves.
+          - The lede names the GitHub portfolio and a second paragraph names the
+            LinkedIn profile, each as an inline link inside the sentence rather than
+            as a third and fourth control. The reader arriving from either one is the
+            reader this page is for.
+          - The two repository source links left this row. They are evidence for the
+            authorship claim rather than the claim itself, and beside two brand badges
+            they read as four controls of equal weight. `README.md · author` is on the
+            identity card, next to the name it evidences; `docs/research.md` is on the
+            section that cites the repository file by file. Nothing was deleted.
+      */}
       <PageHeader
-        eyebrow="About the author"
+        eyebrow={SITE_AUTHOR}
         title="Dealership intelligence built by someone who has run the dealership"
-        lede="Twenty-five years in dealerships, then the technical work to model them properly. The domain came first, and the decisions in this repository were made by someone who has had to defend a gross number to a general manager."
-        meta={
+        /* The breadcrumb says "About", not the headline. The h1 here is a sentence,
+           and `crumbLabel` exists precisely so a trail can read "Executive / About"
+           rather than repeating it. */
+        crumbLabel="About"
+        lede={
           <>
-            <SourceLink path="README.md" field="author" />
-            <SourceLink path="docs/research.md" field="research evidence base" />
+            Twenty-five years in dealerships came first, followed by the technical work to
+            model them properly. ARPI combines that operating experience with analytics
+            and software engineering. You can explore my{' '}
+            <InlineLink href={AUTHOR_GITHUB_URL} external>
+              GitHub portfolio
+            </InlineLink>{' '}
+            to see other projects I&rsquo;ve built across AI, data, and software
+            development.
           </>
         }
+        supporting={
+          <>
+            My work sits at the intersection of automotive retail, analytics, AI, and
+            software engineering. For my professional background, experience, and current
+            work, visit my{' '}
+            <InlineLink href={AUTHOR_LINKEDIN_URL} external>
+              LinkedIn profile
+            </InlineLink>
+            .
+          </>
+        }
+        meta={<AuthorProfileLinks />}
         /*
           THE CHAIN IS THE HEADER'S VISUAL, AND THE PORTRAIT IS THE FIRST SECTION.
 
@@ -168,6 +218,11 @@ export default function AboutPage() {
                   the largest contentful paint. */}
               <Card padding="md" className="flex flex-col gap-4">
                 <AuthorPortrait priority sizes="(min-width: 1024px) 24rem, 100vw" />
+                {/* THE NAME APPEARS TWICE ON THIS PAGE, DELIBERATELY. The eyebrow
+                    establishes authorship before the headline; this is the personal
+                    profile identity beside the portrait, and it is where the
+                    repository's own author record is cited. Two placements, two
+                    jobs. There is no third. */}
                 <div className="flex flex-col gap-1">
                   <h3 className="font-display text-xl font-semibold tracking-tight text-ink">
                     {manifest.project.author}
@@ -175,6 +230,7 @@ export default function AboutPage() {
                   <p className="text-sm text-ink-muted">
                     Automotive retail operations, then analytics engineering.
                   </p>
+                  <SourceLink path="README.md" field="author" className="mt-0.5" />
                 </div>
                 <dl className="flex flex-col gap-2 border-t border-line-subtle pt-3">
                   {FACTS.map((fact) => (
@@ -295,6 +351,11 @@ export default function AboutPage() {
             eyebrow="Why ARPI exists"
             title="To demonstrate the work on artefacts rather than on assertions"
             lede="Eight capabilities, each one a file a reviewer can open. No proficiency rating, because a self-assessed percentage tells you nothing the code does not tell you better."
+            /* The research evidence base, moved out of the header. This is the
+               section that cites repository files one by one, so the document behind
+               the citations belongs at the head of it rather than beside the author's
+               profile badges two screens up. */
+            action={<SourceLink path="docs/research.md" field="research evidence base" />}
           />
           <CapabilityGrid
             className="mt-10"
