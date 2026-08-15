@@ -9,6 +9,8 @@ import { SourceLink } from '@/components/ui/data-card'
 import { Container, Grid, Section } from '@/components/ui/layout'
 import { PageHeader } from '@/components/ui/page-header'
 import { LockedState } from '@/components/ui/states'
+import { StatusGrid } from '@/components/ui/summary-grid'
+import type { StatusLevel } from '@/types/manifest'
 import { Eyebrow, Heading, Text } from '@/components/ui/typography'
 import { CaseStudyPreview } from '@/components/sections/case-study-preview'
 import { caseStudy, counts, gate, increments, semanticModel } from '@/lib/manifest'
@@ -84,8 +86,32 @@ export default function CaseStudyPage() {
       <PageHeader
         eyebrow="Case study"
         title="Case study in progress"
-        lede="The public analytical case study is held closed by a scope gate, and will stay closed until the conditions below are met. This is not a page that has not been written yet - it is a page that is not permitted to exist yet, and the difference is the point."
-        supporting="Gate 2 in the project architecture states that no web case study begins until core report pages are complete, SQL and Power BI totals reconcile, and executive findings are drafted. None of the three is met."
+        lede="Held closed by a scope gate. This is not a page nobody has written yet. It is a page that is not permitted to exist yet, and the difference is the point."
+        /* THE GATE STATE, AS A STATE, BEFORE THE ARGUMENT FOR IT.
+           The header used to carry a fifty-one word lede and a fifty-word second
+           paragraph naming the three Gate 2 conditions in prose, and the first
+           visual on the route was 509 px down at desktop and 1,668 px down on a
+           phone. The three conditions are a set with a state each, so they are
+           drawn as one; the paragraph that listed them is gone and no condition
+           went with it. */
+        visual={
+          <StatusGrid
+            label="Gate 2 conditions, and whether each is met"
+            columns={2}
+            entries={[
+              ...gate2.conditions.map((condition) => ({
+                label: condition.condition,
+                status: (condition.met ? 'complete' : 'blocked') as StatusLevel,
+              })),
+              {
+                label: 'A written Gate 2 readiness review records an OPEN verdict',
+                status: (caseStudy.readinessDocumentExists && caseStudy.gate2Open
+                  ? 'complete'
+                  : 'blocked') as StatusLevel,
+              },
+            ]}
+          />
+        }
         meta={
           <>
             <StatusBadge status="blocked" label={`Gate 2 ${gate2.verdict}`} size="sm" />
@@ -107,7 +133,7 @@ export default function CaseStudyPage() {
         <Container width="content">
           <LockedState
             title="Why this page is locked"
-            reason="A case study is an argument from evidence. The evidence does not exist yet: no report page has been authored, no Microsoft semantic-model engine has evaluated the measures the case study would cite, and no finding has been drawn. Publishing a case study now would mean writing conclusions before doing the analysis, which is the failure this project is built to demonstrate the opposite of."
+            reason="A case study is an argument from evidence, and the evidence does not exist yet: no report page authored, no Microsoft engine has evaluated the measures it would cite, no finding drawn. Publishing one now would mean writing conclusions before doing the analysis."
             conditions={[
               ...gate2.conditions.map((condition) => ({
                 label: `${condition.condition}. ${condition.evidence}`,
@@ -132,9 +158,7 @@ export default function CaseStudyPage() {
                   What you can read instead
                 </Heading>
                 <Text size="sm" tone="muted" className="max-w-prose">
-                  Three pages carry real content today. They are the parts of the case
-                  study that do not depend on findings: the architecture, the governed
-                  definitions, and an honest account of what state everything is in.
+                  The three parts of a case study that do not depend on findings.
                 </Text>
                 <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap">
                   <LinkButton
@@ -276,18 +300,13 @@ export default function CaseStudyPage() {
                 A control that never blocks anything was never a control
               </Heading>
               <Text size="body" className="max-w-prose">
-                It would have been trivial to write a case study now. The architecture is
-                interesting, the model is real, and a reader would probably not check.
-                That is precisely why the gate is worth keeping: its value is entirely in
-                the case where honouring it is inconvenient.
+                It would have been trivial to write one now. A reader would probably not
+                check. That is precisely why the gate is worth keeping: its value is
+                entirely in the case where honouring it is inconvenient.
               </Text>
               <Text size="body" tone="muted" className="max-w-prose">
-                ADR-0009 records the decision that let this website ship while the case
-                study stayed closed, and it draws the line explicitly: a design system,
-                informational routes and architecture storytelling are permitted before
-                Gate 2; published findings, management recommendations, dashboard
-                screenshots presented as complete, and any claim that a pending validation
-                has passed are not.
+                ADR-0009 let this website ship while the case study stayed closed, and
+                draws the line explicitly: the two lists below are that line.
               </Text>
               <SourceLink
                 path="docs/architecture-decisions/ADR-0009-portfolio-ui-foundation-before-gate-2.md"
@@ -357,10 +376,9 @@ export default function CaseStudyPage() {
               The system the argument will rest on, drawn from what already exists
             </Heading>
             <Text size="body">
-              Below is the shape of the platform, rendered from the same source-controlled
-              evidence as the rest of this site. It is not a mock-up of the case study, it
-              contains no chart, and it shows no value - it is the structure that a case
-              study would eventually reason over.
+              Rendered from the same source-controlled evidence as the rest of this site.
+              No mock-up, no chart, no value: the structure a case study would eventually
+              reason over.
             </Text>
           </Reveal>
           <CaseStudyPreview />

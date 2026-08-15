@@ -9,6 +9,7 @@ import { OverviewView } from '@/components/technical/overview-view'
 import { ProductVisionView } from '@/components/technical/product-vision-view'
 import { StatusView } from '@/components/technical/status-view'
 import { TechnicalNav } from '@/components/technical/technical-nav'
+import { TechnicalViewVisual } from '@/components/technical/view-visual'
 import { Canvas } from '@/components/shell/field'
 import { Container, Section } from '@/components/ui/layout'
 import { PageHeader } from '@/components/ui/page-header'
@@ -134,6 +135,10 @@ export default async function TechnicalPage({
           : { supporting: definition.supporting })}
         crumbLabel={definition.label}
         parentCrumb={{ href: ROUTES.technical.href, label: 'How ARPI works' }}
+        /* The figure that arrives with the sentence. See `view-visual.tsx` for
+           the measurement that made this a header slot rather than eight
+           per-view arrangements of the same idea. */
+        visual={<TechnicalViewVisual view={view} />}
         trustScope={view === 'data-sources' ? 'inventory' : 'synthetic'}
         trustHref={technicalHref('governance')}
         /* The governance view IS the disclosure and states it at full length in

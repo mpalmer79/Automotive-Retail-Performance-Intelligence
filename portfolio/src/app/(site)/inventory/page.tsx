@@ -9,6 +9,7 @@ import { Card } from '@/components/ui/card-static'
 import { SourceLink } from '@/components/ui/data-card'
 import { Container, Section, SectionHeader } from '@/components/ui/layout'
 import { PageHeader } from '@/components/ui/page-header'
+import { StatRail } from '@/components/ui/summary-grid'
 import { Heading, Text } from '@/components/ui/typography'
 import { BarChart } from '@/components/visuals/inventory-charts'
 import {
@@ -46,9 +47,43 @@ export default function InventoryPage() {
         eyebrow="Inventory explorer"
         title="Every listing the three stores carried, and nothing they did not"
         lede={`${formatCount(summary.totalRecords)} sanitized listings across ${formatCount(summary.dealershipCount)} stores, captured ${formatDate(summary.latestSnapshotDate)}. Filter by store, condition, make, model, model year, advertised price and mileage; sort six ways.`}
-        supporting="The records were read from the reference workbooks at build time. Nothing on this page is fetched, and no Excel file is parsed in your browser. How those workbooks are sanitized, contracted and loaded into the warehouse is a separate subject, and it has its own page: Inventory operations."
+        supporting="Read from the reference workbooks at build time: nothing on this page is fetched, and no Excel file is parsed in your browser."
         groupNav
         trustScope="inventory"
+        /* The shape of the set, before the reader starts cutting into it. The
+           first framed visual on this route was 612 px down at desktop and
+           816 px down on a phone, and all four of these figures were already on
+           the page — three of them inside the sentence directly above. */
+        visual={
+          <StatRail
+            label="The reference listing set in four figures"
+            stats={[
+              {
+                value: formatCount(summary.totalRecords),
+                label: 'Sanitized listings',
+                note: `Captured ${formatDate(summary.latestSnapshotDate)}`,
+              },
+              {
+                value: formatCount(summary.dealershipCount),
+                label: 'Stores',
+                note: 'One workbook each',
+              },
+              {
+                value: formatCount(summary.makeCount),
+                label: 'Makes',
+                note: `${formatCount(summary.modelCount)} distinct models`,
+              },
+              {
+                value: formatCount(summary.pricedRecords),
+                label: 'Carry a price',
+                note:
+                  unpriced > 0
+                    ? `${formatCount(unpriced)} were listed without one`
+                    : 'Every listing was priced',
+              },
+            ]}
+          />
+        }
         meta={
           <>
             <StatusBadge
@@ -163,10 +198,7 @@ export default function InventoryPage() {
               {INVENTORY_DATA_STATEMENT}
             </Text>
             <Text size="sm" tone="secondary" className="max-w-prose">
-              {`Across the whole set the source exposed an advertised price for ` +
-                `${formatCount(summary.pricedRecords)} listings` +
-                (unpriced > 0 ? ` and none for the other ${formatCount(unpriced)}` : '') +
-                `. Prices run ${formatRange(summary.priceRange, formatPrice) ?? 'over a range the source did not expose'}. ` +
+              {`Prices run ${formatRange(summary.priceRange, formatPrice) ?? 'over a range the source did not expose'}. ` +
                 'An advertised price is not a transaction price, an acquisition cost, an ' +
                 'inventory investment, a manufacturer suggested price or a gross figure, ' +
                 'and a listing that later disappears has been removed from a feed rather ' +

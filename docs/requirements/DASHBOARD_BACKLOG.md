@@ -54,6 +54,7 @@
 | `UX.1` | Executive productization and operating experience | Large | **Implemented** |
 | `DASH.12` | Management Action Center and change drivers | Large | **Implemented** |
 | `UX.2` | Executive visualization and decision workspace | Large | **Implemented** — `UX.2A`–`UX.2D` |
+| `UX.3` | Reference-experience content density | Medium | **Implemented** |
 | `DASH.13` | Hardening and release | Large | **In progress** — repository hardening and release tooling complete and production-capable; creating the public production deployment is blocked on one external credential, see below |
 | `DASH.O-*` | Optional enhancements | — | Deferred |
 
@@ -1377,6 +1378,59 @@ library, not reopened. No new dependency and no new client island — client Jav
 `support` prop and a five-line predicate.
 
 Power BI real-engine validation remains externally pending; `UX.2D.1` does not modify the semantic
+model.
+
+---
+
+## `UX.3` — Reference-experience content density
+
+| Field | Value |
+|---|---|
+| **Purpose** | Give the reference half of the site the treatment `UX.2` gave the operating half: meet the reader with something derived from the repository rather than with prose, and sweep one disclosure that had been published on five routes. |
+| **Dependencies** | `UX.2A`–`UX.2D`. The console's first-viewport contract and its `data-visual-region` hook are what this increment extends. |
+| **Estimated complexity** | Medium |
+| **Blocking gate** | None. Presentation only. |
+| **Architecture references** | ADR-0015 (product-first operating experience); the design system's register |
+| **Status** | **Implemented.** Measured in [`UX-3-BASELINE.md`](../reviews/UX-3-BASELINE.md) and [`UX-3-REVIEW.md`](../reviews/UX-3-REVIEW.md). |
+
+### `UX.3` as-built notes
+
+Four decisions are worth recording here:
+
+1. **The problem was structural, so the fix is in one component.** Six of the eight technical views,
+   the About page, the case study and one store page contained no visual region inside the first
+   viewport at 1440 × 900; the worst first-visual position on a phone was 4,021 px. All fourteen
+   reference routes open with `<PageHeader>`, which emitted an eyebrow, an `h1`, a lede, a supporting
+   paragraph, a badge row and a trust line before the route's body began. `PageHeader` now takes a
+   `visual` slot that sits beside the copy on `lg` and between the lede and the badges below it.
+   All fourteen routes now show a visual region in the first viewport at desktop, and the phone
+   range is 386–659 px.
+
+2. **The diagrams are markup, not SVG and not a chart library.** A stage chain is an `<ol>`: reading
+   order is flow order, a screen reader announces position in the sequence, the labels are real
+   text, it reflows to one column without a viewBox, and it costs zero bytes of client JavaScript.
+   The chart-library question was not reopened.
+
+3. **A tone may never be the only carrier of a state.** `FlowDiagram`'s pending and conceptual
+   stages must also carry a word — "Engine validation pending", "No connection exists", "Not built"
+   — and `ux3-shared-visuals.test.tsx` asserts it. The product-vision lanes are where this matters
+   most: a dashed border is a treatment, and the rule that no integration on that view may read as a
+   capability had to survive being drawn.
+
+4. **One 82-word disclosure was published on five routes and is now on two.** The full inventory
+   provenance statement stays on the governance view and on `/inventory`, which
+   `content-integrity.spec.ts` requires to carry it without opening anything; the three store pages
+   carry its short form plus the sanitization clause and a link. Nothing was hidden — this is the
+   `UX.1` finding that a project stating its trust position seven times reads as an apology, applied
+   to the one statement that had not been swept.
+
+**Non-goals held.** No operating-route layout changed. No KPI, formula, denominator, date basis,
+grain, structural-absence rule, reconciliation rule, action rule, filter grammar or export contract
+changed. No `powerbi/` file. No new dependency, no new client island, no new image, and zero bytes
+of client JavaScript. The two operating-console edits in the increment are both defect fixes and are
+named in the review.
+
+Power BI real-engine validation remains externally pending; `UX.3` does not modify the semantic
 model.
 
 ---

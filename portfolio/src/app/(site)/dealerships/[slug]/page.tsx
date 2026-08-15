@@ -11,6 +11,7 @@ import { Card } from '@/components/ui/card-static'
 import { SourceLink } from '@/components/ui/data-card'
 import { Container, Section, SectionHeader } from '@/components/ui/layout'
 import { PageHeader } from '@/components/ui/page-header'
+import { StatRail } from '@/components/ui/summary-grid'
 import { Heading, Text } from '@/components/ui/typography'
 import { BarChart } from '@/components/visuals/inventory-charts'
 import {
@@ -27,7 +28,8 @@ import {
   recordsForDealership,
 } from '@/lib/inventory'
 import { pageMetadata } from '@/lib/metadata'
-import { INVENTORY_DATA_STATEMENT, ROUTES, type RouteKey } from '@/lib/site'
+import { INVENTORY_DATA_SHORT, ROUTES, type RouteKey } from '@/lib/site'
+import { technicalHref } from '@/lib/technical'
 import { cx, formatCount, formatDate } from '@/lib/utils'
 
 /**
@@ -92,9 +94,45 @@ export default async function DealershipPage({
         eyebrow={`${dealership.id} · ${dealership.storeTypeLabel}`}
         title={dealership.name}
         lede={dealership.positioning}
-        supporting={dealership.customerSegment}
         groupNav
         trustScope="inventory"
+        /* The store's snapshot, in the header rather than two screens down. The
+           first framed visual on these three routes was between 191 px and
+           703 px at desktop and about 1,530 px on a phone, behind an identity
+           band of four chips and three paragraphs. These four figures were
+           already on the page; what changed is that they now arrive with the
+           sentence describing the store rather than after it. */
+        visual={
+          <StatRail
+            label={`${dealership.name} at the snapshot date`}
+            stats={[
+              {
+                value: formatCount(inventory.totalRecords),
+                label: 'Listings',
+                note: `Snapshot ${formatDate(inventory.snapshotDate)}`,
+              },
+              {
+                value: formatCount(inventory.newRecords),
+                label: 'New',
+                note:
+                  formatShare(inventory.newRecords, inventory.totalRecords) ??
+                  'Share unavailable',
+              },
+              {
+                value: formatCount(inventory.preOwnedRecords),
+                label: 'Pre-owned',
+                note:
+                  formatShare(inventory.preOwnedRecords, inventory.totalRecords) ??
+                  'Share unavailable',
+              },
+              {
+                value: formatCount(inventory.makeCount),
+                label: 'Makes',
+                note: `${formatCount(inventory.modelCount)} distinct models`,
+              },
+            ]}
+          />
+        }
         // The group overview is the home page, so the parent crumb points there
         // and names the group rather than repeating "Overview".
         parentCrumb={{
@@ -164,9 +202,28 @@ export default async function DealershipPage({
               <Text size="body" tone="secondary" className="max-w-prose">
                 {dealership.inventoryStrategy}
               </Text>
-              <Text size="body" tone="muted" className="max-w-prose">
-                {dealership.analyticsFocus}
-              </Text>
+              {/* The store's customer segment and its analytical emphasis, labelled
+                  rather than stacked. Both were paragraphs — one in the page header
+                  and one here — and a reader met three consecutive prose blocks
+                  about a store before meeting a single figure from it. The words
+                  are unchanged; what they gained is a label saying which question
+                  each answers. */}
+              <dl className="grid grid-cols-1 gap-4 border-t border-line pt-4 sm:grid-cols-2">
+                <div className="flex flex-col gap-1">
+                  <dt className="eyebrow text-2xs">Who it sells to</dt>
+                  <dd className="text-sm leading-relaxed text-ink-muted">
+                    {dealership.customerSegment}
+                  </dd>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <dt className="eyebrow text-2xs">
+                    What it makes analytically interesting
+                  </dt>
+                  <dd className="text-sm leading-relaxed text-ink-muted">
+                    {dealership.analyticsFocus}
+                  </dd>
+                </div>
+              </dl>
             </div>
 
             <Card tone="sunken" className="flex flex-col gap-4">
@@ -326,6 +383,15 @@ export default async function DealershipPage({
       {/* ------------------------------------------------------------------ */}
       <Section rhythm="tight">
         <Container width="wide">
+          {/* COVERAGE, WHICH IS STORE-SPECIFIC, AND PROVENANCE, WHICH IS NOT.
+              This card used to end with the full 82-word inventory statement,
+              which is also rendered in full on `/inventory` and on the governance
+              view, and in short form by the trust line at the top of THIS page —
+              four appearances of one paragraph, three of them on routes whose
+              subject is something else. The store-specific coverage sentences are
+              what this card is for and they are untouched; the site-wide
+              provenance is stated once here, in the form the trust line uses, with
+              the link to the page that carries it at length. */}
           <Card tone="pending" className="flex flex-col gap-3">
             <Heading level={2} size="h5">
               Data coverage for this store
@@ -341,13 +407,23 @@ export default async function DealershipPage({
               </Text>
             ) : null}
             <Text size="sm" tone="secondary" className="max-w-prose">
-              {INVENTORY_DATA_STATEMENT}
+              {INVENTORY_DATA_SHORT} Real VINs, source URLs, addresses and dealership
+              identity were removed before these workbooks entered the repository.
             </Text>
-            <SourceLink
-              path={inventory.sourceWorkbook}
-              field="README sheet, sanitization controls and limitations"
-              className="pt-1"
-            />
+            <div className="flex flex-wrap items-center gap-3 pt-1">
+              <SourceLink
+                path={inventory.sourceWorkbook}
+                field="README sheet, sanitization controls and limitations"
+              />
+              <LinkButton
+                href={technicalHref('data-sources')}
+                variant="ghost"
+                size="sm"
+                iconAfter={<ArrowRight strokeWidth={2} />}
+              >
+                How this lane is sanitized
+              </LinkButton>
+            </div>
           </Card>
         </Container>
       </Section>

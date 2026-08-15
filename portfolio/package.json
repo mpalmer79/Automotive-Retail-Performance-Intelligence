@@ -31,6 +31,8 @@
     "verify": "npm run format:check && npm run lint && npm run typecheck && npm run manifest:check && npm run inventory:check && npm run dashboard:check && npm run test && npm run build",
     "assets": "tsx scripts/render-raster-assets.ts",
     "media": "tsx scripts/capture-product-media.ts",
+    "review:measure": "tsx scripts/measure-ux.ts",
+    "review:prose": "tsx scripts/dump-long-prose.ts",
     "review:screenshots": "tsx scripts/capture-review-screenshots.ts",
     "review:header": "tsx scripts/capture-profile-links.ts",
     "bundle": "tsx scripts/report-bundle.ts"
