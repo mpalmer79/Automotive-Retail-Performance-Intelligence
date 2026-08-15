@@ -34,9 +34,23 @@ import { technicalHref } from '@/lib/technical'
 export interface PageHeaderProps {
   eyebrow: string
   title: string
-  lede: string
+  /**
+   * The opening paragraph.
+   *
+   * `ReactNode` rather than `string`, so a paragraph can name a destination in
+   * the middle of a sentence. Every existing caller passes a string and is
+   * unaffected: a string IS a `ReactNode`, so this widens the prop without
+   * changing a single call site, and the rendering below is unchanged - same
+   * `<Text>`, same size, same tone, same measure.
+   *
+   * The alternative was a second header for `/about`, which is how a design
+   * system acquires two headers that agree about spacing until the day one of
+   * them is edited. Markup, not markup-in-a-string: there is no
+   * `dangerouslySetInnerHTML` here and there is not going to be.
+   */
+  lede: ReactNode
   /** A second paragraph, where the lede alone would overrun a sensible length. */
-  supporting?: string
+  supporting?: ReactNode
   /**
    * The breadcrumb's own label for this page.
    *

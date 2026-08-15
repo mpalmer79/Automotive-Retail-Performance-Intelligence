@@ -302,7 +302,13 @@ function RailBody({
               )}
             >
               <FolderGit2 aria-hidden="true" className="size-4" strokeWidth={2} />
-              GitHub
+              {/* "Source repository", not "GitHub". The rail's link is ARPI's code,
+                  and the Executive band above it now carries the author's GitHub
+                  PROFILE as a separate destination - two links to two different
+                  places, one of which used to be labelled with the name of the
+                  service they share. The footer and the About identity card use
+                  this same wording for the same reason. */}
+              Source repository
               <span className="sr-only">(opens in a new tab)</span>
             </a>
           </li>

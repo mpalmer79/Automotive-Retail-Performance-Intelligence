@@ -42,10 +42,10 @@ import {
   OperatingPageHeader,
   operatingContext,
 } from '@/components/dashboard/operating-page-header'
-import { ExecutiveProfileLinks } from '@/components/dashboard/profile-links'
 import { StoreScoreboard } from '@/components/dashboard/store-scoreboard'
 import { TargetPaceSection } from '@/components/dashboard/target-context'
 import { TrustPanel } from '@/components/dashboard/trust-panel'
+import { AuthorProfileLinks } from '@/components/profile/author-profile-links'
 import { Container, Section } from '@/components/ui/layout'
 import { Text } from '@/components/ui/typography'
 import {
@@ -284,12 +284,15 @@ export default async function DashboardPage({
           THE ONE ROUTE THAT FILLS THE ACTION SLOT.
 
           `/` is the front door of a portfolio as well as the group's operating console,
-          and a reviewer who has just read the KPI rail is looking for the source next.
-          The two links are secondary and sit after the methodology disclosure in the
-          DOM, so the synthetic-data statement is reached first at every width. The other
-          eight operating routes pass nothing here and are unchanged.
+          and a reviewer who has just read the KPI rail is looking for the person who
+          built it next. The pair is the AUTHOR's profiles - the GitHub portfolio and
+          LinkedIn - rather than the ARPI repository, which the rail's own source link
+          already carries and which answers a different question. The two links are
+          secondary and sit after the methodology disclosure in the DOM, so the
+          synthetic-data statement is reached first at every width. The other eight
+          operating routes pass nothing here and are unchanged.
         */
-        headerActions={<ExecutiveProfileLinks />}
+        headerActions={<AuthorProfileLinks />}
         methodologyId="trust"
         methodology={
           <>

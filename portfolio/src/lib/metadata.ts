@@ -11,6 +11,8 @@
 import type { Metadata } from 'next'
 
 import {
+  AUTHOR_GITHUB_URL,
+  AUTHOR_LINKEDIN_URL,
   IS_PREVIEW,
   REPOSITORY_URL,
   ROUTES,
@@ -253,7 +255,16 @@ export function structuredData(): string {
         'Data governance',
         'Data quality engineering',
       ],
-      sameAs: [REPOSITORY_URL],
+      /*
+       * `sameAs` on a Person means "other profiles OF THIS PERSON", and it carried
+       * one entry that was not one: the ARPI repository, which is a project the
+       * person wrote rather than an identity they hold. The two profiles are the
+       * correct answer to that property and are now the first two entries; the
+       * repository stays because it is also a place this person is identifiable,
+       * and it remains the `codeRepository` of the SoftwareSourceCode node below,
+       * which is where the project's own identity is asserted.
+       */
+      sameAs: [AUTHOR_GITHUB_URL, AUTHOR_LINKEDIN_URL, REPOSITORY_URL],
     },
     {
       '@type': 'SoftwareSourceCode',

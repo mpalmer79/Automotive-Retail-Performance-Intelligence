@@ -3,15 +3,22 @@ import type { Metadata } from 'next'
 
 import { AuthorPortrait } from '@/components/media/author-portrait'
 import { Reveal } from '@/components/motion/reveal'
+import { AuthorProfileLinks } from '@/components/profile/author-profile-links'
 import { LinkButton } from '@/components/ui/button'
 import { Card } from '@/components/ui/card-static'
 import { SourceLink } from '@/components/ui/data-card'
+import { InlineLink } from '@/components/ui/inline-link'
 import { Container, Section, SectionHeader } from '@/components/ui/layout'
 import { PageHeader } from '@/components/ui/page-header'
 import { CodeLabel, Eyebrow, Heading, Text } from '@/components/ui/typography'
 import { counts, manifest } from '@/lib/manifest'
 import { pageMetadata } from '@/lib/metadata'
-import { REPOSITORY_URL } from '@/lib/site'
+import {
+  AUTHOR_GITHUB_URL,
+  AUTHOR_LINKEDIN_URL,
+  REPOSITORY_URL,
+  SITE_AUTHOR,
+} from '@/lib/site'
 import { technicalHref } from '@/lib/technical'
 import { Canvas } from '@/components/shell/field'
 
@@ -62,17 +69,61 @@ export const metadata: Metadata = pageMetadata('about')
 export default function AboutPage() {
   return (
     <Canvas>
+      {/*
+        THE HERO ANSWERS "WHO BUILT THIS", AND NOTHING ELSE.
+
+        Three things changed and each removed something rather than adding to it.
+
+          - The eyebrow was "About the author", which is the name of a page rather
+            than the name of a person. It is now the name, which puts MICHAEL PALMER
+            immediately above the headline in the hierarchy the header already had.
+            The headline is untouched: it is the strongest sentence on the site and
+            appending a name to it would have weakened both halves.
+          - Two paragraphs replaced two longer ones. The first now says where the
+            other work is; the second says where the professional background is.
+            The paragraph they displaced explained the site's own editing history to
+            a visitor who had not asked - "that sentence was the home page's headline
+            until..." is a note about a redesign, not about a person or a product.
+            The result is shorter than what it replaced, which is the constraint the
+            wider redesign is under.
+          - The two repository source links left this row. They are evidence for the
+            authorship claim rather than the claim itself, and beside two brand
+            badges they read as four controls of equal weight. `README.md · author`
+            is now on the identity card, next to the name it evidences, and
+            `docs/research.md` is on the section whose subject it is. Nothing was
+            deleted.
+      */}
       <PageHeader
-        eyebrow="About the author"
+        eyebrow={SITE_AUTHOR}
         title="Dealership intelligence built by someone who has run the dealership"
-        lede="Twenty-five years in dealerships, then the technical work to model them properly. Most analytics portfolios are built by someone who learned the business from a dataset. This one is the other way round: the domain came first, and the technical decisions in it were made by someone who has had to defend a gross number to a general manager."
-        supporting="That sentence was the ARPI home page's headline until the home page became the product overview it should always have been. It is the right claim in the wrong place there and the right claim in the right place here, which is why this page is where it now lives and where it is argued at length."
-        meta={
+        /* The breadcrumb says "About", not the headline. The h1 here is a
+           sentence, and `crumbLabel` exists precisely so a trail can read
+           "Executive / About" rather than repeating it. */
+        crumbLabel="About"
+        lede={
           <>
-            <SourceLink path="README.md" field="author" />
-            <SourceLink path="docs/research.md" field="research evidence base" />
+            Twenty-five years in dealerships came first, followed by the technical work to
+            model them properly. ARPI combines that operating experience with analytics
+            and software engineering. You can explore my{' '}
+            <InlineLink href={AUTHOR_GITHUB_URL} external>
+              GitHub portfolio
+            </InlineLink>{' '}
+            to see other projects I&rsquo;ve built across AI, data, and software
+            development.
           </>
         }
+        supporting={
+          <>
+            My work sits at the intersection of automotive retail, analytics, AI, and
+            software engineering. For my professional background, experience, and current
+            work, visit my{' '}
+            <InlineLink href={AUTHOR_LINKEDIN_URL} external>
+              LinkedIn profile
+            </InlineLink>
+            .
+          </>
+        }
+        meta={<AuthorProfileLinks />}
       />
 
       {/* 1. The career, and the facts a reader wants before the essay. */}
@@ -113,6 +164,11 @@ export default function AboutPage() {
                     lazy-loads the same component. */}
                 <AuthorPortrait priority sizes="(min-width: 1024px) 24rem, 100vw" />
 
+                {/* THE NAME APPEARS TWICE ON THIS PAGE, DELIBERATELY. The eyebrow
+                    establishes authorship before the headline; this is the personal
+                    profile identity beside the portrait, and it is where the
+                    repository's own author record is cited. Two placements, two
+                    jobs. There is no third. */}
                 <div className="flex flex-col gap-1">
                   <h3 className="font-display text-2xl font-semibold tracking-tight text-ink">
                     {manifest.project.author}
@@ -120,6 +176,7 @@ export default function AboutPage() {
                   <p className="text-sm text-ink-muted">
                     Automotive retail operations, then analytics engineering.
                   </p>
+                  <SourceLink path="README.md" field="author" className="mt-1" />
                 </div>
                 <dl className="flex flex-col gap-3 border-t border-line-subtle pt-4 text-sm">
                   <SidebarRow
@@ -298,6 +355,11 @@ export default function AboutPage() {
             eyebrow="What is actually in the repository"
             title="Eight capabilities, each one a file a reviewer can open"
             lede="No proficiency rating, because a self-assessed percentage tells you nothing the code does not tell you better."
+            /* The research evidence base, moved out of the hero. This is the
+               section that cites repository files line by line, so the document
+               behind the citations belongs at the head of it rather than beside
+               the author's profile badges two screens up. */
+            action={<SourceLink path="docs/research.md" field="research evidence base" />}
           />
           <dl className="mt-12 flex flex-col divide-y divide-line-subtle">
             <SkillRow

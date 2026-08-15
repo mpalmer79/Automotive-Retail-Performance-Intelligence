@@ -20,6 +20,7 @@ import { ExternalLink, FolderGit2, Lock } from 'lucide-react'
 import Link from 'next/link'
 
 import { Wordmark } from '@/components/brand/logo'
+import { AuthorProfileLinks } from '@/components/profile/author-profile-links'
 import { Container } from '@/components/ui/layout'
 import { TrustLine } from '@/components/ui/trust-line'
 import { Text } from '@/components/ui/typography'
@@ -76,6 +77,18 @@ export function SiteFooter() {
               Source repository
               <span className="sr-only"> (opens in a new tab)</span>
             </a>
+
+            {/*
+              THE PROJECT, THEN THE PERSON, IN THAT ORDER AND AS TWO THINGS.
+
+              `Source repository` above is ARPI's code. These two are Michael Palmer's
+              GitHub profile and LinkedIn. The badges sit BELOW the repository button
+              rather than replacing it, because a reader who has just finished the site
+              wants one of two different things and the footer should not make them
+              guess which link means which. The neutral outlined button and the two
+              branded badges also read as two tiers, which is the hierarchy.
+            */}
+            <AuthorProfileLinks />
           </div>
 
           <nav

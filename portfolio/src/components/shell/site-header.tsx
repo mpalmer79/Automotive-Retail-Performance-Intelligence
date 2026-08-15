@@ -3,8 +3,8 @@
 /**
  * The reference domain's header.
  *
- * Three content destinations, a GitHub action, and a menu button below the large
- * breakpoint. That is the whole surface.
+ * Three content destinations, the author's two professional profile links, and a
+ * menu button below the large breakpoint. That is the whole surface.
  *
  * WHAT `UX.1` REMOVED, AND WHY
  * ----------------------------
@@ -36,18 +36,19 @@
  *   - Desktop and mobile navigation are ONE list rendered once and moved by CSS,
  *     so there is no set of links that exists in the DOM but cannot be reached.
  */
-import { FolderGit2, Menu, X } from 'lucide-react'
+import { Menu, X } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useCallback, useState } from 'react'
 
 import { Wordmark } from '@/components/brand/logo'
+import { AuthorProfileLinks } from '@/components/profile/author-profile-links'
 import { IconButton } from '@/components/ui/button'
 import { useEscapeKey, useFocusTrap, useScrollLock } from '@/lib/hooks'
 import {
   GROUP_NAV,
   PRIMARY_NAV,
-  REPOSITORY_URL,
+  SITE_AUTHOR,
   isNavItemCurrent,
   type NavItem,
 } from '@/lib/site'
@@ -173,22 +174,24 @@ export function SiteHeader() {
             </ul>
           </nav>
 
-          <div className="ml-auto flex items-center gap-1 lg:ml-4">
-            <a
-              href={REPOSITORY_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={cx(
-                'inline-flex size-touch items-center justify-center rounded-lg',
-                'text-ink-muted transition-colors duration-(--arpi-motion-fast)',
-                'hover:bg-surface-hover hover:text-ink'
-              )}
-            >
-              <FolderGit2 aria-hidden="true" className="size-[18px]" strokeWidth={2} />
-              <span className="sr-only">
-                Source repository on GitHub (opens in a new tab)
-              </span>
-            </a>
+          <div className="ml-auto flex items-center gap-1.5 lg:ml-4">
+            {/*
+              THE ACTION AREA IS THE AUTHOR'S, NOT THE PROJECT'S.
+
+              It held one muted folder glyph pointing at the ARPI repository, which
+              was the personal GitHub icon standing in for a source link and reading
+              as neither. The masthead now carries the two professional profiles -
+              GitHub and LinkedIn, in the shared brand marks the badges use - and the
+              repository keeps its own explicitly labelled `Source repository` control
+              in the footer, on the About identity card and on the operating rail.
+              A reader looking for the code and a reader looking for the person were
+              being sent to the same place; they are not any more.
+
+              The compact variant, because two labelled badges beside three navigation
+              items is a cramped masthead. Same marks, same surfaces, same targets;
+              the labels move into the accessible names and the tooltips.
+            */}
+            <AuthorProfileLinks variant="compact" />
 
             <IconButton
               label={drawerOpen ? 'Close navigation menu' : 'Open navigation menu'}
@@ -300,6 +303,25 @@ export function SiteHeader() {
                 pathname={pathname}
               />
               <NavGroup heading="The demo group" items={GROUP_NAV} pathname={pathname} />
+
+              {/*
+                THE AUTHOR, AFTER THE DESTINATIONS.
+
+                The masthead's compact icons are 44px squares and they are in the
+                drawer's tab order too, but an icon with no visible label is the wrong
+                affordance in a full-width menu a thumb is scanning. So the drawer
+                gets the LABELLED pair - the same component, the same marks, the same
+                destinations - under the author's name, after the navigation groups
+                rather than competing with them.
+
+                It is a `<div>` inside the `<nav>` rather than a fourth NavGroup: these
+                leave the site, and the group component renders internal `<Link>`s
+                with a current-page state that means nothing for an external profile.
+              */}
+              <div className="mt-5 flex flex-col gap-3 border-t border-line pt-4">
+                <p className="eyebrow text-2xs">{SITE_AUTHOR}</p>
+                <AuthorProfileLinks />
+              </div>
             </nav>
           </div>
         </>
