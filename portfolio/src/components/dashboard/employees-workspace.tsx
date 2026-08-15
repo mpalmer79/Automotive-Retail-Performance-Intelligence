@@ -489,11 +489,20 @@ export function FamilyRail({
         </Card>
       </div>
 
+      {/* TWO PARAGRAPHS, AND THE SPLIT FIXED A DEFECT AS WELL AS THE LENGTH.
+          `{description}` sat on its own line above the sentence that followed it,
+          and JSX strips whitespace that contains a newline — so the rendered text
+          read "…the opportunity and mix that surrounded it.The floor is a
+          publication discipline", with no space, on every role family. Splitting
+          the two claims into their own paragraphs removes the join entirely, and
+          they are two claims: what the row shows, and what the minimum sample
+          means. Neither sentence lost a word. */}
+      <p className="max-w-prose text-xs leading-normal text-ink-muted">{description}</p>
       <p className="max-w-prose text-xs leading-normal text-ink-muted">
-        {description} The floor is a publication discipline, not a performance threshold:
-        below it this page declines to print a comparative ratio and says nothing whatever
-        about the person. It applies to each measure&rsquo;s own denominator, so someone
-        can be eligible on one figure and not on another in the same period.
+        The floor is a publication discipline, not a performance threshold: below it this
+        page declines to print a comparative ratio and says nothing whatever about the
+        person. It applies to each measure&rsquo;s own denominator, so someone can be
+        eligible on one figure and not on another in the same period.
       </p>
     </div>
   )

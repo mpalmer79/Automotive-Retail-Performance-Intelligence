@@ -1269,7 +1269,12 @@ export function MarketingEconomics({
             mark: 'bg-data-primary',
           },
         ]}
-        footnote="An organic or internal source has NO cost per opportunity — not a cost of zero — so it prints Not applicable and draws no bar; a zero-length bar would rank a walk-in as the most efficient channel the group operates. Gross return is attributed gross divided by spend: it nets out the cost of the vehicle and nothing else, which makes it a contribution measure and not profit, ROI or incremental return."
+        /* Two qualifications, and both stay visible: each governs how a bar on
+           this matrix may be read. What `UX.3` removed is the reasoning inside
+           them — why a zero-length bar would mislead, and what a contribution
+           measure nets out — which the methodology disclosures at the foot of
+           this route still carry in full. The claims themselves are intact. */
+        footnote="An organic or internal source has NO cost per opportunity — not a cost of zero — so it prints Not applicable and draws no bar. Gross return is attributed gross over spend: a contribution measure, not profit, ROI or incremental return."
       >
         <MarketingDetail marketing={marketing} />
       </MeasureMatrix>

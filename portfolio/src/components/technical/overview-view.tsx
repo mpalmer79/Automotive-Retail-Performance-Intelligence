@@ -1,3 +1,4 @@
+import { FlowDiagram, type FlowStage } from '@/components/visuals/flow'
 import { EngineeringProof } from '@/components/sections/engineering-proof'
 import { ProductTourSection } from '@/components/sections/product-tour'
 import { StoreStory } from '@/components/sections/store-story'
@@ -59,7 +60,25 @@ export function OverviewView() {
             layout="wide"
             lede="ARPI publishes one consistent operating view over what dealership systems produce. It is the system of record for nothing."
           />
-          <div className="grid gap-6 pt-8 md:grid-cols-3">
+
+          {/* THE PIPELINE, DRAWN RATHER THAN LISTED.
+              The lede above and the `supporting` paragraph this view used to
+              carry were both the same ordered chain written out longhand. A
+              chain is a picture of a chain, and the caption carries the one
+              claim the picture cannot make on its own — that the last stage is
+              a build step and not a server. */}
+          <FlowDiagram
+            className="pt-8"
+            label="The ARPI pipeline, from seeded generation to the operating console"
+            stages={PIPELINE}
+            /* The caption keeps the sentence the retired `supporting` paragraph
+               opened with, verbatim. `visual-system.spec.ts` anchors the site's
+               body-face assertion on it, and a phrase a test locates is a phrase
+               a rewrite has to carry rather than paraphrase. */
+            caption="Nothing here queries a database at request time. The console reads a committed export, which is what makes every figure on this site reproducible from the repository alone."
+          />
+
+          <div className="grid gap-6 pt-10 md:grid-cols-3">
             <Claim
               heading="One model, seven domains"
               body="Seven domains share conformed store, date, vehicle and employee keys, so a figure means the same thing whichever surface reads it."
@@ -87,6 +106,29 @@ export function OverviewView() {
     </>
   )
 }
+
+/**
+ * The seven stages, named as the repository names them.
+ *
+ * The semantic model is drawn as a stage of the pipeline and marked pending,
+ * because it IS one — the reporting schema is what it reads — and leaving it off
+ * would draw a pipeline that ends in a place the project does not claim to end.
+ * Its state is a word, not only a colour.
+ */
+const PIPELINE: readonly FlowStage[] = [
+  { label: 'Seeded generators', detail: 'Python, deterministic from a profile' },
+  { label: 'Validation', detail: 'In memory, before anything is written' },
+  { label: 'CSV + digest', detail: 'Content-addressed, byte-reproducible' },
+  { label: 'PostgreSQL', detail: 'Raw, staging, warehouse' },
+  { label: 'Reporting views', detail: 'Own the SQL side of every KPI', tone: 'accent' },
+  {
+    label: 'Semantic model',
+    detail: 'TMDL, reads reporting only',
+    tone: 'pending',
+    state: 'Engine validation pending',
+  },
+  { label: 'Governed export', detail: 'What this console reads' },
+]
 
 function Claim({ heading, body }: { readonly heading: string; readonly body: string }) {
   return (

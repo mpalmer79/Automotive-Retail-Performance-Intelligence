@@ -24,20 +24,29 @@ export function KpisView() {
       </TechnicalViewMeta>
 
       {/* Why there are no numbers here. Stated before the catalogue, because it
-          is the first question a reviewer will have. */}
+          is the first question a reviewer will have.
+
+          `UX.3` HALVED THE WORDS AND KEPT BOTH CLAIMS. Each card was a
+          sixty-word paragraph that made its point in its first sentence and then
+          argued for it. Both points are qualifications on how the catalogue may
+          be read, so neither may go behind a disclosure; what they could lose is
+          the argument, which the rest of this destination makes at length. */}
       <Section rhythm="none" className="pb-section-tight">
         <Container width="wide">
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <Card tone="pending" className="flex flex-col gap-2">
+              {/* The heading and the engine clause are both asserted verbatim by
+                  `content-integrity.spec.ts`, and that is the right place for the
+                  line between compression and disclosure to be drawn: what this
+                  card may lose is the argument, never the words that carry the
+                  claim. */}
               <Heading level={2} size="h5">
                 This page shows definitions, never values
               </Heading>
               <Text size="sm" tone="secondary" className="max-w-prose">
-                There is no KPI value anywhere on this site. The SQL side computes over a
-                synthetic dataset describing a fictional dealer group, and the DAX side
-                has never been evaluated by a Microsoft engine. A grid of figures here
-                would look like results and would mean nothing, so the catalogue presents
-                what the project actually has: the arithmetic, and the rules around it.
+                No KPI value appears anywhere on this site. The SQL side computes over
+                synthetic data for a fictional dealer group, and the DAX side has never
+                been evaluated by a Microsoft engine.
               </Text>
             </Card>
 
@@ -46,12 +55,10 @@ export function KpisView() {
                 No invented benchmarks either
               </Heading>
               <Text size="sm" tone="secondary" className="max-w-prose">
-                The catalogue contains no industry benchmark value, because the project
-                has no access to real dealership performance data and therefore cannot
-                state what good looks like. Where a numeric threshold appears - the 60-day
-                aged-inventory line, the 30-day days-supply window - it is labelled a
-                project default with its source cited, and it is a parameter of the
-                calculation rather than a performance standard.
+                This project has no real dealership performance data, so it states no
+                industry benchmark. Every numeric threshold in the catalogue is labelled a
+                project default with its source: a parameter of the calculation, not a
+                standard.
               </Text>
               <SourceLink
                 path="LIMITATIONS.md"
