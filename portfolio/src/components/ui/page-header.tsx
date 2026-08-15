@@ -64,6 +64,30 @@ export interface PageHeaderProps {
   /** Status badges, source links, or a jump list. */
   meta?: ReactNode
   /**
+   * A diagram, portrait, status grid or stat rail, rendered as part of the
+   * opening block rather than below it.
+   *
+   * WHY THE HEADER OWNS A VISUAL SLOT AT ALL. Measured before `UX.3` on a
+   * production build: the first framed visual region on the eight reference
+   * routes began between 191 px and 1,297 px down at 1440 × 900, and between
+   * 816 px and 3,542 px down at 390 × 844. Six of them had NO visual inside the
+   * first viewport at either size. The cause was structural rather than
+   * per-route — every one of them opened with this component, and this component
+   * emitted an eyebrow, an `h1`, a lede, a supporting paragraph, a badge row and
+   * a trust line before the page's own body began. Fixing it route by route
+   * would have been eight arrangements of the same idea.
+   *
+   * On `lg` the visual sits beside the copy, so the reader meets the shape of the
+   * subject and the sentence describing it together. Below `lg` it follows the
+   * lede and PRECEDES the badges and the trust line, which is what moves it above
+   * the fold on a phone rather than merely reordering the same scroll.
+   *
+   * It is decoration nowhere: every caller passes something derived from the
+   * repository — a pipeline, a lane comparison, a gate state, the author's
+   * portrait — and a route with nothing to show passes nothing.
+   */
+  visual?: ReactNode
+  /**
    * Render the Granite Auto Group sub-navigation. Set by the three store routes
    * and by the reference listing explorer.
    *
@@ -113,6 +137,7 @@ export function PageHeader({
   supporting,
   crumbLabel,
   meta,
+  visual,
   groupNav = false,
   parentCrumb,
   trustScope = 'synthetic',
@@ -144,24 +169,34 @@ export function PageHeader({
             ]}
           />
 
-          <div className="flex flex-col gap-5">
-            <p className="eyebrow flex items-center gap-2.5 text-accent">
-              <span
-                aria-hidden="true"
-                className="inline-block h-px w-6 shrink-0 bg-accent"
-              />
-              {eyebrow}
-            </p>
-            <Heading level={1} className="max-w-4xl">
-              {title}
-            </Heading>
-            <Text size="body" tone="secondary" className="max-w-prose">
-              {lede}
-            </Text>
-            {supporting ? (
-              <Text size="body" tone="muted" className="max-w-prose">
-                {supporting}
+          <div
+            className={cx(
+              'gap-x-12 gap-y-8',
+              visual ? 'grid grid-cols-1 lg:grid-cols-12' : 'flex flex-col'
+            )}
+          >
+            <div className={cx('flex flex-col gap-5', visual ? 'lg:col-span-6' : null)}>
+              <p className="eyebrow flex items-center gap-2.5 text-accent">
+                <span
+                  aria-hidden="true"
+                  className="inline-block h-px w-6 shrink-0 bg-accent"
+                />
+                {eyebrow}
+              </p>
+              <Heading level={1} className="max-w-4xl">
+                {title}
+              </Heading>
+              <Text size="body" tone="secondary" className="max-w-prose">
+                {lede}
               </Text>
+              {supporting ? (
+                <Text size="body" tone="muted" className="max-w-prose">
+                  {supporting}
+                </Text>
+              ) : null}
+            </div>
+            {visual ? (
+              <div className="min-w-0 lg:col-span-6 lg:self-center">{visual}</div>
             ) : null}
           </div>
 

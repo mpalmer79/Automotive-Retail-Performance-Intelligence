@@ -1311,3 +1311,78 @@ means "the latest full month the dataset holds"; a `<select>` with no `''` optio
 rendering its first, so seven of eight routes opened reading `July 2025` above a page reporting
 December. The default entry is rendered by `FilterBar` itself now, so no route can forget it and none
 can render it twice.
+
+---
+
+## The reference-route visual vocabulary (`UX.3`)
+
+`UX.2` gave the operating console a visual language and left the reference half of the site with
+none. Measured before `UX.3`: six of the eight technical views, the About page, the case study and
+one store page contained no framed visual region inside the first viewport at 1440 × 900, and the
+first one on the status view began 4,021 px down at 390 × 844. The numbers are in
+[`UX-3-BASELINE.md`](../../docs/reviews/UX-3-BASELINE.md).
+
+### The header owns a visual slot
+
+Every reference route opens with `<PageHeader>`, and it emitted an eyebrow, an `h1`, a lede, a
+supporting paragraph, a badge row and a trust line before the route's own body began. Fixing that
+route by route would have been fourteen arrangements of one idea, so the component takes a `visual`
+slot instead. On `lg` it sits beside the copy; below `lg` it follows the lede and **precedes the
+badges and the trust line**, which is what moves it above the fold on a phone rather than reordering
+the same scroll.
+
+The slot is not decoration. Every caller passes something derived from the repository — a pipeline,
+a lane comparison, a gate state, a stat rail read from the generated manifest — and a route with
+nothing to show passes nothing.
+
+### Four shapes, and what each replaces
+
+| Shape             | Component        | The prose it replaces                            |
+| ----------------- | ---------------- | ------------------------------------------------ |
+| Stage chain       | `FlowDiagram`    | An ordered list of stages written out longhand   |
+| Two-lane compare  | `LaneFlow`       | Two provenances argued in consecutive paragraphs |
+| Claim + state set | `StatusGrid`     | A column of cards with a paragraph inside each   |
+| Derived figures   | `StatRail`       | Counts quoted inside a lede                      |
+| Claim + artefact  | `CapabilityGrid` | A paragraph per capability                       |
+
+### The rules these components enforce
+
+**A diagram is markup, not an SVG and not a chart library.** A stage chain is an `<ol>`: the reading
+order is the flow order, a screen reader announces "3 of 7", the labels are real text a browser can
+search and translate, it reflows to one column without a viewBox, and it costs zero bytes of client
+JavaScript. `PERFORMANCE.md`'s no-visualization-runtime position is not relaxed for diagrams — a
+diagram is where it is most often abandoned.
+
+**A tone may never be the only carrier of a state.** A `FlowStage` marked `pending` or `conceptual`
+must also carry a `state` word. "Engine validation pending", "No connection exists", "Not built" and
+"Would require authorization" are text, so they survive greyscale and they survive a reader who has
+not been told what a dashed border means. `tests/unit/ux3-shared-visuals.test.tsx` asserts it.
+
+**A lane's boundary sentence is always visible.** The reason two lanes are drawn apart is that they
+may not be read as one, so the sentence saying what each lane may not be read as cannot be a
+disclosure. Same test.
+
+**No grid may carry a proficiency rating.** `CapabilityGrid` has no prop for one and renders no
+`<meter>` or `<progress>`. The About page argued for that rule in prose for two increments; it is
+structural now.
+
+**`data-visual-region` extends to the reference routes, with one exclusion.** The attribute is the
+console's existing hook for "a region whose content is data-driven geometry", carries no styling, and
+means nothing to a reader. `StatusGrid` and `StatRail` carry it because their content is derived from
+the manifest and the catalogue. `CapabilityGrid` deliberately does not: its cells hold a claim and a
+link, and marking it would let a route satisfy a first-viewport contract with a list of assertions.
+
+### Measured
+
+| Measure                                                     |         Before |          After |
+| ----------------------------------------------------------- | -------------: | -------------: |
+| Reference routes with no visual in the first viewport, 1440 |         6 / 14 |     **0 / 14** |
+| First visual at 390, range across the fourteen              | 1,107–4,021 px | **386–659 px** |
+| Visible paragraphs over 45 words, whole site                |             69 |         **45** |
+| Client JavaScript added                                     |              — |    **0 bytes** |
+
+The harness is committed, unlike every UX increment before this one:
+`portfolio/scripts/measure-ux.ts` and `portfolio/scripts/dump-long-prose.ts`. Neither runs in CI.
+The reason for the departure is recorded in `UX-3-BASELINE.md` §0 — `UX-2-REVIEW.md` found that four
+scratch harnesses did not agree with each other, and a measurement nobody can re-run is a
+measurement the next increment has to take on trust.

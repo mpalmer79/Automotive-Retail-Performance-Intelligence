@@ -2,7 +2,7 @@ import { TechnicalViewMeta } from '@/components/technical/view-meta'
 import { ArrowRight, Check, FileSpreadsheet, ShieldCheck, X } from 'lucide-react'
 
 import { Reveal } from '@/components/motion/reveal'
-import { StatusBadge } from '@/components/ui/badge'
+import { Badge, StatusBadge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card-static'
 import { SourceLink } from '@/components/ui/data-card'
 import { Container, Grid, Section } from '@/components/ui/layout'
@@ -60,13 +60,22 @@ export function DataSourcesView() {
               <Text size="body" tone="secondary" className="max-w-prose">
                 {notice}
               </Text>
-              <Text size="sm" tone="muted" className="max-w-prose">
-                Its correct classification is{' '}
-                <strong className="text-ink-secondary">{artifact.classification}</strong>.
-                The dealer and vehicle identifiers are synthetic; the listing attributes
-                are retained from a de-identified public snapshot. The source dealership
-                is not named anywhere in this repository, and it never will be.
-              </Text>
+              <ul aria-label="What this lane is" className="flex flex-wrap gap-2">
+                <li>
+                  <Badge tone="pending" mono>
+                    {artifact.classification}
+                  </Badge>
+                </li>
+                <li>
+                  <Badge tone="neutral">Dealer and vehicle identifiers: synthetic</Badge>
+                </li>
+                <li>
+                  <Badge tone="neutral">Listing attributes: de-identified snapshot</Badge>
+                </li>
+                <li>
+                  <Badge tone="neutral">Source dealership: never named</Badge>
+                </li>
+              </ul>
               <div className="flex flex-wrap gap-3 pt-1">
                 <SourceLink path={governance.adr} field="the decision" />
                 <SourceLink path={governance.policy} field="the policy" />

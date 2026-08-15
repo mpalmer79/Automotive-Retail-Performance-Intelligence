@@ -3,6 +3,7 @@ import { StatusBadge } from '@/components/ui/badge'
 import { SourceLink } from '@/components/ui/data-card'
 import { Container, Section, SectionHeader } from '@/components/ui/layout'
 import { Text } from '@/components/ui/typography'
+import { LaneFlow, type Lane } from '@/components/visuals/flow'
 
 /**
  * The product vision, labelled as one on the page and not only in this comment.
@@ -24,6 +25,57 @@ import { Text } from '@/components/ui/typography'
  * summary of it, and the gap analysis it depends on is
  * `docs/product/PRODUCT_GAPS.md`.
  */
+/**
+ * The two lanes: what this repository runs, and what it only describes.
+ *
+ * Every stage of the second lane carries the word "not built" or "would require",
+ * because `tone: 'conceptual'` is a dashed border and a dashed border is a
+ * treatment. The rule this file has held since it was written is that no
+ * integration on this view may be legible as a capability, and a diagram is the
+ * easiest place on a page to break it.
+ */
+const VISION_LANES: readonly Lane[] = [
+  {
+    title: 'Implemented today',
+    state: 'In this repository',
+    tone: 'default',
+    stages: [
+      { label: 'Seeded synthetic generation', detail: 'Deterministic, documented' },
+      { label: 'Governed warehouse and KPI layer', detail: 'Grain and denominators' },
+      { label: 'Operating console with drill-through', detail: 'What you are reading' },
+    ],
+    boundary:
+      'Every figure anywhere on this site is produced from synthetic data generated inside this repository.',
+  },
+  {
+    title: 'Production vision',
+    state: 'Design position',
+    tone: 'conceptual',
+    stages: [
+      {
+        label: 'Authorized system access',
+        detail: 'DMS, CRM, F&I, accounting, marketing',
+        tone: 'conceptual',
+        state: 'No connection exists',
+      },
+      {
+        label: 'Conformed ingestion',
+        detail: 'Store, date, vehicle, employee, lead keys',
+        tone: 'conceptual',
+        state: 'Not built',
+      },
+      {
+        label: 'The same governed layer',
+        detail: 'Unchanged: that is the argument',
+        tone: 'conceptual',
+        state: 'Would require authorization',
+      },
+    ],
+    boundary:
+      'Nothing in this lane is being built, and no dealer group has authorized any of it. It is what the work would look like, not what it does.',
+  },
+]
+
 export function ProductVisionView() {
   return (
     <>
@@ -44,15 +96,23 @@ export function ProductVisionView() {
               Nothing on this page is implemented.
             </p>
             <Text size="sm" tone="muted">
-              ARPI has no connection to any dealer management system, customer
-              relationship management system, finance and insurance contracting platform,
-              accounting system, inventory management tool or marketing platform. Every
-              figure anywhere on this site is produced from synthetic data generated
-              inside this repository. The sections below describe what a production
-              deployment would read if a dealer group authorized it, and they are a design
-              position rather than a capability.
+              ARPI has no connection to any dealer management system, CRM, F&amp;I
+              contracting platform, accounting system, inventory tool or marketing
+              platform. Everything below is a design position rather than a capability.
             </Text>
           </div>
+
+          {/* THE TWO STATES, DRAWN APART.
+              `UX.3` §S asks a reader to know within seconds what exists and what
+              is conceptual. The paragraph above says it and the lanes show it:
+              the conceptual lane is dashed, its stages carry the word rather than
+              only the treatment, and no stage of it is drawn like a stage of the
+              lane that runs today. */}
+          <LaneFlow
+            className="pt-8"
+            label="What runs today against what a production deployment would add"
+            lanes={VISION_LANES}
+          />
         </Container>
       </Section>
 

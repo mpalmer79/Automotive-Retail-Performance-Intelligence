@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/card-static'
 import { SourceLink } from '@/components/ui/data-card'
 import { Container, Grid, Section } from '@/components/ui/layout'
 import { TrustFramework } from '@/components/sections/trust-framework'
+import { LaneFlow, type Lane } from '@/components/visuals/flow'
 import { CodeLabel, Eyebrow, Heading, Text } from '@/components/ui/typography'
 import { gate, counts } from '@/lib/manifest'
 import { INVENTORY_DATA_STATEMENT, SYNTHETIC_DATA_STATEMENT } from '@/lib/site'
@@ -25,6 +26,51 @@ import { INVENTORY_DATA_STATEMENT, SYNTHETIC_DATA_STATEMENT } from '@/lib/site'
  * modal, not small print. `suppressTrustLine` on the header is set because
  * the body states it more prominently immediately below.
  */
+/**
+ * The two provenances, as two chains.
+ *
+ * The boundary sentence on each lane is the load-bearing part and is always
+ * visible: it is the reason the lanes are drawn apart in the first place, so it
+ * cannot become a disclosure without the diagram becoming decorative.
+ */
+const DATA_LANES: readonly Lane[] = [
+  {
+    title: 'Synthetic warehouse',
+    state: 'Machine-generated',
+    tone: 'default',
+    stages: [
+      { label: 'Seeded generators', detail: 'Documented rules, fixed seed' },
+      { label: 'Validation and load', detail: 'Rejections retained' },
+      { label: 'Warehouse and reporting', detail: 'Every operating figure' },
+    ],
+    boundary:
+      'No row of it was ever observed anywhere, so it describes no real dealership and supports no comparison with one.',
+  },
+  {
+    title: 'Reference listings',
+    state: 'Observed, then de-identified',
+    tone: 'pending',
+    stages: [
+      { label: 'Private workbook', detail: 'Never enters the repository' },
+      {
+        label: 'Sanitizer',
+        detail: 'Removes VINs, URLs, addresses, dealership identity',
+      },
+      {
+        label: 'Reference tree',
+        detail: 'Never the generated-sample tree',
+        tone: 'accent',
+      },
+      {
+        label: 'Build-time gate',
+        detail: 'Refuses to write a file still carrying an identifier',
+      },
+    ],
+    boundary:
+      'Calling this lane synthetic would claim more sanitization than was performed, so it is not called synthetic anywhere on this site.',
+  },
+]
+
 export function GovernanceView() {
   const gate1 = gate('gate-1')
   const gate2 = gate('gate-2')
@@ -54,11 +100,9 @@ export function GovernanceView() {
                 {SYNTHETIC_DATA_STATEMENT}
               </Text>
               <Text size="sm" tone="muted" className="max-w-prose">
-                Granite Auto Group, its three stores, its staff and its customers were
-                invented to give the data model a coherent business context. Every figure
-                the project can produce comes from documented rules and a fixed random
-                seed. Nothing here should be read as, compared against, or cited as the
-                performance of any real automotive retailer.
+                Every figure comes from documented rules and a fixed random seed. Nothing
+                here may be read as, compared against, or cited as the performance of any
+                real automotive retailer.
               </Text>
               <div className="flex flex-wrap gap-3 pt-1">
                 <SourceLink path="PRIVACY_AND_ETHICS.md" field="section 2" />
@@ -85,18 +129,23 @@ export function GovernanceView() {
               The inventory shown on the dealership pages and in the inventory explorer is
               not machine-generated, and this project does not claim it is.
             </Text>
+
+            {/* THE TWO LANES, DRAWN. The paragraph this replaced spent
+                eighty-eight words establishing that two things a reader would
+                assume are one thing are not — which is a comparison, and a
+                comparison read as consecutive sentences is the arrangement most
+                likely to be taken as one continuous claim. Every clause of it
+                survives: the seed, the observation-then-de-identification, the
+                separate tree, and the build-time gate are each a stage or a
+                boundary below. */}
+            <LaneFlow
+              className="pt-1"
+              label="The two data lanes and their provenance"
+              lanes={DATA_LANES}
+            />
+
             <Text size="sm" tone="secondary" className="max-w-prose">
               {INVENTORY_DATA_STATEMENT}
-            </Text>
-            <Text size="sm" tone="muted" className="max-w-prose">
-              The two are governed as different classes of data because they are
-              different. The warehouse is generated from a seed, so no row of it was ever
-              observed anywhere. The inventory workbooks were observed, then
-              de-identified, so calling them synthetic would claim more sanitization than
-              was performed. They live in the repository&apos;s reference tree, never in
-              the generated-sample tree, and the build-time generator that reads them
-              refuses to write a frontend file still containing a VIN, a source URL, a
-              domain, an email address or a telephone number.
             </Text>
             <Text size="sm" tone="muted" className="max-w-prose">
               An inventory summary is descriptive evidence about a reference dataset. It
@@ -224,13 +273,13 @@ export function GovernanceView() {
               <LimitCard
                 icon={<Scale />}
                 title="The action queue is deterministic, and there is no model in it"
-                body="Management actions are produced by evaluating a versioned YAML rule file against the datasets the export already publishes. No language model, no learned model, no scoring heuristic: every word comes from a rule template and every number from an exported column, so any action can be recomputed by hand from files in the repository. The rules are evaluated once at export time and the console only selects from the result, so the queue is identical for every visitor of a dataset version. It is also stateless - nothing is assigned, acknowledged or completed, because no such state exists. Twelve of thirty permanent rules are enabled; the other eighteen are retained and switched off, each with the audited reason the project cannot evaluate it honestly."
+                body="A versioned YAML rule file evaluated against the published datasets. No language model, no learned model, no scoring heuristic: every word comes from a rule template and every number from an exported column, so any action can be recomputed by hand. Evaluated once at export time, so the queue is identical for every visitor of a dataset version, and stateless: nothing is assigned, acknowledged or completed."
                 artefact="config/dashboard/action_rules.yaml"
               />
               <LimitCard
                 icon={<Scale />}
                 title="A rule change is a data change"
-                body="The rule file is an input to published data: editing a review threshold changes the queue even though no business fact moved. The export manifest therefore records the ruleset's hash, and the offline export check re-derives the whole queue from the current rule file and fails if the committed one differs. Every threshold the rule file owns is labelled a project default for a fictional dealer group - none is an industry benchmark, an OEM standard or a compliance requirement - and thresholds the warehouse already governs, such as the 60-day aged default, are read from the exported row rather than restated."
+                body="Editing a review threshold changes the queue even though no business fact moved. The manifest therefore records the ruleset's hash, and the export check re-derives the queue and fails if the committed one differs. Every threshold the rule file owns is a project default for a fictional dealer group, never an industry benchmark, an OEM standard or a compliance requirement."
                 artefact="scripts/export_dashboard_dataset.py --check"
               />
               <LimitCard

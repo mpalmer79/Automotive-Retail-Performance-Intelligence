@@ -463,6 +463,55 @@ describe('the About page header', () => {
     const heroEnd = header.indexOf('meta={<AuthorProfileLinks />}')
     expect(header.slice(0, heroEnd)).not.toContain('SourceLink')
   })
+
+  /*
+   * THE MERGE GUARD.
+   *
+   * This branch was opened before `UX.3` rebuilt the page from seven prose chapters
+   * into five sections carrying three derived structures. Resolving the conflict by
+   * taking either side wholesale would have been a plausible-looking file and a
+   * silent regression, so the surviving `UX.3` structure is asserted here rather
+   * than trusted: the author identity is an ADDITION to that page, not a
+   * replacement for it.
+   */
+  it('keeps the UX.3 structure the author identity was added to', () => {
+    const text = about()
+    for (const survivor of [
+      'FlowDiagram',
+      'PURPOSE_CHAIN',
+      'CapabilityGrid',
+      'CAPABILITIES',
+      'DOMAIN_CHIPS',
+      'FACTS',
+      'AuthorPortrait',
+      'JUDGEMENTS',
+    ]) {
+      expect(text, `${survivor} left the About page`).toContain(survivor)
+    }
+    // The header keeps its own visual: the badges sit beside the purpose chain
+    // rather than in place of it.
+    expect(text).toContain('visual={')
+  })
+
+  it('does not restore the pre-UX.3 long-form page', () => {
+    const text = about()
+    /*
+     * Component names and the old docstring's own summary, not sentences of body
+     * copy. Prettier rewraps JSX text, so a prose needle can fail to match a
+     * paragraph that IS present and pass for the wrong reason — a guard that
+     * cannot fail is worse than no guard.
+     */
+    for (const regression of [
+      // The eight long capability rows `CapabilityGrid` replaced.
+      'SkillRow',
+      // The facts column the portrait card absorbed.
+      'SidebarRow',
+      // The structure itself, as the page used to describe it.
+      'Seven chapters',
+    ]) {
+      expect(text, `${regression} came back with the merge`).not.toContain(regression)
+    }
+  })
 })
 
 /* -------------------------------------------------------------------------- */

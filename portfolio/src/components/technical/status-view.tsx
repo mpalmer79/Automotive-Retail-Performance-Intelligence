@@ -129,12 +129,9 @@ export function StatusView() {
               Two accepted paths of equal standing. Either one closes the gate.
             </Heading>
             <Text size="body">
-              A semantic model is proved by an engine or it is not proved. The environment
-              that built this model runs Ubuntu with no Windows layer, no Power BI Desktop
-              and no Analysis Services instance, so nothing in it can open the project,
-              refresh the model, or evaluate a measure. Both routes out of that carry the
-              same seven-part proof obligation, and a path that proves six of seven has
-              not validated the model.
+              A semantic model is proved by an engine or it is not proved. Both routes
+              carry the same seven-part proof obligation, and a path that proves six of
+              seven has not validated the model.
             </Text>
           </Reveal>
 
@@ -208,12 +205,11 @@ export function StatusView() {
               Why continuous integration cannot close this gate
             </Heading>
             <Text size="sm" tone="muted" className="max-w-prose">
-              Power BI Desktop is a Windows application, and Microsoft Fabric needs a
-              tenant, a workspace and a cloud PostgreSQL database. A GitHub runner has
-              none of those. The repository checks read the on-disk TMDL and compare a
-              hash; they never launch or contact an engine, and a CI job that claimed to
-              validate a Power BI model without one would be asserting something it cannot
-              observe.
+              Power BI Desktop is a Windows application and Microsoft Fabric needs a
+              tenant, a workspace and a cloud database. A GitHub runner has none of those,
+              and the build environment that produced this model has no Windows layer and
+              no Analysis Services instance. The repository checks read the on-disk TMDL
+              and compare a hash; they never launch or contact an engine.
             </Text>
             <SourceLink
               path=".github/workflows/ci.yml"

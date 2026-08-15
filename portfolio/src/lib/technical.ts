@@ -58,9 +58,26 @@ export interface TechnicalViewDefinition {
   readonly label: string
   /** The `h1` for this state of the destination. */
   readonly title: string
-  /** One or two sentences under the heading. */
+  /**
+   * One or two sentences under the heading, and the view's meta description.
+   *
+   * It is BOTH, which is why it is not shorter than it is. `generateMetadata`
+   * returns it as the `description` for the view's own canonical URL, so it is
+   * the text under the link when a technical state of this site is shared. A
+   * one-clause lede would read well on the page and badly everywhere the page is
+   * quoted. Around twenty-five to thirty words is the range that survives both.
+   */
   readonly lede: string
-  /** A second paragraph, where the lede alone would overrun a sensible length. */
+  /**
+   * A second paragraph, where the lede alone would overrun a sensible length.
+   *
+   * `UX.3` removed it from five of the eight views. Each one was making a claim
+   * the view's own body already made better — the architecture's semantic-model
+   * position is a stage of the pipeline diagram, the overview's build-time claim
+   * is that diagram's caption — and a second header paragraph is the most
+   * expensive place on a route to repeat something, because it sits above every
+   * piece of evidence for it.
+   */
   readonly supporting?: string
   /**
    * The retired route this view answers for, if any.
@@ -78,17 +95,13 @@ export const TECHNICAL_VIEW_DEFINITIONS: readonly TechnicalViewDefinition[] = [
     label: 'Overview',
     title: 'How ARPI works',
     lede: 'Seeded synthetic data generated in Python, validated in memory, loaded into a PostgreSQL dimensional warehouse, published through reporting views that own every KPI definition, and exported as content-addressed files.',
-    supporting:
-      'Nothing here queries a database at request time. The operating application reads committed exports, which is what makes every figure reproducible from the repository alone.',
     legacyRoute: null,
   },
   {
     view: 'architecture',
     label: 'Architecture',
     title: 'A layered batch pipeline, with every layer answerable',
-    lede: 'Synthetic source data is generated deterministically from a seeded configuration profile, validated in memory, written to CSV with a content-digest manifest, and loaded into PostgreSQL, where it passes through raw, staging, warehouse and reporting. Every run records its outcome in an audit schema.',
-    supporting:
-      'Above the database sits a Power BI semantic model stored as TMDL - text, diffable, reviewable without a licence. It reads the reporting schema and nothing else. Two accepted paths exist to validate it on a real engine, and neither has run.',
+    lede: 'Deterministic generation from a seeded profile, in-memory validation, CSV with a content-digest manifest, then PostgreSQL through raw, staging, warehouse and reporting. Every run records its outcome in an audit schema.',
     legacyRoute: '/architecture',
   },
   {
@@ -116,14 +129,14 @@ export const TECHNICAL_VIEW_DEFINITIONS: readonly TechnicalViewDefinition[] = [
     view: 'data-sources',
     label: 'Data sources',
     title: 'Where the data comes from, and what each lane may claim',
-    lede: 'Two lanes with different provenance and different limits. The warehouse is machine-generated from a seed and no row of it was ever observed anywhere. The reference listing lane is a de-identified snapshot of what a public listing source exposed, and it describes listings rather than sales results.',
+    lede: 'Two lanes, different provenance, different limits. One is machine-generated from a seed and was never observed anywhere; the other is a de-identified snapshot of a public listing source, and it describes listings rather than sales results.',
     legacyRoute: '/inventory-operations',
   },
   {
     view: 'status',
     label: 'Status',
     title: 'What is finished, what is pending, and what is blocked',
-    lede: 'The current state of every lifecycle phase and delivery increment, the two scope gates, and both real-engine semantic-model validation paths, derived from source-controlled evidence rather than from a claim typed into a page.',
+    lede: 'Every lifecycle phase and delivery increment, both scope gates, and both real-engine semantic-model validation paths, derived from source-controlled evidence rather than from a claim typed into a page.',
     legacyRoute: '/status',
   },
   {
